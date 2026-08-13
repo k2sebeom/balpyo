@@ -319,3 +319,8 @@ pyrightconfig.json
 workspace
 
 .DS_Store
+
+### Go ###
+bin/
+*.test
+*.out
