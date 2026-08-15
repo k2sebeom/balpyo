@@ -1,0 +1,42 @@
+site_name: balpyo
+site_description: SOML로 슬라이드를 쓰면 balpyo가 웹 프레젠테이션과 편집 가능한 네이티브 PPTX로 렌더링한다.
+site_author: k2sebeom
+repo_url: https://github.com/k2sebeom/balpyo
+repo_name: k2sebeom/balpyo
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: readthedocs
+  highlightjs: true
+  hljs_languages:
+    - go
+    - html
+    - json
+    - yaml
+    - bash
+
+nav:
+  - 개요: index.md
+
+# 빌드 의존성 파일은 사이트에 복사하지 않는다.
+exclude_docs: |
+  requirements.txt
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - tables
+  - toc:
+      permalink: true
+  # 하이라이팅은 readthedocs 테마의 highlight.js 가 담당한다.
+  # codehilite(Pygments)를 켜면 테마에 토큰 CSS가 없어 색이 죽고, 두 번 하이라이팅된다.
+  - fenced_code
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn

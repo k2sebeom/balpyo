@@ -1,0 +1,3 @@
+# 문서 사이트 빌드 의존성 (`make docs`).
+# readthedocs 테마는 mkdocs에 내장되어 있어 추가 패키지가 없다.
+mkdocs==1.6.1
