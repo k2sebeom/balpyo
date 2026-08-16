@@ -8,9 +8,47 @@
 
 ---
 
+## 문서 구조 (`docs/`)
+
+문서는 코드와 같은 저장소에서 iteration을 따라 자란다. 배치 기준:
+
+```
+docs/
+├── reference/              # "무엇이 있고 어떻게 쓰는가" — 태그가 추가될 때마다 갱신
+│   ├── soml/               # 태그별 레퍼런스. 태그 1개(또는 밀접한 세트) = 파일 1개
+│   │   ├── slide.md        #   속성 표 · 예제 · 웹/PPTX 렌더 결과 · 에러 조건
+│   │   ├── text.md
+│   │   └── …
+│   ├── appearance.md       # 외관 속성 전체 + 타깃별 컴파일 매핑 표 (PRD §9.4의 살아있는 판)
+│   ├── layouts.md          # 표준 레이아웃 카탈로그 11종 + 슬롯 목록
+│   ├── theme.md            # 테마 패키지 포맷 (theme/tokens/components.json, layouts css)
+│   └── cli.md              # 서브커맨드 레퍼런스
+├── guides/                 # "어떻게 하는가" — 사용자 시나리오 단위
+│   ├── getting-started.md
+│   ├── theming.md
+│   └── components.md       # 합성 컴포넌트 만들기
+├── internals/              # 기여자용 — 아키텍처·파이프라인·테스트 환경
+│   ├── architecture.md     # 파이프라인, 덱 모델, 패키지 경계
+│   ├── geometry-pass.md    # CDP 지오메트리 패스, EMU 변환, 텍스트 메트릭 전략
+│   └── testing.md          # Docker 이미지, make test/review/golden, 골든 갱신 규칙
+└── decisions/              # ADR — PRD 열린 질문의 확정 기록 (번호 순, 불변)
+    └── 0001-units.md
+```
+
+**규칙**:
+- 문서 갱신은 iteration **완료 조건**이다 — 구현 커밋과 같은 PR/커밋 흐름에 포함한다.
+- **구현된 동작만 쓴다.** 미래 계획·미구현 속성은 레퍼런스에 넣지 않는다 (그건 PRD와
+  이 파일의 몫).
+- 태그 레퍼런스 페이지의 형식 통일: 속성 표 → SOML 예제 → 웹/PPTX 각각의 렌더 결과
+  설명 → 빌드 에러가 나는 조건.
+- 열린 질문을 확정하면 반드시 `docs/decisions/NNNN-*.md` ADR로 남긴다 (맥락 → 선택지 →
+  결정 → 근거). 하단 결정 로그 표는 ADR의 색인이다.
+
+---
+
 ## 반복 절차 (모든 Iteration 공통)
 
-각 iteration은 아래 3단계를 순서대로 밟는다.
+각 iteration은 아래 4단계를 순서대로 밟는다.
 
 ### ① 테스트 작성 (RED)
 
@@ -43,8 +81,16 @@
   - `index.html` (전체 픽스처 나란히 보기 갤러리)
 - 사람이 갤러리를 눈으로 확인. macOS에서 `deck.pptx`를 **Keynote/PowerPoint로 직접
   열어** 편집 가능성(텍스트 박스가 진짜 텍스트 박스인지, 테마 색 편집을 따라가는지) 확인
-- 이번 iteration에서 확정한 설계 결정(열린 질문 답)을 이 파일 하단 로그에 기록
-- 커밋 후 다음 iteration으로
+- 이번 iteration에서 확정한 설계 결정(열린 질문 답)을 ADR + 하단 로그에 기록
+
+### ④ 문서화 (DOC)
+
+- 각 iteration에 명시된 `docs/` 파일을 작성·갱신한다 (아래 iteration별 "문서" 항목).
+- 새 태그 → `docs/reference/soml/<태그>.md` 신규. 새 외관 속성 → `docs/reference/appearance.md`
+  의 매핑 표에 행 추가. 확정한 열린 질문 → `docs/decisions/` ADR.
+- 문서의 예제는 실제 픽스처(`testdata/fixtures/`)에서 가져온다 — 문서 예제가 곧
+  테스트된 코드가 되도록.
+- 문서까지 커밋한 뒤 다음 iteration으로
 
 ---
 
@@ -74,6 +120,12 @@
 - [ ] **Make 타깃**: `make test` (컨테이너 안에서 go test), `make review` (갤러리 생성),
       `make golden` (골든 갱신)
 - [ ] CI 워크플로우: 같은 이미지로 `make test`
+- [ ] **문서**:
+  - [ ] `docs/` 골격 생성 (위 문서 구조 트리대로 디렉토리 + 빈 index)
+  - [ ] `docs/internals/testing.md` — Docker 이미지 구성, make 타깃, 골든 갱신 규칙
+  - [ ] `docs/internals/architecture.md` — 파이프라인·패키지 경계 초안 (덱 모델 섹션은 I1에서)
+  - [ ] `docs/decisions/0001-units.md` — 단위 체계 ADR
+  - [ ] `docs/decisions/0002-parser-trivia.md` — 트리비아 보존 파서 ADR
 
 **완료 기준**: 빈 픽스처로 파이프라인이 끝에서 끝까지 돌고(내용은 더미), 컨테이너
 안에서 LibreOffice·Chromium 헬퍼가 동작한다.
@@ -101,11 +153,20 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
   - [ ] 얇은 CLI: `balpyo build --target html,pptx` (init/server는 Phase 2)
 - [ ] 리뷰 포인트: **텍스트 메트릭** — 브라우저가 잰 박스가 LibreOffice/Keynote에서
       같은 줄바꿈을 유지하는가. 허용 오차를 여기서 수치로 정의 (열린 질문 #1 답 기록)
+- [ ] 문서:
+  - [ ] `docs/reference/soml/slide.md`, `text.md`, `note.md`
+  - [ ] `docs/reference/appearance.md` 생성 — `role`/`size`/`color`/`align`만 있는 초판 매핑 표
+  - [ ] `docs/reference/cli.md` 생성 — `build` 항목만
+  - [ ] `docs/internals/geometry-pass.md` — CDP 패스, EMU 변환, 텍스트 박스 고정 전략
+  - [ ] `docs/internals/architecture.md` 덱 모델 섹션 완성
+  - [ ] `docs/decisions/` — 텍스트 줄바꿈 허용 오차 ADR (열린 질문 #1)
 
 **이 iteration이 실패하면(텍스트 메트릭 오차가 수용 불가) 아키텍처를 재검토한다 —
 그래서 가장 먼저 한다.**
 
----## Iteration 2 — 텍스트 서브셋 + 역할/캐스케이드 완성
+---
+
+## Iteration 2 — 텍스트 서브셋 + 역할/캐스케이드 완성
 
 - 태그: `h1`~`h3`, `p`, `ul`/`ol`/`li`, `blockquote`, `pre`, `code`, `strong`, `em`,
   `a`, `br`, `span`
@@ -117,6 +178,11 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
         역할/토큰 (variant 정의는 아직 하드코딩 테마 안)
   - [ ] 인라인 태그 → 웹 그대로 / PPTX 런 분할
 - [ ] 리뷰: 불릿 리스트 슬라이드가 양 타깃에서 동일한 들여쓰기·마커로 보이는지
+- [ ] 문서:
+  - [ ] `docs/reference/soml/text-subset.md` — HTML 서브셋 태그 표 + 역할 등가 표
+        (`<p>` ≡ `<text role="body">`)
+  - [ ] `docs/reference/appearance.md` — **캐스케이드 규칙 섹션** (4단 해석 순서) +
+        텍스트 역할 5종, 인라인 서식 매핑 행 추가
 
 ## Iteration 3 — 레이아웃 태그: `<row>` `<col>` `<grid>` `<spacer>`
 
@@ -129,6 +195,10 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
       지오메트리 패스에서 자식 좌표만 소비되고 컨테이너 자체는 사라짐
 - [ ] 구현: `style` 탈출구 — 배치 속성 allowlist 검사, 외관 CSS 사용 시 경고 (§7.9)
 - [ ] 리뷰: 좌표 계산 0회로 그리드 배치가 PPTX에 정확히 이식되는지
+- [ ] 문서:
+  - [ ] `docs/reference/soml/layout.md` — `row`/`col`/`grid`/`spacer` + 컨테이너/자식
+        속성 전체와 **CSS 대응 표** (PRD §7.4 — "이름 바꾸기 층" 계약의 공식 문서)
+  - [ ] `docs/reference/soml/layout.md` 안에 `style` 탈출구 규칙 (배치 전용, 경고 조건)
 
 ## Iteration 4 — `<shape>` 12종 + 외관 속성(단색)
 
@@ -142,6 +212,10 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
 - [ ] 구현: shape → 웹 div / PPTX `sp`, 외관 속성 → CSS / OOXML 양방향 컴파일 (§9.4 표)
 - [ ] 리뷰: PowerPoint/Keynote에서 도형 선택 → 진짜 프리셋 도형인지, **테마 색을 바꾸면
       도형 색이 따라가는지** 직접 확인
+- [ ] 문서:
+  - [ ] `docs/reference/soml/shape.md` — `type` 12종 표 (각각 웹/PPTX `prstGeom` 대응)
+  - [ ] `docs/reference/appearance.md` — `fill`/`border`/`radius`/`shadow`/`opacity`/
+        `rotate`/`flip` 행 추가 + **토큰 색 → `schemeClr` 보존** 계약 명문화
 
 ## Iteration 5 — `<image>`
 
@@ -150,6 +224,7 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
       크롭 등가성, 없는 `src` 빌드 에러
 - [ ] 구현: 이미지 파이프라인 (assets/ 해석, PPTX `pic` + rels)
 - [ ] 리뷰: cover 크롭이 양 타깃에서 같은 영역을 보여주는지
+- [ ] 문서: `docs/reference/soml/image.md` (`src` 해석 규칙 — assets/ 상대 경로 포함)
 
 ## Iteration 6 — `<stack>` + `layout="canvas"` + 절대 배치
 
@@ -159,6 +234,9 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
 - [ ] 테스트: 겹침 z-순서 → PPTX 도형 순서, 9지점 앵커 좌표 스냅샷, 배지/워터마크 픽스처
 - [ ] 구현: stack 컴파일 + canvas 슬라이드 (테마는 배경/여백만 소유)
 - [ ] 리뷰: 오버레이 배지가 양 타깃에서 같은 위치·같은 겹침 순서인지
+- [ ] 문서:
+  - [ ] `docs/reference/soml/stack.md` — `at` 9지점, `x`/`y` 좌표 기준, z-순서 규칙
+  - [ ] `docs/decisions/` — stack 시맨틱 ADR (열린 질문 #3)
 
 ## Iteration 7 — `<arrow>` `<line>` (가장 어려운 세트)
 
@@ -174,6 +252,9 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
   - [ ] `label` → 선 중앙 텍스트 (웹/PPTX)
 - [ ] 리뷰: 아키텍처 다이어그램 픽스처 — PowerPoint에서 커넥터를 잡아 끌면 도형에
       붙어 있는지(진짜 `cxnSp`인지)
+- [ ] 문서:
+  - [ ] `docs/reference/soml/arrow.md` — `from`/`to`/`via`/앵커 시맨틱, `docs/reference/soml/line.md`
+  - [ ] `docs/decisions/` — 앵커 시맨틱 ADR (열린 질문 #4)
 
 ## Iteration 8 — 외관 스키마 v1 완성: 그라디언트 + 색 변형
 
@@ -187,6 +268,10 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
       `lumMod`/`lumOff`/`alpha` (schemeClr 유지 확인)
 - [ ] 리뷰: `workspace/AI_FCD.pptx`(역분석 원본)의 그라디언트 카드를 SOML로 재현 →
       원본과 나란히 비교
+- [ ] 문서:
+  - [ ] `docs/reference/appearance.md` — 그라디언트 표기·색 변형 함수 문법 섹션 +
+        매핑 표 완성 (§9.4 전체가 문서에 반영된 상태가 이 iteration의 완료 기준)
+  - [ ] `docs/decisions/` — 외관 값 문법 ADR (열린 질문 #5)
 
 ## Iteration 9 — `<group>`
 
@@ -194,6 +279,7 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
       `<row>`와의 차이(그룹은 편집 단위, row는 배치 후 소멸)
 - [ ] 구현: 그룹 좌표 변환 + 웹 div 매핑
 - [ ] 리뷰: PowerPoint에서 그룹 선택·이동이 한 단위로 되는지
+- [ ] 문서: `docs/reference/soml/group.md` — `<row>`/`<col>`과의 사용 구분 기준 포함
 
 ## Iteration 10 — 1층: 표준 레이아웃 카탈로그 + 슬롯 + 테마 패키지 포맷
 
@@ -209,6 +295,12 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
         슬라이드 마스터 고정 요소
   - [ ] 내장 테마 `minimal` v1 (`//go:embed`)
 - [ ] 리뷰: 같은 덱에 테마 토큰만 바꿔 재빌드 → 웹·PPTX 양쪽에서 룩이 따라가는지
+- [ ] 문서:
+  - [ ] `docs/reference/layouts.md` — 표준 레이아웃 11종 카탈로그 (레이아웃별 슬롯 표 +
+        스크린샷), 폴백 규칙
+  - [ ] `docs/reference/theme.md` — 테마 패키지 포맷 (`theme.json`/`tokens.json`/
+        `components.json`/`layouts/*.css`), 토큰 표준 어휘, 배치·외관 경계 규칙
+  - [ ] `docs/guides/theming.md` — 테마 만들기 가이드 (minimal을 예제로)
 
 ## Iteration 11 — 합성 컴포넌트: `<define>` `<slot>`
 
@@ -218,14 +310,21 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
 - [ ] 구현: define/slot 전개기
 - [ ] 리뷰: **8-카드 그리드 슬라이드를 `<grid>` + 합성 컴포넌트로 재현 → AI_FCD 원본과
       비교** (PRD M0.5의 최종 목표 장면. 수동 좌표 계산 128회 → 0회 증명)
+- [ ] 문서:
+  - [ ] `docs/reference/soml/composite.md` — `<define>`/`<slot>` 문법, 전개 규칙,
+        네이밍(하이픈) 규칙
+  - [ ] `docs/guides/components.md` — 합성 컴포넌트 만들기 가이드 (dim-card 예제)
+  - [ ] `docs/decisions/` — 합성 파라미터 범위 ADR (열린 질문 #7)
 
 ---
 
 ## Phase 2 — 어휘 밖 작업 (iteration 사이 또는 이후에 배치)
 
-태그 세트 반복이 아닌 것들. 필요해지는 시점에 끼워 넣는다.
+태그 세트 반복이 아닌 것들. 필요해지는 시점에 끼워 넣는다. **CLI 서브커맨드를 추가할
+때마다 `docs/reference/cli.md`를 갱신**하고, 그 밖의 문서 대상은 각 항목에 표기했다.
 
 - [ ] `balpyo init` / `new` (스캐폴딩) — Iteration 10 이후가 자연스러움 (테마 필요)
+      → 문서: `docs/guides/getting-started.md` 작성 (init → server → build 흐름)
 - [ ] `balpyo server` — 핫 리로드 + 검증 오버레이 + 웜 브라우저 세션. 시각 리뷰 루프를
       크게 가속하므로 **이르면 Iteration 3~4쯤 최소판** 투입 권장
 - [ ] 웹 런타임 (vanilla TS ~10KB): 네비게이션, `reveal`, 스케일링, 딥링크 →
@@ -233,17 +332,21 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
 - [ ] `balpyo check` (CI 검증) — 파서·검증기가 이미 있으므로 표면만
 - [ ] `balpyo format` — 트리비아 보존 파서 위의 정규화 층 (Iteration 0의 결정이 여기서 회수됨)
 - [ ] 릴리스 파이프라인: 크로스 컴파일, GitHub Releases, Homebrew tap
+- [ ] 웹 런타임 문서 → `docs/reference/cli.md`의 build 옵션 + 발표 조작(키보드·딥링크)은
+      `docs/guides/getting-started.md`에 통합
 - [ ] `<table>` / `<icon>`(SVG→`custGeom`) / 코드 하이라이팅(Chroma) — P1 어휘,
-      같은 반복 절차로 추가
+      같은 반복 절차로 추가 → 문서: `docs/reference/soml/<태그>.md` 동일 규칙
 - [ ] `<raw>` 탈출구 + 래스터화 폴백 (CDP `captureScreenshot` 재사용)
+      → 문서: `docs/reference/soml/raw.md` — "raw는 PPTX에서 그림이 된다" 원칙 명시
 
 ---
 
 ## 설계 결정 로그
 
-각 iteration의 REVIEW 단계에서 확정한 열린 질문(PRD §13)의 답을 기록한다.
+각 iteration에서 확정한 열린 질문(PRD §13)의 답. 상세는 `docs/decisions/`의 ADR이
+원본이고, 이 표는 색인이다.
 
-| 결정 | 내용 | Iteration |
+| 결정 | ADR | Iteration |
 |---|---|---|
-| (예) 단위 체계 | | I0 |
-| (예) 텍스트 줄바꿈 허용 오차 | | I1 |
+| (예) 단위 체계 | `docs/decisions/0001-units.md` | I0 |
+| (예) 텍스트 줄바꿈 허용 오차 | `docs/decisions/000X-text-metrics.md` | I1 |
