@@ -31,8 +31,8 @@ docs/
 │   ├── architecture.md     # 파이프라인, 덱 모델, 패키지 경계
 │   ├── geometry-pass.md    # CDP 지오메트리 패스, EMU 변환, 텍스트 메트릭 전략
 │   └── testing.md          # Docker 이미지, make test/review/golden, 골든 갱신 규칙
-└── decisions/              # ADR — PRD 열린 질문의 확정 기록 (번호 순, 불변)
-    └── 0001-units.md
+└── decisions/              # ADR — 구현 중 확정하는 설계 결정 (번호 순, 불변)
+    └── 0001-parser-trivia.md
 ```
 
 **규칙**:
@@ -41,8 +41,10 @@ docs/
   이 파일의 몫).
 - 태그 레퍼런스 페이지의 형식 통일: 속성 표 → SOML 예제 → 웹/PPTX 각각의 렌더 결과
   설명 → 빌드 에러가 나는 조건.
-- 열린 질문을 확정하면 반드시 `docs/decisions/NNNN-*.md` ADR로 남긴다 (맥락 → 선택지 →
-  결정 → 근거). 하단 결정 로그 표는 ADR의 색인이다.
+- **PRD §13의 열린 질문 12건은 전부 확정되어 PRD 본문에 반영되었다 (2026-08-16).**
+  구현 중 새로 확정하는 설계 결정은 `docs/decisions/NNNN-*.md` ADR로 남긴다 (맥락 →
+  선택지 → 결정 → 근거). PRD §13의 기존 결정을 뒤집는 경우 PRD도 함께 갱신한다.
+  하단 결정 로그 표는 ADR의 색인이다.
 
 ---
 
@@ -81,13 +83,13 @@ docs/
   - `index.html` (전체 픽스처 나란히 보기 갤러리)
 - 사람이 갤러리를 눈으로 확인. macOS에서 `deck.pptx`를 **Keynote/PowerPoint로 직접
   열어** 편집 가능성(텍스트 박스가 진짜 텍스트 박스인지, 테마 색 편집을 따라가는지) 확인
-- 이번 iteration에서 확정한 설계 결정(열린 질문 답)을 ADR + 하단 로그에 기록
+- 이번 iteration에서 새로 확정한 설계 결정을 ADR + 하단 로그에 기록
 
 ### ④ 문서화 (DOC)
 
 - 각 iteration에 명시된 `docs/` 파일을 작성·갱신한다 (아래 iteration별 "문서" 항목).
 - 새 태그 → `docs/reference/soml/<태그>.md` 신규. 새 외관 속성 → `docs/reference/appearance.md`
-  의 매핑 표에 행 추가. 확정한 열린 질문 → `docs/decisions/` ADR.
+  의 매핑 표에 행 추가. 새로 확정한 설계 결정 → `docs/decisions/` ADR.
 - 문서의 예제는 실제 픽스처(`testdata/fixtures/`)에서 가져온다 — 문서 예제가 곧
   테스트된 코드가 되도록.
 - 문서까지 커밋한 뒤 다음 iteration으로
@@ -101,8 +103,8 @@ docs/
 - [ ] **Go 패키지 골격** (PRD §12.2): `soml/`(파서+덱 모델), `core/`(외관 해석·검증),
       `render/web/`, `render/pptx/`, `cmd/balpyo/`
 - [ ] **선결정 확정** (코드 첫 줄 전에):
-  - [ ] 수치 단위: 논리 스테이지 **1280×720 px** 기준 (PRD 열린 질문 #5의 단위 부분).
-        PPTX 변환 계수(px → EMU) 상수 확정
+  - [x] 수치 단위: **확정 완료 (PRD §13-5)** — 논리 스테이지 px 단일 단위 (16:9 =
+        1280×720). PPTX 변환 계수(`1px = 9525 EMU`, 폰트 `pt = px × 0.75`)는 상수로 구현
   - [ ] 파서 자료구조: **트리비아(공백·주석·인용부호) 보존 토크나이저** — build/check만
         쓰더라도 처음부터. 나중에 format/lsp에 재사용 (PRD §12.2 "나중에 붙일 수 없는 결정")
 - [ ] **Docker 테스트 이미지** (`docker/test.Dockerfile`):
@@ -124,8 +126,7 @@ docs/
   - [ ] `docs/` 골격 생성 (위 문서 구조 트리대로 디렉토리 + 빈 index)
   - [ ] `docs/internals/testing.md` — Docker 이미지 구성, make 타깃, 골든 갱신 규칙
   - [ ] `docs/internals/architecture.md` — 파이프라인·패키지 경계 초안 (덱 모델 섹션은 I1에서)
-  - [ ] `docs/decisions/0001-units.md` — 단위 체계 ADR
-  - [ ] `docs/decisions/0002-parser-trivia.md` — 트리비아 보존 파서 ADR
+  - [ ] `docs/decisions/0001-parser-trivia.md` — 트리비아 보존 파서 ADR
 
 **완료 기준**: 빈 픽스처로 파이프라인이 끝에서 끝까지 돌고(내용은 더미), 컨테이너
 안에서 LibreOffice·Chromium 헬퍼가 동작한다.
@@ -152,14 +153,15 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
   - [ ] `<note>` → PPTX 노트 슬라이드
   - [ ] 얇은 CLI: `balpyo build --target html,pptx` (init/server는 Phase 2)
 - [ ] 리뷰 포인트: **텍스트 메트릭** — 브라우저가 잰 박스가 LibreOffice/Keynote에서
-      같은 줄바꿈을 유지하는가. 허용 오차를 여기서 수치로 정의 (열린 질문 #1 답 기록)
+      같은 줄바꿈을 유지하는가. 기본 정책은 확정 완료(PRD §13-1: 박스 고정 + autofit
+      off + 오버플로 허용) — 여기서는 **수치 임계값**을 측정해 정의한다
 - [ ] 문서:
   - [ ] `docs/reference/soml/slide.md`, `text.md`, `note.md`
   - [ ] `docs/reference/appearance.md` 생성 — `role`/`size`/`color`/`align`만 있는 초판 매핑 표
   - [ ] `docs/reference/cli.md` 생성 — `build` 항목만
   - [ ] `docs/internals/geometry-pass.md` — CDP 패스, EMU 변환, 텍스트 박스 고정 전략
   - [ ] `docs/internals/architecture.md` 덱 모델 섹션 완성
-  - [ ] `docs/decisions/` — 텍스트 줄바꿈 허용 오차 ADR (열린 질문 #1)
+  - [ ] PRD §13-1 — 측정한 줄바꿈 허용 오차의 수치 임계값 기입
 
 **이 iteration이 실패하면(텍스트 메트릭 오차가 수용 불가) 아키텍처를 재검토한다 —
 그래서 가장 먼저 한다.**
@@ -229,21 +231,21 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
 ## Iteration 6 — `<stack>` + `layout="canvas"` + 절대 배치
 
 - 태그·속성: `<stack>`, 자식 `at`(9지점 앵커), `x`/`y`
-- [ ] **선결정: 열린 질문 #3** — stack 시맨틱(단일 셀 grid 겹침 vs relative+absolute),
-      `x`/`y` 좌표 기준(스테이지 절대 vs 부모 상대), z-순서 규칙. 테스트 작성 전에 확정
+- [x] **선결정 확정 완료 (PRD §13-3)** — 단일 셀 grid 겹침, `at` → `place-self`,
+      `x`/`y`는 부모 상대 absolute, z-순서 = 문서 순서. 테스트는 이 계약대로 작성
 - [ ] 테스트: 겹침 z-순서 → PPTX 도형 순서, 9지점 앵커 좌표 스냅샷, 배지/워터마크 픽스처
 - [ ] 구현: stack 컴파일 + canvas 슬라이드 (테마는 배경/여백만 소유)
 - [ ] 리뷰: 오버레이 배지가 양 타깃에서 같은 위치·같은 겹침 순서인지
 - [ ] 문서:
   - [ ] `docs/reference/soml/stack.md` — `at` 9지점, `x`/`y` 좌표 기준, z-순서 규칙
-  - [ ] `docs/decisions/` — stack 시맨틱 ADR (열린 질문 #3)
+        (PRD §13-3 계약대로)
 
 ## Iteration 7 — `<arrow>` `<line>` (가장 어려운 세트)
 
 - 태그: `<arrow>` (`from`/`to` id 참조, `label`, `heads`, `dash`, `via`),
   `<line>` (`cap`, `dash`, `dir`, `stroke`)
-- [ ] **선결정: 열린 질문 #4** — 자동 앵커(최근접 변) vs 명시 앵커(`from="db@top"`) 기본
-      동작, `via` 문법
+- [x] **선결정 확정 완료 (PRD §13-4)** — 자동 앵커(최근접 변 중점)가 기본,
+      `from="db@top"` 명시 오버라이드(4변+center), `via`는 공백 구분 논리 좌표점 목록
 - [ ] 테스트: `id` 참조 해석(없는 id는 빌드 에러), 앵커 계산 단위 테스트, 배치 변경 시
       연결 유지, PPTX `cxnSp` 구조, 다이어그램 픽스처(PRD §7.4 예제) 픽셀 비교
 - [ ] 구현:
@@ -253,15 +255,16 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
 - [ ] 리뷰: 아키텍처 다이어그램 픽스처 — PowerPoint에서 커넥터를 잡아 끌면 도형에
       붙어 있는지(진짜 `cxnSp`인지)
 - [ ] 문서:
-  - [ ] `docs/reference/soml/arrow.md` — `from`/`to`/`via`/앵커 시맨틱, `docs/reference/soml/line.md`
-  - [ ] `docs/decisions/` — 앵커 시맨틱 ADR (열린 질문 #4)
+  - [ ] `docs/reference/soml/arrow.md` — `from`/`to`/`via`/앵커 시맨틱 (PRD §13-4
+        계약대로), `docs/reference/soml/line.md`
 
 ## Iteration 8 — 외관 스키마 v1 완성: 그라디언트 + 색 변형
 
 PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역분석의 핵심 산출.
 
 - 문법: `gradient(accent1 accent4 accent5, 45deg)`, `shade(accent5, 50%)`, `alpha(fg, 0.6)`
-- [ ] **선결정: 열린 질문 #5** — 그라디언트/색 함수 표기 확정
+- [x] **선결정 확정 완료 (PRD §13-5, §7.6)** — `gradient(색… [, 각도deg])` 균등 스톱·
+      기본 180deg, `shade`/`tint`/`alpha` 3종·중첩 불허
 - [ ] 테스트: `fill=gradient` → `linear-gradient` / `gradFill`, **`border=gradient`** →
       SVG 오버레이(엔진 소유 구현) / `ln`+`gradFill`, **텍스트 `color=gradient`** →
       `background-clip:text` / `rPr`+`gradFill`, 색 변형 → `color-mix` /
@@ -271,7 +274,6 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
 - [ ] 문서:
   - [ ] `docs/reference/appearance.md` — 그라디언트 표기·색 변형 함수 문법 섹션 +
         매핑 표 완성 (§9.4 전체가 문서에 반영된 상태가 이 iteration의 완료 기준)
-  - [ ] `docs/decisions/` — 외관 값 문법 ADR (열린 질문 #5)
 
 ## Iteration 9 — `<group>`
 
@@ -304,9 +306,11 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
 
 ## Iteration 11 — 합성 컴포넌트: `<define>` `<slot>`
 
-- [ ] **선결정: 열린 질문 #7** — 파라미터는 속성 + `<slot>`까지만 (조건·반복 없음, v1)
+- [x] **선결정 확정 완료 (PRD §13-7)** — 파라미터는 속성 + `<slot>`까지만
+      (조건·반복·표현식 없음, "SOML에는 제어 흐름이 없다")
 - [ ] 테스트: 파싱 시 코어 컴포넌트로 전개(덱 모델에 합성 흔적 없음 — 렌더러 불변),
-      이름 하이픈 강제, `components/*.soml` 로딩, 카드 그리드 픽스처(PRD §7.8 예제)
+      이름 하이픈 강제, `components/*.slide` 로딩(루트 `<define>` 검증), 카드 그리드
+      픽스처(PRD §7.8 예제)
 - [ ] 구현: define/slot 전개기
 - [ ] 리뷰: **8-카드 그리드 슬라이드를 `<grid>` + 합성 컴포넌트로 재현 → AI_FCD 원본과
       비교** (PRD M0.5의 최종 목표 장면. 수동 좌표 계산 128회 → 0회 증명)
@@ -314,7 +318,6 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
   - [ ] `docs/reference/soml/composite.md` — `<define>`/`<slot>` 문법, 전개 규칙,
         네이밍(하이픈) 규칙
   - [ ] `docs/guides/components.md` — 합성 컴포넌트 만들기 가이드 (dim-card 예제)
-  - [ ] `docs/decisions/` — 합성 파라미터 범위 ADR (열린 질문 #7)
 
 ---
 
@@ -343,10 +346,14 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
 
 ## 설계 결정 로그
 
-각 iteration에서 확정한 열린 질문(PRD §13)의 답. 상세는 `docs/decisions/`의 ADR이
-원본이고, 이 표는 색인이다.
+**PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다**
+(확장자 §7.1, stack §7.4, arrow 앵커 §7.5, 외관 값 문법·단위 §7.6, 합성 파라미터
+§7.8, 테마 JS 금지 §8.2, variant 비표준화 §8.3, 텍스트 메트릭·폰트 §9.3, 종횡비
+§6.2, 아이콘·인프로세스 백엔드 §11 — 색인은 PRD §13).
+
+이 표는 구현 중 새로 확정하는 설계 결정(ADR)의 색인이다.
 
 | 결정 | ADR | Iteration |
 |---|---|---|
-| (예) 단위 체계 | `docs/decisions/0001-units.md` | I0 |
-| (예) 텍스트 줄바꿈 허용 오차 | `docs/decisions/000X-text-metrics.md` | I1 |
+| 트리비아 보존 파서 | `docs/decisions/0001-parser-trivia.md` | I0 |
+| 텍스트 줄바꿈 허용 오차 — 수치 임계값 (PRD §13-1에 기입) | — | I1 |

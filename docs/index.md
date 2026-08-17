@@ -79,7 +79,7 @@ my-talk/
 │   ├── 010_architecture.slide
 │   └── 900_end.slide
 ├── components/              # 사용자 정의 합성 컴포넌트
-│   └── dim-card.soml
+│   └── dim-card.slide
 ├── assets/                  # 이미지, 폰트, 로고
 ├── themes/                  # (선택) 로컬·내려받은 테마. 내장 테마를 쓰면 불필요
 └── dist/                    # 산출물 (.gitignore)
@@ -292,7 +292,7 @@ slides/*.slide ─파싱─▶ ┌───────────────�
 3도형 × 8회 반복 확인).
 
 ```html
-<!-- components/dim-card.soml -->
+<!-- components/dim-card.slide -->
 <define name="dim-card">
   <col variant="card" gap="none">
     <shape type="rounded-rect" variant="card-header">
@@ -334,7 +334,7 @@ my-theme/
 ├── tokens.json         # 디자인 토큰 (단일 소스 → CSS 변수 + PPTX 테마 파트)
 ├── components.json     # 컴포넌트 기본 외관 + variant + 텍스트 역할
 ├── layouts/            # 레이아웃별 슬롯 배치 — 배치 전용 CSS
-├── components/         # (선택) 테마 동반 합성 컴포넌트 (.soml)
+├── components/         # (선택) 테마 동반 합성 컴포넌트 (.slide)
 ├── web/                # 웹 전용 전환/등장 효과
 ├── assets/             # 폰트, 배경, 로고
 └── preview.html        # (자동 생성) 갤러리 프리뷰
@@ -546,7 +546,7 @@ Docker 컨테이너 안에서 돌아 로컬과 CI가 같은 결과를 낸다.
 
 | 문서 | 내용 |
 |---|---|
-| [PRD.md](https://github.com/k2sebeom/balpyo/blob/main/PRD.md) | 제품 정의 전문 — SOML 명세, 테마 시스템, 렌더러, 열린 질문, 리스크 |
+| [PRD.md](https://github.com/k2sebeom/balpyo/blob/main/PRD.md) | 제품 정의 전문 — SOML 명세, 테마 시스템, 렌더러, 확정된 설계 결정, 리스크 |
 | [TASKS.md](https://github.com/k2sebeom/balpyo/blob/main/TASKS.md) | 구현 플랜 — iteration별 테스트/구현/리뷰 체크리스트, 설계 결정 로그 |
 
 ### 이 문서 사이트 빌드하기
