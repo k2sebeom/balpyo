@@ -4,14 +4,14 @@
 # CI 리눅스가 같은 결과를 내야 하므로 테스트는 항상 이 이미지 안에서 돈다 (`make test`).
 #
 # 결정성의 근거:
-#   - 베이스 이미지를 패치 버전까지 고정한다 (golang:1.23.6-bookworm = Debian bookworm).
+#   - 베이스 이미지를 패치 버전까지 고정한다 (golang:1.26.6-bookworm = Debian bookworm).
 #     bookworm의 apt 저장소는 릴리스 내에서 패키지 버전을 고정하므로 LibreOffice와
 #     Chromium의 메이저·마이너가 고정된다.
 #   - 실제로 설치된 버전을 이미지 안에 기록하고(/etc/balpyo-versions.txt),
 #     docker/versions.env의 기대값과 대조하는 테스트를 둔다. 보안 패치로 버전이 움직이면
 #     골든이 조용히 깨지는 대신 그 테스트가 먼저 실패한다.
 #   - 폰트는 Noto만 설치한다. 텍스트 메트릭이 재현 가능하려면 폰트 집합이 결정적이어야 한다.
-FROM golang:1.23.6-bookworm
+FROM golang:1.26.6-bookworm
 
 # LibreOffice는 PPTX 열림 테스트와 PPTX 렌더(pdf 경유)를,
 # Chromium은 지오메트리 패스와 웹 스크린샷을, poppler-utils는 pdf → png를 담당한다.
@@ -46,7 +46,7 @@ ENV HOME=/tmp
 
 # 설치된 버전 기록. versions.env 대조 테스트와 사람의 디버깅이 같은 파일을 본다.
 RUN { \
-      echo "BALPYO_IMAGE_BASE=golang:1.23.6-bookworm"; \
+      echo "BALPYO_IMAGE_BASE=golang:1.26.6-bookworm"; \
       echo "BALPYO_DEBIAN=$(cat /etc/debian_version)"; \
       echo "BALPYO_GO=$(go version | cut -d' ' -f3)"; \
       echo "BALPYO_SOFFICE_VERSION=$(soffice --version 2>/dev/null | head -1)"; \

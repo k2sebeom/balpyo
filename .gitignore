@@ -324,3 +324,9 @@ workspace
 bin/
 *.test
 *.out
+
+### balpyo ###
+# 시각 리뷰 산출물 (`make review`) — 커밋하는 스냅샷은 픽스처의 golden/ 뿐이다.
+review/
+# 테스트 이미지 빌드 스탬프
+.make/
