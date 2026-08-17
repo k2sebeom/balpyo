@@ -110,7 +110,7 @@ func TestAspectStage(t *testing.T) {
 	if s, err := Aspect16x9.Stage(); err != nil || s.Width != 1280 || s.Height != 720 {
 		t.Errorf("16:9 = %+v, %v", s, err)
 	}
-	if s, err := Aspect4x3.Stage(); err != nil || s.Width != 1024 || s.Height != 768 {
+	if s, err := Aspect4x3.Stage(); err != nil || s.Width != 960 || s.Height != 720 {
 		t.Errorf("4:3 = %+v, %v", s, err)
 	}
 	if _, err := Aspect("21:9").Stage(); err == nil {

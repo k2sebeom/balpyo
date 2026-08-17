@@ -53,9 +53,9 @@ func TestRenderStageMatchesAspect(t *testing.T) {
 	deck.Aspect = soml.Aspect4x3
 	deck.Stage, _ = soml.Aspect4x3.Stage()
 	out = renderString(t, deck)
-	if !strings.Contains(out, "--balpyo-stage-width: 1024px") ||
-		!strings.Contains(out, "--balpyo-stage-height: 768px") {
-		t.Error("4:3은 1024×768이어야 한다")
+	if !strings.Contains(out, "--balpyo-stage-width: 960px") ||
+		!strings.Contains(out, "--balpyo-stage-height: 720px") {
+		t.Error("4:3은 960×720이어야 한다")
 	}
 }
 

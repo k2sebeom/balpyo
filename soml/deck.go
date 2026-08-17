@@ -13,7 +13,7 @@ type Aspect string
 const (
 	// Aspect16x9는 논리 스테이지 1280×720이다.
 	Aspect16x9 Aspect = "16:9"
-	// Aspect4x3은 논리 스테이지 1024×768이다.
+	// Aspect4x3은 논리 스테이지 960×720이다.
 	Aspect4x3 Aspect = "4:3"
 )
 
@@ -28,12 +28,16 @@ type Stage struct {
 }
 
 // Stage는 종횡비에 대응하는 논리 스테이지를 돌려준다. 알 수 없는 비율은 에러다.
+//
+// 두 비율은 높이 720을 공유한다 — 폰트 크기와 수직 리듬이 비율을 넘어 그대로 통하고,
+// px에 상수 9525를 곱하면 PowerPoint 표준 페이지 크기(13.333×7.5in / 10×7.5in)가
+// 정확히 나온다 (docs/decisions/0002-logical-stage-size.md).
 func (a Aspect) Stage() (Stage, error) {
 	switch a {
 	case Aspect16x9:
 		return Stage{Width: 1280, Height: 720}, nil
 	case Aspect4x3:
-		return Stage{Width: 1024, Height: 768}, nil
+		return Stage{Width: 960, Height: 720}, nil
 	default:
 		return Stage{}, fmt.Errorf("알 수 없는 종횡비 %q (%q 또는 %q)", string(a), Aspect16x9, Aspect4x3)
 	}

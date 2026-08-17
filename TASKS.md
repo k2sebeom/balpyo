@@ -356,4 +356,5 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
 | 결정 | ADR | Iteration |
 |---|---|---|
 | 트리비아 보존 파서 | `docs/decisions/0001-parser-trivia.md` | I0 |
+| 4:3 논리 스테이지는 960×720 (PRD §6.2·§13-9 갱신) | `docs/decisions/0002-logical-stage-size.md` | I0 |
 | 텍스트 줄바꿈 허용 오차 — 수치 임계값 (PRD §13-1에 기입) | — | I1 |
