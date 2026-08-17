@@ -35,7 +35,7 @@ func (f SlideFile) DerivedID() string {
 	if stripped := stripOrderPrefix(name); stripped != "" {
 		name = stripped
 	}
-	return slugify(name)
+	return Slug(name)
 }
 
 // Collect는 슬라이드 디렉토리를 순회해 렌더 순서대로 정렬된 슬라이드 파일 목록을 낸다.
@@ -150,9 +150,9 @@ func stripOrderPrefix(name string) string {
 	return name[i:]
 }
 
-// slugify는 앵커로 쓸 수 있는 형태로 정규화한다. 한글 같은 비 ASCII 문자는 유지한다 —
-// 앵커는 URL 프래그먼트이고 퍼센트 인코딩으로 실릴 수 있다.
-func slugify(s string) string {
+// Slug는 앵커나 파일명으로 쓸 수 있는 형태로 정규화한다. 한글 같은 비 ASCII 문자는
+// 유지한다 — 앵커는 URL 프래그먼트이고 퍼센트 인코딩으로 실릴 수 있다.
+func Slug(s string) string {
 	var b strings.Builder
 	lastDash := false
 	for _, r := range strings.ToLower(s) {
