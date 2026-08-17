@@ -1,0 +1,71 @@
+# CI는 로컬과 **같은 컨테이너로 같은 make 타깃**을 돈다.
+#
+# 픽셀 비교와 텍스트 메트릭은 렌더 환경이 결정적일 때만 의미가 있으므로, 러너에 설치된
+# 브라우저나 폰트를 쓰지 않는다 — 이미지가 환경 전체를 소유한다
+# (docs/internals/testing.md).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 같은 브랜치에 새 커밋이 오면 진행 중인 실행을 취소한다. 컨테이너 빌드가 무거워서
+# 중복 실행이 큐를 막는다.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 테스트 (컨테이너)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 컨테이너는 네트워크 없이 돌고(GOPROXY=off) 의존성은 호스트 모듈 캐시를 마운트해
+      # 공급한다. 그래서 러너에도 Go가 필요하다 (`make deps`가 여기서 돈다).
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: 테스트 이미지 빌드
+        run: make image
+
+      - name: 이미지 버전 기록
+        run: make versions
+
+      - name: 테스트
+        run: make test
+
+      # 렌더 비교가 실패하면 diff 이미지를 봐야 원인을 안다. 실패한 실행에서만 갤러리를
+      # 만들어 올린다 (`|| true` — review는 같은 테스트를 다시 돌리므로 또 실패한다).
+      - name: 실패 시 리뷰 갤러리 생성
+        if: failure()
+        run: make review || true
+
+      - name: 리뷰 갤러리 업로드
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: review
+          path: review/
+          if-no-files-found: ignore
+
+  docs:
+    name: 문서 빌드
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: pip
+          cache-dependency-path: docs/requirements.txt
+
+      # --strict: 끊긴 링크와 nav에 없는 문서를 에러로 잡는다. 문서 갱신은 iteration의
+      # 완료 조건이므로 CI가 검사한다.
+      - name: 문서 빌드
+        run: make docs
