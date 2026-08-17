@@ -1,0 +1,7 @@
+<!-- 표지. size·align을 명시해 파서가 원문 값을 그대로 보존하는지 본다. -->
+<slide id="title">
+  <text role="caption" size="20" color="muted" align="center">Platform Team</text>
+  <text role="title" size="64" color="fg" align="center">2026 아키텍처 리뷰</text>
+  <text role="body" align="center">상반기 회고와 하반기 계획</text>
+  <note>인사 30초. 청중에 인프라팀 포함되어 있음.</note>
+</slide>

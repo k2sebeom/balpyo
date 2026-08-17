@@ -1,0 +1,7 @@
+<!-- 한글과 영문이 섞인 본문. 텍스트 메트릭(줄바꿈)이 두 타깃에서 같은지 보는 슬라이드다. -->
+<slide>
+  <text role="heading" color="accent1">올해의 세 가지 변화</text>
+  <text role="body">모놀리스 분리를 마쳤고, 배포 파이프라인을 자동화했으며,
+  관측성 스택(OpenTelemetry + Grafana)을 도입했다.</text>
+  <text role="caption" size="18" color="muted" align="end">2026 H1</text>
+</slide>

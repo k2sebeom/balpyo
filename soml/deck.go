@@ -66,14 +66,14 @@ type Slide struct {
 	Chapter string
 	// Notes는 발표자 노트다 (`<note>`). PPTX에서는 노트 슬라이드가 된다.
 	Notes string
-	// Content는 슬라이드 콘텐츠 트리다. 노드 종류는 Iteration 1부터 채운다.
+	// Content는 슬라이드 콘텐츠 트리다 (`<note>`는 여기 없다 — Notes로 간다).
 	Content []Node
 	// Tokens는 이 슬라이드를 만든 원문 토큰 열이다. format이 원문을 되돌려 쓰고,
 	// 진단이 위치를 찾는 근거다.
 	Tokens Tokens
 }
 
-// Node는 슬라이드 콘텐츠 트리의 노드다. 구현체(요소·텍스트)는 Iteration 1에서 추가된다.
+// Node는 슬라이드 콘텐츠 트리의 노드다. 구현체는 Element와 Text다 (node.go).
 type Node interface {
 	// NodeSpan은 이 노드를 만든 원문 구간이다 — 렌더 단계의 진단도 위치를 갖는다.
 	NodeSpan() Span

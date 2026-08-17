@@ -91,14 +91,26 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 		if err != nil {
 			return nil, nil, fmt.Errorf("%s를 읽을 수 없다: %w", source, err)
 		}
-		// Iteration 1에서 soml.Parse로 바뀐다. 지금은 토큰만 뜨고 빈 슬라이드를 만든다 —
-		// 파이프라인이 끝에서 끝까지 도는지 확인하는 것이 Iteration 0의 목표다.
+		doc, fileDiags := soml.Parse(source, string(src))
+		diags = append(diags, fileDiags...)
+		// `<slide skip>`은 파일을 남기되 덱에서 뺀다 (PRD §7.1). Index를 남은 슬라이드로
+		// 다시 세기 때문에 이 판단이 렌더러보다 앞에 있어야 한다 — 렌더러가 건너뛰면
+		// 슬라이드 번호에 구멍이 생긴다.
+		if doc.Skip {
+			continue
+		}
+		id := doc.ID
+		if id == "" {
+			id = file.DerivedID()
+		}
 		deck.Slides = append(deck.Slides, &soml.Slide{
 			Index:   len(deck.Slides),
-			ID:      file.DerivedID(),
+			ID:      id,
 			Source:  source,
 			Chapter: file.Chapter,
-			Tokens:  soml.Tokenize(string(src)),
+			Notes:   doc.Notes,
+			Content: doc.Content,
+			Tokens:  doc.Tokens,
 		})
 	}
 
@@ -109,6 +121,11 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 	}
 	if err := diags.Err(); err != nil {
 		return nil, diags, err
+	}
+	// 모두 skip이면 렌더할 것이 없다 — 산출물을 빈 덱으로 내는 대신 멈춘다. 파일이 없는
+	// 경우와 같은 이유의 실패이므로 같은 자리에서 같은 모양으로 알린다.
+	if len(deck.Slides) == 0 {
+		return nil, diags, fmt.Errorf("렌더할 슬라이드가 없다: 수집된 %d개가 모두 skip 상태다", len(files))
 	}
 	return deck, diags, nil
 }

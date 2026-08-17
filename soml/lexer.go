@@ -49,15 +49,7 @@ func (lx *lexer) rest() string { return lx.src[lx.pos.Offset:] }
 func (lx *lexer) take(kind TokenKind, n int) Token {
 	start := lx.pos
 	text := lx.src[start.Offset : start.Offset+n]
-	for _, r := range text {
-		if r == '\n' {
-			lx.pos.Line++
-			lx.pos.Col = 1
-		} else {
-			lx.pos.Col++
-		}
-	}
-	lx.pos.Offset += n
+	lx.pos = advance(start, text)
 	return Token{Kind: kind, Text: text, Span: SpanOf(start, lx.pos)}
 }
 

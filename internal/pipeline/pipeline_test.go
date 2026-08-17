@@ -73,6 +73,86 @@ func TestLoadDeckKeepsSourceTokens(t *testing.T) {
 	}
 }
 
+// 파서가 읽은 슬라이드 속성이 덱 모델까지 온다.
+func TestLoadDeckAppliesSlideAttributes(t *testing.T) {
+	dir := newProject(t, map[string]string{
+		"slides/001_title.slide": `<slide id="hero">
+  <text role="title">2026 아키텍처 리뷰</text>
+  <note>인사 30초</note>
+</slide>`,
+	})
+	deck, _, err := LoadDeck(Options{ProjectDir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	slide := deck.Slides[0]
+	// id 속성이 있으면 파일명 유도(`title`)를 이긴다.
+	if slide.ID != "hero" {
+		t.Errorf("ID = %q, want %q", slide.ID, "hero")
+	}
+	if slide.Notes != "인사 30초" {
+		t.Errorf("Notes = %q", slide.Notes)
+	}
+	if len(slide.Content) != 1 {
+		t.Fatalf("콘텐츠 노드 %d개, want 1개 (<note>는 Notes로 간다)", len(slide.Content))
+	}
+	elem, ok := slide.Content[0].(*soml.Element)
+	if !ok || elem.Name != "text" || elem.TextContent() != "2026 아키텍처 리뷰" {
+		t.Errorf("콘텐츠 = %+v", slide.Content[0])
+	}
+}
+
+// skip된 슬라이드는 덱에 없고, Index는 남은 슬라이드로 0부터 다시 센다.
+func TestLoadDeckSkipsSlides(t *testing.T) {
+	dir := newProject(t, map[string]string{
+		"slides/001_title.slide":   "<slide></slide>",
+		"slides/002_draft.slide":   `<slide skip="true"></slide>`,
+		"slides/003_wip.slide":     "<slide skip></slide>",
+		"slides/004_closing.slide": "<slide></slide>",
+	})
+	deck, _, err := LoadDeck(Options{ProjectDir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(deck.Slides) != 2 {
+		t.Fatalf("슬라이드 %d개, want 2개", len(deck.Slides))
+	}
+	for i, slide := range deck.Slides {
+		if slide.Index != i {
+			t.Errorf("슬라이드 %s의 Index = %d, want %d", slide.ID, slide.Index, i)
+		}
+	}
+	if deck.Slides[1].ID != "closing" {
+		t.Errorf("두 번째 슬라이드 = %q, want %q", deck.Slides[1].ID, "closing")
+	}
+}
+
+func TestLoadDeckAllSlidesSkipped(t *testing.T) {
+	dir := newProject(t, map[string]string{"slides/001_title.slide": "<slide skip></slide>"})
+	_, _, err := LoadDeck(Options{ProjectDir: dir})
+	if err == nil || !strings.Contains(err.Error(), "모두 skip") {
+		t.Errorf("에러 = %v, want \"모두 skip\"", err)
+	}
+}
+
+// 파서 진단은 파일 경로와 line:col을 갖고 빌드를 멈춘다.
+func TestLoadDeckReportsParseErrors(t *testing.T) {
+	dir := newProject(t, map[string]string{
+		"slides/001_title.slide": "<slide>\n  <txt>제목</txt>\n</slide>",
+	})
+	_, diags, err := LoadDeck(Options{ProjectDir: dir})
+	if err == nil {
+		t.Fatal("닫힌 어휘 위반은 빌드를 멈춘다")
+	}
+	if len(diags) != 1 {
+		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+	}
+	want := "slides/001_title.slide:2:4: error: 알 수 없는 태그 <txt>"
+	if !strings.HasPrefix(diags[0].String(), want) {
+		t.Errorf("진단 = %q, want %q로 시작", diags[0].String(), want)
+	}
+}
+
 func TestLoadDeckWithoutConfig(t *testing.T) {
 	// balpyo.json 없이도 빌드가 되어야 첫 결과까지의 거리가 짧다.
 	dir := newProject(t, map[string]string{"slides/001_title.slide": "<slide></slide>"})

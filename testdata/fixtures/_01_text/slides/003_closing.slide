@@ -1,0 +1,5 @@
+<!-- 마무리. 노트만 있고 콘텐츠가 한 줄인 슬라이드도 도는지 본다. -->
+<slide id="closing">
+  <text role="title" align="center">질의응답 (Q and A)</text>
+  <note>질문이 없으면 하반기 로드맵 슬라이드로 되돌아간다.</note>
+</slide>

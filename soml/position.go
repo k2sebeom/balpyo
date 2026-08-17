@@ -22,6 +22,21 @@ func (p Pos) IsValid() bool { return p.Line > 0 && p.Col > 0 }
 // String은 "line:col" 형태로 포맷한다.
 func (p Pos) String() string { return fmt.Sprintf("%d:%d", p.Line, p.Col) }
 
+// advance는 pos에서 s를 지난 뒤의 지점이다. 렉서와 파서가 같은 함수를 쓴다 — 위치 계산이
+// 두 곳에 있으면 진단의 좌표와 토큰의 좌표가 갈라진다.
+func advance(pos Pos, s string) Pos {
+	for _, r := range s {
+		if r == '\n' {
+			pos.Line++
+			pos.Col = 1
+		} else {
+			pos.Col++
+		}
+	}
+	pos.Offset += len(s)
+	return pos
+}
+
 // Span은 소스의 반열린 구간 [Start, End)다.
 type Span struct {
 	Start Pos
