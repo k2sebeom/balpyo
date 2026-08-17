@@ -546,6 +546,11 @@ Docker 컨테이너 안에서 돌아 로컬과 CI가 같은 결과를 낸다.
 
 | 문서 | 내용 |
 |---|---|
+| [레퍼런스](reference/index.md) | 태그·외관·CLI 레퍼런스 — 구현된 것만 담는다 |
+| [가이드](guides/index.md) | 사용자 시나리오별 안내 |
+| [아키텍처](internals/architecture.md) | 파이프라인, 패키지 경계, 덱 모델, 두 렌더러 |
+| [테스트 환경](internals/testing.md) | Docker 이미지, make 타깃, 골든·픽셀 비교 규칙 |
+| [설계 결정](decisions/index.md) | 구현 중 확정한 ADR 색인 |
 | [PRD.md](https://github.com/k2sebeom/balpyo/blob/main/PRD.md) | 제품 정의 전문 — SOML 명세, 테마 시스템, 렌더러, 확정된 설계 결정, 리스크 |
 | [TASKS.md](https://github.com/k2sebeom/balpyo/blob/main/TASKS.md) | 구현 플랜 — iteration별 테스트/구현/리뷰 체크리스트, 설계 결정 로그 |
 

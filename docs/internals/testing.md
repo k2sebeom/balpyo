@@ -1,0 +1,168 @@
+# 테스트 환경
+
+balpyo의 테스트는 두 렌더러가 **같은 그림을 낸다**는 것을 검사한다. 그 비교는 렌더 환경이
+결정적일 때만 의미가 있으므로, 테스트는 항상 고정된 Docker 이미지 안에서 돈다.
+
+```
+make test      # 컨테이너 안에서 전체 테스트
+make review    # 웹/PPTX/diff 이미지를 review/ 에 남기고 갤러리를 만든다
+make golden    # 골든 갱신
+make versions  # 이미지에 실제로 설치된 버전 출력
+make shell     # 컨테이너 안에서 셸 (디버깅)
+```
+
+## 테스트 이미지
+
+`docker/test.Dockerfile` 하나가 환경 전체를 소유한다.
+
+| 도구 | 역할 |
+|---|---|
+| **LibreOffice**(impress, headless) | PPTX 열림 테스트, PPTX → PDF 렌더 |
+| **Chromium** | 지오메트리 패스, 웹 스크린샷 |
+| **poppler-utils**(`pdftoppm`) | PDF → PNG |
+| **Noto Sans / Noto Sans CJK KR** | 텍스트 메트릭의 유일한 폰트 집합 |
+
+결정성을 만드는 장치:
+
+- **베이스 이미지를 패치 버전까지 고정한다** (`golang:1.26.6-bookworm`). Debian bookworm의
+  apt 저장소는 릴리스 안에서 패키지 버전을 고정하므로 LibreOffice와 Chromium이 함께 고정된다.
+- **폰트는 Noto만 설치한다.** 폰트 집합이 환경마다 다르면 줄바꿈 위치가 달라지고, 픽셀
+  비교는 물론 지오메트리 패스가 잰 박스 크기까지 흔들린다.
+- **힌팅과 LCD 서브픽셀을 끈다** (`docker/fonts.conf` + Chromium 플래그). 힌팅은 글리프를
+  픽셀 그리드에 맞추느라 글자 폭을 바꾼다 — 끄면 브라우저와 LibreOffice의 텍스트 폭이
+  서로, 그리고 실행마다 더 잘 맞는다.
+- **버전을 이미지 안에 기록한다** (`/etc/balpyo-versions.txt`). `docker/versions.env`의
+  기대값과 대조하는 테스트가 있어, 보안 패치로 버전이 움직이면 골든이 조용히 깨지는 대신
+  그 테스트가 먼저 실패한다. 비교는 **접두 일치**다 — `LibreOffice 7.4.7.2`가
+  `LibreOffice 7.4.7.2 40(Build:2)`를 통과시킨다 (뒤쪽 빌드 문자열은 렌더와 무관하다).
+
+버전이 움직였을 때의 절차: `make versions`로 실제 값을 보고 → `docker/versions.env`를
+갱신하고 → `make golden`으로 골든을 다시 뜬 뒤 → **골든 diff를 눈으로 확인**하고 두 변경을
+같은 커밋에 담는다.
+
+### 컨테이너 실행 방식
+
+- 컨테이너 런타임은 자동으로 고른다: `docker`가 실제로 동작하면 docker, 아니면 `finch`.
+  `command -v`로 판단하지 않는 이유는 동작하지 않는 docker 심(shim)이 PATH에 있는 환경이
+  흔하기 때문이다. `make test DOCKER=podman`으로 덮어쓸 수 있다.
+- **컨테이너는 네트워크 없이 돈다** (`GOPROXY=off`). 의존성은 호스트 모듈 캐시를 마운트해
+  공급하므로 `make test`가 먼저 호스트에서 `go mod download`(= `make deps`)를 돌린다.
+- Go 빌드 캐시는 명명 볼륨(`balpyo-gocache`)에 남는다 — 매 실행마다 전체 컴파일을 반복하지
+  않는다.
+- 이미지는 `docker/` 아래 파일이 바뀔 때만 다시 빌드한다 (`.make/image.stamp`).
+
+### 호스트에서 돌리기
+
+`make test-host`는 컨테이너 없이 `go test ./...`를 돌린다. 빠른 되풀이용이며, LibreOffice·
+Chromium이 없으면 그 테스트들은 **건너뛴다**.
+
+건너뛰기가 거짓 초록이 되지 않게 하는 장치가 `BALPYO_TEST_STRICT=1`이다. 이미지가 이 값을
+켜므로 컨테이너 안에서는 도구가 없을 때 건너뛰지 않고 **실패**한다. 즉 로컬 초록은 "골든은
+맞다"까지만 뜻하고, 렌더 비교의 초록은 `make test`만이 준다.
+
+하네스가 읽는 환경 변수:
+
+| 변수 | 뜻 |
+|---|---|
+| `BALPYO_TEST_STRICT` | 1이면 외부 도구 없음을 실패로 본다 (이미지가 켠다) |
+| `BALPYO_UPDATE_GOLDEN` | 1이면 골든을 비교하지 않고 쓴다 (`make golden`) |
+| `BALPYO_REVIEW` | 1이면 리뷰 갤러리를 남긴다 (`make review`) |
+| `BALPYO_CHROMIUM` / `BALPYO_SOFFICE` / `BALPYO_PDFTOPPM` | 실행 파일 경로 |
+| `BALPYO_CHROMIUM_NO_SANDBOX` | 1이면 `--no-sandbox` (컨테이너는 root라 필수) |
+
+## 픽스처
+
+픽스처 하나(`testdata/fixtures/<NN>_<이름>/`)는 **완전한 balpyo 프로젝트**다. 그래서 사람이
+그 디렉토리를 직접 빌드해 결과를 볼 수 있다.
+
+```bash
+go run ./cmd/balpyo build --project testdata/fixtures/00_empty --target html,pptx
+```
+
+```
+00_empty/
+├── balpyo.json          # 덱 설정 (없으면 기본값)
+├── slides/*.slide       # 입력
+└── golden/              # 산출물 스냅샷 (사람이 커밋한다)
+    ├── index.html       #   웹 타깃
+    ├── diagnostics.txt  #   경고가 있을 때만
+    └── pptx/**          #   PPTX 파트별 XML (zip을 푼 것)
+```
+
+- 접두 숫자는 iteration 순서이자 스위트 실행 순서다.
+- `_`로 시작하는 디렉토리는 수집되지 않는다 (작업 중 픽스처). 슬라이드 수집 규칙과 같은 관례다.
+- 빌드 산출물은 임시 디렉토리에 쓴다 — 픽스처 디렉토리에는 **입력과 골든만** 남는다.
+
+## 골든
+
+골든은 `make golden`으로만 갱신하고, 손으로 쓰지 않는다. 골든 변경은 구현 변경과 **같은
+커밋**에 담아 "무엇이 왜 움직였는지"를 기록에 남긴다. 갱신 실행은 내용이 같은 파일을
+건드리지 않으므로, 나온 diff는 실제로 움직인 골든만 담는다.
+
+**PPTX는 zip 바이트가 아니라 파트별 XML을 골든으로 남긴다.** 이유가 두 개다.
+
+1. zip 바이트는 압축기 구현이 바뀌면 내용이 같은데도 달라진다 (zip 엔트리 시각은 이미
+   1980-01-01로 고정해 두었다).
+2. 무엇보다 **XML 골든은 git diff에서 읽힌다.** "도형이 하나 늘었다", "리터럴 RGB가
+   `schemeClr` 참조를 밀어냈다"가 diff로 보이는 것이 이 골든의 목적이다.
+
+골든 트리 비교는 **남은 골든도 잡는다.** 산출 파일 이름이 바뀌거나 사라지면 옛 골든이
+아무도 보지 않는 채로 남아 통과하기 때문이다. 갱신 모드는 그런 파일을 지운다.
+
+## 렌더 비교
+
+`make test`의 마지막 단계는 픽스처마다 도는 두 갈래 렌더 비교다.
+
+```
+.slide → 덱 모델 → HTML  → Chromium → 요소 스크린샷 ─┐
+                 → PPTX  → LibreOffice → PDF → pdftoppm → PNG ─┴→ 픽셀 diff
+```
+
+- **PPTX 열림 검사는 "열린다"로 만족하지 않는다.** PowerPoint와 LibreOffice는 깨진 패키지를
+  조용히 복구해서 열어 주므로, 복구가 일어나면 사용자는 파일을 열 때마다 경고를 본다.
+  그래서 stderr에서 무해한 줄(javaldx, fontconfig, dbus)을 걷어낸 뒤 **남은 것이 있으면
+  실패**로 본다.
+- **PNG 크기는 pdftoppm에 목표 크기로 직접 준다** (`-scale-to-x/-scale-to-y`). DPI로 맞추면
+  페이지 크기 반올림 때문에 한두 px씩 어긋난다.
+- **웹 스크린샷은 요소의 문서 좌표 사각형을 clip으로 잘라 찍는다** (CDP
+  `Page.captureScreenshot` + `captureBeyondViewport`). 요소를 뷰포트로 스크롤한 뒤 찍는
+  방식은 슬라이드가 뷰포트보다 클 때 잘라낸 영역이 스크롤량만큼 어긋나고 뷰포트 밖이 페이지
+  배경으로 채워진다 — 그러면 픽셀 비교가 렌더 차이가 아니라 스크린샷 버그를 보고한다.
+  좌표는 지오메트리 패스가 쓰는 것과 **같은 JS 스니펫**에서 얻는다.
+- 허용 오차는 **두 값**이다: 채널당 차이(기본 32)와 그 값을 넘은 픽셀의 비율(기본 2%).
+  텍스트 안티앨리어싱은 글자 경계 픽셀의 채널을 크게 흔들지만 흔드는 픽셀 수는 적다 —
+  채널 허용값만 키우면 색이 조금 틀린 큰 면적을 놓치고, 비율만 키우면 글자가 굵어진 것을
+  놓친다. 실제 텍스트로 측정한 값은 Iteration 1에서 이 기본값을 대체한다.
+- 픽스처는 **병렬로 돌리지 않는다.** 브라우저 세션과 리뷰 갤러리가 공유 상태이고, 병렬
+  LibreOffice 프로세스는 CI에서 메모리로 서로를 죽인다. 브라우저는 스위트 전체가 세션 하나를
+  공유한다 (`balpyo server`의 웜 세션과 같은 전략).
+
+## 시각 리뷰
+
+`make review`는 테스트와 **같은 코드**를 돌리고 중간 산출물만 남긴다. 테스트가 보는 그림과
+사람이 리뷰에서 보는 그림이 다르면 리뷰가 거짓말을 하기 때문이다.
+
+```
+review/
+├── index.html              # 전체 픽스처 갤러리
+└── <픽스처>/
+    ├── index.html
+    ├── NN-web.png          # 브라우저 스크린샷
+    ├── NN-pptx.png         # LibreOffice 렌더
+    ├── NN-diff.png         # 다른 픽셀을 마젠타로 강조
+    └── <덱>.pptx           # 손으로 열어 볼 산출물
+```
+
+`review/`는 커밋하지 않는다 (`.gitignore`). 커밋하는 스냅샷은 픽스처의 `golden/`뿐이다.
+
+**사람이 하는 확인은 갤러리에서 끝나지 않는다.** 각 iteration의 리뷰 단계에서 `deck.pptx`를
+macOS Keynote나 PowerPoint로 **직접 열어** 편집 가능성을 확인한다 — 텍스트 박스가 진짜
+텍스트 박스인지, 테마 색을 바꾸면 도형 색이 따라오는지. 이 확인은 자동화하지 않는다.
+"열리는 파일"과 "편집 가능한 파일"의 차이가 이 제품의 핵심이기 때문이다.
+
+## CI
+
+`.github/workflows/ci.yml`이 **같은 이미지로 같은 `make test`를 돌린다.** 로컬에서 초록이면
+CI에서도 초록이어야 하고, 그 등식이 성립하는 이유는 두 곳이 같은 컨테이너를 쓰기 때문이다.
+렌더 비교가 실패하면 워크플로우가 `review/` 갤러리를 아티팩트로 올려 실패한 diff 이미지를
+받아 볼 수 있게 한다. 문서 빌드(`make docs`, `--strict`)도 같은 워크플로우가 검사한다.

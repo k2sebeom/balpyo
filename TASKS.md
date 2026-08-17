@@ -100,36 +100,48 @@ docs/
 
 태그 없음. 이후 모든 반복이 올라탈 기반을 만든다.
 
-- [ ] **Go 패키지 골격** (PRD §12.2): `soml/`(파서+덱 모델), `core/`(외관 해석·검증),
-      `render/web/`, `render/pptx/`, `cmd/balpyo/`
-- [ ] **선결정 확정** (코드 첫 줄 전에):
+- [x] **Go 패키지 골격** (PRD §12.2): `soml/`(파서+덱 모델), `core/`(외관 해석·검증),
+      `render/web/`, `render/pptx/`, `cmd/balpyo/` (+ 조립은 `internal/pipeline/`)
+- [x] **선결정 확정** (코드 첫 줄 전에):
   - [x] 수치 단위: **확정 완료 (PRD §13-5)** — 논리 스테이지 px 단일 단위 (16:9 =
         1280×720). PPTX 변환 계수(`1px = 9525 EMU`, 폰트 `pt = px × 0.75`)는 상수로 구현
-  - [ ] 파서 자료구조: **트리비아(공백·주석·인용부호) 보존 토크나이저** — build/check만
+  - [x] 파서 자료구조: **트리비아(공백·주석·인용부호) 보존 토크나이저** — build/check만
         쓰더라도 처음부터. 나중에 format/lsp에 재사용 (PRD §12.2 "나중에 붙일 수 없는 결정")
-- [ ] **Docker 테스트 이미지** (`docker/test.Dockerfile`):
-  - [ ] `golang` + **LibreOffice** (headless impress) + **Chromium** (지오메트리 패스·스크린샷)
+- [x] **Docker 테스트 이미지** (`docker/test.Dockerfile`):
+  - [x] `golang` + **LibreOffice** (headless impress) + **Chromium** (지오메트리 패스·스크린샷)
         + `poppler-utils` (pdf → png)
-  - [ ] **폰트 고정**: Noto Sans / Noto Sans CJK KR 등을 이미지에 설치·핀 — 텍스트 메트릭
+  - [x] **폰트 고정**: Noto Sans / Noto Sans CJK KR 등을 이미지에 설치·핀 — 텍스트 메트릭
         테스트가 재현 가능하려면 폰트가 결정적이어야 함
-  - [ ] 브라우저·LibreOffice 버전 핀 (골든 좌표/픽셀 스냅샷 안정성)
-- [ ] **테스트 하네스** (`internal/testkit/`):
-  - [ ] 픽스처 러너: `testdata/fixtures/**` 순회 → 빌드 → 골든 비교
-  - [ ] LibreOffice 헬퍼: `soffice --headless --convert-to pdf` → `pdftoppm` → PNG,
+  - [x] 브라우저·LibreOffice 버전 핀 (골든 좌표/픽셀 스냅샷 안정성) — `docker/versions.env`
+        대조 테스트가 버전 이동을 골든보다 먼저 잡는다
+- [x] **테스트 하네스** (`internal/testkit/`):
+  - [x] 픽스처 러너: `testdata/fixtures/**` 순회 → 빌드 → 골든 비교 (남은 골든도 잡는다)
+  - [x] LibreOffice 헬퍼: `soffice --headless --convert-to pdf` → `pdftoppm` → PNG,
         stderr에 복구/경고 감지 시 실패
-  - [ ] Chromium 헬퍼: HTML 로드 → 스크린샷 / `getBoundingClientRect` 수집
-  - [ ] 픽셀 diff 헬퍼 (허용 오차 파라미터화 — 텍스트 안티앨리어싱 감안)
-- [ ] **Make 타깃**: `make test` (컨테이너 안에서 go test), `make review` (갤러리 생성),
+  - [x] Chromium 헬퍼: HTML 로드 → 스크린샷 / `getBoundingClientRect` 수집
+  - [x] 픽셀 diff 헬퍼 (허용 오차 파라미터화 — 텍스트 안티앨리어싱 감안)
+- [x] **Make 타깃**: `make test` (컨테이너 안에서 go test), `make review` (갤러리 생성),
       `make golden` (골든 갱신)
-- [ ] CI 워크플로우: 같은 이미지로 `make test`
-- [ ] **문서**:
-  - [ ] `docs/` 골격 생성 (위 문서 구조 트리대로 디렉토리 + 빈 index)
-  - [ ] `docs/internals/testing.md` — Docker 이미지 구성, make 타깃, 골든 갱신 규칙
-  - [ ] `docs/internals/architecture.md` — 파이프라인·패키지 경계 초안 (덱 모델 섹션은 I1에서)
-  - [ ] `docs/decisions/0001-parser-trivia.md` — 트리비아 보존 파서 ADR
+- [x] CI 워크플로우: 같은 이미지로 `make test` (+ `make docs --strict`)
+- [x] **문서**:
+  - [x] `docs/` 골격 생성 — `reference/`, `guides/`, `internals/`, `decisions/` 섹션 인덱스와
+        mkdocs nav. 태그 페이지(`reference/soml/*`)는 태그가 생기는 iteration에서 만든다
+        (구현되지 않은 것을 레퍼런스에 넣지 않는 규칙)
+  - [x] `docs/internals/testing.md` — Docker 이미지 구성, make 타깃, 골든 갱신 규칙
+  - [x] `docs/internals/architecture.md` — 파이프라인·패키지 경계 초안 (덱 모델 섹션은 I1에서)
+  - [x] `docs/decisions/0001-parser-trivia.md` — 트리비아 보존 파서 ADR
 
 **완료 기준**: 빈 픽스처로 파이프라인이 끝에서 끝까지 돌고(내용은 더미), 컨테이너
-안에서 LibreOffice·Chromium 헬퍼가 동작한다.
+안에서 LibreOffice·Chromium 헬퍼가 동작한다. → **달성.** `00_empty` 픽스처가 빌드 →
+골든 → 웹/PPTX 렌더 비교까지 통과하고, 빈 슬라이드의 웹 스크린샷과 LibreOffice 렌더가
+픽셀 단위로 일치한다.
+
+리뷰에서 잡힌 것 (기록):
+
+- 요소 스크린샷이 뷰포트를 스크롤한 뒤 찍혀 **잘라낸 영역이 요소 박스와 어긋났다** —
+  빈 슬라이드가 22% 다르다고 보고되었다. 문서 좌표 clip + `captureBeyondViewport`로
+  바꿨고, 페이지 배경이 섞여 들어오는지 전수로 보는 하네스 테스트를 남겼다.
+  (렌더 비교가 렌더 차이만 보고한다는 계약을 처음 검증한 사례)
 
 ---
 
