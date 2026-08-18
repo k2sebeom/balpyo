@@ -16,6 +16,9 @@ type Element struct {
 	Children []Node
 	// Span은 여는 `<`부터 닫는 태그의 `>`까지다. 닫히지 않은 요소는 여는 태그에서 멈춘다.
 	Span Span
+	// Appearance는 core.Resolve가 채운 확정 외관이다 (appearance.go). 파서는 건드리지 않고,
+	// **렌더러는 여기만 읽는다** — Attrs를 다시 해석하지 않는다.
+	Appearance *Appearance
 }
 
 // NodeSpan은 Node 계약이다.

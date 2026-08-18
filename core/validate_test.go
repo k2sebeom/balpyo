@@ -40,10 +40,3 @@ func TestValidateRejectsEmptyID(t *testing.T) {
 		t.Error("빈 ID는 에러여야 한다")
 	}
 }
-
-func TestResolveIsPassThroughForNow(t *testing.T) {
-	// Iteration 0에는 해석할 외관 속성이 없다. 파이프라인의 자리만 잡혀 있으면 된다.
-	if diags := Resolve(&soml.Deck{}); len(diags) != 0 {
-		t.Errorf("진단이 없어야 한다: %v", diags)
-	}
-}

@@ -23,9 +23,9 @@ var elementSpecs = map[string]elementSpec{
 	RootElement: {
 		attrs:    []string{"id", "skip"},
 		model:    modelElements,
-		children: []string{"text", noteElement},
+		children: []string{TextElement, noteElement},
 	},
-	"text": {
+	TextElement: {
 		attrs: []string{"role", "size", "color", "align"},
 		model: modelText,
 	},

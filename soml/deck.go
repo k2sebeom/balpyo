@@ -51,6 +51,9 @@ type Deck struct {
 	Lang   string
 	Aspect Aspect
 	Stage  Stage
+	// Theme는 해석된 외관의 색·폰트 참조가 가리키는 토큰 표다 (appearance.go). core.Resolve가
+	// 채우고, 두 렌더러가 이 한 표에서 CSS 변수와 PPTX 테마 파트를 만든다.
+	Theme  Theme
 	Slides []*Slide
 }
 
