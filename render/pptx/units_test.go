@@ -32,6 +32,24 @@ func TestEMU(t *testing.T) {
 	}
 }
 
+func TestLineSpacing(t *testing.T) {
+	// OOXML spcPct@val은 1/1000 % 단위다 — 배수 1.5 = 150%.
+	tests := []struct {
+		multiplier float64
+		want       int64
+	}{
+		{1.5, 150000},
+		{1.2, 120000},
+		{1.3, 130000},
+		{1, 100000},
+	}
+	for _, tc := range tests {
+		if got := LineSpacing(tc.multiplier); got != tc.want {
+			t.Errorf("LineSpacing(%v) = %d, want %d", tc.multiplier, got, tc.want)
+		}
+	}
+}
+
 func TestFontSize(t *testing.T) {
 	// OOXML sz는 1/100 pt 단위이고 pt = px × 0.75다.
 	tests := []struct {

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/k2sebeom/balpyo/render/geom"
 	"github.com/k2sebeom/balpyo/soml"
 )
 
@@ -36,14 +37,29 @@ type part struct {
 	data []byte
 }
 
-// buildParts는 덱 하나를 OOXML 파트 목록으로 만든다.
+// buildParts는 덱 하나를 OOXML 파트 목록으로 만든다: 프레젠테이션 + 마스터 + 빈 레이아웃 +
+// 테마(토큰 표에서 컴파일) + 슬라이드당 spTree(텍스트 박스). 도형 12종은 Iteration 4,
+// 레이아웃 카탈로그·플레이스홀더는 Iteration 10이다.
 //
-// Iteration 0의 범위는 **열리는 최소 패키지**다: 프레젠테이션 + 마스터 + 빈 레이아웃 +
-// 테마 + 슬라이드당 빈 spTree. 텍스트 박스와 도형은 Iteration 1부터 spTree를 채운다.
-func buildParts(deck *soml.Deck) ([]part, error) {
+// g는 지오메트리 패스가 잰 좌표다. 좌표가 필요한 요소가 없는 덱(빈 슬라이드만)은 nil로 온다 —
+// 요소가 있는데 nil이면 Renderer.checkGeometry가 이미 멈췄다.
+func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 	cx, cy := SlideSize(deck.Stage)
 	if cx <= 0 || cy <= 0 {
 		return nil, fmt.Errorf("논리 스테이지 크기가 유효하지 않다: %dx%d", deck.Stage.Width, deck.Stage.Height)
+	}
+	if len(deck.Theme.Colors) == 0 {
+		// 테마 파트는 토큰 표에서만 나온다 — 표 없이 조립하면 clrScheme을 채울 수 없고,
+		// 하드코딩 기본값으로 채우면 웹과 다른 색을 내는 파일이 조용히 만들어진다.
+		return nil, fmt.Errorf("덱에 테마 토큰 표가 없다 — core.Resolve를 거치지 않은 덱이다")
+	}
+	clrScheme, err := clrSchemeXML(deck.Theme)
+	if err != nil {
+		return nil, err
+	}
+	fontScheme, err := fontSchemeXML(deck.Theme)
+	if err != nil {
+		return nil, err
 	}
 
 	data := struct {
@@ -55,14 +71,18 @@ func buildParts(deck *soml.Deck) ([]part, error) {
 		SlideCount  int
 		SlideRelIDs []string
 		ThemeRelID  string
+		ClrScheme   string
+		FontScheme  string
 	}{
 		Deck:       deck,
 		SlideCX:    cx,
 		SlideCY:    cy,
 		SlideCount: len(deck.Slides),
 		// 노트 페이지는 세로 letter 크기 관례를 따른다.
-		NotesCX: EMU(720),
-		NotesCY: EMU(960),
+		NotesCX:    EMU(720),
+		NotesCY:    EMU(960),
+		ClrScheme:  clrScheme,
+		FontScheme: fontScheme,
 	}
 	// presentation.xml.rels: rId1 = 마스터, rId2.. = 슬라이드, 마지막 = 테마.
 	for i := range deck.Slides {
@@ -95,7 +115,14 @@ func buildParts(deck *soml.Deck) ([]part, error) {
 	}
 
 	for i, slide := range deck.Slides {
-		rendered, err := renderTemplate(slidePart(i+1), slideTemplate, slide)
+		shapes, err := shapesXML(deck, slide, g)
+		if err != nil {
+			return nil, err
+		}
+		rendered, err := renderTemplate(slidePart(i+1), slideTemplate, struct {
+			*soml.Slide
+			Shapes string
+		}{slide, shapes})
 		if err != nil {
 			return nil, err
 		}
@@ -206,6 +233,11 @@ const presRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.openxml
 
 // 마스터의 clrMap이 있어야 도형의 schemeClr 참조가 테마 색으로 해석된다 — 산출물이
 // PowerPoint 안에서 테마 색 편집을 따라가는 근거다.
+//
+// 슬라이드 배경도 여기서 정해진다: bgRef의 bg1은 clrMap을 거쳐 테마 lt1이 되고, lt1은
+// 토큰 표의 `bg` 슬롯에서 컴파일된다 (theme.go). 웹의 `.balpyo-slide` 배경이 같은 `bg`
+// 토큰에서 나오므로(render/web.themeCSS) 두 타깃의 배경이 한 표에서 만난다 — 슬라이드
+// 파트에 별도 p:bg를 내지 않는 이유다 (배경이 갈라지면 픽셀 비교가 전면 불일치로 뜬다).
 const masterTemplate = xmlDecl + `<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
   <p:cSld>
     <p:bg>
@@ -273,7 +305,7 @@ const layoutRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.openx
 </Relationships>
 `
 
-// 슬라이드의 spTree는 비어 있다. 도형은 Iteration 1부터 여기 들어간다.
+// 슬라이드의 spTree는 shapesXML이 컴파일한 도형 목록을 담는다 (문서 순서 = z-순서).
 // name 속성에 슬라이드 ID를 넣어 PowerPoint의 선택 창에서 어느 슬라이드인지 보이게 한다.
 const slideTemplate = xmlDecl + `<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
   <p:cSld name="{{xml .ID}}">
@@ -290,7 +322,7 @@ const slideTemplate = xmlDecl + `<p:sld xmlns:a="http://schemas.openxmlformats.o
           <a:chOff x="0" y="0"/>
           <a:chExt cx="0" cy="0"/>
         </a:xfrm>
-      </p:grpSpPr>
+      </p:grpSpPr>{{.Shapes}}
     </p:spTree>
   </p:cSld>
   <p:clrMapOvr>
@@ -304,38 +336,16 @@ const slideRelsXML = xmlDecl + `<Relationships xmlns="http://schemas.openxmlform
 </Relationships>
 `
 
-// 테마 파트는 하드코딩된 자리 표시자다. 테마 패키지 포맷(tokens.json → clrScheme/
-// fontScheme 컴파일)은 Iteration 10에서 이 상수를 해체한다.
-// 폰트는 테스트 이미지에 설치된 Noto로 맞춘다 — v1은 폰트를 임베드하지 않는다 (PRD §13-10).
-const themeTemplate = xmlDecl + `<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="balpyo">
+// 테마 파트의 clrScheme·fontScheme은 덱의 토큰 표에서 컴파일된다 (theme.go) — 웹의
+// CSS 변수와 같은 한 표다. 값이 두 곳에 있으면 `color="accent1"` 텍스트가 웹과 PPTX에서
+// 다른 색으로 나오고, 토큰 보존 계약이 겉으로만 지켜진다. fmtScheme만 하드코딩으로 남는다
+// (도형 기본 스타일 — 테마 패키지 포맷이 Iteration 10에서 해체한다).
+// 폰트는 테마 표가 Noto를 가리킨다 — v1은 폰트를 임베드하지 않는다 (PRD §13-10).
+const themeTemplate = xmlDecl + `<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="{{xml .Deck.Theme.Name}}">
   <a:themeElements>
-    <a:clrScheme name="balpyo">
-      <a:dk1><a:srgbClr val="1A1A1A"/></a:dk1>
-      <a:lt1><a:srgbClr val="FFFFFF"/></a:lt1>
-      <a:dk2><a:srgbClr val="44546A"/></a:dk2>
-      <a:lt2><a:srgbClr val="E7E6E6"/></a:lt2>
-      <a:accent1><a:srgbClr val="4472C4"/></a:accent1>
-      <a:accent2><a:srgbClr val="ED7D31"/></a:accent2>
-      <a:accent3><a:srgbClr val="A5A5A5"/></a:accent3>
-      <a:accent4><a:srgbClr val="FFC000"/></a:accent4>
-      <a:accent5><a:srgbClr val="5B9BD5"/></a:accent5>
-      <a:accent6><a:srgbClr val="70AD47"/></a:accent6>
-      <a:hlink><a:srgbClr val="0563C1"/></a:hlink>
-      <a:folHlink><a:srgbClr val="954F72"/></a:folHlink>
-    </a:clrScheme>
-    <a:fontScheme name="balpyo">
-      <a:majorFont>
-        <a:latin typeface="Noto Sans"/>
-        <a:ea typeface="Noto Sans CJK KR"/>
-        <a:cs typeface=""/>
-      </a:majorFont>
-      <a:minorFont>
-        <a:latin typeface="Noto Sans"/>
-        <a:ea typeface="Noto Sans CJK KR"/>
-        <a:cs typeface=""/>
-      </a:minorFont>
-    </a:fontScheme>
-    <a:fmtScheme name="balpyo">
+{{.ClrScheme}}
+{{.FontScheme}}
+    <a:fmtScheme name="{{xml .Deck.Theme.Name}}">
       <a:fillStyleLst>
         <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>
         <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>

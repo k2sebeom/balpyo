@@ -160,7 +160,7 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
   - [x] SOML → HTML 변환 + 생성 CSS
   - [x] **지오메트리 패스**: chromedp로 렌더 → 요소별 rect → EMU. 텍스트 박스 크기
         명시 고정 + autofit off (PRD §9.3)
-  - [ ] OOXML 조립기 최소판: presentation/master/layout/theme 파트 + 텍스트 박스,
+  - [x] OOXML 조립기 최소판: presentation/master/layout/theme 파트 + 텍스트 박스,
         `archive/zip` 직조립
   - [ ] `<note>` → PPTX 노트 슬라이드
   - [x] 얇은 CLI: `balpyo build --target html,pptx` (init/server는 Phase 2)

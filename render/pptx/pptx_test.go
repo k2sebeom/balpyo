@@ -11,6 +11,25 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
+// testTheme는 값이 core의 최소 테마와 **다른** 토큰 표다 — 산출 XML의 색·폰트가
+// 하드코딩이 아니라 이 표에서 나왔다는 것을 값으로 증명한다.
+func testTheme() soml.Theme {
+	return soml.Theme{
+		Name: "test",
+		Colors: []soml.ColorToken{
+			{Name: "fg", RGB: "111111", Slot: "dk1", Ref: "tx1"},
+			{Name: "bg", RGB: "FEFEFE", Slot: "lt1", Ref: "bg1"},
+			{Name: "muted", RGB: "667788", Slot: "dk2", Ref: "tx2"},
+			{Name: "accent1", RGB: "3355FF", Slot: "accent1", Ref: "accent1"},
+		},
+		Fonts: []soml.FontToken{
+			{Name: soml.FontHeading, Latin: "Test Sans", EastAsian: "Test CJK", Scheme: "major"},
+			{Name: soml.FontBody, Latin: "Test Sans", EastAsian: "Test CJK", Scheme: "minor"},
+			{Name: soml.FontMono, Latin: "Test Mono", EastAsian: "Test CJK"},
+		},
+	}
+}
+
 func testDeck() *soml.Deck {
 	stage, _ := soml.Aspect16x9.Stage()
 	return &soml.Deck{
@@ -18,6 +37,7 @@ func testDeck() *soml.Deck {
 		Author: "이세범",
 		Aspect: soml.Aspect16x9,
 		Stage:  stage,
+		Theme:  testTheme(),
 		Slides: []*soml.Slide{
 			{Index: 0, ID: "title", Source: "slides/001_title.slide"},
 			{Index: 1, ID: "agenda", Source: "slides/002_agenda.slide"},
@@ -26,9 +46,9 @@ func testDeck() *soml.Deck {
 }
 
 // renderPackage는 덱을 렌더하고 zip 안의 파트를 이름 → 내용으로 돌려준다.
-func renderPackage(t *testing.T, deck *soml.Deck) (map[string]string, []string) {
+func renderPackage(t *testing.T, r *Renderer, deck *soml.Deck) (map[string]string, []string) {
 	t.Helper()
-	files, err := New().Render(deck)
+	files, err := r.Render(deck)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +80,7 @@ func renderPackage(t *testing.T, deck *soml.Deck) (map[string]string, []string) 
 }
 
 func TestRenderHasRequiredParts(t *testing.T) {
-	parts, order := renderPackage(t, testDeck())
+	parts, order := renderPackage(t, New(), testDeck())
 
 	// [Content_Types].xml은 첫 엔트리여야 한다.
 	if order[0] != contentTypesPart {
@@ -100,7 +120,7 @@ func TestRenderSlideSizeMatchesAspect(t *testing.T) {
 		}
 		deck.Stage = stage
 
-		parts, _ := renderPackage(t, deck)
+		parts, _ := renderPackage(t, New(), deck)
 		if !strings.Contains(parts[presentationPart], tc.want) {
 			t.Errorf("%s: %q가 없다", tc.aspect, tc.want)
 		}
@@ -109,7 +129,7 @@ func TestRenderSlideSizeMatchesAspect(t *testing.T) {
 
 // 관계 파일이 실제 존재하는 파트를 가리키는지 — 여기가 깨지면 PowerPoint가 복구를 묻는다.
 func TestRenderRelationshipsResolve(t *testing.T) {
-	parts, _ := renderPackage(t, testDeck())
+	parts, _ := renderPackage(t, New(), testDeck())
 
 	presRels := parts[presRelsPart]
 	for _, want := range []string{
@@ -141,7 +161,7 @@ func TestRenderRelationshipsResolve(t *testing.T) {
 
 // 슬라이드 ID는 256부터 시작하고 겹치지 않아야 한다.
 func TestRenderSlideIDsStartAt256(t *testing.T) {
-	parts, _ := renderPackage(t, testDeck())
+	parts, _ := renderPackage(t, New(), testDeck())
 	for _, want := range []string{`id="256"`, `id="257"`} {
 		if !strings.Contains(parts[presentationPart], want) {
 			t.Errorf("presentation.xml에 %q가 없다", want)
@@ -150,14 +170,26 @@ func TestRenderSlideIDsStartAt256(t *testing.T) {
 }
 
 // 테마 파트의 clrScheme과 마스터의 clrMap이 있어야 schemeClr 참조가 살아난다 —
-// "PPTX 산출물이 테마 편집을 따라간다"는 제품 계약의 뿌리다.
+// "PPTX 산출물이 테마 편집을 따라간다"는 제품 계약의 뿌리다. 값은 덱의 토큰 표에서
+// 나와야 한다: 하드코딩이 남아 있으면 `color="accent1"` 텍스트가 웹과 PPTX에서 다른
+// 색으로 나온다.
 func TestRenderThemeAndColorMap(t *testing.T) {
-	parts, _ := renderPackage(t, testDeck())
+	parts, _ := renderPackage(t, New(), testDeck())
 	theme := parts[themePart]
 	for _, want := range []string{
 		"<a:clrScheme", "<a:fontScheme", "<a:fmtScheme",
-		`<a:accent1><a:srgbClr val="4472C4"/></a:accent1>`,
-		`<a:latin typeface="Noto Sans"/>`,
+		// 표의 슬롯 그대로.
+		`<a:dk1><a:srgbClr val="111111"/></a:dk1>`,
+		`<a:lt1><a:srgbClr val="FEFEFE"/></a:lt1>`,
+		`<a:dk2><a:srgbClr val="667788"/></a:dk2>`,
+		`<a:accent1><a:srgbClr val="3355FF"/></a:accent1>`,
+		// 표에 없는 자리는 가장 가까운 토큰에서 빌린다 (theme.go의 clrSchemeSlots).
+		`<a:lt2><a:srgbClr val="FEFEFE"/></a:lt2>`,
+		`<a:accent4><a:srgbClr val="3355FF"/></a:accent4>`,
+		`<a:hlink><a:srgbClr val="3355FF"/></a:hlink>`,
+		// 폰트도 같은 표에서.
+		`<a:latin typeface="Test Sans"/>`,
+		`<a:ea typeface="Test CJK"/>`,
 	} {
 		if !strings.Contains(theme, want) {
 			t.Errorf("theme1.xml에 %q가 없다", want)
@@ -168,14 +200,43 @@ func TestRenderThemeAndColorMap(t *testing.T) {
 	}
 }
 
+// 슬라이드 배경: 마스터의 bgRef(bg1)가 clrMap을 거쳐 테마 lt1이 되고, lt1은 `bg` 토큰에서
+// 컴파일된다. 웹의 `.balpyo-slide` 배경이 같은 토큰에서 나오므로 두 타깃의 배경이 한 표에서
+// 만난다 — 여기가 갈라지면 픽셀 비교가 전면 불일치로 뜬다.
+func TestRenderSlideBackgroundComesFromBgToken(t *testing.T) {
+	deck := testDeck()
+	parts, _ := renderPackage(t, New(), deck)
+	bg, ok := deck.Theme.Color("bg")
+	if !ok {
+		t.Fatal("테마에 bg 토큰이 없다")
+	}
+	if want := `<a:lt1><a:srgbClr val="` + bg.RGB + `"/></a:lt1>`; !strings.Contains(parts[themePart], want) {
+		t.Errorf("테마 lt1이 bg 토큰 값이 아니다 (want %q)", want)
+	}
+	if !strings.Contains(parts[masterPart], `<p:bgRef idx="1001">`) ||
+		!strings.Contains(parts[masterPart], `<a:schemeClr val="bg1"/>`) {
+		t.Error("마스터 배경이 bg1 참조가 아니다")
+	}
+}
+
+// 테마 표가 없는 덱(core.Resolve를 거치지 않은 덱)은 조립을 멈춘다 — 하드코딩 기본값으로
+// 채우면 웹과 다른 색을 내는 파일이 조용히 만들어진다.
+func TestRenderRejectsDeckWithoutTheme(t *testing.T) {
+	deck := testDeck()
+	deck.Theme = soml.Theme{}
+	if _, err := New().Render(deck); err == nil {
+		t.Error("테마 없는 덱은 에러여야 한다")
+	}
+}
+
 func TestRenderSlideNamesUseSlideID(t *testing.T) {
-	parts, _ := renderPackage(t, testDeck())
+	parts, _ := renderPackage(t, New(), testDeck())
 	if !strings.Contains(parts[slidePart(1)], `<p:cSld name="title">`) {
 		t.Error("슬라이드 이름이 슬라이드 ID여야 한다")
 	}
-	// Iteration 0의 spTree는 비어 있다 — 도형은 Iteration 1부터.
+	// 콘텐츠 없는 슬라이드의 spTree는 비어 있다 — 도형은 콘텐츠에서만 나온다.
 	if strings.Contains(parts[slidePart(1)], "<p:sp>") {
-		t.Error("Iteration 0에는 도형이 없어야 한다")
+		t.Error("빈 슬라이드에 도형이 있으면 안 된다")
 	}
 }
 
@@ -183,7 +244,7 @@ func TestRenderEscapesXML(t *testing.T) {
 	deck := testDeck()
 	deck.Title = `a & b <c>`
 	deck.Slides[0].ID = `x"y`
-	parts, _ := renderPackage(t, deck)
+	parts, _ := renderPackage(t, New(), deck)
 	if !strings.Contains(parts[corePropsPart], "a &amp; b &lt;c&gt;") {
 		t.Errorf("제목이 이스케이프되지 않았다: %s", parts[corePropsPart])
 	}

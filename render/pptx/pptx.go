@@ -7,8 +7,9 @@
 //	② 외관 직행 — 해석된 외관 스키마를 OOXML 속성으로 순방향 컴파일한다. 토큰 색은
 //	   schemeClr로 보존되어 산출물이 PowerPoint 안의 테마 색 편집을 따라간다.
 //
-// computed-style 역추론은 없다. Iteration 0은 ②의 뼈대(테마·마스터·레이아웃 파트가 있는
-// 열리는 패키지)만 세우고, 도형은 Iteration 1부터 spTree에 들어간다.
+// computed-style 역추론은 없다. ①과 ②가 만나는 자리는 shape.go의 shapesXML이다 —
+// `<text>` 하나가 p:sp(텍스트 박스) 하나가 되고, 좌표는 xfrm, 외관은 rPr/pPr가 된다.
+// 테마 파트(clrScheme/fontScheme)는 덱의 토큰 표에서 컴파일된다 (theme.go).
 package pptx
 
 import (
@@ -68,7 +69,7 @@ func (r *Renderer) Render(deck *soml.Deck) (render.Files, error) {
 	if err := r.checkGeometry(deck); err != nil {
 		return nil, err
 	}
-	parts, err := buildParts(deck)
+	parts, err := buildParts(deck, r.geometry)
 	if err != nil {
 		return nil, err
 	}

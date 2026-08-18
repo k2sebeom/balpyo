@@ -30,6 +30,15 @@ func FontSize(px float64) int64 {
 	return int64(math.Round(px * PointsPerPixel * 100))
 }
 
+// LineSpacing은 줄높이 배수를 OOXML `a:spcPct@val`(1/1000 %)로 바꾼다.
+//
+// 입력은 무단위 배수라 단위 변환은 아니지만, OOXML 고유 표기로 눕히는 일은 이 파일이
+// 소유한다 — CSS line-height와 lnSpc가 같은 배수를 받는다는 사실이 이 함수의 근거다
+// (soml.TextStyle.LineHeight의 주석).
+func LineSpacing(multiplier float64) int64 {
+	return int64(math.Round(multiplier * 100000))
+}
+
 // Offset은 지오메트리 패스가 잰 박스의 좌상단을 OOXML `a:off`(EMU)로 바꾼다.
 //
 // **단위 경계는 이 함수와 Extent·FontSize뿐이다** (PRD §13-5). 지오메트리 패스는 논리 px만
