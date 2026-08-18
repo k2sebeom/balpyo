@@ -1,0 +1,195 @@
+package web
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/k2sebeom/balpyo/soml"
+)
+
+// 토큰 → CSS 커스텀 프로퍼티 이름 규칙이다 (PRD §8.4의 `--balpyo-*`).
+//
+// 접두를 붙이는 이유는 이름 충돌이 아니라 **소유권 표시**다: 저자 CSS가 `--balpyo-`로
+// 시작하는 변수를 보면 그것이 엔진이 만든 값이고 테마를 바꾸면 따라 움직인다는 것을 알 수
+// 있다. 이름의 두 번째 칸(`color`/`font`)은 토큰 종류이므로, 서로 다른 종류에 같은 이름의
+// 토큰이 있어도(색 `mono`와 폰트 `mono`) 변수가 겹치지 않는다.
+const (
+	colorVarPrefix = "--balpyo-color-"
+	fontVarPrefix  = "--balpyo-font-"
+)
+
+// themeCSS는 덱에 실린 토큰 표를 CSS로 옮긴다 — 색은 커스텀 프로퍼티, 폰트는 패밀리 스택.
+//
+// 이 함수가 **표를 해석하지 않는다**는 점이 계약이다: 값의 의미(대비, 폴백 순서)는 테마가
+// 정하고 여기서는 옮기기만 한다. PPTX 렌더러의 테마 파트도 같은 표에서 나오므로 두 타깃의
+// 색·폰트가 구조적으로 같아진다 (soml.Theme의 주석).
+//
+// 테마 층(`@layer balpyo.theme`)에 넣는 이유: 저자 CSS가 같은 변수를 덮어쓸 수 있어야 하고
+// (author 층이 뒤), 엔진 기본 CSS는 이 변수를 참조하되 이기지 못해야 한다 (base 층이 앞).
+func themeCSS(theme soml.Theme) string {
+	if len(theme.Colors) == 0 && len(theme.Fonts) == 0 {
+		// 해석을 거치지 않은 덱(테마 없음)에는 층을 만들지 않는다. 빈 :root 블록은 골든에
+		// 잡음만 남기고, 변수가 없다는 사실은 참조하는 쪽에서 어차피 드러난다.
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString("\n@layer balpyo.theme {\n")
+	fmt.Fprintf(&b, "  /* 테마 %q의 토큰 표 — 웹 변수와 PPTX 테마 파트가 이 한 표에서 나온다. */\n", theme.Name)
+	b.WriteString("  :root {\n")
+	// 선언 순서는 표의 순서다 (soml.Theme가 맵이 아닌 이유) — 골든이 실행마다 같아야 한다.
+	for _, token := range theme.Colors {
+		fmt.Fprintf(&b, "    %s%s: #%s;\n", colorVarPrefix, token.Name, token.RGB)
+	}
+	for _, token := range theme.Fonts {
+		fmt.Fprintf(&b, "    %s%s: %s;\n", fontVarPrefix, token.Name, fontStack(token))
+	}
+	b.WriteString("  }\n")
+	if _, ok := theme.Color(bgToken); ok {
+		// 슬라이드 바탕도 토큰에서 나온다. 렌더러가 배경색을 따로 갖고 있으면 테마를 바꿨을 때
+		// 콘텐츠만 새 색이 되고 바탕은 옛 색으로 남는다 — 그 어긋남은 렌더를 보기 전까지
+		// 드러나지 않는다.
+		b.WriteString("\n")
+		fmt.Fprintf(&b, "  .balpyo-slide { background: var(%s%s); }\n", colorVarPrefix, bgToken)
+	}
+	b.WriteString("}\n")
+	return b.String()
+}
+
+// bgToken은 슬라이드 바탕 색 토큰의 이름이다 (PRD §8.4의 표준 어휘).
+const bgToken = "bg"
+
+// fontStack은 폰트 토큰의 CSS font-family 값이다.
+//
+// 인용 규칙: 식별자가 아닌 이름(공백이 든 `Noto Sans` 등)만 인용한다. CSS 제네릭 패밀리
+// (`sans-serif`)는 인용하면 그 이름의 폰트를 찾는 뜻이 되어 **마지막 폴백이 사라진다** —
+// 폰트가 없는 환경에서만 드러나는 종류의 실패다.
+func fontStack(token soml.FontToken) string {
+	names := token.Family()
+	quoted := make([]string, len(names))
+	for i, name := range names {
+		quoted[i] = quoteFamily(name)
+	}
+	return strings.Join(quoted, ", ")
+}
+
+// quoteFamily는 필요할 때만 패밀리 이름을 인용한다. CSS 식별자 문법(`[A-Za-z_-]`로 시작,
+// 이어서 영숫자·`_`·`-`)에 맞지 않으면 인용한다.
+func quoteFamily(name string) string {
+	ident := name != ""
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		switch {
+		case c >= 'A' && c <= 'Z', c >= 'a' && c <= 'z', c == '_', c == '-':
+		case c >= '0' && c <= '9' && i > 0:
+		default:
+			ident = false
+		}
+		if !ident {
+			break
+		}
+	}
+	if ident {
+		return name
+	}
+	return `"` + name + `"`
+}
+
+// textStyleCSS는 **해석이 끝난** 텍스트 외관을 CSS 선언 목록으로 컴파일한다 (PRD §9.4의
+// `font`/`size`/`weight`/`color`/`align` 행).
+//
+// 입력은 soml.TextStyle 하나뿐이다 — 요소의 Attrs를 다시 읽지 않는다. 캐스케이드는 core가
+// 이미 한 번 적용했고, 렌더러가 다시 해석하면 웹과 PPTX가 서로 다른 규칙으로 같은 속성을
+// 읽게 된다 (soml.Appearance의 주석).
+//
+// 값은 전부 명시한다 — 상속으로 채워지는 값이 하나라도 있으면 기본 CSS를 고칠 때 텍스트
+// 메트릭이 조용히 움직이고, 지오메트리 패스가 잰 박스가 PPTX 박스이므로 그 움직임이
+// 산출물까지 간다.
+func textStyleCSS(style soml.TextStyle, theme soml.Theme) (string, error) {
+	font, err := fontVar(style.Font, theme)
+	if err != nil {
+		return "", err
+	}
+	color, err := colorValue(style.Color, theme)
+	if err != nil {
+		return "", err
+	}
+	align, err := alignValue(style.Align)
+	if err != nil {
+		return "", err
+	}
+	if style.Size <= 0 {
+		return "", fmt.Errorf("폰트 크기가 해석되지 않았다 (%s)", formatNumber(style.Size))
+	}
+	if style.Weight <= 0 {
+		return "", fmt.Errorf("폰트 굵기가 해석되지 않았다 (%d)", style.Weight)
+	}
+	if style.LineHeight <= 0 {
+		return "", fmt.Errorf("줄높이가 해석되지 않았다 (%s)", formatNumber(style.LineHeight))
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "font-family: %s; ", font)
+	// 크기는 논리 스테이지 px 그대로다 (PRD §13-5). 저자·웹·지오메트리 패스가 한 좌표계를
+	// 쓰므로 환산이 없고, pt 환산은 PPTX 렌더러의 경계에서만 일어난다.
+	fmt.Fprintf(&b, "font-size: %spx; ", formatNumber(style.Size))
+	fmt.Fprintf(&b, "font-weight: %d; ", style.Weight)
+	// 줄높이는 무단위 배수다 — CSS와 OOXML lnSpc@spcPct가 둘 다 배수를 받는다.
+	fmt.Fprintf(&b, "line-height: %s; ", formatNumber(style.LineHeight))
+	fmt.Fprintf(&b, "color: %s; ", color)
+	fmt.Fprintf(&b, "text-align: %s", align)
+	return b.String(), nil
+}
+
+// fontVar는 폰트 토큰을 CSS 변수 참조로 만든다. 패밀리 스택을 여기서 펼치지 않는 이유는
+// 색과 같다 — 테마를 바꿨을 때 요소가 따라가야 한다.
+func fontVar(role soml.FontRole, theme soml.Theme) (string, error) {
+	if role == "" {
+		return "", fmt.Errorf("폰트 토큰이 해석되지 않았다")
+	}
+	if _, ok := theme.Font(role); !ok {
+		return "", fmt.Errorf("폰트 토큰 %q가 테마에 없다", string(role))
+	}
+	return fmt.Sprintf("var(%s%s)", fontVarPrefix, string(role)), nil
+}
+
+// colorValue는 색을 CSS 값으로 만든다. 토큰은 **변수 참조로 남는다** — 여기서 RGB로 눕히면
+// 테마 색을 바꿨을 때 이 요소만 옛 색으로 남고, 그것이 PPTX의 schemeClr 보존과 짝을 이루는
+// 웹 쪽 절반이다 (soml.Color의 주석).
+func colorValue(color soml.Color, theme soml.Theme) (string, error) {
+	switch {
+	case color.IsZero():
+		return "", fmt.Errorf("색이 해석되지 않았다")
+	case color.IsToken():
+		if _, ok := theme.Color(color.Token); !ok {
+			// var()는 정의되지 않은 변수를 조용히 무시한다 — 검사하지 않으면 글자가 상속색으로
+			// 그려지고 아무 에러도 나지 않는다.
+			return "", fmt.Errorf("색 토큰 %q가 테마에 없다", color.Token)
+		}
+		return fmt.Sprintf("var(%s%s)", colorVarPrefix, color.Token), nil
+	default:
+		return "#" + color.RGB, nil
+	}
+}
+
+// alignValue는 논리 정렬 이름을 CSS text-align 값으로 만든다.
+//
+// 이름이 그대로 통하는 것은 우연이 아니다 — 논리 이름을 고른 이유가 CSS `start`/`end`와
+// OOXML `algn`이 둘 다 문단 방향을 따르기 때문이다 (soml.TextAlign의 주석). 그래도 어휘를
+// 검사하는 이유는 해석되지 않은 빈 값이나 물리 이름(`left`)이 CSS에 그대로 흘러가면
+// 브라우저가 조용히 무시하기 때문이다.
+func alignValue(align soml.TextAlign) (string, error) {
+	for _, known := range soml.TextAligns() {
+		if align == known {
+			return string(align), nil
+		}
+	}
+	return "", fmt.Errorf("정렬 %q는 논리 이름 어휘 밖이다", string(align))
+}
+
+// formatNumber는 수치를 자릿수를 늘리지 않고 쓴다 (24 → "24", 20.5 → "20.5").
+// %g가 큰 수에서 지수 표기로 바뀌는 것을 피한다 — 골든에 `1e+03px`가 들어가면 안 된다.
+func formatNumber(v float64) string {
+	return strconv.FormatFloat(v, 'f', -1, 64)
+}
