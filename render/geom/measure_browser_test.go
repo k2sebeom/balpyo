@@ -201,3 +201,98 @@ func TestMeasureRejectsDeckMismatch(t *testing.T) {
 		t.Error("HTML에 없는 슬라이드가 있는 덱은 에러여야 한다")
 	}
 }
+
+// 서브셋 슬라이드의 측정 대상 계약: 식별자는 블록 종류(text·블록·리스트 컨테이너·li)에만
+// 붙는다. Measure가 성공한다는 것 자체가 Refs ↔ querySelectorAll 자리 맞대기가 통과했다는
+// 뜻이다 — 웹 렌더러가 인라인에 식별자를 붙이거나 Refs가 인라인을 모으면 여기서 어긋난다.
+func TestMeasureSubsetSlide(t *testing.T) {
+	testkit.RequireChromium(t)
+	const source = "slides/001_subset.slide"
+	doc, diags := soml.Parse(source, `<slide id="subset">
+  <h2>올해의 세 가지 변화</h2>
+  <p>배포 파이프라인 <strong>자동화</strong>와 <em>관측성</em>이 핵심이다.
+  자세한 내용은 <a href="https://example.com/docs">레퍼런스</a>를 본다.</p>
+  <ul>
+    <li>모놀리스 분리 완료</li>
+    <li>배포 파이프라인 <strong>자동화</strong></li>
+    <li>관측성 스택 도입 (<code>otel</code> + Grafana)</li>
+  </ul>
+  <ol>
+    <li>먼저 잰다</li>
+    <li>그 다음 고친다<br/>고친 것을 다시 잰다</li>
+  </ol>
+  <pre>
+func main() {
+	fmt.Println("balpyo")
+}
+</pre>
+</slide>`)
+	if err := diags.Err(); err != nil {
+		t.Fatalf("파싱 실패: %v", err)
+	}
+	stage, err := soml.Aspect16x9.Stage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	deck := &soml.Deck{
+		Title: "subset", Lang: "ko", Aspect: soml.Aspect16x9, Stage: stage,
+		Slides: []*soml.Slide{{Index: 0, ID: "subset", Source: source, Content: doc.Content}},
+	}
+	if err := core.Resolve(deck).Err(); err != nil {
+		t.Fatalf("외관 해석 실패: %v", err)
+	}
+
+	g, err := geom.Measure(deck, renderHTML(t, deck, nil))
+	if err != nil {
+		t.Fatalf("지오메트리 패스 실패: %v", err)
+	}
+
+	// 인라인·void는 측정 목록에 없어야 한다 — rect가 뜻을 갖지 않는 요소다.
+	seen := map[string]bool{}
+	for _, box := range g.Boxes {
+		seen[box.El] = true
+		if kind := soml.KindOf(box.El); kind == soml.KindInline {
+			t.Errorf("인라인 <%s>(%s)가 측정 목록에 있다", box.El, box.ID)
+		}
+	}
+	for _, el := range []string{"h2", "p", "ul", "ol", "li", "pre"} {
+		if !seen[el] {
+			t.Errorf("<%s>가 측정 목록에 없다", el)
+		}
+	}
+
+	// li rect는 문서 순서대로 아래로 내려가고 겹치지 않는다 — 겹치면 리스트 CSS가 틀린
+	// 것이고, 항목 08의 픽셀 비교가 갈라질 때 이 rect가 어느 항목부터 밀렸는지 말해 준다.
+	var lis []geom.Box
+	for _, box := range g.Boxes {
+		if box.El == "li" {
+			lis = append(lis, box)
+		}
+	}
+	if len(lis) != 5 {
+		t.Fatalf("li %d개, want 5", len(lis))
+	}
+	for i := 1; i < len(lis); i++ {
+		prev, cur := lis[i-1], lis[i]
+		if cur.Rect.Y < prev.Rect.Bottom()-0.5 {
+			t.Errorf("li %s(%s)가 앞 항목 %s(%s)와 겹친다", cur.ID, cur.Rect, prev.ID, prev.Rect)
+		}
+	}
+	// 항목 사이 간격은 0이다 (수직 리듬은 줄높이가 소유한다) — 같은 리스트 안에서 다음
+	// 항목이 정확히 앞 항목의 바닥에서 시작한다.
+	first, second := lis[0], lis[1]
+	if math.Abs(second.Rect.Y-first.Rect.Bottom()) > 0.5 {
+		t.Errorf("li 간격 = %v, want 0 (%s→%s)", second.Rect.Y-first.Rect.Bottom(), first.ID, second.ID)
+	}
+	// 마커 자리: li 텍스트는 리스트 왼쪽에서 ListTextIndent만큼 들어와 시작한다.
+	ul, ok := g.Box("s0.2")
+	if !ok {
+		t.Fatal("s0.2(ul)가 없다")
+	}
+	if len(first.Lines) == 0 {
+		t.Fatalf("첫 li에 줄 박스가 없다: %+v", first)
+	}
+	if want := ul.Rect.X + web.ListTextIndent; math.Abs(first.Lines[0].X-want) > 0.5 {
+		t.Errorf("첫 li의 텍스트 시작 x = %v, want %v (ul.x + %d)", first.Lines[0].X, want, web.ListTextIndent)
+	}
+}

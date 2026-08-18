@@ -9,7 +9,11 @@
 //
 // # 요소 식별자 — 지오메트리 패스의 계약
 //
-// 렌더된 요소는 모두 `data-balpyo-id` 속성을 갖는다. 지오메트리 패스는 이 속성으로 요소를
+// **블록 종류**(soml.KindOf의 카탈로그: `<text>`·블록·리스트 컨테이너·`<li>`)의 요소는 모두
+// `data-balpyo-id` 속성을 갖는다. 인라인·void에는 붙이지 않는다 — 여러 줄에 걸친 인라인의
+// rect는 뜻이 없고, PPTX에서 인라인은 박스가 아니라 런이다. 지오메트리 패스(geom.Refs)가
+// 같은 카탈로그로 기대 목록을 만들므로, 이 대칭이 깨지면 자리 맞대기 검증이 런타임에
+// 소리를 낸다. 지오메트리 패스는 이 속성으로 요소를
 // 집어 `getBoundingClientRect`를 읽고, 그 rect를 덱 요소에 되돌려 붙인다. 값의 형태는
 //
 //	s<슬라이드 인덱스>[.<자식 인덱스>]…
@@ -79,7 +83,7 @@ func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 		fmt.Fprintf(&b, "<meta name=\"author\" content=%q>\n", html.EscapeString(deck.Author))
 	}
 	b.WriteString("<style>\n")
-	b.WriteString(baseCSS(stage))
+	b.WriteString(baseCSS(stage, hasLists(deck)))
 	b.WriteString(themeCSS(deck.Theme))
 	b.WriteString("</style>\n")
 	b.WriteString("</head>\n")
@@ -133,7 +137,7 @@ func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 //
 // cascade layer로 기본 < 테마 < 저자 우선순위를 보장한다 (PRD §12.2). 층을 미리 선언해
 // 두면 나중에 테마·저자 CSS가 어느 순서로 실려도 우선순위가 뒤집히지 않는다.
-func baseCSS(stage soml.Stage) string {
+func baseCSS(stage soml.Stage, lists bool) string {
 	return fmt.Sprintf(`@layer balpyo.base, balpyo.theme, balpyo.author;
 
 @layer balpyo.base {
@@ -168,5 +172,5 @@ func baseCSS(stage soml.Stage) string {
     overflow: hidden;
   }
 %s%s}
-`, stage.Width, stage.Height, contentCSS(), viewerCSS())
+`, stage.Width, stage.Height, contentCSS(lists), viewerCSS())
 }

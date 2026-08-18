@@ -135,10 +135,45 @@ func textStyleCSS(style soml.TextStyle, theme soml.Theme) (string, error) {
 	// 쓰므로 환산이 없고, pt 환산은 PPTX 렌더러의 경계에서만 일어난다.
 	fmt.Fprintf(&b, "font-size: %spx; ", formatNumber(style.Size))
 	fmt.Fprintf(&b, "font-weight: %d; ", style.Weight)
-	// 줄높이는 무단위 배수다 — CSS와 OOXML lnSpc@spcPct가 둘 다 배수를 받는다.
+	// 줄높이는 무단위 배수다 — CSS line-height는 배수를 그대로 받고, PPTX는 절대 줄간격
+	// (lnSpc@spcPts)으로 환산해 낸다 (render/pptx.LineSpacing). spcPct(배수)는 엔진마다
+	// 기준이 달라 같은 150%가 글줄을 밀었다 — docs/decisions/0005-line-spacing-and-slack.md.
 	fmt.Fprintf(&b, "line-height: %s; ", formatNumber(style.LineHeight))
 	fmt.Fprintf(&b, "color: %s; ", color)
 	fmt.Fprintf(&b, "text-align: %s", align)
+	return b.String(), nil
+}
+
+// runStyleCSS는 인라인 런(strong/em/code/a/span)의 확정 스타일을 CSS 선언 목록으로
+// 컴파일한다 — textStyleCSS에 `font-style`(Italic)과 `text-decoration`(Underline)을 더한
+// **완전 명시**다.
+//
+// 항상 낸다 (italic이 아니어도 `normal`, 밑줄이 없어도 `none`): UA 시트의
+// `em { font-style: italic }`·`a { text-decoration: underline }` 같은 규칙이 개입할 자리를
+// 남기면, 확정 스타일이 아니라 브라우저 기본값이 런의 모양을 정하게 된다 — textStyleCSS의
+// "상속으로 채워지는 값이 하나라도 있으면" 계약과 같은 근거다.
+//
+// 블록(textStyleCSS)이 이 두 선언을 내지 않는 이유: 서브셋 블록 태그(div/h1~h3/p/
+// blockquote/pre/li)에는 이탤릭·밑줄 UA 규칙이 없어 메트릭이 움직일 경로가 없고, 지금의
+// 어휘에서 블록 스타일은 Italic/Underline을 가질 수 없다 — 선언을 더하면 Iteration 1
+// 골든만 이유 없이 움직인다. 블록이 Italic을 가질 수 있게 되는 날(variant가 필드를 얻는
+// 날) textStyleCSS가 이 두 선언을 함께 얻어야 한다.
+func runStyleCSS(style soml.TextStyle, theme soml.Theme) (string, error) {
+	decls, err := textStyleCSS(style, theme)
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	b.WriteString(decls)
+	fontStyle := "normal"
+	if style.Italic {
+		fontStyle = "italic"
+	}
+	decoration := "none"
+	if style.Underline {
+		decoration = "underline"
+	}
+	fmt.Fprintf(&b, "; font-style: %s; text-decoration: %s", fontStyle, decoration)
 	return b.String(), nil
 }
 

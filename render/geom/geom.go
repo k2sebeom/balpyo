@@ -113,6 +113,15 @@ func collect(refs []Ref, slide *soml.Slide, node soml.Node, path []int) []Ref {
 		// 문자 데이터는 자기 박스를 갖지 않는다 (줄 박스로 부모 요소 안에서 측정된다).
 		return refs
 	}
+	if soml.KindOf(elem.Name) == soml.KindInline {
+		// 측정 대상은 블록 종류뿐이다 (render/web 패키지 주석의 측정 대상 계약): 여러 줄에
+		// 걸친 인라인의 rect는 뜻이 없고, PPTX에서 인라인은 박스가 아니라 런이다. 웹
+		// 렌더러가 같은 카탈로그로 식별자를 붙이지 않으므로 여기서도 건너뛰어야 Refs ↔
+		// querySelectorAll 자리 맞대기가 성립한다. 자손까지 건너뛴다 — 인라인의 자식은
+		// 문자 데이터와 인라인뿐이고(콘텐츠 모델), 웹 렌더러의 순회(writeInline)와 같은
+		// 모양이어야 두 쪽이 어긋난 순간이 대조에서 드러난다.
+		return refs
+	}
 	refs = append(refs, Ref{
 		ID:     web.ElementID(slide.Index, path),
 		El:     elem.Name,

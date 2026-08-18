@@ -505,3 +505,84 @@
     낼 때 픽스처/골든으로 두 산출물의 링크 색 일치를 고정해야 한다.
   - ADR 승격 대기 (항목 09): 링크 색 accent1 재사용 vs hlink 전용 토큰, weight 어휘
     2값 폐쇄.
+
+## Iteration 02 · 05-web — 웹 렌더러: 서브셋 태그 + 리스트 + 측정 대상 계약
+<!-- item: 02/05-web -->
+
+- **한 것**:
+  - `render/web/content.go` — `writeNode`가 `soml.KindOf` 카탈로그로 분기한다: 블록·`<li>`는
+    `writeBlock`(구 writeText의 일반화 — `<text>`는 `<div>`, 서브셋 블록은 저자가 쓴 이름
+    그대로 시맨틱 태그), `<ul>`/`<ol>`은 `writeList`(class `balpyo-list`, 외관 없음, 식별자
+    있음), 인라인은 `writeInline`(식별자 없음, 앞뒤 공백 없음, `<br/>`→`<br>`, `<a>`는
+    href를 HTML 이스케이프해 싣는다). `<pre>`는 인라인 style에 `white-space: pre`를 더하고,
+    선두 개행이 남아 있으면 개행 하나를 덧대 HTML 파서의 "여는 태그 직후 개행 벗기기"에서
+    내용을 지킨다. 리스트 배치 상수 export: `ListTextIndent`(36)·`ListMarkerHang`(36)·
+    `ListItemGap`(0)·`ListBulletChar`("•") — 항목 07의 `marL`/`indent`/`buChar`가 import한다.
+    `listCSS`(마커는 `list-style: none` + `li::before`, ol은 엔진 카운터 + `"." ` 접미)는
+    덱에 리스트가 있을 때만 낸다(`hasLists`) — 골든 불변의 근거다 (빈 스테이지와 같은 태도).
+  - `render/web/style.go` — `runStyleCSS` 신규: textStyleCSS + `font-style`(Italic) +
+    `text-decoration`(Underline)을 **항상** 명시 (UA의 `em{font-style}`·`a{text-decoration}`
+    이 개입할 자리를 없앤다). 낡은 spcPct 줄높이 주석을 spcPts(ADR 0005)로 고쳤다 (NOTES
+    01/08·02/02의 이월).
+  - `render/web/web.go` — 패키지 주석의 식별자 계약을 "블록 종류에만"으로 갱신,
+    `baseCSS(stage, lists)`.
+  - `render/geom/geom.go` — `collect`가 `KindInline`을 자손까지 건너뛴다 (웹 렌더러와 같은
+    카탈로그 — Refs ↔ querySelectorAll 자리 맞대기의 대칭).
+  - 테스트: `render/web/subset_test.go`(파서+core를 거친 원문 기반 — 태그 매핑·크기 위계,
+    리스트 마크업·CSS 상수, 인라인 완전 명시 7선언, 식별자 부재, href 이스케이프, br,
+    인라인 경계 공백 보존, pre 공백 보존·선두 개행 보호, 이스케이프, 미해석 인라인·Link
+    없는 a 에러), `render/geom/geom_test.go`(Refs가 인라인을 건너뛰는 표),
+    `render/geom/measure_browser_test.go`(`TestMeasureSubsetSlide` — 실측: 자리 맞대기 통과,
+    측정 목록에 인라인 없음, li rect 문서 순서·겹침 없음·간격 0, 첫 li 텍스트가
+    ul.x+ListTextIndent에서 시작).
+- **설계 결정과 근거**:
+  - **시맨틱 태그를 골랐다** (전부 `<div>`와 저울질, ADR 후보 — 항목 09): 접근성(제목
+    위계·리스트 낭독)과 저자 CSS의 표적. 조건인 "UA 기본값 무의존"은 메트릭=인라인 style
+    전부 명시 + 배치=엔진 CSS(margin 0)로 충족되므로 메트릭은 태그 선택과 무관하다.
+    `<text>`는 대응 시맨틱 태그가 없는 중립 요소라 `<div>`로 남는다 — 역할별 태그로 바꾸면
+    `<text role>` ≡ 블록 태그 등가가 산출물에서 두 갈래가 된다.
+  - **마커 배치는 웹이 PPTX 관례를 따른다** (ADR 후보): OOXML은 마커를 `marL+indent`에
+    왼쪽 정렬로 그리고 뷰어가 그리는 방식이라 바꿀 수 없다. CSS 기본 마커(outside)는
+    오른쪽 정렬이라 어긋나지만, `::before`로 OOXML 모델을 정확히 표현할 수 있으므로
+    맞추는 쪽은 웹이다. 마커-텍스트 "간격"은 상수가 아니라 (Hang − 글리프 폭)의 파생값 —
+    OOXML도 간격을 직접 갖지 않으므로 간격을 상수로 두면 PPTX가 표현할 수 없다.
+  - **값 36/36은 PowerPoint 1수준 기본**(marL=indent=342900 EMU) 그대로다 — 342900÷9525 =
+    36px로 환산이 정수로 떨어지고, 익숙한 기본을 벗어날 이유가 없다.
+  - **마커는 UA disc가 아니라 폰트 글리프 "•"**: PPTX `buChar`가 텍스트 폰트로 그리는
+    글리프와 같은 곳에서 나와야 마커 모양이 갈라지지 않는다. ol은 엔진 카운터
+    (`counter(balpyo-item) "."`)로 — UA list-item 카운터는 display에 묶여 있어 의존하지
+    않는다. "1." 형식은 `buAutoNum@type="arabicPeriod"`와 짝 (항목 07).
+  - **블록의 인라인 style은 그대로 6선언, 런만 8선언**: 서브셋 블록 태그에는 이탤릭·밑줄
+    UA 규칙이 없고 지금 어휘에서 블록 스타일은 Italic/Underline을 가질 수 없으므로,
+    textStyleCSS에 두 선언을 더하면 Iteration 1 골든만 이유 없이 움직인다. 블록이 Italic을
+    가질 수 있게 되는 날 textStyleCSS가 함께 얻어야 한다 (runStyleCSS 주석에 명시).
+  - **listCSS는 조건부다**: 리스트 없는 덱(00_empty, 01_text)의 산출물이 리스트 렌더가
+    붙었다는 이유로 달라지면 골든 diff가 무엇이 움직였는지 말해 주지 못한다 — themeCSS가
+    빈 테마에 층을 만들지 않는 것과 같은 태도.
+  - **`<pre>` 선두 개행 보호**: 파서가 양 끝 개행 하나씩을 벗긴 뒤 남은 선두 개행은
+    내용인데, HTML 파서도 `<pre>` 직후 개행 하나를 벗기므로 렌더러가 하나를 덧댄다 —
+    덧대지 않으면 첫 빈 줄이 조용히 사라져 PPTX(원문 그대로)와 줄 수가 갈라진다.
+  - **Link 없는 `<a>`·미해석 인라인은 렌더 에러**: core의 href 검증을 지나지 않은 값이
+    산출물에 실릴 길을 막는다 (writeText의 미해석 외관 가드와 같은 태도).
+- **검증**: RED 먼저 확인 (상수 부재로 web·geom 테스트 빌드 실패). 구현 후 `gofmt -l .`
+  무출력, `go vet ./...`, `go test ./...` 로컬 전부 통과, `make test`(컨테이너, finch —
+  LibreOffice·Chromium) 전부 통과. 브라우저 실측(`TestMeasureSubsetSlide`): li 5개 rect가
+  문서 순서로 내려가고 같은 리스트 안 간격 0, 첫 li의 첫 줄 x = ul.x+36 확인. `git status`에
+  testdata/골든 변화 없음 — 중간에 CSS 주석 한 줄을 고쳤다가 골든이 2줄 움직이는 것을
+  픽스처 테스트가 잡아 되돌렸다 (골든 불변을 지키는 데 실제로 쓰인 회귀 장치).
+- **남긴 것**:
+  - 항목 06·07이 소비할 표면: `runStyleCSS`가 명시하는 런 서식 = PPTX `rPr@b/@i/@u`+색+
+    폰트의 짝, `web.ListTextIndent`/`ListMarkerHang`/`ListItemGap`/`ListBulletChar` →
+    `marL`/`indent`/(spcBef 0)/`buChar`. pre의 줄바꿈 없음(`white-space: pre`)의 짝은
+    `bodyPr@wrap`(항목 06). 마커가 li의 확정 스타일을 상속하므로 PPTX 마커(buFont·색)도
+    런 서식을 따라야 한다.
+  - 지오메트리의 줄 박스(Lines)는 **직계 문자 노드**에서만 나온다 (measureScript) —
+    인라인이 섞인 블록은 줄 일부만 잡힌다. 줄바꿈 임계값 판정(Slack)이 서브셋 픽스처로
+    넓어지는 항목 08에서 이 한계가 문제가 되는지 봐야 한다.
+  - `_02_text_subset` 픽스처의 `<span weight="700">`(003_inline.slide)은 core의 weight
+    어휘(normal/bold)에서 에러다 — 항목 08이 픽스처를 활성화할 때 `bold`로 고쳐야 한다.
+  - **열린 질문 — 항목 사이 간격 0의 시각 검증**: ListItemGap=0은 수직 리듬을 줄높이에
+    맡긴 엔진 결정이다 (PRD가 값을 정하지 않는다). 리뷰 포인트(불릿 들여쓰기·마커 육안
+    확인, TASKS I2)에서 답답해 보이면 항목 07 전에 상수 하나만 바꾸면 된다.
+  - ADR 승격 대기 (항목 09): 측정 대상 = 블록 종류 카탈로그(09 지시의 3번), 시맨틱 태그
+    선택, 마커의 PPTX 관례 채택 + 36px 상수.

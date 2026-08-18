@@ -35,6 +35,42 @@ func textElem(children ...soml.Node) *soml.Element {
 // chars는 문자 데이터 노드다.
 func chars(s string) *soml.Text { return &soml.Text{Value: s} }
 
+// 측정 대상은 블록 종류(soml.KindOf의 카탈로그: text·블록·리스트 컨테이너·li)뿐이다.
+// 인라인·void는 건너뛴다 — 여러 줄에 걸친 인라인의 rect는 뜻이 없고, PPTX에서 인라인은
+// 박스가 아니라 런이다. 웹 렌더러가 같은 카탈로그로 식별자를 붙이므로(render/web) 이
+// 대칭이 깨지면 Refs ↔ querySelectorAll 자리 맞대기가 런타임에 실패한다.
+func TestRefsSkipInlineElements(t *testing.T) {
+	p := &soml.Element{Name: "p", Children: []soml.Node{
+		chars("배포 "),
+		&soml.Element{Name: "strong", Children: []soml.Node{
+			chars("자동"),
+			&soml.Element{Name: "em", Children: []soml.Node{chars("화")}},
+		}},
+		&soml.Element{Name: "br"},
+		&soml.Element{Name: "a", Children: []soml.Node{chars("링크")}},
+	}}
+	ul := &soml.Element{Name: "ul", Children: []soml.Node{
+		&soml.Element{Name: "li", Children: []soml.Node{
+			chars("항목 "),
+			&soml.Element{Name: "code", Children: []soml.Node{chars("otel")}},
+		}},
+		&soml.Element{Name: "li", Children: []soml.Node{chars("둘째")}},
+	}}
+	refs := Refs(testDeck([]soml.Node{p, ul}))
+
+	var ids, els []string
+	for _, ref := range refs {
+		ids = append(ids, ref.ID)
+		els = append(els, ref.El)
+	}
+	if want := "s0.0,s0.1,s0.1.0,s0.1.1"; strings.Join(ids, ",") != want {
+		t.Errorf("Refs = %v, want %s", ids, want)
+	}
+	if want := "p,ul,li,li"; strings.Join(els, ",") != want {
+		t.Errorf("El = %v, want %s", els, want)
+	}
+}
+
 // 식별자는 덱 모델의 슬라이스 인덱스에서 나온다 — 렌더 결과를 파싱하지 않고 만들 수 있어야
 // 지오메트리 패스가 rect를 요소에 붙일 수 있다 (render/web 패키지 주석의 계약).
 func TestRefsFollowDeckStructure(t *testing.T) {
