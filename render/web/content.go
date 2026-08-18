@@ -27,6 +27,9 @@ const (
 	SlideClass = "balpyo-slide"
 	// SlideIndexAttr는 슬라이드의 0-based 렌더 순서다 (soml.Slide.Index).
 	SlideIndexAttr = "data-slide-index"
+	// NotesClass는 슬라이드 안의 숨은 발표자 노트 요소다 — 뷰어 런타임의 노트 패널과
+	// 테스트가 이 클래스로 읽는다.
+	NotesClass = "balpyo-notes"
 )
 
 // SlideSelector는 문서 순서의 모든 슬라이드를 집는 선택자다.

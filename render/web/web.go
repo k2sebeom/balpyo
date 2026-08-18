@@ -1,8 +1,11 @@
 // Package web은 덱 모델을 자체 완결형 정적 HTML로 렌더한다.
 //
-// 산출물은 파일 하나다 — CSS와 (나중의) 런타임 JS를 인라인해 어디에 두어도 열린다.
-// 같은 HTML/CSS가 PPTX 렌더러의 지오메트리 패스 입력이기도 하다: 웹과 PPTX의 배치가
-// 구조적으로 일치하는 이유는 두 타깃이 같은 레이아웃 엔진의 결과를 쓰기 때문이다.
+// 산출물은 파일 하나다 — CSS와 뷰어 런타임 JS를 인라인해 어디에 두어도 열린다. 사람이
+// 열면 발표자 뷰다: 슬라이드 한 장이 화면에 맞춰 나오고, 하단 컨트롤 바로 넘기며, 노트를
+// 패널로 연다 (runtime.go — 뷰 모드 계약도 거기에 있다). 같은 HTML/CSS가 PPTX 렌더러의
+// 지오메트리 패스 입력이기도 하다: 웹과 PPTX의 배치가 구조적으로 일치하는 이유는 두
+// 타깃이 같은 레이아웃 엔진의 결과를 쓰기 때문이다. 지오메트리 패스는 발표자 뷰가 아니라
+// **문서 뷰**(스케일·겹침 없는 세로 스택)를 잰다 — 전환은 <html>의 ViewAttr 하나다.
 //
 // # 요소 식별자 — 지오메트리 패스의 계약
 //
@@ -90,6 +93,11 @@ func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 		}
 	}
 	b.WriteString("</div>\n")
+	// 뷰어 런타임은 마지막에 인라인한다 — DOM이 다 실린 뒤 실행되고, 외부 참조가 없어
+	// 자체 완결형이 유지된다. JS가 꺼져 있으면 문서 뷰(세로 스택) 그대로 열린다.
+	b.WriteString("<script>\n")
+	b.WriteString(runtimeJS)
+	b.WriteString("\n</script>\n")
 	b.WriteString("</body>\n")
 	b.WriteString("</html>\n")
 
@@ -107,9 +115,9 @@ func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 		return err
 	}
 	if slide.Notes != "" {
-		// 노트는 발표자용이다 — 화면에 나오지 않지만 문서에는 있어야 한다
-		// (PPTX 노트 슬라이드와 같은 내용).
-		fmt.Fprintf(b, "<div class=\"balpyo-notes\" hidden>%s</div>\n", html.EscapeString(slide.Notes))
+		// 노트는 발표자용이다 — 슬라이드에는 나오지 않지만 문서에는 있어야 한다
+		// (PPTX 노트 슬라이드와 같은 내용). 뷰어 런타임의 노트 패널이 여기서 읽는다.
+		fmt.Fprintf(b, "<div class=%q hidden>%s</div>\n", NotesClass, html.EscapeString(slide.Notes))
 	}
 	b.WriteString("</section>\n")
 	return nil
@@ -119,9 +127,9 @@ func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 // 색·폰트는 전부 테마 층에서 나온다 (themeCSS): 기본 CSS에 색 리터럴을 하나라도 남기면
 // 테마를 바꿨을 때 그 자리만 옛 색으로 남는다.
 //
-// 예외는 뷰어 크롬의 바탕색 하나다. 슬라이드 **밖**의 색이므로 덱의 색이 아니고, 토큰으로
-// 두지도 않는다: 색 토큰은 모두 clrScheme 슬롯을 가져야 하는데(soml.ColorToken) 이 색에는
-// 대응하는 PPTX 개념이 없다.
+// 예외는 뷰어 크롬(바탕·컨트롤 바·노트 패널, viewerCSS)의 색이다. 슬라이드 **밖**의
+// 색이므로 덱의 색이 아니고, 토큰으로 두지도 않는다: 색 토큰은 모두 clrScheme 슬롯을
+// 가져야 하는데(soml.ColorToken) 이 색들에는 대응하는 PPTX 개념이 없다.
 //
 // cascade layer로 기본 < 테마 < 저자 우선순위를 보장한다 (PRD §12.2). 층을 미리 선언해
 // 두면 나중에 테마·저자 CSS가 어느 순서로 실려도 우선순위가 뒤집히지 않는다.
@@ -159,6 +167,6 @@ func baseCSS(stage soml.Stage) string {
     height: var(--balpyo-stage-height);
     overflow: hidden;
   }
-%s}
-`, stage.Width, stage.Height, contentCSS())
+%s%s}
+`, stage.Width, stage.Height, contentCSS(), viewerCSS())
 }

@@ -344,6 +344,9 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
       크게 가속하므로 **이르면 Iteration 3~4쯤 최소판** 투입 권장
 - [ ] 웹 런타임 (vanilla TS ~10KB): 네비게이션, `reveal`, 스케일링, 딥링크 →
       빌드 산출물 `go:embed`
+      — **P0 절반은 인라인 JS로 선반영** (Iteration 1 직후, ADR 0006): 발표자 뷰(한 장씩
+      + 화면 맞춤 스케일링), 하단 컨트롤 바, 키보드 네비게이션, 해시 딥링크, 노트 패널
+      (`render/web/runtime.go`). 남은 것: `reveal`, 오버뷰, TS 분리 + `go:embed`
 - [ ] `balpyo check` (CI 검증) — 파서·검증기가 이미 있으므로 표면만
 - [ ] `balpyo format` — 트리비아 보존 파서 위의 정규화 층 (Iteration 0의 결정이 여기서 회수됨)
 - [ ] 릴리스 파이프라인: 크로스 컴파일, GitHub Releases, Homebrew tap

@@ -13,6 +13,8 @@ import (
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
+
+	"github.com/k2sebeom/balpyo/render/web"
 )
 
 // 브라우저를 찾는 환경 변수. 테스트 이미지가 값을 넣고(docker/test.Dockerfile), 사용자도
@@ -170,6 +172,13 @@ func (s *Session) run(actions ...chromedp.Action) error {
 
 // Open은 로컬 HTML 파일을 연다. 폰트가 다 실린 뒤에 돌아온다 — 폰트 로드 전에 잰 좌표는 대체
 // 폰트의 글자 폭으로 계산된 것이어서 줄바꿈부터 다르다.
+//
+// 열자마자 **문서 뷰로 되돌린다** (web.DocumentViewExpr). 웹 산출물의 런타임은 로드 즉시
+// 발표자 뷰를 켜는데, 발표자 뷰는 슬라이드를 겹치고 화면에 맞춰 스케일하므로 그 배치에서
+// 잰 rect는 논리 스테이지와 어긋난다 (newGeometry의 크기 검증이 잡는 바로 그 상태).
+// 발표자 뷰의 CSS는 전부 <html>의 속성 하나에 걸려 있어 지우면 측정 배치로 돌아오고,
+// balpyo 산출물이 아닌 페이지에서는 이 평가가 아무 일도 하지 않는다. 여기(모든 열기의
+// 관문)에서 되돌려야 지오메트리 패스와 스크린샷 하네스가 같은 배치를 본다.
 func (s *Session) Open(htmlPath string) error {
 	abs, err := filepath.Abs(htmlPath)
 	if err != nil {
@@ -179,6 +188,7 @@ func (s *Session) Open(htmlPath string) error {
 	if err := s.run(
 		chromedp.Navigate(fileURL),
 		chromedp.WaitReady("body", chromedp.ByQuery),
+		chromedp.Evaluate(web.DocumentViewExpr(), nil),
 		chromedp.Evaluate(`document.fonts.ready.then(() => true)`, nil, withAwaitPromise),
 	); err != nil {
 		return fmt.Errorf("%s를 열 수 없다: %w", htmlPath, err)

@@ -68,7 +68,16 @@ slides/*.slide ─→ 수집 (soml.Collect) ─→ 토크나이즈·파싱 (soml
 
 ### 웹 — 기준 타깃
 
-HTML 파일 하나에 CSS를 인라인해 낸다 (`index.html`). 자체 완결형이므로 어디에 두어도 열린다.
+HTML 파일 하나에 CSS와 뷰어 런타임 JS를 인라인해 낸다 (`index.html`). 자체 완결형이므로
+어디에 두어도 열린다.
+
+문서는 **두 가지 뷰**를 갖는다 (`render/web/runtime.go`,
+[ADR 0006](../decisions/0006-presenter-view-attribute.md)). 사람이 열면 런타임이 <html>에
+`data-balpyo-view="presenter"`를 켜서 **발표자 뷰**가 된다 — 슬라이드 한 장이 화면에 맞춰
+스케일되고, 하단 가운데 컨트롤 바(이전/다음/카운터/노트 토글)와 키보드·URL 해시 딥링크로
+넘긴다. 속성이 없으면(JS 꺼짐, 또는 지오메트리 패스가 지운 상태) **문서 뷰** — 모든
+슬라이드가 논리 스테이지 크기 그대로 세로로 쌓인 배치 — 이고, 지오메트리 패스와 스크린샷
+하네스가 재는 것은 이쪽이다.
 
 기본 CSS는 **cascade layer**로 `balpyo.base < balpyo.theme < balpyo.author` 순서를 미리
 선언한다. 층을 먼저 못 박아 두면 나중에 테마·저자 CSS가 어느 순서로 실려도 우선순위가

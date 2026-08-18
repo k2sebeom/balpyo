@@ -35,6 +35,17 @@ balpyo build --project testdata/fixtures/01_text --target html,pptx
 [지오메트리 패스](../internals/geometry-pass.md) 참조. `--target html`만 쓰는 저작
 루프는 브라우저 비용을 내지 않는다.
 
+### 웹 산출물에서의 발표 조작
+
+`index.html`은 자체 완결형 발표자 뷰다 — 파일을 브라우저로 열면 슬라이드 한 장이 화면에
+맞춰 나온다 (오프라인 발표 가능, PRD §9.1).
+
+| 조작 | 방법 |
+|---|---|
+| 슬라이드 이동 | 하단 컨트롤 바의 ‹ › 버튼, 또는 ←/→·↑/↓·Space·PageUp/PageDown·Home/End |
+| 발표자 노트 | 컨트롤 바의 **Notes** 버튼 또는 `n` — 현재 슬라이드의 `<notes>`를 패널로 연다 |
+| 딥링크 | `index.html#/<슬라이드 id>` 또는 `#/<1-based 번호>` — 이동하면 주소가 따라온다 |
+
 ### 종료 코드
 
 | 코드 | 뜻 |

@@ -129,7 +129,9 @@ func TestRenderEscapesTextContent(t *testing.T) {
 	deck := contentDeck()
 	deck.Slides[0].Content = []soml.Node{textElem(`<script>alert("x")</script> & 5 > 3`, bodyStyle())}
 	out := renderString(t, deck)
-	if strings.Contains(out, "<script>") {
+	// `<script>` 자체는 뷰어 런타임으로 정당하게 존재한다 — 저자 텍스트가 태그로 새는
+	// 것만 잡는다.
+	if strings.Contains(out, "<script>alert") {
 		t.Error("텍스트 콘텐츠가 이스케이프되지 않았다")
 	}
 	if !strings.Contains(out, "&amp; 5 &gt; 3") {

@@ -34,6 +34,11 @@ geom.newGeometry                덱과 대조 → geom.Geometry (곁 표)
 pptx.NewWithGeometry(g).Render  xfrm = TextBoxRect(측정 rect, 정렬) → EMU
 ```
 
+- `Session.Open`은 페이지를 연 직후 **문서 뷰로 되돌린다** (`web.DocumentViewExpr`).
+  산출물의 뷰어 런타임은 로드 즉시 발표자 뷰 — 슬라이드를 겹치고 화면에 맞춰 스케일한
+  배치 — 를 켜는데, 측정은 스케일 없는 세로 스택에서 해야 슬라이드 rect가 논리 스테이지와
+  1:1이다. 뷰 전환은 `<html>`의 속성 하나다
+  ([ADR 0006](../decisions/0006-presenter-view-attribute.md)).
 - `--target html`만 쓰는 저작 루프는 브라우저를 띄우지 않는다 — 기동이 빌드의 가장 큰
   고정 비용이라서다 (`pipeline.needsGeometry`).
 - 노트만 있는 슬라이드처럼 잴 요소가 없는 덱도 브라우저 없이 PPTX가 나온다 — 판정 기준이

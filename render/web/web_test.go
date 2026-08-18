@@ -89,8 +89,9 @@ func TestRenderNotesAreHidden(t *testing.T) {
 	if !strings.Contains(out, `<div class="balpyo-notes" hidden>인사 30초</div>`) {
 		t.Error("노트는 문서에 있지만 화면에는 나오지 않아야 한다")
 	}
-	// 노트가 없는 슬라이드에는 빈 노트 요소를 만들지 않는다.
-	if strings.Count(out, "balpyo-notes") != 1 {
+	// 노트가 없는 슬라이드에는 빈 노트 요소를 만들지 않는다. 클래스 이름만 세면 안 된다 —
+	// 런타임 JS·CSS가 선택자로 같은 이름을 리터럴로 쓴다.
+	if strings.Count(out, `<div class="balpyo-notes"`) != 1 {
 		t.Error("노트 요소는 노트가 있는 슬라이드에만 있어야 한다")
 	}
 }
@@ -99,8 +100,13 @@ func TestRenderEscapesText(t *testing.T) {
 	deck := testDeck()
 	deck.Title = `<script>alert("x")</script>`
 	out := renderString(t, deck)
-	if strings.Contains(out, "<script>") {
+	// `<script>` 자체는 뷰어 런타임으로 정당하게 존재한다 — 저자 텍스트가 태그로 새는
+	// 것만 잡는다.
+	if strings.Contains(out, "<script>alert") {
 		t.Error("제목이 이스케이프되지 않았다")
+	}
+	if !strings.Contains(out, "&lt;script&gt;") {
+		t.Error("이스케이프된 제목이 문서에 없다")
 	}
 }
 
