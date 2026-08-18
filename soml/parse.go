@@ -46,12 +46,15 @@ func buildElementSpecs() map[string]elementSpec {
 			// "code가 pre 안에서 무엇을 뜻하는가"가 렌더러마다 임의로 정해진다.
 			model = modelPre
 		}
-		// 블록의 속성은 variant 하나다. 블록은 역할의 축약(`<p>` ≡ `<text role="body">`)이라
-		// 문단 단위 외관 선택인 variant가 자연스럽게 올 자리다. variant를 열지 **않는** 곳의
-		// 근거: 인라인 태그의 외관은 런 규칙(Iteration 2 항목 04)이 소유하고, 리스트
-		// 컨테이너와 <li>의 위계는 역할이 소유한다 — 항목마다 다른 외관 번들이 붙으면
-		// 리스트의 타이포그래피가 리스트이기를 멈춘다.
-		specs[name] = elementSpec{attrs: []string{"variant"}, model: model}
+		// 블록의 속성은 `<text>`의 외관 어휘에서 role만 뺀 것이다. 블록은 역할의 축약이라
+		// (`<p>` ≡ `<text role="body">`, TagTextRole) 역할은 등가 표에서만 오고, role
+		// 속성을 열면 `<p role="title">`이 두 표기의 등가를 깬다. 나머지 외관 속성
+		// (variant/size/color/align)은 `<text>`와 같은 캐스케이드 규칙으로 얹힌다 —
+		// 값 어휘와 진단은 core가 소유한다 (값 층). variant를 열지 **않는** 곳의 근거:
+		// 인라인 태그의 외관은 런 규칙(Iteration 2 항목 04)이 소유하고, 리스트 컨테이너와
+		// <li>의 위계는 역할이 소유한다 — 항목마다 다른 외관 번들이 붙으면 리스트의
+		// 타이포그래피가 리스트이기를 멈춘다.
+		specs[name] = elementSpec{attrs: []string{"variant", "size", "color", "align"}, model: model}
 	}
 	for _, name := range listContainerElements {
 		specs[name] = elementSpec{model: modelElements, children: []string{ListItemElement}}

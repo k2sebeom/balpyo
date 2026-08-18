@@ -65,29 +65,48 @@ func (r *resolver) warnf(span soml.Span, format string, args ...any) {
 }
 
 // node는 콘텐츠 트리를 훑는다. 외관을 갖는 요소만 해석하고 나머지는 지나간다.
+//
+// 리스트 컨테이너(<ul>/<ol>)의 Appearance는 채우지 않는다: 컨테이너는 항목을 담을 뿐이고
+// 타이포그래피는 <li>(body 역할)에 붙는다. 마커·들여쓰기 같은 리스트 표현을 렌더러가
+// 컨테이너에서 무엇으로 읽을지는 렌더 매핑(Iteration 2 항목 05·07)이 정한다 — 여기서
+// 미리 정하면 그 결정 전에 두 렌더러가 각자 추측하게 된다. 인라인 태그의 런 서식은
+// 항목 04의 몫이다.
 func (r *resolver) node(node soml.Node) {
 	elem, ok := node.(*soml.Element)
 	if !ok {
 		return
 	}
-	if elem.Name == soml.TextElement {
-		r.resolveText(elem)
+	if role, ok := r.textRole(elem); ok {
+		r.resolveText(elem, role)
 	}
 	for _, child := range elem.Children {
 		r.node(child)
 	}
 }
 
-// resolveText는 `<text>`의 외관을 4단 캐스케이드로 확정한다 (PRD §8.3):
+// textRole은 요소의 텍스트 역할이다. `<text>`는 role 속성(생략하면 body)이, 블록·<li>는
+// 언어의 등가 표(soml.TagTextRole — `<p>` ≡ `<text role="body">`)가 역할을 정한다.
+// 블록은 role 속성을 받지 않으므로 (파서 allowlist — `<p role="title">`은 두 표기의
+// 등가를 깬다) 두 출처가 겹치는 요소는 없다.
+func (r *resolver) textRole(elem *soml.Element) (soml.TextRole, bool) {
+	if elem.Name == soml.TextElement {
+		return r.role(elem), true
+	}
+	return soml.TagTextRole(elem.Name)
+}
+
+// resolveText는 텍스트 요소(`<text>`·블록·<li>)의 외관을 4단 캐스케이드로 확정한다
+// (PRD §8.3):
 //
 //	인라인 속성 > variant > 컴포넌트 기본값 > 역할/토큰
 //
 // 역할 기본값(완전한 외관)을 바닥에 깔고, 위 세 단을 낮은 단부터 부분 패치로 얹는다.
+// 컴포넌트 기본값 단은 태그별이다 (textComponentDefault — h3의 크기, blockquote의 색).
 // 병합은 mergeText(cascade.go) 한 곳에서만 일어난다 — 우선순위는 아래 세 줄의 순서가
 // 전부이고, 다른 어디에도 없다.
-func (r *resolver) resolveText(elem *soml.Element) {
-	style := textRoleDefaults(r.role(elem))
-	mergeText(&style, textComponentDefault())
+func (r *resolver) resolveText(elem *soml.Element, role soml.TextRole) {
+	style := textRoleDefaults(role)
+	mergeText(&style, textComponentDefault(elem.Name))
 	mergeText(&style, r.variantPatch(elem))
 	mergeText(&style, r.inlinePatch(elem))
 	elem.Appearance = &soml.Appearance{Text: &style}

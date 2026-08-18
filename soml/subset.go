@@ -67,3 +67,34 @@ func KindOf(name string) ElementKind {
 func IsVoidElement(name string) bool {
 	return name == BreakElement
 }
+
+// TagTextRole은 블록·리스트 항목 태그의 텍스트 역할이다 — PRD §7.7의 등가 표
+// (`<p>` ≡ `<text role="body">`, `<h2>` ≡ `<text role="heading">`).
+//
+// 이 표가 테마(core/theme.go)가 아니라 **언어**(soml)에 있는 이유: 등가는 PRD가 명세한
+// 계약이지 테마의 선택이 아니다. 테마가 `<p>`를 caption으로 바꿀 수 있으면 같은 문서가
+// 테마마다 다른 역할로 해석되어 "같은 계약의 두 표기"가 성립하지 않는다. 태그별
+// **기본값**(h3의 크기, blockquote의 색)은 외관이므로 테마가 소유한다 — 역할과 기본값의
+// 소유가 갈라지는 경계가 여기다 (Iteration 10의 components.json이 기본값만 파일로 옮긴다).
+//
+// h1 → title인 이유: 슬라이드는 문서가 아니라 화면 하나다. v1의 블록은 문단이지 문서
+// 섹션이 아니므로(KindBlock 주석) h1이 이끄는 "장"이라는 위계가 없고, 슬라이드에서 가장
+// 큰 표제는 곧 그 슬라이드의 제목이다. h1을 heading으로 두면 title 역할에 대응하는 블록
+// 표기가 아예 없어져 서브셋만 쓰는 저자가 표지를 만들 수 없다. caption은 반대로 대응
+// 태그가 없다 — figcaption은 어휘 밖이고 `<text role="caption">`이 그 자리를 맡는다.
+//
+// 표에 없는 이름은 ok=false다: `<text>`는 role 속성이 역할을 정하고, 리스트 컨테이너와
+// 인라인 태그는 역할을 갖지 않는다 (컨테이너는 항목을 담을 뿐이고, 인라인은 런 서식이다).
+func TagTextRole(name string) (TextRole, bool) {
+	switch name {
+	case "h1":
+		return RoleTitle, true
+	case "h2", "h3":
+		return RoleHeading, true
+	case "p", "blockquote", ListItemElement:
+		return RoleBody, true
+	case "pre":
+		return RoleCode, true
+	}
+	return "", false
+}

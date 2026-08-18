@@ -53,16 +53,32 @@ func minimalFonts() []soml.FontToken {
 	}
 }
 
-// textComponentDefault는 `<text>` 컴포넌트의 기본 외관 패치다 — 캐스케이드의 셋째 단
-// (PRD §8.3 components.json에서 컴포넌트의 `default`가 놓이는 자리).
+// textComponentDefault는 텍스트 컴포넌트의 태그별 기본 외관 패치다 — 캐스케이드의 셋째 단
+// (PRD §8.3 components.json에서 컴포넌트의 `default`가 놓이는 자리). 태그 → 역할 대응은
+// 언어의 계약(soml.TagTextRole)이지만 태그별 **기본값**은 외관이므로 테마가 소유한다 —
+// Iteration 10의 components.json이 이 표만 파일로 옮기고 등가 표는 soml에 남는다.
 //
-// minimal 테마에서는 **빈 패치**다. 역할 기본값(textRoleDefaults)이 이미 이 테마의
-// 타이포그래피 전부를 말하기 때문에, 여기서 필드를 정하면 둘 중 하나가 된다: 역할과 다른
-// 값이면 모든 `<text>`에서 역할 기본값을 가려 Iteration 1 덱의 산출물(골든)이 움직이고,
-// 같은 값이면 단이 있다는 것을 아무것도 증명하지 못하는 중복이다. 단은 구조로 존재하고
-// (resolveText가 항상 병합한다), 우선순위는 캐스케이드 단위 테스트가 합성 패치로 증명한다.
-// 필드를 실제로 정하는 것은 Iteration 10의 테마 패키지 파일이 처음이 된다.
-func textComponentDefault() textPatch { return textPatch{} }
+// 역할 5종에 태그가 7개라 역할만으로 부족한 자리 두 곳만 정하고, 나머지 태그(그리고
+// `<text>` 자신)는 **빈 패치**다 — 그래서 `<p>` ≡ `<text role="body">`가 깊은 비교로
+// 정확히 성립한다. 빈 패치인 자리에 필드를 정하면 역할과 다른 값이면 등가가 깨지고, 같은
+// 값이면 아무것도 증명하지 못하는 중복이다 (단의 존재는 resolveText의 병합 구조와
+// cascade_test가 증명한다).
+func textComponentDefault(tag string) textPatch {
+	switch tag {
+	case "h3":
+		// 역할은 heading이되 크기 한 단 아래 — heading(36)과 body(24) 사이의 반 단계다.
+		// 28을 고른 근거는 수직 리듬(textRoleDefaults): heading의 lineHeight 1.3을 그대로
+		// 받으므로 줄박스가 28×1.3 ≈ 36.4px로 본문 한 줄(24×1.5 = 36px)에 얹힌다 —
+		// 36/1.3 ≈ 27.7의 가장 가까운 정수다. 기하 평균 √(24×36) ≈ 29.4는 줄박스가
+		// 38.2px로 리듬에서 더 멀어 버렸다.
+		return textPatch{size: ptr(28.0)}
+	case "blockquote":
+		// 역할은 body, 색만 muted — 인용을 본문과 구별하는 최소 수단이다. 왼쪽 괘선 같은
+		// 시각 장식은 도형 외관이 없는 이번 iteration에서 열지 않는다 (Iteration 4).
+		return textPatch{color: ptr(soml.TokenColor("muted"))}
+	}
+	return textPatch{}
+}
 
 // textVariant는 테마가 이름 붙인 외관 번들 하나다.
 type textVariant struct {

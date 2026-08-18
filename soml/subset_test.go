@@ -118,6 +118,11 @@ func TestParseTextSubset(t *testing.T) {
 			want: `text[variant=kicker]("개요") p[variant=lead]("본문")`,
 		},
 		{
+			name: "블록의 인라인 외관 속성 — text와 같은 어휘 (role 제외)",
+			src:  `<slide><h3 size="40" color="accent1" align="center">소제</h3></slide>`,
+			want: `h3[size=40 color=accent1 align=center]("소제")`,
+		},
+		{
 			name: "pre 코드 블록",
 			src:  `<slide><pre>x := 1</pre></slide>`,
 			want: `pre("x := 1")`,
@@ -197,9 +202,11 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			want: []string{"1:14 <a>에 알 수 없는 속성 target (쓸 수 있는 속성: href)"},
 		},
 		{
-			name: "블록의 속성은 variant뿐",
-			src:  `<slide><h1 align="center">제목</h1></slide>`,
-			want: []string{"1:12 <h1>에 알 수 없는 속성 align (쓸 수 있는 속성: variant)"},
+			// 블록은 역할을 표에서만 얻는다 — role 속성을 열면 <p role="title">이
+			// 두 표기의 등가(PRD §7.7)를 깬다.
+			name: "블록에는 role이 없다",
+			src:  `<slide><h1 role="body">제목</h1></slide>`,
+			want: []string{"1:12 <h1>에 알 수 없는 속성 role (쓸 수 있는 속성: variant, size, color, align)"},
 		},
 		{
 			name: "인라인에는 variant가 없다",
@@ -377,6 +384,41 @@ func TestParsePreOnlyNewline(t *testing.T) {
 	pre := elementAt(t, doc.Content, 0)
 	if len(pre.Children) != 0 {
 		t.Errorf("자식 %d개 (%s), want 0개", len(pre.Children), dumpNodes(pre.Children))
+	}
+}
+
+// 태그 → 역할 표는 테마가 아니라 **언어**의 계약이다 (PRD §7.7) — 표가 흔들리면
+// `<p>` ≡ `<text role="body">` 등가가 문서마다 달라진다. 표 전체를 여기서 못 박는다.
+func TestTagTextRole(t *testing.T) {
+	cases := []struct {
+		tag  string
+		role TextRole
+	}{
+		{"h1", RoleTitle},
+		{"h2", RoleHeading},
+		{"h3", RoleHeading},
+		{"p", RoleBody},
+		{"blockquote", RoleBody},
+		{"pre", RoleCode},
+		{ListItemElement, RoleBody},
+	}
+	for _, tc := range cases {
+		role, ok := TagTextRole(tc.tag)
+		if !ok || role != tc.role {
+			t.Errorf("TagTextRole(%q) = %q, %v — want %q", tc.tag, role, ok, tc.role)
+		}
+	}
+	// 표 밖의 이름: <text>는 role 속성이 역할을 정하고, 컨테이너·인라인은 역할이 없다.
+	for _, name := range []string{TextElement, "ul", "ol", "strong", "br", RootElement, "h6"} {
+		if role, ok := TagTextRole(name); ok {
+			t.Errorf("TagTextRole(%q) = %q — 표에 없어야 한다", name, role)
+		}
+	}
+	// 블록·li 전부가 표에 있어야 한다 — 표에 없는 블록은 해석되지 않은 채 렌더러에 닿는다.
+	for _, name := range append(append([]string{}, blockElements...), ListItemElement) {
+		if _, ok := TagTextRole(name); !ok {
+			t.Errorf("서브셋 태그 %q가 역할 표에 없다", name)
+		}
 	}
 }
 

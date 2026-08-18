@@ -380,3 +380,64 @@
   - Iteration 10이 variant 표·컴포넌트 기본값을 테마 패키지 파일로 옮길 때 `ptr` 헬퍼와
     하드코딩 표(`textVariants`)는 로더로 대체된다 — 병합 기계(`textPatch`/`mergeText`)는
     그대로 남는 경계로 설계했다.
+
+## Iteration 02 · 03-block-roles — 블록 태그 ≡ 텍스트 역할 등가
+<!-- item: 02/03-block-roles -->
+
+- **한 것**:
+  - `soml/subset.go` — `TagTextRole` 신규: 태그 → 역할 등가 표 (h1→title, h2/h3→heading,
+    p/blockquote/li→body, pre→code). 언어 계약이므로 테마가 아니라 soml에 둔다.
+  - `soml/parse.go` — 블록 태그의 속성 allowlist를 `variant` 하나에서
+    `variant, size, color, align`으로 확장 (`<text>`의 어휘에서 role만 뺀 것).
+  - `core/theme.go` — `textComponentDefault()`가 태그를 받는 `textComponentDefault(tag)`가
+    됐다: h3는 size 28, blockquote는 muted 색, 나머지 태그와 `<text>`는 빈 패치.
+  - `core/resolve.go` — `resolver.node`의 해석 대상이 `<text>`에서 텍스트 역할을 갖는 요소
+    전부(블록 6종 + `<li>`)로 넓어졌다. 역할 출처를 고르는 `textRole`(속성 vs 등가 표)을
+    분리하고 `resolveText(elem, role)`로 역할을 주입한다. `<ul>`/`<ol>`의 Appearance를
+    채우지 않는 근거를 `node` 주석에 남겼다.
+  - 테스트: `core/resolve_test.go`(등가 깊은 비교 4쌍, h3·blockquote 태그 기본값과 부분성,
+    인라인 > 태그 기본값, 블록의 variant 캐스케이드 순서 3단 확인, li=body + 컨테이너
+    무외관, 블록 인라인 속성의 값 진단 line:col), `soml/subset_test.go`(`TagTextRole` 표
+    전수 + 표 밖 이름 + 블록 전수 커버리지, 블록 인라인 속성 파싱 정상 케이스,
+    `<h1 role>` 거부 진단 — 기존 `<h1 align>` 거부 테스트를 대체).
+- **설계 결정과 근거**:
+  - **h1 → title** (항목 지시의 표를 따르되 근거를 적었다 — TagTextRole 주석): 슬라이드는
+    문서가 아니라 화면 하나이고 v1의 블록은 문단이지 문서 섹션이 아니므로, 슬라이드에서
+    가장 큰 표제 = 그 슬라이드의 제목이다. h1을 heading으로 두면 title 역할에 대응하는
+    블록 표기가 없어져 서브셋만 쓰는 저자가 표지를 만들 수 없다. ADR 승격은 항목 09가
+    한다 (09 지시가 이 결정을 ADR 목록에 올려 두었다).
+  - **역할 대응은 언어(soml), 태그별 기본값은 테마(core/theme.go)**: 등가는 PRD §7.7의
+    계약이라 테마가 바꿀 수 있으면 문서의 뜻이 테마마다 달라진다. 기본값은 외관이므로
+    테마 소유 — Iteration 10의 components.json이 기본값 표만 파일로 옮기고 등가 표는
+    soml에 남는 경계다.
+  - **h3의 크기는 28**: heading(36)과 body(24) 사이의 반 단계. heading의 lineHeight
+    1.3을 그대로 받으므로 줄박스가 28×1.3 ≈ 36.4px로 본문 한 줄(36px)의 리듬에 얹힌다 —
+    36/1.3 ≈ 27.7의 최근접 정수다. 기하 평균 √(24×36) ≈ 29.4는 줄박스 38.2px로 리듬에서
+    더 멀어 버렸다. size 외 필드는 패치하지 않는다 (부분성).
+  - **blockquote는 색(muted)만**: 왼쪽 괘선 같은 시각 장식은 도형 외관이 없는 이번
+    iteration에서 열지 않는다 (항목 지시대로) — Iteration 4의 도형 외관이 들어온 뒤의 몫.
+  - **블록에 size/color/align을 열었다** (01의 열린 질문에 대한 답): 항목 지시가
+    "`size`/`color`/`align`/`variant` 인라인 속성은 `<text>`와 같은 규칙으로 얹힌다"고
+    명시한다. role만 닫는다 — `<p role="title">`은 두 표기의 등가를 깬다. 이로써 기존
+    파서 진단 테스트(`<h1 align>` 거부)가 무의미해져 `<h1 role>` 거부로 교체했다 —
+    등가 계약 자체를 단정하는 더 나은 테스트다. `<li>`와 인라인·리스트 컨테이너는
+    이전 결정대로 속성을 열지 않았다.
+  - **컨테이너(<ul>/<ol>)의 Appearance는 nil**: 마커·들여쓰기를 렌더러가 컨테이너에서
+    무엇으로 읽을지는 항목 05·07이 정한다 — 여기서 미리 채우면 그 결정 전에 두 렌더러가
+    각자 추측한다. 테스트가 nil임을 단정한다.
+- **검증**: RED 먼저 확인 (구현 전 soml 빌드 실패 + core 테스트 8건 실패 — 블록에 외관
+  없음·파서가 size/color 거부). 구현 후 `gofmt -l .` 무출력, `go vet ./...`,
+  `go test ./...` 로컬 전부 통과, `make test`(컨테이너, LibreOffice·Chromium) 전부 통과.
+  `git status`에 testdata/골든 변화 없음 — Iteration 1 픽스처에는 블록이 없고 렌더
+  매핑도 이 항목이 건드리지 않으므로 산출물이 바이트 단위로 그대로다.
+- **남긴 것**:
+  - 블록·li의 Appearance가 이제 채워지지만 **렌더 매핑은 아직 없다** — 렌더러는 모르는
+    태그에서 명시적으로 멈추므로(닫힌 어휘) 조용한 무시는 없다. 항목 05(웹)·06(PPTX 런)·
+    07(리스트)이 이 확정 외관을 소비한다. 인라인 태그의 Appearance는 여전히 nil이다
+    (항목 04).
+  - caption 역할에는 대응 블록 태그가 없다 (figcaption은 어휘 밖) — 문서(항목 09)의
+    등가 표에 이 비대칭을 적어야 한다.
+  - TASKS의 "텍스트 역할 계약" 체크박스를 [x]로 바꿨다 — 역할 5종의 해석 계약(`<text
+    role>` + 블록 등가)이 이 항목으로 완성됐다. "블록 태그 ≡ 역할 등가성" 테스트
+    체크박스는 인라인 런·리스트 렌더까지 묶여 있어 건드리지 않았다 (항목 06·07 몫).
+  - ADR 승격 대기: 태그→역할 표의 소유 경계 + h1→title (항목 09의 ADR 목록 1번).

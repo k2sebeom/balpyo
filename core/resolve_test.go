@@ -70,6 +70,171 @@ func firstStyle(t *testing.T, src string) *soml.TextStyle {
 	return styles[0]
 }
 
+// findElement는 덱에서 이름이 tag인 첫 요소를 문서 순서로 찾는다.
+func findElement(t *testing.T, deck *soml.Deck, tag string) *soml.Element {
+	t.Helper()
+	var found *soml.Element
+	var walk func(node soml.Node)
+	walk = func(node soml.Node) {
+		elem, ok := node.(*soml.Element)
+		if !ok || found != nil {
+			return
+		}
+		if elem.Name == tag {
+			found = elem
+			return
+		}
+		for _, child := range elem.Children {
+			walk(child)
+		}
+	}
+	for _, slide := range deck.Slides {
+		for _, node := range slide.Content {
+			walk(node)
+		}
+	}
+	if found == nil {
+		t.Fatalf("<%s>가 없다", tag)
+	}
+	return found
+}
+
+// tagStyle은 슬라이드 원문에서 이름이 tag인 첫 요소의 확정 외관이다 (진단 0건을 전제한다).
+func tagStyle(t *testing.T, src, tag string) *soml.TextStyle {
+	t.Helper()
+	deck, diags := resolveSlide(t, src)
+	if len(diags) != 0 {
+		t.Fatalf("진단이 없어야 한다: %v", diags)
+	}
+	style := findElement(t, deck, tag).TextStyle()
+	if style == nil {
+		t.Fatalf("<%s>에 해석된 외관이 없다", tag)
+	}
+	return style
+}
+
+// PRD §7.7의 등가 계약: 블록 태그는 텍스트 역할의 축약이다 — 같은 계약의 두 표기가
+// **정확히** 같은 확정 외관에 도달해야 한다 (깊은 비교). 태그별 컴포넌트 기본값이 있는
+// h3·blockquote는 별도 테스트(TestResolveTagComponentDefaults)가 다룬다.
+func TestResolveBlockRoleEquivalence(t *testing.T) {
+	cases := []struct {
+		tag  string
+		role soml.TextRole
+	}{
+		{"h1", soml.RoleTitle},
+		{"h2", soml.RoleHeading},
+		{"p", soml.RoleBody},
+		{"pre", soml.RoleCode},
+	}
+	for _, tc := range cases {
+		t.Run(tc.tag, func(t *testing.T) {
+			got := *tagStyle(t, "<slide>\n  <"+tc.tag+">내용</"+tc.tag+">\n</slide>\n", tc.tag)
+			want := *firstStyle(t, "<slide>\n  <text role=\""+string(tc.role)+"\">내용</text>\n</slide>\n")
+			if got != want {
+				t.Errorf("<%s> = %+v, want <text role=%q>와 동일 %+v", tc.tag, got, tc.role, want)
+			}
+		})
+	}
+}
+
+// 태그별 컴포넌트 기본값 — 역할만으로 부족한 자리는 테마의 태그 기본값이 채운다 (부분 패치).
+func TestResolveTagComponentDefaults(t *testing.T) {
+	// h3: 역할은 heading이되 크기 한 단 아래 (28 — 근거는 core/theme.go).
+	h3 := tagStyle(t, "<slide>\n  <h3>소제</h3>\n</slide>\n", "h3")
+	heading := textRoleDefaults(soml.RoleHeading)
+	if h3.Role != soml.RoleHeading || h3.Size != 28 {
+		t.Errorf("h3 = %+v, want heading 역할 + size 28", *h3)
+	}
+	if h3.Size >= heading.Size || h3.Size <= textRoleDefaults(soml.RoleBody).Size {
+		t.Errorf("h3 크기 %v는 body(24)와 heading(%v) 사이여야 한다", h3.Size, heading.Size)
+	}
+	// 크기 외의 필드는 heading 기본값 그대로다 — 태그 기본값은 부분 패치다.
+	if h3.Font != heading.Font || h3.Weight != heading.Weight || h3.LineHeight != heading.LineHeight ||
+		h3.Color != heading.Color || h3.Align != heading.Align {
+		t.Errorf("h3가 정하지 않은 필드가 heading 기본값을 잃었다: %+v", *h3)
+	}
+
+	// blockquote: 역할은 body, 색만 muted — 도형 외관(왼쪽 괘선)이 없는 지금은 색으로 구별한다.
+	bq := tagStyle(t, "<slide>\n  <blockquote>인용</blockquote>\n</slide>\n", "blockquote")
+	body := textRoleDefaults(soml.RoleBody)
+	if bq.Role != soml.RoleBody || bq.Color != soml.TokenColor("muted") {
+		t.Errorf("blockquote = %+v, want body 역할 + muted 색", *bq)
+	}
+	if bq.Size != body.Size || bq.Font != body.Font || bq.Weight != body.Weight ||
+		bq.LineHeight != body.LineHeight || bq.Align != body.Align {
+		t.Errorf("blockquote가 정하지 않은 필드가 body 기본값을 잃었다: %+v", *bq)
+	}
+}
+
+// 인라인 속성은 블록에서도 캐스케이드의 최상단이다 — 태그 기본값을 이긴다.
+func TestResolveInlineBeatsTagDefault(t *testing.T) {
+	got := tagStyle(t, "<slide>\n  <h3 size=\"40\">소제</h3>\n</slide>\n", "h3")
+	if got.Size != 40 {
+		t.Errorf("Size = %v, want 40 (인라인 > 태그 기본값)", got.Size)
+	}
+	// color·align도 <text>와 같은 규칙으로 얹힌다.
+	bq := tagStyle(t, "<slide>\n  <blockquote color=\"accent1\" align=\"center\">인용</blockquote>\n</slide>\n", "blockquote")
+	if bq.Color != soml.TokenColor("accent1") || bq.Align != soml.AlignCenter {
+		t.Errorf("blockquote = %+v, want 인라인 색·정렬", *bq)
+	}
+}
+
+// variant는 블록 태그에서도 캐스케이드 둘째 단으로 동작한다 —
+// 인라인 > variant > 태그 기본값 > 역할 순서를 h3(태그 기본값 28)에서 확인한다.
+func TestResolveVariantOnBlockTags(t *testing.T) {
+	// lead(size 32)가 body 역할 기본값(24)을 이긴다.
+	p := tagStyle(t, "<slide>\n  <p variant=\"lead\">본문</p>\n</slide>\n", "p")
+	if p.Size != 32 {
+		t.Errorf("<p variant=lead> Size = %v, want 32", p.Size)
+	}
+	// variant(32) > 태그 기본값(28).
+	h3 := tagStyle(t, "<slide>\n  <h3 variant=\"lead\">소제</h3>\n</slide>\n", "h3")
+	if h3.Size != 32 {
+		t.Errorf("<h3 variant=lead> Size = %v, want 32 (variant > 태그 기본값)", h3.Size)
+	}
+	// 인라인(40) > variant(32) > 태그 기본값(28).
+	h3in := tagStyle(t, "<slide>\n  <h3 variant=\"lead\" size=\"40\">소제</h3>\n</slide>\n", "h3")
+	if h3in.Size != 40 {
+		t.Errorf("<h3 variant=lead size=40> Size = %v, want 40 (인라인 > variant)", h3in.Size)
+	}
+}
+
+// li는 body 역할로 확정된다 — 리스트 렌더 매핑(항목 05·07)이 없어도 해석은 여기서 끝난다.
+// 컨테이너(<ul>/<ol>)는 외관을 갖지 않는다: 마커·들여쓰기 같은 리스트 표현은 렌더 매핑의
+// 몫이고, 타이포그래피는 <li>에 붙는다.
+func TestResolveListItemRole(t *testing.T) {
+	deck, diags := resolveSlide(t, "<slide>\n  <ul><li>하나</li><li>둘</li></ul>\n</slide>\n")
+	if len(diags) != 0 {
+		t.Fatalf("진단이 없어야 한다: %v", diags)
+	}
+	li := findElement(t, deck, "li").TextStyle()
+	if li == nil {
+		t.Fatal("<li>에 해석된 외관이 없다")
+	}
+	want := *firstStyle(t, "<slide>\n  <text>내용</text>\n</slide>\n")
+	if *li != want {
+		t.Errorf("<li> = %+v, want <text>(body 기본값)와 동일 %+v", *li, want)
+	}
+	if ul := findElement(t, deck, "ul"); ul.Appearance != nil {
+		t.Errorf("<ul>은 외관을 갖지 않아야 한다: %+v", ul.Appearance)
+	}
+}
+
+// 블록의 인라인 속성은 <text>와 같은 값 층을 지난다 — 진단도 같은 정밀도(값의 line:col)다.
+func TestResolveBlockValueDiagnostics(t *testing.T) {
+	_, diags := resolveSlide(t, "<slide>\n  <h2 color=\"brand\">제목</h2>\n</slide>\n")
+	if len(diags) != 1 {
+		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+	}
+	diag := diags[0]
+	if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "테마에 없다") {
+		t.Errorf("진단 = %q, want 색 토큰 에러", diag.String())
+	}
+	if diag.Span.Start.Line != 2 || diag.Span.Start.Col != 14 {
+		t.Errorf("위치 = %s, want 2:14 (값을 가리켜야 한다)", diag.Span.Start)
+	}
+}
+
 func TestResolveVariantBeatsRoleDefault(t *testing.T) {
 	// kicker는 기본 역할(body: size 24, weight 400, fg)과 구별되는 값 세 개를 정한다.
 	got := firstStyle(t, "<slide>\n  <text variant=\"kicker\">내용</text>\n</slide>\n")
