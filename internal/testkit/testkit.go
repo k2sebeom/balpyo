@@ -18,6 +18,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/k2sebeom/balpyo/render/geom"
 )
 
 // 하네스가 읽는 환경 변수. 이미지가 켜는 값은 docker/test.Dockerfile에 있다.
@@ -29,10 +31,11 @@ const (
 	// EnvReview가 1이면 픽스처 스위트가 review/ 갤러리를 남긴다 (`make review`).
 	EnvReview = "BALPYO_REVIEW"
 
-	// EnvChromium은 Chromium/Chrome 실행 파일 경로다.
-	EnvChromium = "BALPYO_CHROMIUM"
+	// EnvChromium은 Chromium/Chrome 실행 파일 경로다. 빌드(지오메트리 패스)가 보는 변수와
+	// 같아야 한다 — 다르면 "테스트는 되는데 빌드는 브라우저를 못 찾는다"가 된다.
+	EnvChromium = geom.EnvChromium
 	// EnvChromiumNoSandbox가 1이면 --no-sandbox를 붙인다 (컨테이너 안에서는 root라 필수).
-	EnvChromiumNoSandbox = "BALPYO_CHROMIUM_NO_SANDBOX"
+	EnvChromiumNoSandbox = geom.EnvNoSandbox
 	// EnvSoffice는 LibreOffice 실행 파일 경로다.
 	EnvSoffice = "BALPYO_SOFFICE"
 	// EnvPdftoppm은 poppler의 pdftoppm 실행 파일 경로다.
@@ -72,14 +75,10 @@ func RepoRoot(t testing.TB) string {
 // 로컬에서도 (컨테이너 없이) 렌더 헬퍼를 돌려 볼 수 있게 하기 위해서다 — 다만 픽셀
 // 결과는 이미지 안에서만 신뢰한다.
 var (
-	chromiumCandidates = []string{
-		"chromium",
-		"chromium-browser",
-		"google-chrome",
-		"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-		"/Applications/Chromium.app/Contents/MacOS/Chromium",
-	}
-	sofficeCandidates = []string{
+	// 브라우저 후보는 빌드와 공유한다 (render/geom) — 목록이 두 벌이면 이미지에 있는
+	// 브라우저를 한쪽만 찾는 상태가 생긴다.
+	chromiumCandidates = geom.Candidates()
+	sofficeCandidates  = []string{
 		"soffice",
 		"libreoffice",
 		"/Applications/LibreOffice.app/Contents/MacOS/soffice",
@@ -120,7 +119,7 @@ func RequirePdftoppm(t testing.TB) string {
 }
 
 // ChromiumNoSandbox는 --no-sandbox가 필요한 환경인지 알려준다.
-func ChromiumNoSandbox() bool { return os.Getenv(EnvChromiumNoSandbox) == "1" }
+func ChromiumNoSandbox() bool { return geom.NoSandbox() }
 
 // lookTool은 환경 변수 → PATH → 후보 경로 순으로 실행 파일을 찾는다.
 func lookTool(env string, candidates []string) (string, error) {

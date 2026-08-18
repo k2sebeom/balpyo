@@ -32,7 +32,8 @@ COPY docker/fonts.conf /etc/fonts/local.conf
 RUN fc-cache -f
 
 # 컨테이너 안에서는 root로 돌기 때문에 Chromium 샌드박스를 쓸 수 없다.
-# 테스트 하네스는 이 값을 읽어 플래그를 붙인다 (internal/testkit/chromium.go).
+# 이 값을 읽는 곳은 render/geom/browser.go다 — 빌드의 지오메트리 패스와 테스트 하네스가
+# 같은 CDP 클라이언트를 쓰므로 변수도 하나다 (internal/testkit/chromium.go는 그것을 감싼다).
 ENV BALPYO_CHROMIUM=/usr/bin/chromium \
     BALPYO_CHROMIUM_NO_SANDBOX=1 \
     BALPYO_SOFFICE=/usr/bin/soffice \

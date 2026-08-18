@@ -3,6 +3,7 @@ package pptx
 import (
 	"math"
 
+	"github.com/k2sebeom/balpyo/render/geom"
 	"github.com/k2sebeom/balpyo/soml"
 )
 
@@ -27,6 +28,27 @@ func EMU(px float64) int64 {
 // FontSize는 논리 px 폰트 크기를 OOXML `sz` 속성 값(1/100 pt)으로 바꾼다.
 func FontSize(px float64) int64 {
 	return int64(math.Round(px * PointsPerPixel * 100))
+}
+
+// Offset은 지오메트리 패스가 잰 박스의 좌상단을 OOXML `a:off`(EMU)로 바꾼다.
+//
+// **단위 경계는 이 함수와 Extent·FontSize뿐이다** (PRD §13-5). 지오메트리 패스는 논리 px만
+// 알고 EMU를 모른다 (units_test.go가 그것을 못 박는다). 경계를 한 곳에 두는 이유: 환산이
+// 여러 곳에 흩어지면 어떤 값이 px이고 어떤 값이 EMU인지 타입으로 드러나지 않아, 두 번 환산된
+// 좌표(도형이 화면 밖으로 나간다)나 환산되지 않은 좌표(도형이 왼쪽 위 점에 뭉친다)가 생긴다.
+//
+// 좌표는 슬라이드 상대이므로 그대로 `a:off`가 된다 — 슬라이드 원점이 두 좌표계에서 같다.
+// 음수도 그대로 넘긴다: 스테이지를 넘어간 박스는 잘리지 않고 넘친다 (PRD §13-1).
+func Offset(r geom.Rect) (x, y int64) {
+	return EMU(r.X), EMU(r.Y)
+}
+
+// Extent는 박스 크기를 OOXML `a:ext`(EMU)로 바꾼다.
+//
+// 크기 0을 여기서 막지 않는다 — 크기 0인 도형이 유효한지는 조립하는 쪽의 판단이고(빈 요소를
+// 낼지 건너뛸지), 여기서 에러를 내면 환산 함수가 조립 정책을 갖게 된다.
+func Extent(r geom.Rect) (cx, cy int64) {
+	return EMU(r.W), EMU(r.H)
 }
 
 // SlideSize는 논리 스테이지를 PPTX 페이지 크기(EMU)로 바꾼다.

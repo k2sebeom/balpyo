@@ -3,19 +3,42 @@ package web
 import (
 	"fmt"
 	"html"
+	"strconv"
 	"strings"
 
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// idAttr은 렌더된 요소의 식별자 속성이다 — 지오메트리 패스가 브라우저 rect를 덱 요소에
+// IDAttr은 렌더된 요소의 식별자 속성이다 — 지오메트리 패스가 브라우저 rect를 덱 요소에
 // 되돌려 붙이는 열쇠다. 값 규칙은 패키지 주석에 있다.
-const idAttr = "data-balpyo-id"
+const IDAttr = "data-balpyo-id"
 
-// elAttr은 그 요소를 만든 SOML 태그 이름이다. 식별자만으로 매핑은 되지만, 지오메트리 패스가
+// ElAttr은 그 요소를 만든 SOML 태그 이름이다. 식별자만으로 매핑은 되지만, 지오메트리 패스가
 // 덱 트리를 훑으며 이 이름을 대조하면 렌더러와 지오메트리 패스가 어긋난 순간(한쪽이 요소를
 // 더/덜 내는 경우) 좌표가 엉뚱한 요소에 붙는 대신 소리를 낸다.
-const elAttr = "data-balpyo-el"
+const ElAttr = "data-balpyo-el"
+
+// 이 셋을 export하는 이유: 계약의 **양쪽**이 같은 문자열을 써야 한다. 지오메트리 패스는
+// 이 선택자로 요소를 집고(render/geom), 테스트 하네스는 같은 선택자로 슬라이드를 찍는다
+// (internal/testkit). 선택자 문자열이 세 곳에 흩어지면 클래스 이름을 바꾼 순간 한 곳만
+// 남아 "요소를 못 찾았다"가 아니라 "좌표가 다르다"로 나타난다.
+const (
+	// SlideClass는 슬라이드 요소의 클래스다.
+	SlideClass = "balpyo-slide"
+	// SlideIndexAttr는 슬라이드의 0-based 렌더 순서다 (soml.Slide.Index).
+	SlideIndexAttr = "data-slide-index"
+)
+
+// SlideSelector는 문서 순서의 모든 슬라이드를 집는 선택자다.
+func SlideSelector() string { return "." + SlideClass }
+
+// SlideIndexSelector는 인덱스로 슬라이드 하나를 집는 선택자다.
+func SlideIndexSelector(index int) string {
+	return fmt.Sprintf("%s[%s=%q]", SlideSelector(), SlideIndexAttr, strconv.Itoa(index))
+}
+
+// ElementSelector는 식별자를 가진 모든 요소를 집는 선택자다 — 지오메트리 패스가 재는 대상.
+func ElementSelector() string { return "[" + IDAttr + "]" }
 
 // 스테이지 여백과 스택 간격이다 (논리 px). 간격 24px은 본문 크기와 같아 한 글자 높이만큼
 // 벌어진 리듬이 된다 — 역할 기본값의 수직 리듬(core/theme.go)과 같은 근거다.
@@ -54,7 +77,7 @@ func writeStage(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 }
 
 // writeNode는 콘텐츠 노드 하나를 쓴다. path는 슬라이드 콘텐츠부터 이 노드까지의 자식
-// 인덱스 경로다 (elementID의 입력).
+// 인덱스 경로다 (ElementID의 입력).
 func writeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node soml.Node, path []int) error {
 	switch node := node.(type) {
 	case *soml.Text:
@@ -95,7 +118,7 @@ func writeText(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *som
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
 	fmt.Fprintf(b, "<div class=\"balpyo-text\" %s=%q %s=%q style=%q>",
-		idAttr, elementID(slide.Index, path), elAttr, elem.Name, decls)
+		IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, decls)
 	for i, child := range elem.Children {
 		if err := writeNode(b, deck, slide, child, childPath(path, i)); err != nil {
 			return err
@@ -105,13 +128,17 @@ func writeText(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *som
 	return nil
 }
 
-// elementID는 요소 식별자를 만든다 — `s<슬라이드 인덱스>[.<자식 인덱스>]…`.
+// ElementID는 요소 식별자를 만든다 — `s<슬라이드 인덱스>[.<자식 인덱스>]…`.
 //
 // 인덱스는 **덱 모델의 슬라이스 인덱스**다 (Slide.Content와 Element.Children). 그래서 이
 // 값은 렌더 없이 덱 모델만 보고도 계산할 수 있고, 지오메트리 패스가 자기 쪽에서 같은 문자열을
 // 만들어 rect를 찾을 수 있다. 저자가 준 `id`를 쓰지 않는 이유는 두 가지다: `<slide id>`는
 // 슬라이드에만 있고(요소는 못 가진다), 딥링크용 이름이라 저자가 언제든 바꾼다.
-func elementID(slideIndex int, path []int) string {
+//
+// **구현이 하나여야 한다.** 지오메트리 패스가 같은 규칙을 따로 구현하면 규칙이 갈라지는 날
+// rect가 엉뚱한 요소에 붙고, 그 실패는 산출물을 열어 보기 전까지 조용하다 — 그래서
+// render/geom이 이 함수를 부른다.
+func ElementID(slideIndex int, path []int) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "s%d", slideIndex)
 	for _, i := range path {

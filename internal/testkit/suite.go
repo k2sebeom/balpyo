@@ -1,12 +1,12 @@
 package testkit
 
 import (
-	"fmt"
 	"image"
 	"path/filepath"
 	"testing"
 
 	"github.com/k2sebeom/balpyo/internal/pipeline"
+	"github.com/k2sebeom/balpyo/render/geom"
 	"github.com/k2sebeom/balpyo/render/web"
 )
 
@@ -65,8 +65,9 @@ func (s *Suite) CompareRenders(t *testing.T, fixture Fixture, result *pipeline.R
 	browser.Load(t, filepath.Join(result.OutDir, web.IndexFile))
 
 	for i, slide := range result.Deck.Slides {
-		selector := fmt.Sprintf(`.balpyo-slide[data-slide-index="%d"]`, i)
-		webImg := browser.ScreenshotElement(t, selector)
+		// 선택자는 렌더러가 소유한다 — 클래스·속성 이름을 여기에 손으로 적으면 이름을 바꾼
+		// 순간 스크린샷이 "요소가 없다"로 죽거나, 더 나쁘게는 다른 요소를 찍는다.
+		webImg := browser.ScreenshotElement(t, web.SlideIndexSelector(i))
 		diff := AssertImagesMatch(t, webImg, shots[i], s.Diff)
 		ok := diff.Image != nil && diff.Ratio <= s.Diff.MaxRatio
 		t.Logf("슬라이드 %d(%s): %s", i+1, slide.ID, diff)
@@ -86,11 +87,11 @@ func (s *Suite) Browser(t testing.TB) *Browser {
 	if s.browser != nil {
 		return s.browser
 	}
-	browser, err := newBrowser(bin)
+	session, err := geom.Launch(bin)
 	if err != nil {
-		t.Fatalf("브라우저를 띄울 수 없다 (%s): %v", bin, err)
+		t.Fatalf("브라우저를 띄울 수 없다: %v", err)
 	}
-	s.root.Cleanup(browser.close)
-	s.browser = browser
+	s.root.Cleanup(session.Close)
+	s.browser = &Browser{session: session}
 	return s.browser
 }

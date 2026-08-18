@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/k2sebeom/balpyo/render"
+	"github.com/k2sebeom/balpyo/render/geom"
 	"github.com/k2sebeom/balpyo/soml"
 )
 
@@ -28,10 +29,20 @@ import (
 var zipEpoch = time.Date(1980, 1, 1, 0, 0, 0, 0, time.UTC)
 
 // Renderer는 PPTX 타깃 렌더러다.
-type Renderer struct{}
+//
+// 지오메트리는 생성자로 받는다 — 렌더 중에 브라우저를 띄우지 않는다. 그래야 이 패키지가
+// 브라우저를 모르는 상태로 남고(임포트 방향이 한쪽이다), 좌표가 언제 어떤 HTML에서 나왔는지가
+// 호출자 쪽 코드에 드러난다. 좌표 의존이 타입에 없으면 "지오메트리 없이 조립된 PPTX"가
+// 조용히 만들어진다.
+type Renderer struct {
+	geometry *geom.Geometry
+}
 
-// New는 PPTX 렌더러를 만든다.
+// New는 지오메트리 없는 PPTX 렌더러를 만든다 — 좌표가 필요한 요소가 없는 덱만 렌더할 수 있다.
 func New() *Renderer { return &Renderer{} }
+
+// NewWithGeometry는 잰 좌표를 가진 PPTX 렌더러를 만든다.
+func NewWithGeometry(g *geom.Geometry) *Renderer { return &Renderer{geometry: g} }
 
 // Target은 render.TargetPPTX다.
 func (*Renderer) Target() render.Target { return render.TargetPPTX }
@@ -46,13 +57,16 @@ func FileName(deck *soml.Deck) string {
 }
 
 // Render는 덱을 pptx 파일 하나로 조립한다.
-func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
+func (r *Renderer) Render(deck *soml.Deck) (render.Files, error) {
 	if deck == nil {
 		return nil, fmt.Errorf("덱이 nil이다")
 	}
 	if len(deck.Slides) == 0 {
 		// 슬라이드가 없는 프레젠테이션은 PowerPoint가 열지 못한다.
 		return nil, fmt.Errorf("슬라이드가 없다")
+	}
+	if err := r.checkGeometry(deck); err != nil {
+		return nil, err
 	}
 	parts, err := buildParts(deck)
 	if err != nil {
@@ -63,6 +77,25 @@ func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 		return nil, err
 	}
 	return render.Files{FileName(deck): data}, nil
+}
+
+// checkGeometry는 이 덱을 조립하는 데 필요한 좌표가 있는지 본다.
+//
+// 좌표가 필요한 요소가 하나라도 있으면 지오메트리를 요구한다. 없이 조립하면 도형이 빠지거나
+// 전부 원점에 겹친 파일이 나오는데, 그 파일은 정상으로 열리므로 실패가 PowerPoint에서 눈으로
+// 볼 때까지 드러나지 않는다. 빈 슬라이드만 있는 덱은 잰 좌표가 필요하지 않다 — 그래서
+// 빈 슬라이드 픽스처는 브라우저 없이 돈다 (internal/pipeline이 같은 판정을 쓴다).
+func (r *Renderer) checkGeometry(deck *soml.Deck) error {
+	refs := geom.Refs(deck)
+	if len(refs) == 0 {
+		return nil
+	}
+	if r.geometry == nil {
+		return fmt.Errorf("좌표가 필요한 요소가 %d개인데 지오메트리가 없다 (%s) — 지오메트리 패스를 거치지 않았다",
+			len(refs), refs[0].Source)
+	}
+	// 잰 덱과 조립하는 덱이 다르면 좌표가 전부 엉뚱한 요소로 간다.
+	return r.geometry.Verify(deck)
 }
 
 // zipParts는 파트 목록을 OPC 패키지(zip)로 묶는다.

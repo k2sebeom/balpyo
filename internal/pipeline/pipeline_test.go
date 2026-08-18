@@ -273,7 +273,7 @@ func TestBuildHonorsOutDir(t *testing.T) {
 func TestRenderRejectsUnknownTarget(t *testing.T) {
 	stage, _ := soml.Aspect16x9.Stage()
 	deck := &soml.Deck{Stage: stage, Slides: []*soml.Slide{{ID: "a"}}}
-	if _, err := Render(deck, []render.Target{"pdf"}); err == nil {
+	if _, _, err := Render(deck, []render.Target{"pdf"}); err == nil {
 		t.Error("PDF는 아직 렌더러가 없다 — 에러여야 한다")
 	}
 }
@@ -284,7 +284,7 @@ func TestRenderersCoverAllParsableTargets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	available := Renderers()
+	available := Renderers(nil)
 	for _, target := range targets {
 		if _, ok := available[target]; !ok {
 			t.Errorf("타깃 %q의 렌더러가 없다", target)

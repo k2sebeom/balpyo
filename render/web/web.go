@@ -17,6 +17,11 @@
 // 구조적 위치를 쓴다. 함께 나가는 `data-balpyo-el`은 그 요소를 만든 SOML 태그 이름이며,
 // 지오메트리 패스가 자기가 걷는 덱 노드와 대조해 양쪽이 어긋난 순간을 잡는 용도다.
 //
+// 이 계약의 **구현은 하나다**: 속성 이름은 IDAttr·ElAttr, 값은 ElementID, 요소를 집는
+// 선택자는 SlideSelector·SlideIndexSelector·ElementSelector다. 지오메트리 패스(render/geom)와
+// 테스트 하네스(internal/testkit)가 이것들을 부른다 — 같은 규칙을 저쪽에서 다시 구현하면
+// 규칙이 갈라지는 날 좌표가 엉뚱한 요소에 붙고, 그 실패는 산출물을 열어 보기 전까지 조용하다.
+//
 // # 외관
 //
 // 외관은 core가 해석을 끝낸 soml.Appearance에서만 나온다 — 이 패키지는 요소의 Attrs를 다시
@@ -96,8 +101,8 @@ func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 // `data-slide-*` 속성은 장식이 아니다 — 지오메트리 패스가 이 선택자로 요소를 집어
 // 좌표를 읽고, 웹 런타임이 딥링크를 여기에 맞춘다.
 func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
-	fmt.Fprintf(b, "<section class=\"balpyo-slide\" id=%q data-slide-index=\"%d\" data-slide-source=%q>\n",
-		html.EscapeString(slide.ID), slide.Index, html.EscapeString(slide.Source))
+	fmt.Fprintf(b, "<section class=%q id=%q %s=\"%d\" data-slide-source=%q>\n",
+		SlideClass, html.EscapeString(slide.ID), SlideIndexAttr, slide.Index, html.EscapeString(slide.Source))
 	if err := writeStage(b, deck, slide); err != nil {
 		return err
 	}
