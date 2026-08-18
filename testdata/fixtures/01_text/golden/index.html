@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>text deck</title>
+<meta name="author" content="balpyo">
+<style>
+@layer balpyo.base, balpyo.theme, balpyo.author;
+
+@layer balpyo.base {
+  :root {
+    --balpyo-stage-width: 1280px;
+    --balpyo-stage-height: 720px;
+  }
+
+  * { box-sizing: border-box; }
+
+  /* 뷰어 크롬의 바탕 — 슬라이드 밖의 색이므로 덱의 색이 아니다 (테마 토큰이 아닌 유일한 색). */
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #111;
+  }
+
+  .balpyo-deck {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 24px;
+  }
+
+  /* 슬라이드는 논리 스테이지 크기를 그대로 갖는다. 저자·웹·지오메트리 패스가 같은
+     좌표계를 쓰므로 지오메트리 패스가 읽은 rect가 곧 PPTX 좌표다 (환산 분기 없음). */
+  .balpyo-slide {
+    position: relative;
+    width: var(--balpyo-stage-width);
+    height: var(--balpyo-stage-height);
+    overflow: hidden;
+  }
+
+  /* 스테이지는 자식을 문서 순서대로 세로로 쌓는다. 여백 64px은 1280폭의 5%로,
+     프로젝터의 오버스캔에서도 글자가 잘리지 않는다. */
+  .balpyo-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* 텍스트 블록은 콘텐츠 폭 전체를 갖는다 — 줄바꿈 폭이 확정되어야 브라우저가 잰 박스가
+     PPTX 텍스트 박스로 그대로 간다. flex: 0 0 auto는 스택이 스테이지보다 길 때 박스가
+     눌리는 것을 막는다 (기본 정책은 박스 고정 + 오버플로 허용 — PRD §13-1). */
+  .balpyo-text {
+    margin: 0;
+    width: 100%;
+    flex: 0 0 auto;
+  }
+}
+
+@layer balpyo.theme {
+  /* 테마 "minimal"의 토큰 표 — 웹 변수와 PPTX 테마 파트가 이 한 표에서 나온다. */
+  :root {
+    --balpyo-color-fg: #1A1A1A;
+    --balpyo-color-bg: #FFFFFF;
+    --balpyo-color-muted: #6B7280;
+    --balpyo-color-accent1: #0F65F9;
+    --balpyo-font-heading: "Noto Sans", "Noto Sans CJK KR", sans-serif;
+    --balpyo-font-body: "Noto Sans", "Noto Sans CJK KR", sans-serif;
+    --balpyo-font-mono: "Noto Sans Mono", "Noto Sans CJK KR", monospace;
+  }
+
+  .balpyo-slide { background: var(--balpyo-color-bg); }
+}
+</style>
+</head>
+<body>
+<div class="balpyo-deck" data-aspect="16:9" data-slides="3">
+<section class="balpyo-slide" id="title" data-slide-index="0" data-slide-source="slides/001_title.slide">
+<div class="balpyo-stage">
+<div class="balpyo-text" data-balpyo-id="s0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: center">Platform Team</div>
+<div class="balpyo-text" data-balpyo-id="s0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 64px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: center">2026 아키텍처 리뷰</div>
+<div class="balpyo-text" data-balpyo-id="s0.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">상반기 회고와 하반기 계획</div>
+</div>
+<div class="balpyo-notes" hidden>인사 30초. 청중에 인프라팀 포함되어 있음.</div>
+</section>
+<section class="balpyo-slide" id="overview" data-slide-index="1" data-slide-source="slides/002_overview.slide">
+<div class="balpyo-stage">
+<div class="balpyo-text" data-balpyo-id="s1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent1); text-align: start">올해의 세 가지 변화</div>
+<div class="balpyo-text" data-balpyo-id="s1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">모놀리스 분리를 마쳤고, 배포 파이프라인을 자동화했으며, 관측성 스택(OpenTelemetry + Grafana)을 도입했다.</div>
+<div class="balpyo-text" data-balpyo-id="s1.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: end">2026 H1</div>
+</div>
+</section>
+<section class="balpyo-slide" id="closing" data-slide-index="2" data-slide-source="slides/003_closing.slide">
+<div class="balpyo-stage">
+<div class="balpyo-text" data-balpyo-id="s2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: center">질의응답 (Q and A)</div>
+</div>
+<div class="balpyo-notes" hidden>질문이 없으면 하반기 로드맵 슬라이드로 되돌아간다.</div>
+</section>
+</div>
+</body>
+</html>

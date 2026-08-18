@@ -27,9 +27,15 @@ type DiffOptions struct {
 //
 // 두 렌더러는 같은 폰트를 쓰지만 래스터라이저가 다르다 (Skia vs LibreOffice/poppler).
 // 글리프 경계와 안티앨리어싱이 완전히 같을 수는 없으므로 0 오차는 달성 불가능한 목표다.
-// Iteration 1에서 실제 텍스트로 측정한 값이 이 상수를 대체한다 (PRD §13-1).
+//
+// MaxRatio 2.5%는 Iteration 1에서 01_text(한글·영문 혼합 텍스트 3장)로 측정한 값이다
+// (PRD §13-1, NOTES.md 01/07): 글자가 큰 표지 슬라이드가 최대 2.1%였고, 그 구성은 전부
+// 엔진 소관의 잔차다 — LibreOffice의 첫 기준선이 +2~5px 낮고, 스크립트 간격이 혼합 문자
+// 줄 안의 글리프를 최대 +3.3% 오른쪽으로 흘린다. 이 잔차가 구조적 갈라짐(줄 수·줄 위치·
+// 줄 폭)으로 번지는 것은 픽셀 비율이 아니라 잉크 띠 검사가 잡는다
+// (TestTextFixtureLineBreaksMatchLibreOffice) — 그래서 비율을 그 이상 조이지 않는다.
 func DefaultDiffOptions() DiffOptions {
-	return DiffOptions{Channel: 32, MaxRatio: 0.02}
+	return DiffOptions{Channel: 32, MaxRatio: 0.025}
 }
 
 // DiffResult는 픽셀 비교 결과다.

@@ -24,6 +24,38 @@ const shapeIndent = "      "
 // 이미 쓰고 있다.
 const firstShapeID = 2
 
+// textBoxSlackRatio는 텍스트 박스 폭에 더하는 안전 여유 비율이다 (PRD §9.3 — "측정된
+// 크기에 약간의 안전 여유를 더해 명시 고정").
+//
+// 값의 근거 (Iteration 1의 측정, NOTES.md 01/07): LibreOffice는 한글↔라틴 스크립트 경계마다
+// 간격을 넣어(스크립트 간격 — OOXML로 끌 수 없다) 혼합 문자 줄을 브라우저보다 최대 +2.7%
+// 넓게 그린다. 박스를 측정 폭 그대로 고정하면 여유 폭(Slack)이 그보다 작은 줄은 LibreOffice
+// 에서 한 줄 늘어난다 — 01_text 픽스처의 본문(여유 2.4%)이 정확히 그렇게 갈라졌다. 4%는
+// 측정 최대치에 여유를 더한 값이고, 반대 방향의 위험(브라우저가 넘긴 단어가 넓힌 박스에
+// 들어가 줄이 줄어드는 것)은 단어 하나 폭보다 훨씬 작아야 하므로 이 이상 키우지 않는다.
+const textBoxSlackRatio = 0.04
+
+// TextBoxRect는 잰 박스에 안전 여유를 더한 PPTX 텍스트 박스 사각형이다.
+//
+// 넓히는 방향은 정렬이 정한다 — 글자가 닻을 내린 변은 움직이지 않아야 웹과 같은 자리에
+// 그려진다: start는 오른쪽으로만, end는 왼쪽으로만, center는 양쪽으로 반씩 넓힌다.
+// justify는 넓히지 않는다: 양쪽 정렬은 글줄을 박스 폭까지 늘이므로, 박스를 넓히면 웹보다
+// 긴 글줄이 된다 (스크립트 간격 위험은 남지만 자리 어긋남보다 낫다).
+func TextBoxRect(r geom.Rect, align soml.TextAlign) geom.Rect {
+	if align == soml.AlignJustify {
+		return r
+	}
+	slack := r.W * textBoxSlackRatio
+	switch align {
+	case soml.AlignCenter:
+		r.X -= slack / 2
+	case soml.AlignEnd:
+		r.X -= slack
+	}
+	r.W += slack
+	return r
+}
+
 // shapesXML은 슬라이드 콘텐츠를 p:sp 목록으로 컴파일한다 — 이 함수가 지오메트리(①)와
 // 해석된 외관(②)이 OOXML에서 만나는 자리다 (PRD §9.3).
 //
@@ -88,8 +120,9 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
 
-	x, y := Offset(box.Rect)
-	cx, cy := Extent(box.Rect)
+	rect := TextBoxRect(box.Rect, style.Align)
+	x, y := Offset(rect)
+	cx, cy := Extent(rect)
 
 	w := func(depth int, line string) {
 		b.WriteString("\n" + shapeIndent + strings.Repeat("  ", depth) + line)
@@ -168,7 +201,8 @@ func textBodyXML(style soml.TextStyle, theme soml.Theme, text string) (string, e
 	w(2, "<a:p>")
 	w(3, fmt.Sprintf(`<a:pPr algn="%s">`, algn))
 	w(4, "<a:lnSpc>")
-	w(5, fmt.Sprintf(`<a:spcPct val="%d"/>`, LineSpacing(style.LineHeight)))
+	// 절대 줄간격(spcPts)이다 — spcPct는 엔진마다 기준이 달라 글줄이 밀린다 (LineSpacing).
+	w(5, fmt.Sprintf(`<a:spcPts val="%d"/>`, LineSpacing(style.LineHeight, style.Size)))
 	w(4, "</a:lnSpc>")
 	w(3, "</a:pPr>")
 	// 빈 텍스트는 런 없는 문단으로 남는다 — 도형 자체는 낸다 (writeTextShape의 정책).

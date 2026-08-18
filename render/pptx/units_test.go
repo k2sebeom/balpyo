@@ -33,19 +33,23 @@ func TestEMU(t *testing.T) {
 }
 
 func TestLineSpacing(t *testing.T) {
-	// OOXML spcPct@val은 1/1000 % 단위다 — 배수 1.5 = 150%.
+	// OOXML spcPts@val은 1/100 pt 단위다 — 배수 × 폰트 크기(px) × 0.75(pt/px) × 100.
+	// 절대값으로 내는 이유는 units.go LineSpacing의 주석에 있다 (spcPct는 엔진마다 기준이 다르다).
 	tests := []struct {
 		multiplier float64
+		sizePx     float64
 		want       int64
 	}{
-		{1.5, 150000},
-		{1.2, 120000},
-		{1.3, 130000},
-		{1, 100000},
+		{1.5, 24, 2700}, // 본문: 36px 줄 = 27pt
+		{1.2, 56, 5040}, // 제목: 67.2px 줄 = 50.4pt
+		{1.4, 18, 1890}, // 캡션
+		{1.3, 36, 3510}, // 헤딩
+		{1, 16, 1200},
+		{1.05, 21, 1654}, // 반올림 (22.05px = 16.5375pt)
 	}
 	for _, tc := range tests {
-		if got := LineSpacing(tc.multiplier); got != tc.want {
-			t.Errorf("LineSpacing(%v) = %d, want %d", tc.multiplier, got, tc.want)
+		if got := LineSpacing(tc.multiplier, tc.sizePx); got != tc.want {
+			t.Errorf("LineSpacing(%v, %v) = %d, want %d", tc.multiplier, tc.sizePx, got, tc.want)
 		}
 	}
 }

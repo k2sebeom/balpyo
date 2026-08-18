@@ -322,7 +322,7 @@ func TestThemeFontTokensMapToFontScheme(t *testing.T) {
 func TestResolveTextFixture(t *testing.T) {
 	// 픽스처는 완전한 프로젝트다 (testdata/fixtures/README.md). 여기서는 파이프라인을 거치지
 	// 않고 슬라이드 파일만 읽는다 — core는 internal/pipeline을 임포트할 수 없다 (임포트 순환).
-	dir := filepath.Join("..", "testdata", "fixtures", "_01_text", "slides")
+	dir := filepath.Join("..", "testdata", "fixtures", "01_text", "slides")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatal(err)

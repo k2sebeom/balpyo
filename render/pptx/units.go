@@ -30,13 +30,16 @@ func FontSize(px float64) int64 {
 	return int64(math.Round(px * PointsPerPixel * 100))
 }
 
-// LineSpacing은 줄높이 배수를 OOXML `a:spcPct@val`(1/1000 %)로 바꾼다.
+// LineSpacing은 줄높이 배수와 폰트 크기(논리 px)를 OOXML `a:spcPts@val`(1/100 pt)로 바꾼다.
 //
-// 입력은 무단위 배수라 단위 변환은 아니지만, OOXML 고유 표기로 눕히는 일은 이 파일이
-// 소유한다 — CSS line-height와 lnSpc가 같은 배수를 받는다는 사실이 이 함수의 근거다
-// (soml.TextStyle.LineHeight의 주석).
-func LineSpacing(multiplier float64) int64 {
-	return int64(math.Round(multiplier * 100000))
+// 배수를 그대로 `spcPct`로 내지 않는 이유(Iteration 1의 측정, NOTES.md 01/07): 두 표기는
+// 기준이 다르다. CSS line-height 배수는 **폰트 크기**의 배수이지만, LibreOffice(그리고
+// PowerPoint 계열의 구현들)는 spcPct를 **폰트 고유 줄 높이**(ascent+descent, Noto Sans는
+// ≈1.36em)의 배수로 해석한다 — 같은 150%가 웹에서는 1.5em, LibreOffice에서는 ≈2.04em이
+// 되어 모든 글줄이 8~13px 아래로 밀렸다. 절대값(pt)으로 눕히면 두 엔진이 같은 줄 전진
+// 폭을 쓴다.
+func LineSpacing(multiplier, sizePx float64) int64 {
+	return int64(math.Round(multiplier * sizePx * PointsPerPixel * 100))
 }
 
 // Offset은 지오메트리 패스가 잰 박스의 좌상단을 OOXML `a:off`(EMU)로 바꾼다.

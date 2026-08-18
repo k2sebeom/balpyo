@@ -7,7 +7,7 @@ import (
 	"github.com/k2sebeom/balpyo/render/geom"
 )
 
-// notesSources는 픽스처 _01_text와 같은 배치다 — 슬라이드 1·3에만 노트가 있고 2에는 없다.
+// notesSources는 픽스처 01_text와 같은 배치다 — 슬라이드 1·3에만 노트가 있고 2에는 없다.
 // 노트만 있는 슬라이드는 좌표가 필요한 요소가 없으므로 지오메트리 없이 렌더된다
 // (TestRenderNotesNeedNoGeometry가 못 박는다).
 func notesSources() []string {

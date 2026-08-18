@@ -152,7 +152,7 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
 
 - 태그: `<slide>` (`layout` 제외한 속성: `id`, `skip`), `<text>` (일부 외관: `role`,
   `size`, `color`, `align`), `<note>`
-- [ ] 테스트: 파서(정상/오타 태그 에러/위치), 슬라이드 수집·파일명 정렬, 웹 골든,
+- [x] 테스트: 파서(정상/오타 태그 에러/위치), 슬라이드 수집·파일명 정렬, 웹 골든,
       PPTX 구조(`sp`+`txBody`, `xfrm`), LibreOffice 열림, 픽셀 비교
 - [ ] 구현:
   - [x] 엄격 파서 + 닫힌 어휘 + line/col 에러
@@ -173,7 +173,7 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
   - [ ] `docs/reference/cli.md` 생성 — `build` 항목만
   - [ ] `docs/internals/geometry-pass.md` — CDP 패스, EMU 변환, 텍스트 박스 고정 전략
   - [ ] `docs/internals/architecture.md` 덱 모델 섹션 완성
-  - [ ] PRD §13-1 — 측정한 줄바꿈 허용 오차의 수치 임계값 기입
+  - [x] PRD §13-1 — 측정한 줄바꿈 허용 오차의 수치 임계값 기입
 
 **이 iteration이 실패하면(텍스트 메트릭 오차가 수용 불가) 아키텍처를 재검토한다 —
 그래서 가장 먼저 한다.**

@@ -11,9 +11,8 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 픽스처 이름. `_` 접두는 골든이 아직 없는 작업 중 픽스처라는 표시다 (testdata/fixtures/README).
-// 골든이 붙는 시점에 이름이 `01_text`로 바뀌므로 상수 하나만 고치면 된다.
-const textFixture = "_01_text"
+// 픽스처 이름. 골든이 붙어 픽스처 러너(internal/testkit)가 집는 활성 픽스처다.
+const textFixture = "01_text"
 
 // fixtureDeck는 픽스처 프로젝트를 파이프라인과 같은 순서로 읽어 덱을 만든다
 // (수집 → 파싱 → 외관 해석).
