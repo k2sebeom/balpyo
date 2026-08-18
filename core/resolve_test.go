@@ -70,6 +70,82 @@ func firstStyle(t *testing.T, src string) *soml.TextStyle {
 	return styles[0]
 }
 
+func TestResolveVariantBeatsRoleDefault(t *testing.T) {
+	// kicker는 기본 역할(body: size 24, weight 400, fg)과 구별되는 값 세 개를 정한다.
+	got := firstStyle(t, "<slide>\n  <text variant=\"kicker\">내용</text>\n</slide>\n")
+	if got.Size != 18 || got.Weight != 700 || got.Color != soml.TokenColor("accent1") {
+		t.Errorf("variant가 역할 기본값을 이기지 못했다: %+v", *got)
+	}
+	// variant가 말하지 않은 것은 역할 기본값이 남는다 — 부분성.
+	if got.Role != soml.RoleBody || got.Font != soml.FontBody || got.LineHeight != 1.5 || got.Align != soml.AlignStart {
+		t.Errorf("variant가 정하지 않은 필드가 역할 기본값을 잃었다: %+v", *got)
+	}
+}
+
+func TestResolveVariantIsPartial(t *testing.T) {
+	// lead는 size만 정한다 — color·align·weight는 아래 단(역할 기본값)에서 온다.
+	got := firstStyle(t, "<slide>\n  <text role=\"title\" variant=\"lead\">내용</text>\n</slide>\n")
+	if got.Size != 32 {
+		t.Errorf("Size = %v, want 32 (variant lead)", got.Size)
+	}
+	if got.Role != soml.RoleTitle || got.Font != soml.FontHeading || got.Weight != 700 ||
+		got.Color != soml.TokenColor("fg") || got.Align != soml.AlignStart {
+		t.Errorf("variant가 정하지 않은 필드는 title 기본값이어야 한다: %+v", *got)
+	}
+}
+
+func TestResolveInlineBeatsVariant(t *testing.T) {
+	got := firstStyle(t, "<slide>\n  <text variant=\"kicker\" size=\"40\" color=\"fg\">내용</text>\n</slide>\n")
+	// 인라인이 정한 필드는 variant를 이긴다.
+	if got.Size != 40 || got.Color != soml.TokenColor("fg") {
+		t.Errorf("인라인 속성이 variant를 이기지 못했다: %+v", *got)
+	}
+	// 인라인이 말하지 않은 필드는 variant가 남는다.
+	if got.Weight != 700 {
+		t.Errorf("인라인이 정하지 않은 필드가 variant 값을 잃었다: %+v", *got)
+	}
+}
+
+func TestResolveUnknownVariantWarnsAndFallsBack(t *testing.T) {
+	// 모르는 variant는 에러가 아니라 경고 + 컴포넌트 기본 외관 폴백이다 (PRD §13-6) —
+	// 다른 테마로 만든 콘텐츠가 이 테마에서도 빌드되어야 한다.
+	deck, diags := resolveSlide(t, "<slide>\n  <text variant=\"hero\">내용</text>\n</slide>\n")
+	if len(diags) != 1 {
+		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+	}
+	diag := diags[0]
+	if diag.Severity != soml.SeverityWarning {
+		t.Errorf("severity = %s, want warning — 에러면 테마 간 이식성이 깨진다", diag.Severity)
+	}
+	if diag.Span.Start.Line != 2 || diag.Span.Start.Col != 18 {
+		t.Errorf("위치 = %s, want 2:18 (값을 가리켜야 한다)", diag.Span.Start)
+	}
+	// 경고 문구에는 테마가 가진 variant 목록이 실린다 (색 토큰 진단과 같은 태도).
+	if !strings.Contains(diag.Message, `variant "hero"`) || !strings.Contains(diag.Message, "kicker, lead") {
+		t.Errorf("경고 문구 = %q, want variant 이름과 테마의 variant 목록 포함", diag.Message)
+	}
+	if diags.HasErrors() {
+		t.Error("경고만 있는 빌드는 실패하면 안 된다")
+	}
+	// 폴백: variant 없는 해석과 같은 결과여야 한다.
+	got := *textStyles(t, deck)[0]
+	want := *firstStyle(t, "<slide>\n  <text>내용</text>\n</slide>\n")
+	if got != want {
+		t.Errorf("폴백 외관 = %+v, want variant 없는 해석과 동일 %+v", got, want)
+	}
+}
+
+func TestResolveUnknownVariantKeepsInlineAttrs(t *testing.T) {
+	// variant가 틀려도 인라인 속성은 계속 해석한다 — 역할이 틀렸을 때와 같은 정책.
+	deck, diags := resolveSlide(t, "<slide>\n  <text variant=\"hero\" align=\"center\">내용</text>\n</slide>\n")
+	if len(diags) != 1 || diags[0].Severity != soml.SeverityWarning {
+		t.Fatalf("경고 1개여야 한다: %v", diags)
+	}
+	if got := textStyles(t, deck)[0]; got.Align != soml.AlignCenter {
+		t.Errorf("외관 = %+v, want 인라인 정렬 유지", *got)
+	}
+}
+
 func TestResolveAppliesRoleDefaults(t *testing.T) {
 	// 역할 기본값은 렌더러가 아무 속성 없이도 그릴 수 있는 완전한 외관이어야 한다.
 	cases := []struct {
@@ -174,6 +250,10 @@ func TestResolveValueDiagnostics(t *testing.T) {
 		{"짧은 색 리터럴", `color="#12"`, 2, 16, "#RRGGBB"},
 		{"값 없는 속성", `role`, 2, 9, "값이 필요하다"},
 		{"빈 값", `role=""`, 2, 15, "비어 있다"},
+		// variant의 "값 없음"은 다른 외관 속성과 같은 에러다 — 모르는 variant(경고)와 달리
+		// 뜻을 정할 수 없는 형태이기 때문이다.
+		{"값 없는 variant", `variant`, 2, 9, "값이 필요하다"},
+		{"빈 variant", `variant=""`, 2, 18, "비어 있다"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

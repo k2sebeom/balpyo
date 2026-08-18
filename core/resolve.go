@@ -15,8 +15,9 @@ import (
 //
 //	인라인 속성 > variant > 컴포넌트 기본값 > 역할/토큰
 //
-// 이번 iteration에 구현된 것은 **인라인 > 역할 기본값 > 테마 토큰**이다. 가운데 두 단
-// (variant, 컴포넌트 기본값)은 Iteration 2에서 resolveText의 표시된 자리에 들어온다.
+// 역할 기본값이 완전한 외관을 깔고 위 세 단이 부분 패치로 얹힌다 — 병합은 mergeText
+// (cascade.go) 한 곳에서만 일어난다. variant 표는 아직 하드코딩 테마 안이다 (theme.go —
+// 테마 패키지 포맷은 Iteration 10).
 //
 // 이 순서를 렌더러가 아니라 여기서 한 번만 적용하기 때문에 웹과 PPTX가 같은 외관을 본다.
 // computed-style 역추론은 없다 — 외관은 스키마에서 양 타깃으로 순방향 컴파일된다.
@@ -59,6 +60,10 @@ func (r *resolver) errorf(span soml.Span, format string, args ...any) {
 	r.diags = append(r.diags, soml.Errorf(r.file, span, format, args...))
 }
 
+func (r *resolver) warnf(span soml.Span, format string, args ...any) {
+	r.diags = append(r.diags, soml.Warningf(r.file, span, format, args...))
+}
+
 // node는 콘텐츠 트리를 훑는다. 외관을 갖는 요소만 해석하고 나머지는 지나간다.
 func (r *resolver) node(node soml.Node) {
 	elem, ok := node.(*soml.Element)
@@ -73,30 +78,62 @@ func (r *resolver) node(node soml.Node) {
 	}
 }
 
-// resolveText는 `<text>`의 외관을 확정한다.
+// resolveText는 `<text>`의 외관을 4단 캐스케이드로 확정한다 (PRD §8.3):
+//
+//	인라인 속성 > variant > 컴포넌트 기본값 > 역할/토큰
+//
+// 역할 기본값(완전한 외관)을 바닥에 깔고, 위 세 단을 낮은 단부터 부분 패치로 얹는다.
+// 병합은 mergeText(cascade.go) 한 곳에서만 일어난다 — 우선순위는 아래 세 줄의 순서가
+// 전부이고, 다른 어디에도 없다.
 func (r *resolver) resolveText(elem *soml.Element) {
 	style := textRoleDefaults(r.role(elem))
+	mergeText(&style, textComponentDefault())
+	mergeText(&style, r.variantPatch(elem))
+	mergeText(&style, r.inlinePatch(elem))
+	elem.Appearance = &soml.Appearance{Text: &style}
+}
 
-	// Iteration 2: 여기서 variant(테마가 정의한 외관 번들)와 컴포넌트 기본값이 역할 기본값
-	// 위에 얹힌다. 인라인 속성은 그 뒤에 적용되어 항상 마지막에 이긴다.
+// variantPatch는 `variant` 속성을 테마의 variant 표에서 찾는다.
+//
+// 모르는 variant는 에러가 아니라 **경고 + 빈 패치(컴포넌트 기본 외관 폴백)**다 (PRD §13-6):
+// variant 어휘는 테마의 사유물이라, 다른 테마로 만든 콘텐츠가 이 테마에서 빌드되지 않으면
+// 콘텐츠의 테마 간 이식성이 깨진다. 엄격함이 필요한 곳은 --strict가 에러로 승격한다.
+func (r *resolver) variantPatch(elem *soml.Element) textPatch {
+	attr, ok := elem.Attr("variant")
+	if !ok || !r.hasValue(attr) {
+		return textPatch{}
+	}
+	patch, known := textVariantPatch(attr.Value)
+	if !known {
+		r.warnf(attr.ValueSpan, "variant %q가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: %s)",
+			attr.Value, strings.Join(textVariantNames(), ", "))
+		return textPatch{}
+	}
+	return patch
+}
 
+// inlinePatch는 인라인 속성을 캐스케이드의 마지막 단으로 만든다. 값 어휘 검사와 진단은
+// 속성별 해석 함수(size/color/align)가 그대로 소유한다 — 틀린 값은 패치에 실리지 않으므로
+// 아래 단의 값이 남는다 (틀린 role이 기본 역할로 계속하는 것과 같은 정책).
+func (r *resolver) inlinePatch(elem *soml.Element) textPatch {
+	var patch textPatch
 	for _, attr := range elem.Attrs {
 		switch attr.Name {
 		case "size":
 			if size, ok := r.size(attr); ok {
-				style.Size = size
+				patch.size = &size
 			}
 		case "color":
 			if color, ok := r.color(attr); ok {
-				style.Color = color
+				patch.color = &color
 			}
 		case "align":
 			if align, ok := r.align(attr); ok {
-				style.Align = align
+				patch.align = &align
 			}
 		}
 	}
-	elem.Appearance = &soml.Appearance{Text: &style}
+	return patch
 }
 
 // role은 텍스트 역할을 해석한다. 값이 없거나 어휘 밖이면 진단하고 기본 역할로 계속한다 —
@@ -228,6 +265,8 @@ func attrExample(name string) string {
 	switch name {
 	case "role":
 		return "body"
+	case "variant":
+		return "kicker"
 	case "size":
 		return "24"
 	case "color":

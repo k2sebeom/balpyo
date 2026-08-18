@@ -33,7 +33,7 @@ func buildElementSpecs() map[string]elementSpec {
 			children: slideChildren(),
 		},
 		TextElement: {
-			attrs: []string{"role", "size", "color", "align"},
+			attrs: []string{"role", "variant", "size", "color", "align"},
 			model: modelInline,
 		},
 		noteElement: {model: modelText},
@@ -46,7 +46,12 @@ func buildElementSpecs() map[string]elementSpec {
 			// "code가 pre 안에서 무엇을 뜻하는가"가 렌더러마다 임의로 정해진다.
 			model = modelPre
 		}
-		specs[name] = elementSpec{model: model}
+		// 블록의 속성은 variant 하나다. 블록은 역할의 축약(`<p>` ≡ `<text role="body">`)이라
+		// 문단 단위 외관 선택인 variant가 자연스럽게 올 자리다. variant를 열지 **않는** 곳의
+		// 근거: 인라인 태그의 외관은 런 규칙(Iteration 2 항목 04)이 소유하고, 리스트
+		// 컨테이너와 <li>의 위계는 역할이 소유한다 — 항목마다 다른 외관 번들이 붙으면
+		// 리스트의 타이포그래피가 리스트이기를 멈춘다.
+		specs[name] = elementSpec{attrs: []string{"variant"}, model: model}
 	}
 	for _, name := range listContainerElements {
 		specs[name] = elementSpec{model: modelElements, children: []string{ListItemElement}}

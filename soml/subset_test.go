@@ -113,6 +113,11 @@ func TestParseTextSubset(t *testing.T) {
 			want: `text[role=body]("본문") p("본문")`,
 		},
 		{
+			name: "variant — text와 블록에 열려 있다",
+			src:  `<slide><text variant="kicker">개요</text><p variant="lead">본문</p></slide>`,
+			want: `text[variant=kicker]("개요") p[variant=lead]("본문")`,
+		},
+		{
 			name: "pre 코드 블록",
 			src:  `<slide><pre>x := 1</pre></slide>`,
 			want: `pre("x := 1")`,
@@ -192,9 +197,24 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			want: []string{"1:14 <a>에 알 수 없는 속성 target (쓸 수 있는 속성: href)"},
 		},
 		{
-			name: "블록에는 속성이 없다",
+			name: "블록의 속성은 variant뿐",
 			src:  `<slide><h1 align="center">제목</h1></slide>`,
-			want: []string{"1:12 <h1>에는 속성을 쓸 수 없다 (align)"},
+			want: []string{"1:12 <h1>에 알 수 없는 속성 align (쓸 수 있는 속성: variant)"},
+		},
+		{
+			name: "인라인에는 variant가 없다",
+			src:  `<slide><p><strong variant="kicker">x</strong></p></slide>`,
+			want: []string{"1:19 <strong>에는 속성을 쓸 수 없다 (variant)"},
+		},
+		{
+			name: "리스트 컨테이너에는 variant가 없다",
+			src:  `<slide><ul variant="lead"><li>x</li></ul></slide>`,
+			want: []string{"1:12 <ul>에는 속성을 쓸 수 없다 (variant)"},
+		},
+		{
+			name: "li에는 variant가 없다",
+			src:  `<slide><ul><li variant="lead">x</li></ul></slide>`,
+			want: []string{"1:16 <li>에는 속성을 쓸 수 없다 (variant)"},
 		},
 		{
 			name: "pre 안의 인라인은 아직이다",

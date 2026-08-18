@@ -53,6 +53,64 @@ func minimalFonts() []soml.FontToken {
 	}
 }
 
+// textComponentDefault는 `<text>` 컴포넌트의 기본 외관 패치다 — 캐스케이드의 셋째 단
+// (PRD §8.3 components.json에서 컴포넌트의 `default`가 놓이는 자리).
+//
+// minimal 테마에서는 **빈 패치**다. 역할 기본값(textRoleDefaults)이 이미 이 테마의
+// 타이포그래피 전부를 말하기 때문에, 여기서 필드를 정하면 둘 중 하나가 된다: 역할과 다른
+// 값이면 모든 `<text>`에서 역할 기본값을 가려 Iteration 1 덱의 산출물(골든)이 움직이고,
+// 같은 값이면 단이 있다는 것을 아무것도 증명하지 못하는 중복이다. 단은 구조로 존재하고
+// (resolveText가 항상 병합한다), 우선순위는 캐스케이드 단위 테스트가 합성 패치로 증명한다.
+// 필드를 실제로 정하는 것은 Iteration 10의 테마 패키지 파일이 처음이 된다.
+func textComponentDefault() textPatch { return textPatch{} }
+
+// textVariant는 테마가 이름 붙인 외관 번들 하나다.
+type textVariant struct {
+	name  string
+	patch textPatch
+}
+
+// textVariants는 minimal 테마의 텍스트 variant 표다 — 캐스케이드의 둘째 단(PRD §8.3
+// components.json의 `variants` 자리, 파일 포맷은 Iteration 10).
+//
+// variant 어휘는 표준화하지 않는다는 결정(PRD §13-6)에 따라 이 이름들은 minimal 테마의
+// 사유물이다. 값은 캐스케이드의 각 단이 실제로 구별되도록 골랐다 — 역할 기본값과 같은
+// 값을 정하는 variant는 우선순위 테스트가 아무것도 증명하지 못한다.
+//
+// 맵이 아니라 순서 있는 슬라이스인 이유는 색 토큰과 같다: 모르는 variant 경고가 나열하는
+// 목록이 결정적이어야 한다.
+func textVariants() []textVariant {
+	return []textVariant{
+		// kicker: 제목 위에 얹는 짧은 안내 줄. 캡션 크기(18)에 강조색과 굵기를 더한다 —
+		// body 기본값(24/400/fg)과 세 필드 모두 구별된다.
+		{name: "kicker", patch: textPatch{size: ptr(18.0), weight: ptr(700), color: ptr(soml.TokenColor("accent1"))}},
+		// lead: 본문보다 큰 도입 문단. size만 정한다(부분 패치) — 색·정렬·굵기는 아래 단이
+		// 소유하고, 32는 어느 역할 기본값(18/20/24/36/56)과도 겹치지 않는다.
+		{name: "lead", patch: textPatch{size: ptr(32.0)}},
+	}
+}
+
+// textVariantPatch는 이름으로 variant를 찾는다.
+func textVariantPatch(name string) (textPatch, bool) {
+	for _, v := range textVariants() {
+		if v.name == name {
+			return v.patch, true
+		}
+	}
+	return textPatch{}, false
+}
+
+// textVariantNames는 variant 이름 목록이다 — 경고 메시지가 허용 어휘를 나열하는 근거다
+// (Theme.ColorNames와 같은 태도).
+func textVariantNames() []string {
+	variants := textVariants()
+	names := make([]string, len(variants))
+	for i, v := range variants {
+		names[i] = v.name
+	}
+	return names
+}
+
 // textRoleDefaults는 텍스트 역할 5종의 기본 외관이다 (PRD §8.3 components.json의 `text`에
 // 대응). 캐스케이드의 가장 아래 단이며, 인라인 속성이 이것을 덮어쓴다.
 //

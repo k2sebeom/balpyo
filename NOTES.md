@@ -312,3 +312,71 @@
     "블록 = `<text role>`의 축약"을 어디까지 밀지 정할 때 함께 정해야 한다.
   - macOS Finder가 만든 `.DS_Store`가 골든 디렉토리에 들어와 testkit 대조를 깨뜨렸다
     (추적되지 않은 파일이라 삭제로 해결). `.gitignore` 추가는 항목 범위 밖이라 하지 않았다.
+
+## Iteration 02 · 02-cascade — 외관 해석기 4단 캐스케이드 완성 + `variant`
+<!-- item: 02/02-cascade -->
+
+- **한 것**:
+  - `core/cascade.go` 신규 — 캐스케이드 병합 기계. `textPatch`(포인터 필드로 "정하지
+    않음"과 0값을 구별하는 부분 외관)와 유일한 병합 지점 `mergeText`, 패치 리터럴용
+    `ptr[T]`. Iteration 4의 도형 외관이 같은 기계를 재사용할 자리다.
+  - `core/resolve.go` — `resolveText`를 4단 캐스케이드로 재구성: 역할 기본값(완전한 외관)
+    위에 `textComponentDefault()` ← `variantPatch` ← `inlinePatch`를 낮은 단부터 얹는다.
+    우선순위는 `mergeText` 호출 세 줄의 순서가 전부다. 모르는 variant는 `warnf`(경고) +
+    빈 패치 폴백. 기존 인라인 속성 해석(size/color/align)의 값 어휘 검사·진단은 문구와
+    위치 그대로 `inlinePatch`로 이사했다.
+  - `core/theme.go` — minimal 테마의 텍스트 variant 표 `textVariants()`:
+    `kicker`(size 18 + weight 700 + accent1), `lead`(size 32, 부분 패치). 조회
+    `textVariantPatch`, 경고 메시지용 `textVariantNames`(순서 있는 슬라이스 — 결정적
+    출력). `textComponentDefault()`는 빈 패치다 (아래 "설계 결정").
+  - `soml/parse.go` — `<text>`에 `variant` 속성 개방 (`role, variant, size, color, align`
+    순서), 블록 태그(h1~h3, p, blockquote, pre)에 `variant`만 개방. 인라인·리스트
+    컨테이너·`<li>`에는 열지 않았다 — 근거는 buildElementSpecs 주석에.
+  - `soml/appearance.go` — `TextStyle.LineHeight`의 낡은 주석 수정 (01/08의 "남긴 것"):
+    "spcPct가 배수를 받는다" → PPTX는 spcPts 절대값으로 환산한다 (01/07의 측정 결과 반영).
+  - 테스트: `core/cascade_test.go`(우선순위 표 — 단마다 하나씩 빼 가며, 부분성, 0값 구별,
+    variant 표의 구별성), `core/resolve_test.go`(variant > 역할, 인라인 > variant, 부분성,
+    모르는 variant의 경고 severity·문구·ValueSpan 위치·폴백 동등성, 값 없는/빈 variant
+    에러), `internal/pipeline/pipeline_test.go`(경고는 빌드 통과 + `--strict` 승격 시 실패),
+    `soml/subset_test.go`(variant 파싱 정상 케이스 + 속성 어휘 에러 4건 갱신·추가).
+
+- **설계 결정과 근거**:
+  - **패치 = 포인터 필드 구조체**. 대안이던 "완성 TextStyle + 필드 마스크"는 마스크와
+    값이 따로 놀 수 있어 버렸다 — 포인터는 "정함"과 "값"이 한 몸이다.
+  - **Role은 패치에 없다**: 역할은 외관 값이 아니라 캐스케이드의 바닥을 고르는 축이다.
+    variant가 역할을 바꿀 수 있으면 병합 도중 바닥이 바뀌어 순서가 정의되지 않는다.
+  - **minimal 테마의 컴포넌트 기본값(3단)은 빈 패치다.** 역할 기본값이 이미 완전한
+    외관이라, 여기서 필드를 정하면 역할과 다른 값 → 모든 `<text>`의 외관이 바뀌어
+    Iteration 1 골든이 움직이고, 같은 값 → 아무것도 증명하지 못하는 중복이다. 단은
+    구조로 존재하고(`resolveText`가 항상 병합), 우선순위는 cascade_test가 합성 패치로
+    증명한다. 실제 값은 Iteration 10 테마 패키지가 처음 넣는다.
+  - **variant 이름·값**: 항목 지시의 예시를 따라 `kicker`/`lead`. 값은 캐스케이드 각 단이
+    구별되도록 골랐고(테스트가 강제), `lead`는 의도적으로 size만 정해 부분성의 실물
+    예시가 되게 했다.
+  - **값 없는/빈 `variant`는 에러다** (모르는 variant의 경고와 다르다): 다른 외관 속성과
+    같은 `hasValue` 정책 — "값 없음"은 폴백할 뜻조차 정할 수 없는 형태이기 때문이다.
+  - **경고 문구**: `variant "hero"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의
+    variant: kicker, lead)` — 색 토큰 진단과 같은 태도로 테마의 어휘 목록을 싣고,
+    폴백했다는 사실을 문구에 남겼다 (경고를 무시한 저자가 결과를 예측할 수 있게).
+  - **블록의 variant 개방으로 기존 파서 진단 문구가 바뀌었다**: `<h1 align>`이
+    "속성을 쓸 수 없다 (align)"에서 "알 수 없는 속성 align (쓸 수 있는 속성: variant)"로.
+    허용 어휘가 비어 있지 않게 되면서 진단 분기가 바뀐 것이고, 테스트를 그에 맞춰 갱신했다
+    (01의 "열린 질문 — 블록 태그의 속성"에 대한 부분 답이기도 하다: variant만 연다).
+
+- **검증**: `gofmt -l .` 무출력, `go vet ./...`, `go test ./...` 로컬 전부 통과,
+  `make test`(컨테이너, LibreOffice·Chromium 포함) 전부 통과. `git status`에
+  testdata/골든 변화 없음 — 캐스케이드 재구성이 Iteration 1 덱의 해석 결과를 바이트
+  단위로 보존한다는 증거다. RED를 먼저 확인했다 (구현 전 core 빌드 실패 + soml/pipeline
+  테스트 실패).
+
+- **남긴 것**:
+  - 블록 태그의 `variant`는 **파싱만** 된다 — core는 `<text>`만 해석하므로, 항목 03이
+    블록을 역할 등가로 해석할 때 같은 `resolveText`(또는 그 캐스케이드)를 태워야 한다.
+    렌더 매핑 없는 블록은 렌더러가 명시적으로 멈추므로 조용한 무시는 없다.
+  - `render/web/style.go`의 같은 낡은 spcPct 주석은 항목 05가 고친다 (지시대로 남겨 둠).
+  - **열린 질문 — attrExample의 "kicker"**: 값 없는 `variant`의 에러 예시가 minimal
+    테마의 사유 어휘를 인용한다. 테마가 파일로 나가는 Iteration 10에서 예시를 테마
+    어휘에서 뽑을지, 중립 예시로 바꿀지 정해야 한다.
+  - Iteration 10이 variant 표·컴포넌트 기본값을 테마 패키지 파일로 옮길 때 `ptr` 헬퍼와
+    하드코딩 표(`textVariants`)는 로더로 대체된다 — 병합 기계(`textPatch`/`mergeText`)는
+    그대로 남는 경계로 설계했다.

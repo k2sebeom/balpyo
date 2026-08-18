@@ -38,8 +38,12 @@ type TextStyle struct {
 	// Weight는 CSS font-weight 수치다 (400·700). OOXML은 굵기 단계가 없어 렌더러가
 	// 임계값으로 rPr@b를 판단한다 — 그 임계값은 렌더러의 몫이고 여기서는 수치를 보존한다.
 	Weight int
-	// LineHeight는 폰트 크기 배수다 (무단위). CSS line-height와 OOXML lnSpc@spcPct가
-	// 둘 다 배수를 받으므로 이 표현이 양 타깃에 그대로 간다.
+	// LineHeight는 폰트 크기 배수다 (무단위). 웹은 CSS line-height로 배수를 그대로 받지만
+	// PPTX는 **절대 줄간격**(lnSpc@spcPts)으로 환산해 낸다 (render/pptx.LineSpacing) —
+	// spcPct(배수)는 엔진마다 기준이 달라(CSS는 폰트 크기, LibreOffice는 폰트 고유 줄 높이)
+	// 같은 150%가 글줄을 밀었다 (PRD §13-1의 측정, NOTES.md 01/07). 배수 표현을 여기
+	// 유지하는 이유: "크기의 몇 배"가 저자와 테마의 의도이고, 절대값 환산은 크기가 확정된
+	// 뒤 타깃 경계에서만 가능하다.
 	LineHeight float64
 	Color      Color
 	Align      TextAlign

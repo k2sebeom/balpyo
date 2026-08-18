@@ -208,6 +208,33 @@ func TestLoadDeckErrors(t *testing.T) {
 	}
 }
 
+// 모르는 variant 경고는 기본 빌드를 통과시키고 --strict가 에러로 승격한다 (PRD §13-6).
+// core의 경고가 pipeline의 승격 경로를 실제로 타는지 여기서 잇는다.
+func TestLoadDeckStrictPromotesUnknownVariantWarning(t *testing.T) {
+	files := map[string]string{
+		"slides/001_title.slide": "<slide>\n  <text variant=\"hero\">제목</text>\n</slide>\n",
+	}
+
+	deck, diags, err := LoadDeck(Options{ProjectDir: newProject(t, files)})
+	if err != nil {
+		t.Fatalf("경고만으로 빌드가 실패했다: %v", err)
+	}
+	if deck == nil || len(diags) != 1 || diags[0].Severity != soml.SeverityWarning {
+		t.Fatalf("경고 1개가 남아야 한다: %v", diags)
+	}
+	if !strings.Contains(diags[0].String(), "slides/001_title.slide:2:18: warning:") {
+		t.Errorf("진단 = %q, want 파일:행:열과 warning 표시", diags[0].String())
+	}
+
+	_, diags, err = LoadDeck(Options{ProjectDir: newProject(t, files), Strict: true})
+	if err == nil {
+		t.Fatal("--strict는 경고를 에러로 승격해 빌드를 멈춰야 한다")
+	}
+	if len(diags) != 1 || diags[0].Severity != soml.SeverityError {
+		t.Errorf("승격된 진단 = %v, want error 1개", diags)
+	}
+}
+
 func TestBuildWritesBothTargets(t *testing.T) {
 	dir := newProject(t, map[string]string{
 		"balpyo.json":            `{"title": "my talk"}`,
