@@ -43,6 +43,15 @@ func TestLibreOfficeOpensTextShapes(t *testing.T) {
   <text role="code" color="#abcdef">balpyo build --target pptx</text>
   <note>데모 실패 시 스크린샷으로 대체. R&D 예산 언급은 생략.</note>
 </slide>`,
+		// 런 분할·hlinkClick·a:br·pre — 슬라이드 rels의 External 관계와 rPr의 i/u·
+		// hlinkClick 순서가 스키마를 벗어나면 여기서 복구 경고로 드러난다 (항목 06).
+		// 같은 URL이 두 번 나와 관계 재사용 경로도 지난다.
+		"<slide>\n" +
+			"  <h2>배포 <strong>자동화</strong> 회고</h2>\n" +
+			"  <p>지연 <span color=\"accent1\">-38%</span>, 상세는 <a href=\"https://example.com/deck?a=1&b=2\">발표 자료</a>와\n" +
+			"  <a href=\"https://example.com/deck?a=1&b=2\">부록</a> 참고<br/>문의: <em>플랫폼팀</em> (<code>#platform</code>)</p>\n" +
+			"  <pre>$ balpyo build\n\ndist/deck.pptx</pre>\n" +
+			"</slide>",
 	}
 	for i, src := range sources {
 		file := fmt.Sprintf("slides/%03d.slide", i+1)

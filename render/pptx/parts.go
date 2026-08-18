@@ -149,7 +149,7 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 
 	for i, slide := range deck.Slides {
 		n := i + 1
-		shapes, err := shapesXML(deck, slide, g)
+		shapes, links, err := shapesXML(deck, slide, g)
 		if err != nil {
 			return nil, err
 		}
@@ -160,10 +160,17 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		if err != nil {
 			return nil, err
 		}
+		// 하이퍼링크 관계의 id·순서는 shapesXML의 순회가 배정한 그대로다 — hlinkClick의
+		// r:id와 이 목록이 다른 곳에서 나오면 어긋난 순간이 파일을 열 때까지 조용하다.
+		linkRels := make([]slideLinkRel, len(links.urls))
+		for j, url := range links.urls {
+			linkRels[j] = slideLinkRel{ID: fmt.Sprintf("rId%d", hyperlinkRelBase+j), Target: url}
+		}
 		rels, err := renderTemplate(slideRelsPart(n), slideRelsTemplate, struct {
 			*soml.Slide
-			N int
-		}{slide, n})
+			N     int
+			Links []slideLinkRel
+		}{slide, n, linkRels})
 		if err != nil {
 			return nil, err
 		}
@@ -448,10 +455,23 @@ const slideTemplate = xmlDecl + `<p:sld xmlns:a="http://schemas.openxmlformats.o
 </p:sld>
 `
 
+// slideLinkRel은 슬라이드 rels 파트에 실리는 외부 하이퍼링크 관계 하나다.
+type slideLinkRel struct {
+	ID     string
+	Target string
+}
+
+// 관계 id 배정: rId1 = 레이아웃, rId2 = 노트 슬라이드(없어도 예약 — hyperlinkRelBase의
+// 주석), rId3부터 외부 하이퍼링크가 문서 순서로 붙는다 (shape.go의 slideLinks가 배정한다).
+// TargetMode="External"이 없으면 소비자가 URL을 패키지 내부 파트 경로로 읽는다 — 그 파일은
+// 열리기는 하고 링크만 조용히 죽는다.
 const slideRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
 {{- if .Notes}}
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide{{.N}}.xml"/>
+{{- end}}
+{{- range .Links}}
+  <Relationship Id="{{.ID}}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="{{xml .Target}}" TargetMode="External"/>
 {{- end}}
 </Relationships>
 `

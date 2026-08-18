@@ -586,3 +586,76 @@
     확인, TASKS I2)에서 답답해 보이면 항목 07 전에 상수 하나만 바꾸면 된다.
   - ADR 승격 대기 (항목 09): 측정 대상 = 블록 종류 카탈로그(09 지시의 3번), 시맨틱 태그
     선택, 마커의 PPTX 관례 채택 + 36px 상수.
+
+## Iteration 02 · 06-pptx-runs — PPTX 텍스트 런 분할 + hlinkClick + a:br
+<!-- item: 02/06-pptx-runs -->
+
+- **한 것**:
+  - `render/pptx/shape.go` — `textBodyXML`이 평탄화된 문자열 대신 **블록 요소를 받아
+    자식을 순회**한다: 문자 데이터 잎마다 `a:r`(스타일은 잎을 감싼 가장 안쪽 요소의 확정
+    `TextStyle`), `<br/>` → `a:br`, `<pre>`의 보존 개행 → `a:br`(빈 줄은 연속 a:br, 빈
+    a:t는 내지 않는다) + `bodyPr@wrap="none"`. 인라인 런의 rPr에 `i="0/1"`·`u="none/sng"`
+    (`italicValue`/`underlineValue`), `<a>` 잎에는 latin/ea **뒤에** `<a:hlinkClick r:id>`
+    (CT_TextCharacterProperties의 자식 순서 — 어기면 LibreOffice가 복구를 묻는다).
+    `slideLinks`가 순회 중 외부 URL에 rel id를 배정한다. `writeShapeNode`의 대상을
+    `<text>` + `soml.KindBlock` 카탈로그로 넓혔다 (`writeTextShape` 이름·좌표 경로는 그대로,
+    `<ul>`/`<ol>`은 기존 가드 에러 유지 — 항목 07).
+  - `render/pptx/parts.go` — `shapesXML`이 돌려준 링크 목록을 `slideRelsTemplate`의
+    `{{range .Links}}` 로 실었다: `Type=…/hyperlink`, `Target`은 XML 이스케이프,
+    `TargetMode="External"`. r 네임스페이스는 슬라이드 루트에 이미 선언되어 있다 (확인).
+  - `render/pptx/runs_test.go` 신규 — 런 분할(경계 공백이 앞 런 끝에 남음), 중첩
+    `<strong><em>` 누적, span 토큰 색 schemeClr, code 런의 부모 크기 + mono 리터럴
+    typeface, hlinkClick↔rels 짝·URL `&` 이스케이프, rel id 결정성(재사용·노트 공존·
+    바이트 동일성), 웹·PPTX 링크 색의 표 일치(런 accent1 참조 = 테마 hlink 슬롯 값),
+    `<br/>`·pre 개행의 a:br(문단 불변), 블록 태그 p:sp, 리스트 가드, 미해석 인라인·Link
+    없는 `<a>` 에러, 서식 없는 런의 XML 불변.
+  - `render/pptx/soffice_test.go` — 열림 테스트에 슬라이드 3 추가: h2+strong, span 색,
+    같은 URL 링크 2회(관계 재사용 경로), br, em, code, pre.
+- **설계 결정과 근거**:
+  - **rel id 배정: rId1=레이아웃, rId2=노트(없어도 예약), rId3부터 외부 URL이 문서 순서**.
+    노트 자리를 예약하지 않으면 노트 유무가 링크 번호를 밀어, 노트 한 줄을 더한 커밋의
+    diff에 링크 관계 전부가 잡음으로 실린다. OPC 관계 id는 임의 문자열이라 빈 번호는
+    유효하다 (notesSlidePart 번호 규칙과 같은 태도).
+  - **같은 URL은 관계 하나를 재사용**한다 (매번 내는 대안을 버림): OPC 관계의 정체는
+    (Type, Target, TargetMode)라 중복은 정보가 없고, PowerPoint도 재저장 시 하나로
+    합치므로 매번 내면 재저장 diff에 잡음이 남는다. 테스트가 같은 URL 3회 → 관계 1개
+    (rId3 재사용)를 고정한다.
+  - **i/u 명시는 인라인 런만** (`runContext.inline` — 웹의 textStyleCSS 6선언/runStyleCSS
+    8선언 분리와 같은 결정): 지금 어휘에서 블록 스타일은 Italic/Underline을 가질 수
+    없으므로 블록 직속 런에 `i="0" u="none"`을 더하면 Iteration 1 골든만 이유 없이
+    움직인다. 그 덕에 01_text 골든이 바이트 단위로 그대로다 (`TestRunPlainTextUnchanged`가
+    XML 모양을 단위 테스트로도 고정). 블록이 Italic을 얻는 날 이 구분이 함께 사라져야
+    한다 (runStyleCSS 주석과 같은 이월). hlinkClick 런은 core가 Underline=true를 확정하므로
+    `u="sng"`·solidFill이 항상 나간다 — 뷰어의 자동 밑줄·자동 색에 기대지 않는다.
+  - **인접 같은 스타일 잎은 합치지 않는다** (항목 지시의 확인 사항): 렉서가 연속 문자
+    데이터를 다음 `<`까지 토큰 하나로 담으므로 잎 경계는 대개 요소이고, **주석이 문자
+    데이터를 쪼갠 경우에만** 같은 스타일의 이웃 런이 생긴다 — rPr가 같은 이웃 런은
+    뷰어에서 구별되지 않는 유효한 XML이라 합치는 코드는 값어치가 없다 (writeRuns 주석).
+  - **`<br/>`·pre 개행은 문단을 쪼개지 않고 a:br**: 문단 사이 간격은 줄간격과 다른 축이라
+    쪼개면 웹(같은 블록 안 줄바꿈)과 갈라질 수 있다. pre의 `wrap="none"`은 웹의
+    `white-space: pre`(항목 05)의 짝이다. CRLF 원문의 `\r`은 a:t에 남기지 않는다.
+  - **href의 &는 원문 그대로, rels에서만 XML 이스케이프**: SOML은 엔티티를 해석하지
+    않으므로 (파서 계약) 저자가 쓴 `?a=1&b=2`가 웹 href와 PPTX Target에 같은 문자열로
+    실린다.
+  - **링크 색의 표 결합을 산출물로 고정** (02/04의 열린 질문에 대한 답):
+    `TestRunHyperlinkColorMatchesThemeHlinkSlot`이 런의 `schemeClr val="accent1"`과 테마
+    파트 `<a:hlink>`의 RGB(accent1 값)가 같은 표에서 나오는 것을 단정한다 — core↔render
+    임포트 방향 때문에 컴파일러로 못 묶는 관례를 테스트가 잡는다.
+- **검증**: RED 먼저 확인 (구현 전 13건 실패 — 전부 "매핑이 없다"). 구현 후 `gofmt -l .`
+  무출력, `go vet ./...`, `go test ./...` 로컬 전부 통과, `make test`(컨테이너, finch)
+  전부 통과. 컨테이너에서 `TestLibreOfficeOpensTextShapes -v -count=1` 단독 실행 PASS —
+  hlinkClick·External 관계·i/u·wrap="none"이 든 슬라이드를 LibreOffice가 복구 경고 없이
+  열었다 (OpenPPTX는 stderr의 복구 흔적을 실패로 본다). `git status`에 testdata/골든 변화
+  없음 — 서식 없는 텍스트의 런 XML이 바이트 단위로 그대로다.
+- **남긴 것**:
+  - 항목 07(리스트)이 이 런 분할기(`writeRuns`)를 그대로 쓴다 — li 하나가 `a:p` 하나가
+    되는 구조라 문단 분리가 필요하고, `textBodyXML`의 단일 `a:p` 가정을 그때 풀어야 한다.
+  - **열린 질문 — 내부 앵커(`href="#/id"`)**: v1은 외부 URL만이고, 지금은 모든 href가
+    `TargetMode="External"`로 나간다 — 내부 앵커도 문법상 유효한 열린 값이라(core의 href
+    검증은 URL 문법을 보지 않는다) PPTX에서는 죽은 링크가 된다. 슬라이드 점프 액션
+    (`ppaction://hlinksldjump` + 슬라이드 파트 관계)으로 나누려면 "무엇이 내부 앵커인가"의
+    판별(`#/` 접두?)을 core와 웹 런타임(딥링크 해시 규칙)과 한 곳에서 정해야 한다 —
+    렌더러가 각자 판별하면 같은 href가 타깃마다 다른 종류의 링크가 된다.
+  - TASKS의 "인라인 태그 → 웹 그대로 / PPTX 런 분할" 체크박스를 [x]로 바꿨다 (웹은 항목
+    05, PPTX 런은 이 항목). "테스트"·"리뷰" 박스는 리스트(항목 07)까지 묶여 있어 두지
+    않았다.
