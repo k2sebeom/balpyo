@@ -15,23 +15,68 @@ const noteElement = "note"
 
 // elementSpecs는 **닫힌 어휘**다 (PRD §7.2). 여기 없는 태그 이름은 무시되지 않고 에러가 된다.
 //
-// 이번 iteration의 어휘는 세 태그뿐이다. 카탈로그의 나머지는 iteration을 따라 열린다 —
-// 텍스트 서브셋(`h1`~`h3`, `p`, `ul`/`li` …)은 Iteration 2, 레이아웃 태그는 Iteration 3.
-// 어휘를 미리 열어 두면 "파싱은 되는데 렌더는 안 되는" 상태가 생기고, 그것이 닫힌 어휘로
-// 막으려던 바로 그 조용한 실패다.
-var elementSpecs = map[string]elementSpec{
-	RootElement: {
-		attrs:    []string{"id", "skip"},
-		model:    modelElements,
-		children: []string{TextElement, noteElement},
-	},
-	TextElement: {
-		attrs: []string{"role", "size", "color", "align"},
-		model: modelText,
-	},
-	noteElement: {
-		model: modelText,
-	},
+// 어휘는 iteration을 따라 열린다 — 텍스트 서브셋(subset.go의 카탈로그)은 Iteration 2,
+// 레이아웃 태그는 Iteration 3. 어휘를 미리 열어 두면 "파싱은 되는데 렌더는 안 되는" 상태가
+// 생기고, 그것이 닫힌 어휘로 막으려던 바로 그 조용한 실패다. 렌더 매핑이 아직 없는 태그는
+// 렌더러가 명시적으로 멈춘다 (render/web.writeNode, render/pptx.writeShapeNode).
+var elementSpecs = buildElementSpecs()
+
+// buildElementSpecs는 문법 표를 만든다. 서브셋 태그의 규칙은 카탈로그(subset.go)의 종류에서
+// 파생된다 — 태그를 카탈로그에 추가하면 문법이 따라오고, 두 표가 어긋날 수 없다.
+func buildElementSpecs() map[string]elementSpec {
+	specs := map[string]elementSpec{
+		RootElement: {
+			attrs: []string{"id", "skip"},
+			model: modelElements,
+			// PRD §7.7의 `reveal` 속성은 열지 않는다 — 웹 런타임의 reveal은 Phase 2이고,
+			// 렌더가 없는 속성을 어휘에 열면 닫힌 어휘가 막으려던 조용한 무시가 된다.
+			children: slideChildren(),
+		},
+		TextElement: {
+			attrs: []string{"role", "size", "color", "align"},
+			model: modelInline,
+		},
+		noteElement: {model: modelText},
+	}
+	for _, name := range blockElements {
+		model := modelInline
+		if name == "pre" {
+			// v1의 pre는 문자 데이터만 담는다 — <pre><code> 관용은 코드 하이라이팅(P1)이
+			// 인라인 서식과 어떻게 만나는지 정해질 때 연다. 지금 열면 그 결정 전에
+			// "code가 pre 안에서 무엇을 뜻하는가"가 렌더러마다 임의로 정해진다.
+			model = modelPre
+		}
+		specs[name] = elementSpec{model: model}
+	}
+	for _, name := range listContainerElements {
+		specs[name] = elementSpec{model: modelElements, children: []string{ListItemElement}}
+	}
+	specs[ListItemElement] = elementSpec{model: modelInline}
+	for _, name := range inlineElements {
+		spec := elementSpec{model: modelInline}
+		switch name {
+		case "a":
+			// 속성은 href 하나다. href 없는 <a>의 진단은 core(값 층)의 몫이다 — 파서는
+			// 이름 allowlist만 보고, "속성이 있어야 한다"는 값의 요구이기 때문이다.
+			spec.attrs = []string{"href"}
+		case "span":
+			// color·weight만 연다. size를 막는 이유: 런 하나가 커지면 웹의 줄 박스 높이가
+			// 변하는데 PPTX 줄간격은 문단 절대값(spcPts)이라 두 타깃의 글줄이 갈라진다 —
+			// core가 size="%"를 막은 것과 같은 종류의 근거다 (core/resolve.go).
+			spec.attrs = []string{"color", "weight"}
+		case BreakElement:
+			spec.model = modelVoid
+		}
+		specs[name] = spec
+	}
+	return specs
+}
+
+// slideChildren은 <slide>의 자식 어휘다. 순서가 진단 메시지의 순서다.
+func slideChildren() []string {
+	children := []string{TextElement, noteElement}
+	children = append(children, blockElements...)
+	return append(children, listContainerElements...)
 }
 
 // elementSpec은 태그 하나의 문법 규칙이다. 값 어휘는 여기 없다 — 값은 core가 본다.
@@ -50,8 +95,16 @@ const (
 	// modelElements는 요소만 담는다. 공백 아닌 문자 데이터는 에러다 — 슬라이드에 그냥 쓴
 	// 글자가 어떤 역할의 텍스트인지는 정할 방법이 없고, 닫힌 어휘는 그런 추측을 하지 않는다.
 	modelElements contentModel = iota
-	// modelText는 문자 데이터만 담는다.
+	// modelText는 문자 데이터만 담는다 (<note>).
 	modelText
+	// modelInline은 문자 데이터와 인라인 태그를 담는다 (<text>·블록·<li>).
+	modelInline
+	// modelPre는 문자 데이터만 담되 **공백을 원문 그대로 보존**한다 (<pre>).
+	// 여는 태그 직후·닫는 태그 직전의 개행 하나만 벗긴다 — HTML의 관례로, 저자가 <pre>
+	// 다음 줄부터 쓰게 하기 위한 것이지 내용이 아니다 (trimPreEdges).
+	modelPre
+	// modelVoid는 아무것도 담지 않는다 (<br>). 자기 닫힘(<br/>)만 허용된다.
+	modelVoid
 )
 
 // SlideDoc은 `.slide` 파일 하나의 파싱 결과다.
@@ -167,7 +220,7 @@ func (p *parser) parseDocument() *Element {
 				continue
 			}
 			parent := parentOf(stack)
-			p.checkPlacement(elem, parent, root)
+			p.checkPlacement(elem, stack, root)
 			switch {
 			case parent != nil:
 				parent.Children = append(parent.Children, elem)
@@ -175,6 +228,11 @@ func (p *parser) parseDocument() *Element {
 				root = elem
 			}
 			if stillOpen {
+				if _, known := elementSpecs[elem.Name]; known && specOf(elem).model == modelVoid {
+					// void 요소는 자기 닫힘이 표준이다. 진단하되 스택에는 올린다 — 짝이 되는
+					// </br>가 "여는 태그가 없다"는 두 번째 진단을 만들지 않게.
+					p.errorf(elem.NameSpan, "void 태그 <%s>은 내용을 가질 수 없다 (<%s/>로 쓴다)", elem.Name, elem.Name)
+				}
 				stack = append(stack, elem)
 			} else {
 				p.closeElement(elem)
@@ -222,8 +280,18 @@ func (p *parser) charData(tok Token, parent *Element) {
 			// 부풀리지 않는다.
 			return
 		}
-		if spec.model == modelText {
+		switch spec.model {
+		case modelText, modelInline:
 			parent.Children = append(parent.Children, &Text{Value: collapseSpace(tok.Text), Span: tok.Span})
+			return
+		case modelPre:
+			// pre 안에서는 접지 않는다 — 개행·연속 공백이 곧 내용이다. 양 끝 개행 규칙은
+			// 닫힐 때 적용된다 (trimPreEdges).
+			parent.Children = append(parent.Children, &Text{Value: tok.Text, Span: tok.Span})
+			return
+		case modelVoid:
+			// void 위반은 여는 태그에서 이미 진단됐다 (parseDocument). 내용까지 진단해
+			// 하나의 오용을 여러 줄로 부풀리지 않는다.
 			return
 		}
 	}
@@ -233,6 +301,10 @@ func (p *parser) charData(tok Token, parent *Element) {
 	}
 	if parent == nil {
 		p.errorf(dataSpan(tok), "요소 밖에 문자 데이터가 있다 (내용은 <%s> 안에 쓴다)", RootElement)
+		return
+	}
+	if KindOf(parent.Name) == KindListContainer {
+		p.errorf(dataSpan(tok), "<%s> 안에 문자 데이터를 직접 쓸 수 없다 (<%s>로 감싼다)", parent.Name, ListItemElement)
 		return
 	}
 	p.errorf(dataSpan(tok), "<%s> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)", parent.Name)
@@ -371,11 +443,13 @@ func (p *parser) skipToTagEnd() {
 	}
 }
 
-// checkPlacement는 요소가 놓인 자리를 검증한다.
-func (p *parser) checkPlacement(elem, parent, root *Element) {
+// checkPlacement는 요소가 놓인 자리를 검증한다. stack은 아직 열려 있는 조상들이다 —
+// <a> 안의 <a>처럼 부모만 봐서는 잡을 수 없는 규칙이 있어 부모가 아니라 스택을 받는다.
+func (p *parser) checkPlacement(elem *Element, stack []*Element, root *Element) {
 	if _, known := elementSpecs[elem.Name]; !known {
 		return // 미지의 태그는 이미 진단됐다 — 같은 오타로 진단을 두 번 내지 않는다.
 	}
+	parent := parentOf(stack)
 	if parent == nil {
 		switch {
 		case elem.Name != RootElement:
@@ -389,9 +463,56 @@ func (p *parser) checkPlacement(elem, parent, root *Element) {
 	if !known {
 		return
 	}
-	if spec.model == modelText {
+	switch spec.model {
+	case modelText, modelPre:
 		p.errorf(elem.NameSpan, "<%s> 안에는 문자 데이터만 올 수 있다 (<%s>는 쓸 수 없다)", parent.Name, elem.Name)
 		return
+	case modelVoid:
+		return // void 위반은 여는 태그에서 이미 진단됐다 (parseDocument).
+	}
+	// <li>는 어디에 있든 리스트 컨테이너의 자식이어야 한다 — 자리별 일반 메시지보다
+	// "리스트 안에 쓴다"가 고칠 방법을 곧장 말한다.
+	if KindOf(elem.Name) == KindListItem && KindOf(parent.Name) != KindListContainer {
+		p.errorf(elem.NameSpan, "<%s>는 <%s>/<%s>의 자식으로만 쓸 수 있다",
+			ListItemElement, listContainerElements[0], listContainerElements[1])
+		return
+	}
+	if spec.model == modelInline {
+		switch KindOf(elem.Name) {
+		case KindInline:
+			if elem.Name != "a" {
+				return
+			}
+			// <a> 안의 <a>는 에러다 — 겹친 링크는 "무엇을 클릭했는가"가 정의되지 않고,
+			// PPTX hlinkClick은 런 하나에 링크 하나다. 사이에 다른 인라인이 끼어도 잡히게
+			// 부모가 아니라 열린 조상 전체를 본다.
+			for _, open := range stack {
+				if open.Name == "a" {
+					p.errorf(elem.NameSpan, "<a> 안에 <a>를 겹칠 수 없다")
+					return
+				}
+			}
+			return
+		case KindListContainer:
+			if KindOf(parent.Name) == KindListItem {
+				// PPTX의 들여쓰기 단계(lvl) 매핑 없이 열면 웹에서만 동작한다 — 한 타깃만
+				// 그리는 어휘는 열지 않는다.
+				p.errorf(elem.NameSpan, "<%s> 안에 <%s>을 겹칠 수 없다 — 중첩 리스트는 아직 지원하지 않는다",
+					parent.Name, elem.Name)
+				return
+			}
+			p.errorf(elem.NameSpan, "<%s> 안에 블록 태그 <%s>는 올 수 없다 (블록은 겹치지 않는다)", parent.Name, elem.Name)
+			return
+		case KindBlock:
+			// 블록은 슬라이드 직속이다 — 블록 안의 블록은 "문단 안의 문단"이라 두 타깃
+			// 어디에도 대응하는 구조가 없다.
+			p.errorf(elem.NameSpan, "<%s> 안에 블록 태그 <%s>는 올 수 없다 (블록은 겹치지 않는다)", parent.Name, elem.Name)
+			return
+		default:
+			p.errorf(elem.NameSpan, "<%s> 안에는 문자 데이터와 인라인 태그만 올 수 있다 (<%s>는 쓸 수 없다)",
+				parent.Name, elem.Name)
+			return
+		}
 	}
 	for _, allowed := range spec.children {
 		if allowed == elem.Name {
@@ -423,8 +544,11 @@ func (p *parser) checkAttrName(elem *Element, attr Attr) {
 
 // closeElement는 요소를 닫으며 콘텐츠 모델에 따른 정규화를 마친다.
 func (p *parser) closeElement(elem *Element) {
-	if specOf(elem).model == modelText {
+	switch specOf(elem).model {
+	case modelText, modelInline:
 		elem.Children = trimEdgeSpace(elem.Children)
+	case modelPre:
+		elem.Children = trimPreEdges(elem.Children)
 	}
 }
 
@@ -563,6 +687,42 @@ func trimEdgeSpace(children []Node) []Node {
 		out = append(out, child)
 	}
 	return out
+}
+
+// trimPreEdges는 <pre> 양 끝의 개행을 **하나씩만** 벗긴다 (HTML 관례).
+//
+// `<pre>` 직후의 개행은 저자가 다음 줄부터 쓰기 위한 것이지 내용이 아니고, 닫는 태그
+// 직전의 개행도 같다. 딱 하나만 벗기므로 빈 줄로 시작하는 코드(`\n\ncode`)는 표현할 수
+// 있다. 개행 뒤에 들여쓰기가 붙은 `code\n  </pre>`의 개행은 "직전"이 아니므로 벗기지
+// 않는다 — pre 안의 공백은 전부 내용이라는 원칙이 우선한다.
+func trimPreEdges(children []Node) []Node {
+	if len(children) == 0 {
+		return children
+	}
+	if first, ok := children[0].(*Text); ok {
+		first.Value = cutEdgeNewline(first.Value, strings.CutPrefix)
+	}
+	if last, ok := children[len(children)-1].(*Text); ok {
+		last.Value = cutEdgeNewline(last.Value, strings.CutSuffix)
+	}
+	out := children[:0]
+	for _, child := range children {
+		if text, ok := child.(*Text); ok && text.Value == "" {
+			continue
+		}
+		out = append(out, child)
+	}
+	return out
+}
+
+// cutEdgeNewline은 한쪽 끝의 개행 하나를 벗긴다. CRLF도 개행 하나다.
+func cutEdgeNewline(s string, cut func(string, string) (string, bool)) string {
+	for _, newline := range []string{"\r\n", "\n"} {
+		if rest, ok := cut(s, newline); ok {
+			return rest
+		}
+	}
+	return s
 }
 
 // unquote는 값 토큰에서 값과 인용 부호를 제외한 구간을 뽑는다. 값 안에 줄바꿈은 있을 수

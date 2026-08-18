@@ -1,0 +1,13 @@
+<!-- 리스트. ul/ol이 양 타깃에서 같은 마커·들여쓰기로 보이는지(I2 리뷰 포인트)의 시험대다. -->
+<slide id="lists">
+  <h2>올해의 세 가지 변화</h2>
+  <ul>
+    <li>모놀리스 분리 완료</li>
+    <li>배포 파이프라인 <strong>자동화</strong></li>
+    <li>관측성 스택 도입 (<code>otel</code> + Grafana)</li>
+  </ul>
+  <ol>
+    <li>먼저 잰다</li>
+    <li>그 다음 고친다</li>
+  </ol>
+</slide>

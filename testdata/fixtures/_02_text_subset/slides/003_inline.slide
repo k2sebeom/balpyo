@@ -1,0 +1,10 @@
+<!-- 인라인 서식 전종. 런 분할(항목 06)의 입력이 되는 슬라이드다 — 경계 공백이 계약대로
+     접히는지, 링크·색·굵기·줄바꿈이 rPr/hlinkClick으로 번역되는지를 여기서 본다. -->
+<slide id="inline">
+  <h2>인라인 서식</h2>
+  <p>배포 파이프라인 <strong>자동화</strong>와 <em>관측성</em>이 핵심이다.</p>
+  <p>빌드는 <code>make test</code>로 돌리고, 문서는
+  <a href="https://example.com/docs">레퍼런스</a>를 본다.</p>
+  <p>첫 줄<br/>둘째 줄</p>
+  <p><span color="accent1" weight="700">강조된 런</span>과 보통 런이 한 문단에 있다.</p>
+</slide>

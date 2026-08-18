@@ -299,9 +299,9 @@ func TestParseErrors(t *testing.T) {
 			want: []string{`1:8 태그 안에 쓸 수 없는 문자 "@"`},
 		},
 		{
-			name: "잘못된 중첩 — 텍스트 안의 요소",
+			name: "잘못된 중첩 — 텍스트 안의 텍스트",
 			src:  `<slide><text><text>a</text></text></slide>`,
-			want: []string{"1:15 <text> 안에는 문자 데이터만 올 수 있다"},
+			want: []string{"1:15 <text> 안에는 문자 데이터와 인라인 태그만 올 수 있다"},
 		},
 		{
 			name: "잘못된 중첩 — 슬라이드 안의 슬라이드",
@@ -395,12 +395,12 @@ func TestParseColumnIsRuneBased(t *testing.T) {
 
 // 진단 메시지는 무엇을 고쳐야 하는지 알려준다 — 닫힌 어휘 위반이면 허용 어휘를 함께 낸다.
 func TestParseDiagnosticNamesVocabulary(t *testing.T) {
-	_, diags := Parse("a.slide", "<slide><h1>제목</h1></slide>")
+	_, diags := Parse("a.slide", "<slide><h6>제목</h6></slide>")
 	if len(diags) == 0 {
-		t.Fatal("h1은 Iteration 2의 어휘다 — 지금은 에러여야 한다")
+		t.Fatal("h6은 어휘 밖이다 (서브셋은 h1~h3) — 에러여야 한다")
 	}
 	message := diags[0].Message
-	for _, want := range []string{"<note>", "<slide>", "<text>"} {
+	for _, want := range []string{"<note>", "<slide>", "<text>", "<h1>", "<ul>", "<strong>"} {
 		if !strings.Contains(message, want) {
 			t.Errorf("메시지에 허용 어휘 %s가 없다: %q", want, message)
 		}

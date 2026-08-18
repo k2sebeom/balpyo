@@ -1,0 +1,9 @@
+<!-- pre 코드 블록. 들여쓰기·개행·연속 공백이 원문 그대로 보존되어야 한다 (양 끝 개행 하나만 벗긴다). -->
+<slide id="pre">
+  <h2>코드 블록</h2>
+  <pre>
+func main() {
+	fmt.Println("balpyo")  // 연속  공백도 내용이다
+}
+</pre>
+</slide>
