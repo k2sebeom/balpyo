@@ -155,15 +155,15 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
 - [ ] 테스트: 파서(정상/오타 태그 에러/위치), 슬라이드 수집·파일명 정렬, 웹 골든,
       PPTX 구조(`sp`+`txBody`, `xfrm`), LibreOffice 열림, 픽셀 비교
 - [ ] 구현:
-  - [ ] 엄격 파서 + 닫힌 어휘 + line/col 에러
-  - [ ] 최소 테마 하드코딩 (토큰 몇 개 — 테마 패키지 포맷은 Iteration 10)
-  - [ ] SOML → HTML 변환 + 생성 CSS
-  - [ ] **지오메트리 패스**: chromedp로 렌더 → 요소별 rect → EMU. 텍스트 박스 크기
+  - [x] 엄격 파서 + 닫힌 어휘 + line/col 에러
+  - [x] 최소 테마 하드코딩 (토큰 몇 개 — 테마 패키지 포맷은 Iteration 10)
+  - [x] SOML → HTML 변환 + 생성 CSS
+  - [x] **지오메트리 패스**: chromedp로 렌더 → 요소별 rect → EMU. 텍스트 박스 크기
         명시 고정 + autofit off (PRD §9.3)
   - [ ] OOXML 조립기 최소판: presentation/master/layout/theme 파트 + 텍스트 박스,
         `archive/zip` 직조립
   - [ ] `<note>` → PPTX 노트 슬라이드
-  - [ ] 얇은 CLI: `balpyo build --target html,pptx` (init/server는 Phase 2)
+  - [x] 얇은 CLI: `balpyo build --target html,pptx` (init/server는 Phase 2)
 - [ ] 리뷰 포인트: **텍스트 메트릭** — 브라우저가 잰 박스가 LibreOffice/Keynote에서
       같은 줄바꿈을 유지하는가. 기본 정책은 확정 완료(PRD §13-1: 박스 고정 + autofit
       off + 오버플로 허용) — 여기서는 **수치 임계값**을 측정해 정의한다
