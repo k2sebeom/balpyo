@@ -15,6 +15,12 @@ type Appearance struct {
 	// Text는 텍스트 외관이다. <text>와 (Iteration 2의) 텍스트 서브셋 태그에만 채워진다.
 	// 도형 외관(fill/border/radius/shadow)은 Iteration 4에서 여기 형제로 붙는다.
 	Text *TextStyle
+	// Link는 하이퍼링크 목적지다 (<a href>의 값, 원문 그대로). 외관이 아니라 **행동**이라
+	// TextStyle 밖에 둔다 — 밑줄·색은 스타일이고, 목적지는 렌더러가 웹의 href와 PPTX의
+	// hlinkClick으로 잇는다. 여기 두는 것은 "렌더러가 Attrs를 다시 읽지 않는다"는 계약의
+	// 연장이다: 렌더러가 href를 Attrs에서 찾기 시작하면 값 검증(core)을 지나지 않은 값이
+	// 산출물에 실릴 길이 생긴다.
+	Link string
 }
 
 // TextStyle은 해석된 텍스트 외관이다. 해석 전(파싱 직후)이거나 텍스트 요소가 아니면 nil이다 —
@@ -38,6 +44,12 @@ type TextStyle struct {
 	// Weight는 CSS font-weight 수치다 (400·700). OOXML은 굵기 단계가 없어 렌더러가
 	// 임계값으로 rPr@b를 판단한다 — 그 임계값은 렌더러의 몫이고 여기서는 수치를 보존한다.
 	Weight int
+	// Italic은 이탤릭 여부다 (<em>의 런 델타 — core의 인라인 해석이 채운다). 웹 CSS의
+	// font-style: italic과 OOXML rPr@i가 둘 다 불리언으로 직접 받는다.
+	Italic bool
+	// Underline은 밑줄 여부다 (<a>의 런 델타). 웹 text-decoration: underline과 OOXML
+	// rPr@u가 직접 받는다. 링크의 목적지는 스타일이 아니므로 Appearance.Link에 있다.
+	Underline bool
 	// LineHeight는 폰트 크기 배수다 (무단위). 웹은 CSS line-height로 배수를 그대로 받지만
 	// PPTX는 **절대 줄간격**(lnSpc@spcPts)으로 환산해 낸다 (render/pptx.LineSpacing) —
 	// spcPct(배수)는 엔진마다 기준이 달라(CSS는 폰트 크기, LibreOffice는 폰트 고유 줄 높이)

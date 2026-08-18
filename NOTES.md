@@ -441,3 +441,67 @@
     role>` + 블록 등가)이 이 항목으로 완성됐다. "블록 태그 ≡ 역할 등가성" 테스트
     체크박스는 인라인 런·리스트 렌더까지 묶여 있어 건드리지 않았다 (항목 06·07 몫).
   - ADR 승격 대기: 태그→역할 표의 소유 경계 + h1→title (항목 09의 ADR 목록 1번).
+
+## Iteration 02 · 04-inline-resolve — 인라인 태그의 런 스타일 해석
+<!-- item: 02/04-inline-resolve -->
+
+- **한 것**:
+  - `soml/appearance.go` — `TextStyle`에 `Italic`(em)·`Underline`(a) 추가. 웹 CSS
+    (`font-style`/`text-decoration`)와 OOXML(`rPr@i`/`rPr@u`)이 둘 다 불리언으로 직접
+    받는다. `Appearance`에 `Link`(하이퍼링크 목적지, href 원문) 추가 — 스타일이 아니라
+    행동이므로 `TextStyle` 밖이고, "렌더러가 Attrs를 다시 읽지 않는다" 계약의 연장이다.
+  - `core/inline.go` 신규 — `resolveInlines`: 부모의 **확정** `TextStyle`을 복사해 태그별
+    델타를 얹는다 (strong=굵기 700, em=이탤릭, code=mono 폰트, a=밑줄+링크 색+Link,
+    span=자기 color/weight, br=서식 없음). `href`(없음/값 없음/빈 값 3형 에러, URL 문법은
+    열린 값), `weight`(normal/bold 어휘 + CSS 수치 힌트) 해석 함수.
+  - `core/resolve.go` — `node`가 텍스트 역할 요소를 해석한 뒤 `resolveInlines`로 인라인
+    자식을 마저 확정하고 순회를 끝낸다 (modelInline이라 자식은 문자 데이터+인라인뿐).
+    `attrExample`에 `href`/`weight` 예시 추가.
+  - `core/inline_test.go` 신규 — 델타 표(부모 스타일의 변형 함수로 깊은 비교 — 델타 밖
+    필드 변화를 잡는다), 상속 표(중첩·역순 중첩·span 아래·블록 인라인 속성 아래·중첩 em·
+    li 안), strong의 굵은 부모 유지, title 안 code의 56px mono, a의 색·밑줄·Link,
+    href 열린 값 4종, href 에러 3형(line:col·문구), span↔text 색 진단 문구 동일성,
+    weight 어휘·진단 6종, 인라인 전부 Appearance non-nil(+br은 nil) 커버리지.
+- **설계 결정과 근거**:
+  - **링크 색 = accent1 토큰 재사용** (hlink 전용 토큰과 저울질 — ADR 후보): PPTX 테마
+    파트가 hlink 슬롯을 accent1에서 빌려 채우므로(`render/pptx/theme.go`의 fallback,
+    `TestClrSchemeFallbacks`가 고정) 웹이 같은 토큰을 쓰면 두 산출물의 링크 색이 같은
+    표의 같은 값에서 나온다. 전용 토큰을 버린 이유: 표준 토큰 어휘(PRD §8.4)에 없는
+    이름이 저자의 `color=` 어휘·진단 목록·CSS 변수 산출에 들어가 골든과 문서가 전부
+    흔들린다. 테마가 파일로 나가는 Iteration 10에서 재검토한다 — 그때 테마가 hlink
+    토큰을 명시하면 core의 링크 델타도 함께 옮겨야 한다 (지금은 fallback 규칙과 이
+    델타가 짝이다).
+  - **`<span weight>` 어휘는 normal(400)·bold(700) 둘로 닫았다** (PRD가 값 어휘를
+    명시하지 않아 정한 것): OOXML 굵기는 켬/끔(`rPr@b`)뿐이라 CSS 9단계 수치 축을 열면
+    중간 굵기(600 등)가 웹에서만 동작한다 — `<span size>`·`size="%"`를 막은 것과 같은
+    근거. 수치 400/700은 align의 left/right처럼 대응 이름을 짚어 주고, 그 외 수치는
+    "두 단계"임을 설명한다.
+  - **strong은 `max(부모, 700)`**: 더 굵은 단계가 없으므로 700 이상인 부모(h1 등)
+    아래에서는 그대로다 — 깊은 비교 테스트가 "h1 안의 strong ≡ h1 스타일"을 고정한다.
+  - **중첩 em은 토글하지 않는다**: 토글은 "몇 겹인가"를 세어야 뜻이 정해지는 규칙이라
+    컴포넌트 조합(Iteration 11)에서 결과를 예측할 수 없게 된다 — v1은 "강조는 이탤릭".
+  - **br의 Appearance는 nil**: void — 텍스트 흐름의 분절점일 뿐 서식이 아니다. 렌더러의
+    런 분할(항목 05·06)이 `soml.BreakElement`를 이름으로 특별 취급한다. "인라인 전부
+    non-nil" 테스트의 유일한 예외로 명시했다.
+  - **href 에러는 hasValue를 타지 않는다**: 공용 문구의 "지우면 기본값을 쓴다"가 href에는
+    성립하지 않는다 (지워도 여전히 에러). 3형(속성 없음→NameSpan, 값 없음→속성 이름,
+    빈 값→값 위치)을 따로 쓰되 태도는 같다. href가 틀려도 밑줄·색 스타일은 확정된다 —
+    진단이 한 번에 다 나오는 기존 정책.
+  - **span의 color는 `<text color>`와 해석 함수(`resolver.color`)를 공유**하고 테스트가
+    두 진단의 문구 동일성을 단정한다 — 값 해석이 두 벌이 되는 순간을 잡는 회귀 장치.
+- **검증**: RED 먼저 확인 (구현 전 `go vet ./core`가 Italic/Underline/Link 부재로 빌드
+  실패). 구현 후 `gofmt -l .` 무출력, `go vet ./...`, `go test ./...` 로컬 전부 통과,
+  `make test`(컨테이너, finch) 전부 통과. `git status`에 testdata/골든 변화 없음 —
+  활성 픽스처(00/01)에 인라인 태그가 없고 렌더 매핑도 건드리지 않아 산출물이 바이트
+  단위로 그대로다. TASKS 체크박스는 바꾸지 않았다 (남은 박스들은 렌더 매핑까지 묶여
+  있어 항목 05~07 몫).
+- **남긴 것**:
+  - 항목 05(웹)·06(PPTX 런 분할·hlinkClick·`a:br`)이 이 확정 스타일과 `Appearance.Link`를
+    소비한다. `TextStyle.Italic`/`Underline`/`Link`의 렌더 매핑은 아직 없다 — 렌더러는
+    모르는 태그에서 명시적으로 멈추므로 조용한 무시는 없다.
+  - **열린 질문 — 링크 색의 표 결합이 관례 수준이다**: core의 `TokenColor("accent1")`
+    델타와 pptx의 hlink fallback(accent1)이 같은 값이라는 것을 컴파일러가 강제하지
+    않는다 (core↔render 임포트 방향 때문에 한 테스트로 못 묶는다). 항목 06이 hlinkClick을
+    낼 때 픽스처/골든으로 두 산출물의 링크 색 일치를 고정해야 한다.
+  - ADR 승격 대기 (항목 09): 링크 색 accent1 재사용 vs hlink 전용 토큰, weight 어휘
+    2값 폐쇄.

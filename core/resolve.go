@@ -69,8 +69,7 @@ func (r *resolver) warnf(span soml.Span, format string, args ...any) {
 // 리스트 컨테이너(<ul>/<ol>)의 Appearance는 채우지 않는다: 컨테이너는 항목을 담을 뿐이고
 // 타이포그래피는 <li>(body 역할)에 붙는다. 마커·들여쓰기 같은 리스트 표현을 렌더러가
 // 컨테이너에서 무엇으로 읽을지는 렌더 매핑(Iteration 2 항목 05·07)이 정한다 — 여기서
-// 미리 정하면 그 결정 전에 두 렌더러가 각자 추측하게 된다. 인라인 태그의 런 서식은
-// 항목 04의 몫이다.
+// 미리 정하면 그 결정 전에 두 렌더러가 각자 추측하게 된다.
 func (r *resolver) node(node soml.Node) {
 	elem, ok := node.(*soml.Element)
 	if !ok {
@@ -78,6 +77,10 @@ func (r *resolver) node(node soml.Node) {
 	}
 	if role, ok := r.textRole(elem); ok {
 		r.resolveText(elem, role)
+		// 텍스트 역할 요소의 자식은 문자 데이터와 인라인 태그뿐이다 (파서의 modelInline) —
+		// 인라인 런 스타일은 블록의 확정 스타일에서 상속하므로 여기서 트리 순회가 끝난다.
+		r.resolveInlines(elem, elem.Appearance.Text)
+		return
 	}
 	for _, child := range elem.Children {
 		r.node(child)
@@ -292,6 +295,10 @@ func attrExample(name string) string {
 		return "accent1"
 	case "align":
 		return "center"
+	case "weight":
+		return "bold"
+	case "href":
+		return "https://example.com"
 	}
 	return ""
 }
