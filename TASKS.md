@@ -154,7 +154,7 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
   `size`, `color`, `align`), `<note>`
 - [x] 테스트: 파서(정상/오타 태그 에러/위치), 슬라이드 수집·파일명 정렬, 웹 골든,
       PPTX 구조(`sp`+`txBody`, `xfrm`), LibreOffice 열림, 픽셀 비교
-- [ ] 구현:
+- [x] 구현:
   - [x] 엄격 파서 + 닫힌 어휘 + line/col 에러
   - [x] 최소 테마 하드코딩 (토큰 몇 개 — 테마 패키지 포맷은 Iteration 10)
   - [x] SOML → HTML 변환 + 생성 CSS
@@ -167,12 +167,12 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
 - [ ] 리뷰 포인트: **텍스트 메트릭** — 브라우저가 잰 박스가 LibreOffice/Keynote에서
       같은 줄바꿈을 유지하는가. 기본 정책은 확정 완료(PRD §13-1: 박스 고정 + autofit
       off + 오버플로 허용) — 여기서는 **수치 임계값**을 측정해 정의한다
-- [ ] 문서:
-  - [ ] `docs/reference/soml/slide.md`, `text.md`, `note.md`
-  - [ ] `docs/reference/appearance.md` 생성 — `role`/`size`/`color`/`align`만 있는 초판 매핑 표
-  - [ ] `docs/reference/cli.md` 생성 — `build` 항목만
-  - [ ] `docs/internals/geometry-pass.md` — CDP 패스, EMU 변환, 텍스트 박스 고정 전략
-  - [ ] `docs/internals/architecture.md` 덱 모델 섹션 완성
+- [x] 문서:
+  - [x] `docs/reference/soml/slide.md`, `text.md`, `note.md`
+  - [x] `docs/reference/appearance.md` 생성 — `role`/`size`/`color`/`align`만 있는 초판 매핑 표
+  - [x] `docs/reference/cli.md` 생성 — `build` 항목만
+  - [x] `docs/internals/geometry-pass.md` — CDP 패스, EMU 변환, 텍스트 박스 고정 전략
+  - [x] `docs/internals/architecture.md` 덱 모델 섹션 완성
   - [x] PRD §13-1 — 측정한 줄바꿈 허용 오차의 수치 임계값 기입
 
 **이 iteration이 실패하면(텍스트 메트릭 오차가 수용 불가) 아키텍처를 재검토한다 —
@@ -369,4 +369,6 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
 |---|---|---|
 | 트리비아 보존 파서 | `docs/decisions/0001-parser-trivia.md` | I0 |
 | 4:3 논리 스테이지는 960×720 (PRD §6.2·§13-9 갱신) | `docs/decisions/0002-logical-stage-size.md` | I0 |
-| 텍스트 줄바꿈 허용 오차 — 수치 임계값 (PRD §13-1에 기입) | — | I1 |
+| 요소 외관은 인라인 `style` 속성으로 낸다 | `docs/decisions/0003-inline-style-appearance.md` | I1 |
+| 지오메트리는 덱이 아니라 곁 표로 주입한다 | `docs/decisions/0004-geometry-side-table.md` | I1 |
+| 줄간격 spcPts + 박스 폭 안전 여유 4% — 줄바꿈 허용 오차의 수치 임계값 (PRD §13-1에 기입) | `docs/decisions/0005-line-spacing-and-slack.md` | I1 |

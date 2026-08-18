@@ -23,15 +23,24 @@ nav:
   - 개요: index.md
   - 레퍼런스:
       - reference/index.md
+      - SOML — slide: reference/soml/slide.md
+      - SOML — text: reference/soml/text.md
+      - SOML — note: reference/soml/note.md
+      - 외관 속성: reference/appearance.md
+      - CLI: reference/cli.md
   - 가이드:
       - guides/index.md
   - 내부 구조:
       - 아키텍처: internals/architecture.md
+      - 지오메트리 패스: internals/geometry-pass.md
       - 테스트 환경: internals/testing.md
   - 설계 결정:
       - decisions/index.md
       - 0001 파서 트리비아: decisions/0001-parser-trivia.md
       - 0002 논리 스테이지 크기: decisions/0002-logical-stage-size.md
+      - 0003 인라인 style 외관: decisions/0003-inline-style-appearance.md
+      - 0004 지오메트리 곁 표: decisions/0004-geometry-side-table.md
+      - 0005 줄간격과 안전 여유: decisions/0005-line-spacing-and-slack.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |

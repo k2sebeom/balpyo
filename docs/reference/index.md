@@ -15,17 +15,12 @@
 
 ## 현재 상태
 
-Iteration 0은 태그를 하나도 구현하지 않았다 — 파이프라인 골격과 테스트 환경만 세웠다.
-그래서 이 섹션에는 아직 페이지가 없다.
+Iteration 1까지 구현된 어휘와 표면:
 
-첫 페이지는 Iteration 1에서 생긴다: `soml/slide.md`, `soml/text.md`, `soml/note.md`,
-`appearance.md`, `cli.md`.
+- 태그: [`<slide>`](soml/slide.md) (`id`·`skip`), [`<text>`](soml/text.md)
+  (`role`·`size`·`color`·`align`), [`<note>`](soml/note.md)
+- [외관 속성](appearance.md) — 매핑 표와 토큰 색 보존 계약
+- [CLI](cli.md) — `build`와 `version`
 
-지금 동작하는 CLI 표면을 알고 싶다면 `balpyo help`가 정확한 답이다.
-
-```
-balpyo build [옵션]   슬라이드를 빌드한다
-balpyo version        버전을 출력한다
-```
-
-구조와 파이프라인은 [내부 구조](../internals/architecture.md)에 있다.
+`layouts.md`와 `theme.md`는 해당 iteration(3·10)에서 생긴다. 구조와 파이프라인은
+[내부 구조](../internals/architecture.md)에 있다.

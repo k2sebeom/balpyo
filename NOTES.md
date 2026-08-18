@@ -198,3 +198,57 @@
     영역을 좁히거나 배경 판정을 바꿔야 할 수 있다.
   - justify 정렬은 안전 여유가 없어 스크립트 간격 위험이 남는다 (`TextBoxRect` 주석) —
     justify를 쓰는 픽스처가 생기면 그때 측정한다.
+
+## Iteration 01 · 08-docs — Iteration 1 레퍼런스·내부 문서와 ADR 3건
+<!-- item: 01/08-docs -->
+
+- **한 것**:
+  - 태그 레퍼런스 신규: `docs/reference/soml/slide.md`·`text.md`·`note.md` — 통일 형식
+    (속성 표 → SOML 예제 → 웹/PPTX 렌더 결과 → 빌드 에러 조건). 예제는 전부
+    `testdata/fixtures/01_text`의 실제 슬라이드이고, 에러 조건 표의 메시지는
+    `soml/parse.go`·`core/resolve.go`·`core/validate.go`의 실제 진단 문자열이다.
+  - `docs/reference/appearance.md` 신규 — role/size/color/align의 웹(CSS)/PPTX(OOXML)
+    매핑 표, 캐스케이드 순서, **토큰 색 `var(--balpyo-color-*)` ↔ `a:schemeClr` 보존
+    계약을 본문으로** 명문화. minimal 테마의 토큰 표(색 4·폰트 3) 포함.
+  - `docs/reference/cli.md` 신규 — `build`의 옵션·우선순위·종료 코드·진단 출력 형식과
+    `version`/`help`. init/server는 없으므로 쓰지 않았다.
+  - `docs/internals/geometry-pass.md` 신규 — 흐름도, 슬라이드 상대 좌표, 덱 대조, 단위
+    경계(EMU·pt는 render/pptx만), 텍스트 박스 고정 전략(+4% 여유·인셋 0·spcPts). 코드
+    주석을 옮기지 않고 전체 그림과 순서만 잇고 각 결정은 주석·ADR로 링크했다.
+  - `docs/internals/architecture.md` — 덱 모델 절 완성 (노드 종류, 소유 경계 3층, 외관이
+    붙는 자리, 지오메트리 곁 표 이유). 파이프라인 그림·패키지 표에 `render/geom`을 반영
+    (이전 판은 지오메트리 패스를 render/pptx 소유로 적어 실제 패키지 구조와 어긋났다).
+  - ADR 3건: `0003-inline-style-appearance.md`(인라인 style — data-balpyo-id 생성 규칙
+    대안을 버린 이유 포함), `0004-geometry-side-table.md`(곁 표 + 생성자 주입),
+    `0005-line-spacing-and-slack.md`(spcPts + 안전 여유 4% — 항목 07의 측정이 근거).
+    `docs/decisions/index.md`와 TASKS.md 결정 로그 표 갱신 (I1 임계값 행이 0005를 가리킨다).
+  - `mkdocs.yml` nav에 새 페이지 6건 추가, `docs/reference/index.md`·`docs/index.md`의
+    "현재 상태"를 구현 완료 상태로 갱신, TASKS.md Iteration 1의 구현·문서 체크박스 [x].
+
+- **설계 결정과 근거**:
+  - **ADR은 3건으로 판단했다.** 항목 지시의 2건에 더해, 항목 07의 spcPts + 안전 여유는
+    모든 텍스트 박스에 걸리는 횡단 결정이고 측정 데이터가 근거라 0005로 남겼다. NOTES의
+    다른 단독 결정들(인셋 0, 굵기 임계 600, notesSlideN=슬라이드 번호, clrScheme 빈 자리
+    차용, 개행 접기)은 **국소적 매핑 선택**이라 ADR로 올리지 않았다 — 각 결정의 왜는
+    코드 주석과 NOTES에 이미 있고, 전부 ADR로 올리면 색인이 결정의 무게를 구별하지
+    못하게 된다.
+  - 에러 조건 표는 구현의 진단 문자열을 그대로 옮겼다 — "문서와 메시지가 갈라지면 문서가
+    틀린 것"이라는 항목 규칙대로, 문서가 메시지의 사본임을 명시적으로 남긴다.
+  - 렌더 결과 설명의 OOXML 구조(cSld@name, ph type="body", bgRef 등)는 골든 파트에서
+    직접 확인하고 적었다.
+
+- **검증**: `make docs`(mkdocs --strict) 통과. 코드 변경이 없는 항목이라 Go 게이트는
+  항목 07 커밋의 초록이 유효하고, 커밋 전에 `gofmt -l .`(무출력)·`go vet ./...`·
+  `go test ./...`·`make test`를 다시 돌려 확인했다.
+
+- **남긴 것**:
+  - **낡은 주석 2곳** (문서 항목이라 고치지 않았다 — 코드 변경 금지 규칙): 항목 07이
+    spcPct → spcPts로 바꾼 뒤에도 `soml/appearance.go`의 `TextStyle.LineHeight` 주석과
+    `render/web/style.go`의 줄높이 주석이 "OOXML lnSpc@spcPct가 배수를 받는다"고 말한다.
+    다음 코드 항목이 고친다.
+  - **Iteration 1의 남은 칸은 리뷰 포인트 체크박스 하나다** — LibreOffice 쪽 수치는
+    확정됐지만 Keynote/PowerPoint에서 같은 줄바꿈을 유지하는지는 사람이
+    `review/01_text/text-deck.pptx`를 직접 열어 확인하는 단계(TASKS ③)가 남았다.
+    끝나지 않은 것을 [x]로 만들지 않았다.
+  - `docs/index.md` 본문의 목표 명세(CLI 전체 표면, 태그 카탈로그)는 그대로 두었다 —
+    개요 문서는 비전을 말하고, "지금 동작하는 것"의 경계는 상태 노트와 레퍼런스가 긋는다.
