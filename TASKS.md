@@ -162,7 +162,7 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
         명시 고정 + autofit off (PRD §9.3)
   - [x] OOXML 조립기 최소판: presentation/master/layout/theme 파트 + 텍스트 박스,
         `archive/zip` 직조립
-  - [ ] `<note>` → PPTX 노트 슬라이드
+  - [x] `<note>` → PPTX 노트 슬라이드
   - [x] 얇은 CLI: `balpyo build --target html,pptx` (init/server는 Phase 2)
 - [ ] 리뷰 포인트: **텍스트 메트릭** — 브라우저가 잰 박스가 LibreOffice/Keynote에서
       같은 줄바꿈을 유지하는가. 기본 정책은 확정 완료(PRD §13-1: 박스 고정 + autofit

@@ -12,17 +12,19 @@ import (
 
 // OOXML 파트 경로. 관계 파일이 서로를 이 경로로 가리키므로 한곳에 모아 둔다.
 const (
-	contentTypesPart = "[Content_Types].xml"
-	rootRelsPart     = "_rels/.rels"
-	presentationPart = "ppt/presentation.xml"
-	presRelsPart     = "ppt/_rels/presentation.xml.rels"
-	masterPart       = "ppt/slideMasters/slideMaster1.xml"
-	masterRelsPart   = "ppt/slideMasters/_rels/slideMaster1.xml.rels"
-	layoutPart       = "ppt/slideLayouts/slideLayout1.xml"
-	layoutRelsPart   = "ppt/slideLayouts/_rels/slideLayout1.xml.rels"
-	themePart        = "ppt/theme/theme1.xml"
-	corePropsPart    = "docProps/core.xml"
-	appPropsPart     = "docProps/app.xml"
+	contentTypesPart    = "[Content_Types].xml"
+	rootRelsPart        = "_rels/.rels"
+	presentationPart    = "ppt/presentation.xml"
+	presRelsPart        = "ppt/_rels/presentation.xml.rels"
+	masterPart          = "ppt/slideMasters/slideMaster1.xml"
+	masterRelsPart      = "ppt/slideMasters/_rels/slideMaster1.xml.rels"
+	layoutPart          = "ppt/slideLayouts/slideLayout1.xml"
+	layoutRelsPart      = "ppt/slideLayouts/_rels/slideLayout1.xml.rels"
+	themePart           = "ppt/theme/theme1.xml"
+	notesMasterPart     = "ppt/notesMasters/notesMaster1.xml"
+	notesMasterRelsPart = "ppt/notesMasters/_rels/notesMaster1.xml.rels"
+	corePropsPart       = "docProps/core.xml"
+	appPropsPart        = "docProps/app.xml"
 )
 
 // slidePart는 n번째(1-based) 슬라이드 파트 경로다.
@@ -31,6 +33,20 @@ func slidePart(n int) string { return fmt.Sprintf("ppt/slides/slide%d.xml", n) }
 // slideRelsPart는 n번째 슬라이드의 관계 파일 경로다.
 func slideRelsPart(n int) string { return fmt.Sprintf("ppt/slides/_rels/slide%d.xml.rels", n) }
 
+// notesSlidePart는 n번째 슬라이드의 노트 슬라이드 파트 경로다.
+//
+// **번호 규칙: N은 노트가 붙는 슬라이드의 번호다** — slidePart(n)과 같은 n. 노트 없는
+// 슬라이드에서 번호가 비어 뛰지만(OPC 파트 이름은 임의 문자열이고 소비자는 관계만 따라간다),
+// "노트가 있는 것만 1부터" 세면 별도 카운터가 생기고, 그 카운터와 rels의 슬라이드 번호가
+// 어긋나는 순간 노트가 엉뚱한 슬라이드에 붙는다 — 파일은 열리므로 조용한 실패다. 파트 이름을
+// 슬라이드 번호에서 직접 유도하면 그 어긋남을 만들 방법 자체가 없다.
+func notesSlidePart(n int) string { return fmt.Sprintf("ppt/notesSlides/notesSlide%d.xml", n) }
+
+// notesSlideRelsPart는 n번째 슬라이드의 노트 슬라이드 관계 파일 경로다.
+func notesSlideRelsPart(n int) string {
+	return fmt.Sprintf("ppt/notesSlides/_rels/notesSlide%d.xml.rels", n)
+}
+
 // part는 패키지에 들어갈 파트 하나다. 순서를 지키기 위해 맵이 아니라 슬라이스로 다룬다.
 type part struct {
 	name string
@@ -38,8 +54,8 @@ type part struct {
 }
 
 // buildParts는 덱 하나를 OOXML 파트 목록으로 만든다: 프레젠테이션 + 마스터 + 빈 레이아웃 +
-// 테마(토큰 표에서 컴파일) + 슬라이드당 spTree(텍스트 박스). 도형 12종은 Iteration 4,
-// 레이아웃 카탈로그·플레이스홀더는 Iteration 10이다.
+// 테마(토큰 표에서 컴파일) + 슬라이드당 spTree(텍스트 박스) + 노트가 있으면 노트 마스터와
+// 노트 슬라이드. 도형 12종은 Iteration 4, 레이아웃 카탈로그·플레이스홀더는 Iteration 10이다.
 //
 // g는 지오메트리 패스가 잰 좌표다. 좌표가 필요한 요소가 없는 덱(빈 슬라이드만)은 nil로 온다 —
 // 요소가 있는데 nil이면 Renderer.checkGeometry가 이미 멈췄다.
@@ -63,16 +79,18 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 	}
 
 	data := struct {
-		Deck        *soml.Deck
-		SlideCX     int64
-		SlideCY     int64
-		NotesCX     int64
-		NotesCY     int64
-		SlideCount  int
-		SlideRelIDs []string
-		ThemeRelID  string
-		ClrScheme   string
-		FontScheme  string
+		Deck             *soml.Deck
+		SlideCX          int64
+		SlideCY          int64
+		NotesCX          int64
+		NotesCY          int64
+		SlideCount       int
+		SlideRelIDs      []string
+		ThemeRelID       string
+		NotesMasterRelID string
+		ClrScheme        string
+		FontScheme       string
+		NotesLayout      notesLayout
 	}{
 		Deck:       deck,
 		SlideCX:    cx,
@@ -84,14 +102,21 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		ClrScheme:  clrScheme,
 		FontScheme: fontScheme,
 	}
-	// presentation.xml.rels: rId1 = 마스터, rId2.. = 슬라이드, 마지막 = 테마.
+	// presentation.xml.rels: rId1 = 마스터, rId2.. = 슬라이드, 그다음 = 테마.
 	for i := range deck.Slides {
 		data.SlideRelIDs = append(data.SlideRelIDs, fmt.Sprintf("rId%d", i+2))
 	}
 	data.ThemeRelID = fmt.Sprintf("rId%d", len(deck.Slides)+2)
+	// 노트 마스터는 **테마 뒤에 덧붙인다** (rId = 슬라이드 수 + 3). 기존 규칙(rId1 = 마스터,
+	// rId2.. = 슬라이드, 그다음 = 테마)의 어느 번호도 밀지 않는 유일한 자리다 — 중간에 끼우면
+	// 슬라이드 관계가 한 칸씩 밀려 엉뚱한 파트를 가리키고, 그 파일은 열리기는 한다.
+	// 노트가 하나도 없는 덱은 노트 마스터 자체를 내지 않는다 (빈 문자열 = 템플릿 조건 꺼짐).
+	if deckHasNotes(deck) {
+		data.NotesMasterRelID = fmt.Sprintf("rId%d", len(deck.Slides)+3)
+		data.NotesLayout = notesMasterLayout(data.NotesCX, data.NotesCY, cx, cy)
+	}
 
-	parts := make([]part, 0, 10+2*len(deck.Slides))
-	for _, tpl := range []struct {
+	templates := []struct {
 		name string
 		text string
 	}{
@@ -106,7 +131,15 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		{layoutPart, layoutTemplate},
 		{layoutRelsPart, layoutRelsTemplate},
 		{themePart, themeTemplate},
-	} {
+	}
+	if data.NotesMasterRelID != "" {
+		templates = append(templates,
+			struct{ name, text string }{notesMasterPart, notesMasterTemplate},
+			struct{ name, text string }{notesMasterRelsPart, notesMasterRelsXML},
+		)
+	}
+	parts := make([]part, 0, len(templates)+3*len(deck.Slides))
+	for _, tpl := range templates {
 		rendered, err := renderTemplate(tpl.name, tpl.text, data)
 		if err != nil {
 			return nil, err
@@ -115,23 +148,90 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 	}
 
 	for i, slide := range deck.Slides {
+		n := i + 1
 		shapes, err := shapesXML(deck, slide, g)
 		if err != nil {
 			return nil, err
 		}
-		rendered, err := renderTemplate(slidePart(i+1), slideTemplate, struct {
+		rendered, err := renderTemplate(slidePart(n), slideTemplate, struct {
 			*soml.Slide
 			Shapes string
 		}{slide, shapes})
 		if err != nil {
 			return nil, err
 		}
+		rels, err := renderTemplate(slideRelsPart(n), slideRelsTemplate, struct {
+			*soml.Slide
+			N int
+		}{slide, n})
+		if err != nil {
+			return nil, err
+		}
 		parts = append(parts,
-			part{name: slidePart(i + 1), data: rendered},
-			part{name: slideRelsPart(i + 1), data: []byte(slideRelsXML)},
+			part{name: slidePart(n), data: rendered},
+			part{name: slideRelsPart(n), data: rels},
+		)
+		// 빈 `<note></note>`는 Notes == ""이므로 노트 파트를 내지 않는다 — 웹 렌더러가
+		// balpyo-notes div를 내지 않는 판정과 같다 (render/web.writeSlide).
+		if slide.Notes == "" {
+			continue
+		}
+		notes, err := renderTemplate(notesSlidePart(n), notesSlideTemplate, struct {
+			*soml.Slide
+			N int
+		}{slide, n})
+		if err != nil {
+			return nil, err
+		}
+		notesRels, err := renderTemplate(notesSlideRelsPart(n), notesSlideRelsTemplate, struct{ N int }{n})
+		if err != nil {
+			return nil, err
+		}
+		parts = append(parts,
+			part{name: notesSlidePart(n), data: notes},
+			part{name: notesSlideRelsPart(n), data: notesRels},
 		)
 	}
 	return parts, nil
+}
+
+// deckHasNotes는 노트 슬라이드가 하나라도 필요한지 본다 — 노트 마스터는 이때만 낸다.
+func deckHasNotes(deck *soml.Deck) bool {
+	for _, slide := range deck.Slides {
+		if slide.Notes != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// notesLayout은 노트 마스터 플레이스홀더의 배치다 (EMU).
+//
+// 노트는 화면에 렌더되지 않으므로 지오메트리 패스의 대상이 아니다 — 좌표는 여기서 정해
+// 마스터에 넣고, 노트 슬라이드는 상속만 받는다 (플레이스홀더에 xfrm을 내지 않는다).
+type notesLayout struct {
+	ImgX, ImgY, ImgCX, ImgCY     int64
+	BodyX, BodyY, BodyCX, BodyCY int64
+}
+
+// notesMasterLayout은 노트 페이지 안에 슬라이드 이미지와 본문 자리를 잡는다.
+//
+// PowerPoint 기본 노트 마스터의 관례를 따른다: 좌우 0.75in 여백, 이미지는 위(y=1.25in),
+// 본문은 그 아래. 이미지 높이만 계산이다 — 슬라이드 종횡비를 따라야 4:3 덱에서 이미지와
+// 본문이 겹치지 않는다 (PowerPoint 기본값은 종횡비별 파일에 박혀 있어 그대로 못 쓴다).
+func notesMasterLayout(pageCX, pageCY, slideCX, slideCY int64) notesLayout {
+	const (
+		margin = EMUPerInch * 3 / 4 // 좌우·아래 여백 0.75in
+		imgY   = EMUPerInch * 5 / 4 // 이미지 상단 1.25in
+		gap    = EMUPerInch / 2     // 이미지와 본문 사이 0.5in
+	)
+	imgCX := pageCX - 2*margin
+	imgCY := imgCX * slideCY / slideCX
+	bodyY := imgY + imgCY + gap
+	return notesLayout{
+		ImgX: margin, ImgY: imgY, ImgCX: imgCX, ImgCY: imgCY,
+		BodyX: margin, BodyY: bodyY, BodyCX: imgCX, BodyCY: pageCY - bodyY - margin,
+	}
 }
 
 // firstSlideID는 OOXML의 슬라이드 ID 시작값이다. 256보다 작은 값은 예약되어 있다.
@@ -174,8 +274,14 @@ const contentTypesTemplate = xmlDecl + `<Types xmlns="http://schemas.openxmlform
   <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
   <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
   <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
+{{- if .NotesMasterRelID}}
+  <Override PartName="/ppt/notesMasters/notesMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml"/>
+{{- end}}
 {{- range $i, $s := .Deck.Slides}}
   <Override PartName="/ppt/slides/slide{{inc $i}}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>
+{{- if $s.Notes}}
+  <Override PartName="/ppt/notesSlides/notesSlide{{inc $i}}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"/>
+{{- end}}
 {{- end}}
   <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
@@ -212,6 +318,11 @@ const presentationTemplate = xmlDecl + `<p:presentation xmlns:a="http://schemas.
   <p:sldMasterIdLst>
     <p:sldMasterId id="2147483648" r:id="rId1"/>
   </p:sldMasterIdLst>
+{{- if .NotesMasterRelID}}
+  <p:notesMasterIdLst>
+    <p:notesMasterId r:id="{{.NotesMasterRelID}}"/>
+  </p:notesMasterIdLst>
+{{- end}}
   <p:sldIdLst>
 {{- range $i, $rid := .SlideRelIDs}}
     <p:sldId id="{{slideID $i}}" r:id="{{$rid}}"/>
@@ -222,12 +333,18 @@ const presentationTemplate = xmlDecl + `<p:presentation xmlns:a="http://schemas.
 </p:presentation>
 `
 
+// 관계 ID 배정: rId1 = 마스터, rId2.. = 슬라이드, 그다음 = 테마, **노트 마스터는 맨 뒤**.
+// 테마 뒤에 덧붙이는 이유는 buildParts의 NotesMasterRelID 주석에 있다 — 앞쪽 번호를 밀면
+// 슬라이드 관계가 엉뚱한 파트를 가리키고, 그 파일은 열리기는 한다.
 const presRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
 {{- range $i, $rid := .SlideRelIDs}}
   <Relationship Id="{{$rid}}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide{{inc $i}}.xml"/>
 {{- end}}
   <Relationship Id="{{.ThemeRelID}}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>
+{{- if .NotesMasterRelID}}
+  <Relationship Id="{{.NotesMasterRelID}}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster" Target="notesMasters/notesMaster1.xml"/>
+{{- end}}
 </Relationships>
 `
 
@@ -331,8 +448,170 @@ const slideTemplate = xmlDecl + `<p:sld xmlns:a="http://schemas.openxmlformats.o
 </p:sld>
 `
 
-const slideRelsXML = xmlDecl + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+const slideRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+{{- if .Notes}}
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide{{.N}}.xml"/>
+{{- end}}
+</Relationships>
+`
+
+// 노트 마스터는 하나다. 플레이스홀더 좌표는 notesMasterLayout이 정하고, 노트 슬라이드는
+// xfrm 없이 이 마스터에서 상속받는다 — 노트는 화면에 렌더되지 않으므로 잰 박스가 없다.
+//
+// notesStyle의 타이포그래피(12pt)는 자리 표시자다 — 테마 토큰 표에서 컴파일하는 일은
+// Iteration 10의 테마 패키지 포맷이 맡는다 (노트는 발표자 화면 전용이라 웹·PPTX 픽셀
+// 일치 계약 밖이고, 지금 하드코딩해도 두 타깃이 갈라지지 않는다).
+const notesMasterTemplate = xmlDecl + `<p:notesMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:bg>
+      <p:bgRef idx="1001">
+        <a:schemeClr val="bg1"/>
+      </p:bgRef>
+    </p:bg>
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="Slide Image Placeholder 1"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1" noRot="1" noChangeAspect="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="sldImg"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="{{.NotesLayout.ImgX}}" y="{{.NotesLayout.ImgY}}"/>
+            <a:ext cx="{{.NotesLayout.ImgCX}}" cy="{{.NotesLayout.ImgCY}}"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+        </p:spPr>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="Notes Placeholder 2"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="body" idx="1"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="{{.NotesLayout.BodyX}}" y="{{.NotesLayout.BodyY}}"/>
+            <a:ext cx="{{.NotesLayout.BodyCX}}" cy="{{.NotesLayout.BodyCY}}"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:endParaRPr/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+  <p:notesStyle>
+    <a:lvl1pPr>
+      <a:defRPr sz="1200"/>
+    </a:lvl1pPr>
+  </p:notesStyle>
+</p:notesMaster>
+`
+
+// 노트 마스터의 테마는 슬라이드 마스터와 같은 theme1.xml을 가리킨다 — 노트 마스터 전용
+// 테마 파트를 따로 내지 않는다 (한 파트가 여러 관계의 대상이 되는 것은 OPC에서 유효하다).
+const notesMasterRelsXML = xmlDecl + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
+</Relationships>
+`
+
+// 노트 슬라이드는 플레이스홀더 두 개다: 슬라이드 이미지(sldImg)와 본문(body idx=1).
+// 둘 다 xfrm을 내지 않는다 — 좌표는 노트 마스터에서 상속받는다 (notesMasterTemplate).
+// 본문 텍스트는 slide.Notes 그대로다: 파서가 개행을 접었으므로 웹의 balpyo-notes와
+// 같은 문자열이고, 문단은 하나다 (render/web.writeSlide와 같은 결정 — 원천은 soml.Parse).
+const notesSlideTemplate = xmlDecl + `<p:notes xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld name="{{xml .ID}}">
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="Slide Image Placeholder 1"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1" noRot="1" noChangeAspect="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="sldImg"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr/>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="Notes Placeholder 2"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="body" idx="1"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr/>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:r>
+              <a:t>{{xml .Notes}}</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:notes>
+`
+
+const notesSlideRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster" Target="../notesMasters/notesMaster1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="../slides/slide{{.N}}.xml"/>
 </Relationships>
 `
 

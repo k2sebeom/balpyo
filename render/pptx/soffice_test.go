@@ -19,7 +19,10 @@ import (
 )
 
 // LibreOffice가 텍스트 박스가 든 덱을 경고·복구 없이 여는지 본다. 원문은 실제 픽스처가
-// 요구하는 것들을 담는다 — 한글, &, 인라인 외관, 빈 요소.
+// 요구하는 것들을 담는다 — 한글, &, 인라인 외관, 빈 요소, 그리고 노트. 노트는 **2번
+// 슬라이드에만** 있다: notesSlide2가 notesSlide1 없이 존재하는, 번호가 비어 뛰는 경우다
+// (notesSlidePart의 번호 규칙) — 노트 파트는 관계·Content_Types가 조금만 틀려도 복구
+// 경고로 드러나므로 이 게이트가 여기서 특히 값을 한다.
 func TestLibreOfficeOpensTextShapes(t *testing.T) {
 	// 도구가 없으면 렌더를 시작하기 전에 건너뛴다(로컬) 또는 실패한다(테스트 이미지).
 	testkit.RequireSoffice(t)
@@ -38,6 +41,7 @@ func TestLibreOfficeOpensTextShapes(t *testing.T) {
 		`<slide>
   <text></text>
   <text role="code" color="#abcdef">balpyo build --target pptx</text>
+  <note>데모 실패 시 스크린샷으로 대체. R&D 예산 언급은 생략.</note>
 </slide>`,
 	}
 	for i, src := range sources {
