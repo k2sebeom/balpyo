@@ -1,0 +1,9 @@
+<!-- variant 캐스케이드 + 모르는 variant 경고. 골든 diagnostics.txt는 "경고가 있을 때만"
+     존재하는 계약이라 (fixtures README) 이 슬라이드가 그 경로의 유일한 회귀 테스트다 —
+     경고 문구가 조용히 바뀌면 이 픽스처의 골든 diff가 잡는다. 알려진 variant(kicker·lead)를
+     함께 실어 폴백(hero = 기본 외관)과의 시각 대조가 갤러리에서 보이게 한다. -->
+<slide id="variant">
+  <h2 variant="hero">모르는 variant는 기본 외관으로 폴백한다</h2>
+  <text role="body" variant="kicker">KICKER — 작고 굵은 강조색</text>
+  <p variant="lead">lead — 본문보다 큰 도입 문단이다.</p>
+</slide>

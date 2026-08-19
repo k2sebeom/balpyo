@@ -422,10 +422,11 @@ func TestTagTextRole(t *testing.T) {
 	}
 }
 
-// 비활성 픽스처(`_02_text_subset` — 렌더 매핑이 생기는 항목 08에서 활성화된다)가 그때까지
-// 어휘와 어긋나지 않게 파싱만 미리 검증한다. 이 파일들이 뒤 항목 전부의 시험대다.
+// 활성 픽스처 02_text_subset(항목 08이 `_`를 뗐다)의 슬라이드가 파서 어휘와 어긋나지
+// 않는지 파싱만 검증한다 — 골든·렌더 검증은 픽스처 러너(internal/testkit)의 몫이고,
+// 여기는 파서 계약(진단 0건)만 본다. 이 파일들이 서브셋 항목 전부의 시험대다.
 func TestParseTextSubsetFixture(t *testing.T) {
-	dir := filepath.Join("..", "testdata", "fixtures", "_02_text_subset", "slides")
+	dir := filepath.Join("..", "testdata", "fixtures", "02_text_subset", "slides")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("픽스처 디렉토리를 읽을 수 없다: %v", err)

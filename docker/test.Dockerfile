@@ -21,6 +21,7 @@ RUN apt-get update \
         chromium \
         poppler-utils \
         fonts-noto-core \
+        fonts-noto-mono \
         fonts-noto-cjk \
         fontconfig \
     && rm -rf /var/lib/apt/lists/*
@@ -55,6 +56,7 @@ RUN { \
       echo "BALPYO_PDFTOPPM_VERSION=$(pdftoppm -v 2>&1 | head -1)"; \
       echo "BALPYO_FONT_SANS=$(fc-match 'Noto Sans' -f '%{file}')"; \
       echo "BALPYO_FONT_CJK=$(fc-match 'Noto Sans CJK KR' -f '%{file}')"; \
+      echo "BALPYO_FONT_MONO=$(fc-match 'Noto Sans Mono' -f '%{file}')"; \
     } > /etc/balpyo-versions.txt
 
 WORKDIR /src

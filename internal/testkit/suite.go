@@ -47,9 +47,26 @@ func (s *Suite) Run(t *testing.T) {
 	s.review.Write(t)
 }
 
+// fixtureDiffOptions는 픽스처별 픽셀 비교 허용 오차 조정이다 — 없는 픽스처는 Suite.Diff
+// (DefaultDiffOptions)를 쓴다. 기본값을 넘는 조정은 **구조 검사(잉크 띠 — 줄 수·위치·폭)가
+// 초록일 때만, 측정 수치와 함께** 남긴다: 수치 없는 완화는 게이트 약화다.
+var fixtureDiffOptions = map[string]DiffOptions{
+	// 측정 최대 3.04% (슬라이드 1 — Iteration 2 항목 08). 제목 위계 슬라이드(h1 48px +
+	// h2/h3 + 본문 2줄 + 인용)는 큰 글리프의 잉크 면적이 01_text의 표지보다 많고,
+	// LibreOffice의 첫 기준선 +2~5px(엔진 소관 — NOTES 01/07)가 그 글리프 경계 픽셀을
+	// 전부 이중으로 세게 한다. 같은 슬라이드의 잉크 띠 검사(세로 중심 ±6px, 줄 수 0차)는
+	// 전부 허용 안이므로 구성은 구조 갈라짐이 아니라 잔차다. 3.5%는 측정값에 01_text와
+	// 같은 폭의 여유를 더한 값이다 (2.1% 측정 → 2.5% 허용과 같은 태도).
+	"02_text_subset": {Channel: 32, MaxRatio: 0.035},
+}
+
 // CompareRenders는 픽스처의 웹 스크린샷과 PPTX 렌더를 슬라이드별로 비교한다.
 func (s *Suite) CompareRenders(t *testing.T, fixture Fixture, result *pipeline.Result) {
 	t.Helper()
+	diff := s.Diff
+	if override, ok := fixtureDiffOptions[fixture.Name]; ok {
+		diff = override
+	}
 	stage := result.Deck.Stage
 	size := image.Pt(stage.Width, stage.Height)
 
@@ -68,11 +85,11 @@ func (s *Suite) CompareRenders(t *testing.T, fixture Fixture, result *pipeline.R
 		// 선택자는 렌더러가 소유한다 — 클래스·속성 이름을 여기에 손으로 적으면 이름을 바꾼
 		// 순간 스크린샷이 "요소가 없다"로 죽거나, 더 나쁘게는 다른 요소를 찍는다.
 		webImg := browser.ScreenshotElement(t, web.SlideIndexSelector(i))
-		diff := AssertImagesMatch(t, webImg, shots[i], s.Diff)
-		ok := diff.Image != nil && diff.Ratio <= s.Diff.MaxRatio
-		t.Logf("슬라이드 %d(%s): %s", i+1, slide.ID, diff)
-		if diff.Image != nil {
-			s.review.AddSlide(t, fixture.Name, slide.ID, i, webImg, shots[i], diff.Image, diff.String(), ok)
+		cmp := AssertImagesMatch(t, webImg, shots[i], diff)
+		ok := cmp.Image != nil && cmp.Ratio <= diff.MaxRatio
+		t.Logf("슬라이드 %d(%s): %s", i+1, slide.ID, cmp)
+		if cmp.Image != nil {
+			s.review.AddSlide(t, fixture.Name, slide.ID, i, webImg, shots[i], cmp.Image, cmp.String(), ok)
 		}
 	}
 	s.review.AddArtifact(t, fixture.Name, pptxPath)

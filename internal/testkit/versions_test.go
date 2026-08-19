@@ -47,7 +47,8 @@ func TestPinnedVersionsParsesRepoFile(t *testing.T) {
 	// 핀 파일은 주석이 많다 — 파서가 주석을 값으로 오해하면 대조가 무의미해진다.
 	pins := PinnedVersions(t)
 	for _, key := range []string{"BALPYO_IMAGE_BASE", "BALPYO_GO", "BALPYO_SOFFICE_VERSION",
-		"BALPYO_CHROMIUM_VERSION", "BALPYO_PDFTOPPM_VERSION", "BALPYO_FONT_SANS", "BALPYO_FONT_CJK"} {
+		"BALPYO_CHROMIUM_VERSION", "BALPYO_PDFTOPPM_VERSION", "BALPYO_FONT_SANS", "BALPYO_FONT_CJK",
+		"BALPYO_FONT_MONO"} {
 		if pins[key] == "" {
 			t.Errorf("%s에 %s 핀이 없다", PinsFile, key)
 		}

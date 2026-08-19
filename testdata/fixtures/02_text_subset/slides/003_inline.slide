@@ -6,5 +6,5 @@
   <p>빌드는 <code>make test</code>로 돌리고, 문서는
   <a href="https://example.com/docs">레퍼런스</a>를 본다.</p>
   <p>첫 줄<br/>둘째 줄</p>
-  <p><span color="accent1" weight="700">강조된 런</span>과 보통 런이 한 문단에 있다.</p>
+  <p><span color="accent1" weight="bold">강조된 런</span>과 보통 런이 한 문단에 있다.</p>
 </slide>
