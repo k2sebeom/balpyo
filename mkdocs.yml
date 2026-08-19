@@ -25,6 +25,7 @@ nav:
       - reference/index.md
       - SOML — slide: reference/soml/slide.md
       - SOML — text: reference/soml/text.md
+      - SOML — 텍스트 서브셋: reference/soml/text-subset.md
       - SOML — note: reference/soml/note.md
       - 외관 속성: reference/appearance.md
       - CLI: reference/cli.md
@@ -42,6 +43,10 @@ nav:
       - 0004 지오메트리 곁 표: decisions/0004-geometry-side-table.md
       - 0005 줄간격과 안전 여유: decisions/0005-line-spacing-and-slack.md
       - 0006 발표자 뷰 속성 전환: decisions/0006-presenter-view-attribute.md
+      - 0007 블록 태그 역할의 소유 경계: decisions/0007-block-tag-role-ownership.md
+      - 0008 런 스타일 상속-복사: decisions/0008-run-style-inherit-copy.md
+      - 0009 측정 대상은 블록 종류뿐: decisions/0009-measured-kinds.md
+      - 0010 링크 색 accent1 재사용: decisions/0010-link-color-accent1.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |

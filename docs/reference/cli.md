@@ -69,6 +69,16 @@ slides/002_overview.slide:3:9: error: 알 수 없는 role "heding" (쓸 수 있�
 (통과하되 출력, `--strict`가 에러로 승격) 두 가지다. 경고는 빌드가 실패한 경우에도
 출력된다.
 
+지금 어휘에서 경고가 나오는 곳은 테마에 없는 `variant`다 (폴백 규칙은
+[외관 속성](appearance.md)의 캐스케이드 절):
+
+```
+slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: kicker, lead)
+```
+
+이 빌드는 코드 0으로 통과하고 산출물이 쓰인다. `--strict`를 켜면 같은 진단이 에러가
+되어 빌드가 실패한다 — 테마 어휘 밖의 variant를 잡고 싶은 CI에서 쓴다.
+
 ## `balpyo version`
 
 버전을 출력한다. 릴리스 빌드는 주입된 버전을, 개발 빌드는 Go 모듈 정보를 쓴다

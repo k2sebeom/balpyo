@@ -811,3 +811,62 @@
   - 항목 07이 픽셀 비교에 넘긴 판정들: 리스트 안전 여유(start 확장, 마커 자리 포함
     4%)와 마커 x 위치는 허용 오차 안 (슬라이드 2 diff 1.78%, 잉크 띠 초록). 빈 li의
     마커 유무는 이 픽스처에 빈 li가 없어 판정하지 못했다 — 여전히 열린 관찰.
+
+## Iteration 02 · 09-docs — Iteration 2 레퍼런스·캐스케이드 문서와 ADR 4건
+<!-- item: 02/09-docs -->
+
+- **한 것**:
+  - `docs/reference/soml/text-subset.md` 신규 — 통일 형식(속성/태그 표 → 예제 → 웹/PPTX
+    렌더 결과 → 에러 조건). HTML 서브셋 태그 표(종류·허용 속성·배치 규칙과 각각의 왜),
+    역할 등가 표(h1→title, h3=28, blockquote=muted, caption 비대칭, `<li>`=body),
+    공백 규칙(인라인 경계·pre 보존), `<br/>`·`<a href>` 사용법. 예제는 전부
+    `testdata/fixtures/02_text_subset`의 실제 슬라이드, 에러 표의 진단 문구는
+    `soml/parse.go`·`core/resolve.go`·`core/inline.go`의 실제 문자열이다. `reveal`은
+    쓰지 않았다 (어휘에 없다 — 미구현 동작 금지 규칙).
+  - `docs/reference/appearance.md` 갱신 — "해석 순서" 잠정 절을 **캐스케이드 절 전면**으로
+    교체 (4단 순서, 부분 패치 병합, 병합이 core에서 한 번·타깃 무관이라는 계약, variant
+    하위 절: 테마 소유 어휘·모르는 variant의 경고+폴백+`--strict` 승격 — 경고 예시는
+    006_variant 골든 diagnostics.txt의 실제 문구). 텍스트 역할 5종 표(+대응 블록 태그 열),
+    매핑 표에 `variant` 행, **인라인 서식 표**(strong/em/code/a/span/br의 CSS ↔
+    rPr@b/@i/@u·hlinkClick·a:br 대응), **리스트 표**(marL/indent/buChar/buAutoNum/buFont —
+    웹 CSS 상수와 한 곳에서 나온다는 계약 명문화).
+  - `docs/reference/cli.md` — `--strict`는 build 옵션 표에 이미 있었고, 진단 출력 절에
+    variant 경고(첫 사용자 가시 경고)의 실제 출력 예시와 `--strict` 승격을 이었다.
+  - **낡아진 기존 문서 수정** (문서와 코드가 갈라지면 문서가 틀린 것): `text.md`
+    (콘텐츠 모델이 "문자 데이터만" → 인라인 태그 포함, `variant` 속성 행, 바뀐 진단
+    문구 2건), `slide.md`(자식 어휘 문장과 에러 표 행 — 실제 메시지를 `go run`으로 출력해
+    확인하고 옮겼다), `reference/index.md`의 "현재 상태".
+  - ADR 4건: `0007-block-tag-role-ownership.md`(등가 표는 언어, 기본값은 테마 + h1→title),
+    `0008-run-style-inherit-copy.md`(상속-복사 + size 상속 차단 근거),
+    `0009-measured-kinds.md`(측정 대상 = 블록 종류, 카탈로그 4층 공유),
+    `0010-link-color-accent1.md`(hlink 전용 토큰 대신 accent1 재사용, I10 재검토).
+    `docs/decisions/index.md`·TASKS.md 결정 로그 갱신 — 결정 로그에 빠져 있던 0006 행도
+    함께 채웠다 (색인 완결성). `mkdocs.yml` nav에 5페이지 추가.
+  - TASKS.md Iteration 2 문서 체크박스 3개 `[x]`. 리뷰 박스는 사람 확인 대기라 열어 뒀다.
+
+- **설계 결정과 근거**:
+  - **ADR은 4건으로 판단했다.** 항목 지시의 3건에 더해 링크 색 accent1 재사용을 0010으로
+    승격 — 02/04와 02/06 두 항목이 승격 대기로 표시했고, core↔render를 가로지르는 관례를
+    산출물 테스트가 고정하는 횡단 결정이며 I10 재검토 예정이 명시적이라 색인에 있어야
+    한다. 나머지 후보(시맨틱 태그 선택, 마커의 PPTX 관례 + 36px 상수, weight 2값 폐쇄)는
+    01/08과 같은 태도로 **국소 매핑 선택**이라 올리지 않았다 — 각 근거는 코드 주석과
+    레퍼런스 표에 이미 있고, 마커·상수 계약은 appearance.md 리스트 표가 본문으로 담는다.
+  - 문서의 진단 문구는 전부 구현의 실제 문자열 사본이다 — slide.md의 자식 어휘 목록처럼
+    확신이 없는 것은 파서를 직접 돌려(`go run` 일회용 스니펫) 출력을 확인하고 옮겼다.
+
+- **검증**: `make docs`(mkdocs --strict) 통과. 코드 변경이 없는 항목이지만 커밋 전
+  게이트를 다시 돌렸다: `gofmt -l .` 무출력, `go vet ./...`, `make test`(컨테이너, finch)
+  전부 초록. 호스트 `go test ./...`는 02_text_subset 골든 비교에서 빨갛다 — 02/08이
+  기록한 macOS의 Noto Sans Mono 부재 그 경우다 (mono가 낀 두 슬라이드의 cy가 1px(9525
+  EMU) 차이. 게이트는 컨테이너).
+
+- **남긴 것**:
+  - **항목 07·08이 커밋을 남기지 않은 채 끝나 있었다** (NOTES 기록과 검증은 완료, 작업
+    트리만 미커밋). 항목별 한 커밋 흐름을 지키기 위해 두 항목의 변경을 NOTES 기록과
+    대조해 파일 단위로 나눠 **항목별 커밋 2건으로 대신 커밋**하고, 그 위에 이 항목의
+    문서 커밋을 얹었다. 커밋 본문에 대리 커밋임을 밝혔다.
+  - Iteration 2의 남은 칸은 리뷰 박스 하나다 — 02/08의 "남긴 것"에 있는 (a)~(d) 확인
+    목록을 사람이 Keynote/PowerPoint로 직접 연다. 끝나지 않은 것을 [x]로 만들지 않았다.
+  - `attrExample`의 "kicker"(값 없는 variant 에러 예시가 테마 사유 어휘를 인용)는 02/02의
+    열린 질문 그대로 Iteration 10 몫이다. 0010의 재검토(테마가 hlink 토큰을 명시하는
+    경우)도 같은 시점이다.

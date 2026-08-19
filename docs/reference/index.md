@@ -15,12 +15,15 @@
 
 ## 현재 상태
 
-Iteration 1까지 구현된 어휘와 표면:
+Iteration 2까지 구현된 어휘와 표면:
 
 - 태그: [`<slide>`](soml/slide.md) (`id`·`skip`), [`<text>`](soml/text.md)
-  (`role`·`size`·`color`·`align`), [`<note>`](soml/note.md)
-- [외관 속성](appearance.md) — 매핑 표와 토큰 색 보존 계약
-- [CLI](cli.md) — `build`와 `version`
+  (`role`·`variant`·`size`·`color`·`align`), [`<note>`](soml/note.md),
+  [텍스트 서브셋](soml/text-subset.md) (`h1`~`h3`, `p`, `ul`/`ol`/`li`, `blockquote`,
+  `pre`, `strong`, `em`, `code`, `a`, `br`, `span`)
+- [외관 속성](appearance.md) — 4단 캐스케이드, 텍스트 역할 5종, 인라인 서식·리스트 매핑
+  표, 토큰 색 보존 계약
+- [CLI](cli.md) — `build`(`--strict` 포함)와 `version`
 
 `layouts.md`와 `theme.md`는 해당 iteration(3·10)에서 생긴다. 구조와 파이프라인은
 [내부 구조](../internals/architecture.md)에 있다.

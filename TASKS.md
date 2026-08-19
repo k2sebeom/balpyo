@@ -192,10 +192,10 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
         역할/토큰 (variant 정의는 아직 하드코딩 테마 안)
   - [x] 인라인 태그 → 웹 그대로 / PPTX 런 분할
 - [ ] 리뷰: 불릿 리스트 슬라이드가 양 타깃에서 동일한 들여쓰기·마커로 보이는지
-- [ ] 문서:
-  - [ ] `docs/reference/soml/text-subset.md` — HTML 서브셋 태그 표 + 역할 등가 표
+- [x] 문서:
+  - [x] `docs/reference/soml/text-subset.md` — HTML 서브셋 태그 표 + 역할 등가 표
         (`<p>` ≡ `<text role="body">`)
-  - [ ] `docs/reference/appearance.md` — **캐스케이드 규칙 섹션** (4단 해석 순서) +
+  - [x] `docs/reference/appearance.md` — **캐스케이드 규칙 섹션** (4단 해석 순서) +
         텍스트 역할 5종, 인라인 서식 매핑 행 추가
 
 ## Iteration 3 — 레이아웃 태그: `<row>` `<col>` `<grid>` `<spacer>`
@@ -375,3 +375,8 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
 | 요소 외관은 인라인 `style` 속성으로 낸다 | `docs/decisions/0003-inline-style-appearance.md` | I1 |
 | 지오메트리는 덱이 아니라 곁 표로 주입한다 | `docs/decisions/0004-geometry-side-table.md` | I1 |
 | 줄간격 spcPts + 박스 폭 안전 여유 4% — 줄바꿈 허용 오차의 수치 임계값 (PRD §13-1에 기입) | `docs/decisions/0005-line-spacing-and-slack.md` | I1 |
+| 발표자 뷰는 `<html>` 속성으로 켜고 측정은 문서 뷰에서 한다 | `docs/decisions/0006-presenter-view-attribute.md` | I1.5 |
+| 블록 태그의 역할은 언어(soml)가, 태그별 기본값은 테마가 소유 (h1 → title) | `docs/decisions/0007-block-tag-role-ownership.md` | I2 |
+| 인라인 런 스타일은 확정 스타일의 상속-복사 | `docs/decisions/0008-run-style-inherit-copy.md` | I2 |
+| 측정 대상은 블록 종류뿐 (요소 종류 카탈로그 공유) | `docs/decisions/0009-measured-kinds.md` | I2 |
+| 링크 색은 hlink 전용 토큰이 아니라 accent1 재사용 (I10 재검토) | `docs/decisions/0010-link-color-accent1.md` | I2 |
