@@ -184,7 +184,7 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
 
 - 태그: `h1`~`h3`, `p`, `ul`/`ol`/`li`, `blockquote`, `pre`, `code`, `strong`, `em`,
   `a`, `br`, `span`
-- [ ] 테스트: 블록 태그 ≡ 텍스트 역할 등가성 (`<p>` ≡ `<text role="body">`),
+- [x] 테스트: 블록 태그 ≡ 텍스트 역할 등가성 (`<p>` ≡ `<text role="body">`),
       인라인 서식 → PPTX 텍스트 런(`rPr`, `hlinkClick`), 리스트 → `buChar`/들여쓰기
 - [ ] 구현:
   - [x] 텍스트 역할 계약 (`title`/`heading`/`body`/`caption`/`code`)

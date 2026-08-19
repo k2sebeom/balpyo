@@ -659,3 +659,62 @@
   - TASKS의 "인라인 태그 → 웹 그대로 / PPTX 런 분할" 체크박스를 [x]로 바꿨다 (웹은 항목
     05, PPTX 런은 이 항목). "테스트"·"리뷰" 박스는 리스트(항목 07)까지 묶여 있어 두지
     않았다.
+
+## Iteration 02 · 07-pptx-lists — PPTX 리스트: 불릿 문단 + 들여쓰기
+<!-- item: 02/07-pptx-lists -->
+
+- **한 것**:
+  - `render/pptx/shape.go` — `writeShapeNode`에 리스트 분기: `<ul>`/`<ol>` 하나 =
+    `p:sp` **하나**(`writeListShape`), `<li>` 하나 = `a:p` 하나(`writeListItem`). 도형
+    골격은 `writeSp`로 추출해 블록과 공유한다 (출력 바이트 동일 — 골든 불변 확인).
+    문단 pPr: `marL="342900"`(=`EMU(web.ListTextIndent)`) + `indent="-342900"`
+    (=`-EMU(web.ListMarkerHang)`, 행잉 인덴트) + li의 확정 정렬 + `lnSpc`/`spcPts`
+    (블록과 같은 절대 줄간격 규칙). 마커: ul은 `buChar`(=`web.ListBulletChar`), ol은
+    `buAutoNum type="arabicPeriod"`(웹의 `counter() "."` 짝), `buFont`는 li의 확정
+    폰트 토큰(`typefaceValues`의 latin — body는 `+mn-lt` 테마 참조). `spcBef`/`spcAft`는
+    내지 않는다 (`web.ListItemGap=0` — 수직 리듬은 줄높이 소유). li 안의 인라인·`<br/>`은
+    항목 06의 `writeRuns`를 그대로 부른다 — 리스트용 순회를 만들지 않았다. 블록 검증은
+    `checkTextStyle`로, `typefaces`는 값(`typefaceValues`)과 요소 조립로 나눴다.
+  - `render/pptx/lists_test.go` 신규 — li 3개 → 한 sp 안 `a:p` 3개, marL/indent가
+    웹 상수 × `EMUPerPixel`과 일치·행잉 인덴트 부호, spcPts 2700(body 24px×1.5),
+    buFont `+mn-lt`, spcBef/spcAft 부재 + `ListItemGap==0` 단정(상수가 움직이는 날
+    PPTX 대응을 요구), ul↔ol이 마커 치환만으로 동일 XML, li 안 strong/a 런·경계 공백·
+    rel id 문서 순서(블록→리스트 경유 rId3/rId4 + 같은 URL 재사용), `<br/>` = 같은 문단
+    안 `a:br`, 빈 li = 런 없는 문단, 빈 ul = `<a:p/>` 하나 든 도형 + 도형 id 연속,
+    바이트 동일성. `runs_test.go`의 가드 테스트(`TestRenderListStillFails`)는 제거.
+  - `render/pptx/soffice_test.go` — 슬라이드 4 추가: ul(인라인 strong/a·br·빈 li) + ol.
+- **설계 결정과 근거**:
+  - **안전 여유는 `TextBoxRect`를 start 정렬로 그대로 적용** (항목 지시의 정책 결정):
+    li는 align 속성을 받지 않아 (파서 allowlist) 확정 정렬이 언제나 start이므로, 닻 내린
+    왼쪽 변(=마커 위치)을 움직이지 않는 방향은 오른쪽 확장뿐이다. 4%가 마커 자리(36px)를
+    포함한 컨테이너 폭에 걸려 절대 여유가 텍스트만일 때보다 약간 크지만, 그 오차는 줄
+    늘어남을 막는 안전한 방향이다 — 판정은 항목 08의 픽셀 비교에 넘긴다.
+  - **buFont는 li의 확정 폰트 토큰(`+mn-lt` 참조)** — 명시하지 않으면 뷰어 기본 폰트가
+    마커를 그려 크기·모양이 흔들리고, 웹 마커(`li::before`)는 li의 폰트를 상속하므로
+    같은 폰트여야 짝이 맞는다. 테마 참조로 남겨 PowerPoint 테마 폰트 편집을 따라간다
+    (rPr latin과 같은 값 — `typefaceValues` 한 곳). 색·크기는 내지 않는다: OOXML 기본
+    (buClrTx/buSzTx)이 이미 "텍스트를 따른다"로 `::before` 상속과 같은 뜻이다.
+  - **빈 `<li>` = 런 없는 문단, `<li>` 없는 `<ul>`(파서가 안 막는다) = 도형은 낸다** —
+    빈 텍스트 정책과 같은 태도 (자리·순서·도형 id 보존). txBody는 `p+`를 요구하므로
+    빈 리스트는 서식 없는 `<a:p/>` 하나가 스키마를 채운다 (li가 없으니 실을 스타일도
+    마커도 없다).
+  - **`<li>` 안 `<br/>`은 같은 문단 안 `a:br`** — 문단(=항목)을 쪼개면 마커가 하나 더
+    생긴다. 웹의 `<br>`(li 블록 안 줄바꿈)과 같은 뜻의 "마커 없는 이어짐 줄"이다.
+  - pPr 자식 순서는 스키마(CT_TextParagraphProperties) 그대로: lnSpc → buFont →
+    buChar/buAutoNum. 어기면 LibreOffice가 복구를 묻는다 (hlinkClick 순서와 같은 종류).
+- **검증**: RED 먼저 확인 (lists_test 7건 전부 "매핑이 없다"로 실패). 구현 후
+  `gofmt -l .` 무출력, `go vet ./...`, `go test ./...` 로컬 전부 통과, `make test`
+  (컨테이너, finch) 전부 통과. 컨테이너에서 `TestLibreOfficeOpensTextShapes -v -count=1`
+  단독 PASS — buChar/buAutoNum·행잉 인덴트·`buFont typeface="+mn-lt"`가 든 리스트
+  슬라이드를 LibreOffice가 복구 경고 없이 열었다. `git status`에 testdata/골든 변화 없음 —
+  `writeSp` 추출이 기존 도형 XML을 바이트 단위로 보존했다.
+- **남긴 것**:
+  - **픽셀 비교(항목 08)가 판정할 것**: 리스트 안전 여유 정책(start 확장, 마커 자리 포함
+    4%), 마커 글리프의 실제 x 위치(웹 `left: ListTextIndent-ListMarkerHang` = 0 대비
+    PPTX의 marL+indent = 0 — 뷰어가 마커를 왼쪽 정렬로 그린다는 가정), 빈 li의 마커
+    유무(웹 `::before`는 빈 li에도 마커를 그리지만 PPTX 뷰어는 빈 문단에 마커를 안
+    그릴 수 있다 — 구조만 이 항목의 책임이다).
+  - `lvl` 매핑(중첩 리스트)은 파서 가드를 풀 때 함께 온다 (항목 01의 결정 그대로).
+  - TASKS의 Iteration 2 "테스트" 박스(등가성·런·리스트)를 [x]로 바꿨다 — 등가성은 02/02,
+    런은 02/06, 리스트는 이 항목이 마감했다. "리뷰"(양 타깃 육안 대조)·"문서" 박스는
+    항목 08·09 몫으로 남긴다.

@@ -114,16 +114,22 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 		// 파서를 거치지 않은 덱이므로 조용히 건너뛰지 않고 멈춘다.
 		return fmt.Errorf("%s: 슬라이드 콘텐츠에 요소가 아닌 노드 %T가 있다", slide.Source, node)
 	}
-	// 텍스트 박스가 되는 것은 <text>와 블록 종류 카탈로그다 (soml.KindOf — 렌더러가 이름
-	// 목록을 따로 들지 않는 이유는 웹과 같다). 리스트 컨테이너(<ul>/<ol>)는 항목 07의
-	// buChar/들여쓰기까지 아래 가드 에러로 남는다 — 조용히 빠지는 대신 멈춘다.
-	if elem.Name != soml.TextElement && soml.KindOf(elem.Name) != soml.KindBlock {
+	// 텍스트 박스가 되는 것은 <text>·블록 종류 카탈로그·리스트 컨테이너다 (soml.KindOf —
+	// 렌더러가 이름 목록을 따로 들지 않는 이유는 웹과 같다).
+	id := web.ElementID(slide.Index, path)
+	switch {
+	case elem.Name == soml.TextElement || soml.KindOf(elem.Name) == soml.KindBlock:
+		if err := writeTextShape(b, deck, slide, elem, id, *shapeID, g, links); err != nil {
+			return err
+		}
+	case soml.KindOf(elem.Name) == soml.KindListContainer:
+		if err := writeListShape(b, deck, slide, elem, id, *shapeID, g, links); err != nil {
+			return err
+		}
+	default:
 		// 웹 렌더러와 같은 이유로 멈춘다 (render/web.writeNode): 어휘에 태그를 추가하고 렌더
 		// 매핑을 잊으면 "파싱은 되는데 그려지지 않는" 조용한 실패가 된다.
 		return fmt.Errorf("%s:%s <%s>를 PPTX로 렌더하는 매핑이 없다", slide.Source, elem.Span, elem.Name)
-	}
-	if err := writeTextShape(b, deck, slide, elem, web.ElementID(slide.Index, path), *shapeID, g, links); err != nil {
-		return err
 	}
 	*shapeID++
 	return nil
@@ -152,8 +158,37 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
+	writeSp(b, shapeID, elem.Name+" "+id, TextBoxRect(box.Rect, style.Align), body)
+	return nil
+}
 
-	rect := TextBoxRect(box.Rect, style.Align)
+// writeListShape는 리스트 컨테이너 하나(`<ul>`/`<ol>`)를 p:sp(텍스트 박스) **하나**로 쓴다 —
+// `<li>` 하나가 문단(a:p) 하나다. 항목마다 도형을 내면 PowerPoint에서 리스트가 낱개 텍스트
+// 박스로 조각나 편집 단위가 깨진다 — 리스트는 하나의 텍스트 흐름이다.
+//
+// 좌표는 컨테이너의 잰 rect다 (항목 05가 ul/ol에 식별자를 붙였다 — li rect는 측정되지만
+// 도형 좌표로 쓰지 않는다). 안전 여유는 블록과 같은 TextBoxRect를 **start 정렬로** 적용한다:
+// li는 align 속성을 받지 않아 (파서 allowlist) 확정 정렬이 언제나 역할 기본값 start이므로,
+// 글자가 닻을 내린 왼쪽 변(=마커 위치)이 움직이지 않는 방향은 오른쪽 확장뿐이다. 여유 비율의
+// 근거(스크립트 간격)는 텍스트 폭 기준인데 리스트 폭에는 마커 자리(ListTextIndent)가
+// 포함되어 절대 여유가 텍스트만일 때보다 약간 크다 — 줄 늘어남(LibreOffice에서 한 줄
+// 증가)을 막는 안전한 방향의 오차이므로 그대로 두고, 실제 판정은 항목 08의 픽셀 비교가 한다.
+func writeListShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, links *slideLinks) error {
+	box, ok := g.Box(id)
+	if !ok {
+		return fmt.Errorf("%s: %s <%s>의 측정된 좌표가 없다", slide.Source, id, elem.Name)
+	}
+	body, err := listBodyXML(elem, deck.Theme, links)
+	if err != nil {
+		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
+	}
+	writeSp(b, shapeID, elem.Name+" "+id, TextBoxRect(box.Rect, soml.AlignStart), body)
+	return nil
+}
+
+// writeSp는 텍스트 박스 도형의 공통 골격을 쓴다 — nvSpPr(id·이름·txBox 표시)와
+// spPr(좌표·rect 프리셋·채움/선 없음) 사이에 조립된 txBody를 끼운다.
+func writeSp(b *strings.Builder, shapeID int, name string, rect geom.Rect, body string) {
 	x, y := Offset(rect)
 	cx, cy := Extent(rect)
 
@@ -164,7 +199,7 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 	w(1, "<p:nvSpPr>")
 	// 이름은 지오메트리 식별자다 — PowerPoint 선택 창과 진단 메시지가 같은 이름으로
 	// 같은 요소를 가리킨다.
-	w(2, fmt.Sprintf(`<p:cNvPr id="%d" name="%s"/>`, shapeID, escapeXML(elem.Name+" "+id)))
+	w(2, fmt.Sprintf(`<p:cNvPr id="%d" name="%s"/>`, shapeID, escapeXML(name)))
 	w(2, `<p:cNvSpPr txBox="1"/>`)
 	w(2, "<p:nvPr/>")
 	w(1, "</p:nvSpPr>")
@@ -185,7 +220,6 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 	w(1, "</p:spPr>")
 	b.WriteString(body)
 	w(0, "</p:sp>")
-	return nil
 }
 
 // textBodyXML은 해석된 텍스트 외관과 블록의 자식들을 p:txBody로 컴파일한다 (PRD §9.4의
@@ -197,24 +231,10 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, lin
 	if err != nil {
 		return "", err
 	}
-	// 블록 자체의 색·폰트도 여기서 먼저 검증한다 — 런이 없는 빈 요소에서도 해석되지 않은
-	// 외관은 소리를 내야 한다 (writeTextShape의 빈 도형 정책과 짝).
-	if _, err := colorXML(style.Color, theme); err != nil {
+	// 블록 자체의 색·폰트·메트릭도 여기서 먼저 검증한다 — 런이 없는 빈 요소에서도 해석되지
+	// 않은 외관은 소리를 내야 한다 (writeTextShape의 빈 도형 정책과 짝).
+	if err := checkTextStyle(style, theme); err != nil {
 		return "", err
-	}
-	if _, _, err := typefaces(style.Font, theme); err != nil {
-		return "", err
-	}
-	// 웹 렌더러와 같은 검사다 (textStyleCSS) — 해석되지 않은 0 값이 sz="0"으로 흘러가면
-	// 파일은 열리지만 글자가 보이지 않는다.
-	if style.Size <= 0 {
-		return "", fmt.Errorf("폰트 크기가 해석되지 않았다 (%v)", style.Size)
-	}
-	if style.Weight <= 0 {
-		return "", fmt.Errorf("폰트 굵기가 해석되지 않았다 (%d)", style.Weight)
-	}
-	if style.LineHeight <= 0 {
-		return "", fmt.Errorf("줄높이가 해석되지 않았다 (%v)", style.LineHeight)
 	}
 
 	var b strings.Builder
@@ -251,6 +271,150 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, lin
 	w(2, "</a:p>")
 	w(1, "</p:txBody>")
 	return b.String(), nil
+}
+
+// checkTextStyle은 확정 텍스트 스타일이 OOXML로 컴파일될 수 있는지 검증한다 — 웹 렌더러의
+// textStyleCSS와 같은 검사다. 해석되지 않은 0 값이 sz="0"으로 흘러가면 파일은 열리지만
+// 글자가 보이지 않는다.
+func checkTextStyle(style soml.TextStyle, theme soml.Theme) error {
+	if _, err := colorXML(style.Color, theme); err != nil {
+		return err
+	}
+	if _, _, err := typefaces(style.Font, theme); err != nil {
+		return err
+	}
+	if style.Size <= 0 {
+		return fmt.Errorf("폰트 크기가 해석되지 않았다 (%v)", style.Size)
+	}
+	if style.Weight <= 0 {
+		return fmt.Errorf("폰트 굵기가 해석되지 않았다 (%d)", style.Weight)
+	}
+	if style.LineHeight <= 0 {
+		return fmt.Errorf("줄높이가 해석되지 않았다 (%v)", style.LineHeight)
+	}
+	return nil
+}
+
+// listBodyXML은 리스트 컨테이너의 자식들을 p:txBody로 컴파일한다 — `<li>` 하나가 문단
+// (a:p) 하나다 (PRD §9.4의 "리스트 → buChar/들여쓰기" 행). 문단 서식은 li의 확정
+// 스타일에서, 들여쓰기·마커는 웹 리스트 CSS 상수(render/web — 항목 05)에서 나온다.
+func listBodyXML(list *soml.Element, theme soml.Theme, links *slideLinks) (string, error) {
+	var b strings.Builder
+	w := func(depth int, line string) {
+		b.WriteString("\n" + shapeIndent + strings.Repeat("  ", depth) + line)
+	}
+	// 인셋 0·wrap="square"·noAutofit의 근거는 블록과 같다 (textBodyXML): `.balpyo-list`도
+	// padding·border 0의 border box라 잰 rect가 곧 콘텐츠 박스이고, li의 들여쓰기는 인셋이
+	// 아니라 문단의 marL이 소유한다 (웹의 li padding-left와 짝).
+	w(1, `<p:txBody>`)
+	w(2, `<a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">`)
+	w(3, "<a:noAutofit/>")
+	w(2, "</a:bodyPr>")
+	w(2, "<a:lstStyle/>")
+	if len(list.Children) == 0 {
+		// <li> 없는 리스트는 파서가 막지 않는다 — 도형은 낸다 (빈 텍스트와 같은 정책:
+		// spTree 순서와 도형 id가 내용에 따라 흔들리지 않는다). txBody는 문단 하나
+		// 이상을 요구하므로(CT_TextBody의 p+) 서식 없는 빈 문단이 스키마를 채운다 —
+		// li가 없으니 실을 확정 스타일도 마커도 없다.
+		w(2, "<a:p/>")
+	}
+	for _, child := range list.Children {
+		li, ok := child.(*soml.Element)
+		if !ok {
+			// 리스트 컨테이너 직속 문자 데이터는 파서가 막는다 (modelElements) — 여기
+			// 도달했다면 파서를 거치지 않은 덱이므로 조용히 건너뛰지 않고 멈춘다.
+			return "", fmt.Errorf("<%s> 안에 요소가 아닌 노드 %T가 있다", list.Name, child)
+		}
+		if soml.KindOf(li.Name) != soml.KindListItem {
+			// 콘텐츠 모델상 리스트 컨테이너의 자식은 <li>뿐이다 (파서의 children allowlist).
+			return "", fmt.Errorf("%s <%s> 안의 <%s>를 PPTX로 렌더하는 매핑이 없다",
+				li.Span, list.Name, li.Name)
+		}
+		if err := writeListItem(w, list, li, theme, links); err != nil {
+			return "", err
+		}
+	}
+	w(1, "</p:txBody>")
+	return b.String(), nil
+}
+
+// writeListItem은 `<li>` 하나를 마커 있는 문단(a:p)으로 쓴다.
+//
+// pPr의 들여쓰기는 행잉 인덴트다: marL은 텍스트 시작(웹 li의 padding-left =
+// web.ListTextIndent), indent는 음수로 마커를 내민다(-web.ListMarkerHang). 값은 웹
+// 리스트 CSS 상수의 EMU 환산이다 — 두 렌더러에 따로 적히면 들여쓰기가 갈라진다 (환산은
+// units.go의 경계 함수 EMU만 쓴다). 항목 사이 추가 간격(spcBef/spcAft)은 내지 않는다 —
+// 웹이 ListItemGap=0으로 정했다 (수직 리듬은 줄높이 소유). 상수가 0이 아니게 되는 날
+// spcAft 대응을 함께 구현해야 한다 (lists_test의 상수 단정이 그 날을 잡는다).
+//
+// 마커 폰트(buFont)는 li의 확정 폰트다 — 명시하지 않으면 뷰어 기본 폰트가 마커를 그려
+// 크기·모양이 흔들리고, 웹의 마커(li::before)는 li의 폰트를 상속하므로 짝이 맞으려면
+// 같은 폰트여야 한다. 색·크기는 명시하지 않는다: OOXML 기본(buClrTx/buSzTx)이 이미
+// "텍스트를 따른다"이고, 그것이 정확히 ::before의 상속과 같은 뜻이다.
+func writeListItem(w func(depth int, line string), list, li *soml.Element, theme soml.Theme, links *slideLinks) error {
+	style := li.TextStyle()
+	if style == nil {
+		return fmt.Errorf("%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+			li.Span, li.Name)
+	}
+	algn, err := algnValue(style.Align)
+	if err != nil {
+		return err
+	}
+	if err := checkTextStyle(*style, theme); err != nil {
+		return err
+	}
+	buFont, err := bulletFontXML(style.Font, theme)
+	if err != nil {
+		return err
+	}
+	bullet, err := bulletXML(list.Name)
+	if err != nil {
+		return err
+	}
+	w(2, "<a:p>")
+	w(3, fmt.Sprintf(`<a:pPr marL="%d" indent="%d" algn="%s">`,
+		EMU(web.ListTextIndent), -EMU(web.ListMarkerHang), algn))
+	w(4, "<a:lnSpc>")
+	// 절대 줄간격(spcPts)이다 — 블록과 같은 규칙 (textBodyXML의 근거).
+	w(5, fmt.Sprintf(`<a:spcPts val="%d"/>`, LineSpacing(style.LineHeight, style.Size)))
+	w(4, "</a:lnSpc>")
+	// 스키마 순서(CT_TextParagraphProperties): lnSpc → buFont → buChar/buAutoNum.
+	w(4, buFont)
+	w(4, bullet)
+	w(3, "</a:pPr>")
+	// li 안의 인라인은 블록과 같은 런 분할기를 지난다 (항목 06) — <br/>은 같은 문단 안의
+	// a:br(마커 없는 이어짐 줄)이고, 빈 li는 런 없는 문단으로 남는다 (자리와 순서 보존).
+	if err := writeRuns(w, li, *style, theme, links, runContext{}); err != nil {
+		return err
+	}
+	w(2, "</a:p>")
+	return nil
+}
+
+// bulletXML은 리스트 컨테이너 이름의 마커 요소다 — 웹 마커와 같은 곳에서 나온다:
+// ul은 li::before의 글리프(web.ListBulletChar), ol은 엔진 카운터의 "1." 형식과 짝인
+// arabicPeriod다 (render/web.listCSS).
+func bulletXML(container string) (string, error) {
+	switch container {
+	case "ul":
+		return fmt.Sprintf(`<a:buChar char="%s"/>`, escapeXML(web.ListBulletChar)), nil
+	case "ol":
+		return `<a:buAutoNum type="arabicPeriod"/>`, nil
+	}
+	// 컨테이너 어휘(soml.KindListContainer)에 이름을 추가하고 마커 매핑을 잊으면
+	// 조용히 마커 없는 리스트가 되는 대신 멈춘다.
+	return "", fmt.Errorf("<%s>의 마커 매핑이 없다", container)
+}
+
+// bulletFontXML은 마커 폰트 요소다 — li의 확정 폰트 토큰에서 나온다 (근거는 writeListItem).
+// buFont는 typeface 하나뿐이라 latin 슬롯을 쓴다: 마커 글리프(•·숫자)는 라틴 폰트가 그린다.
+func bulletFontXML(role soml.FontRole, theme soml.Theme) (string, error) {
+	latin, _, err := typefaceValues(role, theme)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(`<a:buFont typeface="%s"/>`, escapeXML(latin)), nil
 }
 
 // runContext는 순회가 잎까지 끌고 내려가는 런 상태다.
@@ -437,13 +601,24 @@ func colorXML(color soml.Color, theme soml.Theme) (string, error) {
 	}
 }
 
-// typefaces는 폰트 토큰을 rPr의 latin/ea 요소로 만든다.
+// typefaces는 폰트 토큰을 rPr의 latin/ea 요소로 만든다 (값은 typefaceValues).
+func typefaces(role soml.FontRole, theme soml.Theme) (latin, ea string, err error) {
+	lt, et, err := typefaceValues(role, theme)
+	if err != nil {
+		return "", "", err
+	}
+	return fmt.Sprintf(`<a:latin typeface="%s"/>`, escapeXML(lt)),
+		fmt.Sprintf(`<a:ea typeface="%s"/>`, escapeXML(et)), nil
+}
+
+// typefaceValues는 폰트 토큰의 latin/ea typeface 값이다 — rPr의 latin/ea(typefaces)와
+// 리스트 마커의 buFont(bulletFontXML)가 같은 값을 쓴다.
 //
 // fontScheme 슬롯이 있는 토큰은 `+mj-lt` 같은 **테마 참조**로 남는다 — 색과 같은 이유로,
 // 참조여야 내보낸 파일이 PowerPoint의 테마 폰트 변경을 따라간다. 슬롯 없는 토큰(mono)은
 // 리터럴 typeface다: fontScheme에는 major/minor 두 자리뿐이라 세 번째 폰트를 실을 곳이
 // 없다 (soml.FontToken.Scheme의 주석 — 테마 폰트 편집을 따라가지 못하는 유일한 예외).
-func typefaces(role soml.FontRole, theme soml.Theme) (latin, ea string, err error) {
+func typefaceValues(role soml.FontRole, theme soml.Theme) (latin, ea string, err error) {
 	if role == "" {
 		return "", "", fmt.Errorf("폰트 토큰이 해석되지 않았다")
 	}
@@ -453,12 +628,11 @@ func typefaces(role soml.FontRole, theme soml.Theme) (latin, ea string, err erro
 	}
 	switch token.Scheme {
 	case "major":
-		return `<a:latin typeface="+mj-lt"/>`, `<a:ea typeface="+mj-ea"/>`, nil
+		return "+mj-lt", "+mj-ea", nil
 	case "minor":
-		return `<a:latin typeface="+mn-lt"/>`, `<a:ea typeface="+mn-ea"/>`, nil
+		return "+mn-lt", "+mn-ea", nil
 	case "":
-		return fmt.Sprintf(`<a:latin typeface="%s"/>`, escapeXML(token.Latin)),
-			fmt.Sprintf(`<a:ea typeface="%s"/>`, escapeXML(token.EastAsian)), nil
+		return token.Latin, token.EastAsian, nil
 	}
 	return "", "", fmt.Errorf("폰트 토큰 %q의 fontScheme 슬롯 %q를 모른다 (major/minor/빈 문자열)",
 		string(role), token.Scheme)

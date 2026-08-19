@@ -303,24 +303,6 @@ func TestRenderBlockTagShapes(t *testing.T) {
 	}
 }
 
-// 리스트 컨테이너는 항목 07까지 기존 가드 에러를 유지한다 — 조용히 빠지는 대신 멈춘다.
-func TestRenderListStillFails(t *testing.T) {
-	deck := resolvedDeck(t, `<slide>
-  <ul>
-    <li>항목</li>
-  </ul>
-</slide>`)
-	g := measuredGeometry(t, deck, bodyRect, geom.Rect{X: 64, Y: 64, W: 1152, H: 36})
-
-	_, err := NewWithGeometry(g).Render(deck)
-	if err == nil {
-		t.Fatal("리스트가 렌더되었다 — 항목 07 전에는 가드 에러여야 한다")
-	}
-	if !strings.Contains(err.Error(), "매핑이 없다") {
-		t.Errorf("에러가 매핑 부재를 가리키지 않는다: %v", err)
-	}
-}
-
 // 외관이 해석되지 않은 인라인은 기본값으로 그리지 않는다 (웹 writeInline과 같은 계약).
 func TestRunUnresolvedInlineFails(t *testing.T) {
 	deck := resolvedDeck(t, `<slide>

@@ -52,6 +52,21 @@ func TestLibreOfficeOpensTextShapes(t *testing.T) {
 			"  <a href=\"https://example.com/deck?a=1&b=2\">부록</a> 참고<br/>문의: <em>플랫폼팀</em> (<code>#platform</code>)</p>\n" +
 			"  <pre>$ balpyo build\n\ndist/deck.pptx</pre>\n" +
 			"</slide>",
+		// 리스트 — pPr의 marL/indent(행잉 인덴트)·buChar/buAutoNum·buFont(테마 참조
+		// "+mn-lt")·li 안의 인라인 런·<br/>·빈 li가 스키마를 벗어나면 여기서 복구
+		// 경고로 드러난다 (항목 07).
+		`<slide>
+  <h2>다음 분기 계획</h2>
+  <ul>
+    <li>측정 파이프라인 <strong>안정화</strong></li>
+    <li>상세는 <a href="https://example.com/plan">계획 문서</a> 참고<br/>이어짐 줄</li>
+    <li></li>
+  </ul>
+  <ol>
+    <li>첫째 단계</li>
+    <li>둘째 단계</li>
+  </ol>
+</slide>`,
 	}
 	for i, src := range sources {
 		file := fmt.Sprintf("slides/%03d.slide", i+1)
