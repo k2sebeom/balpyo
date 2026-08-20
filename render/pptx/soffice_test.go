@@ -19,10 +19,10 @@ import (
 )
 
 // LibreOffice가 텍스트 박스가 든 덱을 경고·복구 없이 여는지 본다. 원문은 실제 픽스처가
-// 요구하는 것들을 담는다 — 한글, &, 인라인 외관, 빈 요소, 그리고 노트. 노트는 **2번
-// 슬라이드에만** 있다: notesSlide2가 notesSlide1 없이 존재하는, 번호가 비어 뛰는 경우다
-// (notesSlidePart의 번호 규칙) — 노트 파트는 관계·Content_Types가 조금만 틀려도 복구
-// 경고로 드러나므로 이 게이트가 여기서 특히 값을 한다.
+// 요구하는 것들을 담는다 — 한글, &, 인라인 외관, 빈 요소, 리스트, 레이아웃, 그리고 노트.
+// 노트는 **2번 슬라이드에만** 있다: notesSlide2가 notesSlide1 없이 존재하는, 번호가 비어
+// 뛰는 경우다 (notesSlidePart의 번호 규칙) — 노트 파트는 관계·Content_Types가 조금만
+// 틀려도 복구 경고로 드러나므로 이 게이트가 여기서 특히 값을 한다.
 func TestLibreOfficeOpensTextShapes(t *testing.T) {
 	// 도구가 없으면 렌더를 시작하기 전에 건너뛴다(로컬) 또는 실패한다(테스트 이미지).
 	testkit.RequireSoffice(t)
@@ -66,6 +66,32 @@ func TestLibreOfficeOpensTextShapes(t *testing.T) {
     <li>첫째 단계</li>
     <li>둘째 단계</li>
   </ol>
+</slide>`,
+		// 레이아웃 — 중첩 컨테이너 + <grid cols="4"> 카드 + <spacer/>. 컨테이너는 도형이
+		// 되지 않으므로 구조적으로는 텍스트 박스 여러 개일 뿐이지만(항목 04), 좌표가
+		// 많아지면 겹침·음수 좌표 같은 실수가 여기서 처음 드러난다. 빈 컨테이너와
+		// 컨테이너 안의 리스트도 함께 지난다 — 도형 0개와 도형 1개가 같은 순회에서 나온다.
+		`<slide>
+  <col gap="lg" pad="lg">
+    <row justify="between" align="center">
+      <h2>분기 지표</h2>
+      <spacer/>
+      <text role="caption" color="muted">2026 H1</text>
+    </row>
+    <grid cols="4" gap="md">
+      <col><text role="heading">배포</text><text>주 12회</text></col>
+      <col><text role="heading">지연</text><text>-38%</text></col>
+      <col><text role="heading">가동률</text><text>99.95%</text></col>
+      <col><text role="heading">비용</text><text>-12%</text></col>
+    </grid>
+    <row gap="md">
+      <ul basis="480">
+        <li>측정 파이프라인 <strong>안정화</strong></li>
+        <li>리뷰 갤러리 자동화</li>
+      </ul>
+      <col grow="1"></col>
+    </row>
+  </col>
 </slide>`,
 	}
 	for i, src := range sources {

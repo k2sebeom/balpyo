@@ -213,8 +213,10 @@ func TestTextFixtureCoordinatesMatchGeometry(t *testing.T) {
 			for i, box := range result.Geometry.Boxes {
 				align := aligns[i]
 				if align == nil {
-					// <li>는 측정되지만 자기 도형을 갖지 않는다 — 컨테이너의 도형 하나가
-					// 좌표를 소유한다 (pptx.writeListShape).
+					// 측정되지만 자기 도형을 갖지 않는 요소다: `<li>`는 컨테이너의 도형
+					// 하나가 좌표를 소유하고 (pptx.writeListShape), 레이아웃 컨테이너와
+					// `<spacer>`는 도형이 아예 없다 (pptx.writeShapeNode) — 도형 수와의
+					// 관계는 아래 TestTextFixtureShapeCountExcludesNonShapeElements가 본다.
 					continue
 				}
 				part := fmt.Sprintf("ppt/slides/slide%d.xml", box.Slide+1)
@@ -236,9 +238,61 @@ func TestTextFixtureCoordinatesMatchGeometry(t *testing.T) {
 	}
 }
 
+// 도형 수 = 측정 박스 수 − (레이아웃 컨테이너 + `<spacer>` + `<li>`).
+//
+// 이 관계를 골든이 아니라 계약으로 두는 이유: "레이아웃 컨테이너는 도형이 되지 않는다"가
+// 골든 XML의 모양으로만 남으면, 컨테이너가 도형을 내기 시작한 변경은 골든 diff에서 "도형이
+// 하나 늘었다"로만 보이고 그것이 계약 위반인지 새 픽스처 슬라이드인지 사람이 판단해야 한다.
+// 측정 목록(geom.Refs — 컨테이너도 잰다)과 실제 도형 수를 맞대면 그 판단이 필요 없다.
+//
+// 종류 판정은 soml.KindOf(box.El)로 한다 — 측정 결과가 자기 태그 이름을 갖고 있고, 카탈로그가
+// 종류의 유일한 소유자이므로 (soml/subset.go) 테스트가 이름 목록을 따로 들지 않는다.
+func TestTextFixtureShapeCountExcludesNonShapeElements(t *testing.T) {
+	RequireChromium(t) // 지오메트리 패스가 브라우저를 띄운다.
+	for _, name := range textFixtureNames {
+		t.Run(name, func(t *testing.T) {
+			fixture := fixtureByName(t, name)
+			result := fixture.Build(t)
+			if result.Geometry == nil {
+				t.Fatal("텍스트가 있는 덱의 빌드에 지오메트리가 없다")
+			}
+			data, err := os.ReadFile(fixture.Output(t, result, ".pptx"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			parts := PPTXParts(t, data)
+
+			var want, containers, spacers, items int
+			for _, box := range result.Geometry.Boxes {
+				switch soml.KindOf(box.El) {
+				case soml.KindLayoutContainer:
+					containers++
+				case soml.KindSpacer:
+					spacers++
+				case soml.KindListItem:
+					items++
+				default:
+					want++
+				}
+			}
+			got := 0
+			for i := range result.Deck.Slides {
+				got += strings.Count(string(parts[fmt.Sprintf("ppt/slides/slide%d.xml", i+1)]), "<p:sp>")
+			}
+			t.Logf("측정 박스 %d개 − 컨테이너 %d − spacer %d − li %d = 도형 %d개",
+				len(result.Geometry.Boxes), containers, spacers, items, got)
+			if got != want {
+				t.Errorf("도형 %d개, want %d개 (측정 박스 %d − 컨테이너 %d − spacer %d − li %d)",
+					got, want, len(result.Geometry.Boxes), containers, spacers, items)
+			}
+		})
+	}
+}
+
 // shapeAligns는 지오메트리와 같은 문서 순서(geom.Refs — 인라인은 자손까지 건너뛴다)로,
 // 측정된 요소마다 PPTX 조립기가 그 도형의 TextBoxRect에 쓰는 정렬을 모은다. 자기 도형을
-// 갖지 않는 요소(<li> — 컨테이너가 도형 하나다)는 nil이다.
+// 갖지 않는 요소는 nil이다 — `<li>`(컨테이너가 도형 하나다), 레이아웃 컨테이너와
+// `<spacer>`(도형이 아예 없다).
 func shapeAligns(t *testing.T, deck *soml.Deck) []*soml.TextAlign {
 	t.Helper()
 	var aligns []*soml.TextAlign
@@ -260,6 +314,12 @@ func shapeAligns(t *testing.T, deck *soml.Deck) []*soml.TextAlign {
 			align := soml.AlignStart
 			aligns = append(aligns, &align)
 		case soml.KindListItem:
+			aligns = append(aligns, nil)
+		case soml.KindLayoutContainer, soml.KindSpacer:
+			// 레이아웃 컨테이너와 `<spacer>`는 **측정되지만 도형이 되지 않는다**
+			// (pptx.writeShapeNode — 이 iteration의 핵심 계약). 측정 목록에는 있으므로
+			// 자리를 비워 두어야 뒤따르는 자식의 좌표가 제 정렬과 만난다. 컨테이너는
+			// 자식으로 내려가고(아래 순회), spacer는 void라 자식이 없다.
 			aligns = append(aligns, nil)
 		default:
 			style := elem.TextStyle()

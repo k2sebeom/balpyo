@@ -103,7 +103,7 @@ func writeContainer(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 	fmt.Fprintf(b, "<div class=%q %s=%q %s=%q%s>\n",
 		class, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, styleAttr(decls))
 	for i, child := range elem.Children {
-		if err := writeNode(b, deck, slide, child, childPath(path, i)); err != nil {
+		if err := writeNode(b, deck, slide, child, ChildPath(path, i)); err != nil {
 			return err
 		}
 	}

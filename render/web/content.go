@@ -205,7 +205,7 @@ func writeBlock(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 		}
 	}
 	for i, child := range elem.Children {
-		if err := writeNode(b, deck, slide, child, childPath(path, i)); err != nil {
+		if err := writeNode(b, deck, slide, child, ChildPath(path, i)); err != nil {
 			return err
 		}
 	}
@@ -241,7 +241,7 @@ func writeList(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *som
 	fmt.Fprintf(b, "<%s class=\"balpyo-list\" %s=%q %s=%q%s>\n",
 		elem.Name, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, styleAttr(decls))
 	for i, child := range elem.Children {
-		if err := writeNode(b, deck, slide, child, childPath(path, i)); err != nil {
+		if err := writeNode(b, deck, slide, child, ChildPath(path, i)); err != nil {
 			return err
 		}
 	}
@@ -331,10 +331,14 @@ func ElementID(slideIndex int, path []int) string {
 	return b.String()
 }
 
-// childPath는 부모 경로에 자식 인덱스를 더한 **새** 경로다. append를 그대로 쓰면 형제끼리
+// ChildPath는 부모 경로에 자식 인덱스를 더한 **새** 경로다. append를 그대로 쓰면 형제끼리
 // 배열을 공유해 한쪽의 인덱스가 다른 쪽에 실릴 수 있다 — 그런 식별자 충돌은 좌표가 엉뚱한
 // 요소에 붙는 것으로만 드러난다.
-func childPath(path []int, i int) []int {
+//
+// ElementID와 같은 이유로 내보낸다: 경로를 만드는 순회는 셋이다 (웹 렌더, 측정 대조
+// geom.Refs, 도형 조립 render/pptx.shapesXML). 규칙이 층마다 복제되면 한 곳만 바뀐 순간
+// 세 목록의 자리가 어긋나고, 그 실패는 좌표가 엉뚱한 요소에 붙은 산출물로만 드러난다.
+func ChildPath(path []int, i int) []int {
 	child := make([]int, len(path)+1)
 	copy(child, path)
 	child[len(path)] = i

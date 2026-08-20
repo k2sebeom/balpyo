@@ -135,18 +135,11 @@ func collect(refs []Ref, slide *soml.Slide, node soml.Node, path []int) []Ref {
 		Source: slide.Source,
 	})
 	for i, child := range elem.Children {
-		refs = collect(refs, slide, child, childPath(path, i))
+		// 경로 규칙은 웹 렌더러가 소유한다 (web.ChildPath) — 식별자를 만드는 규칙과 같은
+		// 곳에 있어야 순회 셋의 자리가 어긋날 수 없다.
+		refs = collect(refs, slide, child, web.ChildPath(path, i))
 	}
 	return refs
-}
-
-// childPath는 부모 경로에 자식 인덱스를 더한 **새** 경로다 — append를 그대로 쓰면 형제끼리
-// 배열을 공유해 식별자가 섞인다 (web.childPath와 같은 이유).
-func childPath(path []int, i int) []int {
-	child := make([]int, len(path)+1)
-	copy(child, path)
-	child[len(path)] = i
-	return child
 }
 
 // Box는 요소 하나의 측정 결과다. 좌표는 **슬라이드 상대 논리 px**다.

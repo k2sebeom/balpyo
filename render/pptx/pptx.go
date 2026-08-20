@@ -9,6 +9,8 @@
 //
 // computed-style 역추론은 없다. ①과 ②가 만나는 자리는 shape.go의 shapesXML이다 —
 // `<text>` 하나가 p:sp(텍스트 박스) 하나가 되고, 좌표는 xfrm, 외관은 rPr/pPr가 된다.
+// 레이아웃 태그(`<row>`/`<col>`/`<grid>`/`<spacer>`)는 **도형이 되지 않는다**: 배치는 ①에서
+// 좌표로 구워지므로 자식의 절대 좌표만 남고 컨테이너 자체는 사라진다 (writeShapeNode).
 // 테마 파트(clrScheme/fontScheme)는 덱의 토큰 표에서 컴파일된다 (theme.go).
 package pptx
 

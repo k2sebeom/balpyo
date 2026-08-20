@@ -62,6 +62,9 @@ func TextBoxRect(r geom.Rect, align soml.TextAlign) geom.Rect {
 // 문서 순서가 곧 spTree 순서다: OOXML은 나중 도형이 위에 그려지므로, 저자가 쓴 순서가
 // 겹침 z-순서가 된다 (웹의 문서 순서 스택과 같은 규칙 — Iteration 6의 겹침이 이 위에 선다).
 //
+// 순회는 **재귀**다: 레이아웃 컨테이너는 도형이 되지 않고 자식으로 이어지므로 (writeShapeNode)
+// 도형 수는 측정 박스 수와 같지 않다 — 깊이 우선 순회가 중첩에서도 문서 순서를 유지한다.
+//
 // 결과는 빈 문자열(요소 없음)이거나, 각 도형이 "\n"으로 시작해 개행 없이 끝나는 조각이다 —
 // slideTemplate의 `{{.Shapes}}` 자리에 그대로 들어간다. 함께 돌려주는 links는 순회가
 // 배정한 외부 하이퍼링크 관계 목록이다 — 슬라이드 rels 파트가 같은 배정을 실어야
@@ -105,33 +108,79 @@ func (l *slideLinks) relID(url string) string {
 	return fmt.Sprintf("rId%d", hyperlinkRelBase+len(l.urls)-1)
 }
 
-// writeShapeNode는 콘텐츠 노드 하나를 도형으로 쓴다. path 규칙은 웹 렌더러와 같다
-// (web.ElementID의 입력 — 지오메트리 조회의 열쇠).
+// writeShapeNode는 콘텐츠 노드 하나를 도형으로 쓴다 — 자기 도형을 갖지 않는 노드는 자식으로
+// 내려가거나(레이아웃 컨테이너) 아무것도 내지 않는다(`<spacer/>`).
+//
+// path 규칙은 웹 렌더러와 같다 (web.ChildPath → web.ElementID — 지오메트리 조회의 열쇠).
+// 자식의 좌표는 지오메트리 곁 표에서 **그대로** 온다: 컨테이너 안이라는 사실이 좌표에 영향을
+// 주지 않는다 (잰 rect는 이미 슬라이드 상대다 — geom 패키지 주석). 컨테이너 상대 좌표를
+// 다시 더하는 코드가 여기 없는 것이 "좌표 계산 0회"의 렌더러 쪽 절반이다.
+//
+// # "컨테이너"라는 같은 단어의 정반대 두 매핑
+//
+//	리스트 컨테이너 (<ul>/<ol>)             → 도형 **하나** (writeListShape: 불릿 문단이 한 텍스트 박스에 산다)
+//	레이아웃 컨테이너 (<row>/<col>/<grid>)  → 도형 **0개**  (자식 좌표만 남고 컨테이너는 사라진다)
+//
+// 리스트는 하나의 텍스트 흐름이라 도형 하나가 편집 단위이고(항목마다 도형을 내면 편집 단위가
+// 조각난다), 레이아웃은 배치 **수단**이라 좌표로 구워진 뒤 산출물에 남을 것이 없다 —
+// 저자가 좌표를 한 번도 계산하지 않고 만든 그리드가 PowerPoint에서 절대 좌표 도형들로
+// 나오는 것이 제품의 약속이다 (PRD §9.3, TASKS Iteration 3). 같은 단어를 쓰는 두 개념이
+// 정반대로 매핑되므로 테스트가 같은 슬라이드에서 이 대비를 단정한다 — 태그를 늘리는 사람이
+// 가장 헷갈릴 자리다.
+//
+// `<group>` → `grpSp`(Iteration 9)와도 갈라진다: 그룹은 편집 단위로 묶이는 도형이고 레이아웃
+// 컨테이너는 사라지는 배치 수단이다 (PRD §7.5). 배치 태그가 `grpSp`가 되면 `<group>`과
+// `<row>`의 구분이 산출물에서 사라진다.
 func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node soml.Node, path []int, shapeID *int, g *geom.Geometry, links *slideLinks) error {
 	elem, ok := node.(*soml.Element)
 	if !ok {
-		// 슬라이드 직속 문자 데이터는 파서가 이미 막는다 (modelElements) — 여기 도달했다면
-		// 파서를 거치지 않은 덱이므로 조용히 건너뛰지 않고 멈춘다.
-		return fmt.Errorf("%s: 슬라이드 콘텐츠에 요소가 아닌 노드 %T가 있다", slide.Source, node)
+		// 슬라이드 콘텐츠와 레이아웃 컨테이너는 요소만 담는다 (파서의 modelElements) —
+		// 여기 도달했다면 파서를 거치지 않은 덱이므로 조용히 건너뛰지 않고 멈춘다.
+		return fmt.Errorf("%s: %s 자리에 요소가 아닌 노드 %T가 있다",
+			slide.Source, web.ElementID(slide.Index, path), node)
 	}
 	// 텍스트 박스가 되는 것은 <text>·블록 종류 카탈로그·리스트 컨테이너다 (soml.KindOf —
 	// 렌더러가 이름 목록을 따로 들지 않는 이유는 웹과 같다).
 	id := web.ElementID(slide.Index, path)
+	kind := soml.KindOf(elem.Name)
 	switch {
-	case elem.Name == soml.TextElement || soml.KindOf(elem.Name) == soml.KindBlock:
+	case elem.Name == soml.TextElement || kind == soml.KindBlock:
 		if err := writeTextShape(b, deck, slide, elem, id, *shapeID, g, links); err != nil {
 			return err
 		}
-	case soml.KindOf(elem.Name) == soml.KindListContainer:
+		// 도형 id는 **도형을 실제로 낸 자리에서만** 오른다 (컨테이너는 id를 소비하지
+		// 않는다 — 도형 id는 도형에만 붙는다): 번호가 배치 구조에 따라 뛰면 슬라이드에
+		// `<row>` 하나를 더한 커밋의 diff에 도형 번호 전부가 잡음으로 실린다 — 노트가
+		// 없어도 rId2를 예약한 것과 같은 태도다 (hyperlinkRelBase).
+		*shapeID++
+	case kind == soml.KindListContainer:
 		if err := writeListShape(b, deck, slide, elem, id, *shapeID, g, links); err != nil {
 			return err
 		}
+		*shapeID++
+	case kind == soml.KindLayoutContainer:
+		// 컨테이너 자신은 도형이 되지 않고 자식으로 내려간다. 빈 컨테이너(`<row></row>`)는
+		// 자식이 없으니 도형 0개다 — 대비되는 선례는 빈 `<text>`가 도형을 내는 것이고
+		// (writeTextShape), 차이는 `<text>`가 저자의 콘텐츠라는 것이다.
+		//
+		// 깊이 우선 순회이므로 **문서 순서 = spTree 순서 = z-순서**가 중첩에서도 이어진다
+		// (shapesXML의 계약, 웹의 문서 순서 스택과 같은 규칙 — Iteration 6의 겹침이 이
+		// 순서 위에 선다).
+		for i, child := range elem.Children {
+			if err := writeShapeNode(b, deck, slide, child, web.ChildPath(path, i), shapeID, g, links); err != nil {
+				return err
+			}
+		}
+	case kind == soml.KindSpacer:
+		// `<spacer/>`는 도형을 내지 않는다. 빈 박스이고 뜻은 "여기에 공간이 있다"이며, 그
+		// 공간은 이미 이웃 도형의 좌표에 들어가 있다 — 밀어내기의 결과가 형제의 rect다.
+		// 도형을 내면 PowerPoint의 선택 창에 뜻 없는 빈 텍스트 박스가 남는다 (빈 `<text>`와
+		// 갈라지는 이유: `<text>`는 저자의 콘텐츠이고 spacer는 배치 수단이다).
 	default:
 		// 웹 렌더러와 같은 이유로 멈춘다 (render/web.writeNode): 어휘에 태그를 추가하고 렌더
 		// 매핑을 잊으면 "파싱은 되는데 그려지지 않는" 조용한 실패가 된다.
 		return fmt.Errorf("%s:%s <%s>를 PPTX로 렌더하는 매핑이 없다", slide.Source, elem.Span, elem.Name)
 	}
-	*shapeID++
 	return nil
 }
 
