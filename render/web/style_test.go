@@ -23,11 +23,17 @@ func testTheme() soml.Theme {
 			{Name: soml.FontBody, Latin: "Noto Sans", EastAsian: "Noto Sans CJK KR", Generic: "sans-serif", Scheme: "minor"},
 			{Name: soml.FontMono, Latin: "Noto Sans Mono", Generic: "monospace"},
 		},
+		// 공간 토큰은 최소 테마의 사다리와 같다 (core.minimalSpaces) — 레이아웃 태그의
+		// gap/pad가 이 표를 var() 참조로 가리킨다.
+		Spaces: []soml.SpaceToken{
+			{Name: "xs", Px: 6}, {Name: "sm", Px: 12}, {Name: "md", Px: 24},
+			{Name: "lg", Px: 36}, {Name: "xl", Px: 48}, {Name: "2xl", Px: 72},
+		},
 	}
 }
 
 func TestThemeCSSDeclaresTokensAsCustomProperties(t *testing.T) {
-	css := themeCSS(testTheme())
+	css := themeCSS(testTheme(), false)
 	for _, want := range []string{
 		"@layer balpyo.theme {",
 		"--balpyo-color-fg: #1A1A1A;",
@@ -46,7 +52,7 @@ func TestThemeCSSDeclaresTokensAsCustomProperties(t *testing.T) {
 
 // 토큰 선언 순서는 표의 순서다 — 골든이 실행마다 같은 바이트가 되려면 맵 순회가 아니어야 한다.
 func TestThemeCSSKeepsTableOrder(t *testing.T) {
-	css := themeCSS(testTheme())
+	css := themeCSS(testTheme(), false)
 	prev := -1
 	for _, name := range []string{"fg", "bg", "muted", "accent1"} {
 		at := strings.Index(css, colorVarPrefix+name+":")
@@ -63,7 +69,7 @@ func TestThemeCSSKeepsTableOrder(t *testing.T) {
 // 슬라이드 배경은 bg 토큰에서 나온다 — 배경색만 렌더러가 따로 갖고 있으면 테마를 바꿨을 때
 // 슬라이드 바탕만 옛 색으로 남는다.
 func TestThemeCSSSlideBackgroundReferencesToken(t *testing.T) {
-	css := themeCSS(testTheme())
+	css := themeCSS(testTheme(), false)
 	if !strings.Contains(css, "background: var(--balpyo-color-bg);") {
 		t.Errorf("슬라이드 배경이 bg 토큰을 참조하지 않는다:\n%s", css)
 	}
@@ -71,7 +77,7 @@ func TestThemeCSSSlideBackgroundReferencesToken(t *testing.T) {
 
 // 테마가 없는 덱(해석 전)에는 테마 층을 만들지 않는다 — 빈 :root 블록은 골든에 잡음만 남긴다.
 func TestThemeCSSEmptyWithoutTheme(t *testing.T) {
-	if css := themeCSS(soml.Theme{}); css != "" {
+	if css := themeCSS(soml.Theme{}, true); css != "" {
 		t.Errorf("빈 테마의 CSS = %q, want 빈 문자열", css)
 	}
 }

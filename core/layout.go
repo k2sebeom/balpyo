@@ -209,16 +209,25 @@ func (r *resolver) lengthValue(name, raw string, span soml.Span, syntax lengthSy
 		// 100%는 축의 크기다). ADR 감이다 — 항목 06.
 		return soml.Percent(100), true
 	}
-	if !startsNumeric(raw) {
-		if syntax.tokens {
-			token, ok := r.theme.Space(raw)
-			if !ok {
-				r.errorf(span, "알 수 없는 공간 토큰 %q (쓸 수 있는 토큰: %s, 또는 수치·백분율)",
-					raw, strings.Join(r.theme.SpaceNames(), ", "))
-				return soml.Length{}, false
-			}
-			return soml.Px(token.Px), true
+	// 토큰 표를 **수치 판정보다 먼저** 본다. `startsNumeric`으로 먼저 갈라 놓으면 이름이
+	// 숫자로 시작하는 토큰(`2xl` — PRD §8.4 어휘의 유일한 그런 이름)이 영원히 수치 경로로
+	// 가서 "단위를 떼라"는 엉뚱한 진단을 받는다. 표에 있는 이름은 토큰이고, 없으면 수치
+	// 문법이 판정한다 — 그래야 진단의 정확도(`gap="16px"`은 단위, `gap="huge"`는 모르는
+	// 토큰)가 어휘의 표기와 무관하게 유지된다.
+	if syntax.tokens {
+		if token, ok := r.theme.Space(raw); ok {
+			// 토큰 **이름**이 확정 값에 남는다 — 웹이 `var(--balpyo-space-xl)`로 내야 테마를
+			// 바꿨을 때 여백이 따라 움직인다 (색이 schemeClr 참조로 남는 것과 같은 근거,
+			// soml.Length.Token). px로만 눕히면 `gap="24"`와 `gap="md"`가 같은 것이 되고,
+			// 렌더러가 px를 표에서 거꾸로 찾는 길은 그 둘을 구별할 수 없다.
+			return soml.SpaceLength(raw, token.Px), true
 		}
+		if !startsNumeric(raw) {
+			r.errorf(span, "알 수 없는 공간 토큰 %q (쓸 수 있는 토큰: %s, 또는 수치·백분율)",
+				raw, strings.Join(r.theme.SpaceNames(), ", "))
+			return soml.Length{}, false
+		}
+	} else if !startsNumeric(raw) {
 		if _, ok := r.theme.Space(raw); ok {
 			// 크기에 공간 토큰을 쓰는 것은 흔한 혼동이다 — 어휘 목록을 던지는 대신 그 값이
 			// 어디에 쓰이는지 짚어 준다 (align의 left/right 진단과 같은 태도).

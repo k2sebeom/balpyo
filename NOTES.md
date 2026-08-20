@@ -1101,3 +1101,143 @@
     막을 것인지, 단일 수치에 상한을 둘 것인지는 정하지 않았다. (d) `pad`의 3값 축약은 CSS와
     같이 상·좌우·하로 읽는다 — 4값 축약만 열고 3값을 막는 길도 있었지만 CSS 규칙을 그대로
     따르는 편이 배울 것이 적다고 봤다.
+
+## Iteration 03 · 03-web-layout — 레이아웃 태그가 flex/grid CSS가 된다
+<!-- item: 03/03-web-layout -->
+
+- **한 것**:
+  - `render/web/layout.go` 신규 — 레이아웃 태그 → CSS. 컨테이너·spacer 출력
+    (`writeContainer`·`writeSpacer`), PRD §7.4 표 순서의 컴파일러(`containerCSS`·
+    `appendPlacement`), 값 번역(`lengthValue`·`padValue`·`tracksValue`·`trackValue`·
+    `boxAlignValue`·`boxJustifyValue`), 엔진 CSS(`layoutCSS`), 공간 토큰 변수
+    (`spaceVarPrefix`·`spaceVarsCSS`), 인라인 style 조립(`styleAttr`).
+  - `render/web/content.go` — `writeNode`에 `KindLayoutContainer`·`KindSpacer` 분기,
+    `writeBlock`·`writeList`가 같은 `appendPlacement`를 부른다, `hasLists` → `features`/
+    `contentFeatures`(리스트·레이아웃을 한 번의 순회로 판정), `contentCSS(feat)`.
+    낡은 주석 둘을 고쳤다: `writeStage`의 "레이아웃 태그는 Iteration 3이므로…"와
+    `writeList`의 "컨테이너는 Appearance를 갖지 않는다"(배치는 갖는다 — 02가 남긴 지적).
+  - `render/web/style.go` — `themeCSS(theme, spaces)`가 공간 토큰 변수를 함께 낸다.
+  - `render/web/web.go` — 패키지 주석의 **측정 대상 계약**을 넓혔다(컨테이너·spacer도
+    잰다), 외관 절을 "외관과 배치"로 고쳤다.
+  - `render/geom/geom.go` — `collect` 주석을 같은 계약으로 고쳤다. 코드는 그대로다:
+    인라인만 건너뛰므로 컨테이너·spacer는 이미 Refs에 들어온다 (웹이 식별자를 붙이는 것으로
+    양쪽이 맞았다).
+  - `soml/placement.go` — `Length`에 `Token` 필드 + `SpaceLength`·`IsToken`.
+  - `core/layout.go` — 공간 토큰이 이름을 남긴다(`SpaceLength`), 그리고 **토큰 표를 수치
+    판정보다 먼저 본다** (아래 버그).
+  - 테스트: `render/web/layout_test.go` 신규(PRD §7.4 표 기반 + 어휘 전수 커버리지 +
+    골든 불변 + 탈출구 순서·이스케이프 + 어휘 밖 값 거부), `render/geom/measure_browser_test.go`
+    +4(grid 카드 4개, row gap·justify=between, spacer 밀어내기, 중첩 좌표 정규화),
+    `core/layout_test.go` 토큰 보존·`2xl` 회귀, `render/web/style_test.go` 시그니처·공간 표.
+
+- **설계 결정과 근거**:
+  - **엔진 CSS와 인라인 style의 경계**: `display`/`flex-direction`(태그의 정의)과
+    `<spacer>`의 `flex: 1`만 클래스에 두고, 요소마다 다른 값(gap·align·justify·wrap·pad·
+    트랙·크기 6종·ratio + 자식 6종 + 탈출구)은 인라인 style로 낸다 (ADR 0003의 연장).
+    고정 선언을 요소로 내리면 저자 CSS(@layer author)가 그것을 덮을 수 없다 — 인라인
+    style은 층 밖에서 이긴다. 목록은 `layout.go` 머리 주석에 있다.
+  - **`soml.Length`에 토큰 이름을 남겼다** (항목 02의 값 층을 건드린 유일한 곳). 항목 지시가
+    요구하는 `gap: var(--balpyo-space-lg)`는 확정 값에 토큰 정체가 남아 있을 때만 가능하고,
+    px에서 표를 **거꾸로 찾는** 길은 `gap="24"`(저자의 리터럴)와 `gap="md"`(테마를 따라야
+    하는 참조)를 구별할 수 없다 — 색이 `Token`/`RGB` 두 상태를 갖는 것과 같은 이유다.
+    px를 함께 담아 두는 이유: 토큰 참조는 웹에만 사는 개념이라(OOXML에 공간 슬롯이 없다)
+    PPTX·진단·테스트는 확정 수치를 본다. 02의 테스트 3곳은 **더 강한 단정**으로 바꿨다
+    (토큰이 보존되는지, 저자가 적은 수치에는 토큰이 붙지 않는지).
+  - **공간 토큰 변수는 레이아웃 태그가 있는 덱에만 선언한다** (`themeCSS`의 `spaces`).
+    참조하는 자리가 컨테이너의 `gap`/`pad`뿐이므로 참조 없는 변수는 골든의 잡음이고,
+    무엇보다 골든 세 개가 이 iteration과 무관한 이유로 움직인다 — `listCSS`를 조건부로 둔
+    것과 같은 근거이고 `layoutCSS`도 같은 조건이다 (`contentFeatures` 한 번의 순회).
+  - **레이아웃 컨테이너와 `<spacer>`도 측정 대상이다** (ADR 0009의 후속 — 항목 06). 컨테이너는
+    진짜 박스이므로 rect에 뜻이 있고, PPTX가 도형으로 만들지 않아도 픽셀 비교가 갈라질 때
+    "어느 칼럼부터 밀렸는가"를 이 좌표가 말해 준다 (`<li>`를 재 둔 것과 같은 근거).
+    `geom.collect`는 인라인만 건너뛰므로 **코드 변경 없이** 양쪽이 맞았다 — 웹이 식별자를
+    붙이지 않았다면 자리 맞대기가 런타임에 실패했을 것이고, 실제로 _03_layout 픽스처 7장이
+    78/78로 맞았다.
+  - **`.balpyo-text`/`.balpyo-list`의 확정 폭을 컨테이너 안에서 되돌린다**
+    (`:is(.balpyo-row, .balpyo-col, .balpyo-grid) > :is(.balpyo-text, .balpyo-list)
+    { width: auto; flex: 0 1 auto }`). 스택의 `width: 100%; flex: 0 0 auto`는 세로 스택에서
+    줄바꿈을 결정적으로 만드는 규칙인데, 가로 컨테이너 안에서는 자식마다 부모 폭 전체를
+    요구하는 셈이 되어 컨테이너를 넘치고 **`<spacer>`가 받을 남은 공간이 사라진다**. 이것은
+    추측이 아니라 실측으로 드러났다 (spacer 브라우저 테스트가 폭 0을 잡았다). `.balpyo-text`
+    선택자 자체를 `.balpyo-stage > …`로 좁히는 길은 골든 세 개를 움직이므로 버렸고, 되돌림
+    규칙은 `layoutCSS` 안에 있어 레이아웃 없는 덱에는 나가지 않는다. 폭이 확정된다는 사실은
+    그대로다 — 브라우저가 정하고 지오메트리 패스가 잰다.
+  - **`padding`은 항상 4값으로 낸다.** core가 CSS 규칙으로 이미 풀었으므로(soml.Pad)
+    렌더러가 다시 축약하면 축약 규칙이 두 곳에 생긴다. 트랙 개수는 `repeat(N, 1fr)`로 —
+    `1fr`을 N번 적은 것과 같은 뜻이지만 골든이 저자의 `cols="4"`를 그대로 읽히게 한다.
+  - **`justify`의 `space-*` 접두를 붙이는 것은 렌더러의 몫**(PRD §7.4의 결정), `align`/`self`는
+    논리 이름이 그대로 통한다. 그래도 두 어휘를 **검사**한다 — 어휘 밖 값이 CSS로 나가면
+    브라우저가 조용히 무시하고, 그 침묵이 `alignValue`를 만든 이유와 같다. 모르는
+    `ContainerFlow`(= `<stack>`을 열고 매핑을 잊는 날)도 에러다.
+  - **`style` 탈출구는 인라인 style 맨 끝**이다 — 같은 프로퍼티면 뒤가 이기므로 저자가 엔진
+    선언을 덮는다. 값은 **HTML 이스케이프**한다: core는 값 문법을 보지 않으므로(그것이
+    탈출구의 계약) 인용 부호가 들어올 수 있고, 그대로 나가면 속성이 끊겨 마크업이 깨진다.
+    `styleAttr` 하나가 블록·리스트·컨테이너·spacer의 style 속성을 전부 만든다 (선언이 없으면
+    속성 자체가 없다 — 골든 불변).
+  - **배치 선언을 만드는 코드는 `appendPlacement` 하나다.** `<text>`·블록·리스트·중첩
+    컨테이너·`<spacer>`가 전부 이 함수를 지나고, 테스트가 다섯 종류에서 같은 선언이 나오는지
+    본다 — 종류마다 따로 쓰면 자식 속성이 하나 늘 때 어느 종류가 빠졌는지 사람이 세어야 한다.
+  - **`<grid wrap>`은 여전히 통과하고, 렌더러도 `flex-wrap: wrap`을 그대로 낸다** (항목 02의
+    열린 질문 (a)에 대한 답). grid에서 CSS가 무시하는 선언이지만 흐름별로 빼지 않았다:
+    속성이 어느 태그에 붙을 수 있는가는 **이름 층**의 결정이고, 렌더러가 한 번 더 판단하면
+    적용 가능성이 두 곳에서 정해진다. 고칠 자리는 파서가 `<row cols>`를 막은 그 자리다 —
+    `containerFlowAttrs`에서 `wrap`을 빼 flex 전용 목록으로 옮기는 것 (아래 열린 질문).
+  - **`2xl` 토큰이 gap·pad에서 쓸 수 없었다** — `startsNumeric("2xl")`이 참이라 수치 경로로
+    가서 "단위를 떼라"는 엉뚱한 진단을 받았다 (PRD §8.4 어휘에서 숫자로 시작하는 유일한
+    이름이라 이 토큰만). 항목 범위 밖이지만 **이 항목의 계약(모든 공간 토큰이 var() 참조로
+    나간다)을 검증할 수 없게 만드는 결함**이라 고쳤다: 토큰 표를 수치 판정보다 먼저 보고,
+    표에 없는 이름만 수치 문법이 판정한다. 진단은 그대로다 (`16px` → 단위, `huge` → 모르는
+    토큰 — 기존 진단 표가 그것을 지킨다).
+
+- **검증**:
+  - `gofmt -l .` 무출력, `go vet ./...`, **`make test`(컨테이너, finch) 전부 초록**.
+    **골든은 한 줄도 움직이지 않았다** (`git status`에 `testdata/` 변경 없음) — 4번의 계약이
+    그대로다. 호스트 `go test ./...`는 02_text_subset 골든의 mono 낀 두 슬라이드 `cy`가
+    9525 EMU(1px) 다른 **기존 그 차이만** 빨갛다 (02/08·02/09·03/01·03/02 기록, macOS의
+    Noto Sans Mono 부재).
+  - 표 기반 테스트를 일부러 깨뜨려 RED을 확인했다: `space-` 접두 제거 → justify 3행,
+    토큰 → px 눕히기 → gap/pad 4행과 토큰 표 테스트, 탈출구를 맨 앞으로 → 순서 테스트가
+    각각 빨개졌다 (되돌린 뒤 초록).
+  - 브라우저 실측(로컬 Chromium): `<grid cols="4" gap="lg">` 카드 4개가 같은 y·등간격 x,
+    간격이 **테마 표의 lg(36px)**와 일치, 트랙 폭 = (컨테이너 폭 − 3×36)/4. `<row gap="md">`
+    간격 24px, `justify="between"`이 양 끝에 붙음. `<spacer/>`가 뒤 자식을 컨테이너 오른쪽
+    끝으로, 슬라이드 직속 spacer가 꼬리글을 스테이지 콘텐츠 바닥(720−64)으로 밀어냄.
+    중첩(`<col pad="lg">` → `<row>` → `<text>`)의 rect가 슬라이드 두 장에서 **동일** =
+    슬라이드 상대 정규화, row.x = col.x + 36(pad lg).
+  - 게이트 밖 확인: `go run ./cmd/balpyo build --project testdata/fixtures/_03_layout
+    --target html`이 7장을 렌더하고 007의 경고 2건만 낸다 (항목 02가 확인한 그 경로).
+    그 산출물을 지오메트리 패스로 재어 **박스 78개 = Refs 78개**, 좌표가 전부 유한·비음수임을
+    임시 테스트로 확인한 뒤 그 파일을 지웠다.
+
+- **남긴 것**:
+  - 항목 04(PPTX)가 이어받을 표면: 컨테이너·spacer는 **도형이 되지 않는다** — 이 항목이 낸
+    식별자 덕분에 그 rect가 지오메트리 표에 있지만, PPTX 렌더러는 그것을 건너뛰고 자식만
+    도형으로 만든다. `geom.Refs`는 컨테이너를 세므로 pptx 쪽 순회도 같은 카탈로그로 걸어야
+    `Verify`가 성립한다 (지금 pptx는 컨테이너를 만나면 멈춘다 — 그 가드가 항목 04의 시작점).
+  - 항목 05(픽스처): `_03_layout` 7장이 웹으로 렌더되고 측정까지 통과한 상태다. 활성화하면
+    `<grid cols="4">` 카드 픽셀 비교가 TASKS의 그 항목이다. 참고로 `align="center"`인 row
+    안의 `<spacer/>`는 **높이 0**의 박스로 측정된다 (교차축 크기가 내용이므로) — 밀어내기는
+    폭으로 하므로 정상이고, `Rect.valid()`가 0을 허용한다. 픽셀 비교에서 이 박스가 보이지
+    않는 것도 정상이다.
+  - 항목 06(문서·ADR)이 인용할 자리: `layoutCSS()`(엔진 CSS와 인라인 style의 경계 목록은
+    `layout.go` 머리 주석), `containerCSS`/`appendPlacement`의 표 순서(문서의 CSS 대응 표는
+    이 순서를 따라야 한다), `spaceVarPrefix`. ADR 후보가 하나 늘었다 — **측정 대상에 레이아웃
+    컨테이너·spacer를 넣은 것**(ADR 0009의 후속)과, 항목 02가 남긴 3건(`fill`=100%, 공간
+    토큰의 PPTX 슬롯 부재, `style` 탈출구의 계약). 문서는 "공간 토큰은 웹에서 var() 참조로,
+    PPTX에서는 좌표로 구워진다"는 비대칭을 함께 적어야 한다.
+  - **TASKS**: `style` 탈출구 체크박스만 켰다 (allowlist 검사·경고는 항목 02, 탈출구가 실제로
+    CSS로 나가는 것은 이 항목 — 이제 경로 전체가 있다. PPTX는 좌표로 굽기 때문에 할 일이
+    없다). "태그 → flex/grid CSS 컴파일"은 PPTX 절반(항목 04)이 남아, 테스트 체크박스는
+    픽셀 비교(항목 05)가 남아 켜지 않았다.
+  - **열린 질문**: (a) `<grid wrap>`을 **파서에서 막을 것을 권한다** — `containerFlowAttrs`를
+    flex 전용으로 좁히고 `wrap`을 `<row>`/`<col>`에만 여는 것이 `<row cols>`를 막은 것과 같은
+    처방이다. 이름 층의 결정이므로 이 항목에서 뒤집지 않았다. (b) 스테이지를 `<col>`로
+    재정의하는 통합은 미뤘다 (지시대로 — CSS 문자열이 바뀌면 골든 3개가 이 iteration과
+    무관하게 움직인다). 기본 배치의 출처가 두 곳(`contentCSS`의 스택 + 레이아웃 태그)이라는
+    사실은 Iteration 10의 `layout=`/`slot=`이 합칠 자리다. (c) **발표자 뷰의 레이아웃은 눈으로
+    확인하지 않았다** — 같은 CSS가 두 뷰에 적용되고 전환은 `<html>` 속성 하나이며(ADR 0006)
+    레이아웃 규칙은 `.balpyo-slide` 안쪽에만 있으므로 스케일과 독립이라고 판단했다. 지시가
+    "발표자 뷰에서 깨져 보이면 고치지 않고 적는다"였고, 확인 자체를 못 한 것을 적는다.
+    (d) `<spacer>`가 `flex: 1`(= `1 1 0%`)이라 교차축에서 크기가 0이 된다 — 세로 스택에서는
+    폭이 stretch로 채워지지만 `align="center"`인 row에서는 높이 0이다. 저자가 정한 배치의
+    결과이므로 손대지 않았다.

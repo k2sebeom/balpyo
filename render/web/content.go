@@ -86,8 +86,11 @@ const ListBulletChar = "\u2022" // •
 
 // writeStage는 슬라이드의 콘텐츠 노드를 스테이지 div에 쓴다.
 //
-// 자식 배치는 **문서 순서의 세로 스택**이다. 레이아웃 태그(`<row>`/`<col>`/`<grid>`)는
-// Iteration 3이므로 이번 iteration의 기본 배치는 이 함수가 정의한다. 세로 스택을 고른 이유:
+// 자식 배치는 **문서 순서의 세로 스택**이다 — 레이아웃 태그(`<row>`/`<col>`/`<grid>`)를
+// 쓰지 않은 슬라이드의 기본 배치를 이 함수가 정의한다. 스테이지를 `<col>`로 재정의하면
+// 기본 배치의 출처가 한 곳이 되지만, 그러면 CSS 문자열이 바뀌어 골든 세 개가 움직이고 그
+// diff는 레이아웃 태그가 무엇을 하는지 말해 주지 못한다 — 그 통합은 스테이지가 테마의
+// 배치를 받는 Iteration 10(`layout=`/`slot=`)이 할 자리다. 세로 스택을 고른 이유:
 //
 //   - 저자가 쓴 순서와 화면 순서가 같아야 SOML만 읽고 결과를 예측할 수 있다.
 //   - 자식마다 **확정된 폭**(스테이지 콘텐츠 폭)을 주면 브라우저의 줄바꿈이 결정적이다.
@@ -135,6 +138,10 @@ func writeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node soml
 			return writeBlock(b, deck, slide, node, path, node.Name)
 		case soml.KindListContainer:
 			return writeList(b, deck, slide, node, path)
+		case soml.KindLayoutContainer:
+			return writeContainer(b, deck, slide, node, path)
+		case soml.KindSpacer:
+			return writeSpacer(b, slide, node, path)
 		case soml.KindInline:
 			return writeInline(b, deck, slide, node)
 		}
@@ -169,18 +176,26 @@ func writeBlock(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 		return fmt.Errorf("%s:%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
 			slide.Source, elem.Span, elem.Name)
 	}
-	decls, err := textStyleCSS(*style, deck.Theme)
+	text, err := textStyleCSS(*style, deck.Theme)
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
+	decls := []string{text}
 	if elem.Name == "pre" {
 		// 접히지 않은 원문(soml.Parse의 pre 보존)이 그대로 흐른다. wrap을 켜면 PPTX와
 		// 줄 수가 갈라지므로 줄바꿈 없음 — 긴 줄은 오버플로 허용이다 (박스 고정 정책,
 		// PRD §13-1과 같은 태도. PPTX 쪽 짝 bodyPr@wrap은 항목 06이 맞춘다).
-		decls += "; white-space: pre"
+		decls = append(decls, "white-space: pre")
 	}
-	fmt.Fprintf(b, "<%s class=\"balpyo-text\" %s=%q %s=%q style=%q>",
-		tag, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, decls)
+	// 배치 선언은 **한 곳에서** 나온다 (appendPlacement) — 블록도 컨테이너의 자식이 될 수
+	// 있으므로 컨테이너·spacer·리스트와 같은 코드를 쓴다. 요소 종류마다 따로 쓰면 자식
+	// 배치 속성이 하나 늘 때 어느 종류가 빠졌는지 사람이 세어야 한다.
+	decls, err = appendPlacement(decls, elem.Placement())
+	if err != nil {
+		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
+	}
+	fmt.Fprintf(b, "<%s class=\"balpyo-text\" %s=%q %s=%q%s>",
+		tag, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, styleAttr(decls))
 	if elem.Name == "pre" {
 		if first, ok := firstText(elem); ok && strings.HasPrefix(first, "\n") {
 			// 파서가 양 끝 개행을 하나씩 벗겼으므로 남은 선두 개행은 내용이다. 그런데 HTML
@@ -211,12 +226,20 @@ func firstText(elem *soml.Element) (string, bool) {
 
 // writeList는 리스트 컨테이너(`<ul>`/`<ol>`)를 쓴다.
 //
-// 컨테이너는 외관을 갖지 않는다 (core가 Appearance를 채우지 않는다 — 항목을 담을 뿐이다).
-// 그래도 식별자는 갖는다: 리스트는 PPTX에서 박스 하나가 되므로(항목 07) 이 rect가 곧
+// 컨테이너는 **외관**을 갖지 않는다 (core가 TextStyle을 채우지 않는다 — 항목을 담을 뿐이다).
+// 반면 **배치**는 갖는다: `<row><ul basis="360">`처럼 리스트가 컨테이너의 자식이 되는 것이
+// 흔한 배치이므로 자식 배치 속성이 열려 있고(soml.ChildPlacementAttrs), 그때 Appearance는
+// Placement만 채워진 상태로 온다.
+//
+// 식별자는 언제나 갖는다: 리스트는 PPTX에서 박스 하나가 되므로(항목 07) 이 rect가 곧
 // PPTX 텍스트 박스다. 마커·들여쓰기는 엔진 CSS가 상수로 명시한다 (contentCSS의 리스트 절).
 func writeList(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, path []int) error {
-	fmt.Fprintf(b, "<%s class=\"balpyo-list\" %s=%q %s=%q>\n",
-		elem.Name, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name)
+	decls, err := appendPlacement(nil, elem.Placement())
+	if err != nil {
+		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
+	}
+	fmt.Fprintf(b, "<%s class=\"balpyo-list\" %s=%q %s=%q%s>\n",
+		elem.Name, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, styleAttr(decls))
 	for i, child := range elem.Children {
 		if err := writeNode(b, deck, slide, child, childPath(path, i)); err != nil {
 			return err
@@ -319,17 +342,17 @@ func childPath(path []int, i int) []int {
 }
 
 // contentCSS는 콘텐츠 배치의 기본 CSS다 — writeStage가 정의한 스택 규칙의 CSS 절반이다.
-// lists가 참이면 리스트 절(listCSS)을 함께 낸다.
+// 덱이 실제로 쓴 어휘의 절(listCSS·layoutCSS)만 함께 낸다.
 //
 // `.balpyo-text`의 margin 0은 시맨틱 블록 태그(h1~h3, p, blockquote, pre)의 UA 기본
 // margin도 지운다 — writeBlock의 "브라우저 기본 스타일에 기대는 값이 없어야 한다" 조건의
 // 배치 절반이다 (메트릭 절반은 인라인 style이 명시한다).
 //
 // 여백(64px)과 간격(24px)은 지금 엔진 상수다. 테마의 space 토큰(`slidePadding`/`gap`,
-// PRD §8.4)이 Iteration 10에서 이 값을 대체한다 — 지금 core의 토큰 표에 space를 넣으면
-// 두 렌더러가 실제로 무엇을 요구하는지 모르는 상태로 어휘를 고정하게 된다 (core/theme.go의
-// 같은 판단).
-func contentCSS(lists bool) string {
+// PRD §8.4)이 Iteration 10에서 이 값을 대체한다 — 지금 스테이지 여백을 변수 참조로 바꾸면
+// 골든 세 개가 이 iteration과 무관한 이유로 움직인다 (core/theme.go의 minimalSpaces 주석에
+// 같은 판단이 있다).
+func contentCSS(feat features) string {
 	css := fmt.Sprintf(`
   /* 스테이지는 자식을 문서 순서대로 세로로 쌓는다. 여백 64px은 1280폭의 5%%로,
      프로젝터의 오버스캔에서도 글자가 잘리지 않는다. */
@@ -352,8 +375,11 @@ func contentCSS(lists bool) string {
     flex: 0 0 auto;
   }
 `, stagePadding, stackGap)
-	if lists {
+	if feat.lists {
 		css += listCSS()
+	}
+	if feat.layout {
+		css += layoutCSS()
 	}
 	return css
 }
@@ -403,30 +429,46 @@ func listCSS() string {
 `, ListItemGap, ListTextIndent, ListTextIndent-ListMarkerHang, ListBulletChar)
 }
 
-// hasLists는 덱에 리스트 컨테이너가 있는지 본다 (listCSS를 낼지 결정하는 근거).
-// 지금의 콘텐츠 모델에서 리스트는 슬라이드 직속이지만, 레이아웃 태그(Iteration 3)가
-// 컨테이너를 들이면 깊어지므로 처음부터 재귀로 본다.
-func hasLists(deck *soml.Deck) bool {
-	var walk func(nodes []soml.Node) bool
-	walk = func(nodes []soml.Node) bool {
+// features는 덱이 실제로 쓴 어휘다 — 어느 CSS 절을 낼지 정하는 근거다.
+//
+// 조건부로 두는 이유는 골든이다: 쓰지 않은 어휘의 CSS가 산출물에 들어가면, 그 어휘를
+// 구현한 iteration에서 **모든** 골든이 움직이고 diff가 무엇이 변했는지 말해 주지 못한다
+// (빈 스테이지를 빈 요소 하나로 낸 것과 같은 근거). 걸음을 한 번만 걷는 이유는 순회가
+// 두 벌이 되면 한쪽만 새 태그를 세게 되기 때문이다.
+type features struct {
+	// lists는 리스트 컨테이너가 있는지다 (listCSS).
+	lists bool
+	// layout은 레이아웃 컨테이너나 `<spacer>`가 있는지다 (layoutCSS + 공간 토큰 변수).
+	//
+	// 공간 토큰 변수를 이 조건에 매단 이유: 변수를 **참조하는** 자리는 컨테이너의
+	// `gap`/`pad`뿐이다 (soml.Length의 토큰 상태를 만드는 속성이 그 둘이다). 레이아웃
+	// 태그가 없는 덱에 선언만 내면 참조 없는 변수가 골든에 남는다.
+	layout bool
+}
+
+// contentFeatures는 덱을 걸어 쓰인 어휘를 모은다. 태그 종류의 판정은 soml의 카탈로그
+// 한 곳에서 나온다 (soml.KindOf) — 렌더러가 이름 목록을 따로 들면 태그를 추가할 때
+// CSS 절이 빠진 채로 요소가 나가고, 그 실패는 산출물을 열어 봐야 드러난다.
+func contentFeatures(deck *soml.Deck) features {
+	var feat features
+	var walk func(nodes []soml.Node)
+	walk = func(nodes []soml.Node) {
 		for _, node := range nodes {
 			elem, ok := node.(*soml.Element)
 			if !ok {
 				continue
 			}
-			if soml.KindOf(elem.Name) == soml.KindListContainer {
-				return true
+			switch soml.KindOf(elem.Name) {
+			case soml.KindListContainer:
+				feat.lists = true
+			case soml.KindLayoutContainer, soml.KindSpacer:
+				feat.layout = true
 			}
-			if walk(elem.Children) {
-				return true
-			}
+			walk(elem.Children)
 		}
-		return false
 	}
 	for _, slide := range deck.Slides {
-		if walk(slide.Content) {
-			return true
-		}
+		walk(slide.Content)
 	}
-	return false
+	return feat
 }

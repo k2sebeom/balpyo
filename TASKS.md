@@ -207,7 +207,7 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
       좌표 스냅샷, `<grid cols="4">` 카드 배치 픽셀 비교
 - [ ] 구현: 태그 → flex/grid CSS 컴파일. **레이아웃 태그는 PPTX 도형이 아니다** —
       지오메트리 패스에서 자식 좌표만 소비되고 컨테이너 자체는 사라짐
-- [ ] 구현: `style` 탈출구 — 배치 속성 allowlist 검사, 외관 CSS 사용 시 경고 (§7.9)
+- [x] 구현: `style` 탈출구 — 배치 속성 allowlist 검사, 외관 CSS 사용 시 경고 (§7.9)
 - [ ] 리뷰: 좌표 계산 0회로 그리드 배치가 PPTX에 정확히 이식되는지
 - [ ] 문서:
   - [ ] `docs/reference/soml/layout.md` — `row`/`col`/`grid`/`spacer` + 컨테이너/자식

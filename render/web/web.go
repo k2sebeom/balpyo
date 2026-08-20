@@ -9,11 +9,16 @@
 //
 // # 요소 식별자 — 지오메트리 패스의 계약
 //
-// **블록 종류**(soml.KindOf의 카탈로그: `<text>`·블록·리스트 컨테이너·`<li>`)의 요소는 모두
-// `data-balpyo-id` 속성을 갖는다. 인라인·void에는 붙이지 않는다 — 여러 줄에 걸친 인라인의
-// rect는 뜻이 없고, PPTX에서 인라인은 박스가 아니라 런이다. 지오메트리 패스(geom.Refs)가
-// 같은 카탈로그로 기대 목록을 만들므로, 이 대칭이 깨지면 자리 맞대기 검증이 런타임에
-// 소리를 낸다. 지오메트리 패스는 이 속성으로 요소를
+// **박스를 갖는 요소**는 모두 `data-balpyo-id` 속성을 갖는다: 블록 종류(soml.KindOf의
+// 카탈로그: `<text>`·블록·리스트 컨테이너·`<li>`)와 **레이아웃 컨테이너·`<spacer>`**다.
+// 인라인·void(`<br>`)에는 붙이지 않는다 — 여러 줄에 걸친 인라인의 rect는 뜻이 없고,
+// PPTX에서 인라인은 박스가 아니라 런이다.
+//
+// 레이아웃 컨테이너와 `<spacer>`를 재는 이유는 `<li>`를 재 둔 것과 같다 (ADR 0009의 후속):
+// PPTX가 그 rect를 소비하지 않아도(컨테이너는 도형이 아니다 — 자식 좌표만 남고 컨테이너는
+// 사라진다) 픽셀 비교가 갈라질 때 "어느 칼럼부터 밀렸는가"를 이 좌표가 말해 준다.
+// 지오메트리 패스(geom.Refs)가 **같은 카탈로그로** 기대 목록을 만들므로, 이 대칭이 깨지면
+// 자리 맞대기 검증이 런타임에 소리를 낸다. 지오메트리 패스는 이 속성으로 요소를
 // 집어 `getBoundingClientRect`를 읽고, 그 rect를 덱 요소에 되돌려 붙인다. 값의 형태는
 //
 //	s<슬라이드 인덱스>[.<자식 인덱스>]…
@@ -29,11 +34,13 @@
 // 테스트 하네스(internal/testkit)가 이것들을 부른다 — 같은 규칙을 저쪽에서 다시 구현하면
 // 규칙이 갈라지는 날 좌표가 엉뚱한 요소에 붙고, 그 실패는 산출물을 열어 보기 전까지 조용하다.
 //
-// # 외관
+// # 외관과 배치
 //
 // 외관은 core가 해석을 끝낸 soml.Appearance에서만 나온다 — 이 패키지는 요소의 Attrs를 다시
 // 읽지 않는다. 색·폰트는 덱에 실린 토큰 표(soml.Theme)에서 만든 CSS 변수를 참조하므로
-// 리터럴 색·폰트 이름이 요소 쪽에 나오지 않는다 (style.go).
+// 리터럴 색·폰트 이름이 요소 쪽에 나오지 않는다 (style.go). 배치도 같은 계약이다: 레이아웃
+// 태그는 확정된 soml.ContainerLayout·soml.Placement만 읽어 flex/grid CSS로 컴파일하고
+// (layout.go), 공간 토큰은 색과 같은 이유로 변수 참조로 남는다.
 package web
 
 import (
@@ -83,8 +90,9 @@ func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 		fmt.Fprintf(&b, "<meta name=\"author\" content=%q>\n", html.EscapeString(deck.Author))
 	}
 	b.WriteString("<style>\n")
-	b.WriteString(baseCSS(stage, hasLists(deck)))
-	b.WriteString(themeCSS(deck.Theme))
+	feat := contentFeatures(deck)
+	b.WriteString(baseCSS(stage, feat))
+	b.WriteString(themeCSS(deck.Theme, feat.layout))
 	b.WriteString("</style>\n")
 	b.WriteString("</head>\n")
 	b.WriteString("<body>\n")
@@ -137,7 +145,7 @@ func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 //
 // cascade layer로 기본 < 테마 < 저자 우선순위를 보장한다 (PRD §12.2). 층을 미리 선언해
 // 두면 나중에 테마·저자 CSS가 어느 순서로 실려도 우선순위가 뒤집히지 않는다.
-func baseCSS(stage soml.Stage, lists bool) string {
+func baseCSS(stage soml.Stage, feat features) string {
 	return fmt.Sprintf(`@layer balpyo.base, balpyo.theme, balpyo.author;
 
 @layer balpyo.base {
@@ -172,5 +180,5 @@ func baseCSS(stage soml.Stage, lists bool) string {
     overflow: hidden;
   }
 %s%s}
-`, stage.Width, stage.Height, contentCSS(lists), viewerCSS())
+`, stage.Width, stage.Height, contentCSS(feat), viewerCSS())
 }

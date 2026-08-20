@@ -19,15 +19,21 @@ const (
 	fontVarPrefix  = "--balpyo-font-"
 )
 
-// themeCSS는 덱에 실린 토큰 표를 CSS로 옮긴다 — 색은 커스텀 프로퍼티, 폰트는 패밀리 스택.
+// themeCSS는 덱에 실린 토큰 표를 CSS로 옮긴다 — 색은 커스텀 프로퍼티, 폰트는 패밀리 스택,
+// 공간은 커스텀 프로퍼티다.
 //
-// 이 함수가 **표를 해석하지 않는다**는 점이 계약이다: 값의 의미(대비, 폴백 순서)는 테마가
-// 정하고 여기서는 옮기기만 한다. PPTX 렌더러의 테마 파트도 같은 표에서 나오므로 두 타깃의
-// 색·폰트가 구조적으로 같아진다 (soml.Theme의 주석).
+// 이 함수가 **표를 해석하지 않는다**는 점이 계약이다: 값의 의미(대비, 폴백 순서, 리듬)는
+// 테마가 정하고 여기서는 옮기기만 한다. PPTX 렌더러의 테마 파트도 같은 표에서 나오므로 두
+// 타깃의 색·폰트가 구조적으로 같아진다 (soml.Theme의 주석). 공간만 예외다 — OOXML 테마
+// 파트에 공간 개념이 없어 **이 변수는 웹에만 산다** (soml.SpaceToken의 비대칭).
+//
+// spaces는 덱이 공간 토큰을 참조하는지다 (레이아웃 태그가 있는 덱 — web.features). 참조가
+// 없을 때 선언을 내지 않는 이유는 골든이다: 레이아웃을 쓰지 않은 덱의 산출물이 이
+// iteration 때문에 달라지면 diff가 무엇이 변했는지 말해 주지 못한다.
 //
 // 테마 층(`@layer balpyo.theme`)에 넣는 이유: 저자 CSS가 같은 변수를 덮어쓸 수 있어야 하고
 // (author 층이 뒤), 엔진 기본 CSS는 이 변수를 참조하되 이기지 못해야 한다 (base 층이 앞).
-func themeCSS(theme soml.Theme) string {
+func themeCSS(theme soml.Theme, spaces bool) string {
 	if len(theme.Colors) == 0 && len(theme.Fonts) == 0 {
 		// 해석을 거치지 않은 덱(테마 없음)에는 층을 만들지 않는다. 빈 :root 블록은 골든에
 		// 잡음만 남기고, 변수가 없다는 사실은 참조하는 쪽에서 어차피 드러난다.
@@ -44,6 +50,11 @@ func themeCSS(theme soml.Theme) string {
 	}
 	for _, token := range theme.Fonts {
 		fmt.Fprintf(&b, "    %s%s: %s;\n", fontVarPrefix, token.Name, fontStack(token))
+	}
+	if spaces {
+		// 참조(gap/pad의 var())와 선언이 **한 표**에서 나온다 — 배치조차 테마의 리듬을
+		// 따라간다는 계약(PRD §8.4)의 웹 쪽 절반이다.
+		b.WriteString(spaceVarsCSS(theme))
 	}
 	b.WriteString("  }\n")
 	if _, ok := theme.Color(bgToken); ok {

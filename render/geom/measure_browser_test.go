@@ -4,6 +4,7 @@
 package geom_test
 
 import (
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -294,5 +295,224 @@ func main() {
 	}
 	if want := ul.Rect.X + web.ListTextIndent; math.Abs(first.Lines[0].X-want) > 0.5 {
 		t.Errorf("첫 li의 텍스트 시작 x = %v, want %v (ul.x + %d)", first.Lines[0].X, want, web.ListTextIndent)
+	}
+}
+
+// layoutDeck는 레이아웃 슬라이드로 만든 해석된 덱이다 — 슬라이드마다 본문 하나.
+//
+// 원문을 파싱해 쓰는 이유는 픽스처와 같다: 파서·값 층이 실제로 채우는 모양을 재야 "웹이
+// 낸 CSS가 브라우저에서 그 배치가 되는가"를 확인한 것이 된다 (손으로 만든 트리는 값 층을
+// 건너뛴다).
+func layoutDeck(t *testing.T, bodies ...string) *soml.Deck {
+	t.Helper()
+	stage, err := soml.Aspect16x9.Stage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	deck := &soml.Deck{Title: "layout", Lang: "ko", Aspect: soml.Aspect16x9, Stage: stage}
+	for i, body := range bodies {
+		source := fmt.Sprintf("slides/%03d_layout%s", i+1, soml.Ext)
+		id := fmt.Sprintf("layout%d", i)
+		doc, diags := soml.Parse(source, fmt.Sprintf("<slide id=%q>\n%s\n</slide>\n", id, body))
+		if err := diags.Err(); err != nil {
+			t.Fatalf("파싱 실패: %v", err)
+		}
+		deck.Slides = append(deck.Slides, &soml.Slide{
+			Index: i, ID: id, Source: source, Notes: doc.Notes, Content: doc.Content,
+		})
+	}
+	if err := core.Resolve(deck).Err(); err != nil {
+		t.Fatalf("해석 실패: %v", err)
+	}
+	return deck
+}
+
+// measureLayout은 레이아웃 덱을 재서 지오메트리를 준다.
+//
+// Measure가 성공한다는 것 자체가 **Refs ↔ querySelectorAll 자리 맞대기 통과**다 — 측정
+// 대상 계약이 레이아웃 컨테이너·`<spacer>`까지 넓어졌으므로(ADR 0009의 후속), 웹 렌더러와
+// geom.collect 중 한쪽만 컨테이너를 세면 여기서 개수·순서가 어긋나 실패한다.
+func measureLayout(t *testing.T, deck *soml.Deck) *geom.Geometry {
+	t.Helper()
+	g, err := geom.Measure(deck, renderHTML(t, deck, nil))
+	if err != nil {
+		t.Fatalf("지오메트리 패스 실패: %v", err)
+	}
+	return g
+}
+
+// spaceToken은 테마 표의 공간 토큰 값이다 — 실측을 리터럴 수치가 아니라 **표**와 맞댄다
+// (요소는 var() 참조로 그 표를 가리킨다).
+func spaceToken(t *testing.T, deck *soml.Deck, name string) float64 {
+	t.Helper()
+	token, ok := deck.Theme.Space(name)
+	if !ok {
+		t.Fatalf("공간 토큰 %q가 테마에 없다", name)
+	}
+	return token.Px
+}
+
+func boxOf(t *testing.T, g *geom.Geometry, id string) geom.Box {
+	t.Helper()
+	box, ok := g.Box(id)
+	if !ok {
+		t.Fatalf("%s가 측정 목록에 없다: %+v", id, g.Boxes)
+	}
+	return box
+}
+
+// `<grid cols="4" gap="lg">` 한 줄이 카드 그리드의 좌표 계산 전부를 대체한다 (PRD §7.4) —
+// TASKS Iteration 3이 명시한 장면이다. 카드 4개가 같은 y에, 등간격 x에, 토큰 값만큼
+// 벌어져야 그 주장이 성립한다.
+func TestMeasureGridCards(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := layoutDeck(t, `<grid cols="4" gap="lg">
+    <p>8분</p>
+    <p>99.95%</p>
+    <p>12회</p>
+    <p>3분</p>
+  </grid>`)
+	g := measureLayout(t, deck)
+
+	grid := boxOf(t, g, "s0.0")
+	cards := make([]geom.Box, 0, 4)
+	for i := 0; i < 4; i++ {
+		cards = append(cards, boxOf(t, g, fmt.Sprintf("s0.0.%d", i)))
+	}
+	gap := spaceToken(t, deck, "lg")
+	// 같은 행이므로 y가 같다 — 하나라도 다르면 트랙이 아니라 줄이 나뉜 것이다.
+	for i, card := range cards {
+		if math.Abs(card.Rect.Y-cards[0].Rect.Y) > 0.5 {
+			t.Errorf("카드 %d의 y = %v, 첫 카드 = %v (같은 행이어야 한다)", i, card.Rect.Y, cards[0].Rect.Y)
+		}
+	}
+	// 등간격 + 간격이 토큰 값: 트랙 폭은 (컨테이너 폭 − 간격 3개) / 4다.
+	wantWidth := (grid.Rect.W - 3*gap) / 4
+	for i, card := range cards {
+		if math.Abs(card.Rect.W-wantWidth) > 0.5 {
+			t.Errorf("카드 %d의 폭 = %v, want %v (균등 트랙)", i, card.Rect.W, wantWidth)
+		}
+		if want := grid.Rect.X + float64(i)*(wantWidth+gap); math.Abs(card.Rect.X-want) > 0.5 {
+			t.Errorf("카드 %d의 x = %v, want %v (gap %v = 토큰 lg)", i, card.Rect.X, want, gap)
+		}
+	}
+	// 첫·둘째 카드 사이의 실제 여백이 토큰 값이다 — var(--balpyo-space-lg)가 그 표를
+	// 가리키고 있다는 실측 확인이다 (참조와 선언이 한 표에서 나온다는 계약의 런타임 절반).
+	if got := cards[1].Rect.X - cards[0].Rect.Right(); math.Abs(got-gap) > 0.5 {
+		t.Errorf("카드 사이 여백 = %v, want %v (공간 토큰 lg)", got, gap)
+	}
+}
+
+// `<row>`의 gap과 `justify="between"` — 주축 분배가 CSS의 space-between으로 번역되는지의
+// 실측이다 (어휘 이름을 렌더러가 되돌려 붙인다).
+func TestMeasureRowGapAndJustify(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := layoutDeck(t,
+		`<row gap="md" w="fill"><p basis="200">왼쪽</p><p basis="200">오른쪽</p></row>`,
+		`<row justify="between" w="fill"><p basis="200">왼쪽</p><p basis="200">오른쪽</p></row>`)
+	g := measureLayout(t, deck)
+
+	gapRow, left, right := boxOf(t, g, "s0.0"), boxOf(t, g, "s0.0.0"), boxOf(t, g, "s0.0.1")
+	gap := spaceToken(t, deck, "md")
+	if got := right.Rect.X - left.Rect.Right(); math.Abs(got-gap) > 0.5 {
+		t.Errorf("gap=md의 실제 간격 = %v, want %v", got, gap)
+	}
+	if math.Abs(left.Rect.X-gapRow.Rect.X) > 0.5 {
+		t.Errorf("첫 자식의 x = %v, want %v (기본 분배는 start)", left.Rect.X, gapRow.Rect.X)
+	}
+
+	// justify=between: 첫 자식은 왼쪽 끝, 마지막 자식은 오른쪽 끝에 붙는다.
+	betweenRow := boxOf(t, g, "s1.0")
+	first, last := boxOf(t, g, "s1.0.0"), boxOf(t, g, "s1.0.1")
+	if math.Abs(first.Rect.X-betweenRow.Rect.X) > 0.5 {
+		t.Errorf("between의 첫 자식 x = %v, want %v", first.Rect.X, betweenRow.Rect.X)
+	}
+	if math.Abs(last.Rect.Right()-betweenRow.Rect.Right()) > 0.5 {
+		t.Errorf("between의 마지막 자식 오른쪽 = %v, want %v", last.Rect.Right(), betweenRow.Rect.Right())
+	}
+	// 자식 폭 합이 컨테이너보다 작으므로 사이가 벌어져 있어야 한다 — 붙어 있으면 분배가
+	// 적용되지 않은 것이다.
+	if last.Rect.X <= first.Rect.Right() {
+		t.Errorf("between인데 자식이 붙어 있다 (%s, %s)", first.Rect, last.Rect)
+	}
+}
+
+// `<spacer/>`는 빈 요소로 뒤 자식을 컨테이너 끝으로 밀어낸다 — PPTX에 대응 도형이 없는
+// 요소가 좌표로는 살아 있다는 뜻이고, 그것이 "배치는 좌표로 구워진다"의 실측이다.
+func TestMeasureSpacerPushesSiblings(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := layoutDeck(t,
+		`<row gap="sm" w="fill"><p>왼쪽 꼬리글</p><spacer/><p>오른쪽 페이지 번호</p></row>`,
+		"<p>머리글</p>\n  <spacer/>\n  <p>바닥에 붙는 꼬리글</p>")
+	g := measureLayout(t, deck)
+
+	row, tail := boxOf(t, g, "s0.0"), boxOf(t, g, "s0.0.2")
+	if math.Abs(tail.Rect.Right()-row.Rect.Right()) > 0.5 {
+		t.Errorf("spacer 뒤 자식의 오른쪽 = %v, want %v (컨테이너 끝)", tail.Rect.Right(), row.Rect.Right())
+	}
+	spacer := boxOf(t, g, "s0.0.1")
+	if spacer.Rect.W <= 0 {
+		t.Errorf("spacer의 폭 = %v — 밀어내지 못했다", spacer.Rect.W)
+	}
+	if spacer.El != soml.SpacerElement {
+		t.Errorf("s0.0.1의 태그 = %q, want %q", spacer.El, soml.SpacerElement)
+	}
+
+	// 슬라이드 직속 spacer는 세로 스택에서 밀어낸다 — 꼬리글이 스테이지 아래쪽에 붙는다.
+	footer := boxOf(t, g, "s1.2")
+	stageBottom := float64(deck.Stage.Height) - 64 // stagePadding (render/web contentCSS)
+	if math.Abs(footer.Rect.Bottom()-stageBottom) > 0.5 {
+		t.Errorf("꼬리글의 바닥 = %v, want %v (스테이지 콘텐츠 바닥)", footer.Rect.Bottom(), stageBottom)
+	}
+}
+
+// 중첩이 처음 생기는 iteration이므로 못 박는다: 컨테이너 안 자식의 rect도 **슬라이드
+// 상대**다 (getBoundingClientRect에서 슬라이드 rect를 빼므로 중첩 깊이와 무관하다 —
+// measure.go). 깨져 있으면 PPTX 좌표가 컨테이너 안에서만 어긋나고, 그 실패는 산출물을
+// 열어 보기 전까지 조용하다.
+func TestMeasureNestedLayoutIsSlideRelative(t *testing.T) {
+	testkit.RequireChromium(t)
+	body := `<col gap="md" pad="lg" w="fill">
+    <row gap="sm">
+      <text>중첩된 텍스트</text>
+    </row>
+  </col>`
+	// 같은 내용의 슬라이드 두 장 — 문서 상대 좌표라면 둘째 슬라이드의 y가 크게 다르다.
+	deck := layoutDeck(t, body, body)
+	g := measureLayout(t, deck)
+
+	for _, id := range []string{"0", "0.0", "0.0.0"} {
+		first, second := boxOf(t, g, "s0."+id), boxOf(t, g, "s1."+id)
+		if first.Rect != second.Rect {
+			t.Errorf("%s: 슬라이드 0 = %s, 슬라이드 1 = %s — 중첩 좌표가 슬라이드 상대가 아니다",
+				id, first.Rect, second.Rect)
+		}
+		if second.Rect.Y >= float64(deck.Stage.Height) {
+			t.Errorf("s1.%s의 y = %v — 스테이지 높이를 넘었다 (문서 좌표가 섞였다)", id, second.Rect.Y)
+		}
+	}
+
+	// 중첩은 안쪽으로 들어간다: col의 pad(lg)만큼 row가 안으로, 그 안에 텍스트가 있다.
+	col, row, text := boxOf(t, g, "s0.0"), boxOf(t, g, "s0.0.0"), boxOf(t, g, "s0.0.0.0")
+	pad := spaceToken(t, deck, "lg")
+	if want := col.Rect.X + pad; math.Abs(row.Rect.X-want) > 0.5 {
+		t.Errorf("row의 x = %v, want %v (col.x + pad lg)", row.Rect.X, want)
+	}
+	if text.Rect.X < row.Rect.X-0.5 || text.Rect.Right() > row.Rect.Right()+0.5 {
+		t.Errorf("텍스트(%s)가 부모 row(%s) 밖이다", text.Rect, row.Rect)
+	}
+	if text.Rect.Y < row.Rect.Y-0.5 || text.Rect.Bottom() > row.Rect.Bottom()+0.5 {
+		t.Errorf("텍스트(%s)가 부모 row(%s)의 세로 범위 밖이다", text.Rect, row.Rect)
+	}
+	// 컨테이너도 측정 목록에 있다 (측정 대상 계약이 넓어졌다) — 픽셀 비교가 갈라질 때
+	// "어느 칼럼부터 밀렸는가"를 이 rect가 말해 준다.
+	seen := map[string]bool{}
+	for _, box := range g.Boxes {
+		seen[box.El] = true
+	}
+	for _, el := range []string{soml.ColElement, soml.RowElement, soml.TextElement} {
+		if !seen[el] {
+			t.Errorf("<%s>가 측정 목록에 없다", el)
+		}
 	}
 }

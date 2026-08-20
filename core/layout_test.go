@@ -52,9 +52,10 @@ func TestResolveContainerLayout(t *testing.T) {
 		decl string
 		want soml.ContainerLayout
 	}{
-		// 길이 — 무단위 수치는 논리 스테이지 px, `%`는 백분율, 공간 토큰은 테마 표의 값이다.
+		// 길이 — 무단위 수치는 논리 스테이지 px, `%`는 백분율, 공간 토큰은 이름과 테마 표의
+		// 값을 **함께** 담는다 (웹이 var() 참조로 내야 하므로 — soml.Length.Token).
 		{"gap 수치", "gap", "row", `gap="16"`, soml.ContainerLayout{Gap: ptr(soml.Px(16))}},
-		{"gap 공간 토큰", "gap", "row", `gap="xl"`, soml.ContainerLayout{Gap: ptr(soml.Px(48))}},
+		{"gap 공간 토큰", "gap", "row", `gap="xl"`, soml.ContainerLayout{Gap: ptr(soml.SpaceLength("xl", 48))}},
 		{"gap 백분율", "gap", "row", `gap="10%"`, soml.ContainerLayout{Gap: ptr(soml.Percent(10))}},
 		// 0은 저자가 정한 값이다 — "정하지 않음"(nil)과 구별된다.
 		{"gap 0", "gap", "row", `gap="0"`, soml.ContainerLayout{Gap: ptr(soml.Px(0))}},
@@ -70,9 +71,11 @@ func TestResolveContainerLayout(t *testing.T) {
 
 		// pad 1~4값 — CSS padding의 상·우·하·좌 축약과 같은 규칙으로 4변까지 풀린다.
 		{"pad 1값", "pad", "row", `pad="lg"`, soml.ContainerLayout{Pad: &soml.Pad{
-			Top: soml.Px(36), Right: soml.Px(36), Bottom: soml.Px(36), Left: soml.Px(36)}}},
+			Top: soml.SpaceLength("lg", 36), Right: soml.SpaceLength("lg", 36),
+			Bottom: soml.SpaceLength("lg", 36), Left: soml.SpaceLength("lg", 36)}}},
 		{"pad 2값", "pad", "row", `pad="sm md"`, soml.ContainerLayout{Pad: &soml.Pad{
-			Top: soml.Px(12), Right: soml.Px(24), Bottom: soml.Px(12), Left: soml.Px(24)}}},
+			Top: soml.SpaceLength("sm", 12), Right: soml.SpaceLength("md", 24),
+			Bottom: soml.SpaceLength("sm", 12), Left: soml.SpaceLength("md", 24)}}},
 		{"pad 3값", "pad", "row", `pad="4 8 12"`, soml.ContainerLayout{Pad: &soml.Pad{
 			Top: soml.Px(4), Right: soml.Px(8), Bottom: soml.Px(12), Left: soml.Px(8)}}},
 		{"pad 4값", "pad", "row", `pad="1 2 3 4%"`, soml.ContainerLayout{Pad: &soml.Pad{
@@ -314,16 +317,33 @@ func TestResolveSpaceTokenBoundary(t *testing.T) {
 	if tokenGap == nil || numberGap == nil {
 		t.Fatal("gap이 해석되지 않았다")
 	}
-	if *tokenGap != soml.Px(24) {
-		t.Errorf("gap=md → %+v, want 24px (테마 표의 값)", *tokenGap)
+	if *tokenGap != soml.SpaceLength("md", 24) {
+		t.Errorf("gap=md → %+v, want md(24px) 토큰 참조", *tokenGap)
 	}
 	if *numberGap != soml.Px(16) {
 		t.Errorf("gap=16 → %+v, want 16px", *numberGap)
 	}
-	// 토큰 이름과 수치는 같은 타입에 도달한다 — 렌더러가 둘을 구별할 필요가 없어야 한다.
+	// 둘은 같은 타입에 도달하되 **구별된 상태**로 도달한다: 토큰은 이름을 남기고 저자가 적은
+	// 수치는 남기지 않는다. 웹이 토큰만 var() 참조로 내려면(soml.Length.Token) 이 구별이
+	// 값 층에서 살아 있어야 하고, px로만 눕히면 `gap="24"`와 `gap="md"`가 산출물에서 같은
+	// 것이 된다 — 테마의 리듬을 바꿨을 때 후자만 따라 움직여야 한다.
+	if numberGap.IsToken() {
+		t.Errorf("저자가 적은 수치에 토큰 이름이 붙었다 (%+v)", *numberGap)
+	}
 	if tokenGap.Percent || numberGap.Percent {
 		t.Error("논리 px 길이가 백분율로 해석됐다")
 	}
+	// 토큰 이름이 숫자로 시작해도 토큰이다 — `2xl`은 어휘(PRD §8.4)의 유일한 그런 이름이고,
+	// 수치 판정을 먼저 하면 이 토큰만 영원히 "단위를 떼라"는 진단을 받는다 (항목 03에서
+	// `pad="2xl"`이 CSS 변수 참조로 나가지 않는 것으로 드러났다).
+	twoXL := resolvedElement(t, containerSrc("row", `pad="2xl"`), "row").Container().Pad
+	if twoXL == nil || *twoXL != (soml.Pad{
+		Top: soml.SpaceLength("2xl", 72), Right: soml.SpaceLength("2xl", 72),
+		Bottom: soml.SpaceLength("2xl", 72), Left: soml.SpaceLength("2xl", 72)}) {
+		t.Errorf("pad=2xl → %+v, want 2xl(72px) 토큰 참조 4변", twoXL)
+	}
+	// 그래도 단위 접미사·모르는 토큰 진단은 그대로다 — 표에 없는 이름은 수치 문법이
+	// 판정한다 (그 경로는 TestResolveLayoutDiagnostics의 `gap="16px"`·`gap="huge"` 행이 본다).
 }
 
 // 테마의 공간 토큰 표 — 어휘는 PRD §8.4의 6종이고 값은 수직 리듬에서 나온다.
@@ -498,8 +518,8 @@ func TestResolveLayoutFixture(t *testing.T) {
 	if container.Cols == nil || container.Cols.Count != 4 || len(container.Cols.List) != 0 {
 		t.Errorf("cols = %+v, want 4트랙 균등 분할", container.Cols)
 	}
-	if container.Gap == nil || *container.Gap != soml.Px(36) {
-		t.Errorf("gap = %+v, want lg(36px)", container.Gap)
+	if container.Gap == nil || *container.Gap != soml.SpaceLength("lg", 36) {
+		t.Errorf("gap = %+v, want lg(36px) 토큰 참조", container.Gap)
 	}
 }
 

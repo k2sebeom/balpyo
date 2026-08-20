@@ -114,12 +114,18 @@ func collect(refs []Ref, slide *soml.Slide, node soml.Node, path []int) []Ref {
 		return refs
 	}
 	if soml.KindOf(elem.Name) == soml.KindInline {
-		// 측정 대상은 블록 종류뿐이다 (render/web 패키지 주석의 측정 대상 계약): 여러 줄에
+		// 측정 대상은 **박스를 갖는 요소**다 (render/web 패키지 주석의 측정 대상 계약):
+		// 블록 종류와 레이아웃 컨테이너·`<spacer>`는 재고, 인라인은 재지 않는다 — 여러 줄에
 		// 걸친 인라인의 rect는 뜻이 없고, PPTX에서 인라인은 박스가 아니라 런이다. 웹
 		// 렌더러가 같은 카탈로그로 식별자를 붙이지 않으므로 여기서도 건너뛰어야 Refs ↔
 		// querySelectorAll 자리 맞대기가 성립한다. 자손까지 건너뛴다 — 인라인의 자식은
 		// 문자 데이터와 인라인뿐이고(콘텐츠 모델), 웹 렌더러의 순회(writeInline)와 같은
 		// 모양이어야 두 쪽이 어긋난 순간이 대조에서 드러난다.
+		//
+		// 레이아웃 컨테이너를 재는 것은 ADR 0009("측정 대상은 블록 종류뿐")의 후속 결정이다
+		// (Iteration 3): 컨테이너는 진짜 박스이므로 rect에 뜻이 있고, PPTX가 그것을
+		// 소비하지 않아도(컨테이너는 도형이 되지 않는다) 픽셀 비교가 갈라질 때 "어느
+		// 칼럼부터 밀렸는가"를 이 좌표가 말해 준다 — `<li>`를 재 둔 것과 같은 근거다.
 		return refs
 	}
 	refs = append(refs, Ref{

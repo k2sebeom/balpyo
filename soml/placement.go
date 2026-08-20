@@ -98,15 +98,29 @@ type Placement struct {
 
 // Length는 확정된 길이 값이다 (PRD §13-5의 단위 계약).
 //
-// 논리 스테이지 px와 백분율 두 상태뿐이다 — `fill`은 값 층에서 **해당 축의 100%**로
-// 눕는다 (Percent=true, Value=100). `fill`을 별도 상태로 남기지 않은 이유: 두 상태가
-// 같은 CSS를 내야 하는데 상태가 둘이면 렌더러마다 다르게 낼 자리가 생기고, `flex-grow`는
-// 이미 `grow` 속성으로 따로 있다 (ADR 감 — 항목 06).
+// 수치(논리 스테이지 px)·백분율·**공간 토큰 참조** 세 상태다. `fill`은 값 층에서 **해당
+// 축의 100%**로 눕는다 (Percent=true, Value=100) — `fill`을 별도 상태로 남기지 않은 이유:
+// 두 상태가 같은 CSS를 내야 하는데 상태가 둘이면 렌더러마다 다르게 낼 자리가 생기고,
+// `flex-grow`는 이미 `grow` 속성으로 따로 있다 (ADR 감 — 항목 06).
 type Length struct {
-	// Value는 Percent가 거짓이면 논리 스테이지 px, 참이면 백분율 수치다.
+	// Value는 Percent가 거짓이면 논리 스테이지 px, 참이면 백분율 수치다. 토큰 참조에도
+	// 해석된 px가 함께 담긴다 (Token 주석).
 	Value float64
 	// Percent는 Value가 부모 축에 대한 백분율인지다.
 	Percent bool
+	// Token은 이 길이가 온 공간 토큰 이름이다 (`gap="xl"` → "xl"). 비어 있으면 저자가 적은
+	// 수치·백분율이다.
+	//
+	// **Color가 토큰과 리터럴 두 상태를 갖는 것과 같은 이유다**: 웹은 토큰을
+	// `var(--balpyo-space-xl)` 참조로 내야 테마를 바꿨을 때 여백이 따라 움직인다. 값 층에서
+	// px로 눕히면 그 참조를 복원할 방법이 없고, `gap="24"`(저자가 적은 리터럴)과
+	// `gap="md"`(테마를 따라야 하는 참조)가 산출물에서 같은 것이 된다 — 렌더러가 px를
+	// 토큰 표에서 거꾸로 찾는 길이 위험한 이유가 그것이다.
+	//
+	// 해석된 px를 Value에 함께 담아 두는 이유: 토큰 참조가 웹에만 사는 개념이기 때문이다.
+	// OOXML 테마 파트에는 공간이 없어(SpaceToken 주석) PPTX는 좌표로 굽고, 진단·테스트도
+	// 확정 수치를 본다 — 그 소비자들이 토큰 표를 다시 뒤지지 않아야 한다.
+	Token string
 }
 
 // Px는 논리 px 길이다.
@@ -114,6 +128,14 @@ func Px(v float64) Length { return Length{Value: v} }
 
 // Percent는 백분율 길이다.
 func Percent(v float64) Length { return Length{Value: v, Percent: true} }
+
+// SpaceLength는 공간 토큰 참조 길이다 — 이름과 해석된 px를 함께 담는다.
+func SpaceLength(token string, px float64) Length {
+	return Length{Value: px, Token: token}
+}
+
+// IsToken은 이 길이가 공간 토큰 참조인지 보고한다.
+func (l Length) IsToken() bool { return l.Token != "" }
 
 // Pad는 확정된 패딩 4변이다. 표기는 CSS `padding`의 1~4값 축약과 같은 규칙으로 여기까지
 // 풀린다 — 축약 규칙을 새로 발명하지 않는 이유는 저자가 이미 아는 규칙이기 때문이고,
