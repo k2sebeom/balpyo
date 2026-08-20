@@ -203,10 +203,11 @@ func TestParseTextSubsetErrors(t *testing.T) {
 		},
 		{
 			// 블록은 역할을 표에서만 얻는다 — role 속성을 열면 <p role="title">이
-			// 두 표기의 등가(PRD §7.7)를 깬다.
+			// 두 표기의 등가(PRD §7.7)를 깬다. 어휘 뒤쪽은 Iteration 3이 더한 자식 배치
+			// 속성이다 (블록이 레이아웃 컨테이너의 자식이 될 수 있다 — soml/layout.go).
 			name: "블록에는 role이 없다",
 			src:  `<slide><h1 role="body">제목</h1></slide>`,
-			want: []string{"1:12 <h1>에 알 수 없는 속성 role (쓸 수 있는 속성: variant, size, color, align)"},
+			want: []string{"1:12 <h1>에 알 수 없는 속성 role (쓸 수 있는 속성: variant, size, color, align, grow, shrink, basis, span, self, order, style)"},
 		},
 		{
 			name: "인라인에는 variant가 없다",
@@ -214,9 +215,11 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			want: []string{"1:19 <strong>에는 속성을 쓸 수 없다 (variant)"},
 		},
 		{
+			// 리스트 컨테이너의 외관은 여전히 닫혀 있다. 열린 것은 배치뿐이다 —
+			// `<row><ul basis="360">`이 유효해야 하므로 (Iteration 3, soml/layout.go).
 			name: "리스트 컨테이너에는 variant가 없다",
 			src:  `<slide><ul variant="lead"><li>x</li></ul></slide>`,
-			want: []string{"1:12 <ul>에는 속성을 쓸 수 없다 (variant)"},
+			want: []string{"1:12 <ul>에 알 수 없는 속성 variant (쓸 수 있는 속성: grow, shrink, basis, span, self, order, style)"},
 		},
 		{
 			name: "li에는 variant가 없다",

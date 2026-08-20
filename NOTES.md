@@ -870,3 +870,94 @@
   - `attrExample`의 "kicker"(값 없는 variant 에러 예시가 테마 사유 어휘를 인용)는 02/02의
     열린 질문 그대로 Iteration 10 몫이다. 0010의 재검토(테마가 hlink 토큰을 명시하는
     경우)도 같은 시점이다.
+
+## Iteration 03 · 01-parser-layout — 파서가 레이아웃 태그 어휘를 연다
+<!-- item: 03/01-parser-layout -->
+
+- **한 것**:
+  - `soml/layout.go` 신규 — 레이아웃 카탈로그. 태그 상수(`RowElement`·`ColElement`·
+    `GridElement`·`SpacerElement`·`StyleAttr`), 순서 있는 이름 목록
+    (`layoutContainerElements`), PRD §7.4 표 순서 그대로의 속성 목록 3벌
+    (`containerFlowAttrs`/`containerTrackAttrs`/`containerBoxAttrs`)과 자식 배치 속성
+    한 벌(`childPlacementAttrs`), 파생 함수 `containerAttrs`·`withChildPlacement`·
+    `layoutChildren`.
+  - `soml/subset.go` — `ElementKind`에 `KindLayoutContainer`·`KindSpacer` 추가,
+    `buildElementKinds`가 레이아웃 이름까지 색인, `IsVoidElement`가 `<spacer>`를 포함.
+    타입 주석을 "텍스트 서브셋 요소의 종류" → "요소의 종류(서브셋 + 레이아웃)"로 고쳤다.
+  - `soml/parse.go` — `buildElementSpecs`가 레이아웃 컨테이너(속성 = 컨테이너 속성 +
+    자식 배치 속성, 모델 = `modelElements`, 자식 = `layoutChildren()`)와 `<spacer>`
+    (`modelVoid`, 자식 배치 속성만)를 표에 넣는다. `<text>`·블록·리스트 컨테이너의 속성
+    표는 `withChildPlacement`로 자식 배치 속성이 이어졌고, `slideChildren()`에 레이아웃
+    컨테이너와 `<spacer>`가 들어갔다. `checkPlacement`의 블록 주석을 넓어진 규칙("슬라이드
+    **또는 레이아웃 컨테이너** 직속")으로 갱신.
+  - `soml/layout_test.go` 신규 — 정상 트리 16건(중첩·컨테이너 속성·트랙 목록·크기/비율·
+    spacer·자식 속성 전수·빈 컨테이너·style), Span 계약, 에러 21건(line:col + 문구),
+    종류 카탈로그 계약(`KindOf`/`IsVoidElement`/`TagTextRole`/문법 표 동기),
+    자식 배치 속성 커버리지(열린 곳 전부 · 닫힌 곳 전부), 픽스처 파싱.
+  - `testdata/fixtures/_03_layout/`(비활성) — `balpyo.json` + 슬라이드 7개:
+    `001_row_col`(중첩 + gap 토큰 + align/justify), `002_grid_cards`(`<grid cols="4"
+    gap="lg">` + `span="2"` — TASKS의 픽셀 비교 대상), `003_spacer`(세로·가로 밀어내기),
+    `004_child_attrs`(grow/shrink/basis/span/self/order 전수 + 대상 태그 전수),
+    `005_sizing`(w/h/min-*/max-*/ratio/pad/wrap), `006_style`(배치 선언만 — 경고 없음),
+    `007_style_appearance`(외관 선언 — 경고 경로).
+  - `soml/subset_test.go` — 속성 표가 넓어져 진단 문구가 바뀐 기존 단정 2건 갱신
+    (`<h1>`의 허용 속성 목록, `<ul>`이 "속성을 쓸 수 없다" → "알 수 없는 속성 variant").
+    트리·배치 규칙 단정은 하나도 손대지 않았다.
+
+- **설계 결정과 근거**:
+  - **`<spacer>`는 컨테이너와 다른 종류(`KindSpacer`)다.** 콘텐츠 모델(void), 웹 산출(빈
+    div), PPTX 산출(대응 도형 없음)이 셋 다 컨테이너와 달라서, 같은 종류로 두면 세 층이
+    각자 `name == "spacer"` 비교를 들게 되고 그것이 카탈로그를 한 곳에 둔 이유를 무너뜨린다.
+  - **`cols`/`rows`는 `<grid>`에만 열었다.** `grid-template-*`는 flex 컨테이너의 CSS에서
+    무효이므로 `<row cols="3">`은 받아 놓고 조용히 버려지는 선언이 되고, 그 침묵이 닫힌
+    어휘가 막으려던 실패다. 열어 두고 core가 값 층에서 경고하는 길과 저울질했는데, 태그를
+    `<grid>`로 바꾸는 것이 유일한 고칠 방법이라 진단이 이름 층에 있는 것이 정확하다.
+  - **자식 배치 속성은 `<text>`·블록·리스트 컨테이너·레이아웃 컨테이너·`<spacer>`에만.**
+    PRD의 "모든 컴포넌트/레이아웃 태그"를 `<li>`·인라인까지 넓히지 않았다 — `<li>`는
+    리스트 컨테이너의 자식이지 flex 항목이 아니고(PPTX에서 리스트는 도형 하나),
+    인라인은 박스가 아니라 런이다. 열면 `<li grow="1">`이 웹에서만 뜻을 갖는다.
+    표는 태그마다 적지 않고 `withChildPlacement` 한 곳에서 합쳤고, 그 커버리지를
+    테스트가 양방향(열린 곳/닫힌 곳)으로 못 박는다.
+  - **열거형은 `subset.go`에 모았다** — 카탈로그 파일은 어휘별로 나뉘어도 `ElementKind`
+    값이 두 파일에 흩어지면 같은 값을 쓰거나 빈 값을 남기는 사고가 가능하다. 이름 목록과
+    색인 파생만 `layout.go`가 갖는다.
+  - **태그 이름 상수를 내보냈다**(`RowElement` 등) — 항목 03·04의 렌더러가 grid와 flex를
+    가르는 판단을 문자열 리터럴로 하지 않게. 속성 목록은 아직 내보내지 않았다: core(항목
+    02)가 값 어휘를 어떤 모양으로 요구할지 정해지기 전에 표면을 열면 되돌리기 어렵다.
+  - **`<spacer>`에 `w`/`h`를 열지 않았다.** PRD 표에서 크기는 *컨테이너* 속성이고
+    spacer는 컨테이너가 아니며, 고정 크기 여백은 `basis`로 적을 수 있다. 닫힌 어휘는
+    나중에 열 수 있지만 열린 어휘를 닫는 것은 파괴적 변경이라 좁은 쪽을 골랐다.
+  - **`<stack>`·`at`·`x`/`y`는 열지 않았다** (항목 지시대로). "아직 어휘 밖"임을 에러
+    테스트가 못 박아, Iteration 6 전에 누가 픽스처에 쓰면 빨갛게 된다.
+
+- **검증**: `gofmt -l .` 무출력, `go vet ./...`, **`make test`(컨테이너, finch) 전부
+  초록** — 골든은 하나도 움직이지 않았다 (새 픽스처가 `_` 접두로 비활성이라 수집되지
+  않고, 기존 픽스처의 파싱 결과는 그대로다). 호스트 `go test ./...`는 02_text_subset
+  골든의 mono 낀 두 슬라이드 cy가 1px(9525 EMU) 다른 기존 그 차이만 빨갛다 (02/08·02/09
+  기록의 macOS Noto Sans Mono 부재. 게이트는 컨테이너).
+  게이트 밖 확인: `go run ./cmd/balpyo build --project testdata/fixtures/_03_layout
+  --target html`이 `slides/001_row_col.slide:6:3 <row>를 웹으로 렌더하는 매핑이 없다`로
+  **명시적으로** 멈춘다 — 파싱은 통과하고 렌더 매핑 부재는 침묵이 아니라 에러라는 사실을
+  이 항목 상태에서 눈으로 확인했다 (항목 03·04가 이 에러를 없앤다).
+
+- **남긴 것**:
+  - 항목 02(core)가 이어받을 표면: 컨테이너/자식 속성의 **값** 어휘(공간 토큰 `xs`~`2xl`,
+    트랙 목록, `fill`, `%`, `ratio`), `style` allowlist 검사와 외관 선언 경고(PRD §7.9).
+    파서는 이름만 봤으므로 `<row gap="huge">`·`<grid cols="넷">`은 지금 통과한다.
+    속성 목록을 core가 공유해야 하면 `layout.go`의 목록을 내보내는 편이 두 벌이 되는
+    것보다 낫다.
+  - 항목 03·04가 이어받을 표면: `KindLayoutContainer`/`KindSpacer` 분기.
+    "컨테이너는 PPTX 도형이 아니다"는 계약이 `KindSpacer`를 나눈 근거와 같은 자리에 있다.
+  - 항목 05: `_03_layout`의 `_` 제거 + 골든. 007의 경고 문구는 항목 02가 정하므로 골든
+    `diagnostics.txt`도 그때 처음 생긴다.
+  - 항목 06(문서)이 **갱신해야 하는 낡은 문서**: `docs/reference/soml/slide.md`의 자식
+    어휘 목록·에러 표 행(레이아웃 태그와 `<spacer>`가 빠져 있다),
+    `docs/reference/soml/text-subset.md`의 진단 예시(`<h1>`의 허용 속성 목록이 넓어졌다),
+    `docs/reference/soml/text.md`의 같은 종류 행. 이 항목에서는 손대지 않았다 — 렌더가
+    없는 동작을 문서에 쓰지 않는다는 TASKS 규칙 때문이고, 문구가 바뀐 사실은 여기 남긴다.
+  - **열린 질문**: (a) `<spacer>`의 크기를 `basis`로만 적게 한 결정(위) — 항목 03에서 웹
+    CSS를 짜 보고 `flex-basis`가 세로 컨테이너에서 저자의 기대와 맞는지 확인할 것.
+    (b) 슬라이드 직속 `<spacer>`가 뜻을 가지려면 슬라이드 콘텐츠 자체가 세로 flex여야
+    한다 — 그 결정(슬라이드 루트의 `display`)은 항목 03의 몫이고, 아니라고 결론 나면
+    `slideChildren()`에서 `<spacer>`를 빼는 것이 맞다. (c) `wrap="true"` 외의 값(`wrap`
+    불리언 축약, `nowrap`)을 받을지는 값 층의 결정으로 넘겼다.

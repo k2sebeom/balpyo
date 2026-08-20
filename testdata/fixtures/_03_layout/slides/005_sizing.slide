@@ -1,0 +1,29 @@
+<!-- 크기·비율·패딩·줄바꿈. w/h/min-*/max-*는 수치·%·fill 세 형태를 섞어 값 층(항목 02)이
+     공간 값을 어떻게 해석하는지 드러내고, ratio는 aspect-ratio가 두 타깃에서 같은 박스를
+     내는지 본다 (PPTX는 종횡비 개념이 없으므로 지오메트리 패스가 확정한 픽셀이 그대로
+     구워진다 — 이 픽스처가 그 경로의 시험대다). wrap="true"는 컨테이너 폭을 넘는 항목이
+     줄로 접히는 장면이라 항목 수를 트랙보다 많게 둔다. -->
+<slide id="sizing">
+  <h2>크기와 비율</h2>
+  <row gap="md" pad="lg" w="fill" min-h="120" align="center">
+    <col w="40%" gap="xs">
+      <p>w=40% — 비율 폭</p>
+      <p>부모 폭에 대한 백분율이다.</p>
+    </col>
+    <col w="320" max-w="360" gap="xs">
+      <p>w=320 · max-w=360</p>
+      <p>수치는 논리 스테이지 px다.</p>
+    </col>
+    <col ratio="16:9" min-w="200" max-h="220" gap="xs">
+      <p>ratio=16:9</p>
+    </col>
+  </row>
+  <row gap="sm" pad="sm md" wrap="true" w="fill">
+    <p basis="200">wrap 1</p>
+    <p basis="200">wrap 2</p>
+    <p basis="200">wrap 3</p>
+    <p basis="200">wrap 4</p>
+    <p basis="200">wrap 5</p>
+    <p basis="200">wrap 6</p>
+  </row>
+</slide>

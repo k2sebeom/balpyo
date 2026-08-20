@@ -1,0 +1,23 @@
+<!-- 중첩 레이아웃의 기본 장면: <row> 안의 <col>. 이 iteration의 핵심 계약("레이아웃
+     태그 = CSS flex 이름 바꾸기 층", PRD §7.4)이 두 타깃에서 같은 좌표를 내는지의
+     시험대다. gap은 공간 토큰으로만 쓴다 — 수치 gap은 005에서 함께 본다. -->
+<slide id="row-col">
+  <h2>두 열로 나눈 회고</h2>
+  <row gap="xl" align="start" justify="between">
+    <col gap="md">
+      <h3>잘된 것</h3>
+      <ul>
+        <li>모놀리스 분리 완료</li>
+        <li>배포 파이프라인 <strong>자동화</strong></li>
+      </ul>
+    </col>
+    <col gap="md">
+      <h3>아쉬운 것</h3>
+      <ul>
+        <li>관측성 도입이 늦었다</li>
+        <li>온콜 문서가 흩어져 있다</li>
+      </ul>
+    </col>
+  </row>
+  <note>왼쪽 2분, 오른쪽 1분. 아쉬운 것에서 다음 슬라이드로 넘어간다.</note>
+</slide>

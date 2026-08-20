@@ -1,0 +1,15 @@
+<!-- <spacer/>로 밀어낸 배치. 슬라이드 직속 spacer(세로 스택에서 밀어내기)와 <row> 안의
+     spacer(가로 밀어내기)를 함께 실어, 빈 요소가 두 타깃에서 같은 여백을 만드는지 본다 —
+     PPTX에는 spacer에 대응하는 도형이 없으므로 이 픽스처가 "컨테이너는 사라지고 좌표만
+     남는다"는 계약의 시험대다. spacer는 void이므로 <spacer/>로만 쓴다. -->
+<slide id="spacer">
+  <h2>여백이 배치다</h2>
+  <spacer/>
+  <p>가운데 문단은 위아래 spacer가 밀어낸 자리에 놓인다.</p>
+  <spacer grow="2"/>
+  <row gap="sm" align="center">
+    <p>왼쪽 꼬리글</p>
+    <spacer/>
+    <p>오른쪽 페이지 번호</p>
+  </row>
+</slide>

@@ -1,0 +1,30 @@
+<!-- `<grid cols="4" gap="lg">` — TASKS Iteration 3의 명시적 픽셀 비교 대상이다
+     ("한 줄이 카드 그리드의 좌표 계산 전부를 대체한다", PRD §7.4). 도형·이미지가 없는
+     iteration이므로 카드는 텍스트 블록으로 만든다 — 카드의 테두리·배경은 Iteration 4의
+     <shape>가 맡고, 여기서 검증하는 것은 좌표뿐이다. 마지막 카드는 span으로 두 칸을
+     차지해 트랙 계산이 자식 속성까지 반영하는지 본다. -->
+<slide id="grid-cards">
+  <h2>플랫폼 지표</h2>
+  <grid cols="4" gap="lg">
+    <col gap="xs">
+      <h3>8분</h3>
+      <p>배포 소요 시간</p>
+    </col>
+    <col gap="xs">
+      <h3>99.95%</h3>
+      <p>가용성</p>
+    </col>
+    <col gap="xs">
+      <h3>12회</h3>
+      <p>일 평균 배포</p>
+    </col>
+    <col gap="xs">
+      <h3>3분</h3>
+      <p>평균 감지 시간</p>
+    </col>
+    <col gap="xs" span="2">
+      <h3>두 칸 카드</h3>
+      <p>span="2"는 grid-column: span 2다.</p>
+    </col>
+  </grid>
+</slide>

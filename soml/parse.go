@@ -16,13 +16,15 @@ const noteElement = "note"
 // elementSpecs는 **닫힌 어휘**다 (PRD §7.2). 여기 없는 태그 이름은 무시되지 않고 에러가 된다.
 //
 // 어휘는 iteration을 따라 열린다 — 텍스트 서브셋(subset.go의 카탈로그)은 Iteration 2,
-// 레이아웃 태그는 Iteration 3. 어휘를 미리 열어 두면 "파싱은 되는데 렌더는 안 되는" 상태가
-// 생기고, 그것이 닫힌 어휘로 막으려던 바로 그 조용한 실패다. 렌더 매핑이 아직 없는 태그는
-// 렌더러가 명시적으로 멈춘다 (render/web.writeNode, render/pptx.writeShapeNode).
+// 레이아웃 태그(layout.go의 카탈로그)는 Iteration 3, `<stack>`은 Iteration 6이다. 어휘를
+// 미리 열어 두면 "파싱은 되는데 렌더는 안 되는" 상태가 생기고, 그것이 닫힌 어휘로 막으려던
+// 바로 그 조용한 실패다. 렌더 매핑이 아직 없는 태그는 렌더러가 명시적으로 멈춘다
+// (render/web.writeNode, render/pptx.writeShapeNode).
 var elementSpecs = buildElementSpecs()
 
-// buildElementSpecs는 문법 표를 만든다. 서브셋 태그의 규칙은 카탈로그(subset.go)의 종류에서
-// 파생된다 — 태그를 카탈로그에 추가하면 문법이 따라오고, 두 표가 어긋날 수 없다.
+// buildElementSpecs는 문법 표를 만든다. 서브셋·레이아웃 태그의 규칙은 카탈로그
+// (subset.go·layout.go)의 종류에서 파생된다 — 태그를 카탈로그에 추가하면 문법이 따라오고,
+// 두 표가 어긋날 수 없다.
 func buildElementSpecs() map[string]elementSpec {
 	specs := map[string]elementSpec{
 		RootElement: {
@@ -30,10 +32,14 @@ func buildElementSpecs() map[string]elementSpec {
 			model: modelElements,
 			// PRD §7.7의 `reveal` 속성은 열지 않는다 — 웹 런타임의 reveal은 Phase 2이고,
 			// 렌더가 없는 속성을 어휘에 열면 닫힌 어휘가 막으려던 조용한 무시가 된다.
+			// 자식 배치 속성도 없다: `<slide>`는 컨테이너의 자식이 될 수 없고(루트다),
+			// 슬라이드 자신의 배치는 레이아웃(Iteration 10)과 테마가 소유한다.
 			children: slideChildren(),
 		},
 		TextElement: {
-			attrs: []string{"role", "variant", "size", "color", "align"},
+			// 외관 어휘 뒤에 자식 배치 속성이 붙는다 — `<text>`는 레이아웃 컨테이너의
+			// 자식이 될 수 있으므로 `<row><text grow="1">`이 문법상 유효해야 한다.
+			attrs: withChildPlacement([]string{"role", "variant", "size", "color", "align"}),
 			model: modelInline,
 		},
 		noteElement: {model: modelText},
@@ -54,12 +60,33 @@ func buildElementSpecs() map[string]elementSpec {
 		// 인라인 태그의 외관은 런 규칙(Iteration 2 항목 04)이 소유하고, 리스트 컨테이너와
 		// <li>의 위계는 역할이 소유한다 — 항목마다 다른 외관 번들이 붙으면 리스트의
 		// 타이포그래피가 리스트이기를 멈춘다.
-		specs[name] = elementSpec{attrs: []string{"variant", "size", "color", "align"}, model: model}
+		specs[name] = elementSpec{
+			attrs: withChildPlacement([]string{"variant", "size", "color", "align"}),
+			model: model,
+		}
 	}
 	for _, name := range listContainerElements {
-		specs[name] = elementSpec{model: modelElements, children: []string{ListItemElement}}
+		// 리스트 컨테이너는 외관 속성을 갖지 않지만(위 주석) 배치의 대상은 된다 —
+		// `<row><ul basis="360">`은 두 열에 리스트를 놓는 흔한 배치다.
+		specs[name] = elementSpec{
+			attrs:    withChildPlacement(nil),
+			model:    modelElements,
+			children: []string{ListItemElement},
+		}
 	}
 	specs[ListItemElement] = elementSpec{model: modelInline}
+	for _, name := range layoutContainerElements {
+		// 빈 컨테이너(`<row></row>`)는 유효하다 — 자식 0개의 flex 컨테이너는 CSS에서
+		// 유효하고, 레이아웃을 짜는 중간 상태에서 저자가 늘 만든다. 빈 컨테이너가
+		// 산출물에 무엇을 남기는지는 렌더러의 결정이다.
+		specs[name] = elementSpec{
+			attrs:    withChildPlacement(containerAttrs(name)),
+			model:    modelElements,
+			children: layoutChildren(),
+		}
+	}
+	// <spacer>는 void다 — 밀어내기 자체가 내용이고, 담을 것이 있으면 그것은 컨테이너다.
+	specs[SpacerElement] = elementSpec{attrs: withChildPlacement(nil), model: modelVoid}
 	for _, name := range inlineElements {
 		spec := elementSpec{model: modelInline}
 		switch name {
@@ -81,10 +108,15 @@ func buildElementSpecs() map[string]elementSpec {
 }
 
 // slideChildren은 <slide>의 자식 어휘다. 순서가 진단 메시지의 순서다.
+//
+// 레이아웃 컨테이너와 `<spacer>`가 들어 있다: 슬라이드 직속 `<spacer>`는 세로 스택에서
+// 밀어내기가 되므로 뜻이 있다 (머리글 아래 여백을 늘려 꼬리글을 바닥에 붙이는 배치).
 func slideChildren() []string {
 	children := []string{TextElement, noteElement}
 	children = append(children, blockElements...)
-	return append(children, listContainerElements...)
+	children = append(children, listContainerElements...)
+	children = append(children, layoutContainerElements...)
+	return append(children, SpacerElement)
 }
 
 // elementSpec은 태그 하나의 문법 규칙이다. 값 어휘는 여기 없다 — 값은 core가 본다.
@@ -512,8 +544,10 @@ func (p *parser) checkPlacement(elem *Element, stack []*Element, root *Element) 
 			p.errorf(elem.NameSpan, "<%s> 안에 블록 태그 <%s>는 올 수 없다 (블록은 겹치지 않는다)", parent.Name, elem.Name)
 			return
 		case KindBlock:
-			// 블록은 슬라이드 직속이다 — 블록 안의 블록은 "문단 안의 문단"이라 두 타깃
-			// 어디에도 대응하는 구조가 없다.
+			// 블록은 슬라이드 **또는 레이아웃 컨테이너** 직속이다 (Iteration 3에서
+			// 넓어졌다 — layoutChildren). 넓어진 것은 컨테이너의 자식 어휘뿐이고 블록
+			// 안의 블록은 여전히 에러다: "문단 안의 문단"은 두 타깃 어디에도 대응하는
+			// 구조가 없다. 이 비대칭이 의도다.
 			p.errorf(elem.NameSpan, "<%s> 안에 블록 태그 <%s>는 올 수 없다 (블록은 겹치지 않는다)", parent.Name, elem.Name)
 			return
 		default:

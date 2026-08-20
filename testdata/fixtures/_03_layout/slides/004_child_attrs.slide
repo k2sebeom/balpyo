@@ -1,0 +1,25 @@
+<!-- 자식 배치 속성 전수 (PRD §7.4 자식 표): grow·shrink·basis·self·order는 flex 컨테이너
+     안에서, span은 grid 안에서 뜻을 갖는다. 속성이 붙는 대상도 전수로 섞는다 —
+     <text>·블록·리스트 컨테이너·중첩 레이아웃 컨테이너·<spacer>가 모두 배치의 대상이다
+     (<li>와 인라인 태그는 어휘 밖 — 항목 01의 결정). order로 문서 순서와 시각 순서가
+     갈리는 슬라이드라, PPTX 도형 순서(=문서 순서)와 좌표(=시각 순서)의 관계도 여기서 드러난다. -->
+<slide id="child-attrs">
+  <h2>자식이 자기 자리를 정한다</h2>
+  <row gap="md" align="stretch">
+    <text grow="1" self="center">grow=1 · self=center</text>
+    <p shrink="0" basis="240">shrink=0 · basis=240 — 줄어들지 않는 열이다.</p>
+    <ul basis="200" order="-1">
+      <li>order=-1이라 먼저 보인다</li>
+      <li>선언은 세 번째다</li>
+    </ul>
+    <col grow="2" gap="xs">
+      <p>중첩 컨테이너도 자식이다</p>
+      <p>grow=2로 남은 폭을 더 받는다</p>
+    </col>
+    <spacer shrink="1"/>
+  </row>
+  <grid cols="3" gap="sm">
+    <p span="2">span=2</p>
+    <p>한 칸</p>
+  </grid>
+</slide>
