@@ -490,10 +490,11 @@ func TestResolveLayoutReportsEveryBadValue(t *testing.T) {
 	}
 }
 
-// 픽스처는 뒤 항목 전부의 시험대다 (항목 05가 골든을 붙인다) — 값 층이 픽스처를 해석하는지,
-// 경고가 나는 슬라이드가 **하나뿐**인지 여기서 못 박는다.
+// 픽스처는 이 iteration 전체의 시험대다 (항목 05가 골든·픽셀 비교를 붙였다) — 값 층이
+// 픽스처를 해석하는지, 경고가 나는 슬라이드가 **하나뿐**인지 여기서 못 박는다. 픽스처 러너의
+// 골든 `diagnostics.txt`가 같은 사실을 산출물 쪽에서 지킨다 (경고는 있을 때만 골든이 된다).
 func TestResolveLayoutFixture(t *testing.T) {
-	deck := readFixtureDeck(t, "_03_layout")
+	deck := readFixtureDeck(t, "03_layout")
 	diags := Resolve(deck)
 	for _, diag := range diags {
 		if diag.Severity != soml.SeverityWarning {

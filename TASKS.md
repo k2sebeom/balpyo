@@ -202,7 +202,7 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
 
 - 태그·속성: 컨테이너(`gap` `align` `justify` `wrap` `pad` `cols`/`rows` `w`/`h`/`min-*`/
   `max-*` `ratio`) + 자식(`grow` `shrink` `basis` `span` `self` `order`) + `style` 탈출구
-- [ ] 테스트: 속성 → CSS 매핑 단위 테스트 (PRD §7.4 표 그대로 — "CSS 이름 바꾸기 층"
+- [x] 테스트: 속성 → CSS 매핑 단위 테스트 (PRD §7.4 표 그대로 — "CSS 이름 바꾸기 층"
       원칙의 회귀 테스트), 공간 토큰(`gap="xl"`) 해석, 중첩 레이아웃 지오메트리 패스
       좌표 스냅샷, `<grid cols="4">` 카드 배치 픽셀 비교
 - [x] 구현: 태그 → flex/grid CSS 컴파일. **레이아웃 태그는 PPTX 도형이 아니다** —

@@ -25,11 +25,16 @@ const (
 	// textSubsetFixtureName은 Iteration 2의 HTML 텍스트 서브셋 픽스처다 (블록·리스트·
 	// 인라인 서식·pre — 항목 02/08이 활성화했다).
 	textSubsetFixtureName = "02_text_subset"
+	// layoutFixtureName은 Iteration 3의 레이아웃 태그 픽스처다 (row/col/grid/spacer +
+	// 자식 배치 속성 + `style` 탈출구 — 항목 03/05가 활성화했다). 도형은 여전히 텍스트
+	// 박스뿐이라 아래 검증들(줄 수 대조·잉크 띠의 단색 배경 가정·schemeClr)이 그대로
+	// 성립한다 — 이 픽스처가 새로 시험하는 것은 **한 줄에 여러 박스가 앉는 배치**다.
+	layoutFixtureName = "03_layout"
 )
 
 // textFixtureNames는 픽스처 수준 검증(좌표 대조·잉크 띠·schemeClr)이 도는 텍스트 픽스처
 // 전부다 — 새 텍스트 픽스처가 생기면 여기 더해 같은 계약을 받게 한다.
-var textFixtureNames = []string{textFixtureName, textSubsetFixtureName}
+var textFixtureNames = []string{textFixtureName, textSubsetFixtureName, layoutFixtureName}
 
 // fixtureByName은 픽스처 러너와 같은 수집 경로로 픽스처를 집는다 — 경로를 직접 조립하면
 // 러너가 못 보는 픽스처를 여기만 보는 상태가 생길 수 있다.
@@ -114,6 +119,43 @@ var goldenPartLists = map[string][]string{
 		"pptx/ppt/slides/slide6.xml",
 		"pptx/ppt/theme/theme1.xml",
 	},
+	layoutFixtureName: {
+		// 007이 `style`에 외관을 써서 경고 2건을 내므로 diagnostics.txt가 **있어야** 한다 —
+		// 그 골든이 경고 경로(문구·위치·순서)의 유일한 회귀 테스트다.
+		"diagnostics.txt",
+		"index.html",
+		"pptx/[Content_Types].xml",
+		"pptx/_rels/.rels",
+		"pptx/docProps/app.xml",
+		"pptx/docProps/core.xml",
+		"pptx/ppt/_rels/presentation.xml.rels",
+		"pptx/ppt/notesMasters/_rels/notesMaster1.xml.rels",
+		"pptx/ppt/notesMasters/notesMaster1.xml",
+		// 노트는 001에만 있다 — 레이아웃 컨테이너가 노트 파트를 만들지 않는다는 사실도
+		// 이 목록이 지킨다.
+		"pptx/ppt/notesSlides/_rels/notesSlide1.xml.rels",
+		"pptx/ppt/notesSlides/notesSlide1.xml",
+		"pptx/ppt/presentation.xml",
+		"pptx/ppt/slideLayouts/_rels/slideLayout1.xml.rels",
+		"pptx/ppt/slideLayouts/slideLayout1.xml",
+		"pptx/ppt/slideMasters/_rels/slideMaster1.xml.rels",
+		"pptx/ppt/slideMasters/slideMaster1.xml",
+		"pptx/ppt/slides/_rels/slide1.xml.rels",
+		"pptx/ppt/slides/_rels/slide2.xml.rels",
+		"pptx/ppt/slides/_rels/slide3.xml.rels",
+		"pptx/ppt/slides/_rels/slide4.xml.rels",
+		"pptx/ppt/slides/_rels/slide5.xml.rels",
+		"pptx/ppt/slides/_rels/slide6.xml.rels",
+		"pptx/ppt/slides/_rels/slide7.xml.rels",
+		"pptx/ppt/slides/slide1.xml",
+		"pptx/ppt/slides/slide2.xml",
+		"pptx/ppt/slides/slide3.xml",
+		"pptx/ppt/slides/slide4.xml",
+		"pptx/ppt/slides/slide5.xml",
+		"pptx/ppt/slides/slide6.xml",
+		"pptx/ppt/slides/slide7.xml",
+		"pptx/ppt/theme/theme1.xml",
+	},
 }
 
 // 골든에 들어간 파트 목록을 픽스처별로 통째로 단정한다.
@@ -159,6 +201,7 @@ func TestTextFixtureGoldenPartList(t *testing.T) {
 var slideCounts = map[string]int{
 	textFixtureName:       3,
 	textSubsetFixtureName: 6,
+	layoutFixtureName:     7,
 }
 
 // 슬라이드 파트의 색은 전부 schemeClr 참조여야 한다. 픽스처의 색은 모두 토큰이므로 슬라이드에
@@ -289,6 +332,106 @@ func TestTextFixtureShapeCountExcludesNonShapeElements(t *testing.T) {
 	}
 }
 
+// 한 줄에 **여러 박스가 같은 y**에 앉는 배치에서 좌표 대조가 뜻을 유지하는가.
+//
+// 지금까지 모든 픽스처는 세로 스택이라 박스의 y가 단조 증가했고, "그리드가 그리드다"는 사실은
+// 어느 검사도 보지 않았다 — 골든 xfrm은 숫자가 그럴듯한지 말해 주지 않고, 좌표 대조
+// (TestTextFixtureCoordinatesMatchGeometry)는 측정값과 산출물이 같은지만 본다. 측정 자체가
+// 어긋나면(트랙 계산이 한 칸씩 밀리면) 두 검사가 함께 통과한다.
+//
+// 그래서 배치의 뜻을 직접 단정한다: 같은 줄의 카드는 **같은 y**에 앉고(정확히 같은 EMU가
+// 산출물에 있다), 4열 그리드의 x는 **등간격**이다. 이것이 TASKS의 리뷰 포인트("좌표 계산
+// 0회로 그리드 배치가 PPTX에 정확히 이식되는지")의 자동화 가능한 절반이다 — 나머지 절반
+// (편집 가능한 개별 도형인가)은 사람이 PowerPoint에서 본다.
+func TestLayoutFixtureSameRowBoxesShareY(t *testing.T) {
+	RequireChromium(t) // 지오메트리 패스가 브라우저를 띄운다.
+	fixture := fixtureByName(t, layoutFixtureName)
+	result := fixture.Build(t)
+	if result.Geometry == nil {
+		t.Fatal("빌드에 지오메트리가 없다")
+	}
+	data, err := os.ReadFile(fixture.Output(t, result, ".pptx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := PPTXParts(t, data)
+
+	// 슬라이드마다 "첫 줄에 나란히 앉아야 하는 요소"를 적는다. 001은 <row> 안의 두 <col>이고
+	// 002는 <grid cols="4">의 카드 4개다 (다섯 번째 카드는 span="2"라 둘째 줄로 내려간다 —
+	// 그 사실도 y 그룹이 갈리는 것으로 함께 확인된다).
+	for _, tc := range []struct {
+		slideID string
+		el      string
+		want    int
+		pitch   bool // 등간격 x까지 보는가 (균등 트랙인 grid만)
+	}{
+		{slideID: "row-col", el: "h3", want: 2},
+		{slideID: "grid-cards", el: "h3", want: 4, pitch: true},
+	} {
+		t.Run(tc.slideID, func(t *testing.T) {
+			index := -1
+			for i, slide := range result.Deck.Slides {
+				if slide.ID == tc.slideID {
+					index = i
+				}
+			}
+			if index < 0 {
+				t.Fatalf("슬라이드 %s가 없다", tc.slideID)
+			}
+
+			// 첫 줄 = 같은 요소 이름의 박스 중 y가 가장 작은 것들.
+			var top []geom.Box
+			for _, box := range result.Geometry.Boxes {
+				if box.Slide != index || box.El != tc.el {
+					continue
+				}
+				switch {
+				case len(top) == 0 || box.Rect.Y < top[0].Rect.Y:
+					top = []geom.Box{box}
+				case box.Rect.Y == top[0].Rect.Y:
+					top = append(top, box)
+				}
+			}
+			if len(top) != tc.want {
+				t.Fatalf("<%s>가 같은 y에 %d개, want %d개", tc.el, len(top), tc.want)
+			}
+
+			// PPTX의 y는 같은 EMU여야 한다. TextBoxRect의 안전 여유는 가로로만 붙으므로
+			// (정렬이 정하는 방향 — pptx.TextBoxRect) y는 잰 값의 환산 그대로다.
+			_, y := pptx.Offset(top[0].Rect)
+			part := fmt.Sprintf("ppt/slides/slide%d.xml", index+1)
+			xml := string(parts[part])
+			if xml == "" {
+				t.Fatalf("파트 %s가 없다", part)
+			}
+			if got := strings.Count(xml, fmt.Sprintf("y=\"%d\"", y)); got < tc.want {
+				t.Errorf("%s: y=%d인 도형이 %d개, want %d개 이상 — 같은 줄의 박스가 같은 y로 굽히지 않았다",
+					part, y, got, tc.want)
+			}
+			t.Logf("%s: <%s> %d개가 y=%.1fpx(%d EMU)를 공유한다", tc.slideID, tc.el, len(top), top[0].Rect.Y, y)
+
+			if !tc.pitch {
+				return
+			}
+			sort.Slice(top, func(i, j int) bool { return top[i].Rect.X < top[j].Rect.X })
+			var pitches []float64
+			for i := 1; i < len(top); i++ {
+				pitches = append(pitches, top[i].Rect.X-top[i-1].Rect.X)
+			}
+			t.Logf("%s: 트랙 pitch %v (gap lg 36px 포함)", tc.slideID, pitches)
+			for i, pitch := range pitches {
+				// 트랙 폭은 (컨테이너 폭 − 3×gap)/4라 소수점이 남는다 — 브라우저가 트랙마다
+				// 다른 방향으로 반올림하므로 1px까지는 등간격으로 본다. 한 칸이 밀리면
+				// (트랙 계산이 틀리면) 차이는 트랙 폭 단위로 벌어진다.
+				if math.Abs(pitch-pitches[0]) > 1.0 {
+					t.Errorf("%s: %d번째 pitch %.1fpx가 첫 pitch %.1fpx와 다르다 — 트랙이 등간격이 아니다",
+						tc.slideID, i+1, pitch, pitches[0])
+				}
+			}
+		})
+	}
+}
+
 // shapeAligns는 지오메트리와 같은 문서 순서(geom.Refs — 인라인은 자손까지 건너뛴다)로,
 // 측정된 요소마다 PPTX 조립기가 그 도형의 TextBoxRect에 쓰는 정렬을 모은다. 자기 도형을
 // 갖지 않는 요소는 nil이다 — `<li>`(컨테이너가 도형 하나다), 레이아웃 컨테이너와
@@ -373,6 +516,29 @@ const (
 // 같은 폭의 여유를 더한 값이다 (3.3% 측정 → 4% 허용과 같은 태도).
 var loLineWidthMaxRatios = map[string]float64{
 	textSubsetFixtureName: 0.055,
+	// 03_layout: 측정 최대 +5.8% (002_grid_cards의 두 칸 카드 문단 — Iteration 3 항목 05).
+	// 02_text_subset과 같은 원인(스크립트 간격은 한글↔라틴 **경계 수**에 비례하고 비율은 줄
+	// 길이로 나눈 값이다)이 배치에서 더 세게 나타난다: 트랙이 좁아 줄이 짧아지는데
+	// (381px — 01_text 본문의 3분의 1) 그 짧은 줄에 `grid-column: span 2`의 라틴 런과
+	// 인용 부호가 몰려 경계가 6곳이다. 이 줄의 박스는 두 칸 트랙(558px)이라 여유 비율이
+	// 46%이므로 5.8%의 폭 오차로 줄이 접힐 위험은 없다 (구조 갈라짐은 0 오차의 줄 수 검사가
+	// 따로 잡는다). 6.5%는 측정값에 앞 픽스처들과 같은 폭의 여유를 더한 값이다.
+	layoutFixtureName: 0.065,
+}
+
+// inkBandSkipSlides는 잉크 띠 판정을 **적용할 수 없는** 슬라이드다 (`<픽스처>/<슬라이드 id>`).
+//
+// InkBands는 "영역에서 가장 흔한 색이 배경이고 잉크는 글자다"에 기대므로, 저자가 배경을 칠한
+// 슬라이드에서는 그 사각형이 하나의 거대한 띠가 되어 글줄 판정 자체가 성립하지 않는다 —
+// 값을 완화하는 문제가 아니라 **측정 방법의 전제가 깨지는** 문제다 (웹 띠 1152×40px = 칠한
+// 띠, LibreOffice 띠 737×22px = 글자. 폭 차 −36%).
+//
+// 판정 범위를 박스별로 좁혀도 마찬가지다: 칠한 것은 부모 `<row>`이고 그 사각형이 자식 박스를
+// 덮는다. 이 슬라이드의 배치는 좌표로 0 오차 대조된다
+// (TestTextFixtureCoordinatesMatchGeometry — xfrm == 측정 EMU).
+var inkBandSkipSlides = map[string]bool{
+	// 007_style_appearance: `style="background: #0F65F9"`가 웹에만 적용된다 (§7.9의 계약).
+	"03_layout/style-appearance-warning": true,
 }
 
 // 두 렌더 엔진이 같은 자리에서 줄을 나누는가 — Iteration 1의 리뷰 포인트를 수치로 판정한다
@@ -419,44 +585,49 @@ func TestTextFixtureLineBreaksMatchLibreOffice(t *testing.T) {
 			t.Logf("최소 여유 비율 Slack/MaxLineWidth = %.2f%% — 이 덱이 견디는 글자 폭 오차", minRatio*100)
 
 			for i, slide := range result.Deck.Slides {
-				expected := expectedLineBands(result.Geometry, i)
-				if len(expected) == 0 {
+				if inkBandSkipSlides[name+"/"+slide.ID] {
+					t.Logf("%s: 잉크 띠 판정을 건너뛴다 — 저자가 칠한 배경이 단색 배경 가정을 깬다 (inkBandSkipSlides)", slide.Source)
+					continue
+				}
+				lines := measuredLines(result.Geometry, i)
+				if len(lines) == 0 {
 					continue
 				}
 
 				// 웹 스크린샷은 잰 줄 박스와 같은 엔진의 그림이다 — 여기가 어긋나면 잉크 띠 측정
-				// 자체가 틀린 것이므로, LibreOffice 판정보다 먼저 방법을 검증한다.
+				// 자체가 틀린 것이므로, LibreOffice 판정보다 먼저 방법을 검증한다: 잰 줄마다
+				// 웹 잉크가 있어야 하고(줄 → 띠), 잉크 띠마다 주인이 있어야 한다(띠 → 줄).
 				webBands := InkBands(browser.ScreenshotElement(t, web.SlideIndexSelector(i)), stageRect)
-				if len(webBands) != len(expected) {
-					t.Errorf("%s: 웹 잉크 띠 %d개, 줄 박스 %d개 — 측정 방법이 틀렸다",
-						slide.Source, len(webBands), len(expected))
+				owners, ok := bandLineOwners(t, slide.Source, webBands, lines)
+				if !ok {
 					continue
 				}
 
 				loBands := InkBands(shots[i], stageRect)
-				if len(loBands) != len(expected) {
+				if len(loBands) != len(webBands) {
 					t.Errorf("%s: 줄 수가 갈라진다 — 브라우저 %d줄, LibreOffice %d줄 (%s)",
-						slide.Source, len(expected), len(loBands), bandOwners(expected))
+						slide.Source, len(webBands), len(loBands), strings.Join(flatOwners(owners), ", "))
 					continue
 				}
 				// 띠끼리의 비교는 웹 잉크 vs LibreOffice 잉크다 — 줄 박스(glyph box)는 잉크보다
-				// 크므로(어센더·디센더의 빈 행) 줄 박스 중심과 잉크 중심을 맞대면 그 차이가 엔진
-				// 오차처럼 보인다. 기대 띠는 줄 수와 요소 이름에만 쓴다.
-				for j, want := range expected {
-					lo, wb := loBands[j], webBands[j]
+				// 크므로(어센더·디센더의 빈 행) 줄 박스와 잉크의 중심을 맞대면 그 차이가 엔진
+				// 오차처럼 보인다. 잰 줄은 띠의 주인 이름에만 쓴다.
+				for j, wb := range webBands {
+					lo := loBands[j]
+					who := strings.Join(owners[j], "+")
 					offset := (lo.Y + lo.H/2) - (wb.Y + wb.H/2)
 					widthDelta := lo.W/wb.W - 1
 					t.Logf("%s %s: 세로 중심 %+.1fpx, 잉크 폭 %+.1f%% (웹 %s, LibreOffice %s)",
-						slide.Source, strings.Join(want.ids, "+"), offset, widthDelta*100, wb, lo)
+						slide.Source, who, offset, widthDelta*100, wb, lo)
 					if math.Abs(offset) > loLineOffsetMaxPx {
 						t.Errorf("%s %s: 글줄이 %+.1fpx 밀렸다 (허용 ±%.0fpx)",
-							slide.Source, strings.Join(want.ids, "+"), offset, loLineOffsetMaxPx)
+							slide.Source, who, offset, loLineOffsetMaxPx)
 					}
 					// 폭 판정은 비율과 절대 하한 중 큰 쪽이다 — 비율은 스크립트 간격(줄
 					// 길이에 비례하는 오차)을, 하한은 AA 잡음(줄 길이와 무관한 ±1px)을 잰다.
 					if allowed := math.Max(widthMaxRatio, loLineWidthMinPx/wb.W); math.Abs(widthDelta) > allowed {
 						t.Errorf("%s %s: 글줄 잉크 폭이 %+.1f%% 다르다 (허용 ±%.1f%%)",
-							slide.Source, strings.Join(want.ids, "+"), widthDelta*100, allowed*100)
+							slide.Source, who, widthDelta*100, allowed*100)
 					}
 				}
 			}
@@ -464,46 +635,79 @@ func TestTextFixtureLineBreaksMatchLibreOffice(t *testing.T) {
 	}
 }
 
-// lineBand는 기대 잉크 띠 하나다 — 겹치는 줄 박스를 합친 것이라 요소가 여럿일 수 있다.
-type lineBand struct {
+// measuredLine은 지오메트리가 잰 글줄 하나와 그 주인 요소다.
+type measuredLine struct {
 	rect geom.Rect
-	ids  []string
+	id   string
 }
 
-// expectedLineBands는 슬라이드의 모든 줄 박스를 위에서 아래로 합친 기대 잉크 띠다.
-// 세로로 겹치는 줄 박스는 잉크에서도 한 띠가 되므로 합친다 — 인라인이 문자 데이터를 쪼갠
-// 블록(`관측성 스택 도입 (<code>otel</code> + Grafana)`)은 같은 줄의 직계 문자 노드
-// rect가 여럿이라, 합치는 규칙이 없으면 그 슬라이드에서 테스트가 방법 문제로 죽는다.
-// 주의: 줄 박스는 **직계 문자 노드**에서만 나오므로 (geom.measureScript) 인라인이 낀 줄의
-// 기대 띠 폭은 부분 폭이다 — 그래서 기대 띠는 줄 수와 요소 이름에만 쓴다.
-func expectedLineBands(g *geom.Geometry, slide int) []lineBand {
-	var bands []lineBand
+// measuredLines는 슬라이드의 모든 줄 박스를 위에서 아래 순서로 모은다.
+func measuredLines(g *geom.Geometry, slide int) []measuredLine {
+	var lines []measuredLine
 	for _, box := range g.Boxes {
 		if box.Slide != slide {
 			continue
 		}
 		for _, line := range box.Lines {
-			bands = append(bands, lineBand{rect: line, ids: []string{box.ID}})
+			lines = append(lines, measuredLine{rect: line, id: box.ID})
 		}
 	}
-	sort.Slice(bands, func(i, j int) bool { return bands[i].rect.Y < bands[j].rect.Y })
-	var merged []lineBand
-	for _, band := range bands {
-		if len(merged) > 0 {
-			last := &merged[len(merged)-1]
-			if band.rect.Y < last.rect.Bottom() {
-				right := math.Max(last.rect.Right(), band.rect.Right())
-				bottom := math.Max(last.rect.Bottom(), band.rect.Bottom())
-				last.rect.X = math.Min(last.rect.X, band.rect.X)
-				last.rect.W = right - last.rect.X
-				last.rect.H = bottom - last.rect.Y
-				last.ids = appendOwner(last.ids, band.ids...)
-				continue
+	sort.Slice(lines, func(i, j int) bool { return lines[i].rect.Y < lines[j].rect.Y })
+	return lines
+}
+
+// bandLineOwners는 잰 줄을 **웹 잉크 띠**에 배정하고, 띠마다 주인 요소 이름을 돌려준다.
+// 배정이 성립하지 않으면(줄 자리에 잉크가 없거나, 주인 없는 잉크가 있으면) 측정 방법이 틀린
+// 것이므로 실패로 보고하고 false를 돌려준다.
+//
+// 왜 줄 박스끼리 미리 합치지 않는가 (Iteration 3 항목 05에서 고친 것): 겹치는 줄 박스를 합치는
+// 규칙은 세로 스택에서만 맞는다. 배치가 열리면 한 줄에 여러 박스가 앉고 그 박스들의 y가 조금씩
+// 다른데(`<col gap="xs">` 안의 두 문단은 6px씩 엇갈린다), 줄 박스는 잉크보다 커서
+// (어센더·디센더의 빈 행) 이웃한 두 줄의 박스가 서로 닿는다 — 합치기가 **전이적으로** 번져
+// 004_child_attrs에서 세 줄이 한 띠가 되었고, 실제 그림은 세 띠였다 (방법 문제로 죽었다).
+//
+// 그래서 합치는 기준을 잰 rect가 아니라 **그림**에 둔다: 잉크 띠는 그 엔진이 실제로 그린
+// 줄이고, 줄 박스는 세로로 가장 많이 겹치는 띠의 주인이 된다. 슬라이드 전체에서 재는 것은
+// 그대로다 — LibreOffice가 줄을 하나 더 만들면 그 줄은 박스 밖에 그려지므로, 박스 안만 보면
+// 갈라짐이 조용히 통과한다 (01_text의 본문이 처음에 정확히 그렇게 통과했다).
+func bandLineOwners(t *testing.T, source string, bands []geom.Rect, lines []measuredLine) ([][]string, bool) {
+	t.Helper()
+	owners := make([][]string, len(bands))
+	ok := true
+	for _, line := range lines {
+		best, overlap := -1, 0.0
+		for i, band := range bands {
+			top := math.Max(line.rect.Y, band.Y)
+			bottom := math.Min(line.rect.Bottom(), band.Bottom())
+			if bottom-top > overlap {
+				best, overlap = i, bottom-top
 			}
 		}
-		merged = append(merged, band)
+		if best < 0 {
+			t.Errorf("%s %s: 잰 줄 %s 자리에 웹 잉크가 없다 — 측정 방법이 틀렸다",
+				source, line.id, line.rect)
+			ok = false
+			continue
+		}
+		owners[best] = appendOwner(owners[best], line.id)
 	}
-	return merged
+	for i, band := range bands {
+		if len(owners[i]) == 0 {
+			t.Errorf("%s: 웹 잉크 띠 %s에 주인이 없다 — 잰 줄이 없는 자리에 그림이 있다 (측정 방법이 틀렸다)",
+				source, band)
+			ok = false
+		}
+	}
+	return owners, ok
+}
+
+// flatOwners는 진단 메시지용 요소 이름 목록이다 (띠 경계를 지운 평면 목록).
+func flatOwners(owners [][]string) []string {
+	var ids []string
+	for _, band := range owners {
+		ids = appendOwner(ids, band...)
+	}
+	return ids
 }
 
 // appendOwner는 중복 없이 요소 이름을 더한다 — 한 요소의 문자 노드 여러 개가 같은 줄에
@@ -522,13 +726,4 @@ func appendOwner(ids []string, more ...string) []string {
 		}
 	}
 	return ids
-}
-
-// bandOwners는 진단 메시지용 요소 이름 목록이다.
-func bandOwners(bands []lineBand) string {
-	var ids []string
-	for _, band := range bands {
-		ids = appendOwner(ids, band.ids...)
-	}
-	return strings.Join(ids, ", ")
 }

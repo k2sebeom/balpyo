@@ -58,6 +58,28 @@ var fixtureDiffOptions = map[string]DiffOptions{
 	// 전부 허용 안이므로 구성은 구조 갈라짐이 아니라 잔차다. 3.5%는 측정값에 01_text와
 	// 같은 폭의 여유를 더한 값이다 (2.1% 측정 → 2.5% 허용과 같은 태도).
 	"02_text_subset": {Channel: 32, MaxRatio: 0.035},
+	// 측정 최대 2.68% (슬라이드 4 004_child_attrs — Iteration 3 항목 05). 배치가 열리면서
+	// 한 슬라이드에 텍스트 박스가 9개까지 앉고(세로 스택 시절은 3~4개), LibreOffice의 첫
+	// 기준선 +2~5px가 그 박스마다 글리프 경계를 이중으로 세게 한다 — 잔차가 박스 수에
+	// 비례하는 것이다. 같은 슬라이드의 잉크 띠 검사(줄 수 0차, 세로 중심 +2~5px)는 전부
+	// 허용 안이므로 구조 갈라짐이 아니다. 3.2%는 측정값에 앞 두 픽스처와 같은 폭의 여유를
+	// 더한 값이다 (2.1% → 2.5%, 3.04% → 3.5%와 같은 태도).
+	"03_layout": {Channel: 32, MaxRatio: 0.032},
+}
+
+// slideDiffOptions는 **슬라이드 한 장**의 픽셀 비교 허용 오차다 (`<픽스처>/<슬라이드 id>`).
+// 픽스처 전체를 완화하는 것과 갈라 두는 이유: 아래 슬라이드의 갈라짐은 잔차가 아니라 **저자가
+// 선언한 것**이라, 같은 수치를 픽스처 전체에 주면 나머지 슬라이드의 실제 배치 갈라짐이 그
+// 그늘에 숨는다.
+var slideDiffOptions = map[string]DiffOptions{
+	// 007_style_appearance: `style`에 외관을 쓴 슬라이드다. `background: #0F65F9`가 웹에만
+	// 적용되고 PPTX에는 이식되지 않는 것이 §7.9의 계약 그 자체이므로, 두 렌더가 이 슬라이드
+	// 에서 다른 것이 **정답**이다 — 저자가 칠한 띠(1152×40px = 슬라이드의 5.0%)가 픽셀
+	// 차이의 대부분이고 남은 1.1%가 글리프 잔차다 (측정 6.11%, Iteration 3 항목 05).
+	// 7%는 측정값에 여유를 더한 값이다. 배치가 깨지면(박스가 다른 자리에 앉으면) 이 수치도
+	// 넘으므로 검사가 무력해지지는 않고, 좌표 자체는 0 오차로 따로 못 박혀 있다
+	// (TestTextFixtureCoordinatesMatchGeometry).
+	"03_layout/style-appearance-warning": {Channel: 32, MaxRatio: 0.07},
 }
 
 // CompareRenders는 픽스처의 웹 스크린샷과 PPTX 렌더를 슬라이드별로 비교한다.
@@ -82,11 +104,16 @@ func (s *Suite) CompareRenders(t *testing.T, fixture Fixture, result *pipeline.R
 	browser.Load(t, filepath.Join(result.OutDir, web.IndexFile))
 
 	for i, slide := range result.Deck.Slides {
+		// 슬라이드 한 장의 조정이 픽스처 조정을 덮는다 (더 좁은 범위가 이긴다).
+		slideDiff := diff
+		if override, ok := slideDiffOptions[fixture.Name+"/"+slide.ID]; ok {
+			slideDiff = override
+		}
 		// 선택자는 렌더러가 소유한다 — 클래스·속성 이름을 여기에 손으로 적으면 이름을 바꾼
 		// 순간 스크린샷이 "요소가 없다"로 죽거나, 더 나쁘게는 다른 요소를 찍는다.
 		webImg := browser.ScreenshotElement(t, web.SlideIndexSelector(i))
-		cmp := AssertImagesMatch(t, webImg, shots[i], diff)
-		ok := cmp.Image != nil && cmp.Ratio <= diff.MaxRatio
+		cmp := AssertImagesMatch(t, webImg, shots[i], slideDiff)
+		ok := cmp.Image != nil && cmp.Ratio <= slideDiff.MaxRatio
 		t.Logf("슬라이드 %d(%s): %s", i+1, slide.ID, cmp)
 		if cmp.Image != nil {
 			s.review.AddSlide(t, fixture.Name, slide.ID, i, webImg, shots[i], cmp.Image, cmp.String(), ok)
