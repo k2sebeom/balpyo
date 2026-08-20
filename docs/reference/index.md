@@ -15,15 +15,18 @@
 
 ## 현재 상태
 
-Iteration 2까지 구현된 어휘와 표면:
+Iteration 3까지 구현된 어휘와 표면:
 
 - 태그: [`<slide>`](soml/slide.md) (`id`·`skip`), [`<text>`](soml/text.md)
   (`role`·`variant`·`size`·`color`·`align`), [`<note>`](soml/note.md),
   [텍스트 서브셋](soml/text-subset.md) (`h1`~`h3`, `p`, `ul`/`ol`/`li`, `blockquote`,
-  `pre`, `strong`, `em`, `code`, `a`, `br`, `span`)
+  `pre`, `strong`, `em`, `code`, `a`, `br`, `span`),
+  [레이아웃 태그](soml/layout.md) (`row`/`col`/`grid`/`spacer` + 컨테이너·자식 속성과
+  `style` 탈출구)
 - [외관 속성](appearance.md) — 4단 캐스케이드, 텍스트 역할 5종, 인라인 서식·리스트 매핑
-  표, 토큰 색 보존 계약
+  표, 토큰 색 보존 계약, 공간 토큰
 - [CLI](cli.md) — `build`(`--strict` 포함)와 `version`
 
-`layouts.md`와 `theme.md`는 해당 iteration(3·10)에서 생긴다. 구조와 파이프라인은
-[내부 구조](../internals/architecture.md)에 있다.
+`layouts.md`(표준 레이아웃 카탈로그)와 `theme.md`(테마 패키지 포맷)는 Iteration 10에서
+생긴다 — 지금의 레이아웃은 2층 배치 태그이고, 1층 레이아웃과 슬롯은 아직 없다. 구조와
+파이프라인은 [내부 구조](../internals/architecture.md)에 있다.

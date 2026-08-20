@@ -388,13 +388,14 @@ balpyo build --target pptx     # 네이티브 PPTX
 | `gap` | 공간 토큰(`xs`~`2xl`) 또는 수치 | `gap` |
 | `align` | `start·center·end·stretch·baseline` | `align-items` |
 | `justify` | `start·center·end·between·around·evenly` | `justify-content` |
-| `wrap` | `true` | `flex-wrap: wrap` |
+| `wrap` | `true` (값 없는 `wrap` 표기도 같은 뜻) | `flex-wrap: wrap` |
 | `pad` | 공간 토큰 또는 수치 (1~4값) | `padding` |
-| `cols` / `rows` | 수치 또는 트랙 목록 (`"2fr 1fr"`) | `grid-template-columns/rows` |
-| `w` / `h` / `min-w` / `min-h` / `max-w` / `max-h` | 수치·`%`·`fill` | `width`/`height`/… |
+| `cols` / `rows` | 수치(트랙 **개수**) 또는 트랙 목록 (`"2fr 1fr"`) — **`<grid>` 전용** | `grid-template-columns/rows` |
+| `w` / `h` / `min-w` / `min-h` / `max-w` / `max-h` | 수치·`%`·`fill` (= 해당 축의 100%) | `width`/`height`/… |
 | `ratio` | `16:9`, `1:1` | `aspect-ratio` |
 
-**자식 속성** (모든 컴포넌트/레이아웃 태그에 적용 가능)
+**자식 속성** (컨테이너의 자식이 될 수 있는 컴포넌트/레이아웃 태그에 적용 가능 — `<li>`와
+인라인 태그는 제외한다: 리스트는 PPTX에서 도형 하나이고 인라인은 박스가 아니라 런이다)
 
 | 속성 | CSS |
 |---|---|
@@ -432,8 +433,12 @@ balpyo build --target pptx     # 네이티브 PPTX
 ```
 
 - `gap="xl"`처럼 **공간 값이 토큰 어휘에 들어온다** — 원시 CSS 문자열로는 불가능했던
-  일관성이다.
+  일관성이다. 단, 공간 토큰은 PPTX 테마 파트에 대응 슬롯이 없다 (배치는 좌표로 구워진다 —
+  `docs/decisions/0012-space-tokens-have-no-theme-slot.md`).
 - `<grid cols="4" gap="lg">` 한 줄이 카드 그리드의 좌표 계산 전부를 대체한다.
+- **레이아웃 태그는 PPTX 도형이 되지 않는다** — 자식만 절대 좌표 도형으로 남고 컨테이너는
+  사라진다 (`<group>`의 `grpSp`와 갈라지는 지점 —
+  `docs/decisions/0011-layout-containers-are-not-shapes.md`).
 
 ### 7.5 2층 — 컴포넌트 어휘와 PPTX 대응
 

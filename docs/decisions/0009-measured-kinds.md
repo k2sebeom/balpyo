@@ -5,6 +5,9 @@
 - Iteration: 2 (항목 01·05 — NOTES.md 02/01·02/05가 근거 기록이다)
 - 관련: [지오메트리 패스](../internals/geometry-pass.md), ADR 0004 (지오메트리 곁 표),
   [텍스트 서브셋](../reference/soml/text-subset.md)
+- 후속: [ADR 0013](0013-measured-kinds-include-layout.md) — 레이아웃 컨테이너·`<spacer>`가
+  측정 대상에 들어온다 (이 결정의 근거를 카탈로그의 새 종류에 적용한 것이고, 인라인을 재지
+  않는다는 결정은 그대로다)
 
 ## 맥락
 

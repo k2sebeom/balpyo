@@ -26,6 +26,7 @@ nav:
       - SOML — slide: reference/soml/slide.md
       - SOML — text: reference/soml/text.md
       - SOML — 텍스트 서브셋: reference/soml/text-subset.md
+      - SOML — 레이아웃: reference/soml/layout.md
       - SOML — note: reference/soml/note.md
       - 외관 속성: reference/appearance.md
       - CLI: reference/cli.md
@@ -47,6 +48,11 @@ nav:
       - 0008 런 스타일 상속-복사: decisions/0008-run-style-inherit-copy.md
       - 0009 측정 대상은 블록 종류뿐: decisions/0009-measured-kinds.md
       - 0010 링크 색 accent1 재사용: decisions/0010-link-color-accent1.md
+      - 0011 레이아웃 컨테이너는 도형이 아니다: decisions/0011-layout-containers-are-not-shapes.md
+      - 0012 공간 토큰에는 테마 슬롯이 없다: decisions/0012-space-tokens-have-no-theme-slot.md
+      - 0013 측정 대상에 레이아웃을 넣는다: decisions/0013-measured-kinds-include-layout.md
+      - 0014 style 탈출구의 경계: decisions/0014-style-escape-hatch-boundary.md
+      - 0015 fill은 해당 축의 100%: decisions/0015-fill-is-hundred-percent.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |

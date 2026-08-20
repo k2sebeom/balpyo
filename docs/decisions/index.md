@@ -16,6 +16,11 @@
 | [0008](0008-run-style-inherit-copy.md) | 인라인 런 스타일은 확정 스타일의 상속-복사다 | 2 | 확정 |
 | [0009](0009-measured-kinds.md) | 측정 대상은 블록 종류뿐이다 (요소 종류 카탈로그 공유) | 2 | 확정 |
 | [0010](0010-link-color-accent1.md) | 링크 색은 hlink 전용 토큰이 아니라 accent1을 재사용한다 | 2 | 확정 (I10 재검토) |
+| [0011](0011-layout-containers-are-not-shapes.md) | 레이아웃 컨테이너는 PPTX 도형이 아니다 (자식 좌표만 남는다) | 3 | 확정 |
+| [0012](0012-space-tokens-have-no-theme-slot.md) | 공간 토큰에는 PPTX 테마 슬롯이 없다 | 3 | 확정 |
+| [0013](0013-measured-kinds-include-layout.md) | 측정 대상에 레이아웃 컨테이너와 `<spacer>`를 넣는다 | 3 | 확정 (0009의 후속) |
+| [0014](0014-style-escape-hatch-boundary.md) | `style` 탈출구는 문법만 에러, allowlist 밖은 경고, 값은 보지 않는다 | 3 | 확정 |
+| [0015](0015-fill-is-hundred-percent.md) | `fill`은 해당 축의 100%다 (`grow`와 겹치지 않는다) | 3 | 확정 |
 
 PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다. 그 결정들의
 색인은 PRD에 있고, 이 표는 **그 이후 구현 중에 새로 확정한 것**만 담는다.

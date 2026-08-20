@@ -80,7 +80,10 @@ PRD §13-1). 외관 매핑:
 | 조건 | 진단 메시지 |
 |---|---|
 | 자식으로 블록·리스트 요소를 썼다 | `<text> 안에는 문자 데이터와 인라인 태그만 올 수 있다 (<…>는 쓸 수 없다)` |
-| 어휘 밖의 속성 | `<text>에 알 수 없는 속성 … (쓸 수 있는 속성: role, variant, size, color, align)` |
+| 어휘 밖의 속성 | `<text>에 알 수 없는 속성 … (쓸 수 있는 속성: role, variant, size, color, align, grow, shrink, basis, span, self, order, style)` |
+
+속성 목록의 뒤쪽 일곱 개는 [자식 배치 속성](layout.md)이다 — `<text>`는 레이아웃
+컨테이너의 자식이 될 수 있으므로 `<row><text grow="1">`이 유효하다.
 
 외관 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다:
 

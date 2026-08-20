@@ -209,10 +209,10 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
       지오메트리 패스에서 자식 좌표만 소비되고 컨테이너 자체는 사라짐
 - [x] 구현: `style` 탈출구 — 배치 속성 allowlist 검사, 외관 CSS 사용 시 경고 (§7.9)
 - [ ] 리뷰: 좌표 계산 0회로 그리드 배치가 PPTX에 정확히 이식되는지
-- [ ] 문서:
-  - [ ] `docs/reference/soml/layout.md` — `row`/`col`/`grid`/`spacer` + 컨테이너/자식
+- [x] 문서:
+  - [x] `docs/reference/soml/layout.md` — `row`/`col`/`grid`/`spacer` + 컨테이너/자식
         속성 전체와 **CSS 대응 표** (PRD §7.4 — "이름 바꾸기 층" 계약의 공식 문서)
-  - [ ] `docs/reference/soml/layout.md` 안에 `style` 탈출구 규칙 (배치 전용, 경고 조건)
+  - [x] `docs/reference/soml/layout.md` 안에 `style` 탈출구 규칙 (배치 전용, 경고 조건)
 
 ## Iteration 4 — `<shape>` 12종 + 외관 속성(단색)
 
@@ -380,3 +380,8 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
 | 인라인 런 스타일은 확정 스타일의 상속-복사 | `docs/decisions/0008-run-style-inherit-copy.md` | I2 |
 | 측정 대상은 블록 종류뿐 (요소 종류 카탈로그 공유) | `docs/decisions/0009-measured-kinds.md` | I2 |
 | 링크 색은 hlink 전용 토큰이 아니라 accent1 재사용 (I10 재검토) | `docs/decisions/0010-link-color-accent1.md` | I2 |
+| 레이아웃 컨테이너는 PPTX 도형이 아니다 (자식 좌표만 남는다) | `docs/decisions/0011-layout-containers-are-not-shapes.md` | I3 |
+| 공간 토큰에는 PPTX 테마 슬롯이 없다 (모든 토큰이 슬롯을 갖는 계약의 유일한 예외) | `docs/decisions/0012-space-tokens-have-no-theme-slot.md` | I3 |
+| 측정 대상에 레이아웃 컨테이너와 `<spacer>`를 넣는다 (0009의 후속) | `docs/decisions/0013-measured-kinds-include-layout.md` | I3 |
+| `style` 탈출구는 문법만 에러, allowlist 밖은 경고, 값은 보지 않는다 | `docs/decisions/0014-style-escape-hatch-boundary.md` | I3 |
+| `fill`은 해당 축의 100%다 (`grow`와 겹치지 않게) | `docs/decisions/0015-fill-is-hundred-percent.md` | I3 |
