@@ -62,3 +62,18 @@ func (s Span) Text(src string) string {
 
 // String은 시작 지점을 포맷한다 — 진단 메시지의 앵커는 항상 시작 지점이다.
 func (s Span) String() string { return s.Start.String() }
+
+// Slice는 이 구간이 덮는 문자열 text의 [start:end) 부분에 해당하는 구간이다.
+//
+// 값 층(core)을 위해 있다: `pad="sm md"`나 `style="a: 1; b: 2"`처럼 **값 하나가 여러
+// 선언을 담는** 속성에서 진단이 문제가 된 조각을 가리켜야 한다. 위치 계산을 여기 두는
+// 이유는 advance를 렉서·파서와 공유하기 위함이다 — 좌표 계산이 두 곳에 있으면 진단의
+// line:col이 층마다 갈라진다. 범위를 벗어난 요청은 원래 구간을 그대로 돌려준다 (진단이
+// 위치를 잃는 것보다 덜 정밀한 위치가 낫다).
+func (s Span) Slice(text string, start, end int) Span {
+	if start < 0 || end < start || end > len(text) {
+		return s
+	}
+	startPos := advance(s.Start, text[:start])
+	return Span{Start: startPos, End: advance(startPos, text[start:end])}
+}

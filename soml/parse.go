@@ -80,7 +80,7 @@ func buildElementSpecs() map[string]elementSpec {
 		// 유효하고, 레이아웃을 짜는 중간 상태에서 저자가 늘 만든다. 빈 컨테이너가
 		// 산출물에 무엇을 남기는지는 렌더러의 결정이다.
 		specs[name] = elementSpec{
-			attrs:    withChildPlacement(containerAttrs(name)),
+			attrs:    withChildPlacement(ContainerAttrs(name)),
 			model:    modelElements,
 			children: layoutChildren(),
 		}

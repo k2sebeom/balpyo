@@ -1,9 +1,6 @@
 package core
 
 import (
-	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
 
@@ -565,38 +562,9 @@ func TestThemeFontTokensMapToFontScheme(t *testing.T) {
 }
 
 func TestResolveTextFixture(t *testing.T) {
-	// 픽스처는 완전한 프로젝트다 (testdata/fixtures/README.md). 여기서는 파이프라인을 거치지
-	// 않고 슬라이드 파일만 읽는다 — core는 internal/pipeline을 임포트할 수 없다 (임포트 순환).
-	dir := filepath.Join("..", "testdata", "fixtures", "01_text", "slides")
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	names := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		if strings.HasSuffix(entry.Name(), soml.Ext) {
-			names = append(names, entry.Name())
-		}
-	}
-	sort.Strings(names)
-	if len(names) == 0 {
-		t.Fatalf("%s에 슬라이드가 없다", dir)
-	}
-
-	deck := &soml.Deck{}
-	for _, name := range names {
-		src, err := os.ReadFile(filepath.Join(dir, name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		doc, parseDiags := soml.Parse("slides/"+name, string(src))
-		if len(parseDiags) != 0 {
-			t.Fatalf("%s 파서 진단: %v", name, parseDiags)
-		}
-		deck.Slides = append(deck.Slides, &soml.Slide{
-			Index: len(deck.Slides), ID: doc.ID, Source: doc.File, Content: doc.Content, Tokens: doc.Tokens,
-		})
-	}
+	// 픽스처 읽기는 readFixtureDeck 한 곳이다 (layout_test.go) — 같은 일을 하는 코드가
+	// 두 벌이 되면 한쪽만 고쳐진 채 남는다.
+	deck := readFixtureDeck(t, "01_text")
 	if diags := Resolve(deck); len(diags) != 0 {
 		t.Fatalf("픽스처는 진단 없이 해석되어야 한다: %v", diags)
 	}

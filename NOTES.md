@@ -961,3 +961,143 @@
     한다 — 그 결정(슬라이드 루트의 `display`)은 항목 03의 몫이고, 아니라고 결론 나면
     `slideChildren()`에서 `<spacer>`를 빼는 것이 맞다. (c) `wrap="true"` 외의 값(`wrap`
     불리언 축약, `nowrap`)을 받을지는 값 층의 결정으로 넘겼다.
+
+## Iteration 03 · 02-core-layout — 공간 토큰 + 확정 배치 + `style` 탈출구
+<!-- item: 03/02-core-layout -->
+
+- **한 것**:
+  - `soml/placement.go` 신규 — **확정 배치 값**. `ContainerFlow`(+`FlowOf`),
+    `ContainerLayout`(PRD §7.4 표 순서: Flow·Gap·Align·Justify·Wrap·Pad·Cols·Rows +
+    크기 6종·Ratio), `Placement`(Grow·Shrink·Basis·Span·Self·Order·Style),
+    값 타입 `Length`(+`Px`/`Percent`)·`Pad`·`Tracks`/`Track`/`TrackKind`·`Ratio`,
+    닫힌 어휘 `BoxAlign`/`BoxJustify`(+`BoxAligns()`/`BoxJustifies()`),
+    접근자 `Element.Container()`·`Element.Placement()`.
+  - `soml/appearance.go` — `Appearance`에 `Container`·`Placement`를 `Text`·`Link`의
+    형제로 붙였다. `Theme.Spaces []SpaceToken` + `Theme.Space`/`SpaceNames`,
+    `SpaceToken`(Name·Px — **슬롯 없음**, 주석에 비대칭의 근거).
+  - `soml/layout.go` — `containerAttrs` → **`ContainerAttrs`**, `ChildPlacementAttrs()`
+    내보냄 (core가 같은 목록을 소비한다). `soml/parse.go`는 호출만 갱신.
+  - `soml/position.go` — `Span.Slice(text, start, end)`. 값 하나가 여러 조각을 담는
+    속성(`pad="sm huge"`, `style="a: 1; b: 2"`)의 진단이 **조각**을 가리키게 한다.
+    위치 계산은 렉서·파서와 같은 `advance`를 쓴다.
+  - `core/theme.go` — `minimalSpaces()`: xs 6 · sm 12 · md 24 · lg 36 · xl 48 · 2xl 72.
+  - `core/layout.go` 신규 — `resolveLayout`(요소 종류와 무관한 한 벌의 표) +
+    `containerAttr`/`placementAttr` 표 + 값 헬퍼(`length`/`lengthValue`·`pad`·`tracks`/
+    `track`·`ratio`·`boxAlign`/`boxJustify`·`wrap`·`integer`/`nonNegativeInt`·`span`) +
+    조각 분해(`valuePart`·`splitValues`) + 경계 판정(`startsNumeric`·`isDigits`).
+  - `core/style.go` 신규 — `layoutStyleProperties()`(순서 있는 allowlist, `*`는 접두
+    가족), `isLayoutStyleProperty`, `placementStyle`(정규화 + 문법 에러 + 외관 경고),
+    `splitDeclarations`/`trimmedPart`.
+  - `core/resolve.go` — `node`가 부모를 들고 훑고 모든 요소가 `resolveLayout`을 지난다.
+    `resolveText`가 `Appearance`를 통째로 대입하지 않고 `elemAppearance(elem).Text`에
+    쓴다 (한 요소가 두 채널을 함께 갖는다). `numberSuffix`를 `size`와 배치 길이가
+    공유하고, `attrExample`에 배치 속성 예시를 더했다.
+  - 테스트: `core/layout_test.go`(컨테이너 25건 + 자식 8건 표 + **속성 커버리지 판정**,
+    어휘 전수 2건, 대상 종류 전수 6건, 배치+외관 동시, nil 불변, 맨몸 컨테이너의 흐름,
+    토큰/수치 경계, 테마 사다리, 진단 27건의 문구·line:col, span의 부모 규칙,
+    `_03_layout` 픽스처), `core/style_test.go`(통과 7건·경고 4건·문법 에러 4건·빈 값 4건
+    ·allowlist 모양), `soml/placement_test.go`(`FlowOf` 커버리지, 접근자 nil 안전,
+    `Space` 조회, `Span.Slice`). `core/resolve_test.go`의 픽스처 읽기는 새
+    `readFixtureDeck` 한 곳으로 합쳤다 (같은 루프가 두 벌이 되지 않게).
+
+- **설계 결정과 근거**:
+  - **컨테이너 배치와 자식 배치를 두 구조체로 나눴다.** 판단 기준은 항목 지시의 그것:
+    렌더러가 "이 요소가 컨테이너인가"를 다시 판단하지 않아야 한다. `Container != nil`이
+    그 답이고 컨테이너 CSS 전부가 그 구조체에서 나온다. 한 구조체로 합치면 `<p grow="1">`도
+    gap·cols 필드를 갖게 되어 "gap이 있으면 컨테이너" 같은 추론이 렌더러에 생긴다.
+  - **컨테이너는 속성이 없어도 `Container`를 갖는다** (`Flow`만 실린 구조체). 흐름은
+    속성이 아니라 태그가 정하는 값이라, nil로 두면 렌더러가 `KindOf`+태그 이름으로
+    display를 다시 유도해야 한다. 반대로 **배치 속성이 없는 비컨테이너는 두 필드가 nil로
+    남는다** — Iteration 1·2 골든이 그 nil에 달려 있고, 실제로 골든은 한 줄도 움직이지 않았다.
+  - **`fill` = 해당 축의 100%** (값 층에서 `Percent(100)`으로 눕는다). `flex-grow: 1`로
+    읽는 길을 버린 근거는 `grow`가 이미 별도 속성이라는 것이다 — 같은 결과를 내는 표기가
+    둘이 되고 둘의 시맨틱이 교차축·grid에서 미묘하게 다르다. 별도 `LengthFill` 상태를
+    남기지 않은 이유도 같다: 상태가 둘이면 두 렌더러가 다르게 낼 자리가 생긴다. **ADR 감**.
+  - **공간 토큰 사다리는 수직 리듬에서 골랐다** (6px 배수: 6·12·24·36·48·72). md=24를
+    본문 크기이자 웹의 기존 스택 간격(`render/web.stackGap`)에 못 박고, lg=36·2xl=72를
+    본문 줄박스(24×1.5)의 1·2배로 뒀다 — 컨테이너 사이 여백이 글줄 격자에 얹힌다.
+    4·8·16·32 사다리는 익숙하지만 36의 약수·배수가 아니어서 버렸다.
+  - **`SpaceToken`에 PPTX 슬롯이 없다** (색 토큰은 전부 갖는다). OOXML 테마 파트에 공간
+    개념이 없고, 배치는 좌표로 구워져 산출물에 남기 때문이다 — PPTX에서 gap을 고친다는 것은
+    도형을 옮긴다는 뜻이다. **ADR 감** (항목 06).
+  - **`stagePadding`(64)은 토큰으로 바꾸지 않았다** (지시대로). 값의 출처가 두 곳이 된
+    사실은 `minimalSpaces` 주석과 여기에 남긴다 — PRD §8.4의 `slidePadding`이 들어오는
+    Iteration 10이 합칠 자리다. 64는 사다리(48·72) 어디에도 없으므로 그때 값이 움직인다.
+  - **`span`은 값 층에서 부모를 보고 검증한다** — `<grid>`의 자식이 아니면 에러(위치는
+    속성 **이름**: 고칠 것이 값이 아니라 속성의 자리다). 파서가 못 한 이유는 속성 표를
+    만드는 자리가 부모를 모르기 때문이고, 검증을 포기하면 flex 컨테이너에서 `grid-column`이
+    CSS에 조용히 버려진다 — 파서가 `<row cols>`를 막은 것과 같은 근거, 층만 다르다.
+  - **`wrap`은 값 없는 표기와 `="true"` 둘 다 받고 `="false"`는 에러다.** 전자는
+    `<slide skip>`의 선례, 후자는 PRD 표의 표기라 한쪽만 받으면 문서와 언어가 어긋난다.
+    `false`를 막은 이유: 줄바꿈 없음이 CSS 기본값이라 끄는 표기는 속성을 지우는 것이고,
+    기본값을 명시하는 표기를 열면 저자가 두 곳을 봐야 한다.
+  - **`cols="4"`는 트랙 개수다** (`repeat(4, 1fr)`), `cols="200"`도 200개다. PRD 표의
+    "수치"가 개수이고 균등 분할이 압도적인 용례라 그쪽을 골랐다 — 크기 트랙 하나를 쓰려는
+    저자는 `1fr`·`100%`·`auto`처럼 형태를 붙인다. 이 애매함은 문서가 말해야 한다 (항목 06).
+    트랙 목록을 검증 없이 문자열로 흘리지 않은 이유: 검증하지 않은 문자열이 CSS로 나가면
+    그것이 곧 탈출구이고, 탈출구는 경고를 동반해야 한다.
+  - **`basis`에 `fill`을 열지 않았다** — PRD 표에서 `fill`은 크기 속성의 값이고,
+    `flex-basis`의 100%는 주축에서만 크기가 되어 교차축에서 저자의 기대와 갈라진다.
+  - **`style` allowlist의 기준은 "지오메트리 패스가 재는 박스를 움직이는가"다.** 그래서
+    `translate`는 목록에 있고 `rotate`/`scale`은 없다 — getBoundingClientRect는 이동한
+    박스를 재지만 회전·확대는 축 정렬 외접 사각형만 남겨 PPTX에서 다른 도형이 된다.
+    `position`/`inset`/`top…left`도 넣었다: 좌표는 재어지므로 양 타깃에 도달한다
+    (Iteration 6의 `x`/`y`가 열리기 전 저자의 탈출구다). 목록은 `*` 접두 가족으로 적어
+    CSS 명세를 베끼지 않는다.
+  - **allowlist 밖은 경고, 문법 위반은 에러, 값은 보지 않는다.** 경고인 이유는 항목
+    지시의 그것(에러로 두면 엔진이 CSS 프로퍼티 전체를 알아야 하고 탈출구의 존재 이유와
+    모순된다). 문법 위반이 하나라도 있으면 `style` **전체를 싣지 않는다** — 반쯤 통과한
+    선언 목록은 저자가 고친 뒤의 결과를 예측할 수 없게 만든다. 빈 값(`width:`)은
+    "검증하지 않는 값"이 아니라 완성되지 않은 선언이라 에러로 뒀다.
+  - **프로퍼티 이름은 소문자로 정규화, 값은 원문 유지** (CSS 이름은 대소문자 무관, 값의
+    대소문자는 내용이다). 공백·마지막 `;`·빈 선언은 정규화가 흡수한다 — 골든이 표기
+    때문에 흔들리면 무엇이 변했는지 말해 주지 못한다.
+  - **카탈로그와 값 층이 어긋나면 소리를 낸다** (`catalogGap`): soml이 연 배치 속성을
+    core의 표가 모르면 에러 진단이다. 조용히 지나가면 저자가 쓴 배치가 사라진다. 커버리지
+    테스트가 정상 경로에서 같은 계약을 지킨다 (`soml.ContainerAttrs`/`ChildPlacementAttrs`
+    전수 대조).
+  - **`numberSuffix`를 `size`와 공유했다** — 단위 계약은 하나(PRD §13-5)이므로 판정이
+    두 벌이면 한쪽만 새 단위를 막게 된다. `size`의 진단 문구는 그대로다.
+
+- **검증**: `gofmt -l .` 무출력, `go vet ./...`, **`make test`(컨테이너, finch) 전부 초록** —
+  **골든은 한 줄도 움직이지 않았다** (배치 속성이 없는 요소의 배치 필드가 nil로 남는다는
+  계약의 실증이고, 테마에 공간 토큰이 늘었어도 Iteration 1·2 픽스처의 해석 결과가 같다).
+  호스트 `go test ./...`는 02_text_subset 골든의 mono 낀 두 슬라이드 cy가 1px(9525 EMU)
+  다른 **기존 그 차이만** 빨갛다 (02/08·02/09·03/01 기록의 macOS Noto Sans Mono 부재).
+  게이트 밖 확인: `go run ./cmd/balpyo build --project testdata/fixtures/_03_layout
+  --target html`이 007의 경고 2건(`background` 8:24, `border` 10:15)을 내고 **빌드를
+  계속**해 렌더 매핑 부재(항목 03)에서 멈춘다. 같은 명령에 `--strict`를 붙이면 두 경고가
+  `error`로 승격되어 렌더 전에 멈춘다 — PRD §13-6의 기존 경로를 그대로 탄다는 사실을
+  파이프라인 끝에서 눈으로 확인했다.
+
+- **남긴 것**:
+  - 항목 03(웹)이 이어받을 표면: `Container`(Flow → display/flex-direction, Gap, Align,
+    Justify, Wrap, Pad, Cols/Rows, 크기 6종, Ratio)와 `Placement`(flex-*·grid-column·
+    align-self·order·Style 문자열)를 CSS로 낸다. **논리 이름 → CSS 이름 번역이 항목 03의
+    몫이다**: `between` → `space-between`, `Length.Percent` → `%`/`px` 접미, `Tracks.Count`
+    → `repeat(N, 1fr)`, `Ratio` → `W / H`. `<spacer>`의 기본 `flex: 1`도 렌더러의 태그
+    매핑이다 — 값 층은 `<spacer grow="2">`처럼 저자가 적은 것만 담는다.
+  - 항목 04(PPTX): 컨테이너·spacer는 도형이 되지 않으므로 이 구조체를 **읽지 않는다** —
+    좌표는 지오메트리 패스에서 온다. `Ratio`·`Tracks`가 PPTX에 대응이 없다는 사실이
+    "배치는 좌표로 구워진다"의 실증이다.
+  - 항목 06(문서·ADR)이 인용할 자리: `layoutStyleProperties()`(문서가 **같은 목록**을
+    인용해야 한다), ADR 후보 3건 — ① `fill` = 100% (grow와 겹치지 않게), ② 공간 토큰에
+    PPTX 슬롯이 없는 비대칭, ③ `style` 탈출구의 계약("우리가 보지 않는다" ≠ "안전하다")과
+    allowlist의 기준(잰 박스를 움직이는가). 그리고 `cols` 수치 하나의 애매함(개수 vs 트랙)
+    을 문서가 명시해야 한다.
+  - **TASKS 체크박스는 하나도 켜지 않았다.** "`style` 탈출구 — allowlist 검사, 경고"는
+    검사·경고까지 이 항목이 끝냈지만 탈출구가 실제로 CSS로 나가는 것은 항목 03이므로
+    부분적으로 걸친 체크박스로 봤다 (전수 매핑 테스트·문서도 뒤 항목이다).
+  - **낡은 주석 하나**: `render/web/content.go`의 `writeList` 주석 "컨테이너는 외관을
+    갖지 않는다 (core가 Appearance를 채우지 않는다)" — 외관은 여전히 없지만 배치가 붙으면
+    (`<ul basis="360">`) `Appearance`는 채워진다. 항목 03이 그 자리를 고칠 때 함께 정확히
+    한다 (이 항목에서 다른 패키지의 주석을 건드리지 않았다).
+  - **열린 질문**: (a) `<grid wrap>`은 지금 통과한다 — `flex-wrap`은 grid 컨테이너 CSS에서
+    무효라 조용히 버려진다. 속성 적용 가능성은 이름 층(항목 01이 `wrap`을 모든 컨테이너에
+    열었다)의 결정이라 값 층에서 뒤집지 않았다. 파서가 `<row cols>`를 막은 것과 같은 종류의
+    실패이므로 항목 03에서 CSS를 짜 보고 다시 판단할 것. (b) 배치 속성의 **캐스케이드**는
+    열지 않았다 (지시대로) — variant는 외관 번들이고 테마가 배치를 소유하는 자리는 1층
+    레이아웃(Iteration 10)이다. (c) `cols="200"`이 200트랙이 되는 애매함(위) — 문서로
+    막을 것인지, 단일 수치에 상한을 둘 것인지는 정하지 않았다. (d) `pad`의 3값 축약은 CSS와
+    같이 상·좌우·하로 읽는다 — 4값 축약만 열고 3값을 막는 길도 있었지만 CSS 규칙을 그대로
+    따르는 편이 배울 것이 적다고 봤다.

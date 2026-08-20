@@ -62,15 +62,27 @@ var (
 // `<li grow="1">`이 웹에서만 뜻을 갖고 PPTX에서는 사라지는 선언이 된다.
 var childPlacementAttrs = []string{"grow", "shrink", "basis", "span", "self", "order", StyleAttr}
 
-// containerAttrs는 레이아웃 컨테이너 name의 컨테이너 속성이다 (자식 배치 속성은 제외 —
+// ContainerAttrs는 레이아웃 컨테이너 name의 컨테이너 속성이다 (자식 배치 속성은 제외 —
 // 그것은 withChildPlacement가 잇는다).
-func containerAttrs(name string) []string {
+//
+// 내보내는 이유: 값 층(core)이 이 목록을 소비해 "파서가 연 속성 = 값 층이 해석하는 속성"을
+// 유지한다. 목록이 두 벌이 되면 속성 하나를 추가할 때 값 층에서 빠진 것이 조용한 무시로
+// 나타난다 — 카탈로그를 한 곳에 둔 이유가 그것이다.
+func ContainerAttrs(name string) []string {
 	attrs := make([]string, 0, len(containerFlowAttrs)+len(containerTrackAttrs)+len(containerBoxAttrs))
 	attrs = append(attrs, containerFlowAttrs...)
 	if name == GridElement {
 		attrs = append(attrs, containerTrackAttrs...)
 	}
 	return append(attrs, containerBoxAttrs...)
+}
+
+// ChildPlacementAttrs는 자식 배치 속성 목록이다 (순서 = 진단·문서 순서). ContainerAttrs와
+// 같은 이유로 내보낸다.
+func ChildPlacementAttrs() []string {
+	attrs := make([]string, len(childPlacementAttrs))
+	copy(attrs, childPlacementAttrs)
+	return attrs
 }
 
 // withChildPlacement는 요소 고유 속성 뒤에 자식 배치 속성을 잇는다.

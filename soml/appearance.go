@@ -21,6 +21,13 @@ type Appearance struct {
 	// 연장이다: 렌더러가 href를 Attrs에서 찾기 시작하면 값 검증(core)을 지나지 않은 값이
 	// 산출물에 실릴 길이 생긴다.
 	Link string
+	// Container는 확정된 컨테이너 배치다 (placement.go) — 레이아웃 컨테이너에만 채워진다.
+	// 외관과 형제로 두는 이유는 계약이 같기 때문이다: 값 층이 한 번 해석하고 렌더러는
+	// 읽기만 한다. 배치가 값 층을 두 번 지나면 CSS와 지오메트리 패스가 갈라진다.
+	Container *ContainerLayout
+	// Placement는 부모 안에서 자기 자리를 정하는 확정 배치다 — 배치 속성이 하나도 없으면
+	// nil로 남는다 (그 nil이 배치 없는 요소의 산출물을 이전과 같게 유지한다).
+	Placement *Placement
 }
 
 // TextStyle은 해석된 텍스트 외관이다. 해석 전(파싱 직후)이거나 텍스트 요소가 아니면 nil이다 —
@@ -149,6 +156,10 @@ type Theme struct {
 	// clrScheme)과 진단 메시지가 결정적이어야 하기 때문이다.
 	Colors []ColorToken
 	Fonts  []FontToken
+	// Spaces는 공간 토큰이다 (PRD §8.4의 `space` 스케일) — 레이아웃 태그의 `gap`/`pad`
+	// 값 어휘가 여기서 온다. 색·폰트와 함께 이 표에 있는 이유: 배치조차 테마의 리듬을
+	// 따라가야 두 타깃의 여백이 한 곳에서 나온다.
+	Spaces []SpaceToken
 }
 
 // Color는 이름으로 색 토큰을 찾는다.
@@ -178,6 +189,40 @@ func (t Theme) Font(name FontRole) (FontToken, bool) {
 		}
 	}
 	return FontToken{}, false
+}
+
+// Space는 이름으로 공간 토큰을 찾는다.
+func (t Theme) Space(name string) (SpaceToken, bool) {
+	for _, token := range t.Spaces {
+		if token.Name == name {
+			return token, true
+		}
+	}
+	return SpaceToken{}, false
+}
+
+// SpaceNames는 공간 토큰 이름 목록이다 — 모르는 토큰 진단이 허용 어휘를 나열하는 근거다
+// (ColorNames와 같은 태도).
+func (t Theme) SpaceNames() []string {
+	names := make([]string, len(t.Spaces))
+	for i, token := range t.Spaces {
+		names[i] = token.Name
+	}
+	return names
+}
+
+// SpaceToken은 공간 토큰 하나다 — `gap="xl"`이 가리키는 곳.
+//
+// **ColorToken의 clrScheme 슬롯 계약이 여기에는 없다.** 색 토큰은 전부 PPTX 테마 슬롯을
+// 가져서 내보낸 파일이 PowerPoint의 테마 색 편집을 따라가지만, OOXML 테마 파트에는 공간이라는
+// 개념이 아예 없다. 공간은 배치이고 **배치는 좌표로 구워져 산출물에 남는다** — PPTX에서
+// gap을 편집한다는 것은 도형을 옮긴다는 뜻이지 토큰을 바꾸는 일이 아니다. 이 비대칭은
+// 두 채널(외관/배치)이 타깃 경계에서 다르게 살아남는다는 사실의 직접적인 결과다.
+type SpaceToken struct {
+	// Name은 표준 토큰 어휘의 이름이다 (PRD §8.4): xs, sm, md, lg, xl, 2xl.
+	Name string
+	// Px는 논리 스테이지 px다 (PRD §13-5) — pt·EMU 환산은 타깃 경계에서만 일어난다.
+	Px float64
 }
 
 // ColorToken은 색 토큰 하나다.

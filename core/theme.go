@@ -16,6 +16,7 @@ func minimalTheme() soml.Theme {
 		Name:   "minimal",
 		Colors: minimalColors(),
 		Fonts:  minimalFonts(),
+		Spaces: minimalSpaces(),
 	}
 }
 
@@ -50,6 +51,40 @@ func minimalFonts() []soml.FontToken {
 		{Name: soml.FontHeading, Latin: "Noto Sans", EastAsian: "Noto Sans CJK KR", Generic: "sans-serif", Scheme: "major"},
 		{Name: soml.FontBody, Latin: "Noto Sans", EastAsian: "Noto Sans CJK KR", Generic: "sans-serif", Scheme: "minor"},
 		{Name: soml.FontMono, Latin: "Noto Sans Mono", EastAsian: "Noto Sans CJK KR", Generic: "monospace"},
+	}
+}
+
+// minimalSpaces는 공간 토큰 표다 (PRD §8.4의 `space` 스케일, 어휘 6종).
+//
+// 값의 근거는 색 토큰의 대비율과 같은 자리에 있다 — **수직 리듬**이다 (textRoleDefaults):
+// 본문 24px, 줄박스 24×1.5 = 36px, 스테이지 720px = 본문 20줄. 사다리는 md를 본문 크기
+// 24px에 못 박고 그 위아래를 6px(= 24의 ¼, 리듬의 최소 눈금) 배수로 벌린다:
+//
+//	xs 6(¼ md) · sm 12(½ md) · md 24(본문 한 글자) · lg 36(줄박스 한 줄) · xl 48(2 md) · 2xl 72(줄박스 두 줄)
+//
+// md = 24를 고른 이유는 웹 렌더러의 세로 스택 간격(render/web.stackGap)이 이미 24이기
+// 때문이다 — 저자가 `gap="md"`로 적은 간격과 엔진의 기본 스택 간격이 같은 값이어야
+// 레이아웃 태그를 쓰기 시작한 슬라이드의 리듬이 옆 슬라이드와 어긋나지 않는다. lg·2xl이
+// 줄박스(36)의 1·2배인 것도 같은 이유다: 컨테이너 사이 여백이 글줄 격자에 얹힌다.
+//
+// 4·8·16·32 같은 2의 거듭제곱 사다리와 저울질했고 버렸다 — 익숙하지만 36px 줄박스의
+// 약수·배수가 아니어서 여백이 글줄 격자에서 매번 미끄러진다. 리듬이 이 제품의 근거이므로
+// 사다리도 리듬에서 나오는 편이 일관된다.
+//
+// **`ColorToken`의 clrScheme 슬롯 계약이 여기에는 없다** (soml.SpaceToken의 주석) —
+// OOXML 테마 파트에 공간 개념이 없고, 배치는 좌표로 구워져 산출물에 남는다.
+//
+// 스테이지 여백(render/web.stagePadding, 64)은 이 표에 넣지 않았다: 산출 CSS가 변수
+// 참조로 바뀌면 기존 골든 3개가 이유 없이 움직인다. 값의 출처가 두 곳이 된 사실은
+// PRD §8.4의 `slidePadding` 토큰이 들어오는 Iteration 10이 합친다.
+func minimalSpaces() []soml.SpaceToken {
+	return []soml.SpaceToken{
+		{Name: "xs", Px: 6},
+		{Name: "sm", Px: 12},
+		{Name: "md", Px: 24},
+		{Name: "lg", Px: 36},
+		{Name: "xl", Px: 48},
+		{Name: "2xl", Px: 72},
 	}
 }
 

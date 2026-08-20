@@ -37,7 +37,9 @@ func Resolve(deck *soml.Deck) soml.Diagnostics {
 	for _, slide := range deck.Slides {
 		r := resolver{theme: deck.Theme, file: slide.Source}
 		for _, node := range slide.Content {
-			r.node(node)
+			// 슬라이드 직속 노드의 부모는 없다 — 배치 해석이 부모를 보는 이유는
+			// resolveLayout의 주석에 있다 (span은 <grid>의 자식에서만 뜻이 있다).
+			r.node(node, nil)
 		}
 		// 진단은 파일 안에서 소스 순서로 낸다 — 저자가 위에서 아래로 고칠 수 있게. 역할을
 		// 먼저 해석하고 나머지 속성을 훑기 때문에 발견 순서가 소스 순서와 어긋난다.
@@ -64,17 +66,21 @@ func (r *resolver) warnf(span soml.Span, format string, args ...any) {
 	r.diags = append(r.diags, soml.Warningf(r.file, span, format, args...))
 }
 
-// node는 콘텐츠 트리를 훑는다. 외관을 갖는 요소만 해석하고 나머지는 지나간다.
+// node는 콘텐츠 트리를 훑는다. 외관을 갖는 요소만 외관을 해석하고, **배치는 요소 종류와
+// 무관하게 전부 지난다** (resolveLayout — 자식 배치 속성은 한 벌이므로 종류마다 표를
+// 복제하지 않는다). 한 요소가 두 채널을 함께 쓰는 것은 정상이다 (`<p grow="1" size="30">`).
 //
-// 리스트 컨테이너(<ul>/<ol>)의 Appearance는 채우지 않는다: 컨테이너는 항목을 담을 뿐이고
-// 타이포그래피는 <li>(body 역할)에 붙는다. 마커·들여쓰기 같은 리스트 표현을 렌더러가
-// 컨테이너에서 무엇으로 읽을지는 렌더 매핑(Iteration 2 항목 05·07)이 정한다 — 여기서
-// 미리 정하면 그 결정 전에 두 렌더러가 각자 추측하게 된다.
-func (r *resolver) node(node soml.Node) {
+// 리스트 컨테이너(<ul>/<ol>)의 Appearance는 **텍스트 외관**을 채우지 않는다: 컨테이너는
+// 항목을 담을 뿐이고 타이포그래피는 <li>(body 역할)에 붙는다. 마커·들여쓰기 같은 리스트
+// 표현을 렌더러가 컨테이너에서 무엇으로 읽을지는 렌더 매핑(Iteration 2 항목 05·07)이
+// 정한다 — 여기서 미리 정하면 그 결정 전에 두 렌더러가 각자 추측하게 된다. 반면 배치는
+// 컨테이너에도 붙는다 (`<row><ul basis="360">`은 두 열에 리스트를 놓는 흔한 배치다).
+func (r *resolver) node(node soml.Node, parent *soml.Element) {
 	elem, ok := node.(*soml.Element)
 	if !ok {
 		return
 	}
+	r.resolveLayout(elem, parent)
 	if role, ok := r.textRole(elem); ok {
 		r.resolveText(elem, role)
 		// 텍스트 역할 요소의 자식은 문자 데이터와 인라인 태그뿐이다 (파서의 modelInline) —
@@ -83,7 +89,7 @@ func (r *resolver) node(node soml.Node) {
 		return
 	}
 	for _, child := range elem.Children {
-		r.node(child)
+		r.node(child, elem)
 	}
 }
 
@@ -112,7 +118,19 @@ func (r *resolver) resolveText(elem *soml.Element, role soml.TextRole) {
 	mergeText(&style, textComponentDefault(elem.Name))
 	mergeText(&style, r.variantPatch(elem))
 	mergeText(&style, r.inlinePatch(elem))
-	elem.Appearance = &soml.Appearance{Text: &style}
+	elemAppearance(elem).Text = &style
+}
+
+// elemAppearance는 요소의 확정 외관·배치 자리다 (없으면 만든다).
+//
+// 구조체를 통째로 대입하지 않는 이유: 한 요소가 외관과 배치를 함께 갖는다
+// (`<p grow="1" size="30">`). 대입하는 코드가 둘이면 나중에 해석되는 쪽이 앞의 결과를
+// 조용히 지운다 — 그 실패는 산출물에서 배치나 외관 하나가 사라지는 것으로만 드러난다.
+func elemAppearance(elem *soml.Element) *soml.Appearance {
+	if elem.Appearance == nil {
+		elem.Appearance = &soml.Appearance{}
+	}
+	return elem.Appearance
 }
 
 // variantPatch는 `variant` 속성을 테마의 variant 표에서 찾는다.
@@ -191,18 +209,10 @@ func (r *resolver) size(attr soml.Attr) (float64, bool) {
 		r.errorf(attr.ValueSpan, "size에 %%는 쓸 수 없다 (%q) — PPTX 폰트 크기는 절대값이라 상대 크기를 번역할 곳이 없다. 논리 px 수치나 role을 쓴다", raw)
 		return 0, false
 	}
-	end := 0
-	for end < len(raw) {
-		c := raw[end]
-		if c >= '0' && c <= '9' || c == '.' || (end == 0 && (c == '-' || c == '+')) {
-			end++
-			continue
-		}
-		break
-	}
-	if unit := raw[end:]; unit != "" && end > 0 {
+	if unit := numberSuffix(raw); unit != "" {
 		// 수치 뒤에 붙은 것만 "단위"라고 부른다. 수치가 아예 없으면 아래의 수치 진단으로
-		// 내려보낸다 — `size="큼"`에 단위를 떼라고 하면 저자가 무엇을 고칠지 알 수 없다.
+		// 내려보낸다 — `size="큼"`에 단위를 떼라고 하면 저자가 무엇을 고칠지 알 수 없다
+		// (numberSuffix가 그 판정을 소유한다).
 		r.errorf(attr.ValueSpan, "size는 단위 없는 논리 px 수치다 (%q의 %q를 뗀다) — px·pt·em 접미사는 쓸 수 없다 (PRD §13-5)", raw, unit)
 		return 0, false
 	}
@@ -299,8 +309,58 @@ func attrExample(name string) string {
 		return "bold"
 	case "href":
 		return "https://example.com"
+	// 배치 속성 (PRD §7.4 표 순서). `wrap`은 값 없이도 뜻이 되므로 여기 없다 —
+	// 그 판정은 resolver.wrap이 소유한다.
+	case "gap":
+		return "md"
+	case "justify":
+		return "between"
+	case "pad":
+		return "lg"
+	case "cols", "rows":
+		return "4"
+	case "w", "h":
+		return "fill"
+	case "min-w", "min-h", "max-w", "max-h":
+		return "240"
+	case "ratio":
+		return "16:9"
+	case "grow":
+		return "1"
+	case "shrink":
+		return "0"
+	case "basis":
+		return "240"
+	case "span":
+		return "2"
+	case "self":
+		return "center"
+	case "order":
+		return "-1"
+	case soml.StyleAttr:
+		return "align-content: space-evenly"
 	}
 	return ""
+}
+
+// numberSuffix는 수치 뒤에 붙은 꼬리(단위 접미사)다. 수치가 아예 없으면 빈 문자열이다 —
+// `size="큼"`·`w="어디"`는 "단위를 떼라"가 아니라 "수치가 아니다"로 진단해야 저자가 무엇을
+// 고칠지 안다. 외관(size)과 배치(길이)가 같은 판정을 공유하는 이유는 단위 계약이 하나이기
+// 때문이다 (PRD §13-5) — 두 벌이 되면 한쪽만 새 단위를 막게 된다.
+func numberSuffix(raw string) string {
+	end := 0
+	for end < len(raw) {
+		c := raw[end]
+		if c >= '0' && c <= '9' || c == '.' || (end == 0 && (c == '-' || c == '+')) {
+			end++
+			continue
+		}
+		break
+	}
+	if end == 0 {
+		return ""
+	}
+	return raw[end:]
 }
 
 // hexRGB는 `#` 뒤의 16진수를 대문자 6자리로 정규화한다. #RGB는 각 자리를 두 배로 늘린다
