@@ -1,0 +1,22 @@
+<!-- `type` 12종 전수 (PRD §7.5). 한 슬라이드에 `<grid cols="4">`로 12개를 깔면 프리셋
+     기하가 웹과 PPTX에서 같은 모양인지 한 장으로 보인다 — 항목 04·05의 가장 큰 리스크가
+     여기서 그림이 된다. 크기를 `w`/`h`로 고정하는 이유: 도형의 잰 rect가 곧 도형 좌표이고
+     내용(이름표)만으로는 프리셋마다 폭이 달라져 모양 비교가 흔들린다. 이름표를 도형 안에
+     두어 어느 칸이 어느 프리셋인지 산출물에서 읽을 수 있게 한다. -->
+<slide id="shape-types">
+  <h2>도형 프리셋 12종</h2>
+  <grid cols="4" gap="md">
+    <shape type="rect" w="220" h="110" pad="sm"><text align="center" anchor="center">rect</text></shape>
+    <shape type="rounded-rect" w="220" h="110" pad="sm"><text align="center" anchor="center">rounded-rect</text></shape>
+    <shape type="ellipse" w="220" h="110" pad="sm"><text align="center" anchor="center">ellipse</text></shape>
+    <shape type="diamond" w="220" h="110" pad="sm"><text align="center" anchor="center">diamond</text></shape>
+    <shape type="cylinder" w="220" h="110" pad="sm"><text align="center" anchor="center">cylinder</text></shape>
+    <shape type="chevron" w="220" h="110" pad="sm"><text align="center" anchor="center">chevron</text></shape>
+    <shape type="arrow-right" w="220" h="110" pad="sm"><text align="center" anchor="center">arrow-right</text></shape>
+    <shape type="hexagon" w="220" h="110" pad="sm"><text align="center" anchor="center">hexagon</text></shape>
+    <shape type="parallelogram" w="220" h="110" pad="sm"><text align="center" anchor="center">parallelogram</text></shape>
+    <shape type="callout" w="220" h="110" pad="sm"><text align="center" anchor="center">callout</text></shape>
+    <shape type="star" w="220" h="110" pad="sm"><text align="center" anchor="center">star</text></shape>
+    <shape type="cloud" w="220" h="110" pad="sm"><text align="center" anchor="center">cloud</text></shape>
+  </grid>
+</slide>

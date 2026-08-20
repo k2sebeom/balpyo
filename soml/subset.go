@@ -7,7 +7,8 @@ package soml
 // 소비한다. 네 층이 각자 이름 목록을 들고 있으면 태그 하나를 추가할 때 한 곳을 빼먹는 것이
 // 곧 "좌표가 엉뚱한 요소에 붙는" 조용한 실패다.
 
-// ElementKind는 요소의 종류다 — 텍스트 서브셋과 레이아웃(layout.go)을 함께 담는다.
+// ElementKind는 요소의 종류다 — 텍스트 서브셋과 레이아웃(layout.go)·도형(shape.go)을 함께
+// 담는다.
 //
 // 열거형을 파일 하나에 모으는 이유: 카탈로그 파일은 어휘별로 나뉘어도 **종류 값은 한
 // 곳에서 봐야** 두 어휘가 같은 값을 쓰거나 빈 값을 남기는 사고가 없다. 이름 목록과
@@ -36,6 +37,13 @@ const (
 	// 대응 도형이 아예 없다. 컨테이너와 같은 종류로 두면 세 층이 각자 `name == "spacer"`
 	// 비교를 들게 되고, 그것이 카탈로그를 한 곳에 둔 이유를 무너뜨린다.
 	KindSpacer
+	// KindShape는 <shape>다 (shape.go). 별도 종류인 근거는 네 층의 산출이 전부 다르다는
+	// 것이다: 콘텐츠 모델이 다르고(텍스트를 담는다), 잰 rect가 **도형 좌표로 쓰이며**
+	// (컨테이너·<li>와 다르다), 웹은 모양을 그려야 하고, PPTX는 `prstGeom`을 낸다.
+	// **재는 것과 도형이 되는 것이 처음 일치하는 종류**이므로 종류를 나누지 않으면 세 층이
+	// 각자 `name == "shape"` 비교를 들게 되고, 그것이 카탈로그를 한 곳에 둔 이유를
+	// 무너뜨린다 (KindSpacer의 근거와 같은 종류다).
+	KindShape
 )
 
 // 종류별 이름 목록. **순서가 곧 진단 메시지와 문서의 순서다** — 맵이 아니라 슬라이스인
@@ -53,8 +61,8 @@ const ListItemElement = "li"
 // `<br/>`(자기 닫힘)로만 쓴다. 렌더러가 런 분할에서 이 이름을 특별 취급한다.
 const BreakElement = "br"
 
-// elementKinds는 이름 → 종류 색인이다. 위의 순서 있는 목록과 레이아웃 카탈로그
-// (layout.go)에서 파생된다 — 종류를 갖는 이름은 전부 여기를 지난다.
+// elementKinds는 이름 → 종류 색인이다. 위의 순서 있는 목록과 레이아웃·도형 카탈로그
+// (layout.go·shape.go)에서 파생된다 — 종류를 갖는 이름은 전부 여기를 지난다.
 var elementKinds = buildElementKinds()
 
 func buildElementKinds() map[string]ElementKind {
@@ -73,6 +81,7 @@ func buildElementKinds() map[string]ElementKind {
 		kinds[name] = KindLayoutContainer
 	}
 	kinds[SpacerElement] = KindSpacer
+	kinds[ShapeElement] = KindShape
 	return kinds
 }
 

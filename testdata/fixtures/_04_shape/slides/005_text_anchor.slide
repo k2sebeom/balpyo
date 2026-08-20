@@ -1,0 +1,28 @@
+<!-- **도형 안 텍스트**: `anchor` 3종 × `pad`. TASKS Iteration 4가 "도형 내 <text> 앵커링"을
+     이 iteration의 테스트로 명시했고, 앵커가 **보이는 유일한 자리가 도형 안**이다 —
+     슬라이드 직속 텍스트 박스는 잰 rect가 곧 내용 크기라 세로 앵커가 움직일 여백이 없다.
+     그래서 도형 높이를 내용보다 크게(h=220) 고정해 앵커가 움직일 공간을 만든다.
+     마지막 도형은 자식 여럿(h3 + p)을 담는다 — 도형의 콘텐츠 모델이 개수를 제한하지 않고,
+     PPTX에서는 `txBody`의 문단 여럿이 된다 (항목 05). `pad`는 도형에서 안쪽 여백이고
+     PPTX `bodyPr` 인셋이 된다: 여백 없는 도형(pad 없음)과 나란히 두어 차이가 보인다. -->
+<slide id="shape-text-anchor">
+  <h2>도형 안 텍스트의 세로 앵커</h2>
+  <row gap="md" align="stretch">
+    <shape type="rect" fill="surface" border="1 solid muted" w="240" h="220" pad="md">
+      <p anchor="start">anchor=start</p>
+    </shape>
+    <shape type="rect" fill="surface" border="1 solid muted" w="240" h="220" pad="md">
+      <p anchor="center">anchor=center</p>
+    </shape>
+    <shape type="rect" fill="surface" border="1 solid muted" w="240" h="220" pad="md">
+      <p anchor="end">anchor=end</p>
+    </shape>
+    <shape type="rect" fill="surface" border="1 solid muted" w="240" h="220">
+      <p anchor="center">pad 없음 — 글자가 변에 붙는다</p>
+    </shape>
+    <shape type="rounded-rect" fill="surface" border="1 solid muted" w="280" h="220" pad="lg">
+      <h3>문단 둘</h3>
+      <p>도형 하나에 자식 여럿은 txBody의 문단 여럿이다.</p>
+    </shape>
+  </row>
+</slide>

@@ -1,0 +1,49 @@
+<!-- 카드 그리드 — PRD §7.8의 dim-card가 **합성 컴포넌트 없이 손으로 펼쳐진** 모습이다
+     (`<define>`/`<slot>`은 Iteration 11이고, 그 항목이 이 슬라이드를 다시 쓴다). 실물 덱
+     역분석에서 확인된 반복 단위(카드 3도형 × 8회)를 이 어휘로 만들 수 있는지가 여기서
+     드러난다: 헤더 도형 + 본문 도형을 `<col gap="0">`으로 붙이고, 그 col을
+     `<grid cols="4">`의 칸에 넣는다.
+     03_layout/002_grid_cards가 같은 배치를 **텍스트만으로** 만든 슬라이드다 — 그쪽 카드에
+     없던 배경·테두리가 이 iteration의 <shape>로 붙는 것이 두 픽스처를 나란히 놓는 이유다.
+     자식 배치 속성이 도형에도 붙는 것을 마지막 칸의 span으로 보인다. -->
+<slide id="shape-cards">
+  <h2>Responsible AI 4대 차원</h2>
+  <grid cols="4" gap="lg">
+    <col gap="0">
+      <shape type="rounded-rect" fill="accent1" radius="md" w="fill" pad="sm">
+        <text color="bg" align="center">공정성</text>
+      </shape>
+      <shape type="rect" fill="surface" border="1 solid muted" w="fill" h="160" pad="md">
+        <p anchor="start">데이터와 모델의 편향을 측정한다.</p>
+      </shape>
+    </col>
+    <col gap="0">
+      <shape type="rounded-rect" fill="accent1" radius="md" w="fill" pad="sm">
+        <text color="bg" align="center">신뢰성</text>
+      </shape>
+      <shape type="rect" fill="surface" border="1 solid muted" w="fill" h="160" pad="md">
+        <p anchor="start">실패 모드를 정의하고 회귀로 막는다.</p>
+      </shape>
+    </col>
+    <col gap="0">
+      <shape type="rounded-rect" fill="accent1" radius="md" w="fill" pad="sm">
+        <text color="bg" align="center">투명성</text>
+      </shape>
+      <shape type="rect" fill="surface" border="1 solid muted" w="fill" h="160" pad="md">
+        <p anchor="start">판단의 근거를 사람이 읽을 수 있게 남긴다.</p>
+      </shape>
+    </col>
+    <col gap="0">
+      <shape type="rounded-rect" fill="accent1" radius="md" w="fill" pad="sm">
+        <text color="bg" align="center">책임성</text>
+      </shape>
+      <shape type="rect" fill="surface" border="1 solid muted" w="fill" h="160" pad="md">
+        <p anchor="start">사고의 소유자와 대응 절차가 문서에 있다.</p>
+      </shape>
+    </col>
+    <shape type="rounded-rect" span="2" fill="none" border="3 solid accent1" radius="lg" w="fill" h="120" pad="md">
+      <p anchor="center">span="2" — 도형도 컨테이너의 자식이므로 배치 속성을 받는다.</p>
+    </shape>
+  </grid>
+  <note>카드 네 장을 각각 20초, 마지막 배너에서 다음 슬라이드로 넘어간다.</note>
+</slide>

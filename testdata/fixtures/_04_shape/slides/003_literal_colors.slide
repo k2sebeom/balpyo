@@ -1,0 +1,19 @@
+<!-- **리터럴 색만 있는 슬라이드** — 토큰 색(002)과 일부러 갈라 두었다.
+     `fill="#0F65F9"`는 산출 XML에 정상적으로 `srgbClr`를 내는데, 지금 픽스처 수준 계약은
+     "슬라이드 파트에 `srgbClr` 0건"이다 (internal/testkit의
+     TestTextFixtureGoldenSlidesKeepSchemeClr). 이 충돌을 어떻게 풀지는 항목 06의 일이고,
+     리터럴이 이 슬라이드에만 있으면 그 항목이 "이 슬라이드만 예외"를 표로 다룰 수 있다 —
+     섞여 있으면 계약을 슬라이드 단위로 나눌 수가 없다.
+     리터럴을 어휘에 두는 이유(PRD §7.6): 토큰이 없는 일회성 색을 저자가 쓸 수 있어야 하고,
+     그때 테마 참조가 아니라는 사실이 값에 그대로 보인다. -->
+<slide id="shape-literal-colors">
+  <h2>리터럴 색은 테마를 따라가지 않는다</h2>
+  <row gap="lg">
+    <shape type="rect" fill="#0F65F9" w="300" h="140" pad="md">
+      <p color="bg">fill="#0F65F9" — accent1과 같은 값이지만 테마 참조가 아니다.</p>
+    </shape>
+    <shape type="rect" fill="none" border="2 solid #6B7280" w="300" h="140" pad="md">
+      <p>테두리 색도 리터럴로 쓸 수 있다.</p>
+    </shape>
+  </row>
+</slide>

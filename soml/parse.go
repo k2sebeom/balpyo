@@ -16,9 +16,10 @@ const noteElement = "note"
 // elementSpecs는 **닫힌 어휘**다 (PRD §7.2). 여기 없는 태그 이름은 무시되지 않고 에러가 된다.
 //
 // 어휘는 iteration을 따라 열린다 — 텍스트 서브셋(subset.go의 카탈로그)은 Iteration 2,
-// 레이아웃 태그(layout.go의 카탈로그)는 Iteration 3, `<stack>`은 Iteration 6이다. 어휘를
-// 미리 열어 두면 "파싱은 되는데 렌더는 안 되는" 상태가 생기고, 그것이 닫힌 어휘로 막으려던
-// 바로 그 조용한 실패다. 렌더 매핑이 아직 없는 태그는 렌더러가 명시적으로 멈춘다
+// 레이아웃 태그(layout.go의 카탈로그)는 Iteration 3, `<shape>`(shape.go의 카탈로그)는
+// Iteration 4, `<stack>`은 Iteration 6이다. 어휘를 미리 열어 두면 "파싱은 되는데 렌더는
+// 안 되는" 상태가 생기고, 그것이 닫힌 어휘로 막으려던 바로 그 조용한 실패다. 렌더 매핑이
+// 아직 없는 태그는 렌더러가 명시적으로 멈춘다
 // (render/web.writeNode, render/pptx.writeShapeNode).
 var elementSpecs = buildElementSpecs()
 
@@ -39,8 +40,15 @@ func buildElementSpecs() map[string]elementSpec {
 		TextElement: {
 			// 외관 어휘 뒤에 자식 배치 속성이 붙는다 — `<text>`는 레이아웃 컨테이너의
 			// 자식이 될 수 있으므로 `<row><text grow="1">`이 문법상 유효해야 한다.
-			attrs: withChildPlacement([]string{"role", "variant", "size", "color", "align"}),
+			attrs: withChildPlacement([]string{"role", "variant", "size", "color", "align", AnchorAttr}),
 			model: modelInline,
+		},
+		ShapeElement: {
+			// 고유 → 외관 → 박스(pad·크기) → 자식 배치 순이다 (ShapeAttrs). 도형은 레이아웃
+			// 컨테이너의 자식이 될 수 있으므로 `<grid><shape span="2">`이 유효하다.
+			attrs:    withChildPlacement(ShapeAttrs()),
+			model:    modelElements,
+			children: shapeChildren(),
 		},
 		noteElement: {model: modelText},
 	}
@@ -55,13 +63,15 @@ func buildElementSpecs() map[string]elementSpec {
 		// 블록의 속성은 `<text>`의 외관 어휘에서 role만 뺀 것이다. 블록은 역할의 축약이라
 		// (`<p>` ≡ `<text role="body">`, TagTextRole) 역할은 등가 표에서만 오고, role
 		// 속성을 열면 `<p role="title">`이 두 표기의 등가를 깬다. 나머지 외관 속성
-		// (variant/size/color/align)은 `<text>`와 같은 캐스케이드 규칙으로 얹힌다 —
-		// 값 어휘와 진단은 core가 소유한다 (값 층). variant를 열지 **않는** 곳의 근거:
-		// 인라인 태그의 외관은 런 규칙(Iteration 2 항목 04)이 소유하고, 리스트 컨테이너와
-		// <li>의 위계는 역할이 소유한다 — 항목마다 다른 외관 번들이 붙으면 리스트의
-		// 타이포그래피가 리스트이기를 멈춘다.
+		// (variant/size/color/align/anchor)은 `<text>`와 같은 캐스케이드 규칙으로 얹힌다 —
+		// 값 어휘와 진단은 core가 소유한다 (값 층). `anchor`를 `<text>`에만 열지 않는
+		// 이유는 등가 표의 대칭이다: 블록이 받는 외관은 `<text>`가 받는 것과 같아야
+		// `<p>` ≡ `<text role="body">`가 속성 표에서도 성립한다. variant를 열지 **않는**
+		// 곳의 근거: 인라인 태그의 외관은 런 규칙(Iteration 2 항목 04)이 소유하고, 리스트
+		// 컨테이너와 <li>의 위계는 역할이 소유한다 — 항목마다 다른 외관 번들이 붙으면
+		// 리스트의 타이포그래피가 리스트이기를 멈춘다.
 		specs[name] = elementSpec{
-			attrs: withChildPlacement([]string{"variant", "size", "color", "align"}),
+			attrs: withChildPlacement([]string{"variant", "size", "color", "align", AnchorAttr}),
 			model: model,
 		}
 	}
@@ -109,10 +119,13 @@ func buildElementSpecs() map[string]elementSpec {
 
 // slideChildren은 <slide>의 자식 어휘다. 순서가 진단 메시지의 순서다.
 //
+// 컴포넌트(`<text>`·`<shape>`)가 앞에 오고 `<note>`·텍스트 서브셋·레이아웃이 뒤따른다.
+// 슬라이드 직속 도형은 세로 스택의 한 칸이다 — 표제 아래 구분면·배지가 그 자리다.
+//
 // 레이아웃 컨테이너와 `<spacer>`가 들어 있다: 슬라이드 직속 `<spacer>`는 세로 스택에서
 // 밀어내기가 되므로 뜻이 있다 (머리글 아래 여백을 늘려 꼬리글을 바닥에 붙이는 배치).
 func slideChildren() []string {
-	children := []string{TextElement, noteElement}
+	children := []string{TextElement, ShapeElement, noteElement}
 	children = append(children, blockElements...)
 	children = append(children, listContainerElements...)
 	children = append(children, layoutContainerElements...)
