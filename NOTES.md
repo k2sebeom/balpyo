@@ -255,3 +255,110 @@
     사각형을 재므로(`core/style.go`의 allowlist 주석이 같은 이유로 `rotate`를 뺐다)
     회전 도형의 rect가 실제 도형보다 크다. 웹에서 `transform: rotate()`를 쓰면 PPTX
     `xfrm@rot`과 좌표가 어긋날 수 있고, 그 보정은 항목 04·05가 재 보며 정해야 한다.
+
+## Iteration 4 · 03-core-cascade — 도형 캐스케이드: 컴포넌트 기본값 + variant 표
+<!-- item: 04/03-core-cascade -->
+
+- **한 것**:
+  - `core/cascade.go`: `shapePatch`(외관 7필드, 전부 포인터) + `mergeShape`를 `textPatch`/
+    `mergeText` 옆에 뒀다. 파일 머리말에 "채널이 둘이고 기계는 복제한다"를 적었다.
+  - `core/theme.go`: 도형 컴포넌트 기본값(`shapeComponentDefault`)과 도형 variant 표
+    (`shapeVariants`·`shapeVariantPatch`·`shapeVariantNames`), 표를 한 줄로 적는 도구 넷
+    (`colorFill`·`solidBorder`·`radiusToken`·`shadowToken`)을 텍스트 표 아래에 붙였다.
+  - `core/shape.go`: `resolveShape`가 **병합 세 줄**이 되었다 (인라인 패치 → 컴포넌트
+    기본값 → variant → 인라인). 속성 훑기는 `shapeAttrs`로 떼고, 테마 단의 radius를
+    프리셋에 맞춰 다듬는 `themeShapePatch`, 도형 variant 조회 `resolver.shapeVariant`를
+    더했다.
+  - `core/resolve.go`: `variant` 속성 획득(`variantAttr`)과 모르는 variant 경고
+    (`warnUnknownVariant`)를 텍스트·도형 공용으로 뽑았다. 텍스트 경로의 동작·문구는 그대로다.
+  - `core/cascade_test.go`: 도형 캐스케이드 테스트 8개(우선순위 표 + 단별 출처 표, 부분성·
+    0값 구별·패치 필드 누락 감시, 컴포넌트 기본값의 완전성, radius의 프리셋 규칙, variant 표의
+    구별성·순서, 모르는 variant 경고·폴백·`--strict`, 두 어휘의 분리, 자식 텍스트 불변).
+  - `core/shape_test.go`: 표의 `want`를 **컴포넌트 기본값 위의 델타**로 바꿨고(`wantShapeStyle`
+    — 얹는 데 운영 코드의 `mergeShape`를 쓴다), `variant` 행을 더해 커버리지 예외(`pending`)를
+    지웠다. 픽스처 경고 기대치는 1 → 2 (008의 도형 variant가 이제 경고한다).
+
+- **설계 결정과 근거**:
+  - **컴포넌트 기본값이 도형 캐스케이드의 가장 아래 단**이다 (`textRoleDefaults`의 자리를
+    대신한다) — 도형에는 역할이 없다. 그래서 `<shape type="rect"/>`만 써도 fill·border가
+    확정된다: 값이 비어 남으면 채우는 판단이 렌더러로 내려가고, 두 타깃이 서로 다른 값을
+    채우는 순간 웹과 PPTX가 갈라진다.
+  - **radius 충돌은 "검사를 인라인 단에만"으로 풀었다.** 기본값에 `radius: md`를 두되
+    `rounded-rect`가 아닌 프리셋에서는 테마 단의 radius를 조용히 버린다 (`themeShapePatch`).
+    기준은 **저자가 고칠 수 있는가**다: 인라인 radius는 지울 수 있으니 진단이 고칠 방법을
+    말하지만, 테마 기본값에 같은 진단을 내면 `<shape type="rect"/>`가 무조건 에러가 된다.
+    기본값에서 radius를 빼는 길도 있었지만 그러면 `type="rounded-rect"`만 쓴 도형에서 두
+    타깃의 **암묵 기본값 차이**가 되살아난다 (CSS는 0, OOXML `roundRect`는 조정값 기본
+    16.67%). 이 자리가 "테마 값과 저자 값에 같은 규칙을 걸 수 있는가"의 첫 사례이고,
+    Iteration 10에서는 진단의 수신자가 또 달라져(테마 제작자) `theme lint`가 받는 편이
+    자연스럽다는 관측을 주석에 남겼다.
+  - **도형 variant는 자식 텍스트의 외관을 담지 않는다** (PRD §8.3의 `card-header`가 담는
+    `font`/`size`/`weight`를 버렸다). 담으면 캐스케이드가 트리를 타고 내려가는 **상속**이
+    되고, 상속은 한 요소 안에서 끝나는 지금의 병합과 다른 두 번째 메커니즘이다 — 그것이
+    "우선순위는 병합 함수 한 곳에 있다"는 계약의 첫 예외가 된다. `TestResolveShapeVariant
+    DoesNotTouchChildText`가 6종 전수로 그 상속이 몰래 들어오는 것을 막는다.
+    **PRD §8.3과 어긋나므로 항목 07이 PRD를 함께 고쳐야 한다.**
+  - **variant 표 값** (컴포넌트 기본값 `surface`/`1 solid muted`/`md`와 구별되게):
+    `card`(fill bg, radius lg) · `card-header`(border none, radius sm — fill은 정하지 않는
+    부분 패치) · `card-body`(fill bg) · `card-backdrop`(fill none, border 3 solid accent1,
+    radius lg) · `stat-card`(border none, shadow soft, radius lg) · `badge`(border 1 solid
+    accent1, radius lg). 순서 있는 슬라이스이고 이름은 PRD §13-6의 권장 어휘다.
+    - `card-backdrop`의 그라디언트 테두리는 **단색 accent1로 대체**했다 — 색 함수는
+      Iteration 8이고 그 항목이 이 자리를 되돌린다 (주석에 적었다).
+    - **채움에 accent1/muted를 쓰는 variant를 만들지 않았다**: 어두운 채움은 그 위의 글자색이
+      `bg`여야 하고, 그 요구는 "variant가 자식 타이포그래피를 담지 않는다"는 결정과 부딪힌다
+      (저자가 색을 손으로 맞춰야 하는 번들은 번들이 아니다). `badge`를 선만 강조색으로 둔 것도
+      같은 이유다.
+    - **어휘 6종을 픽스처가 다 쓰지 않는다** — 토큰 표의 기준("픽스처가 실제로 쓴다")과
+      의도적으로 다르게 골랐다. 토큰은 값이 두 타깃에서 검증되어야 하지만 variant는 **이미
+      검증된 토큰의 조합**일 뿐 새 값을 만들지 않으므로 산출물 위험이 없고, 권장 어휘를 한 벌로
+      갖춰 두면 다른 테마로 만든 덱이 폴백 경고 없이 빌드된다 (PRD §13-6이 지키려는 이식성).
+  - **경고는 요소 종류에 맞는 목록을 나열한다** (`warnUnknownVariant`가 목록을 인자로 받는다).
+    문구 템플릿은 한 곳뿐이고 **기존 텍스트 경고와 바이트가 같다** — "도형 variant"처럼 종류를
+    문구에 넣으면 `02_text_subset/golden/diagnostics.txt`가 이 항목의 산출과 무관한 이유로
+    움직이고, 그것은 "도형 없는 덱은 아무것도 달라지지 않는다"는 이 항목의 계약과 어긋난다.
+    나열된 목록이 이미 어느 어휘인지 말한다.
+  - **`Type`·`ID`·`Box`는 패치에 없다**: `Type`은 어느 프리셋을 그리는가라 variant가 바꾸면
+    저자의 `type`이 테마에 따라 다른 그림이 되고(textPatch에 `Role`이 없는 것과 같은 자리),
+    `ID`는 참조 이름이라 테마가 붙일 수 없고, `Box`는 배치 채널이다(테마가 배치를 담지 않는다 —
+    Iteration 3이 닫은 질문). 그래서 `shapeAttrs`는 그 둘을 style에 직접 채운다.
+  - **두 패치 타입을 제네릭으로 합치지 않았다**: 필드가 하나도 겹치지 않아 뽑아낼 공통이
+    "nil이 아니면 대입한다" 한 줄뿐이고, 그 한 줄을 위해 접근자나 리플렉션을 끼우면 병합이
+    **한눈에 보이는 대입 목록**이라는 성질을 잃는다.
+  - **`mergeShape`는 포인터를 대입하지 않고 값을 복사한다.** 지금은 테마 표가 호출마다 새로
+    만들어져 차이가 없지만, 표가 파일에서 한 번 읽혀 캐시되는 날(Iteration 10) 여러 도형이 같은
+    `Fill`을 가리키게 되고 한 도형을 고치는 코드가 테마를 고친다.
+  - **테마 표가 `soml.Theme`를 인자로 받는다** (텍스트 표는 받지 않는다): 도형의 확정 값은 토큰
+    이름과 **해석된 수치를 함께** 담는다 (`soml.Radius`·`ShadowToken` — PPTX가 `prstGeom`
+    조정값·`outerShdw` 파라미터로 굽는다). 표에 없는 토큰이면 그 필드를 비운다 (모르는 variant를
+    경고로 두는 것과 같은 태도 — 테마 교체가 덱을 멈추지 않는다).
+  - **`shape_test.go`의 표를 델타로 바꾼 이유**: 기본값 세 필드를 30줄에 반복하면 각 줄이 무엇을
+    시험하는지 묻히고 기본값을 고칠 때 표 전체를 고쳐야 한다. 얹는 데 운영 코드의 `mergeShape`를
+    쓰므로 테스트가 병합 규칙을 다시 쓰지 않는다.
+
+- **검증**: `gofmt -l .`(무출력), `go vet ./...`, **`make test`(컨테이너) 초록**.
+  **골든은 한 파일도 움직이지 않았다** (`git status`에 `*/golden/*`이 없다) — 아직 어느
+  렌더러도 `ShapeStyle`을 읽지 않고, 텍스트 경고 문구를 그대로 둔 결과다. 이것이 항목 04·05의
+  "도형 없는 덱 골든 불변" 계약의 앞단이다. 호스트 `go test ./...`는 여전히 픽스처 골든이
+  빨갛지만 **차이는 전부 `a:ext` 14줄**(텍스트 폭)이고 항목 02 노트에 적힌 호스트 폰트 차이와
+  같다 — 게이트는 컨테이너다.
+
+- **남긴 것**:
+  - 확정된 도형 외관이 이제 **완전하다** — 항목 04(웹 CSS)·05(OOXML)는 nil 자리를 만나지
+    않는다. 단 `Radius`는 `rounded-rect`가 아니면 nil이고(각진 모서리라는 뜻), `Shadow`·
+    `Opacity`·`Rotate`·`Flip`의 nil은 "선언 없음"이다 (두 타깃의 암묵 기본값이 같아 렌더러가
+    채울 판단이 없다).
+  - `_04_shape/007`은 이제 경고 없이 해석되고 `008`은 경고 **두 개**를 낸다 (도형 + 텍스트) —
+    항목 06이 `diagnostics.txt` 골든에 그 둘을 담는다.
+  - **항목 07이 고칠 문서**: (a) PRD §8.3의 `card-header`가 타이포그래피를 담는 부분 —
+    위의 상속 결정과 어긋난다. (b) `docs/reference/appearance.md`는 `variant`가 `<text>`와
+    블록 태그의 것이라고만 적고 있다 (이제 `<shape>`도 받고, **어휘가 두 벌**이다). (c) 항목
+    02가 남긴 색 토큰 진단 문구 갱신도 그대로 남아 있다.
+  - **열린 질문 2건**:
+    (a) **variant가 `type`을 정할 수 있어야 하는가.** 지금은 못 정한다(위 근거). 그래서
+    `variant="badge"`를 쓰는 저자도 `type`을 매번 적어야 하고, `card-header`가 `rounded-rect`가
+    아니면 그 variant의 radius가 조용히 버려진다. 테마가 "이 variant는 rounded-rect를
+    가정한다"고 말할 방법이 없다 — Iteration 10의 테마 포맷이 다시 만날 질문이다.
+    (b) **컴포넌트 기본 채움이 모든 도형에 적용되는 것이 맞는가.** `_04_shape/004`의
+    `rotate="45"` 도형처럼 장식용 도형도 surface 배경을 받는다. PRD §8.3의 `default`가 그
+    뜻이므로 그대로 따랐지만, 그림으로 봐야 판단이 되는 자리다 (항목 04·05의 갤러리).

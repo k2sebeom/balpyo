@@ -22,15 +22,72 @@ import (
 // 헬퍼**를 지난다 (boxAttr) — 배치 값 문법이 두 벌이 되면 같은 표기가 두 곳에서 해석되고,
 // 그 둘이 갈라지는 것은 배치 하나가 웹에서만 먹는 것으로만 드러난다.
 //
-// 이 항목은 **인라인 단**까지다: 캐스케이드(컴포넌트 기본값·variant)는 다음 항목이 이
-// 구조체 위에 얹는다. 그래서 속성이 없는 도형은 값 필드가 비어 남는다 (nil·빈 문자열).
+// 값 문법 위에 **캐스케이드**가 얹힌다 (resolveShape): 인라인 패치를 만들고 테마의 두 단
+// (컴포넌트 기본값·variant) 위에 병합한다. 그래서 속성이 없는 도형도 완전한 외관을 갖는다 —
+// 병합 기계는 텍스트와 공유하는 cascade.go에 있다.
 
-// resolveShape는 `<shape>`의 외관을 확정한다.
+// resolveShape는 `<shape>`의 외관을 4단 캐스케이드로 확정한다 (PRD §8.3):
 //
-// `type`을 먼저 해석하는 이유는 `radius`가 그 값을 보기 때문이다 (radius의 주석) — 형제
-// 속성을 보는 검증이 값 층의 일이라는 것은 `span`이 부모를 보는 것과 같은 자리의 결정이다.
+//	인라인 속성 > variant > 컴포넌트 기본값 > (역할 없음)
+//
+// 텍스트와 갈라지는 자리는 **바닥**이다: 도형에는 역할이 없으므로 컴포넌트 기본값이 가장
+// 아래 단이다 (shapeComponentDefault). 병합은 mergeShape 한 곳에서만 일어나고, 우선순위는
+// 아래 세 줄의 순서가 전부다 — resolveText와 같은 형태이며 다른 어디에도 순서가 없어야 한다.
+//
+// 인라인 단을 **먼저 훑는** 이유는 순서가 아니라 입력이다: `radius` 검증이 형제 속성 `type`을
+// 보고(radius의 주석), `id`와 박스는 캐스케이드 밖이라 style에 직접 채워진다. 우선순위는
+// 훑는 순서가 아니라 병합 순서가 정한다.
 func (r *resolver) resolveShape(elem *soml.Element) {
 	style := soml.ShapeStyle{Type: r.shapeType(elem)}
+	inline := r.shapeAttrs(elem, &style)
+	mergeShape(&style, themeShapePatch(shapeComponentDefault(r.theme), style.Type))
+	mergeShape(&style, themeShapePatch(r.shapeVariant(elem), style.Type))
+	mergeShape(&style, inline)
+	elemAppearance(elem).Shape = &style
+}
+
+// themeShapePatch는 테마 단(컴포넌트 기본값·variant)의 패치를 이 도형에 맞게 다듬는다 —
+// `rounded-rect`가 아닌 프리셋에서는 `radius`를 **조용히 버린다**.
+//
+// 같은 값이 인라인 단에서는 에러인데(radius의 주석) 여기서는 침묵인 근거는 **저자가 고칠 수
+// 있는가**다: 테마 기본값은 저자가 손댈 수 없으므로 진단이 고칠 방법을 말할 수 없고, 진단을
+// 내면 `<shape type="rect"/>`가 무조건 에러가 된다. 버리는 것이 안전한 이유는 다른
+// 프리셋에는 반경 조정값을 실을 곳이 아예 없어(`prstGeom/avLst`) 값을 남겨 두면 웹만
+// 둥글어지기 때문이다 — 버리는 쪽이 두 타깃을 같게 만든다. 자세한 근거는
+// shapeComponentDefault에 있다.
+func themeShapePatch(patch shapePatch, shapeType string) shapePatch {
+	if shapeType != roundedRectType {
+		patch.radius = nil
+	}
+	return patch
+}
+
+// shapeVariant는 `variant`를 테마의 **도형** variant 표에서 찾는다 — 모르는 이름은 에러가
+// 아니라 경고 + 빈 패치(컴포넌트 기본 외관 폴백)다 (PRD §13-6, 텍스트와 같은 정책이고 문구도
+// 같은 곳에서 나온다 — warnUnknownVariant).
+func (r *resolver) shapeVariant(elem *soml.Element) shapePatch {
+	attr, ok := r.variantAttr(elem)
+	if !ok {
+		return shapePatch{}
+	}
+	patch, known := shapeVariantPatch(r.theme, attr.Value)
+	if !known {
+		r.warnUnknownVariant(attr, shapeVariantNames(r.theme))
+		return shapePatch{}
+	}
+	return patch
+}
+
+// shapeAttrs는 속성 한 벌을 훑어 **인라인 외관 패치**를 만든다 (inlinePatch의 도형 판).
+//
+// 캐스케이드 밖 필드(`id`와 박스)는 패치가 아니라 style에 직접 채운다 — 테마가 정할 수 없는
+// 값이므로(식별자·배치) 패치에 담으면 병합이 다룰 필요 없는 필드를 지게 되고, "패치의 필드
+// 목록 = 캐스케이드가 다루는 필드"라는 읽는 근거가 흐려진다.
+//
+// 값 어휘 검사와 진단은 속성별 해석 함수가 그대로 소유한다 — 틀린 값은 패치에 실리지 않으므로
+// 아래 단(테마 기본값)이 남는다 (틀린 role이 기본 역할로 계속하는 것과 같은 정책).
+func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapePatch {
+	var patch shapePatch
 	for _, attr := range elem.Attrs {
 		switch attr.Name {
 		case "type":
@@ -40,36 +97,35 @@ func (r *resolver) resolveShape(elem *soml.Element) {
 				style.ID = id
 			}
 		case "variant":
-			// **다음 항목(캐스케이드)이 소유한다.** 여기서 텍스트 variant 표를 쓰면 도형이
-			// 텍스트 외관 번들을 받게 되고, 그 오류는 도형 하나가 엉뚱한 색으로 나오는
-			// 것으로만 드러난다. 모르는 variant 경고도 그 항목의 몫이다 (PRD §13-6).
+			// 캐스케이드 둘째 단이라 shapeVariant가 소유한다 — 여기서 또 보면 모르는 variant
+			// 경고가 두 번 난다.
 		case "fill":
 			if fill, ok := r.fill(attr); ok {
-				style.Fill = &fill
+				patch.fill = &fill
 			}
 		case "border":
 			if border, ok := r.border(attr); ok {
-				style.Border = &border
+				patch.border = &border
 			}
 		case "radius":
 			if radius, ok := r.radius(attr, style.Type); ok {
-				style.Radius = &radius
+				patch.radius = &radius
 			}
 		case "shadow":
 			if shadow, ok := r.shadow(attr); ok {
-				style.Shadow = &shadow
+				patch.shadow = &shadow
 			}
 		case "opacity":
 			if opacity, ok := r.opacity(attr); ok {
-				style.Opacity = &opacity
+				patch.opacity = &opacity
 			}
 		case "rotate":
 			if rotate, ok := r.rotate(attr); ok {
-				style.Rotate = &rotate
+				patch.rotate = &rotate
 			}
 		case "flip":
 			if flip, ok := r.flip(attr); ok {
-				style.Flip = flip
+				patch.flip = &flip
 			}
 		default:
 			// 박스 속성(`pad`·크기·`ratio`)은 컨테이너와 공유하는 헬퍼가 해석하고, 자식 배치
@@ -82,7 +138,7 @@ func (r *resolver) resolveShape(elem *soml.Element) {
 			r.catalogGap(attr)
 		}
 	}
-	elemAppearance(elem).Shape = &style
+	return patch
 }
 
 // shapeType은 `type`을 해석한다 — 12종 닫힌 어휘다 (soml.ShapeTypes).

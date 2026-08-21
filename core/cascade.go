@@ -9,7 +9,12 @@ import "github.com/k2sebeom/balpyo/soml"
 // 역할 기본값(완전한 외관, theme.go)을 바닥에 깔고, 위 세 단은 **부분 패치**로 얹는다.
 // variant와 컴포넌트 기본값은 일부 필드만 정하기 때문이다 (PRD §8.3의 components.json —
 // `"card-header": { "font": "heading", "size": 24 }`는 color를 건드리지 않는다).
-// Iteration 4의 도형 외관(fill/border …)이 같은 기계를 재사용한다.
+//
+// 채널이 둘이다 (텍스트 외관·도형 외관). 두 채널은 **같은 기계를 복제해서** 쓴다
+// (textPatch/mergeText ↔ shapePatch/mergeShape): 필드가 겹치지 않으므로 하나로 합칠 수는
+// 없지만, 병합 규칙과 우선순위의 표현 방식은 하나여야 한다. 도형이 바닥을 고르는 방식만
+// 갈라진다 — 텍스트에는 역할이 있고 도형에는 없어서 컴포넌트 기본값이 가장 아래 단이다
+// (shapeComponentDefault).
 
 // textPatch는 텍스트 외관의 부분 지정이다. 포인터로 "정하지 않음"(nil)과 0값을 구별한다 —
 // 완성된 TextStyle끼리 덮어쓰면 "weight를 말하지 않은 variant"가 weight 0을 정한 것이 되어
@@ -60,3 +65,58 @@ func mergeText(style *soml.TextStyle, patch textPatch) {
 // ptr는 패치 필드용 포인터 리터럴이다 — 하드코딩 테마 표(theme.go)가 값을 한 줄로 적기 위한
 // 최소 도구이고, Iteration 10의 테마 패키지 로더가 이 표를 대체하면 함께 사라질 수 있다.
 func ptr[T any](v T) *T { return &v }
+
+// shapePatch는 도형 외관의 부분 지정이다 — textPatch의 도형 판이고 규약이 같다: 포인터로
+// "정하지 않음"(nil)과 0값을 구별한다 (`opacity="0"`은 저자가 정한 0이고 "opacity를 말하지
+// 않음"과 다르다).
+//
+// **Type·ID·Box는 없다.** Type은 외관 값이 아니라 어느 프리셋을 그리는가이고(variant가
+// 종류를 바꿀 수 있으면 저자가 쓴 `type`이 테마에 따라 다른 그림이 된다 — textPatch에 Role이
+// 없는 것과 같은 자리의 결정), ID는 참조 이름이라 테마가 붙일 수 없고, Box는 배치 채널이다
+// (테마가 배치를 담지 않는다 — Iteration 3이 닫아 둔 질문, PRD §7.4).
+type shapePatch struct {
+	fill    *soml.Fill
+	border  *soml.Border
+	radius  *soml.Radius
+	shadow  *soml.ShadowToken
+	opacity *float64
+	rotate  *float64
+	flip    *soml.Flip
+}
+
+// mergeShape는 patch가 정한 필드만 style에 얹는다 — mergeText와 **같은 계약**이다.
+//
+// 도형 캐스케이드의 유일한 병합 지점이고, 우선순위는 이 함수를 부르는 순서(resolveShape)가
+// 전부다. 두 번째 채널이 자기 병합 규칙을 새로 쓰면 "우선순위는 한 곳에만 있다"는 계약이 그
+// 순간 사라진다 — 그래서 도형은 새 메커니즘을 만들지 않고 이 형태를 복제한다.
+//
+// 두 패치 타입의 공통을 제네릭으로 뽑는 길을 저울질했고 버렸다: 필드가 하나도 겹치지 않아
+// (텍스트는 폰트·크기·색, 도형은 채움·테두리·그림자) 뽑아낼 것이 "포인터가 nil이 아니면
+// 대입한다"는 한 줄뿐이고, 그걸 위해 필드마다 접근자나 리플렉션을 끼우면 얻는 것 없이 읽기가
+// 어려워진다. 병합이 **한눈에 보이는 대입 목록**인 것이 이 파일의 값이다.
+func mergeShape(style *soml.ShapeStyle, patch shapePatch) {
+	// 포인터를 그대로 대입하지 않고 **값을 복사한다**: 지금은 테마 표가 호출마다 새로 만들어져
+	// 차이가 없지만, 표가 파일에서 한 번 읽혀 캐시되는 날(Iteration 10) 여러 도형이 같은
+	// Fill을 가리키게 되고 한 도형을 고치는 코드가 테마를 고친다.
+	if patch.fill != nil {
+		style.Fill = ptr(*patch.fill)
+	}
+	if patch.border != nil {
+		style.Border = ptr(*patch.border)
+	}
+	if patch.radius != nil {
+		style.Radius = ptr(*patch.radius)
+	}
+	if patch.shadow != nil {
+		style.Shadow = ptr(*patch.shadow)
+	}
+	if patch.opacity != nil {
+		style.Opacity = ptr(*patch.opacity)
+	}
+	if patch.rotate != nil {
+		style.Rotate = ptr(*patch.rotate)
+	}
+	if patch.flip != nil {
+		style.Flip = *patch.flip
+	}
+}

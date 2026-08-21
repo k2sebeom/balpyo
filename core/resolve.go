@@ -16,8 +16,9 @@ import (
 //	인라인 속성 > variant > 컴포넌트 기본값 > 역할/토큰
 //
 // 역할 기본값이 완전한 외관을 깔고 위 세 단이 부분 패치로 얹힌다 — 병합은 mergeText
-// (cascade.go) 한 곳에서만 일어난다. variant 표는 아직 하드코딩 테마 안이다 (theme.go —
-// 테마 패키지 포맷은 Iteration 10).
+// (cascade.go) 한 곳에서만 일어난다. 도형 외관도 **같은 기계의 복제**를 쓴다 (mergeShape) —
+// 도형에는 역할이 없어 컴포넌트 기본값이 가장 아래 단이라는 점만 갈라진다 (resolveShape).
+// variant 표는 아직 하드코딩 테마 안이다 (theme.go — 테마 패키지 포맷은 Iteration 10).
 //
 // 이 순서를 렌더러가 아니라 여기서 한 번만 적용하기 때문에 웹과 PPTX가 같은 외관을 본다.
 // computed-style 역추론은 없다 — 외관은 스키마에서 양 타깃으로 순방향 컴파일된다.
@@ -143,23 +144,48 @@ func elemAppearance(elem *soml.Element) *soml.Appearance {
 	return elem.Appearance
 }
 
-// variantPatch는 `variant` 속성을 테마의 variant 표에서 찾는다.
+// variantPatch는 `variant` 속성을 테마의 **텍스트** variant 표에서 찾는다.
 //
 // 모르는 variant는 에러가 아니라 **경고 + 빈 패치(컴포넌트 기본 외관 폴백)**다 (PRD §13-6):
 // variant 어휘는 테마의 사유물이라, 다른 테마로 만든 콘텐츠가 이 테마에서 빌드되지 않으면
 // 콘텐츠의 테마 간 이식성이 깨진다. 엄격함이 필요한 곳은 --strict가 에러로 승격한다.
 func (r *resolver) variantPatch(elem *soml.Element) textPatch {
-	attr, ok := elem.Attr("variant")
-	if !ok || !r.hasValue(attr) {
+	attr, ok := r.variantAttr(elem)
+	if !ok {
 		return textPatch{}
 	}
 	patch, known := textVariantPatch(attr.Value)
 	if !known {
-		r.warnf(attr.ValueSpan, "variant %q가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: %s)",
-			attr.Value, strings.Join(textVariantNames(), ", "))
+		r.warnUnknownVariant(attr, textVariantNames())
 		return textPatch{}
 	}
 	return patch
+}
+
+// variantAttr는 쓸 값이 있는 `variant` 속성이다 — 텍스트와 도형이 공유한다. 값 없음·빈 값의
+// 진단은 hasValue가 소유한다 (모르는 variant는 경고지만 값 없는 variant는 에러다: 뜻을 정할
+// 수 없는 형태이기 때문이다).
+func (r *resolver) variantAttr(elem *soml.Element) (soml.Attr, bool) {
+	attr, ok := elem.Attr("variant")
+	if !ok || !r.hasValue(attr) {
+		return soml.Attr{}, false
+	}
+	return attr, true
+}
+
+// warnUnknownVariant는 모르는 variant 경고다 — **요소 종류에 맞는 어휘를 나열한다.**
+//
+// variant 어휘가 텍스트용·도형용 두 벌이 된 순간(Iteration 4) 생긴 요구다:
+// `<shape variant="kicker">`에 텍스트 목록을 나열하면 저자를 그 테마에 없는 방향으로 보낸다.
+// 두 표가 같은 이름을 가져도 무관하고(요소 종류가 어느 표를 볼지 정한다), 그래서 목록은
+// 호출자가 준다.
+//
+// 문구는 여기 한 곳에만 있다: 폴백 규칙이 두 채널에서 같으므로 문구가 갈라질 이유가 없고,
+// 갈라지면 저자가 두 경고를 다른 규칙으로 읽는다. 어휘 종류를 문구에 적지 않은 이유는
+// 나열된 목록이 이미 그것을 말하기 때문이다 (`variant: kicker, lead`).
+func (r *resolver) warnUnknownVariant(attr soml.Attr, names []string) {
+	r.warnf(attr.ValueSpan, "variant %q가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: %s)",
+		attr.Value, strings.Join(names, ", "))
 }
 
 // inlinePatch는 인라인 속성을 캐스케이드의 마지막 단으로 만든다. 값 어휘 검사와 진단은

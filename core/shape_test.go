@@ -36,8 +36,31 @@ func resolvedShape(t *testing.T, attrs string) *soml.ShapeStyle {
 	return style
 }
 
+// wantShapeStyle는 표의 항목을 기대값으로 바꾼다 — 항목은 **컴포넌트 기본값 위의 델타**다.
+//
+// 캐스케이드가 붙은 뒤(항목 03) 속성 없는 도형도 fill·border를 갖기 때문이다. 델타를
+// 손으로 펼치면 표의 모든 줄에 같은 세 필드가 반복되어 정작 그 줄이 무엇을 시험하는지가
+// 묻히고, 기본값을 고칠 때 표 전체를 고쳐야 한다. 얹는 데 **운영 코드의 mergeShape**를
+// 쓰는 이유는 병합 규칙을 테스트가 다시 쓰지 않기 위함이다.
+func wantShapeStyle(delta soml.ShapeStyle) soml.ShapeStyle {
+	style := componentShapeStyle(delta.Type)
+	var flip *soml.Flip
+	if delta.Flip != "" {
+		flip = &delta.Flip
+	}
+	mergeShape(&style, shapePatch{fill: delta.Fill, border: delta.Border, radius: delta.Radius,
+		shadow: delta.Shadow, opacity: delta.Opacity, rotate: delta.Rotate, flip: flip})
+	// 식별자와 박스는 캐스케이드 밖이라 병합이 다루지 않는다 (shapePatch의 근거).
+	style.ID, style.Box = delta.ID, delta.Box
+	return style
+}
+
 // PRD §7.6 표의 shape 행을 전수로 못 박는다 — 속성 → **확정 ShapeStyle 필드**. 렌더러는
 // Attrs를 다시 읽지 않으므로(soml.Appearance의 계약) 이 표가 곧 CSS·OOXML의 입력이다.
+//
+// `want`는 컴포넌트 기본값 위의 **델타**다 (wantShapeStyle) — 인라인 단이 아래 단을 이기는
+// 것은 캐스케이드 테스트(cascade_test.go)가 따로 못 박고, 여기서는 값 문법이 도달하는
+// 필드를 본다.
 func TestResolveShapeStyle(t *testing.T) {
 	softShadow := minimalShadows()[0]
 	cases := []struct {
@@ -50,6 +73,12 @@ func TestResolveShapeStyle(t *testing.T) {
 		// 참조(Iteration 7)의 이름이라 확정 값에 남는다.
 		{"type", "type", `type="ellipse"`, soml.ShapeStyle{Type: "ellipse"}},
 		{"id", "id", `type="rect" id="db"`, soml.ShapeStyle{Type: "rect", ID: "db"}},
+
+		// variant는 테마의 외관 번들이다 — 캐스케이드 둘째 단이므로 확정 값이 표의 값과
+		// **다른 자리**에서 온다 (여기서는 card가 정하는 두 필드만 델타로 적는다).
+		{"variant", "variant", `type="rounded-rect" variant="card"`,
+			soml.ShapeStyle{Type: "rounded-rect", Fill: ptr(soml.ColorFill(soml.TokenColor("bg"))),
+				Radius: ptr(soml.TokenRadius("lg", 24))}},
 
 		// 색 — 토큰은 **이름으로** 남고(schemeClr 참조가 되어야 한다) 리터럴은 대문자 6자리로
 		// 정규화된다. `none`은 색이 아니라 세 번째 상태다.
@@ -134,8 +163,8 @@ func TestResolveShapeStyle(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := resolvedShape(t, tc.attrs)
-			if !reflect.DeepEqual(*got, tc.want) {
-				t.Errorf("도형 외관 = %s, want %s", showShape(*got), showShape(tc.want))
+			if want := wantShapeStyle(tc.want); !reflect.DeepEqual(*got, want) {
+				t.Errorf("도형 외관 = %s, want %s", showShape(*got), showShape(want))
 			}
 			// 외관은 자식 배치가 아니다 — 둘이 섞이면 렌더러가 외관을 자기 자리로 낸다.
 			if placement := resolvedElement(t, shapeSlide(tc.attrs), soml.ShapeElement).Placement(); placement != nil {
@@ -146,17 +175,12 @@ func TestResolveShapeStyle(t *testing.T) {
 
 	// 표가 카탈로그 전체를 덮는지 — 파서가 연 속성을 값 층이 해석하지 않으면 저자가 쓴 외관이
 	// 조용히 사라진다 (컨테이너 속성 커버리지 테스트와 같은 장치).
-	//
-	// `variant`만 예외다: 캐스케이드는 **다음 항목**의 일이고, 이 항목은 인라인 단까지다.
-	// 예외를 목록으로 적어 두는 이유는 그 항목이 오면 이 줄을 지우는 것이 곧 할 일의 표시가
-	// 되기 때문이다.
-	pending := map[string]bool{"variant": true}
 	covered := map[string]bool{}
 	for _, tc := range cases {
 		covered[tc.attr] = true
 	}
 	for _, attr := range soml.ShapeAttrs() {
-		if !covered[attr] && !pending[attr] {
+		if !covered[attr] {
 			t.Errorf("도형 속성 %q의 해석 테스트가 없다", attr)
 		}
 	}
@@ -281,8 +305,11 @@ func TestResolveShapeBorderShorthand(t *testing.T) {
 				col++
 			}
 			assertShapeDiag(t, diags[0], col, tc.contains...)
-			if style := findElement(t, deck, soml.ShapeElement).ShapeStyle(); style == nil || style.Border != nil {
-				t.Errorf("무효한 border가 실렸다: %+v", style)
+			// 틀린 인라인 값은 실리지 않는다 — 아래 단(컴포넌트 기본 테두리)이 남는다.
+			style := findElement(t, deck, soml.ShapeElement).ShapeStyle()
+			if want := componentShapeStyle("rect").Border; style == nil ||
+				!reflect.DeepEqual(style.Border, want) {
+				t.Errorf("border = %+v, want 컴포넌트 기본값 %+v", style, want)
 			}
 		})
 	}
@@ -400,11 +427,12 @@ func TestResolveShapeBoxSharesContainerSyntax(t *testing.T) {
 	}
 }
 
-// 외관 속성이 **없는** 도형은 값 필드가 비어 남는다 — 캐스케이드(다음 항목)가 그 빈 자리를
-// 채우고, 렌더러의 골든 불변이 이 nil/영 값에 달려 있다.
-func TestResolveShapeWithoutAppearanceStaysEmpty(t *testing.T) {
+// 외관 속성이 **없는** 도형도 완전한 외관을 갖는다 — 컴포넌트 기본값이 캐스케이드의 가장
+// 아래 단이기 때문이다 (값과 근거는 TestResolveShapeComponentDefault). 여기서는 인라인 단이
+// 아무것도 더하지 않는다는 것만 본다.
+func TestResolveShapeWithoutAppearanceUsesComponentDefault(t *testing.T) {
 	style := resolvedShape(t, `type="rect"`)
-	want := soml.ShapeStyle{Type: "rect"}
+	want := componentShapeStyle("rect")
 	if !reflect.DeepEqual(*style, want) {
 		t.Errorf("도형 외관 = %s, want %s", showShape(*style), showShape(want))
 	}
@@ -520,14 +548,23 @@ func TestResolveShapeChildTextUnchanged(t *testing.T) {
 	}
 }
 
-// 한 요소가 외관과 배치를 함께 쓴다 — 대입이 아니라 필드 채우기라는 구조(elemAppearance)가
-// 도형에서도 유지되는지 (`<shape grow="1" fill="surface">`).
+// 한 요소가 도형 외관 + 자기 박스 + 자식 배치를 함께 쓴다 — 대입이 아니라 필드 채우기라는
+// 구조(elemAppearance)가 도형에서도 유지되는지. 세 채널의 소유자가 다르므로(외관은
+// 캐스케이드, 박스는 도형 자신, 배치는 부모 안의 자리) 하나가 다른 하나를 지우면 산출물에서
+// 그 채널만 조용히 사라진다.
 func TestResolveShapeKeepsPlacement(t *testing.T) {
-	src := "<slide id=\"s\">\n  <row><shape type=\"rect\" fill=\"surface\" grow=\"1\"/></row>\n</slide>\n"
+	src := "<slide id=\"s\">\n  <row><shape type=\"rect\" fill=\"surface\" pad=\"md\" grow=\"1\"/></row>\n</slide>\n"
 	elem := resolvedElement(t, src, soml.ShapeElement)
 	style, placement := elem.ShapeStyle(), elem.Placement()
 	if style == nil || style.Fill == nil || style.Fill.Color != soml.TokenColor("surface") {
 		t.Errorf("외관이 없다: %+v", style)
+	}
+	// 캐스케이드의 아래 단도 함께 확정된다 (인라인이 fill만 말했다).
+	if want := componentShapeStyle("rect").Border; !reflect.DeepEqual(style.Border, want) {
+		t.Errorf("border = %+v, want 컴포넌트 기본값 %+v", style.Border, want)
+	}
+	if style.Box.Pad == nil || style.Box.Pad.Top != soml.SpaceLength("md", 24) {
+		t.Errorf("박스가 없다: %+v", style.Box)
 	}
 	if placement == nil || placement.Grow == nil || *placement.Grow != 1 {
 		t.Errorf("배치가 없다: %+v", placement)
@@ -544,14 +581,35 @@ func TestResolveShapeFixture(t *testing.T) {
 			t.Errorf("픽스처에 에러가 있다: %s", diag.String())
 		}
 	}
-	// 경고는 하나다: 008의 `<text variant="leed">`. 같은 슬라이드의 도형 variant는 아직
-	// 조용하다 — 캐스케이드가 다음 항목이므로 그 경고도 그때 생긴다 (그때 이 수가 2가 된다).
-	if len(diags) != 1 {
-		t.Fatalf("경고 %d개, want 1개: %v", len(diags), diags)
+	// 경고는 둘이다 — 008의 `<text variant="leed">`와 같은 슬라이드의
+	// `<shape variant="card-heder">`. 캐스케이드가 붙으면서 도형 쪽 경고가 생겼고, 두
+	// 경고가 **각자의 어휘 목록**을 나열한다 (TestResolveVariantVocabulariesAreSeparate).
+	if len(diags) != 2 {
+		t.Fatalf("경고 %d개, want 2개: %v", len(diags), diags)
 	}
-	if !strings.HasSuffix(diags[0].File, "008_variant_unknown"+soml.Ext) ||
-		!strings.Contains(diags[0].Message, "leed") {
-		t.Errorf("경고 = %s, want 008의 텍스트 variant", diags[0].String())
+	for _, diag := range diags {
+		if !strings.HasSuffix(diag.File, "008_variant_unknown"+soml.Ext) {
+			t.Errorf("경고가 008 밖에서 났다: %s", diag.String())
+		}
+	}
+	if !strings.Contains(diags[0].Message, "card-heder") {
+		t.Errorf("첫 경고 = %s, want 008의 도형 variant", diags[0].String())
+	}
+	if !strings.Contains(diags[1].Message, "leed") {
+		t.Errorf("둘째 경고 = %s, want 008의 텍스트 variant", diags[1].String())
+	}
+
+	// 007은 조용하다 — 픽스처가 쓴 도형 variant 이름이 테마 표에 있어야 한다 (이름이 어긋나면
+	// 그림이 기본 외관으로 폴백해 이 iteration의 시험대가 무의미해진다).
+	for _, slide := range deck.Slides {
+		if !strings.HasSuffix(slide.Source, "007_variant"+soml.Ext) {
+			continue
+		}
+		for _, diag := range diags {
+			if diag.File == slide.Source {
+				t.Errorf("007에 경고가 있다: %s", diag.String())
+			}
+		}
 	}
 
 	// 001_shape_types — 프리셋 12종 전수가 확정 값에 도달했는지 (항목 04·05의 시험대).

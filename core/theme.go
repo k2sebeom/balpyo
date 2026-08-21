@@ -203,7 +203,8 @@ func textVariantPatch(name string) (textPatch, bool) {
 }
 
 // textVariantNames는 variant 이름 목록이다 — 경고 메시지가 허용 어휘를 나열하는 근거다
-// (Theme.ColorNames와 같은 태도).
+// (Theme.ColorNames와 같은 태도). 도형 어휘와 **다른 목록**이다: 경고는 요소 종류에 맞는
+// 목록을 나열해야 한다 (resolver.warnUnknownVariant).
 func textVariantNames() []string {
 	variants := textVariants()
 	names := make([]string, len(variants))
@@ -242,4 +243,173 @@ func textRoleDefaults(role soml.TextRole) soml.TextStyle {
 		return soml.TextStyle{Role: soml.RoleBody, Font: soml.FontBody, Size: 24, Weight: 400, LineHeight: 1.5,
 			Color: soml.TokenColor("fg"), Align: soml.AlignStart}
 	}
+}
+
+// ── 도형 컴포넌트 (PRD §8.3의 `shape`) ──────────────────────────────────────
+//
+// 아래 두 표가 도형 캐스케이드의 **아래 두 단**이다. 텍스트 쪽 표(textRoleDefaults ·
+// textComponentDefault · textVariants)와 나란한 자리이고, 값을 고르는 기준도 같다:
+// 단마다 값이 실제로 구별되어야 하고, 순서가 결정적이어야 한다.
+//
+// 두 표가 **테마를 인자로 받는** 이유는 텍스트 패치와 갈라지는 자리다: 도형의 확정 값은
+// 토큰 이름과 **해석된 수치를 함께** 담는다 (soml.Radius·ShadowToken — PPTX가 반경을
+// `prstGeom` 조정값으로, 그림자를 `outerShdw` 파라미터로 굽기 때문이다). 텍스트의 색·폰트는
+// 이름만으로 끝나 표가 테마를 볼 필요가 없었다.
+
+// shapeComponentDefault는 도형 컴포넌트의 기본 외관 패치다 (PRD §8.3의
+// `"shape": { "default": … }`) — 도형 캐스케이드의 **가장 아래 단**이다.
+//
+// 텍스트와 갈라지는 지점이 여기다: 텍스트는 역할 기본값이 완전한 외관을 깔고 컴포넌트
+// 기본값이 부분 패치였지만(textRoleDefaults ↔ textComponentDefault), **도형에는 역할이
+// 없다**. 그래서 이 표가 textRoleDefaults의 자리를 대신하고 `<shape type="rect"/>` 하나만
+// 써도 그려지는 외관이 나온다 — 값이 비어 남으면 그것을 채우는 판단이 렌더러로 내려가고,
+// 두 타깃이 서로 다른 값을 채우는 순간(아래 radius) 웹과 PPTX가 갈라진다.
+func shapeComponentDefault(theme soml.Theme) shapePatch {
+	patch := shapePatch{
+		// 카드 배경이 흰 스테이지에서 보이는 최소 조합이다 (minimalColors의 surface 근거).
+		fill:   colorFill("surface"),
+		border: solidBorder(1, "muted"),
+	}
+	// radius가 기본값에 있는 이유는 **두 타깃의 암묵 기본값이 다르다**는 것이다: CSS는
+	// `border-radius` 없으면 0(각진 모서리)이고 OOXML `prstGeom/roundRect`는 조정값 기본이
+	// 짧은 변의 16.67%다. 저자가 `type="rounded-rect"`만 썼을 때 웹은 각지고 PPTX는 둥근
+	// 도형이 나오는 것이 그 갈라짐이며, 확정 값이 그 자리를 메운다.
+	//
+	// 이 기본값은 `rect`에서 항목 02의 규칙("radius는 rounded-rect 전용")과 부딪힌다. 푼
+	// 방법은 **검사를 인라인 단에만** 걸고 테마 단의 radius는 다른 프리셋에서 조용히 버리는
+	// 것이다 (themeShapePatch). 근거는 **저자가 고칠 수 있는가**다: 인라인 radius는 저자가
+	// 지울 수 있으니 진단이 고칠 방법을 말하지만, 테마 기본값은 저자가 손댈 수 없어 진단을
+	// 내면 `<shape type="rect"/>`가 무조건 에러가 된다. 기본값에서 radius를 빼는 길도
+	// 있었지만 위의 갈라짐이 되살아난다 — 저자가 지울 수 없는 값과 지울 수 있는 값에 같은
+	// 규칙을 걸 수 없다는 것이 이 자리의 결론이다.
+	//
+	// 이것이 "테마 기본값과 저자 값에 같은 규칙을 적용할 수 있는가"의 첫 사례다.
+	// Iteration 10의 테마 포맷이 같은 질문을 다시 만난다: 테마 **파일**의 값은 저자가 아니라
+	// 테마 제작자의 것이므로 진단의 수신자가 또 달라지고, 그때는 `theme lint`가 받는 편이
+	// 자연스럽다 (PRD §8.5).
+	if radius := radiusToken(theme, "md"); radius != nil {
+		patch.radius = radius
+	}
+	return patch
+}
+
+// shapeVariant는 테마가 이름 붙인 도형 외관 번들 하나다.
+type shapeVariant struct {
+	name  string
+	patch shapePatch
+}
+
+// shapeVariants는 minimal 테마의 도형 variant 표다 — 캐스케이드의 둘째 단.
+//
+// 이름은 PRD §13-6의 **권장 어휘**에서 골랐다 (`card`, `card-header`, `card-body`,
+// `card-backdrop`, `stat-card`, `badge`). variant 어휘를 표준화하지 않는다는 결정은 그대로고
+// (계약은 캐스케이드 메커니즘까지다), 공식 테마들이 같은 권장 어휘를 공유해 관례를 만드는
+// 것이 PRD의 방식이다.
+//
+// **토큰 표(minimalColors 등)와 어휘를 늘리는 기준이 다르다**: 토큰은 "픽스처가 실제로
+// 쓴다"가 유일한 근거였다 — 값이 두 타깃에서 검증되어야 하기 때문이다. variant는 **이미
+// 검증된 토큰의 조합**일 뿐 새 값을 만들지 않으므로, 픽스처가 쓰지 않는 variant가 있어도
+// 산출물 위험이 없다. 대신 권장 어휘를 한 벌로 갖춰 두면 다른 테마로 만든 덱이 이 테마에서
+// 폴백 경고 없이 빌드된다 (PRD §13-6이 지키려는 것이 그 이식성이다).
+//
+// **도형 variant는 자식 텍스트의 외관을 담지 않는다.** PRD §8.3의 `card-header`는
+// `font`/`size`/`weight`를 함께 담지만 여기서는 담지 않는다: 담으면 캐스케이드가 트리를 타고
+// 내려가는 **상속**이 되고, 상속은 한 요소 안에서 끝나는 지금의 병합(resolveText ·
+// resolveShape)과 다른 두 번째 메커니즘이다. 두 메커니즘이 생기는 순간 "우선순위는 병합
+// 함수 한 곳에 있다"는 계약에 첫 예외가 난다. 도형 안 텍스트의 외관은 그 `<text>`의
+// 역할·variant가 소유하고, 저자는 `<shape variant="card-header"><text variant="kicker">`로
+// 두 채널을 각각 쓴다. **이 결정은 PRD §8.3과 어긋나므로** 항목 07이 PRD를 함께 고친다.
+//
+// 값은 컴포넌트 기본값(fill surface · border 1 solid muted · radius md)과 **구별되도록**
+// 골랐다 — 같은 값을 정하는 variant는 우선순위 테스트가 아무것도 증명하지 못한다
+// (textVariants와 같은 기준). 맵이 아니라 순서 있는 슬라이스인 이유도 같다: 모르는 variant
+// 경고가 나열하는 목록이 결정적이어야 한다.
+func shapeVariants(theme soml.Theme) []shapeVariant {
+	return []shapeVariant{
+		// card: 카드 한 장. 바닥을 흰색(bg)으로 바꿔 surface 스테이지·컨테이너 위에서 떠
+		// 보이게 하고, 모서리를 한 단 크게 잡는다. 테두리는 정하지 않는다 — 기본값
+		// `1 solid muted`가 카드 경계로 그대로 쓸 만하고, 같은 값을 다시 적으면 이 단이
+		// 무엇을 정하는지가 흐려진다 (부분 패치).
+		{name: "card", patch: shapePatch{fill: colorFill("bg"), radius: radiusToken(theme, "lg")}},
+		// card-header: card-body 위에 붙는 띠. fill을 정하지 않는 부분 패치다 — 기본값
+		// surface가 본문(bg)과 갈라져 띠로 읽힌다. 테두리를 지우는 이유는 본문 테두리와
+		// 맞닿아 2px로 겹치는 선을 만들지 않는 것이다.
+		//
+		// PRD §8.3의 `card-header`가 담던 타이포그래피(font/size/weight)는 여기 없다 —
+		// 위의 상속 결정이다. 헤더 글자를 키우려면 저자가 `<text variant="…">`를 쓴다.
+		{name: "card-header", patch: shapePatch{border: ptr(soml.NoBorder()), radius: radiusToken(theme, "sm")}},
+		// card-body: 카드의 내용 칸 — 바닥만 흰색으로 바꾼다 (테두리·모서리는 기본값).
+		{name: "card-body", patch: shapePatch{fill: colorFill("bg")}},
+		// card-backdrop: 카드 뒤에 깔리는 테두리 면. PRD §8.3의 값은
+		// `border: 3 gradient(accent1 accent4 accent5)`인데 **단색으로 대체**했다 — 색 함수는
+		// Iteration 8이고(colorValue가 그 진단을 소유한다), 그 항목이 이 자리를 그라디언트로
+		// 되돌린다. 채움이 `none`인 것은 원래 값 그대로다: 뒤에 깔리는 면이므로 위 카드를
+		// 가리면 안 된다.
+		{name: "card-backdrop", patch: shapePatch{fill: ptr(soml.NoFill()),
+			border: solidBorder(3, "accent1"), radius: radiusToken(theme, "lg")}},
+		// stat-card: 수치를 얹는 카드 — 테두리 대신 **그림자**로 띄운다. 선과 그림자를 같이
+		// 쓰면 경계가 두 번 그려져 카드가 무거워진다 (PRD §8.3의 stat-card도 shadow만 담는다).
+		{name: "stat-card", patch: shapePatch{border: ptr(soml.NoBorder()),
+			radius: radiusToken(theme, "lg"), shadow: shadowToken(theme, "soft")}},
+		// badge: 짧은 라벨을 감싸는 알약. 채움은 기본값(surface)을 그대로 두고 강조색 선만
+		// 얹는다 — 채움을 accent1로 하면 그 위의 글자색이 bg여야 하고, 그 요구는 도형
+		// variant가 자식 타이포그래피를 담지 않기로 한 결정과 정면으로 부딪힌다 (저자가 색을
+		// 손으로 맞춰야 하는 variant는 번들이라고 할 수 없다).
+		{name: "badge", patch: shapePatch{border: solidBorder(1, "accent1"), radius: radiusToken(theme, "lg")}},
+	}
+}
+
+// shapeVariantPatch는 이름으로 도형 variant를 찾는다 (textVariantPatch의 도형 판).
+//
+// 텍스트 표와 **다른 표**를 보는 것이 계약이다: 두 어휘가 같은 이름을 가질 수 있고, 요소
+// 종류가 어느 표를 볼지 정한다. 표를 하나로 합치면 `<shape variant="kicker">`가 텍스트
+// 외관 번들을 받아 아무 일도 일어나지 않거나, 도형 variant가 텍스트 필드를 정하는 상속이
+// 몰래 생긴다.
+func shapeVariantPatch(theme soml.Theme, name string) (shapePatch, bool) {
+	for _, v := range shapeVariants(theme) {
+		if v.name == name {
+			return v.patch, true
+		}
+	}
+	return shapePatch{}, false
+}
+
+// shapeVariantNames는 도형 variant 이름 목록이다 — 경고가 나열하는 어휘다.
+func shapeVariantNames(theme soml.Theme) []string {
+	variants := shapeVariants(theme)
+	names := make([]string, len(variants))
+	for i, v := range variants {
+		names[i] = v.name
+	}
+	return names
+}
+
+// 아래 넷은 테마 표가 값을 **한 줄로** 적기 위한 도구다 (ptr와 같은 자리). 토큰 이름을 받는
+// 이유는 표의 색·반경·그림자가 전부 토큰 참조여야 하기 때문이다 — 테마가 리터럴을 쓰면
+// PPTX에서 `schemeClr` 참조가 끊겨 그 도형만 테마 색 편집을 따라가지 못한다 (제품 핵심 계약).
+
+func colorFill(token string) *soml.Fill { return ptr(soml.ColorFill(soml.TokenColor(token))) }
+
+func solidBorder(width float64, token string) *soml.Border {
+	return &soml.Border{Width: width, Style: soml.BorderSolid, Color: soml.TokenColor(token)}
+}
+
+// radiusToken·shadowToken은 표에 없는 이름이면 nil을 준다 — 그 단이 그 필드를 정하지 않은
+// 것이 된다. 지금 테마는 두 표를 모두 갖고 있어 nil이 나올 수 없지만, Iteration 10의 사용자
+// 테마에는 없을 수 있고 그때 빌드가 깨지는 대신 그 필드가 비는 편이 맞다 (모르는 variant를
+// 경고로 두는 것과 같은 태도 — 테마 교체가 덱을 멈추지 않는다).
+func radiusToken(theme soml.Theme, name string) *soml.Radius {
+	token, ok := theme.Radius(name)
+	if !ok {
+		return nil
+	}
+	return ptr(soml.TokenRadius(name, token.Px))
+}
+
+func shadowToken(theme soml.Theme, name string) *soml.ShadowToken {
+	token, ok := theme.Shadow(name)
+	if !ok {
+		return nil
+	}
+	return &token
 }
