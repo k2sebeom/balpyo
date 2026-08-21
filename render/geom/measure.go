@@ -60,50 +60,70 @@ type boxMeasurement struct {
 //
 // 폭·높이가 0인 사각형은 버린다 — 태그 사이 줄바꿈에서 생긴 접힌 공백 노드가 빈 사각형을
 // 만들고, 그것이 줄 수에 섞이면 줄바꿈 판정의 좌변이 틀린다.
+//
+// # 회전을 끄고 재는 이유
+//
+// 측정 직전에 **측정 뷰**를 켜고(web.MeasureView) 끝나면 되돌린다. `transform: rotate()`가
+// 걸린 도형의 `getBoundingClientRect`는 회전된 외곽 bbox를 주는데(45도에서 1.41배), OOXML
+// `xfrm@rot`은 회전 **전** `ext`를 중심 회전한 것이다 — 그대로 재면 좌표 대조는 통과하면서
+// (측정값과 산출물이 같으므로) PPTX의 도형만 커진다. 뷰 전환이 속성 하나이므로(ADR 0006) 켜고
+// 끄는 일이 이 스크립트 안에서 끝나고, 되돌리기를 `finally`에 둔 이유는 예외가 나도 페이지가
+// 측정 상태로 남지 않아야 하기 때문이다 (그 상태로 찍은 스크린샷은 회전이 사라진 그림이다).
+// 켜고 끄는 것과 읽는 것이 **한 번의 평가** 안에 있으므로 그 사이에 다른 레이아웃이 끼지 않는다.
 const measureScript = `(() => {
-  const lineRects = (el) => {
-    const range = document.createRange();
-    const rects = [];
-    for (const node of el.childNodes) {
-      if (node.nodeType !== Node.TEXT_NODE) continue;
-      range.selectNodeContents(node);
-      for (const r of range.getClientRects()) {
-        if (r.width > 0 && r.height > 0) rects.push(r);
+  // 측정 뷰를 켠다 — 회전 선언이 무효화된 배치에서 rect를 읽는다 (위 주석).
+  %s;
+  try {
+    const lineRects = (el) => {
+      const range = document.createRange();
+      const rects = [];
+      for (const node of el.childNodes) {
+        if (node.nodeType !== Node.TEXT_NODE) continue;
+        range.selectNodeContents(node);
+        for (const r of range.getClientRects()) {
+          if (r.width > 0 && r.height > 0) rects.push(r);
+        }
       }
-    }
-    return rects;
-  };
-  const slides = Array.from(document.querySelectorAll(%q));
-  return {
-    dpr: window.devicePixelRatio,
-    slides: slides.map((slide) => {
-      const sr = slide.getBoundingClientRect();
-      const rel = (r) => ({x: r.x - sr.x, y: r.y - sr.y, w: r.width, h: r.height});
-      const raw = slide.getAttribute(%q);
-      const index = raw === null ? -1 : Number(raw);
-      return {
-        index: Number.isInteger(index) ? index : -1,
-        w: sr.width,
-        h: sr.height,
-        boxes: Array.from(slide.querySelectorAll(%q)).map((el) => ({
-          id: el.getAttribute(%q) || "",
-          el: el.getAttribute(%q) || "",
-          rect: rel(el.getBoundingClientRect()),
-          lines: lineRects(el).map(rel),
-        })),
-      };
-    }),
-  };
+      return rects;
+    };
+    const slides = Array.from(document.querySelectorAll(%q));
+    return {
+      dpr: window.devicePixelRatio,
+      slides: slides.map((slide) => {
+        const sr = slide.getBoundingClientRect();
+        const rel = (r) => ({x: r.x - sr.x, y: r.y - sr.y, w: r.width, h: r.height});
+        const raw = slide.getAttribute(%q);
+        const index = raw === null ? -1 : Number(raw);
+        return {
+          index: Number.isInteger(index) ? index : -1,
+          w: sr.width,
+          h: sr.height,
+          boxes: Array.from(slide.querySelectorAll(%q)).map((el) => ({
+            id: el.getAttribute(%q) || "",
+            el: el.getAttribute(%q) || "",
+            rect: rel(el.getBoundingClientRect()),
+            lines: lineRects(el).map(rel),
+          })),
+        };
+      }),
+    };
+  } finally {
+    // 문서 뷰로 되돌린다 — 페이지가 측정 상태로 남으면 그 뒤의 스크린샷이 산출물이 아닌
+    // 측정 배치를 찍는다 (같은 세션이 재고 찍는다 — internal/testkit).
+    %s;
+  }
 })()`
 
-// measureExpr는 식별자 계약의 문자열을 스크립트에 채운다.
+// measureExpr는 식별자 계약과 뷰 전환 표현식을 스크립트에 채운다.
 //
-// 선택자와 속성 이름을 여기서 리터럴로 쓰지 않는 이유: 계약의 양쪽이 같은 문자열을 써야 한다
-// (render/web이 소유). 이름을 바꿨을 때 한쪽만 고치면 "요소를 못 찾았다"가 아니라 "좌표가
-// 하나도 없다"로 나타난다.
+// 선택자·속성 이름·뷰 전환을 여기서 리터럴로 쓰지 않는 이유: 계약의 양쪽이 같은 문자열을
+// 써야 한다 (render/web이 소유). 이름을 바꿨을 때 한쪽만 고치면 "요소를 못 찾았다"가 아니라
+// "좌표가 하나도 없다"로 나타난다.
 func measureExpr() string {
 	return fmt.Sprintf(measureScript,
-		web.SlideSelector(), web.SlideIndexAttr, web.ElementSelector(), web.IDAttr, web.ElAttr)
+		web.MeasureViewExpr(),
+		web.SlideSelector(), web.SlideIndexAttr, web.ElementSelector(), web.IDAttr, web.ElAttr,
+		web.DocumentViewExpr())
 }
 
 // Measure는 렌더된 HTML을 헤드리스 브라우저에 올려 요소별 좌표를 읽는다.

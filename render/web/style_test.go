@@ -33,7 +33,7 @@ func testTheme() soml.Theme {
 }
 
 func TestThemeCSSDeclaresTokensAsCustomProperties(t *testing.T) {
-	css := themeCSS(testTheme(), false)
+	css := themeCSS(testTheme(), features{})
 	for _, want := range []string{
 		"@layer balpyo.theme {",
 		"--balpyo-color-fg: #1A1A1A;",
@@ -52,7 +52,7 @@ func TestThemeCSSDeclaresTokensAsCustomProperties(t *testing.T) {
 
 // 토큰 선언 순서는 표의 순서다 — 골든이 실행마다 같은 바이트가 되려면 맵 순회가 아니어야 한다.
 func TestThemeCSSKeepsTableOrder(t *testing.T) {
-	css := themeCSS(testTheme(), false)
+	css := themeCSS(testTheme(), features{})
 	prev := -1
 	for _, name := range []string{"fg", "bg", "muted", "accent1"} {
 		at := strings.Index(css, colorVarPrefix+name+":")
@@ -69,7 +69,7 @@ func TestThemeCSSKeepsTableOrder(t *testing.T) {
 // 슬라이드 배경은 bg 토큰에서 나온다 — 배경색만 렌더러가 따로 갖고 있으면 테마를 바꿨을 때
 // 슬라이드 바탕만 옛 색으로 남는다.
 func TestThemeCSSSlideBackgroundReferencesToken(t *testing.T) {
-	css := themeCSS(testTheme(), false)
+	css := themeCSS(testTheme(), features{})
 	if !strings.Contains(css, "background: var(--balpyo-color-bg);") {
 		t.Errorf("슬라이드 배경이 bg 토큰을 참조하지 않는다:\n%s", css)
 	}
@@ -77,7 +77,7 @@ func TestThemeCSSSlideBackgroundReferencesToken(t *testing.T) {
 
 // 테마가 없는 덱(해석 전)에는 테마 층을 만들지 않는다 — 빈 :root 블록은 골든에 잡음만 남긴다.
 func TestThemeCSSEmptyWithoutTheme(t *testing.T) {
-	if css := themeCSS(soml.Theme{}, true); css != "" {
+	if css := themeCSS(soml.Theme{}, features{layout: true}); css != "" {
 		t.Errorf("빈 테마의 CSS = %q, want 빈 문자열", css)
 	}
 }

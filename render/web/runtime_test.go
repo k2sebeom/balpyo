@@ -73,17 +73,27 @@ func TestPresenterCSSIsGated(t *testing.T) {
 	}
 }
 
-// 뷰 전환 표현식은 같은 속성을 다룬다 — 지오메트리 패스(DocumentViewExpr)와 발표자 뷰
-// 테스트(PresenterViewExpr)가 계약의 양쪽이다.
+// 뷰 전환 표현식은 같은 속성을 다룬다 — 지오메트리 패스(DocumentViewExpr·MeasureViewExpr)와
+// 발표자 뷰 테스트(PresenterViewExpr)가 계약의 양쪽이다.
 func TestViewExprsShareAttr(t *testing.T) {
-	doc, pres := DocumentViewExpr(), PresenterViewExpr()
-	for name, expr := range map[string]string{"DocumentViewExpr": doc, "PresenterViewExpr": pres} {
+	doc, pres, measure := DocumentViewExpr(), PresenterViewExpr(), MeasureViewExpr()
+	for name, expr := range map[string]string{
+		"DocumentViewExpr": doc, "PresenterViewExpr": pres, "MeasureViewExpr": measure,
+	} {
 		if !strings.Contains(expr, fmt.Sprintf("%q", ViewAttr)) {
 			t.Errorf("%s가 ViewAttr를 쓰지 않는다: %s", name, expr)
 		}
 	}
 	if !strings.Contains(pres, fmt.Sprintf("%q", PresenterView)) {
 		t.Errorf("PresenterViewExpr가 PresenterView 값을 쓰지 않는다: %s", pres)
+	}
+	if !strings.Contains(measure, fmt.Sprintf("%q", MeasureView)) {
+		t.Errorf("MeasureViewExpr가 MeasureView 값을 쓰지 않는다: %s", measure)
+	}
+	// 세 뷰의 값은 서로 달라야 한다 — 측정 뷰가 발표자 뷰와 같은 값이면 측정이 겹쳐진
+	// 슬라이드를 재고, 문서 뷰(값 없음)와 같으면 회전이 꺼지지 않는다.
+	if PresenterView == MeasureView || PresenterView == "" || MeasureView == "" {
+		t.Errorf("뷰 값이 겹친다: presenter %q, measure %q", PresenterView, MeasureView)
 	}
 }
 

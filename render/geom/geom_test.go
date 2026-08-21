@@ -147,6 +147,70 @@ func TestRefsMatchRenderedHTML(t *testing.T) {
 	}
 }
 
+// **도형과 도형 안 텍스트는 둘 다 잰다** — `<shape>`는 재는 것과 도형이 되는 것이 처음
+// 일치하는 종류이고(잰 rect가 곧 `xfrm`), 도형 안 텍스트는 재지만 PPTX가 소비하지 않는다
+// (`<li>`와 같은 처지 — 같은 도형의 `txBody` 문단이 된다). 웹 렌더러가 같은 카탈로그로
+// 식별자를 붙이므로 두 목록의 자리가 맞는다 (아래 HTML 대조가 그 절반이다).
+func TestRefsCollectShapesAndTheirText(t *testing.T) {
+	shape := func(children ...soml.Node) *soml.Element {
+		return &soml.Element{
+			Name:     soml.ShapeElement,
+			Attrs:    []soml.Attr{{Name: "type", Value: "rect", HasValue: true}},
+			Children: children,
+		}
+	}
+	deck := testDeck([]soml.Node{
+		shape(textElem(chars("머리")), textElem(chars("본문"))),
+		shape(),
+	})
+	if diags := core.Resolve(deck); len(diags) > 0 {
+		t.Fatalf("외관 해석 진단: %v", diags)
+	}
+	var got []string
+	for _, ref := range Refs(deck) {
+		got = append(got, ref.ID+"/"+ref.El)
+	}
+	want := []string{"s0.0/shape", "s0.0.0/text", "s0.0.1/text", "s0.1/shape"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("Refs = %v, want %v", got, want)
+	}
+
+	// 웹 렌더러가 낸 식별자와 순서가 같아야 자리 맞대기가 성립한다 — 그림 svg는 식별자를
+	// 갖지 않으므로 목록에 끼어들지 않는다.
+	files, err := web.New().Render(deck)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pattern := regexp.MustCompile(regexp.QuoteMeta(web.IDAttr) + `="([^"]+)"`)
+	var rendered []string
+	for _, m := range pattern.FindAllStringSubmatch(string(files[web.IndexFile]), -1) {
+		rendered = append(rendered, m[1])
+	}
+	if want := []string{"s0.0", "s0.0.0", "s0.0.1", "s0.1"}; strings.Join(rendered, ",") != strings.Join(want, ",") {
+		t.Errorf("HTML의 식별자 = %v, want %v", rendered, want)
+	}
+}
+
+// 측정 스크립트는 **측정 뷰를 켜고 재고 되돌린다** — 회전 도형의 rect가 회전 전 박스여야
+// 하기 때문이다 (web.MeasureView). 표현식을 리터럴로 쓰지 않는 계약(양쪽이 같은 문자열)과
+// 순서(켜기 → 읽기 → finally 되돌리기)를 브라우저 없이 확인한다.
+func TestMeasureExprTogglesMeasureView(t *testing.T) {
+	expr := measureExpr()
+	set, reset := strings.Index(expr, web.MeasureViewExpr()), strings.Index(expr, web.DocumentViewExpr())
+	read := strings.Index(expr, "getBoundingClientRect")
+	if set < 0 || reset < 0 || read < 0 {
+		t.Fatalf("측정 스크립트에 뷰 전환이나 좌표 읽기가 없다:\n%s", expr)
+	}
+	if !(set < read && read < reset) {
+		t.Errorf("순서가 어긋난다 — 켜기 %d, 읽기 %d, 되돌리기 %d", set, read, reset)
+	}
+	// 되돌리기는 예외가 나도 실행되어야 한다 — 페이지가 측정 상태로 남으면 그 뒤의
+	// 스크린샷이 회전 없는 그림을 찍는다.
+	if at := strings.Index(expr, "} finally {"); at < 0 || at > reset {
+		t.Errorf("되돌리기가 finally 안에 없다:\n%s", expr)
+	}
+}
+
 // validMeasurement는 덱과 짝이 맞는 측정 결과다. 값은 검증 대상이 아니므로 단순하다.
 func validMeasurement(deck *soml.Deck) measurement {
 	m := measurement{DPR: 1}

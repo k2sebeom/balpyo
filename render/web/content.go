@@ -140,6 +140,8 @@ func writeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node soml
 			return writeList(b, deck, slide, node, path)
 		case soml.KindLayoutContainer:
 			return writeContainer(b, deck, slide, node, path)
+		case soml.KindShape:
+			return writeShape(b, deck, slide, node, path)
 		case soml.KindSpacer:
 			return writeSpacer(b, slide, node, path)
 		case soml.KindInline:
@@ -385,6 +387,9 @@ func contentCSS(feat features) string {
 	if feat.layout {
 		css += layoutCSS()
 	}
+	if feat.shapes {
+		css += shapeCSS()
+	}
 	return css
 }
 
@@ -448,7 +453,22 @@ type features struct {
 	// `gap`/`pad`뿐이다 (soml.Length의 토큰 상태를 만드는 속성이 그 둘이다). 레이아웃
 	// 태그가 없는 덱에 선언만 내면 참조 없는 변수가 골든에 남는다.
 	layout bool
+	// shapes는 `<shape>`가 있는지다 (shapeCSS + 그림자 토큰 변수).
+	//
+	// 그림자 변수를 이 조건에 매단 이유는 공간 토큰과 같다 — 참조하는 자리가 도형의
+	// `shadow` 하나뿐이다. 도형이 있는 덱에서 그림자를 쓰지 않으면 선언만 남지만, 조건을
+	// 토큰 참조 단위로 더 쪼개면 "무엇이 있으면 무엇이 나온다"의 규칙이 어휘 단위에서
+	// 속성 단위로 내려가 골든을 읽는 사람이 규칙을 셋 이상 외워야 한다.
+	shapes bool
 }
+
+// spaceTokens는 덱이 공간 토큰을 **참조하는지**다 (themeCSS의 선언 조건).
+//
+// 조건이 어휘 둘인 이유: 공간 토큰을 값으로 받는 속성은 컨테이너의 `gap`/`pad`와 **도형의
+// `pad`**다 (soml.Box를 두 요소가 공유하므로 `pad`도 공유된다). 도형만 있는 덱에서 선언을
+// 내지 않으면 `padding: var(--balpyo-space-md)`가 정의되지 않은 변수를 가리켜 여백이 조용히
+// 0이 된다 — var()는 모르는 변수에 아무 소리도 내지 않는다.
+func (f features) spaceTokens() bool { return f.layout || f.shapes }
 
 // contentFeatures는 덱을 걸어 쓰인 어휘를 모은다. 태그 종류의 판정은 soml의 카탈로그
 // 한 곳에서 나온다 (soml.KindOf) — 렌더러가 이름 목록을 따로 들면 태그를 추가할 때
@@ -467,6 +487,8 @@ func contentFeatures(deck *soml.Deck) features {
 				feat.lists = true
 			case soml.KindLayoutContainer, soml.KindSpacer:
 				feat.layout = true
+			case soml.KindShape:
+				feat.shapes = true
 			}
 			walk(elem.Children)
 		}

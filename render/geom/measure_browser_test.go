@@ -516,3 +516,223 @@ func TestMeasureNestedLayoutIsSlideRelative(t *testing.T) {
 		}
 	}
 }
+
+// **회전 도형의 잰 rect는 회전 전 박스다** — 이 iteration에서 가장 조용한 함정의 실측이다.
+//
+// `getBoundingClientRect`는 회전된 외곽 bbox를 주므로(45도에서 1.41배) 그대로 재면 PPTX의
+// 도형만 커진다: OOXML `xfrm@rot`은 회전 **전** `ext`를 중심 회전한 것이다. 측정 패스는
+// 측정 뷰를 켜서 회전 선언을 무효화하고(web.MeasureView), 측정이 끝나면 되돌린다 — 두 절반을
+// 한 테스트에서 본다: 잰 값은 회전 전, 되돌린 뒤 읽은 값은 회전된 bbox여야 한다.
+func TestMeasureRotatedShapeIsUnrotatedBox(t *testing.T) {
+	bin := testkit.RequireChromium(t)
+	deck := layoutDeck(t, `<row gap="md">
+    <shape type="rect" fill="accent1" w="120" h="120" rotate="45"/>
+    <shape type="rect" fill="accent1" w="120" h="120"/>
+  </row>`)
+	path := renderHTML(t, deck, nil)
+
+	session, err := geom.Launch(bin)
+	if err != nil {
+		t.Fatalf("브라우저를 띄울 수 없다: %v", err)
+	}
+	defer session.Close()
+	g, err := session.Measure(deck, path)
+	if err != nil {
+		t.Fatalf("지오메트리 패스 실패: %v", err)
+	}
+
+	rotated, plain := boxOf(t, g, "s0.0.0"), boxOf(t, g, "s0.0.1")
+	if math.Abs(rotated.Rect.W-120) > 0.5 || math.Abs(rotated.Rect.H-120) > 0.5 {
+		t.Errorf("회전 도형의 잰 박스 = %s, want 120×120 (회전된 bbox는 169.7이다)", rotated.Rect)
+	}
+	if rotated.Rect.W != plain.Rect.W || rotated.Rect.H != plain.Rect.H {
+		t.Errorf("회전 도형 %s와 회전 없는 도형 %s의 크기가 다르다", rotated.Rect, plain.Rect)
+	}
+	// 같은 행이므로 y가 같고, 회전 도형이 먼저이므로 x가 앞이다 — 변형은 배치를 바꾸지 않는다.
+	if math.Abs(rotated.Rect.Y-plain.Rect.Y) > 0.5 {
+		t.Errorf("회전 도형의 y = %v, 회전 없는 도형 = %v (변형이 배치를 바꿨다)", rotated.Rect.Y, plain.Rect.Y)
+	}
+
+	// 측정이 끝나면 문서 뷰로 돌아와 있어야 한다 — 남아 있으면 그 뒤에 찍는 스크린샷이
+	// 산출물이 아니라 측정 배치를 찍는다.
+	var view string
+	if err := session.Eval(fmt.Sprintf("document.documentElement.getAttribute(%q) || \"\"", web.ViewAttr), &view); err != nil {
+		t.Fatal(err)
+	}
+	if view != "" {
+		t.Errorf("측정 뒤 뷰 속성이 %q로 남았다 — 되돌리기가 되지 않았다", view)
+	}
+	// 되돌린 뷰에서는 회전이 살아 있다: 같은 요소의 rect가 회전된 bbox(1.41배)다. 이 절반이
+	// 없으면 "회전을 아예 렌더하지 않는" 구현도 위 단정을 통과한다.
+	rects, err := session.Rects(web.ElementSelector())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 문서 순서: row, 회전 도형, 회전 없는 도형.
+	if len(rects) != 3 {
+		t.Fatalf("측정 대상 %d개, want 3 (row + 도형 둘)", len(rects))
+	}
+	if want := 120 * math.Sqrt2; math.Abs(rects[1].W-want) > 1 {
+		t.Errorf("발표 뷰에서 회전 도형의 bbox 폭 = %v, want %v (회전이 적용되지 않았다)", rects[1].W, want)
+	}
+	if math.Abs(rects[2].W-120) > 0.5 {
+		t.Errorf("회전 없는 도형의 bbox 폭 = %v, want 120", rects[2].W)
+	}
+}
+
+// 도형 안 텍스트: `pad`만큼 안쪽이고, `anchor` 3종이 세로 위치를 실제로 바꾼다.
+//
+// 앵커가 **보이는 유일한 자리가 도형 안**이므로(soml.AnchorAttr) 여기가 그 계약의 유일한
+// 실측이다. `pad`가 잰 박스를 키우지 않는 것도 함께 본다 — `box-sizing: border-box`가 아니면
+// 도형 rect가 여백만큼 커져 PPTX 좌표가 밀린다.
+func TestMeasureShapePadAndAnchor(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := layoutDeck(t, `<row gap="md" align="stretch">
+    <shape type="rect" fill="surface" w="240" h="220" pad="md"><p anchor="top">위</p></shape>
+    <shape type="rect" fill="surface" w="240" h="220" pad="md"><p anchor="center">가운데</p></shape>
+    <shape type="rect" fill="surface" w="240" h="220" pad="md"><p anchor="bottom">아래</p></shape>
+    <shape type="rect" fill="surface" w="240" h="220"><p anchor="top">여백 없음</p></shape>
+  </row>`)
+	g := measureLayout(t, deck)
+
+	pad := spaceToken(t, deck, "md")
+	top, center, bottom := boxOf(t, g, "s0.0.0"), boxOf(t, g, "s0.0.1"), boxOf(t, g, "s0.0.2")
+	for i, shape := range []geom.Box{top, center, bottom} {
+		// 잰 박스는 저자가 준 크기 그대로다 — 여백은 안쪽으로 들어간다.
+		if math.Abs(shape.Rect.W-240) > 0.5 || math.Abs(shape.Rect.H-220) > 0.5 {
+			t.Errorf("도형 %d의 박스 = %s, want 240×220 (pad가 박스를 키웠다)", i, shape.Rect)
+		}
+	}
+	topText := boxOf(t, g, "s0.0.0.0")
+	if want := top.Rect.X + pad; math.Abs(topText.Rect.X-want) > 0.5 {
+		t.Errorf("도형 안 텍스트의 x = %v, want %v (도형 x + pad md)", topText.Rect.X, want)
+	}
+	if want := top.Rect.Y + pad; math.Abs(topText.Rect.Y-want) > 0.5 {
+		t.Errorf("anchor=top 텍스트의 y = %v, want %v (도형 y + pad md)", topText.Rect.Y, want)
+	}
+	centerText, bottomText := boxOf(t, g, "s0.0.1.0"), boxOf(t, g, "s0.0.2.0")
+	// 가운데: 위아래 여백이 같다 (도형 안쪽 높이의 절반에 텍스트 절반).
+	above := centerText.Rect.Y - (center.Rect.Y + pad)
+	below := (center.Rect.Bottom() - pad) - centerText.Rect.Bottom()
+	if math.Abs(above-below) > 0.5 {
+		t.Errorf("anchor=center 텍스트의 위 여백 %v ≠ 아래 여백 %v", above, below)
+	}
+	if above <= 0 {
+		t.Errorf("anchor=center 텍스트가 위로 붙었다 (위 여백 %v)", above)
+	}
+	// 아래: 텍스트 바닥이 도형 안쪽 바닥이다.
+	if want := bottom.Rect.Bottom() - pad; math.Abs(bottomText.Rect.Bottom()-want) > 0.5 {
+		t.Errorf("anchor=bottom 텍스트의 바닥 = %v, want %v", bottomText.Rect.Bottom(), want)
+	}
+	// 세 앵커가 서로 다른 y를 만든다 — 선언이 나갔지만 먹지 않는 상태를 잡는다.
+	if !(topText.Rect.Y < centerText.Rect.Y && centerText.Rect.Y < bottomText.Rect.Y) {
+		t.Errorf("앵커가 세로 위치를 바꾸지 않았다: top %v, center %v, bottom %v",
+			topText.Rect.Y, centerText.Rect.Y, bottomText.Rect.Y)
+	}
+	// 여백 없는 도형은 글자가 변에 붙는다 (pad의 유무가 그림에서 보이는 차이다).
+	none, noneText := boxOf(t, g, "s0.0.3"), boxOf(t, g, "s0.0.3.0")
+	if math.Abs(noneText.Rect.X-none.Rect.X) > 0.5 {
+		t.Errorf("pad 없는 도형의 텍스트 x = %v, want %v (변에 붙는다)", noneText.Rect.X, none.Rect.X)
+	}
+}
+
+// `<grid cols="4">` 안 도형 카드가 같은 y·등간격 x다 — 03_layout이 텍스트로 세운 계약
+// (TestMeasureGridCards)이 도형에서도 성립하는지 본다. 도형은 그 자체가 그림이므로 카드
+// 그리드가 이 iteration의 실제 용도다 (`_04_shape/006_cards`).
+//
+// Measure가 성공한다는 것 자체가 **Refs ↔ querySelectorAll 자리 맞대기 통과**다 — 측정 대상
+// 계약이 `<shape>`와 도형 안 텍스트까지 넓어졌으므로, 웹 렌더러와 geom.collect 중 한쪽만
+// 도형을 세면 여기서 개수·순서가 어긋나 실패한다.
+func TestMeasureShapeGridCards(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := layoutDeck(t, `<grid cols="4" gap="lg">
+    <shape type="rounded-rect" fill="surface" w="fill" h="160" pad="md"><p>공정성</p></shape>
+    <shape type="rounded-rect" fill="surface" w="fill" h="160" pad="md"><p>신뢰성</p></shape>
+    <shape type="rounded-rect" fill="surface" w="fill" h="160" pad="md"><p>투명성</p></shape>
+    <shape type="rounded-rect" fill="surface" w="fill" h="160" pad="md"><p>책임성</p></shape>
+  </grid>`)
+	g := measureLayout(t, deck)
+
+	grid := boxOf(t, g, "s0.0")
+	cards := make([]geom.Box, 0, 4)
+	for i := 0; i < 4; i++ {
+		cards = append(cards, boxOf(t, g, fmt.Sprintf("s0.0.%d", i)))
+	}
+	gap := spaceToken(t, deck, "lg")
+	wantWidth := (grid.Rect.W - 3*gap) / 4
+	for i, card := range cards {
+		if card.El != soml.ShapeElement {
+			t.Errorf("카드 %d의 태그 = %q, want %q", i, card.El, soml.ShapeElement)
+		}
+		if math.Abs(card.Rect.Y-cards[0].Rect.Y) > 0.5 {
+			t.Errorf("카드 %d의 y = %v, 첫 카드 = %v (같은 행이어야 한다)", i, card.Rect.Y, cards[0].Rect.Y)
+		}
+		if math.Abs(card.Rect.H-160) > 0.5 {
+			t.Errorf("카드 %d의 높이 = %v, want 160", i, card.Rect.H)
+		}
+		if math.Abs(card.Rect.W-wantWidth) > 0.5 {
+			t.Errorf("카드 %d의 폭 = %v, want %v (w=fill이 트랙 폭이다)", i, card.Rect.W, wantWidth)
+		}
+		if want := grid.Rect.X + float64(i)*(wantWidth+gap); math.Abs(card.Rect.X-want) > 0.5 {
+			t.Errorf("카드 %d의 x = %v, want %v (gap %v = 토큰 lg)", i, card.Rect.X, want, gap)
+		}
+	}
+	// 도형 안 텍스트도 잰다 (PPTX가 소비하지 않는 rect — `<li>`와 같은 처지다). 자기 도형
+	// 안에 들어 있어야 앵커·여백이 제대로 걸린 것이다.
+	for i := range cards {
+		text := boxOf(t, g, fmt.Sprintf("s0.0.%d.0", i))
+		if text.Rect.X < cards[i].Rect.X-0.5 || text.Rect.Right() > cards[i].Rect.Right()+0.5 {
+			t.Errorf("카드 %d의 텍스트(%s)가 도형(%s) 밖이다", i, text.Rect, cards[i].Rect)
+		}
+	}
+}
+
+// 그림의 외관 선언이 브라우저에서 **실제로 값이 되는지** 본다.
+//
+// 이 확인이 필요한 이유는 침묵이다: `var()`는 정의되지 않은 변수를 조용히 무시하고, 무효한
+// `filter` 값은 `none`이 된다 — 토큰 표와 참조가 어긋나거나 `color-mix()`를 못 쓰는 엔진에서
+// 그림자·색이 사라지고 아무 에러도 나지 않는다. 렌더 단위 테스트는 문자열까지만 보므로
+// 여기가 그 계약의 런타임 절반이다.
+func TestMeasureShapeInkStylesResolve(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := layoutDeck(t, `<row gap="md">
+    <shape type="rect" fill="accent1" border="3 solid muted" shadow="soft" opacity="0.4" w="180" h="120"/>
+  </row>`)
+	path := renderHTML(t, deck, nil)
+	browser := testkit.NewBrowser(t)
+	browser.Load(t, path)
+
+	var got struct {
+		Fill    string `json:"fill"`
+		Stroke  string `json:"stroke"`
+		Width   string `json:"width"`
+		Filter  string `json:"filter"`
+		Opacity string `json:"opacity"`
+	}
+	browser.Eval(t, `(() => {
+  const ink = document.querySelector('[data-balpyo-el="shape"] > svg');
+  const s = getComputedStyle(ink);
+  return {fill: s.fill, stroke: s.stroke, width: s.strokeWidth, filter: s.filter, opacity: s.opacity};
+})()`, &got)
+
+	// 토큰 참조가 테마 표의 색으로 풀린다 (accent1 #0F65F9, muted #6B7280).
+	if got.Fill != "rgb(15, 101, 249)" {
+		t.Errorf("채움 = %q, want rgb(15, 101, 249) — 색 변수가 풀리지 않았다", got.Fill)
+	}
+	if got.Stroke != "rgb(107, 114, 128)" {
+		t.Errorf("테두리 색 = %q, want rgb(107, 114, 128)", got.Stroke)
+	}
+	if got.Width != "3px" {
+		t.Errorf("테두리 굵기 = %q, want 3px", got.Width)
+	}
+	// 그림자 토큰: 무효한 값이면 계산값이 none이다. dist 4 · dir 90 → 아래로 4px.
+	if got.Filter == "none" || !strings.Contains(got.Filter, "drop-shadow") {
+		t.Errorf("그림자 filter = %q — 토큰 변수나 color-mix()가 풀리지 않았다", got.Filter)
+	}
+	if !strings.Contains(got.Filter, "0px 4px 16px") {
+		t.Errorf("그림자 값 = %q, want 오프셋 0px 4px · 번짐 16px (극좌표 dist 4 · dir 90)", got.Filter)
+	}
+	if got.Opacity != "0.4" {
+		t.Errorf("불투명도 = %q, want 0.4", got.Opacity)
+	}
+}

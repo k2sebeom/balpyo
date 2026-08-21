@@ -170,24 +170,40 @@ func containerCSS(container soml.ContainerLayout) ([]string, error) {
 	if container.Rows != nil {
 		decls = append(decls, "grid-template-rows: "+tracksValue(*container.Rows))
 	}
+	sizes, err := boxSizeCSS(container.Box)
+	if err != nil {
+		return nil, err
+	}
+	return append(decls, sizes...), nil
+}
+
+// boxSizeCSS는 박스 자신의 크기·비율 선언이다 — **레이아웃 컨테이너와 도형이 같은 함수를
+// 쓴다** (soml.Box를 두 요소가 임베드로 공유하므로 매핑도 하나여야 한다: 표기가 같은데
+// 컴파일이 두 벌이면 크기 하나가 한쪽 요소에서만 먹는 일이 생긴다).
+//
+// 선언 순서는 PRD §7.4 표 순서다. `pad`가 이 함수에 없는 이유는 컨테이너에서 트랙 속성보다
+// **앞**에 나오기 때문이다 — 순서를 여기로 모으면 기존 골든의 선언 순서가 이 항목과 무관한
+// 이유로 움직인다 (호출자가 자기 자리에서 padValue를 부른다).
+func boxSizeCSS(box soml.Box) ([]string, error) {
+	var decls []string
 	// 크기 6종은 이름만 다른 같은 매핑이다 — 표로 돌리면 속성이 하나 늘 때 빠뜨릴 자리가 없다.
 	for _, size := range []struct {
 		property string
 		length   *soml.Length
 	}{
-		{"width", container.Width},
-		{"height", container.Height},
-		{"min-width", container.MinWidth},
-		{"min-height", container.MinHeight},
-		{"max-width", container.MaxWidth},
-		{"max-height", container.MaxHeight},
+		{"width", box.Width},
+		{"height", box.Height},
+		{"min-width", box.MinWidth},
+		{"min-height", box.MinHeight},
+		{"max-width", box.MaxWidth},
+		{"max-height", box.MaxHeight},
 	} {
 		if size.length != nil {
 			decls = append(decls, size.property+": "+lengthValue(*size.length))
 		}
 	}
-	if container.Ratio != nil {
-		ratio := *container.Ratio
+	if box.Ratio != nil {
+		ratio := *box.Ratio
 		if ratio.W <= 0 || ratio.H <= 0 {
 			// core가 이미 막았지만(0·음수는 에러) 확정 값이 CSS로 나가기 전 마지막 자리다 —
 			// 무효 aspect-ratio는 브라우저가 조용히 버린다.

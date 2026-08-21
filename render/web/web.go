@@ -10,13 +10,23 @@
 // # 요소 식별자 — 지오메트리 패스의 계약
 //
 // **박스를 갖는 요소**는 모두 `data-balpyo-id` 속성을 갖는다: 블록 종류(soml.KindOf의
-// 카탈로그: `<text>`·블록·리스트 컨테이너·`<li>`)와 **레이아웃 컨테이너·`<spacer>`**다.
+// 카탈로그: `<text>`·블록·리스트 컨테이너·`<li>`)와 **레이아웃 컨테이너·`<spacer>`·`<shape>`**다.
 // 인라인·void(`<br>`)에는 붙이지 않는다 — 여러 줄에 걸친 인라인의 rect는 뜻이 없고,
 // PPTX에서 인라인은 박스가 아니라 런이다.
 //
 // 레이아웃 컨테이너와 `<spacer>`를 재는 이유는 `<li>`를 재 둔 것과 같다 (ADR 0009의 후속):
 // PPTX가 그 rect를 소비하지 않아도(컨테이너는 도형이 아니다 — 자식 좌표만 남고 컨테이너는
 // 사라진다) 픽셀 비교가 갈라질 때 "어느 칼럼부터 밀렸는가"를 이 좌표가 말해 준다.
+//
+// **`<shape>`는 재는 것과 도형이 되는 것이 처음 일치하는 종류다** (Iteration 4): 컨테이너는
+// 재고 사라지고 `<li>`는 부모 박스에 담기는데, 도형의 잰 rect는 곧 `xfrm`이다. 그래서 도형 수
+// 등식에 항이 하나 늘어난다 —
+//
+//	도형 수 = 측정 박스 수 − 레이아웃 컨테이너 − spacer − li − 도형 안 텍스트
+//
+// 마지막 항이 이 iteration에서 생겼다: 도형 안 텍스트는 웹에서 중첩된 박스이지만 PPTX에서는
+// 같은 도형의 `txBody` 문단이므로 그 rect를 아무도 소비하지 않는다 (render/web/shape.go).
+//
 // 지오메트리 패스(geom.Refs)가 **같은 카탈로그로** 기대 목록을 만들므로, 이 대칭이 깨지면
 // 자리 맞대기 검증이 런타임에 소리를 낸다. 지오메트리 패스는 이 속성으로 요소를
 // 집어 `getBoundingClientRect`를 읽고, 그 rect를 덱 요소에 되돌려 붙인다. 값의 형태는
@@ -40,7 +50,15 @@
 // 읽지 않는다. 색·폰트는 덱에 실린 토큰 표(soml.Theme)에서 만든 CSS 변수를 참조하므로
 // 리터럴 색·폰트 이름이 요소 쪽에 나오지 않는다 (style.go). 배치도 같은 계약이다: 레이아웃
 // 태그는 확정된 soml.ContainerLayout·soml.Placement만 읽어 flex/grid CSS로 컴파일하고
-// (layout.go), 공간 토큰은 색과 같은 이유로 변수 참조로 남는다.
+// (layout.go), 공간 토큰은 색과 같은 이유로 변수 참조로 남는다. 도형은 확정된
+// soml.ShapeStyle을 SVG 기하와 그림 CSS로 컴파일한다 (shape.go — 프리셋 기하의 출처와
+// 테두리·측정의 계약이 그 파일의 머리 주석에 있다).
+//
+// # 뷰는 셋이다
+//
+// 문서 뷰(속성 없음)·발표자 뷰(PresenterView)·측정 뷰(MeasureView). 셋 다 `<html>`의 ViewAttr
+// 하나로 갈라지고(runtime.go), 지오메트리 패스는 측정 뷰에서 잰다 — 회전 도형의 rect가
+// 회전 **전** 박스여야 하기 때문이다 (MeasureView의 주석).
 package web
 
 import (
@@ -92,7 +110,7 @@ func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 	b.WriteString("<style>\n")
 	feat := contentFeatures(deck)
 	b.WriteString(baseCSS(stage, feat))
-	b.WriteString(themeCSS(deck.Theme, feat.layout))
+	b.WriteString(themeCSS(deck.Theme, feat))
 	b.WriteString("</style>\n")
 	b.WriteString("</head>\n")
 	b.WriteString("<body>\n")

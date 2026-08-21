@@ -29,6 +29,21 @@ const ViewAttr = "data-balpyo-view"
 // PresenterView는 발표자 뷰의 ViewAttr 값이다.
 const PresenterView = "presenter"
 
+// MeasureView는 **측정 뷰**의 ViewAttr 값이다 — 지오메트리 패스가 rect를 읽는 동안에만 켠다
+// (geom.measureScript가 켜고 끈다).
+//
+// 문서 뷰(속성 없음)와 다른 뷰를 하나 더 둔 이유는 **회전**이다: `transform: rotate()`가
+// 걸린 요소의 `getBoundingClientRect`는 회전된 외곽 bbox를 돌려주는데(45도에서 1.41배),
+// OOXML `xfrm@rot`은 회전 **전** `ext`를 중심 회전한 것이다. 그대로 재면 좌표 대조는
+// 통과하면서(측정값과 산출물이 같으므로) 산출물만 틀린다. 그래서 측정 뷰에서 도형의 회전
+// 선언을 무효화하고(render/web.shapeCSS), 회전은 사람이 보는 뷰에서만 적용된다.
+//
+// 발표자 뷰와 같은 수단(속성 하나)을 쓰는 이유는 ADR 0006이다 — 뷰 전환의 구현이 하나면
+// 측정과 발표가 같은 파일을 보면서도 각자에게 맞는 배치를 본다. `offsetWidth`/`offsetParent`
+// 체인으로 회전 전 박스를 재는 길은 **두 번째 측정 경로**를 만들므로 쓰지 않는다 (측정이 두
+// 벌이 되면 어느 쪽이 진짜인지 판정할 방법이 없다).
+const MeasureView = "measure"
+
 // 뷰어 크롬의 클래스다. 런타임 JS가 만드는 요소이므로 문서 골든에는 나오지 않지만,
 // 발표자 뷰를 조작하는 테스트(internal/testkit)가 같은 문자열로 요소를 집는다 — 식별자
 // 계약(IDAttr 등)과 같은 이유로 여기서 export한다.
@@ -61,6 +76,13 @@ func PresenterViewExpr() string {
 // 지우는 것으로 충분하고, balpyo 산출물이 아닌 페이지에서도 아무 일도 하지 않아 안전하다.
 func DocumentViewExpr() string {
 	return fmt.Sprintf("document.documentElement.removeAttribute(%q)", ViewAttr)
+}
+
+// MeasureViewExpr는 측정 뷰를 켜는 JS 표현식이다 (MeasureView의 주석). 측정 스크립트가
+// 재기 직전에 켜고 **끝나면 되돌린다** — 켠 채로 두면 그 뒤에 찍는 스크린샷에서 회전이
+// 사라져 픽셀 비교가 산출물이 아닌 측정 상태를 본다.
+func MeasureViewExpr() string {
+	return fmt.Sprintf("document.documentElement.setAttribute(%q, %q)", ViewAttr, MeasureView)
 }
 
 // viewerCSS는 발표자 뷰와 뷰어 크롬의 CSS다 — baseCSS가 balpyo.base 층 안에 싣는다.

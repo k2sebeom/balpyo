@@ -126,6 +126,12 @@ func collect(refs []Ref, slide *soml.Slide, node soml.Node, path []int) []Ref {
 		// (Iteration 3): 컨테이너는 진짜 박스이므로 rect에 뜻이 있고, PPTX가 그것을
 		// 소비하지 않아도(컨테이너는 도형이 되지 않는다) 픽셀 비교가 갈라질 때 "어느
 		// 칼럼부터 밀렸는가"를 이 좌표가 말해 준다 — `<li>`를 재 둔 것과 같은 근거다.
+		//
+		// **`<shape>`도 잰다** (Iteration 4). 새로운 것은 재는 것과 도형이 되는 것이 처음
+		// 일치한다는 사실이다: 도형의 잰 rect는 곧 `xfrm`이므로 소비자가 있다. 반면 도형
+		// **안** 텍스트는 재지만 소비되지 않는다 (PPTX에서는 같은 도형의 `txBody` 문단이다) —
+		// `<li>`와 같은 처지이고, 그래서 도형 수 등식에 항이 하나 늘었다 (render/web의
+		// 측정 대상 계약).
 		return refs
 	}
 	refs = append(refs, Ref{

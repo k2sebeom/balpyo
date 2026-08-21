@@ -362,3 +362,168 @@
     (b) **컴포넌트 기본 채움이 모든 도형에 적용되는 것이 맞는가.** `_04_shape/004`의
     `rotate="45"` 도형처럼 장식용 도형도 surface 배경을 받는다. PRD §8.3의 `default`가 그
     뜻이므로 그대로 따랐지만, 그림으로 봐야 판단이 되는 자리다 (항목 04·05의 갤러리).
+
+## Iteration 4 · 04-web-shape — 웹 도형: SVG 프리셋 기하 + 외관 CSS
+<!-- item: 04/04-web-shape -->
+
+- **한 것**:
+  - `render/web/shape.go` 신규 — 도형 렌더 전부. `writeShape`(박스 div + 그림 svg + 자식
+    텍스트), **12종 기하 유도표 `shapeGeometries()`**(OOXML 프리셋 이름 + 정규 공간 경로 +
+    항목 05용 조정값 공식), `shapeBoxCSS`(pad·크기·비율·회전 각도·앵커), `shapeInkCSS`
+    (fill·border·shadow·opacity·flip), `dashArray`·`flipValue`·`anchorValue`,
+    `shadowVarsCSS`(그림자 토큰 → CSS 변수), `shapeCSS`(엔진 CSS), 그리고 내보낸 계약 셋
+    `ShapePreset`(type → `prstGeom@prst`)·`ShapeAnchor`(도형이 쓸 앵커).
+  - `render/web/layout.go` — 크기·비율 매핑을 `boxSizeCSS(soml.Box)`로 떼어 컨테이너와 도형이
+    **같은 함수**를 쓴다. `pad`는 컨테이너에서 트랙 속성보다 앞이라 호출자에 남겼다 (선언
+    순서를 옮기면 03_layout 골든이 이 항목과 무관한 이유로 움직인다 — 실제로 불변이다).
+  - `render/web/content.go` — `writeNode`의 `KindShape` 갈래(지금까지 의도된 가드였던 자리),
+    `features.shapes`와 `features.spaceTokens()`(공간 토큰 참조 조건이 레이아웃 **또는** 도형:
+    `pad`가 두 요소의 공유 속성이다), `contentCSS`에 `shapeCSS`.
+  - `render/web/style.go` — `themeCSS(theme, features)`로 바꾸고 그림자 토큰 변수를 도형이
+    있는 덱에만 낸다.
+  - `render/web/runtime.go` — **`MeasureView`("measure")와 `MeasureViewExpr()`**. 뷰가 셋이
+    되었다 (문서·발표자·측정).
+  - `render/web/web.go` — 패키지 주석의 **측정 대상 계약**에 `<shape>`와 도형 수 등식의 새 항
+    (`− 도형 안 텍스트`), 그리고 "뷰는 셋이다" 절.
+  - `render/geom/measure.go` — 측정 스크립트가 측정 뷰를 켜고 재고 `finally`에서 되돌린다.
+    표현식은 `web`이 소유한 문자열을 채운다 (선택자 계약과 같은 태도).
+  - `render/geom/geom.go` — `collect`의 측정 대상 주석에 도형과 도형 안 텍스트의 비대칭.
+  - 테스트: `render/web/shape_test.go` 신규(PRD §9.4 표 전수 + 어휘 커버리지, 12종 기하
+    구별·표 순서·프리셋 이름, 늘린 공간의 `vector-effect`, 토큰 참조/반경 수치, 회전의
+    측정 뷰 무효화, opacity·flip이 텍스트를 건드리지 않음, 앵커 첫 자식 규칙, 박스 매핑
+    공유 대조, 측정 대상 개수, 도형 없는 덱 불변, 에러 13건, 결정성 — 38 서브테스트),
+    `render/geom/geom_test.go`(도형·도형 안 텍스트 Refs ↔ HTML 자리 맞대기, 측정 스크립트의
+    뷰 전환 순서), `render/geom/measure_browser_test.go` 실측 4건(회전 도형의 잰 rect가
+    회전 전 박스 + 되돌린 뷰에서는 1.41배, pad·anchor 3종, 그리드 도형 카드, 그림 외관이
+    브라우저에서 실제로 값이 되는지), `render/web/runtime_test.go`(뷰 셋의 값 분리).
+
+- **설계 결정과 근거**:
+  - **12종 전부 SVG 한 벌**(항목의 선택지 (b)). `clip-path`는 테두리·그림자를 함께 자르고
+    컴포넌트 기본값이 `border: 1 solid muted`이므로 테두리는 예외가 아니라 기본이다. 셋만
+    CSS로 두는 (c)는 그림자를 `box-shadow`와 SVG 필터로 두 벌 구현하게 되고, 두 벌이
+    갈라지는 것은 "도형 종류에 따라 외관이 다르다"로만 드러난다. SVG는 어차피 들어온다
+    (`border=… gradient(…)`가 SVG 오버레이로 못 박혀 있다 — PRD §9.4, Iteration 8).
+    외관 선언은 **svg 하나에** 걸리고 기하만 두 갈래다: 백분율 프리미티브로 정확히 되는
+    셋(`<rect>`·`<rect rx>`·`<ellipse>`)은 px 공간, 나머지 아홉은 정규 경로다.
+  - **기하의 출처는 ECMA-376 `presetShapeDefinitions.xml`**이다 (apache/poi가 배포하는 사본을
+    읽었다). 각 프리셋을 **기본 조정값으로** 평가하고 유도 근거(`gd` 이름과 공식)를 표 행의
+    주석에 남겼다. `cloud`는 43200 경로 공간의 `arcTo` 11개를 SVG `A`로 변환했고(중심 =
+    현재점 − (wR·cos stAng, hR·sin stAng)), `star5`의 좌표에 0.0001이 남은 것은 프리셋
+    계수(hf·vf)가 정확한 별 비율의 근사값이기 때문이다 — 그 잔차가 수치의 출처를 증명한다.
+    `wedgeRectCallout`은 16점 중 겹치는 9점이 사라져 7점이 되고, 꼬리 끝이 박스 아래로
+    12.5% 나간다.
+  - **정규 100×100 공간을 늘린다** (`preserveAspectRatio="none"` + `vector-effect:
+    non-scaling-stroke`). 프리셋 공식의 `ss`는 `min(w,h)`인데 **웹은 도형의 픽셀 크기를 모른다**
+    (브라우저가 배치를 계산하고 우리가 그 결과를 잰다). CSS/SVG에는 자기 박스의 `min(w,h)`를
+    경로 데이터에 넣을 수단이 없다 (`cqmin`은 `clip-path`에서만 쓸 수 있고 그 길은 테두리를
+    자른다). 그래서 프리셋을 **정사각형에서 평가**해 정규 공간에 두고 박스에 늘린다.
+    - 대가: `ss` 의존이 있는 다섯 프리셋(rounded-rect·cylinder·chevron·arrow-right·hexagon·
+      parallelogram)은 정사각형이 아닌 박스에서 PowerPoint의 기본 모양과 비율이 다르다.
+      220×110 chevron의 노치가 `ss/2`(55)가 아니라 `w/2`(110)가 된다 — 그림으로 보면 훨씬
+      깊은 화살표다.
+    - 그래서 **PPTX가 맞춘다**: 표의 각 행에 측정된 박스로 계산할 `avLst` 조정값 공식을 적어
+      두었다 (`chevron: adj = 50000·w/ss`, `hexagon`·`parallelogram`: `25000·w/ss`,
+      `arrow-right`: `adj2 = 50000·w/ss`, `cylinder`: `adj = 25000·h/ss`, `rounded-rect`:
+      `adj = 100000·radius/ss`). 웹이 기준 타깃이므로(PRD §9.1) 맞추는 쪽이 PPTX이고,
+      조정값을 실은 프리셋도 PowerPoint에서 편집 가능한 진짜 프리셋 도형이다
+      (`radius` → `prstGeom` 조정값이 이미 같은 수단이다).
+    - 버린 길: (1) 런타임 JS가 잰 박스로 경로를 계산하는 길 — 정확하지만 도형이 스크립트
+      없이는 그려지지 않고, 골든이 도형의 모양을 보지 못하며, 리사이즈마다 다시 계산하는
+      **살아 있는 기하 엔진**이 브라우저에 생긴다. (2) `w`/`h`가 px로 확정된 도형만 정확히
+      그리는 길 — 같은 프리셋이 두 방식으로 그려지고, 그 갈라짐은 같은 덱 안에서만 드러난다.
+  - **테두리는 경로 중앙**이다 (`stroke`) — OOXML `a:ln`과 같은 규약이므로 굵기의 절반이 잰
+    박스 밖으로 번지고 **두 타깃이 같은 자리에 번진다**. 항목의 8번이 남긴 질문("웹에서
+    보정할지, PPTX에서 rect를 줄일지")은 이 결정으로 닫힌다: 보정할 수치가 없다. CSS
+    `border`(박스 안쪽)를 골랐으면 그 수치가 항목 05로 넘어갔을 것이다. svg는 그래서
+    `overflow: visible`이다 (callout 꼬리도 같은 이유).
+  - **박스와 그림의 경계**: 박스(div)는 `pad`·크기·비율·**회전**·앵커, 그림(svg)은 채움·
+    테두리·**그림자**·**불투명도**·**대칭**. 각 자리의 근거가 OOXML이다 —
+    - `rotate`는 박스: `xfrm@rot`이 텍스트까지 함께 돌린다. 중심 회전이므로
+      `transform-origin` 기본값(50% 50%)이 그대로 맞다.
+    - `flip`은 그림: PowerPoint의 `flipH`/`flipV`는 기하를 뒤집지만 **글자는 읽히는 방향으로
+      남는다**. 박스에 걸면 CSS가 글자까지 거울로 만든다.
+    - `opacity`는 그림: OOXML은 알파를 `solidFill`·`ln` 안에 싣는다 (도형 전체 투명도는
+      `alphaModFix` 효과다) — NOTES 04/02의 열린 질문 (b)를 이렇게 닫았다. 항목 05는 알파를
+      색 안에 넣어야 두 타깃이 같은 그림이 된다.
+    - `shadow`는 그림이고 **`box-shadow`가 아니라 `filter: drop-shadow`**다: box-shadow는
+      박스의 사각형을 따르므로 열두 종 중 아홉이 엉뚱한 사각 그림자를 얻는다. drop-shadow는
+      실루엣의 알파를 따라가 `outerShdw`와 같은 그림이 된다. **PRD §9.4 표의 `box-shadow`
+      칸이 이 결정으로 갱신되어야 한다 (항목 07).**
+  - **회전 선언은 엔진 CSS, 각도는 인라인 커스텀 프로퍼티**(`.balpyo-shape-rotate`
+    + `--balpyo-shape-rotate`). 측정 뷰가 `transform: none`으로 덮어야 하는데 인라인 style은
+    층 밖에서 이기므로, 선언이 요소 쪽에 있으면 `!important` 없이는 무효화할 수 없다.
+    클래스를 회전 있는 도형에만 붙이는 이유: 모든 도형에 `transform: rotate(0deg)`를 걸면
+    회전 없는 도형까지 스택 문맥과 래스터화 경로가 바뀌고, 그 변화는 픽셀 비교에서만 보인다.
+  - **측정 뷰는 세 번째 뷰**다 (ADR 0006의 수단 재사용). 측정 스크립트가 켜고 `finally`에서
+    되돌리는 이유: 같은 세션이 재고 찍으므로(internal/testkit) 측정 상태가 남으면 스크린샷이
+    회전 없는 그림을 찍는다. `Session.Open`에 넣지 않은 것도 같은 이유다. `offsetWidth`
+    체인으로 재는 길은 두 번째 측정 경로를 만들므로 버렸다.
+  - **앵커는 첫 자식이 정한다** (`ShapeAnchor`, 04/02의 열린 질문 (a)). 앵커는 자식마다 확정
+    값으로 있지만 박스의 성질이다 (flex `justify-content` 하나, `bodyPr@anchor` 하나).
+    뒤 자식의 다른 앵커는 **조용히 버려진다** — 경고는 값 층의 몫이고 렌더러에는 진단 통로가
+    없다. 함수를 내보내 항목 05가 같은 규칙을 쓰게 했다 (규칙이 두 벌이면 두 타깃의 앵커가
+    갈라진다).
+  - **그림자 토큰은 CSS 변수, 반경 토큰은 확정 수치**. 갈리는 기준은 참조하는 자리의 성질이다:
+    그림자는 CSS 프로퍼티 값(`filter`)이라 `var()`가 통하지만, 반경은 SVG 기하 속성(`rx`)이라
+    커스텀 프로퍼티를 이식성 있게 참조할 수 없다. 반경을 수치로 내도 웹만 뒤처지지 않는
+    이유는 **OOXML에도 반경 테마 개념이 없기 때문**이다 (조정값은 도형마다 구워진다) — 두
+    타깃이 같은 방식으로 값을 굽는다. 그림자 색은 `color-mix(in srgb, var(--balpyo-color-fg)
+    15%, transparent)`로 **토큰 참조를 유지**한다 (PRD §9.4의 색 변형 행이 `color-mix()`를
+    가리킨다). rgba로 눕히면 그 도형만 옛 색으로 남는다. 극좌표(dist·dir) → 직교 변환은
+    `shadowVarsCSS` 한 곳이고, 잔차 반올림(소수 넷째 자리)도 거기 하나다.
+  - **파선 수치는 OOXML `prstDash` 비율**이다 (`dashed` 4:3, `dotted` 1:3, 단위는 선 굵기).
+    CSS `border-style: dashed`의 패턴은 UA가 정하므로 이름을 옮길 수 없고, 수치를 여기서
+    정하는 것이 두 타깃이 같은 간격을 갖는 유일한 길이다.
+  - **그림 svg는 `aria-hidden`이고 자식 텍스트는 `position: relative`**다. 절대 배치된 svg가
+    흐름 콘텐츠보다 위에 칠해지므로 자식을 올려야 글자가 그림 위에 온다. `z-index: -1`로
+    그림을 내리는 길은 스택 문맥에 따라 슬라이드 바탕 아래로 사라진다.
+  - **`radius`가 프리셋과 어긋나면 에러**다 (rounded-rect에 없거나, 다른 프리셋에 있으면).
+    비어 있으면 CSS 기본(0)과 OOXML `roundRect` 기본(16.67%)이 달라 두 타깃이 다른 모서리를
+    그리고, 실을 자리가 없는 프리셋에 남아 있으면 웹만 둥글어진다. core가 이미 막지만 렌더러가
+    마지막 관문이다 (해석되지 않은 값 전반을 에러로 두는 기존 태도).
+  - **TASKS.md 체크박스는 건드리지 않았다** — iteration 4의 "테스트"·"구현" 항목이 웹과 PPTX에
+    걸쳐 있고 PPTX는 항목 05다 (부분적으로 걸친 체크박스는 손대지 않는다는 규약).
+
+- **검증**: `gofmt -l .`(무출력), `go vet ./...`, **`make test`(컨테이너) 초록**
+  (`internal/testkit`을 `-count=1`로 다시 돌려 캐시 없이 확인했다). **골든은 한 파일도
+  움직이지 않았다** (`git status`에 `*/golden/*`이 없다) — 도형 CSS·그림자 변수가 도형 있는
+  덱에만 나가고, 박스 크기 매핑을 함수로 뺀 것이 선언 순서를 바꾸지 않았다는 증거다.
+  브라우저 실측으로 확인한 사실: 회전 45도 도형의 잰 rect가 **120×120**(회전된 bbox는 169.7),
+  측정 뒤 뷰 속성이 지워져 같은 요소가 다시 169.7로 읽힘, `pad`가 잰 박스를 키우지 않고
+  텍스트를 24px 안으로 밀어냄, 앵커 3종이 서로 다른 y를 만들고 center의 위아래 여백이 같음,
+  `<grid cols="4">` 안 도형 카드가 같은 y·등간격 x·트랙 폭, 그림의 computed style이 실제 값이
+  됨(`fill: rgb(15,101,249)`, `filter: drop-shadow(... 0px 4px 16px ...)`, `opacity: 0.4`).
+  `_04_shape` 픽스처 8장을 실제로 렌더해 눈으로 봤다 — 12종이 모두 프리셋 모양으로 보이고
+  (chevron만 위에 적은 깊은 노치), 회전·대칭·투명도·그림자·앵커·카드 그리드가 그림에서 맞다.
+  호스트 `go test ./...`는 여전히 픽스처 골든 7건이 빨갛지만 **차이는 전부 `a:ext`**(텍스트 폭)이고
+  항목 02·03 노트의 호스트 폰트 차이와 같다 — 게이트는 컨테이너다.
+
+- **남긴 것**:
+  - **항목 05(PPTX)가 이어받을 표면**: `web.ShapePreset`(12종 → `prstGeom@prst`),
+    `web.ShapeAnchor`(`bodyPr@anchor`의 같은 규칙), 그리고 `shapeGeometries()` 각 행의
+    **`Adjust` 공식** — 늘린 웹 그림과 같은 모양을 내려면 측정된 `w`/`h`/`ss`로 `avLst`를
+    계산해야 한다. 잰 rect는 **회전 전 박스**이므로 `xfrm@rot`을 그대로 얹으면 된다(보정 없음),
+    테두리는 양 타깃 모두 외곽선 중앙이라 rect를 줄이지 않는다, 알파는 `solidFill`·`ln` 안에,
+    그림자는 도형 실루엣에(텍스트 아님), `flipH`/`flipV`는 텍스트를 뒤집지 않는다.
+    도형 **안** 텍스트의 잰 rect는 소비하지 않는다 (`txBody` 문단이 된다).
+  - **알려진 갈라짐 3건** (항목 06의 픽셀 비교가 수치로 볼 것):
+    (a) `cylinder`의 뚜껑에 OOXML은 `fill="lighten"`이 걸려 있는데 CSS에 대응이 없어(색 변형은
+    Iteration 8) 웹은 같은 채움에 선만 얹는다. (b) `cylinder`·`cloud`의 프리셋 세부는
+    `fill="none"` 경로(선)이므로 `border="none"` 도형에서는 사라진다. (c) `chevron` 등 `ss`
+    의존 프리셋의 비율 (위의 결정 — PPTX가 조정값으로 맞추면 두 타깃은 같아지고, PowerPoint의
+    기본 모양과는 다르다).
+  - **항목 07이 고칠 문서**: PRD §9.4의 `shadow` 행(`box-shadow` → `filter: drop-shadow`),
+    §7.5의 `<shape>` 웹 렌더 칸("div/SVG" → 박스 div + 그림 svg), 그리고 ADR 감이 셋 —
+    "도형 기하는 SVG 한 벌이고 정규 공간을 늘린다(조정값은 PPTX가 맞춘다)", "측정 뷰에서
+    변형을 끈다", "박스/그림의 외관 분담(회전만 박스)".
+  - **열린 질문 3건**:
+    (a) **정규 공간의 늘림을 언제 다시 볼 것인가.** 항목 06의 픽셀 비교가 `ss` 의존 프리셋의
+    차이를 수치로 보여줄 것이고, 저자가 조정값을 쓸 수 있게 되는 날(어휘 확장) 이 결정이
+    다시 열린다. 기하 표가 한 곳이므로 되돌리기는 표 하나를 고치는 일이다.
+    (b) **도형 안 리스트·중첩 도형이 없다** (파서가 닫아 두었다). 카드 안 불릿은 실물 덱의
+    흔한 단위이므로 어휘를 열 날이 온다 — 그때 도형의 flex 컨테이너 규칙(`.balpyo-shape >
+    .balpyo-text`)이 리스트까지 덮어야 한다.
+    (c) **`<image>`의 `fit`/`frame`(Iteration 5)이 같은 구조를 재사용할 수 있는가.** 지금
+    구조에서 `<image>`는 그림 svg 자리에 `<img>`가 오고 `frame`이 도형의 기하가 되는 모양이
+    자연스럽지만, `fit="cover"`는 클리핑이 필요하고 클리핑은 이 항목이 피한 `clip-path`의
+    문제를 다시 만난다 (SVG `clipPath` + `<image preserveAspectRatio>`가 그 자리일 것이다).
