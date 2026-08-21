@@ -70,16 +70,18 @@ func TestResolveContainerLayout(t *testing.T) {
 		{"wrap true", "wrap", "row", `wrap="true"`, soml.ContainerLayout{Wrap: true}},
 
 		// pad 1~4값 — CSS padding의 상·우·하·좌 축약과 같은 규칙으로 4변까지 풀린다.
-		{"pad 1값", "pad", "row", `pad="lg"`, soml.ContainerLayout{Pad: &soml.Pad{
+		// 박스 속성(pad·크기·ratio)은 `<shape>`와 **같은 구조체**에 담긴다 (soml.Box) —
+		// 도형 해석 테스트가 같은 문자열에서 같은 값을 얻는지 이 표와 대조한다.
+		{"pad 1값", "pad", "row", `pad="lg"`, soml.ContainerLayout{Box: soml.Box{Pad: &soml.Pad{
 			Top: soml.SpaceLength("lg", 36), Right: soml.SpaceLength("lg", 36),
-			Bottom: soml.SpaceLength("lg", 36), Left: soml.SpaceLength("lg", 36)}}},
-		{"pad 2값", "pad", "row", `pad="sm md"`, soml.ContainerLayout{Pad: &soml.Pad{
+			Bottom: soml.SpaceLength("lg", 36), Left: soml.SpaceLength("lg", 36)}}}},
+		{"pad 2값", "pad", "row", `pad="sm md"`, soml.ContainerLayout{Box: soml.Box{Pad: &soml.Pad{
 			Top: soml.SpaceLength("sm", 12), Right: soml.SpaceLength("md", 24),
-			Bottom: soml.SpaceLength("sm", 12), Left: soml.SpaceLength("md", 24)}}},
-		{"pad 3값", "pad", "row", `pad="4 8 12"`, soml.ContainerLayout{Pad: &soml.Pad{
-			Top: soml.Px(4), Right: soml.Px(8), Bottom: soml.Px(12), Left: soml.Px(8)}}},
-		{"pad 4값", "pad", "row", `pad="1 2 3 4%"`, soml.ContainerLayout{Pad: &soml.Pad{
-			Top: soml.Px(1), Right: soml.Px(2), Bottom: soml.Px(3), Left: soml.Percent(4)}}},
+			Bottom: soml.SpaceLength("sm", 12), Left: soml.SpaceLength("md", 24)}}}},
+		{"pad 3값", "pad", "row", `pad="4 8 12"`, soml.ContainerLayout{Box: soml.Box{Pad: &soml.Pad{
+			Top: soml.Px(4), Right: soml.Px(8), Bottom: soml.Px(12), Left: soml.Px(8)}}}},
+		{"pad 4값", "pad", "row", `pad="1 2 3 4%"`, soml.ContainerLayout{Box: soml.Box{Pad: &soml.Pad{
+			Top: soml.Px(1), Right: soml.Px(2), Bottom: soml.Px(3), Left: soml.Percent(4)}}}},
 
 		// 트랙 — 수치 하나는 개수(repeat), 그 밖은 목록이다.
 		{"cols 개수", "cols", "grid", `cols="4"`,
@@ -96,15 +98,15 @@ func TestResolveContainerLayout(t *testing.T) {
 				{Kind: soml.TrackAuto}, {Kind: soml.TrackFr, Value: 1}}}}},
 
 		// 크기 — `fill`은 해당 축의 100%로 눕는다 (표기가 둘이 되지 않게).
-		{"w 수치", "w", "row", `w="320"`, soml.ContainerLayout{Width: ptr(soml.Px(320))}},
-		{"w 백분율", "w", "row", `w="40%"`, soml.ContainerLayout{Width: ptr(soml.Percent(40))}},
-		{"w fill", "w", "row", `w="fill"`, soml.ContainerLayout{Width: ptr(soml.Percent(100))}},
-		{"h fill", "h", "row", `h="fill"`, soml.ContainerLayout{Height: ptr(soml.Percent(100))}},
-		{"min-w", "min-w", "row", `min-w="200"`, soml.ContainerLayout{MinWidth: ptr(soml.Px(200))}},
-		{"min-h", "min-h", "row", `min-h="120"`, soml.ContainerLayout{MinHeight: ptr(soml.Px(120))}},
-		{"max-w", "max-w", "row", `max-w="360"`, soml.ContainerLayout{MaxWidth: ptr(soml.Px(360))}},
-		{"max-h", "max-h", "row", `max-h="220"`, soml.ContainerLayout{MaxHeight: ptr(soml.Px(220))}},
-		{"ratio", "ratio", "row", `ratio="16:9"`, soml.ContainerLayout{Ratio: &soml.Ratio{W: 16, H: 9}}},
+		{"w 수치", "w", "row", `w="320"`, soml.ContainerLayout{Box: soml.Box{Width: ptr(soml.Px(320))}}},
+		{"w 백분율", "w", "row", `w="40%"`, soml.ContainerLayout{Box: soml.Box{Width: ptr(soml.Percent(40))}}},
+		{"w fill", "w", "row", `w="fill"`, soml.ContainerLayout{Box: soml.Box{Width: ptr(soml.Percent(100))}}},
+		{"h fill", "h", "row", `h="fill"`, soml.ContainerLayout{Box: soml.Box{Height: ptr(soml.Percent(100))}}},
+		{"min-w", "min-w", "row", `min-w="200"`, soml.ContainerLayout{Box: soml.Box{MinWidth: ptr(soml.Px(200))}}},
+		{"min-h", "min-h", "row", `min-h="120"`, soml.ContainerLayout{Box: soml.Box{MinHeight: ptr(soml.Px(120))}}},
+		{"max-w", "max-w", "row", `max-w="360"`, soml.ContainerLayout{Box: soml.Box{MaxWidth: ptr(soml.Px(360))}}},
+		{"max-h", "max-h", "row", `max-h="220"`, soml.ContainerLayout{Box: soml.Box{MaxHeight: ptr(soml.Px(220))}}},
+		{"ratio", "ratio", "row", `ratio="16:9"`, soml.ContainerLayout{Box: soml.Box{Ratio: &soml.Ratio{W: 16, H: 9}}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

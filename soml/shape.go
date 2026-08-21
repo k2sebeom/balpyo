@@ -35,6 +35,49 @@ func ShapeTypes() []string {
 	return types
 }
 
+// BorderStyle은 `border` 축약의 스타일 조각이다 (PRD §8.3의 `"1 solid muted"`).
+//
+// **이름은 CSS 쪽이다** (`dashed`/`dotted`, OOXML의 `dash`/`dot`이 아니다). 근거는 축약
+// 자체가 CSS `border`의 표기이기 때문이다 — 저자가 아는 표기를 그대로 쓰는 것이 이
+// 저장소의 결이고(표기를 새로 발명하지 않는다), CSS 모양의 축약 안에 OOXML 어휘를 섞으면
+// 둘 다 아닌 제3의 표기가 된다. PRD §7.6 표의 `dash` 행 예시도 `dashed`다.
+//
+// 어휘를 셋으로 닫은 기준은 **양 타깃에 대응이 있는 것만**이다: 셋은 OOXML `prstDash`의
+// `solid`/`sysDash`/`sysDot`(계열 선택은 렌더 매핑의 몫 — 항목 05)에 대응한다. CSS의
+// `double`/`groove`/`ridge`는 `prstDash`에 없어 PPTX에서 조용히 실선이 되므로 열지 않는다.
+type BorderStyle string
+
+const (
+	BorderSolid  BorderStyle = "solid"
+	BorderDashed BorderStyle = "dashed"
+	BorderDotted BorderStyle = "dotted"
+)
+
+// BorderStyles는 테두리 스타일 어휘 전체다 (순서 = 진단 메시지 순서 — 진단이 결정적이어야
+// 하는 이유는 TextAligns와 같다).
+func BorderStyles() []BorderStyle {
+	return []BorderStyle{BorderSolid, BorderDashed, BorderDotted}
+}
+
+// Flip은 도형 대칭이다 (PRD §7.6의 `flip="h"`).
+//
+// 값 셋을 닫은 근거는 OOXML `xfrm@flipH`/`flipV` 두 불리언이다 — 축이 둘이므로 뜻 있는
+// 조합은 h·v·둘 다 셋뿐이고, "둘 다"의 표기를 `hv`로 정한 이유는 축약이 두 축을 쓴 순서를
+// 그대로 읽히게 하는 것이다 (`h v` 공백 표기는 조각을 세는 새 문법을 만들고, `both`는
+// 축이 셋 이상으로 늘 수 없는데도 축 이름을 지운다).
+type Flip string
+
+const (
+	FlipH    Flip = "h"
+	FlipV    Flip = "v"
+	FlipBoth Flip = "hv"
+)
+
+// Flips는 대칭 어휘 전체다 (순서 = 진단 메시지 순서).
+func Flips() []Flip {
+	return []Flip{FlipH, FlipV, FlipBoth}
+}
+
 // 도형 속성 (PRD §7.6 표의 shape 행). 넷으로 나눈 이유는 소비자가 다르기 때문이다:
 // 고유 속성은 파서·참조 해석(Iteration 7)이, 외관은 캐스케이드가, 박스 속성은 레이아웃
 // 컨테이너와 **공유**한다 (layout.go의 boxPadAttrs·boxSizeAttrs). 이어 붙인 순서가 곧

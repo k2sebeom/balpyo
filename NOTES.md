@@ -1,1678 +1,257 @@
-# NOTES — 항목별 리뷰 노트
-
-## Iteration 01 · 05-pptx-text — 텍스트 박스를 spTree에 넣고 테마 파트를 토큰 표에서 컴파일
-<!-- item: 01/05-pptx-text -->
-
-- **한 것**:
-  - `render/pptx/shape.go` 신규 — `<text>` 하나 → `p:sp` 하나 (문서 순서 = spTree 순서 =
-    z-순서). `p:nvSpPr`(결정적 id 2부터, 이름 = `text s0.0` 지오메트리 식별자),
-    `p:spPr`(`a:xfrm` = 잰 rect의 EMU, `prstGeom rect`, 채움/선 없음), `p:txBody`
-    (`bodyPr` 인셋 0 + `noAutofit`, `pPr` `algn`+`lnSpc spcPct`, `rPr` `sz`/`b`/색/폰트).
-  - `render/pptx/theme.go` 신규 — clrScheme 12자리와 fontScheme major/minor를
-    `soml.Theme` 토큰 표에서 컴파일. 하드코딩 Office 기본값(`dk2=44546A`,
-    `accent1=4472C4`) 제거 — `color="accent1"`이 웹과 PPTX에서 같은 색이 된다.
-  - `render/pptx/parts.go` — `buildParts(deck, g)`로 지오메트리 수용, 슬라이드 템플릿에
-    `{{.Shapes}}`, 테마 템플릿에 `{{.ClrScheme}}`/`{{.FontScheme}}`, 낡은 "Iteration 0"
-    주석 갱신. `render/pptx/pptx.go` — 패키지 주석 갱신, `r.geometry` 전달.
-  - `render/pptx/units.go` — `LineSpacing`(배수 → spcPct 1/1000 %) 추가.
-  - 테스트: `shape_test.go`(구조·외관·schemeClr 보존·이스케이프·개행 일치·빈 요소·
-    미매핑 태그·결정성), `theme_test.go`(12자리·폴백·필수 슬롯·중복/슬롯 없는 토큰),
-    `soffice_test.go`(LibreOffice 열림 — 외부 테스트 패키지, testkit 순환 회피),
-    `units_test.go`(LineSpacing), `pptx_test.go`(testTheme 도입 — core 최소 테마와
-    다른 값으로 "표에서 나왔다"를 증명, 배경 = bg 토큰 테스트, 테마 없는 덱 거부).
-  - 골든: `00_empty`의 `theme1.xml`만 변경 (전 줄이 토큰 표 컴파일로 설명된다 —
-    name balpyo→minimal, dk2/accent1이 muted/accent1 토큰 값, 빈 자리는 폴백).
-
-- **설계 결정과 근거**:
-  - **인셋 0**: 웹이 잰 rect는 border box이고 `.balpyo-text`는 padding·border 0이라 곧
-    콘텐츠 박스다 (`render/web.contentCSS`). OOXML 기본 인셋(91440/45720)을 두면 좌표는
-    맞는데 글자만 밀린다. 대안(기본 인셋 유지 + rect 보정)은 보정값이 두 곳으로 갈라져 버렸다.
-  - **굵기 임계값 600**: regular/bold 두 벌 폰트에서 CSS 폰트 매칭이 600부터 bold 면을
-    고른다 — 웹이 굵게 그리는 지점과 PPTX가 굵게 내는 지점을 맞춘다.
-  - **빈 요소·크기 0 박스도 도형을 낸다**: 건너뛰면 spTree 순서·도형 id가 내용에 따라
-    흔들리고, 저자가 빈 요소의 존재를 산출물에서 확인할 수 없다. 크기 0 도형은 OOXML에서
-    유효하다. 빈 텍스트는 런 없는 문단으로 남는다.
-  - **clrScheme 빈 자리는 가장 가까운 토큰에서 빌린다** (lt2←lt1, dk2←dk1,
-    accent2~6·hlink·folHlink←accent1; dk1/lt1/accent1은 필수): 표의 모든 토큰이 자기
-    슬롯을 가지므로 빌린 자리를 참조하는 도형은 없다 — 채움은 PowerPoint 테마 색 편집
-    UI를 위한 것이고, Office 기본값을 남기면 팔레트 밖 색이 나온다.
-  - **개행**: 파서가 원문 개행을 공백으로 접으므로 (soml.Parse) 두 렌더러가 같은 문자열을
-    받는다 — `a:br`을 내지 않고, 웹·PPTX 산출물을 한 테스트에서 대조해 못 박았다.
-  - **정렬 매핑** start/center/end/justify → `l`/`ctr`/`r`/`just`: OOXML `algn`의
-    `l`/`r`은 rtl에서 뜻이 뒤집히는 논리 값이라 논리 이름과 정확히 짝이 맞는다.
-  - **테마 없는 덱은 조립 거부**: 기본값으로 채우면 웹과 다른 색을 내는 파일이 조용히
-    만들어진다 (`core.Resolve`를 거치라는 에러).
-  - **mono 폰트는 리터럴 typeface**: fontScheme에는 major/minor 두 자리뿐 —
-    `soml.FontToken.Scheme`이 이미 정한 계약을 따랐다.
-
-- **검증**: `gofmt -l .`(무출력), `go vet ./...`, `go test ./...`, `make golden`
-  (theme1.xml만 변경), `make test`(컨테이너) 전부 초록.
-  `TestLibreOfficeOpensTextShapes`를 컨테이너에서 -v로 단독 실행해 PASS(0.49s, 복구·경고
-  없음 — sofficeNoise 검사 통과)를 확인했다. 한글·`&`·`>`·빈 요소·리터럴 색이 든 덱이다.
-
-- **남긴 것**:
-  - `rPr@lang`을 내지 않는다. 덱에 `Lang`이 있으므로 (`balpyo.json`) 붙일 수 있지만,
-    맞춤법 검사 언어 외 렌더에는 영향이 없어 뺐다 — 필요해지면 여기서 정한 결정을 뒤집는다.
-  - **CSS `line-height` 배수와 OOXML `spcPct`는 기준이 다를 수 있다**: CSS는 폰트 크기의
-    배수, PowerPoint 계열은 "단일 줄 간격"의 배수(폰트 고유 줄 높이 기준)로 해석하는
-    구현이 있다. 항목 지시대로 `LineHeight × 100000`으로 냈고, 실제 오차는 항목 07의
-    픽셀 비교·줄바꿈 임계값 측정에서 드러난다 — 어긋나면 spcPts(절대값) 전환이 대안이다.
-  - `fmtScheme`은 하드코딩으로 남는다 (도형 기본 스타일 — Iteration 10의 테마 패키지가
-    해체). `<note>` → 노트 슬라이드는 항목 06, `_01_text` 픽스처 활성화·골든은 항목 07.
-
-## Iteration 01 · 06-pptx-notes — `<note>`를 PPTX 노트 슬라이드로 매핑
-<!-- item: 01/06-pptx-notes -->
-
-- **한 것**:
-  - `render/pptx/parts.go` — 노트가 있는 덱에만 `ppt/notesMasters/notesMaster1.xml`
-    (+rels → theme1.xml)과, 노트가 있는 슬라이드마다 `ppt/notesSlides/notesSlideN.xml`
-    (+rels → 해당 슬라이드·노트 마스터)을 낸다. `[Content_Types].xml` Override,
-    `presentation.xml`의 `p:notesMasterIdLst`, `presentation.xml.rels`의 노트 마스터
-    관계(테마 뒤 덧붙임), 슬라이드 rels의 `rId2` → notesSlide. `slideRelsXML` 상수를
-    `slideRelsTemplate`로 바꿨다 (노트 유무 조건). `notesMasterLayout`이 노트 페이지
-    안 sldImg/body 플레이스홀더 좌표를 계산한다 (이미지 높이만 슬라이드 종횡비 따라 계산).
-  - 테스트: `notes_test.go` 신규 — 파트·관계·Content_Types 존재/부재, rels가 정확한
-    슬라이드를 가리키는지(파트를 풀어 단정), rId 규칙 불변(테마 rId5 유지·노트 마스터
-    rId6), xfrm 상속(노트 슬라이드에 그룹 xfrm 하나뿐), 이스케이프, 웹 `balpyo-notes`와의
-    개행 일치, `geom.Refs`가 노트를 세지 않음 + 지오메트리 없는 렌더 성공.
-    `soffice_test.go` — 2번 슬라이드에만 노트를 넣어 번호가 비어 뛰는 경우(notesSlide2만
-    존재)를 LibreOffice 게이트에 태웠다.
-
-- **설계 결정과 근거**:
-  - **notesSlideN의 N = 슬라이드 번호** (slidePart와 같은 n, 노트 없는 슬라이드에서 번호가
-    비어 뛴다): 노트 있는 것만 1부터 세면 별도 카운터가 생기고, 카운터와 rels의 슬라이드
-    번호가 어긋나는 순간 노트가 엉뚱한 슬라이드에 붙는다 — 파일은 열리므로 조용한 실패다.
-    파트 이름을 슬라이드 번호에서 직접 유도하면 그 어긋남을 만들 방법 자체가 없다. OPC
-    파트 이름은 임의 문자열이고 소비자는 관계만 따라간다 — 빈 번호(notesSlide2만 있는 덱)를
-    LibreOffice가 경고 없이 여는 것을 확인했다.
-  - **노트 마스터 관계는 테마 뒤에 덧붙인다** (rId = 슬라이드 수 + 3): presRelsTemplate의
-    기존 규칙(rId1=마스터, rId2..=슬라이드, 그다음=테마)의 어느 번호도 밀지 않는 유일한
-    자리다. 중간에 끼우면 슬라이드 관계가 한 칸씩 밀려 엉뚱한 파트를 가리킨다.
-  - **노트가 하나도 없는 덱은 노트 마스터 자체를 내지 않는다**: 빈 `<note></note>`도
-    Notes == ""이라 노트 파트를 내지 않는다 (웹이 balpyo-notes div를 내지 않는 판정과
-    같다). 덕분에 00_empty 골든이 이 항목 전후로 바이트 단위로 같다.
-  - **좌표는 마스터에서 상속** — 노트 슬라이드 플레이스홀더에 xfrm을 내지 않는다. 노트는
-    화면에 렌더되지 않으므로 잰 박스가 없고, 지오메트리를 요구하면 노트만 있는 덱이
-    브라우저를 띄우게 된다. 마스터 좌표는 PowerPoint 관례(여백 0.75in, 이미지 y=1.25in)를
-    따르되 이미지 높이는 슬라이드 종횡비로 계산한다 — 기본값을 그대로 박으면 4:3 덱에서
-    이미지와 본문이 겹친다.
-  - **노트 마스터의 테마 = theme1.xml 공유**: 전용 theme2.xml을 내는 대안(PowerPoint가
-    저장할 때 하는 방식)은 파트가 하나 늘 뿐 지금은 값이 없다 — 한 파트가 여러 관계의
-    대상이 되는 것은 OPC에서 유효하고, LibreOffice 게이트가 통과한다.
-  - **개행 정책은 파서 한 곳**: soml.Parse가 원문 개행을 공백으로 접으므로 웹 balpyo-notes와
-    PPTX `a:t`가 같은 문자열을 받는다 — 항목 05의 텍스트와 같은 방식으로, 두 산출물을 한
-    테스트에서 대조해 못 박았다 (`TestRenderNotesNewlinesAgreeWithWebRenderer`).
-
-- **검증**: `gofmt -l .`(무출력), `go vet ./...`, `go test ./...`, `make test`(컨테이너)
-  전부 초록. 00_empty 골든 무변경 (TestFixtures 통과 — 노트 없는 덱은 산출이 같다).
-  `TestLibreOfficeOpensTextShapes`를 컨테이너에서 -v 단독 실행해 PASS(0.51s, 복구·경고
-  없음) — notesSlide2만 있고 notesSlide1이 없는 덱이다.
-
-- **남긴 것**:
-  - **notesStyle 타이포그래피(12pt)는 자리 표시자다** — 테마 토큰 표에서 컴파일하는 일은
-    Iteration 10의 테마 패키지 포맷이 맡는다 (notesMasterTemplate 주석에도 남겼다). 노트는
-    발표자 화면 전용이라 웹·PPTX 픽셀 일치 계약 밖이고, 지금 하드코딩해도 두 타깃이
-    갈라지지 않는다.
-  - `docProps/app.xml`에 `<Notes>` 수를 넣지 않았다 — PowerPoint가 채우는 통계 필드지만
-    렌더에 영향이 없고, 넣으면 노트 추가마다 app.xml 골든이 흔들린다. 필요해지면 여기서
-    정한 결정을 뒤집는다.
-  - 발표자 뷰(웹)는 P1, `_01_text` 픽스처 활성화·골든·픽셀 비교는 항목 07, note.md 문서는
-    항목 08이다.
-
-## Iteration 01 · 07-fixtures — 01_text 골든 + 픽셀 비교 + 줄바꿈 임계값 측정
-<!-- item: 01/07-fixtures -->
-
-- **한 것**:
-  - `testdata/fixtures/_01_text` → `01_text` 개명 — 픽스처 러너가 집는다. 참조 갱신:
-    `render/web/fixture_test.go`(상수), `core/resolve_test.go`(경로),
-    `render/pptx/notes_test.go`(주석).
-  - 골든 신규: `01_text/golden/` (index.html + PPTX 파트 24개 — 전 파트를 눈으로 훑었다).
-  - `internal/testkit/ink.go` 신규 — `InkBands`: 렌더 PNG의 영역에서 글줄 잉크 띠를 센다
-    (배경은 최빈색, 잉크 판정 채널 64). `ink_test.go`에 합성 이미지 단위 테스트.
-  - `internal/testkit/text_fixture_test.go` 신규 — 픽스처 수준 검증 4종: 골든 파트 목록
-    전수(노트 파트는 슬라이드 1·3에만), 슬라이드 파트에 `srgbClr` 없음(전부 `schemeClr`),
-    xfrm == 지오메트리 측정값(+여유)의 EMU, **잉크 띠 대조**(웹/LibreOffice 줄 수·위치·폭).
-  - **측정이 드러낸 구현 결함 2건을 고쳤다** (둘 다 이 항목이 측정하기로 한 계약의 구멍):
-    - `render/pptx/units.go` `LineSpacing` — `spcPct`(배수) → **`spcPts`(절대 pt)**.
-      항목 05가 "어긋나면 spcPts 전환"으로 남겨 둔 대안 그대로다.
-    - `render/pptx/shape.go` `TextBoxRect` 신규 — PRD §9.3의 "측정 크기 + 안전 여유"가
-      미구현이었다. 폭 +4%, 정렬이 닻을 내린 변은 고정(start→오른쪽, center→양쪽,
-      end→왼쪽, justify→여유 없음).
-  - `internal/testkit/pixel.go` `DefaultDiffOptions` — MaxRatio 2%(가안) → **2.5%(측정값)**.
-  - `PRD.md` §13-1에 측정 수치 기입, `TASKS.md` 테스트·PRD 기입 체크박스 [x].
-
-- **설계 결정과 근거**:
-  - **줄 수 판정은 요소 박스 안이 아니라 슬라이드 전체 잉크 띠로 한다**: 박스는 잰 줄
-    수만큼의 높이로 고정되므로 다른 엔진이 만든 추가 줄은 박스 **밖**에 그려진다 — 박스
-    안만 재면 갈라짐이 측정에서 빠진다 (첫 구현이 실제로 그렇게 조용히 통과했다).
-  - **띠 비교는 웹 잉크 vs LibreOffice 잉크**: 지오메트리의 줄 박스(glyph box)는 잉크보다
-    커서 잉크 중심과 맞대면 그 차이가 엔진 오차처럼 보인다. 줄 박스는 줄 수와 요소
-    이름에만 쓴다.
-  - **spcPts 전환**: spcPct는 CSS(폰트 크기 배수)와 LibreOffice(폰트 고유 줄 높이 배수)의
-    기준이 달라 같은 150%가 글줄을 +8~13px 밀었다. 절대값 전환 후 +2~5px (첫 기준선
-    배치의 엔진 차만 남는다). 실험은 컨테이너 빌드 pptx를 XML만 바꿔 LibreOffice로
-    다시 렌더해 확인한 뒤 구현했다.
-  - **안전 여유 4%**: LibreOffice는 한글↔라틴 경계에 스크립트 간격을 넣어 혼합 문자 줄을
-    최대 +3.3% 넓게 그린다 (OOXML 속성으로 끌 수 없다). 여유 2.4%였던 002 본문이 정확히
-    이것 때문에 1줄→2줄로 갈라졌고, 4%는 측정 최대치 + 여유다. 더 키우지 않는 이유:
-    반대 방향 위험(웹이 접은 단어가 넓힌 박스에 들어가 줄이 줄어드는 것)이 커진다.
-  - **픽셀 허용 오차 2.5% (채널 32 유지)**: 측정 최대 2.1%(표지 — 글자가 클수록 잔차
-    픽셀이 많다)이고 구성이 전부 엔진 소관(기준선 +2~5px, 스크립트 간격 글리프 흘림,
-    래스터라이저 AA)이다. 구조적 갈라짐은 잉크 띠 검사가 따로 잡으므로 비율을 더 조이지
-    않았다 — 헐렁하게 여는 것도, 잔차를 비율로 잡는 척하는 것도 피했다.
-  - 회귀 임계값: 줄 수 차 **0**, 글줄 세로 중심 **±6px**, 글줄 잉크 폭 **±4%**
-    (`text_fixture_test.go` 상수 — 근거 주석 포함).
-
-- **검증**: `gofmt -l .`(무출력), `go vet ./...`, 호스트 `go test ./...`, `make test`
-  (컨테이너) 전부 초록. `make golden` 재실행 시 무변경(결정성). `make review` 갤러리와
-  diff 이미지를 눈으로 확인 — 남은 diff는 2~5px 이동 잔상뿐, 줄 배치 갈라짐 없음.
-  CLI 경로: `go run ./cmd/balpyo build --project testdata/fixtures/01_text --target
-  html,pptx` 종료 0, index.html + text-deck.pptx 산출. 측정표 (컨테이너, 요소 = 지오메트리
-  식별자):
-
-  | 요소 | 텍스트 | 웹 줄수 | 최장 줄 px | 여유 px(%) | LO 줄수 | 세로 중심 Δpx | 잉크 폭 Δ% |
-  |---|---|---|---|---|---|---|---|
-  | s0.0 | Platform Team | 1 | 138 | 1014 (736.2%) | 1 | +2.0 | +0.0 |
-  | s0.1 | 2026 아키텍처 리뷰 | 1 | 533 | 619 (116.1%) | 1 | +2.0 | +2.7 |
-  | s0.2 | 상반기 회고와… | 1 | 262 | 890 (340.4%) | 1 | +5.0 | −1.2 |
-  | s1.0 | 올해의 세 가지 변화 | 1 | 293 | 859 (293.1%) | 1 | +3.0 | −1.0 |
-  | s1.1 | 모놀리스 분리를… | 1 | 1125 | 27 (**2.4%**) | 1 | +4.0 | **+3.3** |
-  | s1.2 | 2026 H1 | 1 | 70 | 1082 (1557.6%) | 1 | +3.0 | −1.5 |
-  | s2.0 | 질의응답 (Q and A) | 1 | 477 | 675 (141.5%) | 1 | +2.0 | +2.5 |
-
-  최소 여유 비율 2.44% (s1.1). 픽셀 diff: 슬라이드별 2.097% / 1.962% / 1.203%
-  (채널 32 초과 픽셀 비율). 수정 전에는 s1.1이 LibreOffice에서 2줄로 갈라졌고
-  (스크립트 간격 +2.5% > 여유 2.4%), spcPct 시절 세로 오프셋은 +8~13px였다.
-
-- **남긴 것**:
-  - **사람 확인 남음 (TASKS ③)**: `make review` 갤러리와 `review/01_text/text-deck.pptx`를
-    Keynote/PowerPoint로 직접 연다. 스크립트 간격은 LibreOffice 렌더러의 동작이라
-    PowerPoint/Keynote에서는 웹에 더 가깝게 나올 가능성이 높다 — 확인되면 좋고, 아니면
-    그 관찰을 여기 남긴다. 리뷰 포인트 체크박스는 그래서 아직 [ ]다 (항목 08이 마무리).
-  - 호스트 `go test`가 01_text 골든 비교를 통과하는 이유는 박스 rect가 폰트 독립이어서다
-    (폭 = 컨테이너 폭, 높이 = 줄 수 × line-height). 호스트 폰트가 줄 수를 다르게 접으면
-    호스트만 빨개질 수 있다 — 게이트는 컨테이너이므로 수용했다.
-  - `textAligns`(text_fixture_test.go)는 슬라이드 직속 `<text>`만 안다 — 중첩 요소가
-    생기면 geom.Refs와 같은 재귀로 바꿔야 한다 (지금은 t.Fatalf 가드).
-  - `InkBands`는 단색 배경 가정(최빈색)이다 — 도형/이미지가 생기는 iteration에서는 잰
-    영역을 좁히거나 배경 판정을 바꿔야 할 수 있다.
-  - justify 정렬은 안전 여유가 없어 스크립트 간격 위험이 남는다 (`TextBoxRect` 주석) —
-    justify를 쓰는 픽스처가 생기면 그때 측정한다.
-
-## Iteration 01 · 08-docs — Iteration 1 레퍼런스·내부 문서와 ADR 3건
-<!-- item: 01/08-docs -->
-
-- **한 것**:
-  - 태그 레퍼런스 신규: `docs/reference/soml/slide.md`·`text.md`·`note.md` — 통일 형식
-    (속성 표 → SOML 예제 → 웹/PPTX 렌더 결과 → 빌드 에러 조건). 예제는 전부
-    `testdata/fixtures/01_text`의 실제 슬라이드이고, 에러 조건 표의 메시지는
-    `soml/parse.go`·`core/resolve.go`·`core/validate.go`의 실제 진단 문자열이다.
-  - `docs/reference/appearance.md` 신규 — role/size/color/align의 웹(CSS)/PPTX(OOXML)
-    매핑 표, 캐스케이드 순서, **토큰 색 `var(--balpyo-color-*)` ↔ `a:schemeClr` 보존
-    계약을 본문으로** 명문화. minimal 테마의 토큰 표(색 4·폰트 3) 포함.
-  - `docs/reference/cli.md` 신규 — `build`의 옵션·우선순위·종료 코드·진단 출력 형식과
-    `version`/`help`. init/server는 없으므로 쓰지 않았다.
-  - `docs/internals/geometry-pass.md` 신규 — 흐름도, 슬라이드 상대 좌표, 덱 대조, 단위
-    경계(EMU·pt는 render/pptx만), 텍스트 박스 고정 전략(+4% 여유·인셋 0·spcPts). 코드
-    주석을 옮기지 않고 전체 그림과 순서만 잇고 각 결정은 주석·ADR로 링크했다.
-  - `docs/internals/architecture.md` — 덱 모델 절 완성 (노드 종류, 소유 경계 3층, 외관이
-    붙는 자리, 지오메트리 곁 표 이유). 파이프라인 그림·패키지 표에 `render/geom`을 반영
-    (이전 판은 지오메트리 패스를 render/pptx 소유로 적어 실제 패키지 구조와 어긋났다).
-  - ADR 3건: `0003-inline-style-appearance.md`(인라인 style — data-balpyo-id 생성 규칙
-    대안을 버린 이유 포함), `0004-geometry-side-table.md`(곁 표 + 생성자 주입),
-    `0005-line-spacing-and-slack.md`(spcPts + 안전 여유 4% — 항목 07의 측정이 근거).
-    `docs/decisions/index.md`와 TASKS.md 결정 로그 표 갱신 (I1 임계값 행이 0005를 가리킨다).
-  - `mkdocs.yml` nav에 새 페이지 6건 추가, `docs/reference/index.md`·`docs/index.md`의
-    "현재 상태"를 구현 완료 상태로 갱신, TASKS.md Iteration 1의 구현·문서 체크박스 [x].
-
-- **설계 결정과 근거**:
-  - **ADR은 3건으로 판단했다.** 항목 지시의 2건에 더해, 항목 07의 spcPts + 안전 여유는
-    모든 텍스트 박스에 걸리는 횡단 결정이고 측정 데이터가 근거라 0005로 남겼다. NOTES의
-    다른 단독 결정들(인셋 0, 굵기 임계 600, notesSlideN=슬라이드 번호, clrScheme 빈 자리
-    차용, 개행 접기)은 **국소적 매핑 선택**이라 ADR로 올리지 않았다 — 각 결정의 왜는
-    코드 주석과 NOTES에 이미 있고, 전부 ADR로 올리면 색인이 결정의 무게를 구별하지
-    못하게 된다.
-  - 에러 조건 표는 구현의 진단 문자열을 그대로 옮겼다 — "문서와 메시지가 갈라지면 문서가
-    틀린 것"이라는 항목 규칙대로, 문서가 메시지의 사본임을 명시적으로 남긴다.
-  - 렌더 결과 설명의 OOXML 구조(cSld@name, ph type="body", bgRef 등)는 골든 파트에서
-    직접 확인하고 적었다.
-
-- **검증**: `make docs`(mkdocs --strict) 통과. 코드 변경이 없는 항목이라 Go 게이트는
-  항목 07 커밋의 초록이 유효하고, 커밋 전에 `gofmt -l .`(무출력)·`go vet ./...`·
-  `go test ./...`·`make test`를 다시 돌려 확인했다.
-
-- **남긴 것**:
-  - **낡은 주석 2곳** (문서 항목이라 고치지 않았다 — 코드 변경 금지 규칙): 항목 07이
-    spcPct → spcPts로 바꾼 뒤에도 `soml/appearance.go`의 `TextStyle.LineHeight` 주석과
-    `render/web/style.go`의 줄높이 주석이 "OOXML lnSpc@spcPct가 배수를 받는다"고 말한다.
-    다음 코드 항목이 고친다.
-  - **Iteration 1의 남은 칸은 리뷰 포인트 체크박스 하나다** — LibreOffice 쪽 수치는
-    확정됐지만 Keynote/PowerPoint에서 같은 줄바꿈을 유지하는지는 사람이
-    `review/01_text/text-deck.pptx`를 직접 열어 확인하는 단계(TASKS ③)가 남았다.
-    끝나지 않은 것을 [x]로 만들지 않았다.
-  - `docs/index.md` 본문의 목표 명세(CLI 전체 표면, 태그 카탈로그)는 그대로 두었다 —
-    개요 문서는 비전을 말하고, "지금 동작하는 것"의 경계는 상태 노트와 레퍼런스가 긋는다.
-
-## Iteration 02 · 01-parser-subset — 파서가 HTML 텍스트 서브셋 어휘를 연다
-<!-- item: 02/01-parser-subset -->
-
-- **한 것**:
-  - `soml/subset.go` 신규 — 요소 종류 카탈로그. `ElementKind`(블록/리스트 컨테이너/리스트
-    항목/인라인) + `KindOf`, void 판정 `IsVoidElement`, `ListItemElement`/`BreakElement`
-    상수. 종류별 이름은 순서 있는 슬라이스(진단·문서 순서)이고 색인 맵은 거기서 파생된다.
-  - `soml/parse.go` — `elementSpecs`를 카탈로그에서 `buildElementSpecs`로 파생 (태그를
-    카탈로그에 더하면 문법이 따라온다). 콘텐츠 모델 3종 추가: `modelInline`(문자 데이터 +
-    인라인 태그 — `<text>`·블록·`<li>`), `modelPre`(공백 원문 보존), `modelVoid`(`<br>`).
-    `checkPlacement`가 부모 대신 **열린 조상 스택**을 받는다 (`<a>` 안의 `<a>`는 사이에
-    인라인이 끼어도 에러). 배치 진단: li 자리, 중첩 리스트("아직"), 블록 안 블록, a 안 a,
-    인라인 전용 모델 위반. `<ul>` 안 문자 데이터의 힌트는 `<li>로 감싼다`. void 위반은
-    여는 태그에서 한 번만 진단하고 내용은 조용히 지나간다. `trimPreEdges`가 pre 양 끝
-    개행을 하나씩만 벗긴다 (CRLF 포함).
-  - `soml/subset_test.go` 신규 — 정상 트리 표(트리 전체를 `dumpNodes` 한 줄로 단정),
-    에러 표(line:col + 문구 전수), 인라인 경계 공백 계약 표, pre 공백 보존 표, 비활성
-    픽스처를 읽는 파싱 테스트.
-  - `soml/parse_test.go` — 어휘 확장으로 계약이 바뀐 두 단정만 갱신: 어휘 진단 테스트가
-    `<h1>`(이제 어휘 안) 대신 `<h6>`을 쓰고, text 안의 text 메시지가 "문자 데이터와
-    인라인 태그만"이 됐다. 그 외 기존 테스트는 전부 그대로 통과한다.
-  - `testdata/fixtures/_02_text_subset/` 신규 (비활성 — `_` 접두): 제목 위계·리스트·
-    인라인 서식·pre·역할 등가 확인 5장. 활성화(골든)는 항목 08의 몫이다.
-- **설계 결정과 근거**:
-  - **인라인 경계 공백 계약**: 요소(블록이든 인라인이든) 양 끝의 공백은 잘리고, 형제
-    사이의 공백은 내용이다. `<strong>배포 </strong>자동화`의 태그 안쪽 끝 공백은 잘린다 —
-    공백은 태그 밖에 쓴다. HTML처럼 노드 경계를 넘는 접기(인접 공백을 하나로)를 하지
-    않은 이유: 닫힌 자식 목록을 형제 상황에 따라 되돌아가 고쳐야 해서 접기 결과가 문맥
-    의존이 되고, 균일한 "양 끝 트리밍"이 런 분할(항목 06)에 더 예측 가능한 입력을 준다.
-    이 규칙으로 웹(브라우저 재접기)과 PPTX(접기 없음)가 같은 문자열을 본다.
-  - **`<br>`은 자기 닫힘만 받는다**: 내용이 없어도 `<br></br>`는 에러다 — "내용이 있을
-    때만 에러"보다 계약이 단순하고, 진단이 여는 태그 한 곳에서 한 번만 난다. 진단 후에도
-    스택에 올려 `</br>`가 "짝 없는 닫는 태그" 진단을 덧내지 않게 했다.
-  - **href 없는 `<a>`의 진단은 core(항목 04)의 몫**이다 — 파서는 이름 allowlist만 보고,
-    "속성이 있어야 한다"는 값 층의 요구다. `buildElementSpecs`의 주석에 남겼다.
-  - **`<span size>`는 allowlist가 막는다** (color·weight만 연다): 런 하나가 커지면 웹의
-    줄 박스 높이가 변하는데 PPTX 줄간격은 문단 절대값(spcPts)이라 글줄이 갈라진다 —
-    core가 `size="%"`를 막은 것과 같은 근거.
-  - **pre는 양 끝 개행을 하나씩만 벗긴다**. `code\n  </pre>`처럼 개행 뒤 들여쓰기가 붙으면
-    "직전"이 아니므로 벗기지 않는다 — pre 안 공백은 내용이라는 원칙이 우선한다. v1의
-    pre는 문자 데이터만 담는다 (`<pre><code>` 관용은 코드 하이라이팅 결정과 함께 연다).
-  - **중첩 리스트는 에러**이고 메시지가 "아직 지원하지 않는다"고 말한다 — PPTX `lvl` 매핑
-    없이 열면 한 타깃만 동작한다.
-  - **`reveal`은 열지 않았다** (PRD §7.7 예제에 있지만): 웹 런타임 reveal은 Phase 2이고,
-    렌더 없는 속성을 어휘에 열면 닫힌 어휘가 막으려던 조용한 무시가 된다.
-  - **인라인은 슬라이드 직속이 될 수 없다** — 문단 없는 런은 두 타깃 어디에도 대응하는
-    구조가 없다. `<slide>`의 자식은 기존 2종 + 블록 + 리스트 컨테이너뿐이다.
-- **검증**: `gofmt -l .`(무출력), `go vet ./...`, `go test ./...`, `make test`(컨테이너)
-  전부 초록. 새 픽스처 5장은 `TestParseTextSubsetFixture`가 진단 0건으로 파싱함을 확인.
-  골든 변경 없음 — 렌더 매핑이 없는 항목이라 기존 픽스처 산출물은 그대로다.
-- **남긴 것**:
-  - 항목 02~04가 `KindOf`로 역할 등가·캐스케이드·인라인 해석을 얹고, 항목 05~07이 같은
-    카탈로그로 렌더 매핑(블록 vs 런)을 만든다. 항목 08이 `_02_text_subset`의 `_`를 떼고
-    골든을 만든다.
-  - **열린 질문 — 블록 태그의 속성**: `<h1 align="center">`처럼 블록에 `<text>`의 외관
-    속성을 열지 PRD가 정하지 않아 **일단 전부 닫았다** (속성 없음). 역할 등가(항목 03)가
-    "블록 = `<text role>`의 축약"을 어디까지 밀지 정할 때 함께 정해야 한다.
-  - macOS Finder가 만든 `.DS_Store`가 골든 디렉토리에 들어와 testkit 대조를 깨뜨렸다
-    (추적되지 않은 파일이라 삭제로 해결). `.gitignore` 추가는 항목 범위 밖이라 하지 않았다.
-
-## Iteration 02 · 02-cascade — 외관 해석기 4단 캐스케이드 완성 + `variant`
-<!-- item: 02/02-cascade -->
-
-- **한 것**:
-  - `core/cascade.go` 신규 — 캐스케이드 병합 기계. `textPatch`(포인터 필드로 "정하지
-    않음"과 0값을 구별하는 부분 외관)와 유일한 병합 지점 `mergeText`, 패치 리터럴용
-    `ptr[T]`. Iteration 4의 도형 외관이 같은 기계를 재사용할 자리다.
-  - `core/resolve.go` — `resolveText`를 4단 캐스케이드로 재구성: 역할 기본값(완전한 외관)
-    위에 `textComponentDefault()` ← `variantPatch` ← `inlinePatch`를 낮은 단부터 얹는다.
-    우선순위는 `mergeText` 호출 세 줄의 순서가 전부다. 모르는 variant는 `warnf`(경고) +
-    빈 패치 폴백. 기존 인라인 속성 해석(size/color/align)의 값 어휘 검사·진단은 문구와
-    위치 그대로 `inlinePatch`로 이사했다.
-  - `core/theme.go` — minimal 테마의 텍스트 variant 표 `textVariants()`:
-    `kicker`(size 18 + weight 700 + accent1), `lead`(size 32, 부분 패치). 조회
-    `textVariantPatch`, 경고 메시지용 `textVariantNames`(순서 있는 슬라이스 — 결정적
-    출력). `textComponentDefault()`는 빈 패치다 (아래 "설계 결정").
-  - `soml/parse.go` — `<text>`에 `variant` 속성 개방 (`role, variant, size, color, align`
-    순서), 블록 태그(h1~h3, p, blockquote, pre)에 `variant`만 개방. 인라인·리스트
-    컨테이너·`<li>`에는 열지 않았다 — 근거는 buildElementSpecs 주석에.
-  - `soml/appearance.go` — `TextStyle.LineHeight`의 낡은 주석 수정 (01/08의 "남긴 것"):
-    "spcPct가 배수를 받는다" → PPTX는 spcPts 절대값으로 환산한다 (01/07의 측정 결과 반영).
-  - 테스트: `core/cascade_test.go`(우선순위 표 — 단마다 하나씩 빼 가며, 부분성, 0값 구별,
-    variant 표의 구별성), `core/resolve_test.go`(variant > 역할, 인라인 > variant, 부분성,
-    모르는 variant의 경고 severity·문구·ValueSpan 위치·폴백 동등성, 값 없는/빈 variant
-    에러), `internal/pipeline/pipeline_test.go`(경고는 빌드 통과 + `--strict` 승격 시 실패),
-    `soml/subset_test.go`(variant 파싱 정상 케이스 + 속성 어휘 에러 4건 갱신·추가).
-
-- **설계 결정과 근거**:
-  - **패치 = 포인터 필드 구조체**. 대안이던 "완성 TextStyle + 필드 마스크"는 마스크와
-    값이 따로 놀 수 있어 버렸다 — 포인터는 "정함"과 "값"이 한 몸이다.
-  - **Role은 패치에 없다**: 역할은 외관 값이 아니라 캐스케이드의 바닥을 고르는 축이다.
-    variant가 역할을 바꿀 수 있으면 병합 도중 바닥이 바뀌어 순서가 정의되지 않는다.
-  - **minimal 테마의 컴포넌트 기본값(3단)은 빈 패치다.** 역할 기본값이 이미 완전한
-    외관이라, 여기서 필드를 정하면 역할과 다른 값 → 모든 `<text>`의 외관이 바뀌어
-    Iteration 1 골든이 움직이고, 같은 값 → 아무것도 증명하지 못하는 중복이다. 단은
-    구조로 존재하고(`resolveText`가 항상 병합), 우선순위는 cascade_test가 합성 패치로
-    증명한다. 실제 값은 Iteration 10 테마 패키지가 처음 넣는다.
-  - **variant 이름·값**: 항목 지시의 예시를 따라 `kicker`/`lead`. 값은 캐스케이드 각 단이
-    구별되도록 골랐고(테스트가 강제), `lead`는 의도적으로 size만 정해 부분성의 실물
-    예시가 되게 했다.
-  - **값 없는/빈 `variant`는 에러다** (모르는 variant의 경고와 다르다): 다른 외관 속성과
-    같은 `hasValue` 정책 — "값 없음"은 폴백할 뜻조차 정할 수 없는 형태이기 때문이다.
-  - **경고 문구**: `variant "hero"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의
-    variant: kicker, lead)` — 색 토큰 진단과 같은 태도로 테마의 어휘 목록을 싣고,
-    폴백했다는 사실을 문구에 남겼다 (경고를 무시한 저자가 결과를 예측할 수 있게).
-  - **블록의 variant 개방으로 기존 파서 진단 문구가 바뀌었다**: `<h1 align>`이
-    "속성을 쓸 수 없다 (align)"에서 "알 수 없는 속성 align (쓸 수 있는 속성: variant)"로.
-    허용 어휘가 비어 있지 않게 되면서 진단 분기가 바뀐 것이고, 테스트를 그에 맞춰 갱신했다
-    (01의 "열린 질문 — 블록 태그의 속성"에 대한 부분 답이기도 하다: variant만 연다).
-
-- **검증**: `gofmt -l .` 무출력, `go vet ./...`, `go test ./...` 로컬 전부 통과,
-  `make test`(컨테이너, LibreOffice·Chromium 포함) 전부 통과. `git status`에
-  testdata/골든 변화 없음 — 캐스케이드 재구성이 Iteration 1 덱의 해석 결과를 바이트
-  단위로 보존한다는 증거다. RED를 먼저 확인했다 (구현 전 core 빌드 실패 + soml/pipeline
-  테스트 실패).
-
-- **남긴 것**:
-  - 블록 태그의 `variant`는 **파싱만** 된다 — core는 `<text>`만 해석하므로, 항목 03이
-    블록을 역할 등가로 해석할 때 같은 `resolveText`(또는 그 캐스케이드)를 태워야 한다.
-    렌더 매핑 없는 블록은 렌더러가 명시적으로 멈추므로 조용한 무시는 없다.
-  - `render/web/style.go`의 같은 낡은 spcPct 주석은 항목 05가 고친다 (지시대로 남겨 둠).
-  - **열린 질문 — attrExample의 "kicker"**: 값 없는 `variant`의 에러 예시가 minimal
-    테마의 사유 어휘를 인용한다. 테마가 파일로 나가는 Iteration 10에서 예시를 테마
-    어휘에서 뽑을지, 중립 예시로 바꿀지 정해야 한다.
-  - Iteration 10이 variant 표·컴포넌트 기본값을 테마 패키지 파일로 옮길 때 `ptr` 헬퍼와
-    하드코딩 표(`textVariants`)는 로더로 대체된다 — 병합 기계(`textPatch`/`mergeText`)는
-    그대로 남는 경계로 설계했다.
-
-## Iteration 02 · 03-block-roles — 블록 태그 ≡ 텍스트 역할 등가
-<!-- item: 02/03-block-roles -->
-
-- **한 것**:
-  - `soml/subset.go` — `TagTextRole` 신규: 태그 → 역할 등가 표 (h1→title, h2/h3→heading,
-    p/blockquote/li→body, pre→code). 언어 계약이므로 테마가 아니라 soml에 둔다.
-  - `soml/parse.go` — 블록 태그의 속성 allowlist를 `variant` 하나에서
-    `variant, size, color, align`으로 확장 (`<text>`의 어휘에서 role만 뺀 것).
-  - `core/theme.go` — `textComponentDefault()`가 태그를 받는 `textComponentDefault(tag)`가
-    됐다: h3는 size 28, blockquote는 muted 색, 나머지 태그와 `<text>`는 빈 패치.
-  - `core/resolve.go` — `resolver.node`의 해석 대상이 `<text>`에서 텍스트 역할을 갖는 요소
-    전부(블록 6종 + `<li>`)로 넓어졌다. 역할 출처를 고르는 `textRole`(속성 vs 등가 표)을
-    분리하고 `resolveText(elem, role)`로 역할을 주입한다. `<ul>`/`<ol>`의 Appearance를
-    채우지 않는 근거를 `node` 주석에 남겼다.
-  - 테스트: `core/resolve_test.go`(등가 깊은 비교 4쌍, h3·blockquote 태그 기본값과 부분성,
-    인라인 > 태그 기본값, 블록의 variant 캐스케이드 순서 3단 확인, li=body + 컨테이너
-    무외관, 블록 인라인 속성의 값 진단 line:col), `soml/subset_test.go`(`TagTextRole` 표
-    전수 + 표 밖 이름 + 블록 전수 커버리지, 블록 인라인 속성 파싱 정상 케이스,
-    `<h1 role>` 거부 진단 — 기존 `<h1 align>` 거부 테스트를 대체).
-- **설계 결정과 근거**:
-  - **h1 → title** (항목 지시의 표를 따르되 근거를 적었다 — TagTextRole 주석): 슬라이드는
-    문서가 아니라 화면 하나이고 v1의 블록은 문단이지 문서 섹션이 아니므로, 슬라이드에서
-    가장 큰 표제 = 그 슬라이드의 제목이다. h1을 heading으로 두면 title 역할에 대응하는
-    블록 표기가 없어져 서브셋만 쓰는 저자가 표지를 만들 수 없다. ADR 승격은 항목 09가
-    한다 (09 지시가 이 결정을 ADR 목록에 올려 두었다).
-  - **역할 대응은 언어(soml), 태그별 기본값은 테마(core/theme.go)**: 등가는 PRD §7.7의
-    계약이라 테마가 바꿀 수 있으면 문서의 뜻이 테마마다 달라진다. 기본값은 외관이므로
-    테마 소유 — Iteration 10의 components.json이 기본값 표만 파일로 옮기고 등가 표는
-    soml에 남는 경계다.
-  - **h3의 크기는 28**: heading(36)과 body(24) 사이의 반 단계. heading의 lineHeight
-    1.3을 그대로 받으므로 줄박스가 28×1.3 ≈ 36.4px로 본문 한 줄(36px)의 리듬에 얹힌다 —
-    36/1.3 ≈ 27.7의 최근접 정수다. 기하 평균 √(24×36) ≈ 29.4는 줄박스 38.2px로 리듬에서
-    더 멀어 버렸다. size 외 필드는 패치하지 않는다 (부분성).
-  - **blockquote는 색(muted)만**: 왼쪽 괘선 같은 시각 장식은 도형 외관이 없는 이번
-    iteration에서 열지 않는다 (항목 지시대로) — Iteration 4의 도형 외관이 들어온 뒤의 몫.
-  - **블록에 size/color/align을 열었다** (01의 열린 질문에 대한 답): 항목 지시가
-    "`size`/`color`/`align`/`variant` 인라인 속성은 `<text>`와 같은 규칙으로 얹힌다"고
-    명시한다. role만 닫는다 — `<p role="title">`은 두 표기의 등가를 깬다. 이로써 기존
-    파서 진단 테스트(`<h1 align>` 거부)가 무의미해져 `<h1 role>` 거부로 교체했다 —
-    등가 계약 자체를 단정하는 더 나은 테스트다. `<li>`와 인라인·리스트 컨테이너는
-    이전 결정대로 속성을 열지 않았다.
-  - **컨테이너(<ul>/<ol>)의 Appearance는 nil**: 마커·들여쓰기를 렌더러가 컨테이너에서
-    무엇으로 읽을지는 항목 05·07이 정한다 — 여기서 미리 채우면 그 결정 전에 두 렌더러가
-    각자 추측한다. 테스트가 nil임을 단정한다.
-- **검증**: RED 먼저 확인 (구현 전 soml 빌드 실패 + core 테스트 8건 실패 — 블록에 외관
-  없음·파서가 size/color 거부). 구현 후 `gofmt -l .` 무출력, `go vet ./...`,
-  `go test ./...` 로컬 전부 통과, `make test`(컨테이너, LibreOffice·Chromium) 전부 통과.
-  `git status`에 testdata/골든 변화 없음 — Iteration 1 픽스처에는 블록이 없고 렌더
-  매핑도 이 항목이 건드리지 않으므로 산출물이 바이트 단위로 그대로다.
-- **남긴 것**:
-  - 블록·li의 Appearance가 이제 채워지지만 **렌더 매핑은 아직 없다** — 렌더러는 모르는
-    태그에서 명시적으로 멈추므로(닫힌 어휘) 조용한 무시는 없다. 항목 05(웹)·06(PPTX 런)·
-    07(리스트)이 이 확정 외관을 소비한다. 인라인 태그의 Appearance는 여전히 nil이다
-    (항목 04).
-  - caption 역할에는 대응 블록 태그가 없다 (figcaption은 어휘 밖) — 문서(항목 09)의
-    등가 표에 이 비대칭을 적어야 한다.
-  - TASKS의 "텍스트 역할 계약" 체크박스를 [x]로 바꿨다 — 역할 5종의 해석 계약(`<text
-    role>` + 블록 등가)이 이 항목으로 완성됐다. "블록 태그 ≡ 역할 등가성" 테스트
-    체크박스는 인라인 런·리스트 렌더까지 묶여 있어 건드리지 않았다 (항목 06·07 몫).
-  - ADR 승격 대기: 태그→역할 표의 소유 경계 + h1→title (항목 09의 ADR 목록 1번).
-
-## Iteration 02 · 04-inline-resolve — 인라인 태그의 런 스타일 해석
-<!-- item: 02/04-inline-resolve -->
-
-- **한 것**:
-  - `soml/appearance.go` — `TextStyle`에 `Italic`(em)·`Underline`(a) 추가. 웹 CSS
-    (`font-style`/`text-decoration`)와 OOXML(`rPr@i`/`rPr@u`)이 둘 다 불리언으로 직접
-    받는다. `Appearance`에 `Link`(하이퍼링크 목적지, href 원문) 추가 — 스타일이 아니라
-    행동이므로 `TextStyle` 밖이고, "렌더러가 Attrs를 다시 읽지 않는다" 계약의 연장이다.
-  - `core/inline.go` 신규 — `resolveInlines`: 부모의 **확정** `TextStyle`을 복사해 태그별
-    델타를 얹는다 (strong=굵기 700, em=이탤릭, code=mono 폰트, a=밑줄+링크 색+Link,
-    span=자기 color/weight, br=서식 없음). `href`(없음/값 없음/빈 값 3형 에러, URL 문법은
-    열린 값), `weight`(normal/bold 어휘 + CSS 수치 힌트) 해석 함수.
-  - `core/resolve.go` — `node`가 텍스트 역할 요소를 해석한 뒤 `resolveInlines`로 인라인
-    자식을 마저 확정하고 순회를 끝낸다 (modelInline이라 자식은 문자 데이터+인라인뿐).
-    `attrExample`에 `href`/`weight` 예시 추가.
-  - `core/inline_test.go` 신규 — 델타 표(부모 스타일의 변형 함수로 깊은 비교 — 델타 밖
-    필드 변화를 잡는다), 상속 표(중첩·역순 중첩·span 아래·블록 인라인 속성 아래·중첩 em·
-    li 안), strong의 굵은 부모 유지, title 안 code의 56px mono, a의 색·밑줄·Link,
-    href 열린 값 4종, href 에러 3형(line:col·문구), span↔text 색 진단 문구 동일성,
-    weight 어휘·진단 6종, 인라인 전부 Appearance non-nil(+br은 nil) 커버리지.
-- **설계 결정과 근거**:
-  - **링크 색 = accent1 토큰 재사용** (hlink 전용 토큰과 저울질 — ADR 후보): PPTX 테마
-    파트가 hlink 슬롯을 accent1에서 빌려 채우므로(`render/pptx/theme.go`의 fallback,
-    `TestClrSchemeFallbacks`가 고정) 웹이 같은 토큰을 쓰면 두 산출물의 링크 색이 같은
-    표의 같은 값에서 나온다. 전용 토큰을 버린 이유: 표준 토큰 어휘(PRD §8.4)에 없는
-    이름이 저자의 `color=` 어휘·진단 목록·CSS 변수 산출에 들어가 골든과 문서가 전부
-    흔들린다. 테마가 파일로 나가는 Iteration 10에서 재검토한다 — 그때 테마가 hlink
-    토큰을 명시하면 core의 링크 델타도 함께 옮겨야 한다 (지금은 fallback 규칙과 이
-    델타가 짝이다).
-  - **`<span weight>` 어휘는 normal(400)·bold(700) 둘로 닫았다** (PRD가 값 어휘를
-    명시하지 않아 정한 것): OOXML 굵기는 켬/끔(`rPr@b`)뿐이라 CSS 9단계 수치 축을 열면
-    중간 굵기(600 등)가 웹에서만 동작한다 — `<span size>`·`size="%"`를 막은 것과 같은
-    근거. 수치 400/700은 align의 left/right처럼 대응 이름을 짚어 주고, 그 외 수치는
-    "두 단계"임을 설명한다.
-  - **strong은 `max(부모, 700)`**: 더 굵은 단계가 없으므로 700 이상인 부모(h1 등)
-    아래에서는 그대로다 — 깊은 비교 테스트가 "h1 안의 strong ≡ h1 스타일"을 고정한다.
-  - **중첩 em은 토글하지 않는다**: 토글은 "몇 겹인가"를 세어야 뜻이 정해지는 규칙이라
-    컴포넌트 조합(Iteration 11)에서 결과를 예측할 수 없게 된다 — v1은 "강조는 이탤릭".
-  - **br의 Appearance는 nil**: void — 텍스트 흐름의 분절점일 뿐 서식이 아니다. 렌더러의
-    런 분할(항목 05·06)이 `soml.BreakElement`를 이름으로 특별 취급한다. "인라인 전부
-    non-nil" 테스트의 유일한 예외로 명시했다.
-  - **href 에러는 hasValue를 타지 않는다**: 공용 문구의 "지우면 기본값을 쓴다"가 href에는
-    성립하지 않는다 (지워도 여전히 에러). 3형(속성 없음→NameSpan, 값 없음→속성 이름,
-    빈 값→값 위치)을 따로 쓰되 태도는 같다. href가 틀려도 밑줄·색 스타일은 확정된다 —
-    진단이 한 번에 다 나오는 기존 정책.
-  - **span의 color는 `<text color>`와 해석 함수(`resolver.color`)를 공유**하고 테스트가
-    두 진단의 문구 동일성을 단정한다 — 값 해석이 두 벌이 되는 순간을 잡는 회귀 장치.
-- **검증**: RED 먼저 확인 (구현 전 `go vet ./core`가 Italic/Underline/Link 부재로 빌드
-  실패). 구현 후 `gofmt -l .` 무출력, `go vet ./...`, `go test ./...` 로컬 전부 통과,
-  `make test`(컨테이너, finch) 전부 통과. `git status`에 testdata/골든 변화 없음 —
-  활성 픽스처(00/01)에 인라인 태그가 없고 렌더 매핑도 건드리지 않아 산출물이 바이트
-  단위로 그대로다. TASKS 체크박스는 바꾸지 않았다 (남은 박스들은 렌더 매핑까지 묶여
-  있어 항목 05~07 몫).
-- **남긴 것**:
-  - 항목 05(웹)·06(PPTX 런 분할·hlinkClick·`a:br`)이 이 확정 스타일과 `Appearance.Link`를
-    소비한다. `TextStyle.Italic`/`Underline`/`Link`의 렌더 매핑은 아직 없다 — 렌더러는
-    모르는 태그에서 명시적으로 멈추므로 조용한 무시는 없다.
-  - **열린 질문 — 링크 색의 표 결합이 관례 수준이다**: core의 `TokenColor("accent1")`
-    델타와 pptx의 hlink fallback(accent1)이 같은 값이라는 것을 컴파일러가 강제하지
-    않는다 (core↔render 임포트 방향 때문에 한 테스트로 못 묶는다). 항목 06이 hlinkClick을
-    낼 때 픽스처/골든으로 두 산출물의 링크 색 일치를 고정해야 한다.
-  - ADR 승격 대기 (항목 09): 링크 색 accent1 재사용 vs hlink 전용 토큰, weight 어휘
-    2값 폐쇄.
-
-## Iteration 02 · 05-web — 웹 렌더러: 서브셋 태그 + 리스트 + 측정 대상 계약
-<!-- item: 02/05-web -->
-
-- **한 것**:
-  - `render/web/content.go` — `writeNode`가 `soml.KindOf` 카탈로그로 분기한다: 블록·`<li>`는
-    `writeBlock`(구 writeText의 일반화 — `<text>`는 `<div>`, 서브셋 블록은 저자가 쓴 이름
-    그대로 시맨틱 태그), `<ul>`/`<ol>`은 `writeList`(class `balpyo-list`, 외관 없음, 식별자
-    있음), 인라인은 `writeInline`(식별자 없음, 앞뒤 공백 없음, `<br/>`→`<br>`, `<a>`는
-    href를 HTML 이스케이프해 싣는다). `<pre>`는 인라인 style에 `white-space: pre`를 더하고,
-    선두 개행이 남아 있으면 개행 하나를 덧대 HTML 파서의 "여는 태그 직후 개행 벗기기"에서
-    내용을 지킨다. 리스트 배치 상수 export: `ListTextIndent`(36)·`ListMarkerHang`(36)·
-    `ListItemGap`(0)·`ListBulletChar`("•") — 항목 07의 `marL`/`indent`/`buChar`가 import한다.
-    `listCSS`(마커는 `list-style: none` + `li::before`, ol은 엔진 카운터 + `"." ` 접미)는
-    덱에 리스트가 있을 때만 낸다(`hasLists`) — 골든 불변의 근거다 (빈 스테이지와 같은 태도).
-  - `render/web/style.go` — `runStyleCSS` 신규: textStyleCSS + `font-style`(Italic) +
-    `text-decoration`(Underline)을 **항상** 명시 (UA의 `em{font-style}`·`a{text-decoration}`
-    이 개입할 자리를 없앤다). 낡은 spcPct 줄높이 주석을 spcPts(ADR 0005)로 고쳤다 (NOTES
-    01/08·02/02의 이월).
-  - `render/web/web.go` — 패키지 주석의 식별자 계약을 "블록 종류에만"으로 갱신,
-    `baseCSS(stage, lists)`.
-  - `render/geom/geom.go` — `collect`가 `KindInline`을 자손까지 건너뛴다 (웹 렌더러와 같은
-    카탈로그 — Refs ↔ querySelectorAll 자리 맞대기의 대칭).
-  - 테스트: `render/web/subset_test.go`(파서+core를 거친 원문 기반 — 태그 매핑·크기 위계,
-    리스트 마크업·CSS 상수, 인라인 완전 명시 7선언, 식별자 부재, href 이스케이프, br,
-    인라인 경계 공백 보존, pre 공백 보존·선두 개행 보호, 이스케이프, 미해석 인라인·Link
-    없는 a 에러), `render/geom/geom_test.go`(Refs가 인라인을 건너뛰는 표),
-    `render/geom/measure_browser_test.go`(`TestMeasureSubsetSlide` — 실측: 자리 맞대기 통과,
-    측정 목록에 인라인 없음, li rect 문서 순서·겹침 없음·간격 0, 첫 li 텍스트가
-    ul.x+ListTextIndent에서 시작).
-- **설계 결정과 근거**:
-  - **시맨틱 태그를 골랐다** (전부 `<div>`와 저울질, ADR 후보 — 항목 09): 접근성(제목
-    위계·리스트 낭독)과 저자 CSS의 표적. 조건인 "UA 기본값 무의존"은 메트릭=인라인 style
-    전부 명시 + 배치=엔진 CSS(margin 0)로 충족되므로 메트릭은 태그 선택과 무관하다.
-    `<text>`는 대응 시맨틱 태그가 없는 중립 요소라 `<div>`로 남는다 — 역할별 태그로 바꾸면
-    `<text role>` ≡ 블록 태그 등가가 산출물에서 두 갈래가 된다.
-  - **마커 배치는 웹이 PPTX 관례를 따른다** (ADR 후보): OOXML은 마커를 `marL+indent`에
-    왼쪽 정렬로 그리고 뷰어가 그리는 방식이라 바꿀 수 없다. CSS 기본 마커(outside)는
-    오른쪽 정렬이라 어긋나지만, `::before`로 OOXML 모델을 정확히 표현할 수 있으므로
-    맞추는 쪽은 웹이다. 마커-텍스트 "간격"은 상수가 아니라 (Hang − 글리프 폭)의 파생값 —
-    OOXML도 간격을 직접 갖지 않으므로 간격을 상수로 두면 PPTX가 표현할 수 없다.
-  - **값 36/36은 PowerPoint 1수준 기본**(marL=indent=342900 EMU) 그대로다 — 342900÷9525 =
-    36px로 환산이 정수로 떨어지고, 익숙한 기본을 벗어날 이유가 없다.
-  - **마커는 UA disc가 아니라 폰트 글리프 "•"**: PPTX `buChar`가 텍스트 폰트로 그리는
-    글리프와 같은 곳에서 나와야 마커 모양이 갈라지지 않는다. ol은 엔진 카운터
-    (`counter(balpyo-item) "."`)로 — UA list-item 카운터는 display에 묶여 있어 의존하지
-    않는다. "1." 형식은 `buAutoNum@type="arabicPeriod"`와 짝 (항목 07).
-  - **블록의 인라인 style은 그대로 6선언, 런만 8선언**: 서브셋 블록 태그에는 이탤릭·밑줄
-    UA 규칙이 없고 지금 어휘에서 블록 스타일은 Italic/Underline을 가질 수 없으므로,
-    textStyleCSS에 두 선언을 더하면 Iteration 1 골든만 이유 없이 움직인다. 블록이 Italic을
-    가질 수 있게 되는 날 textStyleCSS가 함께 얻어야 한다 (runStyleCSS 주석에 명시).
-  - **listCSS는 조건부다**: 리스트 없는 덱(00_empty, 01_text)의 산출물이 리스트 렌더가
-    붙었다는 이유로 달라지면 골든 diff가 무엇이 움직였는지 말해 주지 못한다 — themeCSS가
-    빈 테마에 층을 만들지 않는 것과 같은 태도.
-  - **`<pre>` 선두 개행 보호**: 파서가 양 끝 개행 하나씩을 벗긴 뒤 남은 선두 개행은
-    내용인데, HTML 파서도 `<pre>` 직후 개행 하나를 벗기므로 렌더러가 하나를 덧댄다 —
-    덧대지 않으면 첫 빈 줄이 조용히 사라져 PPTX(원문 그대로)와 줄 수가 갈라진다.
-  - **Link 없는 `<a>`·미해석 인라인은 렌더 에러**: core의 href 검증을 지나지 않은 값이
-    산출물에 실릴 길을 막는다 (writeText의 미해석 외관 가드와 같은 태도).
-- **검증**: RED 먼저 확인 (상수 부재로 web·geom 테스트 빌드 실패). 구현 후 `gofmt -l .`
-  무출력, `go vet ./...`, `go test ./...` 로컬 전부 통과, `make test`(컨테이너, finch —
-  LibreOffice·Chromium) 전부 통과. 브라우저 실측(`TestMeasureSubsetSlide`): li 5개 rect가
-  문서 순서로 내려가고 같은 리스트 안 간격 0, 첫 li의 첫 줄 x = ul.x+36 확인. `git status`에
-  testdata/골든 변화 없음 — 중간에 CSS 주석 한 줄을 고쳤다가 골든이 2줄 움직이는 것을
-  픽스처 테스트가 잡아 되돌렸다 (골든 불변을 지키는 데 실제로 쓰인 회귀 장치).
-- **남긴 것**:
-  - 항목 06·07이 소비할 표면: `runStyleCSS`가 명시하는 런 서식 = PPTX `rPr@b/@i/@u`+색+
-    폰트의 짝, `web.ListTextIndent`/`ListMarkerHang`/`ListItemGap`/`ListBulletChar` →
-    `marL`/`indent`/(spcBef 0)/`buChar`. pre의 줄바꿈 없음(`white-space: pre`)의 짝은
-    `bodyPr@wrap`(항목 06). 마커가 li의 확정 스타일을 상속하므로 PPTX 마커(buFont·색)도
-    런 서식을 따라야 한다.
-  - 지오메트리의 줄 박스(Lines)는 **직계 문자 노드**에서만 나온다 (measureScript) —
-    인라인이 섞인 블록은 줄 일부만 잡힌다. 줄바꿈 임계값 판정(Slack)이 서브셋 픽스처로
-    넓어지는 항목 08에서 이 한계가 문제가 되는지 봐야 한다.
-  - `_02_text_subset` 픽스처의 `<span weight="700">`(003_inline.slide)은 core의 weight
-    어휘(normal/bold)에서 에러다 — 항목 08이 픽스처를 활성화할 때 `bold`로 고쳐야 한다.
-  - **열린 질문 — 항목 사이 간격 0의 시각 검증**: ListItemGap=0은 수직 리듬을 줄높이에
-    맡긴 엔진 결정이다 (PRD가 값을 정하지 않는다). 리뷰 포인트(불릿 들여쓰기·마커 육안
-    확인, TASKS I2)에서 답답해 보이면 항목 07 전에 상수 하나만 바꾸면 된다.
-  - ADR 승격 대기 (항목 09): 측정 대상 = 블록 종류 카탈로그(09 지시의 3번), 시맨틱 태그
-    선택, 마커의 PPTX 관례 채택 + 36px 상수.
-
-## Iteration 02 · 06-pptx-runs — PPTX 텍스트 런 분할 + hlinkClick + a:br
-<!-- item: 02/06-pptx-runs -->
-
-- **한 것**:
-  - `render/pptx/shape.go` — `textBodyXML`이 평탄화된 문자열 대신 **블록 요소를 받아
-    자식을 순회**한다: 문자 데이터 잎마다 `a:r`(스타일은 잎을 감싼 가장 안쪽 요소의 확정
-    `TextStyle`), `<br/>` → `a:br`, `<pre>`의 보존 개행 → `a:br`(빈 줄은 연속 a:br, 빈
-    a:t는 내지 않는다) + `bodyPr@wrap="none"`. 인라인 런의 rPr에 `i="0/1"`·`u="none/sng"`
-    (`italicValue`/`underlineValue`), `<a>` 잎에는 latin/ea **뒤에** `<a:hlinkClick r:id>`
-    (CT_TextCharacterProperties의 자식 순서 — 어기면 LibreOffice가 복구를 묻는다).
-    `slideLinks`가 순회 중 외부 URL에 rel id를 배정한다. `writeShapeNode`의 대상을
-    `<text>` + `soml.KindBlock` 카탈로그로 넓혔다 (`writeTextShape` 이름·좌표 경로는 그대로,
-    `<ul>`/`<ol>`은 기존 가드 에러 유지 — 항목 07).
-  - `render/pptx/parts.go` — `shapesXML`이 돌려준 링크 목록을 `slideRelsTemplate`의
-    `{{range .Links}}` 로 실었다: `Type=…/hyperlink`, `Target`은 XML 이스케이프,
-    `TargetMode="External"`. r 네임스페이스는 슬라이드 루트에 이미 선언되어 있다 (확인).
-  - `render/pptx/runs_test.go` 신규 — 런 분할(경계 공백이 앞 런 끝에 남음), 중첩
-    `<strong><em>` 누적, span 토큰 색 schemeClr, code 런의 부모 크기 + mono 리터럴
-    typeface, hlinkClick↔rels 짝·URL `&` 이스케이프, rel id 결정성(재사용·노트 공존·
-    바이트 동일성), 웹·PPTX 링크 색의 표 일치(런 accent1 참조 = 테마 hlink 슬롯 값),
-    `<br/>`·pre 개행의 a:br(문단 불변), 블록 태그 p:sp, 리스트 가드, 미해석 인라인·Link
-    없는 `<a>` 에러, 서식 없는 런의 XML 불변.
-  - `render/pptx/soffice_test.go` — 열림 테스트에 슬라이드 3 추가: h2+strong, span 색,
-    같은 URL 링크 2회(관계 재사용 경로), br, em, code, pre.
-- **설계 결정과 근거**:
-  - **rel id 배정: rId1=레이아웃, rId2=노트(없어도 예약), rId3부터 외부 URL이 문서 순서**.
-    노트 자리를 예약하지 않으면 노트 유무가 링크 번호를 밀어, 노트 한 줄을 더한 커밋의
-    diff에 링크 관계 전부가 잡음으로 실린다. OPC 관계 id는 임의 문자열이라 빈 번호는
-    유효하다 (notesSlidePart 번호 규칙과 같은 태도).
-  - **같은 URL은 관계 하나를 재사용**한다 (매번 내는 대안을 버림): OPC 관계의 정체는
-    (Type, Target, TargetMode)라 중복은 정보가 없고, PowerPoint도 재저장 시 하나로
-    합치므로 매번 내면 재저장 diff에 잡음이 남는다. 테스트가 같은 URL 3회 → 관계 1개
-    (rId3 재사용)를 고정한다.
-  - **i/u 명시는 인라인 런만** (`runContext.inline` — 웹의 textStyleCSS 6선언/runStyleCSS
-    8선언 분리와 같은 결정): 지금 어휘에서 블록 스타일은 Italic/Underline을 가질 수
-    없으므로 블록 직속 런에 `i="0" u="none"`을 더하면 Iteration 1 골든만 이유 없이
-    움직인다. 그 덕에 01_text 골든이 바이트 단위로 그대로다 (`TestRunPlainTextUnchanged`가
-    XML 모양을 단위 테스트로도 고정). 블록이 Italic을 얻는 날 이 구분이 함께 사라져야
-    한다 (runStyleCSS 주석과 같은 이월). hlinkClick 런은 core가 Underline=true를 확정하므로
-    `u="sng"`·solidFill이 항상 나간다 — 뷰어의 자동 밑줄·자동 색에 기대지 않는다.
-  - **인접 같은 스타일 잎은 합치지 않는다** (항목 지시의 확인 사항): 렉서가 연속 문자
-    데이터를 다음 `<`까지 토큰 하나로 담으므로 잎 경계는 대개 요소이고, **주석이 문자
-    데이터를 쪼갠 경우에만** 같은 스타일의 이웃 런이 생긴다 — rPr가 같은 이웃 런은
-    뷰어에서 구별되지 않는 유효한 XML이라 합치는 코드는 값어치가 없다 (writeRuns 주석).
-  - **`<br/>`·pre 개행은 문단을 쪼개지 않고 a:br**: 문단 사이 간격은 줄간격과 다른 축이라
-    쪼개면 웹(같은 블록 안 줄바꿈)과 갈라질 수 있다. pre의 `wrap="none"`은 웹의
-    `white-space: pre`(항목 05)의 짝이다. CRLF 원문의 `\r`은 a:t에 남기지 않는다.
-  - **href의 &는 원문 그대로, rels에서만 XML 이스케이프**: SOML은 엔티티를 해석하지
-    않으므로 (파서 계약) 저자가 쓴 `?a=1&b=2`가 웹 href와 PPTX Target에 같은 문자열로
-    실린다.
-  - **링크 색의 표 결합을 산출물로 고정** (02/04의 열린 질문에 대한 답):
-    `TestRunHyperlinkColorMatchesThemeHlinkSlot`이 런의 `schemeClr val="accent1"`과 테마
-    파트 `<a:hlink>`의 RGB(accent1 값)가 같은 표에서 나오는 것을 단정한다 — core↔render
-    임포트 방향 때문에 컴파일러로 못 묶는 관례를 테스트가 잡는다.
-- **검증**: RED 먼저 확인 (구현 전 13건 실패 — 전부 "매핑이 없다"). 구현 후 `gofmt -l .`
-  무출력, `go vet ./...`, `go test ./...` 로컬 전부 통과, `make test`(컨테이너, finch)
-  전부 통과. 컨테이너에서 `TestLibreOfficeOpensTextShapes -v -count=1` 단독 실행 PASS —
-  hlinkClick·External 관계·i/u·wrap="none"이 든 슬라이드를 LibreOffice가 복구 경고 없이
-  열었다 (OpenPPTX는 stderr의 복구 흔적을 실패로 본다). `git status`에 testdata/골든 변화
-  없음 — 서식 없는 텍스트의 런 XML이 바이트 단위로 그대로다.
-- **남긴 것**:
-  - 항목 07(리스트)이 이 런 분할기(`writeRuns`)를 그대로 쓴다 — li 하나가 `a:p` 하나가
-    되는 구조라 문단 분리가 필요하고, `textBodyXML`의 단일 `a:p` 가정을 그때 풀어야 한다.
-  - **열린 질문 — 내부 앵커(`href="#/id"`)**: v1은 외부 URL만이고, 지금은 모든 href가
-    `TargetMode="External"`로 나간다 — 내부 앵커도 문법상 유효한 열린 값이라(core의 href
-    검증은 URL 문법을 보지 않는다) PPTX에서는 죽은 링크가 된다. 슬라이드 점프 액션
-    (`ppaction://hlinksldjump` + 슬라이드 파트 관계)으로 나누려면 "무엇이 내부 앵커인가"의
-    판별(`#/` 접두?)을 core와 웹 런타임(딥링크 해시 규칙)과 한 곳에서 정해야 한다 —
-    렌더러가 각자 판별하면 같은 href가 타깃마다 다른 종류의 링크가 된다.
-  - TASKS의 "인라인 태그 → 웹 그대로 / PPTX 런 분할" 체크박스를 [x]로 바꿨다 (웹은 항목
-    05, PPTX 런은 이 항목). "테스트"·"리뷰" 박스는 리스트(항목 07)까지 묶여 있어 두지
-    않았다.
-
-## Iteration 02 · 07-pptx-lists — PPTX 리스트: 불릿 문단 + 들여쓰기
-<!-- item: 02/07-pptx-lists -->
-
-- **한 것**:
-  - `render/pptx/shape.go` — `writeShapeNode`에 리스트 분기: `<ul>`/`<ol>` 하나 =
-    `p:sp` **하나**(`writeListShape`), `<li>` 하나 = `a:p` 하나(`writeListItem`). 도형
-    골격은 `writeSp`로 추출해 블록과 공유한다 (출력 바이트 동일 — 골든 불변 확인).
-    문단 pPr: `marL="342900"`(=`EMU(web.ListTextIndent)`) + `indent="-342900"`
-    (=`-EMU(web.ListMarkerHang)`, 행잉 인덴트) + li의 확정 정렬 + `lnSpc`/`spcPts`
-    (블록과 같은 절대 줄간격 규칙). 마커: ul은 `buChar`(=`web.ListBulletChar`), ol은
-    `buAutoNum type="arabicPeriod"`(웹의 `counter() "."` 짝), `buFont`는 li의 확정
-    폰트 토큰(`typefaceValues`의 latin — body는 `+mn-lt` 테마 참조). `spcBef`/`spcAft`는
-    내지 않는다 (`web.ListItemGap=0` — 수직 리듬은 줄높이 소유). li 안의 인라인·`<br/>`은
-    항목 06의 `writeRuns`를 그대로 부른다 — 리스트용 순회를 만들지 않았다. 블록 검증은
-    `checkTextStyle`로, `typefaces`는 값(`typefaceValues`)과 요소 조립로 나눴다.
-  - `render/pptx/lists_test.go` 신규 — li 3개 → 한 sp 안 `a:p` 3개, marL/indent가
-    웹 상수 × `EMUPerPixel`과 일치·행잉 인덴트 부호, spcPts 2700(body 24px×1.5),
-    buFont `+mn-lt`, spcBef/spcAft 부재 + `ListItemGap==0` 단정(상수가 움직이는 날
-    PPTX 대응을 요구), ul↔ol이 마커 치환만으로 동일 XML, li 안 strong/a 런·경계 공백·
-    rel id 문서 순서(블록→리스트 경유 rId3/rId4 + 같은 URL 재사용), `<br/>` = 같은 문단
-    안 `a:br`, 빈 li = 런 없는 문단, 빈 ul = `<a:p/>` 하나 든 도형 + 도형 id 연속,
-    바이트 동일성. `runs_test.go`의 가드 테스트(`TestRenderListStillFails`)는 제거.
-  - `render/pptx/soffice_test.go` — 슬라이드 4 추가: ul(인라인 strong/a·br·빈 li) + ol.
-- **설계 결정과 근거**:
-  - **안전 여유는 `TextBoxRect`를 start 정렬로 그대로 적용** (항목 지시의 정책 결정):
-    li는 align 속성을 받지 않아 (파서 allowlist) 확정 정렬이 언제나 start이므로, 닻 내린
-    왼쪽 변(=마커 위치)을 움직이지 않는 방향은 오른쪽 확장뿐이다. 4%가 마커 자리(36px)를
-    포함한 컨테이너 폭에 걸려 절대 여유가 텍스트만일 때보다 약간 크지만, 그 오차는 줄
-    늘어남을 막는 안전한 방향이다 — 판정은 항목 08의 픽셀 비교에 넘긴다.
-  - **buFont는 li의 확정 폰트 토큰(`+mn-lt` 참조)** — 명시하지 않으면 뷰어 기본 폰트가
-    마커를 그려 크기·모양이 흔들리고, 웹 마커(`li::before`)는 li의 폰트를 상속하므로
-    같은 폰트여야 짝이 맞는다. 테마 참조로 남겨 PowerPoint 테마 폰트 편집을 따라간다
-    (rPr latin과 같은 값 — `typefaceValues` 한 곳). 색·크기는 내지 않는다: OOXML 기본
-    (buClrTx/buSzTx)이 이미 "텍스트를 따른다"로 `::before` 상속과 같은 뜻이다.
-  - **빈 `<li>` = 런 없는 문단, `<li>` 없는 `<ul>`(파서가 안 막는다) = 도형은 낸다** —
-    빈 텍스트 정책과 같은 태도 (자리·순서·도형 id 보존). txBody는 `p+`를 요구하므로
-    빈 리스트는 서식 없는 `<a:p/>` 하나가 스키마를 채운다 (li가 없으니 실을 스타일도
-    마커도 없다).
-  - **`<li>` 안 `<br/>`은 같은 문단 안 `a:br`** — 문단(=항목)을 쪼개면 마커가 하나 더
-    생긴다. 웹의 `<br>`(li 블록 안 줄바꿈)과 같은 뜻의 "마커 없는 이어짐 줄"이다.
-  - pPr 자식 순서는 스키마(CT_TextParagraphProperties) 그대로: lnSpc → buFont →
-    buChar/buAutoNum. 어기면 LibreOffice가 복구를 묻는다 (hlinkClick 순서와 같은 종류).
-- **검증**: RED 먼저 확인 (lists_test 7건 전부 "매핑이 없다"로 실패). 구현 후
-  `gofmt -l .` 무출력, `go vet ./...`, `go test ./...` 로컬 전부 통과, `make test`
-  (컨테이너, finch) 전부 통과. 컨테이너에서 `TestLibreOfficeOpensTextShapes -v -count=1`
-  단독 PASS — buChar/buAutoNum·행잉 인덴트·`buFont typeface="+mn-lt"`가 든 리스트
-  슬라이드를 LibreOffice가 복구 경고 없이 열었다. `git status`에 testdata/골든 변화 없음 —
-  `writeSp` 추출이 기존 도형 XML을 바이트 단위로 보존했다.
-- **남긴 것**:
-  - **픽셀 비교(항목 08)가 판정할 것**: 리스트 안전 여유 정책(start 확장, 마커 자리 포함
-    4%), 마커 글리프의 실제 x 위치(웹 `left: ListTextIndent-ListMarkerHang` = 0 대비
-    PPTX의 marL+indent = 0 — 뷰어가 마커를 왼쪽 정렬로 그린다는 가정), 빈 li의 마커
-    유무(웹 `::before`는 빈 li에도 마커를 그리지만 PPTX 뷰어는 빈 문단에 마커를 안
-    그릴 수 있다 — 구조만 이 항목의 책임이다).
-  - `lvl` 매핑(중첩 리스트)은 파서 가드를 풀 때 함께 온다 (항목 01의 결정 그대로).
-  - TASKS의 Iteration 2 "테스트" 박스(등가성·런·리스트)를 [x]로 바꿨다 — 등가성은 02/02,
-    런은 02/06, 리스트는 이 항목이 마감했다. "리뷰"(양 타깃 육안 대조)·"문서" 박스는
-    항목 08·09 몫으로 남긴다.
-
-## Iteration 02 · 08-fixtures — 02_text_subset 활성화 + 골든 + 픽셀 비교
-<!-- item: 02/08-fixtures -->
-
-- **한 것**:
-  - 픽스처 활성화 전 정비: `003_inline.slide`의 `<span weight="700">` → `weight="bold"`
-    (02/05가 남긴 이월 — core의 weight 어휘는 normal/bold다). **경고 슬라이드
-    `006_variant.slide` 신규** (항목 지시의 권고대로): 모르는 variant(`hero`) + 알려진
-    variant(kicker·lead) 대조. 골든 `diagnostics.txt`는 "경고가 있을 때만" 존재하는
-    계약이라 이 슬라이드가 그 경로(경고 문구·위치·테마 어휘 목록)의 유일한 회귀 테스트다.
-  - `testdata/fixtures/_02_text_subset` → `02_text_subset` 개명 (git mv), 골든 신규
-    (index.html + diagnostics.txt + PPTX 파트 27개 — 전 파트를 훑었다).
-    `soml/subset_test.go`의 픽스처 경로·주석 갱신. **00_empty·01_text 골든은 바이트
-    단위로 무변경** — diff의 모든 줄이 새 픽스처 것이다.
-  - **환경 결함 수정 — 테스트 이미지에 Noto Sans Mono가 없었다**: 테마의 mono 토큰은
-    "Noto Sans Mono"인데 `fonts-noto-core`에 그 폰트가 없어 fc-match가 Noto Sans로
-    폴백하고, Chromium과 LibreOffice가 **서로 다른** 대체 폰트를 골라 code 런의 글줄
-    폭이 +5%대로 갈라졌다 (첫 픽셀 비교가 잡았다 — 이 게이트가 만들어진 목적 그대로).
-    `docker/test.Dockerfile`에 `fonts-noto-mono` 설치 + `/etc/balpyo-versions.txt`에
-    `BALPYO_FONT_MONO` 기록, `docker/versions.env`에 핀 추가 (대조 테스트가 폴백 재발을
-    골든보다 먼저 잡는다).
-  - **하네스 이월 처리 (NOTES 01/07의 "남긴 것")**: `textAligns` →
-    `shapeAligns`(internal/testkit/text_fixture_test.go) — geom.Refs와 같은 재귀
-    (인라인은 자손까지 건너뜀)로 바꾸고, PPTX 도형이 되지 않는 `<li>`는 nil로 표시해
-    좌표 대조가 건너뛴다 (리스트는 컨테이너가 도형 하나 — pptx.writeListShape).
-    컨테이너는 start 정렬 고정.
-  - **픽스처 수준 검증을 두 텍스트 픽스처(01_text·02_text_subset)로 확장**: 골든 파트
-    목록 전수(diagnostics.txt·notesSlide5 포함), 슬라이드 파트 srgbClr 부재(인라인 런
-    색까지), xfrm == 측정값(+여유) EMU, 잉크 띠 대조. `textFixtureNames` 슬라이스에 새
-    텍스트 픽스처를 더하면 같은 계약을 받는다.
-  - **허용 오차 조정 2건 (측정 수치·근거 포함)**:
-    - 픽셀 비교: `02_text_subset`에 한해 MaxRatio 2.5% → **3.5%**
-      (testkit/suite.go `fixtureDiffOptions`). 측정 최대 3.04%(슬라이드 1 — 제목 위계).
-      구성은 LibreOffice 첫 기준선 +2~5px의 글리프 경계 이중 계수이고, 큰 글리프
-      (h1 48px + h2/h3 + 본문 + 인용)의 잉크 면적이 01_text 표지보다 많다. 같은
-      슬라이드의 잉크 띠 검사(줄 수 0차·세로 중심 ±6px·폭)는 전부 초록 — 구조가 아니라
-      잔차다. 여유 폭은 01_text와 같은 태도 (2.1% 측정 → 2.5% 허용).
-    - 잉크 폭 판정: (a) 절대 하한 `loLineWidthMinPx = 2px` — AA는 줄 길이와 무관하게
-      ±1px을 만들므로 아주 짧은 띠(pre의 `}` 한 글자, 잉크 6px)에서 1px이 16.7%로
-      계산되어 방법 문제로 죽는다. 긴 줄에서는 비율 허용값이 항상 2px보다 커 게이트
-      약화가 아니다. (b) `02_text_subset`에 한해 비율 4% → **5.5%** — 측정 최대
-      +5.0%(003_inline의 code+링크 문단). LibreOffice 스크립트 간격은 **경계 수**에
-      비례하는데(라틴 문장부호 앞·mono 런 전환 포함 — 리뷰 렌더에서 육안 확인) 비율은
-      줄 길이로 나눈 값이라, 짧은 줄(545px)에 경계가 몰리면 01_text의 긴 본문(1125px,
-      +3.3%)보다 비율이 커진다. 이 픽스처의 최소 여유 비율은 40.5%라 재접힘 위험 없음.
-  - `make review` → `review/02_text_subset/` 갤러리 (6장 × web/pptx/diff +
-    text-subset-deck.pptx). TASKS Iteration 2 "구현" 부모 박스 [x] (자식 3개는 02/02·
-    05·06·07이 이미 [x]).
-
-- **설계 결정과 근거**:
-  - **경고 슬라이드는 알려진 variant와 한 슬라이드에 뒀다**: 폴백(hero = 기본 외관)이
-    kicker·lead와 나란히 보여 갤러리에서 "폴백이 무엇인가"가 시각으로 남는다. 부수
-    효과로 variant 캐스케이드의 렌더 결과(웹 CSS + PPTX rPr)가 처음으로 골든에 들어갔다.
-  - **폰트 설치는 구현 변경이 아니라 환경 수정으로 판단했다** (항목의 "범위 밖" 검토):
-    렌더러 코드는 처음부터 "Noto Sans Mono"를 냈고 두 산출물 모두 그 이름을 실었다 —
-    틀린 것은 이미지의 폰트 집합이다. 골든과 같은 커밋에 담아 diff가 설명된다
-    (mono가 낀 슬라이드 2·3의 xfrm이 폰트 교체로 움직였다).
-  - **오차 조정은 전부 픽스처 한정 + 구조 검사 초록 전제**: 기본값(2.5%/4%)은 그대로
-    두고 조정 지점(`fixtureDiffOptions`·`loLineWidthMaxRatios`)에 측정값과 근거를
-    주석으로 남겼다 — 다음 픽스처가 기본값으로 시작해 다시 재게 한다.
-
-- **검증**: `gofmt -l .` 무출력, `go vet ./...`, `make test`(컨테이너, finch —
-  LibreOffice·Chromium 포함) 전부 초록. `make golden` 재실행 시 무변경(결정성).
-  `make review` PASS + 갤러리 6장 육안 확인 — 리스트 마커·들여쓰기·굵기·code·링크 색이
-  양 타깃에서 같고, diff는 기준선 이동 잔상뿐. 잉크 띠 측정: 02_text_subset 줄 수 차 0
-  (전 슬라이드), 세로 중심 최대 +6px(경계값 — s5.2 lead 32px), 잉크 폭 최대 +5.0%
-  (s2.2), 최소 여유 비율 40.5%. 픽셀 diff: 3.04 / 1.78 / 2.18 / 0.79 / 1.36 / 2.24%.
-
-- **남긴 것**:
-  - **사람 확인 남음 (TASKS I2 리뷰 박스 — 자동화하지 않는다)**: macOS에서
-    `review/02_text_subset/text-subset-deck.pptx`를 Keynote/PowerPoint로 직접 열어
-    (a) 리스트가 진짜 불릿 문단인지 (Tab/Shift+Tab이 동작하는 편집 가능한 리스트),
-    (b) 링크가 클릭되는지, (c) 인라인 서식(굵기·이탤릭·밑줄·mono·색)이 런으로 살아
-    있는지, (d) 불릿 들여쓰기·마커가 갤러리와 같아 보이는지 확인한다. 리뷰 박스는 그
-    뒤에만 닫는다. 참고 관찰: 스크립트 간격(라틴 문장부호·mono 경계 포함)은 LibreOffice
-    렌더러의 동작이라 PowerPoint/Keynote에서는 웹에 더 가깝게 나올 가능성이 높다.
-  - **호스트 `go test`는 02_text_subset 골든 비교에서 빨갛다** (컨테이너는 초록 —
-    게이트는 컨테이너다): macOS에 Noto Sans Mono가 없어 code가 낀 블록의 줄 박스
-    높이가 1px 다르게 측정되고(37px vs 36px), 박스 높이 = 줄 수 × 줄높이라 xfrm의
-    cy가 움직인다. 01/07이 "호스트 폰트가 줄 수를 다르게 접으면 호스트만 빨개질 수
-    있다"고 남긴 그 경우의 실물이다 — mono 픽스처가 생기며 실제가 됐다. 호스트에서
-    Noto Sans Mono를 설치하면 사라진다.
-  - `InkBands`의 단색 배경 가정은 텍스트뿐인 이 픽스처에서 여전히 유효했다 — 깨짐 없음
-    (도형 iteration에서 다시 본다).
-  - 지오메트리 줄 박스가 직계 문자 노드에서만 나오는 한계(02/05의 이월)는 이 픽스처에서
-    문제가 되지 않았다: 인라인이 낀 모든 줄에 직계 문자가 하나 이상 있어 줄 수가 다
-    잡혔고, 기대 띠의 부분 폭은 판정에 쓰지 않는다 (expectedLineBands 주석에 명시).
-    **인라인만으로 이루어진 줄**(예: `<p><strong>…긴 굵은 문장…</strong></p>`이 접힌
-    둘째 줄)이 생기면 그 줄이 기대 띠에서 빠져 줄 수 대조가 방법 문제로 죽는다 — 그런
-    픽스처를 만들 때 measureScript를 확장해야 한다.
-  - 항목 07이 픽셀 비교에 넘긴 판정들: 리스트 안전 여유(start 확장, 마커 자리 포함
-    4%)와 마커 x 위치는 허용 오차 안 (슬라이드 2 diff 1.78%, 잉크 띠 초록). 빈 li의
-    마커 유무는 이 픽스처에 빈 li가 없어 판정하지 못했다 — 여전히 열린 관찰.
-
-## Iteration 02 · 09-docs — Iteration 2 레퍼런스·캐스케이드 문서와 ADR 4건
-<!-- item: 02/09-docs -->
-
-- **한 것**:
-  - `docs/reference/soml/text-subset.md` 신규 — 통일 형식(속성/태그 표 → 예제 → 웹/PPTX
-    렌더 결과 → 에러 조건). HTML 서브셋 태그 표(종류·허용 속성·배치 규칙과 각각의 왜),
-    역할 등가 표(h1→title, h3=28, blockquote=muted, caption 비대칭, `<li>`=body),
-    공백 규칙(인라인 경계·pre 보존), `<br/>`·`<a href>` 사용법. 예제는 전부
-    `testdata/fixtures/02_text_subset`의 실제 슬라이드, 에러 표의 진단 문구는
-    `soml/parse.go`·`core/resolve.go`·`core/inline.go`의 실제 문자열이다. `reveal`은
-    쓰지 않았다 (어휘에 없다 — 미구현 동작 금지 규칙).
-  - `docs/reference/appearance.md` 갱신 — "해석 순서" 잠정 절을 **캐스케이드 절 전면**으로
-    교체 (4단 순서, 부분 패치 병합, 병합이 core에서 한 번·타깃 무관이라는 계약, variant
-    하위 절: 테마 소유 어휘·모르는 variant의 경고+폴백+`--strict` 승격 — 경고 예시는
-    006_variant 골든 diagnostics.txt의 실제 문구). 텍스트 역할 5종 표(+대응 블록 태그 열),
-    매핑 표에 `variant` 행, **인라인 서식 표**(strong/em/code/a/span/br의 CSS ↔
-    rPr@b/@i/@u·hlinkClick·a:br 대응), **리스트 표**(marL/indent/buChar/buAutoNum/buFont —
-    웹 CSS 상수와 한 곳에서 나온다는 계약 명문화).
-  - `docs/reference/cli.md` — `--strict`는 build 옵션 표에 이미 있었고, 진단 출력 절에
-    variant 경고(첫 사용자 가시 경고)의 실제 출력 예시와 `--strict` 승격을 이었다.
-  - **낡아진 기존 문서 수정** (문서와 코드가 갈라지면 문서가 틀린 것): `text.md`
-    (콘텐츠 모델이 "문자 데이터만" → 인라인 태그 포함, `variant` 속성 행, 바뀐 진단
-    문구 2건), `slide.md`(자식 어휘 문장과 에러 표 행 — 실제 메시지를 `go run`으로 출력해
-    확인하고 옮겼다), `reference/index.md`의 "현재 상태".
-  - ADR 4건: `0007-block-tag-role-ownership.md`(등가 표는 언어, 기본값은 테마 + h1→title),
-    `0008-run-style-inherit-copy.md`(상속-복사 + size 상속 차단 근거),
-    `0009-measured-kinds.md`(측정 대상 = 블록 종류, 카탈로그 4층 공유),
-    `0010-link-color-accent1.md`(hlink 전용 토큰 대신 accent1 재사용, I10 재검토).
-    `docs/decisions/index.md`·TASKS.md 결정 로그 갱신 — 결정 로그에 빠져 있던 0006 행도
-    함께 채웠다 (색인 완결성). `mkdocs.yml` nav에 5페이지 추가.
-  - TASKS.md Iteration 2 문서 체크박스 3개 `[x]`. 리뷰 박스는 사람 확인 대기라 열어 뒀다.
-
-- **설계 결정과 근거**:
-  - **ADR은 4건으로 판단했다.** 항목 지시의 3건에 더해 링크 색 accent1 재사용을 0010으로
-    승격 — 02/04와 02/06 두 항목이 승격 대기로 표시했고, core↔render를 가로지르는 관례를
-    산출물 테스트가 고정하는 횡단 결정이며 I10 재검토 예정이 명시적이라 색인에 있어야
-    한다. 나머지 후보(시맨틱 태그 선택, 마커의 PPTX 관례 + 36px 상수, weight 2값 폐쇄)는
-    01/08과 같은 태도로 **국소 매핑 선택**이라 올리지 않았다 — 각 근거는 코드 주석과
-    레퍼런스 표에 이미 있고, 마커·상수 계약은 appearance.md 리스트 표가 본문으로 담는다.
-  - 문서의 진단 문구는 전부 구현의 실제 문자열 사본이다 — slide.md의 자식 어휘 목록처럼
-    확신이 없는 것은 파서를 직접 돌려(`go run` 일회용 스니펫) 출력을 확인하고 옮겼다.
-
-- **검증**: `make docs`(mkdocs --strict) 통과. 코드 변경이 없는 항목이지만 커밋 전
-  게이트를 다시 돌렸다: `gofmt -l .` 무출력, `go vet ./...`, `make test`(컨테이너, finch)
-  전부 초록. 호스트 `go test ./...`는 02_text_subset 골든 비교에서 빨갛다 — 02/08이
-  기록한 macOS의 Noto Sans Mono 부재 그 경우다 (mono가 낀 두 슬라이드의 cy가 1px(9525
-  EMU) 차이. 게이트는 컨테이너).
-
-- **남긴 것**:
-  - **항목 07·08이 커밋을 남기지 않은 채 끝나 있었다** (NOTES 기록과 검증은 완료, 작업
-    트리만 미커밋). 항목별 한 커밋 흐름을 지키기 위해 두 항목의 변경을 NOTES 기록과
-    대조해 파일 단위로 나눠 **항목별 커밋 2건으로 대신 커밋**하고, 그 위에 이 항목의
-    문서 커밋을 얹었다. 커밋 본문에 대리 커밋임을 밝혔다.
-  - Iteration 2의 남은 칸은 리뷰 박스 하나다 — 02/08의 "남긴 것"에 있는 (a)~(d) 확인
-    목록을 사람이 Keynote/PowerPoint로 직접 연다. 끝나지 않은 것을 [x]로 만들지 않았다.
-  - `attrExample`의 "kicker"(값 없는 variant 에러 예시가 테마 사유 어휘를 인용)는 02/02의
-    열린 질문 그대로 Iteration 10 몫이다. 0010의 재검토(테마가 hlink 토큰을 명시하는
-    경우)도 같은 시점이다.
-
-## Iteration 03 · 01-parser-layout — 파서가 레이아웃 태그 어휘를 연다
-<!-- item: 03/01-parser-layout -->
-
-- **한 것**:
-  - `soml/layout.go` 신규 — 레이아웃 카탈로그. 태그 상수(`RowElement`·`ColElement`·
-    `GridElement`·`SpacerElement`·`StyleAttr`), 순서 있는 이름 목록
-    (`layoutContainerElements`), PRD §7.4 표 순서 그대로의 속성 목록 3벌
-    (`containerFlowAttrs`/`containerTrackAttrs`/`containerBoxAttrs`)과 자식 배치 속성
-    한 벌(`childPlacementAttrs`), 파생 함수 `containerAttrs`·`withChildPlacement`·
-    `layoutChildren`.
-  - `soml/subset.go` — `ElementKind`에 `KindLayoutContainer`·`KindSpacer` 추가,
-    `buildElementKinds`가 레이아웃 이름까지 색인, `IsVoidElement`가 `<spacer>`를 포함.
-    타입 주석을 "텍스트 서브셋 요소의 종류" → "요소의 종류(서브셋 + 레이아웃)"로 고쳤다.
-  - `soml/parse.go` — `buildElementSpecs`가 레이아웃 컨테이너(속성 = 컨테이너 속성 +
-    자식 배치 속성, 모델 = `modelElements`, 자식 = `layoutChildren()`)와 `<spacer>`
-    (`modelVoid`, 자식 배치 속성만)를 표에 넣는다. `<text>`·블록·리스트 컨테이너의 속성
-    표는 `withChildPlacement`로 자식 배치 속성이 이어졌고, `slideChildren()`에 레이아웃
-    컨테이너와 `<spacer>`가 들어갔다. `checkPlacement`의 블록 주석을 넓어진 규칙("슬라이드
-    **또는 레이아웃 컨테이너** 직속")으로 갱신.
-  - `soml/layout_test.go` 신규 — 정상 트리 16건(중첩·컨테이너 속성·트랙 목록·크기/비율·
-    spacer·자식 속성 전수·빈 컨테이너·style), Span 계약, 에러 21건(line:col + 문구),
-    종류 카탈로그 계약(`KindOf`/`IsVoidElement`/`TagTextRole`/문법 표 동기),
-    자식 배치 속성 커버리지(열린 곳 전부 · 닫힌 곳 전부), 픽스처 파싱.
-  - `testdata/fixtures/_03_layout/`(비활성) — `balpyo.json` + 슬라이드 7개:
-    `001_row_col`(중첩 + gap 토큰 + align/justify), `002_grid_cards`(`<grid cols="4"
-    gap="lg">` + `span="2"` — TASKS의 픽셀 비교 대상), `003_spacer`(세로·가로 밀어내기),
-    `004_child_attrs`(grow/shrink/basis/span/self/order 전수 + 대상 태그 전수),
-    `005_sizing`(w/h/min-*/max-*/ratio/pad/wrap), `006_style`(배치 선언만 — 경고 없음),
-    `007_style_appearance`(외관 선언 — 경고 경로).
-  - `soml/subset_test.go` — 속성 표가 넓어져 진단 문구가 바뀐 기존 단정 2건 갱신
-    (`<h1>`의 허용 속성 목록, `<ul>`이 "속성을 쓸 수 없다" → "알 수 없는 속성 variant").
-    트리·배치 규칙 단정은 하나도 손대지 않았다.
-
-- **설계 결정과 근거**:
-  - **`<spacer>`는 컨테이너와 다른 종류(`KindSpacer`)다.** 콘텐츠 모델(void), 웹 산출(빈
-    div), PPTX 산출(대응 도형 없음)이 셋 다 컨테이너와 달라서, 같은 종류로 두면 세 층이
-    각자 `name == "spacer"` 비교를 들게 되고 그것이 카탈로그를 한 곳에 둔 이유를 무너뜨린다.
-  - **`cols`/`rows`는 `<grid>`에만 열었다.** `grid-template-*`는 flex 컨테이너의 CSS에서
-    무효이므로 `<row cols="3">`은 받아 놓고 조용히 버려지는 선언이 되고, 그 침묵이 닫힌
-    어휘가 막으려던 실패다. 열어 두고 core가 값 층에서 경고하는 길과 저울질했는데, 태그를
-    `<grid>`로 바꾸는 것이 유일한 고칠 방법이라 진단이 이름 층에 있는 것이 정확하다.
-  - **자식 배치 속성은 `<text>`·블록·리스트 컨테이너·레이아웃 컨테이너·`<spacer>`에만.**
-    PRD의 "모든 컴포넌트/레이아웃 태그"를 `<li>`·인라인까지 넓히지 않았다 — `<li>`는
-    리스트 컨테이너의 자식이지 flex 항목이 아니고(PPTX에서 리스트는 도형 하나),
-    인라인은 박스가 아니라 런이다. 열면 `<li grow="1">`이 웹에서만 뜻을 갖는다.
-    표는 태그마다 적지 않고 `withChildPlacement` 한 곳에서 합쳤고, 그 커버리지를
-    테스트가 양방향(열린 곳/닫힌 곳)으로 못 박는다.
-  - **열거형은 `subset.go`에 모았다** — 카탈로그 파일은 어휘별로 나뉘어도 `ElementKind`
-    값이 두 파일에 흩어지면 같은 값을 쓰거나 빈 값을 남기는 사고가 가능하다. 이름 목록과
-    색인 파생만 `layout.go`가 갖는다.
-  - **태그 이름 상수를 내보냈다**(`RowElement` 등) — 항목 03·04의 렌더러가 grid와 flex를
-    가르는 판단을 문자열 리터럴로 하지 않게. 속성 목록은 아직 내보내지 않았다: core(항목
-    02)가 값 어휘를 어떤 모양으로 요구할지 정해지기 전에 표면을 열면 되돌리기 어렵다.
-  - **`<spacer>`에 `w`/`h`를 열지 않았다.** PRD 표에서 크기는 *컨테이너* 속성이고
-    spacer는 컨테이너가 아니며, 고정 크기 여백은 `basis`로 적을 수 있다. 닫힌 어휘는
-    나중에 열 수 있지만 열린 어휘를 닫는 것은 파괴적 변경이라 좁은 쪽을 골랐다.
-  - **`<stack>`·`at`·`x`/`y`는 열지 않았다** (항목 지시대로). "아직 어휘 밖"임을 에러
-    테스트가 못 박아, Iteration 6 전에 누가 픽스처에 쓰면 빨갛게 된다.
-
-- **검증**: `gofmt -l .` 무출력, `go vet ./...`, **`make test`(컨테이너, finch) 전부
-  초록** — 골든은 하나도 움직이지 않았다 (새 픽스처가 `_` 접두로 비활성이라 수집되지
-  않고, 기존 픽스처의 파싱 결과는 그대로다). 호스트 `go test ./...`는 02_text_subset
-  골든의 mono 낀 두 슬라이드 cy가 1px(9525 EMU) 다른 기존 그 차이만 빨갛다 (02/08·02/09
-  기록의 macOS Noto Sans Mono 부재. 게이트는 컨테이너).
-  게이트 밖 확인: `go run ./cmd/balpyo build --project testdata/fixtures/_03_layout
-  --target html`이 `slides/001_row_col.slide:6:3 <row>를 웹으로 렌더하는 매핑이 없다`로
-  **명시적으로** 멈춘다 — 파싱은 통과하고 렌더 매핑 부재는 침묵이 아니라 에러라는 사실을
-  이 항목 상태에서 눈으로 확인했다 (항목 03·04가 이 에러를 없앤다).
-
-- **남긴 것**:
-  - 항목 02(core)가 이어받을 표면: 컨테이너/자식 속성의 **값** 어휘(공간 토큰 `xs`~`2xl`,
-    트랙 목록, `fill`, `%`, `ratio`), `style` allowlist 검사와 외관 선언 경고(PRD §7.9).
-    파서는 이름만 봤으므로 `<row gap="huge">`·`<grid cols="넷">`은 지금 통과한다.
-    속성 목록을 core가 공유해야 하면 `layout.go`의 목록을 내보내는 편이 두 벌이 되는
-    것보다 낫다.
-  - 항목 03·04가 이어받을 표면: `KindLayoutContainer`/`KindSpacer` 분기.
-    "컨테이너는 PPTX 도형이 아니다"는 계약이 `KindSpacer`를 나눈 근거와 같은 자리에 있다.
-  - 항목 05: `_03_layout`의 `_` 제거 + 골든. 007의 경고 문구는 항목 02가 정하므로 골든
-    `diagnostics.txt`도 그때 처음 생긴다.
-  - 항목 06(문서)이 **갱신해야 하는 낡은 문서**: `docs/reference/soml/slide.md`의 자식
-    어휘 목록·에러 표 행(레이아웃 태그와 `<spacer>`가 빠져 있다),
-    `docs/reference/soml/text-subset.md`의 진단 예시(`<h1>`의 허용 속성 목록이 넓어졌다),
-    `docs/reference/soml/text.md`의 같은 종류 행. 이 항목에서는 손대지 않았다 — 렌더가
-    없는 동작을 문서에 쓰지 않는다는 TASKS 규칙 때문이고, 문구가 바뀐 사실은 여기 남긴다.
-  - **열린 질문**: (a) `<spacer>`의 크기를 `basis`로만 적게 한 결정(위) — 항목 03에서 웹
-    CSS를 짜 보고 `flex-basis`가 세로 컨테이너에서 저자의 기대와 맞는지 확인할 것.
-    (b) 슬라이드 직속 `<spacer>`가 뜻을 가지려면 슬라이드 콘텐츠 자체가 세로 flex여야
-    한다 — 그 결정(슬라이드 루트의 `display`)은 항목 03의 몫이고, 아니라고 결론 나면
-    `slideChildren()`에서 `<spacer>`를 빼는 것이 맞다. (c) `wrap="true"` 외의 값(`wrap`
-    불리언 축약, `nowrap`)을 받을지는 값 층의 결정으로 넘겼다.
-
-## Iteration 03 · 02-core-layout — 공간 토큰 + 확정 배치 + `style` 탈출구
-<!-- item: 03/02-core-layout -->
-
-- **한 것**:
-  - `soml/placement.go` 신규 — **확정 배치 값**. `ContainerFlow`(+`FlowOf`),
-    `ContainerLayout`(PRD §7.4 표 순서: Flow·Gap·Align·Justify·Wrap·Pad·Cols·Rows +
-    크기 6종·Ratio), `Placement`(Grow·Shrink·Basis·Span·Self·Order·Style),
-    값 타입 `Length`(+`Px`/`Percent`)·`Pad`·`Tracks`/`Track`/`TrackKind`·`Ratio`,
-    닫힌 어휘 `BoxAlign`/`BoxJustify`(+`BoxAligns()`/`BoxJustifies()`),
-    접근자 `Element.Container()`·`Element.Placement()`.
-  - `soml/appearance.go` — `Appearance`에 `Container`·`Placement`를 `Text`·`Link`의
-    형제로 붙였다. `Theme.Spaces []SpaceToken` + `Theme.Space`/`SpaceNames`,
-    `SpaceToken`(Name·Px — **슬롯 없음**, 주석에 비대칭의 근거).
-  - `soml/layout.go` — `containerAttrs` → **`ContainerAttrs`**, `ChildPlacementAttrs()`
-    내보냄 (core가 같은 목록을 소비한다). `soml/parse.go`는 호출만 갱신.
-  - `soml/position.go` — `Span.Slice(text, start, end)`. 값 하나가 여러 조각을 담는
-    속성(`pad="sm huge"`, `style="a: 1; b: 2"`)의 진단이 **조각**을 가리키게 한다.
-    위치 계산은 렉서·파서와 같은 `advance`를 쓴다.
-  - `core/theme.go` — `minimalSpaces()`: xs 6 · sm 12 · md 24 · lg 36 · xl 48 · 2xl 72.
-  - `core/layout.go` 신규 — `resolveLayout`(요소 종류와 무관한 한 벌의 표) +
-    `containerAttr`/`placementAttr` 표 + 값 헬퍼(`length`/`lengthValue`·`pad`·`tracks`/
-    `track`·`ratio`·`boxAlign`/`boxJustify`·`wrap`·`integer`/`nonNegativeInt`·`span`) +
-    조각 분해(`valuePart`·`splitValues`) + 경계 판정(`startsNumeric`·`isDigits`).
-  - `core/style.go` 신규 — `layoutStyleProperties()`(순서 있는 allowlist, `*`는 접두
-    가족), `isLayoutStyleProperty`, `placementStyle`(정규화 + 문법 에러 + 외관 경고),
-    `splitDeclarations`/`trimmedPart`.
-  - `core/resolve.go` — `node`가 부모를 들고 훑고 모든 요소가 `resolveLayout`을 지난다.
-    `resolveText`가 `Appearance`를 통째로 대입하지 않고 `elemAppearance(elem).Text`에
-    쓴다 (한 요소가 두 채널을 함께 갖는다). `numberSuffix`를 `size`와 배치 길이가
-    공유하고, `attrExample`에 배치 속성 예시를 더했다.
-  - 테스트: `core/layout_test.go`(컨테이너 25건 + 자식 8건 표 + **속성 커버리지 판정**,
-    어휘 전수 2건, 대상 종류 전수 6건, 배치+외관 동시, nil 불변, 맨몸 컨테이너의 흐름,
-    토큰/수치 경계, 테마 사다리, 진단 27건의 문구·line:col, span의 부모 규칙,
-    `_03_layout` 픽스처), `core/style_test.go`(통과 7건·경고 4건·문법 에러 4건·빈 값 4건
-    ·allowlist 모양), `soml/placement_test.go`(`FlowOf` 커버리지, 접근자 nil 안전,
-    `Space` 조회, `Span.Slice`). `core/resolve_test.go`의 픽스처 읽기는 새
-    `readFixtureDeck` 한 곳으로 합쳤다 (같은 루프가 두 벌이 되지 않게).
-
-- **설계 결정과 근거**:
-  - **컨테이너 배치와 자식 배치를 두 구조체로 나눴다.** 판단 기준은 항목 지시의 그것:
-    렌더러가 "이 요소가 컨테이너인가"를 다시 판단하지 않아야 한다. `Container != nil`이
-    그 답이고 컨테이너 CSS 전부가 그 구조체에서 나온다. 한 구조체로 합치면 `<p grow="1">`도
-    gap·cols 필드를 갖게 되어 "gap이 있으면 컨테이너" 같은 추론이 렌더러에 생긴다.
-  - **컨테이너는 속성이 없어도 `Container`를 갖는다** (`Flow`만 실린 구조체). 흐름은
-    속성이 아니라 태그가 정하는 값이라, nil로 두면 렌더러가 `KindOf`+태그 이름으로
-    display를 다시 유도해야 한다. 반대로 **배치 속성이 없는 비컨테이너는 두 필드가 nil로
-    남는다** — Iteration 1·2 골든이 그 nil에 달려 있고, 실제로 골든은 한 줄도 움직이지 않았다.
-  - **`fill` = 해당 축의 100%** (값 층에서 `Percent(100)`으로 눕는다). `flex-grow: 1`로
-    읽는 길을 버린 근거는 `grow`가 이미 별도 속성이라는 것이다 — 같은 결과를 내는 표기가
-    둘이 되고 둘의 시맨틱이 교차축·grid에서 미묘하게 다르다. 별도 `LengthFill` 상태를
-    남기지 않은 이유도 같다: 상태가 둘이면 두 렌더러가 다르게 낼 자리가 생긴다. **ADR 감**.
-  - **공간 토큰 사다리는 수직 리듬에서 골랐다** (6px 배수: 6·12·24·36·48·72). md=24를
-    본문 크기이자 웹의 기존 스택 간격(`render/web.stackGap`)에 못 박고, lg=36·2xl=72를
-    본문 줄박스(24×1.5)의 1·2배로 뒀다 — 컨테이너 사이 여백이 글줄 격자에 얹힌다.
-    4·8·16·32 사다리는 익숙하지만 36의 약수·배수가 아니어서 버렸다.
-  - **`SpaceToken`에 PPTX 슬롯이 없다** (색 토큰은 전부 갖는다). OOXML 테마 파트에 공간
-    개념이 없고, 배치는 좌표로 구워져 산출물에 남기 때문이다 — PPTX에서 gap을 고친다는 것은
-    도형을 옮긴다는 뜻이다. **ADR 감** (항목 06).
-  - **`stagePadding`(64)은 토큰으로 바꾸지 않았다** (지시대로). 값의 출처가 두 곳이 된
-    사실은 `minimalSpaces` 주석과 여기에 남긴다 — PRD §8.4의 `slidePadding`이 들어오는
-    Iteration 10이 합칠 자리다. 64는 사다리(48·72) 어디에도 없으므로 그때 값이 움직인다.
-  - **`span`은 값 층에서 부모를 보고 검증한다** — `<grid>`의 자식이 아니면 에러(위치는
-    속성 **이름**: 고칠 것이 값이 아니라 속성의 자리다). 파서가 못 한 이유는 속성 표를
-    만드는 자리가 부모를 모르기 때문이고, 검증을 포기하면 flex 컨테이너에서 `grid-column`이
-    CSS에 조용히 버려진다 — 파서가 `<row cols>`를 막은 것과 같은 근거, 층만 다르다.
-  - **`wrap`은 값 없는 표기와 `="true"` 둘 다 받고 `="false"`는 에러다.** 전자는
-    `<slide skip>`의 선례, 후자는 PRD 표의 표기라 한쪽만 받으면 문서와 언어가 어긋난다.
-    `false`를 막은 이유: 줄바꿈 없음이 CSS 기본값이라 끄는 표기는 속성을 지우는 것이고,
-    기본값을 명시하는 표기를 열면 저자가 두 곳을 봐야 한다.
-  - **`cols="4"`는 트랙 개수다** (`repeat(4, 1fr)`), `cols="200"`도 200개다. PRD 표의
-    "수치"가 개수이고 균등 분할이 압도적인 용례라 그쪽을 골랐다 — 크기 트랙 하나를 쓰려는
-    저자는 `1fr`·`100%`·`auto`처럼 형태를 붙인다. 이 애매함은 문서가 말해야 한다 (항목 06).
-    트랙 목록을 검증 없이 문자열로 흘리지 않은 이유: 검증하지 않은 문자열이 CSS로 나가면
-    그것이 곧 탈출구이고, 탈출구는 경고를 동반해야 한다.
-  - **`basis`에 `fill`을 열지 않았다** — PRD 표에서 `fill`은 크기 속성의 값이고,
-    `flex-basis`의 100%는 주축에서만 크기가 되어 교차축에서 저자의 기대와 갈라진다.
-  - **`style` allowlist의 기준은 "지오메트리 패스가 재는 박스를 움직이는가"다.** 그래서
-    `translate`는 목록에 있고 `rotate`/`scale`은 없다 — getBoundingClientRect는 이동한
-    박스를 재지만 회전·확대는 축 정렬 외접 사각형만 남겨 PPTX에서 다른 도형이 된다.
-    `position`/`inset`/`top…left`도 넣었다: 좌표는 재어지므로 양 타깃에 도달한다
-    (Iteration 6의 `x`/`y`가 열리기 전 저자의 탈출구다). 목록은 `*` 접두 가족으로 적어
-    CSS 명세를 베끼지 않는다.
-  - **allowlist 밖은 경고, 문법 위반은 에러, 값은 보지 않는다.** 경고인 이유는 항목
-    지시의 그것(에러로 두면 엔진이 CSS 프로퍼티 전체를 알아야 하고 탈출구의 존재 이유와
-    모순된다). 문법 위반이 하나라도 있으면 `style` **전체를 싣지 않는다** — 반쯤 통과한
-    선언 목록은 저자가 고친 뒤의 결과를 예측할 수 없게 만든다. 빈 값(`width:`)은
-    "검증하지 않는 값"이 아니라 완성되지 않은 선언이라 에러로 뒀다.
-  - **프로퍼티 이름은 소문자로 정규화, 값은 원문 유지** (CSS 이름은 대소문자 무관, 값의
-    대소문자는 내용이다). 공백·마지막 `;`·빈 선언은 정규화가 흡수한다 — 골든이 표기
-    때문에 흔들리면 무엇이 변했는지 말해 주지 못한다.
-  - **카탈로그와 값 층이 어긋나면 소리를 낸다** (`catalogGap`): soml이 연 배치 속성을
-    core의 표가 모르면 에러 진단이다. 조용히 지나가면 저자가 쓴 배치가 사라진다. 커버리지
-    테스트가 정상 경로에서 같은 계약을 지킨다 (`soml.ContainerAttrs`/`ChildPlacementAttrs`
-    전수 대조).
-  - **`numberSuffix`를 `size`와 공유했다** — 단위 계약은 하나(PRD §13-5)이므로 판정이
-    두 벌이면 한쪽만 새 단위를 막게 된다. `size`의 진단 문구는 그대로다.
-
-- **검증**: `gofmt -l .` 무출력, `go vet ./...`, **`make test`(컨테이너, finch) 전부 초록** —
-  **골든은 한 줄도 움직이지 않았다** (배치 속성이 없는 요소의 배치 필드가 nil로 남는다는
-  계약의 실증이고, 테마에 공간 토큰이 늘었어도 Iteration 1·2 픽스처의 해석 결과가 같다).
-  호스트 `go test ./...`는 02_text_subset 골든의 mono 낀 두 슬라이드 cy가 1px(9525 EMU)
-  다른 **기존 그 차이만** 빨갛다 (02/08·02/09·03/01 기록의 macOS Noto Sans Mono 부재).
-  게이트 밖 확인: `go run ./cmd/balpyo build --project testdata/fixtures/_03_layout
-  --target html`이 007의 경고 2건(`background` 8:24, `border` 10:15)을 내고 **빌드를
-  계속**해 렌더 매핑 부재(항목 03)에서 멈춘다. 같은 명령에 `--strict`를 붙이면 두 경고가
-  `error`로 승격되어 렌더 전에 멈춘다 — PRD §13-6의 기존 경로를 그대로 탄다는 사실을
-  파이프라인 끝에서 눈으로 확인했다.
-
-- **남긴 것**:
-  - 항목 03(웹)이 이어받을 표면: `Container`(Flow → display/flex-direction, Gap, Align,
-    Justify, Wrap, Pad, Cols/Rows, 크기 6종, Ratio)와 `Placement`(flex-*·grid-column·
-    align-self·order·Style 문자열)를 CSS로 낸다. **논리 이름 → CSS 이름 번역이 항목 03의
-    몫이다**: `between` → `space-between`, `Length.Percent` → `%`/`px` 접미, `Tracks.Count`
-    → `repeat(N, 1fr)`, `Ratio` → `W / H`. `<spacer>`의 기본 `flex: 1`도 렌더러의 태그
-    매핑이다 — 값 층은 `<spacer grow="2">`처럼 저자가 적은 것만 담는다.
-  - 항목 04(PPTX): 컨테이너·spacer는 도형이 되지 않으므로 이 구조체를 **읽지 않는다** —
-    좌표는 지오메트리 패스에서 온다. `Ratio`·`Tracks`가 PPTX에 대응이 없다는 사실이
-    "배치는 좌표로 구워진다"의 실증이다.
-  - 항목 06(문서·ADR)이 인용할 자리: `layoutStyleProperties()`(문서가 **같은 목록**을
-    인용해야 한다), ADR 후보 3건 — ① `fill` = 100% (grow와 겹치지 않게), ② 공간 토큰에
-    PPTX 슬롯이 없는 비대칭, ③ `style` 탈출구의 계약("우리가 보지 않는다" ≠ "안전하다")과
-    allowlist의 기준(잰 박스를 움직이는가). 그리고 `cols` 수치 하나의 애매함(개수 vs 트랙)
-    을 문서가 명시해야 한다.
-  - **TASKS 체크박스는 하나도 켜지 않았다.** "`style` 탈출구 — allowlist 검사, 경고"는
-    검사·경고까지 이 항목이 끝냈지만 탈출구가 실제로 CSS로 나가는 것은 항목 03이므로
-    부분적으로 걸친 체크박스로 봤다 (전수 매핑 테스트·문서도 뒤 항목이다).
-  - **낡은 주석 하나**: `render/web/content.go`의 `writeList` 주석 "컨테이너는 외관을
-    갖지 않는다 (core가 Appearance를 채우지 않는다)" — 외관은 여전히 없지만 배치가 붙으면
-    (`<ul basis="360">`) `Appearance`는 채워진다. 항목 03이 그 자리를 고칠 때 함께 정확히
-    한다 (이 항목에서 다른 패키지의 주석을 건드리지 않았다).
-  - **열린 질문**: (a) `<grid wrap>`은 지금 통과한다 — `flex-wrap`은 grid 컨테이너 CSS에서
-    무효라 조용히 버려진다. 속성 적용 가능성은 이름 층(항목 01이 `wrap`을 모든 컨테이너에
-    열었다)의 결정이라 값 층에서 뒤집지 않았다. 파서가 `<row cols>`를 막은 것과 같은 종류의
-    실패이므로 항목 03에서 CSS를 짜 보고 다시 판단할 것. (b) 배치 속성의 **캐스케이드**는
-    열지 않았다 (지시대로) — variant는 외관 번들이고 테마가 배치를 소유하는 자리는 1층
-    레이아웃(Iteration 10)이다. (c) `cols="200"`이 200트랙이 되는 애매함(위) — 문서로
-    막을 것인지, 단일 수치에 상한을 둘 것인지는 정하지 않았다. (d) `pad`의 3값 축약은 CSS와
-    같이 상·좌우·하로 읽는다 — 4값 축약만 열고 3값을 막는 길도 있었지만 CSS 규칙을 그대로
-    따르는 편이 배울 것이 적다고 봤다.
-
-## Iteration 03 · 03-web-layout — 레이아웃 태그가 flex/grid CSS가 된다
-<!-- item: 03/03-web-layout -->
-
-- **한 것**:
-  - `render/web/layout.go` 신규 — 레이아웃 태그 → CSS. 컨테이너·spacer 출력
-    (`writeContainer`·`writeSpacer`), PRD §7.4 표 순서의 컴파일러(`containerCSS`·
-    `appendPlacement`), 값 번역(`lengthValue`·`padValue`·`tracksValue`·`trackValue`·
-    `boxAlignValue`·`boxJustifyValue`), 엔진 CSS(`layoutCSS`), 공간 토큰 변수
-    (`spaceVarPrefix`·`spaceVarsCSS`), 인라인 style 조립(`styleAttr`).
-  - `render/web/content.go` — `writeNode`에 `KindLayoutContainer`·`KindSpacer` 분기,
-    `writeBlock`·`writeList`가 같은 `appendPlacement`를 부른다, `hasLists` → `features`/
-    `contentFeatures`(리스트·레이아웃을 한 번의 순회로 판정), `contentCSS(feat)`.
-    낡은 주석 둘을 고쳤다: `writeStage`의 "레이아웃 태그는 Iteration 3이므로…"와
-    `writeList`의 "컨테이너는 Appearance를 갖지 않는다"(배치는 갖는다 — 02가 남긴 지적).
-  - `render/web/style.go` — `themeCSS(theme, spaces)`가 공간 토큰 변수를 함께 낸다.
-  - `render/web/web.go` — 패키지 주석의 **측정 대상 계약**을 넓혔다(컨테이너·spacer도
-    잰다), 외관 절을 "외관과 배치"로 고쳤다.
-  - `render/geom/geom.go` — `collect` 주석을 같은 계약으로 고쳤다. 코드는 그대로다:
-    인라인만 건너뛰므로 컨테이너·spacer는 이미 Refs에 들어온다 (웹이 식별자를 붙이는 것으로
-    양쪽이 맞았다).
-  - `soml/placement.go` — `Length`에 `Token` 필드 + `SpaceLength`·`IsToken`.
-  - `core/layout.go` — 공간 토큰이 이름을 남긴다(`SpaceLength`), 그리고 **토큰 표를 수치
-    판정보다 먼저 본다** (아래 버그).
-  - 테스트: `render/web/layout_test.go` 신규(PRD §7.4 표 기반 + 어휘 전수 커버리지 +
-    골든 불변 + 탈출구 순서·이스케이프 + 어휘 밖 값 거부), `render/geom/measure_browser_test.go`
-    +4(grid 카드 4개, row gap·justify=between, spacer 밀어내기, 중첩 좌표 정규화),
-    `core/layout_test.go` 토큰 보존·`2xl` 회귀, `render/web/style_test.go` 시그니처·공간 표.
-
-- **설계 결정과 근거**:
-  - **엔진 CSS와 인라인 style의 경계**: `display`/`flex-direction`(태그의 정의)과
-    `<spacer>`의 `flex: 1`만 클래스에 두고, 요소마다 다른 값(gap·align·justify·wrap·pad·
-    트랙·크기 6종·ratio + 자식 6종 + 탈출구)은 인라인 style로 낸다 (ADR 0003의 연장).
-    고정 선언을 요소로 내리면 저자 CSS(@layer author)가 그것을 덮을 수 없다 — 인라인
-    style은 층 밖에서 이긴다. 목록은 `layout.go` 머리 주석에 있다.
-  - **`soml.Length`에 토큰 이름을 남겼다** (항목 02의 값 층을 건드린 유일한 곳). 항목 지시가
-    요구하는 `gap: var(--balpyo-space-lg)`는 확정 값에 토큰 정체가 남아 있을 때만 가능하고,
-    px에서 표를 **거꾸로 찾는** 길은 `gap="24"`(저자의 리터럴)와 `gap="md"`(테마를 따라야
-    하는 참조)를 구별할 수 없다 — 색이 `Token`/`RGB` 두 상태를 갖는 것과 같은 이유다.
-    px를 함께 담아 두는 이유: 토큰 참조는 웹에만 사는 개념이라(OOXML에 공간 슬롯이 없다)
-    PPTX·진단·테스트는 확정 수치를 본다. 02의 테스트 3곳은 **더 강한 단정**으로 바꿨다
-    (토큰이 보존되는지, 저자가 적은 수치에는 토큰이 붙지 않는지).
-  - **공간 토큰 변수는 레이아웃 태그가 있는 덱에만 선언한다** (`themeCSS`의 `spaces`).
-    참조하는 자리가 컨테이너의 `gap`/`pad`뿐이므로 참조 없는 변수는 골든의 잡음이고,
-    무엇보다 골든 세 개가 이 iteration과 무관한 이유로 움직인다 — `listCSS`를 조건부로 둔
-    것과 같은 근거이고 `layoutCSS`도 같은 조건이다 (`contentFeatures` 한 번의 순회).
-  - **레이아웃 컨테이너와 `<spacer>`도 측정 대상이다** (ADR 0009의 후속 — 항목 06). 컨테이너는
-    진짜 박스이므로 rect에 뜻이 있고, PPTX가 도형으로 만들지 않아도 픽셀 비교가 갈라질 때
-    "어느 칼럼부터 밀렸는가"를 이 좌표가 말해 준다 (`<li>`를 재 둔 것과 같은 근거).
-    `geom.collect`는 인라인만 건너뛰므로 **코드 변경 없이** 양쪽이 맞았다 — 웹이 식별자를
-    붙이지 않았다면 자리 맞대기가 런타임에 실패했을 것이고, 실제로 _03_layout 픽스처 7장이
-    78/78로 맞았다.
-  - **`.balpyo-text`/`.balpyo-list`의 확정 폭을 컨테이너 안에서 되돌린다**
-    (`:is(.balpyo-row, .balpyo-col, .balpyo-grid) > :is(.balpyo-text, .balpyo-list)
-    { width: auto; flex: 0 1 auto }`). 스택의 `width: 100%; flex: 0 0 auto`는 세로 스택에서
-    줄바꿈을 결정적으로 만드는 규칙인데, 가로 컨테이너 안에서는 자식마다 부모 폭 전체를
-    요구하는 셈이 되어 컨테이너를 넘치고 **`<spacer>`가 받을 남은 공간이 사라진다**. 이것은
-    추측이 아니라 실측으로 드러났다 (spacer 브라우저 테스트가 폭 0을 잡았다). `.balpyo-text`
-    선택자 자체를 `.balpyo-stage > …`로 좁히는 길은 골든 세 개를 움직이므로 버렸고, 되돌림
-    규칙은 `layoutCSS` 안에 있어 레이아웃 없는 덱에는 나가지 않는다. 폭이 확정된다는 사실은
-    그대로다 — 브라우저가 정하고 지오메트리 패스가 잰다.
-  - **`padding`은 항상 4값으로 낸다.** core가 CSS 규칙으로 이미 풀었으므로(soml.Pad)
-    렌더러가 다시 축약하면 축약 규칙이 두 곳에 생긴다. 트랙 개수는 `repeat(N, 1fr)`로 —
-    `1fr`을 N번 적은 것과 같은 뜻이지만 골든이 저자의 `cols="4"`를 그대로 읽히게 한다.
-  - **`justify`의 `space-*` 접두를 붙이는 것은 렌더러의 몫**(PRD §7.4의 결정), `align`/`self`는
-    논리 이름이 그대로 통한다. 그래도 두 어휘를 **검사**한다 — 어휘 밖 값이 CSS로 나가면
-    브라우저가 조용히 무시하고, 그 침묵이 `alignValue`를 만든 이유와 같다. 모르는
-    `ContainerFlow`(= `<stack>`을 열고 매핑을 잊는 날)도 에러다.
-  - **`style` 탈출구는 인라인 style 맨 끝**이다 — 같은 프로퍼티면 뒤가 이기므로 저자가 엔진
-    선언을 덮는다. 값은 **HTML 이스케이프**한다: core는 값 문법을 보지 않으므로(그것이
-    탈출구의 계약) 인용 부호가 들어올 수 있고, 그대로 나가면 속성이 끊겨 마크업이 깨진다.
-    `styleAttr` 하나가 블록·리스트·컨테이너·spacer의 style 속성을 전부 만든다 (선언이 없으면
-    속성 자체가 없다 — 골든 불변).
-  - **배치 선언을 만드는 코드는 `appendPlacement` 하나다.** `<text>`·블록·리스트·중첩
-    컨테이너·`<spacer>`가 전부 이 함수를 지나고, 테스트가 다섯 종류에서 같은 선언이 나오는지
-    본다 — 종류마다 따로 쓰면 자식 속성이 하나 늘 때 어느 종류가 빠졌는지 사람이 세어야 한다.
-  - **`<grid wrap>`은 여전히 통과하고, 렌더러도 `flex-wrap: wrap`을 그대로 낸다** (항목 02의
-    열린 질문 (a)에 대한 답). grid에서 CSS가 무시하는 선언이지만 흐름별로 빼지 않았다:
-    속성이 어느 태그에 붙을 수 있는가는 **이름 층**의 결정이고, 렌더러가 한 번 더 판단하면
-    적용 가능성이 두 곳에서 정해진다. 고칠 자리는 파서가 `<row cols>`를 막은 그 자리다 —
-    `containerFlowAttrs`에서 `wrap`을 빼 flex 전용 목록으로 옮기는 것 (아래 열린 질문).
-  - **`2xl` 토큰이 gap·pad에서 쓸 수 없었다** — `startsNumeric("2xl")`이 참이라 수치 경로로
-    가서 "단위를 떼라"는 엉뚱한 진단을 받았다 (PRD §8.4 어휘에서 숫자로 시작하는 유일한
-    이름이라 이 토큰만). 항목 범위 밖이지만 **이 항목의 계약(모든 공간 토큰이 var() 참조로
-    나간다)을 검증할 수 없게 만드는 결함**이라 고쳤다: 토큰 표를 수치 판정보다 먼저 보고,
-    표에 없는 이름만 수치 문법이 판정한다. 진단은 그대로다 (`16px` → 단위, `huge` → 모르는
-    토큰 — 기존 진단 표가 그것을 지킨다).
-
-- **검증**:
-  - `gofmt -l .` 무출력, `go vet ./...`, **`make test`(컨테이너, finch) 전부 초록**.
-    **골든은 한 줄도 움직이지 않았다** (`git status`에 `testdata/` 변경 없음) — 4번의 계약이
-    그대로다. 호스트 `go test ./...`는 02_text_subset 골든의 mono 낀 두 슬라이드 `cy`가
-    9525 EMU(1px) 다른 **기존 그 차이만** 빨갛다 (02/08·02/09·03/01·03/02 기록, macOS의
-    Noto Sans Mono 부재).
-  - 표 기반 테스트를 일부러 깨뜨려 RED을 확인했다: `space-` 접두 제거 → justify 3행,
-    토큰 → px 눕히기 → gap/pad 4행과 토큰 표 테스트, 탈출구를 맨 앞으로 → 순서 테스트가
-    각각 빨개졌다 (되돌린 뒤 초록).
-  - 브라우저 실측(로컬 Chromium): `<grid cols="4" gap="lg">` 카드 4개가 같은 y·등간격 x,
-    간격이 **테마 표의 lg(36px)**와 일치, 트랙 폭 = (컨테이너 폭 − 3×36)/4. `<row gap="md">`
-    간격 24px, `justify="between"`이 양 끝에 붙음. `<spacer/>`가 뒤 자식을 컨테이너 오른쪽
-    끝으로, 슬라이드 직속 spacer가 꼬리글을 스테이지 콘텐츠 바닥(720−64)으로 밀어냄.
-    중첩(`<col pad="lg">` → `<row>` → `<text>`)의 rect가 슬라이드 두 장에서 **동일** =
-    슬라이드 상대 정규화, row.x = col.x + 36(pad lg).
-  - 게이트 밖 확인: `go run ./cmd/balpyo build --project testdata/fixtures/_03_layout
-    --target html`이 7장을 렌더하고 007의 경고 2건만 낸다 (항목 02가 확인한 그 경로).
-    그 산출물을 지오메트리 패스로 재어 **박스 78개 = Refs 78개**, 좌표가 전부 유한·비음수임을
-    임시 테스트로 확인한 뒤 그 파일을 지웠다.
-
-- **남긴 것**:
-  - 항목 04(PPTX)가 이어받을 표면: 컨테이너·spacer는 **도형이 되지 않는다** — 이 항목이 낸
-    식별자 덕분에 그 rect가 지오메트리 표에 있지만, PPTX 렌더러는 그것을 건너뛰고 자식만
-    도형으로 만든다. `geom.Refs`는 컨테이너를 세므로 pptx 쪽 순회도 같은 카탈로그로 걸어야
-    `Verify`가 성립한다 (지금 pptx는 컨테이너를 만나면 멈춘다 — 그 가드가 항목 04의 시작점).
-  - 항목 05(픽스처): `_03_layout` 7장이 웹으로 렌더되고 측정까지 통과한 상태다. 활성화하면
-    `<grid cols="4">` 카드 픽셀 비교가 TASKS의 그 항목이다. 참고로 `align="center"`인 row
-    안의 `<spacer/>`는 **높이 0**의 박스로 측정된다 (교차축 크기가 내용이므로) — 밀어내기는
-    폭으로 하므로 정상이고, `Rect.valid()`가 0을 허용한다. 픽셀 비교에서 이 박스가 보이지
-    않는 것도 정상이다.
-  - 항목 06(문서·ADR)이 인용할 자리: `layoutCSS()`(엔진 CSS와 인라인 style의 경계 목록은
-    `layout.go` 머리 주석), `containerCSS`/`appendPlacement`의 표 순서(문서의 CSS 대응 표는
-    이 순서를 따라야 한다), `spaceVarPrefix`. ADR 후보가 하나 늘었다 — **측정 대상에 레이아웃
-    컨테이너·spacer를 넣은 것**(ADR 0009의 후속)과, 항목 02가 남긴 3건(`fill`=100%, 공간
-    토큰의 PPTX 슬롯 부재, `style` 탈출구의 계약). 문서는 "공간 토큰은 웹에서 var() 참조로,
-    PPTX에서는 좌표로 구워진다"는 비대칭을 함께 적어야 한다.
-  - **TASKS**: `style` 탈출구 체크박스만 켰다 (allowlist 검사·경고는 항목 02, 탈출구가 실제로
-    CSS로 나가는 것은 이 항목 — 이제 경로 전체가 있다. PPTX는 좌표로 굽기 때문에 할 일이
-    없다). "태그 → flex/grid CSS 컴파일"은 PPTX 절반(항목 04)이 남아, 테스트 체크박스는
-    픽셀 비교(항목 05)가 남아 켜지 않았다.
-  - **열린 질문**: (a) `<grid wrap>`을 **파서에서 막을 것을 권한다** — `containerFlowAttrs`를
-    flex 전용으로 좁히고 `wrap`을 `<row>`/`<col>`에만 여는 것이 `<row cols>`를 막은 것과 같은
-    처방이다. 이름 층의 결정이므로 이 항목에서 뒤집지 않았다. (b) 스테이지를 `<col>`로
-    재정의하는 통합은 미뤘다 (지시대로 — CSS 문자열이 바뀌면 골든 3개가 이 iteration과
-    무관하게 움직인다). 기본 배치의 출처가 두 곳(`contentCSS`의 스택 + 레이아웃 태그)이라는
-    사실은 Iteration 10의 `layout=`/`slot=`이 합칠 자리다. (c) **발표자 뷰의 레이아웃은 눈으로
-    확인하지 않았다** — 같은 CSS가 두 뷰에 적용되고 전환은 `<html>` 속성 하나이며(ADR 0006)
-    레이아웃 규칙은 `.balpyo-slide` 안쪽에만 있으므로 스케일과 독립이라고 판단했다. 지시가
-    "발표자 뷰에서 깨져 보이면 고치지 않고 적는다"였고, 확인 자체를 못 한 것을 적는다.
-    (d) `<spacer>`가 `flex: 1`(= `1 1 0%`)이라 교차축에서 크기가 0이 된다 — 세로 스택에서는
-    폭이 stretch로 채워지지만 `align="center"`인 row에서는 높이 0이다. 저자가 정한 배치의
-    결과이므로 손대지 않았다.
-
-## Iteration 03 · 04-pptx-layout — 레이아웃 컨테이너는 PPTX 도형이 아니다
-<!-- item: 03/04-pptx-layout -->
-
-- **한 것**:
-  - `render/pptx/shape.go` — `writeShapeNode`가 **재귀**가 되었다. 레이아웃 컨테이너는 도형을
-    내지 않고 자식으로 내려가고(`web.ChildPath`로 path를 잇는다), `<spacer/>`는 아무것도 내지
-    않는다. 도형 id 증가를 **도형을 실제로 낸 두 자리로 옮겼다** (전에는 함수 끝에서 항상
-    올렸다). 파서를 거치지 않은 문자 데이터 진단이 컨테이너 안까지 살아나도록 메시지를
-    "자리(식별자) + 노드 종류"로 고쳤다. 함수 주석에 두 "컨테이너"의 정반대 매핑과
-    `<group>`(Iteration 9)과의 구분을 새겼고, `shapesXML`·패키지 주석에 같은 계약을 요약했다.
-  - `render/web/content.go` — `childPath` → **`ChildPath`로 내보냈다**. 경로를 만드는 순회가
-    셋(웹 렌더, `geom.Refs`, PPTX 도형 조립)이므로 규칙의 소유자를 `ElementID` 옆에 두었다.
-  - `render/geom/geom.go` — 자기 복사본을 지우고 `web.ChildPath`를 쓴다 (동작 동일).
-  - 테스트: `render/pptx/layout_test.go` 신규 6개 — 컨테이너·spacer·빈 컨테이너·`<li>`가
-    도형을 내지 않는지(이름·순서·id 전수 + 컨테이너 rect가 EMU로 새지 않는지), 중첩 자식의
-    `a:off`/`a:ext`가 측정 rect(+`TextBoxRect` 여유)와 정확히 같은지, 리스트 컨테이너 1개 vs
-    레이아웃 컨테이너 0개 대비(웹에는 `<col>`이 남는다는 절반까지), 빈 `<text>`는 도형을
-    낸다는 대비, 컨테이너 안 문자 데이터 거부, `geom.Verify` 통과 + 도형 수 관계.
-  - `internal/testkit/text_fixture_test.go` — `shapeAligns`가 레이아웃 컨테이너·spacer를
-    nil로 표시한다(`<li>`의 선례 — 이월 처리), 그리고 **도형 수 = 측정 박스 수 − 컨테이너 −
-    spacer − li**를 실제 산출물로 단정하는 테스트를 더했다
-    (`TestTextFixtureShapeCountExcludesNonShapeElements`).
-  - `render/pptx/soffice_test.go` — 슬라이드 5장째: 중첩 컨테이너 + `<grid cols="4">` 카드 4개
-    + `<spacer/>` + 컨테이너 안 리스트 + 빈 `<col>`.
-
-- **설계 결정과 근거**:
-  - **도형 id는 도형을 낸 자리에서만 오른다.** 컨테이너가 번호를 소비하면 슬라이드에 `<row>`
-    하나를 더한 커밋의 diff에 도형 번호 전부가 잡음으로 실린다 — 노트가 없어도 `rId2`를
-    예약해 둔 것과 같은 태도다(`hyperlinkRelBase`). 테스트가 id 목록을 `[2 3 4 5]`로 전수
-    단정하므로 이 결정이 코드가 아니라 계약으로 남는다.
-  - **`<spacer/>`는 도형 0개, 빈 `<text>`는 도형 1개.** 둘 다 "빈 박스"인데 갈라지는 기준은
-    **저자의 콘텐츠인가 배치 수단인가**다: 빈 `<text>`는 저자가 PowerPoint에서 자리를 확인할
-    수 있어야 하고(`writeTextShape`의 기존 정책), spacer의 뜻("여기에 공간이 있다")은 이미
-    이웃 도형의 좌표에 들어가 있다. 빈 컨테이너(`<row></row>`)도 자식이 없으니 0개다.
-  - **컨테이너 상대 좌표를 더하는 코드가 없다.** 잰 rect가 이미 슬라이드 상대이므로
-    (`render/geom` 패키지 주석) 중첩 깊이가 좌표에 영향을 주지 않는다 — 이것이 "저자는 좌표를
-    한 번도 계산하지 않는다"의 렌더러 쪽 절반이다. 테스트는 컨테이너·spacer·li의 rect를
-    7px 계열로 몰아 두고 산출 XML에 그 EMU(66675)가 **나타나지 않는지** 본다: 조립기가
-    컨테이너 rect를 소비하거나 부모 좌표를 더하면 그 값이 새어 나온다.
-  - **`web.ChildPath`로 경로 규칙의 소유자를 하나로 만들었다.** 같은 규칙의 복사본이 웹·geom·
-    pptx 세 곳에 생기려던 순간이었고, 이 규칙이 갈라지면 세 목록(HTML 요소, `Refs`, 도형)의
-    자리가 어긋나 **좌표가 엉뚱한 요소에 붙는다** — 이 코드베이스가 카탈로그를 한 곳에 둔
-    이유와 같다. 식별자 규칙(`ElementID`)과 나란히 있는 것이 읽는 순서에도 맞다.
-  - **도형 수 관계를 픽스처 수준 계약으로 두었다.** 골든 XML만으로는 "컨테이너가 도형을 내기
-    시작한 변경"이 "픽스처 슬라이드가 늘어난 것"과 구별되지 않는다. 종류 판정은
-    `soml.KindOf(box.El)`로 한다 — 측정 결과가 자기 태그 이름을 갖고 있어 테스트가 이름
-    목록을 따로 들지 않는다. 지금은 컨테이너 0·spacer 0인 두 픽스처에서 돌지만(li만 5개),
-    항목 05가 `_03_layout`을 `textFixtureNames`에 넣는 순간 같은 계약이 그 픽스처를 덮는다.
-  - `grpSp`는 내지 않는다 (Iteration 9의 `<group>`과 구분) — 배치 태그가 편집 단위가 되면
-    `<group>`과 `<row>`의 차이가 산출물에서 사라진다. 함수 주석이 이 경계를 적고 있다.
-
-- **검증**:
-  - `gofmt -l .` 무출력, `go vet ./...`, **`make test`(컨테이너, finch) 전부 초록**.
-    **골든은 한 줄도 움직이지 않았다** (`git status`에 `testdata/` 변경 없음) — 재귀로 바꾼
-    순회가 기존 트리(슬라이드 직속 요소들)에서 같은 바이트를 낸다는 리팩터링의 정확성 증거다.
-  - LibreOffice 열림: `TestLibreOfficeOpensTextShapes`가 레이아웃 슬라이드를 포함해 PASS
-    (컨테이너 이미지 안, 복구·경고 0건).
-  - 일부러 깨뜨려 RED을 확인했다 (4건, 되돌린 뒤 초록): ① 컨테이너에서 `*shapeID++` →
-    id가 `[4 5 7 8]`로 벌어져 실패, ② 컨테이너 자식 순회 제거 → 도형 0개 + 좌표 4행 실패,
-    ③ 자식 좌표에 +7px(컨테이너 상대로 잘못 더한 경우) → 중첩 좌표 3행 실패, ④ 요소가 아닌
-    노드를 조용히 건너뛰기 → 거부 테스트 실패, ⑤ spacer 분기 제거 → "매핑이 없다"로 두 테스트
-    실패.
-  - 게이트 밖 실측(컨테이너): `_03_layout` 7장을 `--target html,pptx`로 빌드해
-    **측정 박스 78개 − (컨테이너 21 + spacer 4 + li 6) = 도형 47개**가 실제 PPTX의 도형 수와
-    정확히 일치했다. 도형 이름에 `row`/`col`/`grid`/`spacer`/`li`가 하나도 없고, 7장 전체에
-    음수 좌표가 0개다. LibreOffice가 그 파일을 javaldx 경고(무해 목록)만 내고 PDF로 변환했다.
-    004_child_attrs 슬라이드가 특히 값을 했다: `order="-1"`인 `<ul>`이 **문서 순서로는 세 번째
-    도형**이면서 좌표는 맨 왼쪽(x=64)이고, 중첩 `<col>` 안의 두 `<p>`가 절대 좌표
-    (824.4, 134.8/176.8)로 나온다 — spTree 순서 = 문서 순서, 좌표 = 시각 순서가 갈라지는
-    장면이 산출물에 그대로 있다.
-
-- **남긴 것**:
-  - 항목 05(픽스처): `_03_layout`을 활성화하면 위 실측이 골든·픽셀 비교가 된다.
-    `textFixtureNames`에 이름을 더하는 것만으로 도형 수 관계·좌표 대조·`schemeClr`·줄바꿈
-    임계값 계약이 따라붙는다 (`goldenPartLists`·`slideCounts`에 항목을 더해야 한다).
-    참고: `align="center"`인 row 안의 `<spacer/>`는 높이 0으로 측정된다 (항목 03의 기록) —
-    도형이 되지 않으므로 PPTX 쪽에는 영향이 없다.
-  - 항목 06(문서·ADR)이 인용할 자리: `writeShapeNode`의 머리 주석(두 "컨테이너"의 정반대
-    매핑 표, `<group>`과의 구분), `pptx` 패키지 주석. 문서는 "레이아웃 태그는 웹에서 flex/grid
-    요소로 남고 PPTX에서는 자식 좌표로만 남는다"는 비대칭을 적어야 하고, ADR 후보가 하나
-    늘었다 — **레이아웃 컨테이너는 도형이 아니다**(리스트 컨테이너와의 대비, spacer와 빈
-    `<text>`의 대비까지가 한 결정이다).
-  - **TASKS**: "구현: 태그 → flex/grid CSS 컴파일 / 레이아웃 태그는 PPTX 도형이 아니다"
-    체크박스를 켰다 (웹 절반은 항목 03, PPTX 절반이 이 항목 — 이제 경로 전체가 있다).
-    테스트 체크박스는 픽셀 비교(항목 05)가 남아 켜지 않았다.
-  - **열린 질문**: 없다. 항목 03이 남긴 (a)~(d)는 그대로 열려 있다 (이 항목이 건드리지 않았다).
-
-## Iteration 03 · 05-fixtures — 03_layout 활성화 + 골든 + 픽셀·잉크 비교
-<!-- item: 03/05-fixtures -->
-
-- **한 것**:
-  - `testdata/fixtures/03_layout/` — `_` 접두를 떼어 **수집 대상**이 되었다 (`git mv`). 골든
-    31개가 처음 생겼다 (`index.html` + `diagnostics.txt` + PPTX 파트 29개, 슬라이드 7장).
-    `004_child_attrs.slide`의 두 번째 `<li>`에서 마지막 글자 하나를 뺐고(아래 임계값 결함),
-    그 이유를 슬라이드 주석에 적었다.
-  - `internal/testkit/text_fixture_test.go` — `layoutFixtureName` 상수, `textFixtureNames`·
-    `goldenPartLists`(31개 전수)·`slideCounts`(7)에 편입. **잉크 띠 판정을 다시 썼다**:
-    `expectedLineBands`/`lineBand`/`bandOwners`를 `measuredLines`/`bandLineOwners`/
-    `flatOwners`로 갈았다 (아래 결정 ①). `loLineWidthMaxRatios`에 6.5%,
-    `inkBandSkipSlides`(새 표)에 007을 더했다. 새 테스트
-    `TestLayoutFixtureSameRowBoxesShareY` — 같은 줄의 카드가 같은 y로 굽히는지, 4열 트랙의
-    x가 등간격인지.
-  - `internal/testkit/suite.go` — `slideDiffOptions`(새 표 — 슬라이드 한 장 범위의 픽셀 오차)와
-    `fixtureDiffOptions["03_layout"]`(3.2%). `CompareRenders`가 슬라이드 조정을 픽스처 조정보다
-    먼저 본다.
-  - `soml/layout_test.go`·`core/layout_test.go` — 픽스처 경로 `_03_layout` → `03_layout`,
-    "비활성/뒤 항목이 골든을 붙인다"던 주석을 지금 사실로 고쳤다.
-
-- **설계 결정과 근거**:
-  - ① **잉크 띠를 합치는 기준을 잰 rect에서 그림으로 옮겼다.** 기존 규칙("세로로 겹치는 줄
-    박스는 한 띠")은 세로 스택에서만 맞았다: 배치가 열리면 한 줄에 박스가 여럿 앉고 그 y가
-    조금씩 엇갈리는데(`<col gap="xs">`의 두 문단은 6px 차이), 줄 박스는 잉크보다 크므로
-    (24px 본문의 글자 상자 33px, 잉크 22px) 이웃 줄의 박스가 서로 닿아 합치기가 **전이적으로**
-    번진다 — 004에서 세 줄(171.8·177.8·207.8)이 한 띠가 되었고 실제 그림은 세 띠였다
-    ("측정 방법이 틀렸다"로 죽었다). 새 방법은 잰 줄을 **웹 잉크 띠**에 세로 겹침이 가장 큰
-    쪽으로 배정하고 양방향으로 검사한다: 줄마다 잉크가 있어야 하고(줄 → 띠), 띠마다 주인이
-    있어야 한다(띠 → 줄). 항목 지시가 권한 "판정 범위를 박스별로 좁히기"를 버린 이유는 늘어난
-    줄이 **박스 밖**에 그려진다는 사실이다 — 잡으려면 박스 아래로 판정 범위를 늘려야 하고, 그
-    경계는 같은 열의 다음 박스와 겹쳐 정할 수 없다. 슬라이드 전체에서 재는 것은 그대로 두었고
-    (그것이 늘어난 줄을 잡는 유일한 이유다), 방법 검증은 오히려 강해졌다: 전에는 띠 **개수**만
-    맞대었고 이제는 줄과 띠가 서로 주인을 갖는지 본다.
-  - ② **슬라이드 한 장 범위의 픽셀 오차 조정을 새로 만들었다** (`slideDiffOptions`). 007은
-    저자가 `style`에 배경을 칠한 슬라이드라 두 렌더가 다른 것이 §7.9의 계약 그 자체다
-    (측정 6.11% = 칠한 띠 1152×40px이 5.0% + 글리프 잔차 1.1%). 같은 수치를 픽스처 전체에
-    주면 나머지 6장의 **실제** 배치 갈라짐이 그 그늘에 숨는다 — 조정의 범위는 근거의 범위와
-    같아야 한다. 배치가 깨지면 7%도 넘으므로 검사가 무력해지지 않고, 그 슬라이드의 좌표는
-    0 오차로 따로 못 박혀 있다 (`TestTextFixtureCoordinatesMatchGeometry`).
-  - ③ **007의 잉크 띠 판정은 건너뛴다** (`inkBandSkipSlides`). 값 완화가 아니라 **측정 방법의
-    전제가 깨지는** 경우다: `InkBands`는 "가장 흔한 색이 배경, 잉크는 글자"에 기대는데 칠한
-    사각형이 하나의 거대한 띠가 된다 (웹 띠 1152×40px = 칠한 띠, LibreOffice 띠 737×22px =
-    글자, 폭 차 −36%). 박스별로 좁혀도 같다 — 칠한 것은 부모 `<row>`이고 그 사각형이 자식
-    박스를 덮는다. 오차를 키워 통과시키는 대신 "여기서는 이 방법을 쓸 수 없다"를 표로 적었다.
-  - ④ **004의 `<li>` 글을 한 글자 줄였다** — 픽스처가 임계값의 knife edge에 앉아 있었다
-    (측정: 웹 잉크 167px > 글자 영역 164px이라 웹은 접고, PPTX 박스는 4% 넓은 172px이라
-    LibreOffice는 접지 않는다 → 줄 수 4 vs 5). 이 갈라짐은 잔차가 아니라 정책의 결함이고
-    (아래 **남긴 것**), 픽스처가 그 위에 앉아 있으면 게이트가 폰트·LibreOffice 판본마다
-    뒤집히는 동전 던지기가 된다. 좁은 박스의 줄바꿈 자체는 같은 슬라이드의
-    `<p basis="240">`(3줄)과 002의 4열 카드가 계속 시험한다.
-  - ⑤ **오차 조정 두 개는 측정값에 앞 픽스처와 같은 폭의 여유를 더한 값이다** (2.1%→2.5%,
-    3.04%→3.5%와 같은 태도): 픽셀 2.68% 측정 → 3.2%, 글줄 폭 5.8% 측정 → 6.5%. 픽셀 잔차가
-    커진 원인은 슬라이드당 텍스트 박스가 9개까지 늘어난 것이다 (LibreOffice의 첫 기준선
-    +2~5px가 박스마다 글리프 경계를 이중으로 센다 — 잔차가 박스 수에 비례한다). 폭 비율이
-    커진 원인은 트랙이 좁아 줄이 짧아진 것이다 (381px 줄에 라틴 런·인용 부호로 한글↔라틴
-    경계가 6곳 — 스크립트 간격은 경계 수에 비례하고 비율은 줄 길이로 나눈 값이다).
-  - ⑥ **새 테스트가 보는 것은 "그리드가 그리드다"다.** 골든 xfrm은 숫자가 그럴듯한지 말해
-    주지 않고, 좌표 대조는 측정값과 산출물이 같은지만 본다 — 측정 자체가 한 칸 밀리면 두
-    검사가 함께 통과한다. 그래서 같은 y(정확히 같은 EMU가 산출물에 있다)와 등간격 pitch를
-    직접 단정했다. TASKS 리뷰 포인트의 자동화 가능한 절반이고, 나머지(편집 가능한 개별
-    도형인가)는 사람이 본다.
-
-- **검증**:
-  - `gofmt -l .` 무출력, `go vet ./...`, **`make test`(컨테이너, finch) 전부 초록**.
-    `make golden`으로 31개가 새로 생겼고 **기존 세 픽스처의 골든은 한 줄도 움직이지 않았다**
-    (`git status -- testdata/fixtures/0{0,1,2}_*` 무출력 — 항목 03·04의 불변 계약이 그대로다).
-  - 골든 diff 전수 설명: 전부 새 파일이다. 파트 목록 31개 = 슬라이드 7장 × (slide + rels) +
-    노트 1장분(001에만 `<note>`) + 공용 파트 + `diagnostics.txt`(007의 경고 2건). 도형 수는
-    슬라이드별 5·11·4·8·12·4·3 = **47개 = 측정 박스 78 − 컨테이너 21 − spacer 4 − li 6**
-    (항목 04가 만든 계약이 이제 이 픽스처에 걸린다). 슬라이드 파트에 `srgbClr` 0건, 도형
-    이름에 `row`/`col`/`grid`/`spacer`/`li` 0건.
-  - 픽셀 비교(웹 vs LibreOffice): 슬라이드별 1.36% · 1.81% · 1.36% · **2.68%** · 1.91% ·
-    1.89%, 007만 **6.11%**(칠한 띠). 잉크 띠: 세로 중심 +1.0~+5.0px(허용 ±6px), 잉크 폭
-    −1.7%~**+5.8%**(허용 ±6.5%), 줄 수 갈라짐 0건.
-  - 배치 계약 실측: `row-col`의 `<h3>` 2개와 `grid-cards`의 카드 `<h3>` 4개가 같은
-    y=134.8px(1283940 EMU)를 공유하고, 4열 트랙 pitch는 **297px 세 번**(트랙 261 + gap lg 36
-    = 1152 − 3×36 = 1044, /4 = 261 ✓)이다. 다섯 번째 카드는 `span="2"`라 y 그룹이 갈린다.
-  - 일부러 깨뜨려 RED을 확인했다 (되돌린 뒤 초록): ① `textBoxSlackRatio` 0.04 → 0.12 →
-    004에서 LibreOffice가 글자를 끌어올려 띠 폭 −66.2%로 실패(잉크 판정이 여전히 문다),
-    ② `<grid cols="4">` → `cols="3"` → 새 테스트가 "`<h3>`가 같은 y에 3개, want 4개"로 실패.
-  - 리뷰 갤러리(`make review` → `review/03_layout/`)를 눈으로 확인했다: 4열 카드가 두 타깃에서
-    같은 y·등간격으로 앉고, 007의 diff가 정확히 저자가 칠한 띠 모양이다. LibreOffice가 한글↔
-    라틴 경계에 간격을 넣는 것("8분" → "8 분")이 그림에서도 보인다 — 이미 아는 엔진 차이다.
-
-- **남긴 것**:
-  - **줄바꿈 임계값 정책의 결함 (PRD §13-1 + ADR 0005를 함께 고쳐야 하는 일 — 이 항목의
-    범위 밖이라 손대지 않았다).** 두 사실을 수치로 남긴다:
-    (a) `textBoxSlackRatio`(4%)의 주석은 "반대 방향의 위험(넓힌 박스에 단어가 들어가 줄이
-    줄어드는 것)은 단어 하나 폭보다 훨씬 작아야 한다"를 근거로 든다. 한글은 **글자 단위**로
-    접히므로 그 "단어"가 한 글자(24px 본문에서 24px)이고, 004의 `<li>`에서 남은 여유 19px +
-    넓힌 8px = 27px > 24px로 정확히 뒤집혔다. 일반적으로 `남은 여유 + 0.04×박스폭 ≥ 다음
-    글자 폭`이면 뒤집히므로, 여유를 어떤 값으로 두든 뒤집히는 줄이 존재한다 — 비율을 조이는
-    것으로는 닫히지 않는 구멍이다.
-    (b) 배치가 열리면서 주축 자식은 **내용 크기**가 되어 `Slack`이 0이 된다 (이 덱의 최소 여유
-    비율이 0.00%로 찍힌다 — 01_text는 2.44%, 02_text_subset은 40.5%였다). 즉 줄바꿈 안전이
-    전적으로 4% 박스 확대에 걸리는데, 이 픽스처에서 측정한 LibreOffice 폭 오차 최대치는
-    **5.8%로 이미 그보다 크다**. 지금 초록인 것은 그 줄이 그리드 트랙(558px) 안에서 46%
-    여유를 갖기 때문이고, `<row>` 안의 내용 크기 박스에서 같은 폭 오차가 나면 줄이 접힌다.
-    후보 처방: ① 여유를 비율이 아니라 **절대값(≥ 한 글자 폭)**으로 두기, ② 박스를 넓히는 대신
-    PPTX에 줄바꿈을 명시해(`a:br`) 엔진의 줄나눔에 기대지 않기 — ②가 근본적이지만 저자가
-    PowerPoint에서 글을 고칠 때 줄이 따라오지 않게 되어 편집 가능성을 해친다. 결정이 필요하다.
-  - **리뷰 체크박스는 열어 두었다** — 사람이 `review/03_layout/layout-deck.pptx`(갤러리에
-    함께 있다)를 macOS Keynote/PowerPoint로 직접 열어 확인할 것: (a) 4열 카드가 같은 y·등간격
-    x인지(자동 검사도 있지만 눈으로 그리드가 그리드인지), (b) 각 카드가 **독립된 편집 가능한
-    텍스트 박스**인지(그룹도 그림도 아니다 — `grpSp`를 내지 않는다는 항목 04의 계약),
-    (c) 003의 spacer가 만든 여백이 도형 위치로 남았는지, (d) 도형 하나를 끌어 옮겨도 다른
-    도형이 따라오지 않는지(컨테이너가 사라졌다는 증거). 이 넷은 자동화할 수 없다.
-  - **TASKS**: "테스트: 속성 → CSS 매핑 / 공간 토큰 / 중첩 좌표 스냅샷 / `<grid cols="4">`
-    카드 배치 픽셀 비교" 체크박스를 켰다 (앞 세 개는 항목 02·03, 픽셀 비교가 이 항목 —
-    이제 네 갈래 전부가 있다). 리뷰 박스는 위의 사람 확인 대기이므로 열어 두었다.
-  - 항목 06(문서)이 인용할 자리: `slideDiffOptions`·`inkBandSkipSlides`(문서가 "웹 전용 외관은
-    픽셀 비교에서 제외된다"를 말해야 한다), `bandLineOwners`의 머리 주석(잉크 띠 방법이
-    배치에서 어떻게 바뀌었는지 — `docs/internals/testing.md`의 잉크 띠 절이 낡았다).
-  - **열린 질문**: 위 (a)(b)의 처방 선택. 항목 03이 남긴 (a)~(d)와 항목 01의 `<grid wrap>`
-    (파서에서 막을 것을 권한 것)은 그대로 열려 있다.
-
-## Iteration 03 · 06-docs — 레이아웃 레퍼런스·CSS 대응 표와 ADR 5건
-<!-- item: 03/06-docs -->
-
-- **한 것**:
-  - `docs/reference/soml/layout.md` 신규 — 이 iteration의 공식 문서. 태그 표(웹 컴파일
-    결과 + PPTX 산출), **컨테이너 속성 14종**과 **자식 속성 6종 + `style`**의 CSS 대응 표
-    (허용 값 · CSS 대응 · 뜻이 있는 태그, PRD §7.4 표 순서 그대로), 공간 토큰 사다리와
-    리듬 근거, 픽스처 4장에서 가져온 예제(001·002·003·005), 웹 렌더 결과(실제 골든
-    산출 인용 + 엔진 CSS/인라인 style 경계 + 컨테이너 안 폭 되돌림 규칙), **PPTX 렌더
-    결과**("레이아웃 태그는 사라지고 자식이 절대 좌표 도형이 된다" + 리스트 컨테이너
-    1개·`<group>` `grpSp`와의 3자 대비 표 + 도형 수 등식 47 = 78 − 21 − 4 − 6),
-    `style` 탈출구 절(3단 계약 · allowlist 전문 인용 · 006/007 예제와 실제 경고 문구),
-    에러 조건 표 2벌(파서 11행 · 값 층 19행 — 문구는 `soml/parse.go`·`core/layout.go`·
-    `core/style.go`의 실제 문자열, 테스트가 단정하는 그대로).
-  - `docs/reference/appearance.md` — **"배치는 외관이 아니다"** 절 신규 (두 선언 채널의
-    경계 세 곳: variant가 배치를 담지 않는다 · `style`은 배치 전용 · 배치는 좌표로 굽고
-    외관은 참조로 남는다). 토큰 절에 **공간 토큰 표**를 색·폰트 토큰과 나란히 더했고
-    (PPTX 슬롯 열이 전부 "없음" — 그 비대칭의 근거와 ADR 0012 링크), `%`가 배치 길이에는
-    유효하다는 사실로 값 문법 절을 고쳤다 (`size`만 `%` 금지 — 전에는 전부 금지로 읽혔다).
-  - `docs/internals/geometry-pass.md` — "누구를 재는가" 절 신규 (측정 대상이 박스인 것
-    전부로 넓어졌다 · **재는 것 ≠ 도형이 되는 것** · 도형 수 등식), 좌표계 절에 중첩
-    컨테이너의 슬라이드 상대 정규화, 허용 오차 절에 픽스처·슬라이드 단위 조정.
-  - `docs/internals/testing.md` — 오차 조정의 범위 = 근거의 범위, 전제가 깨지는 검사는
-    건너뛴다(`inkBandSkipSlides`), **잉크 띠를 그림에서 합치는 새 방법** (03/05가 낡았다고
-    지적한 자리).
-  - ADR 5건: `0011-layout-containers-are-not-shapes.md`(항목 04 — 가장 중요한 결정),
-    `0012-space-tokens-have-no-theme-slot.md`(항목 02),
-    `0013-measured-kinds-include-layout.md`(항목 03 — 0009의 **후속**),
-    `0014-style-escape-hatch-boundary.md`(항목 02),
-    `0015-fill-is-hundred-percent.md`(항목 02). `docs/decisions/index.md`와 **TASKS.md
-    하단 결정 로그 표**에 5행, `mkdocs.yml` nav에 6페이지.
-  - 낡은 문서 정정 (03/01이 남긴 목록): `soml/slide.md`의 자식 어휘와 진단 행(레이아웃
-    태그·`<spacer>`가 빠져 있었다), `soml/text.md`·`soml/text-subset.md`의 허용 속성
-    목록(자식 배치 속성이 붙어 진단 문구가 넓어졌다), `text-subset.md` 태그 표의 배치
-    규칙("슬라이드 직속" → "슬라이드 또는 레이아웃 컨테이너 직속", `<ul>`의 허용 속성),
-    `docs/reference/index.md`의 현재 상태, `docs/index.md`의 "Iteration 1까지" 배너.
-  - PRD §7.4 최소 갱신 3곳 (아래 판단).
-
-- **설계 결정과 근거**:
-  - **ADR 0009를 고치지 않고 0013을 새로 냈다** (항목 지시가 권한 쪽). 0009의 결정("인라인은
-    재지 않는다")은 뒤집히지 않았고 넓어진 것은 카탈로그의 종류이므로, 불변 원칙을 지키면서
-    관계를 드러내는 방법은 새 번호다. 0009에는 **`후속:` 한 줄만** 더했다 — 본문·근거는
-    손대지 않았고, 그 줄이 없으면 0009만 읽은 사람이 낡은 규칙을 계약으로 읽는다.
-  - **국소 매핑 선택은 ADR로 올리지 않았다** (02/09의 기준을 그대로): `between` →
-    `space-between` 번역, `cols="4"` → `repeat(4, 1fr)`, `pad` 4값 전개, 공간 토큰 사다리의
-    수치. 근거가 코드 주석과 레퍼런스 표에 있고, ADR로 올리면 "결정"의 무게가 희석된다.
-    반대로 `fill`(0015)은 **어휘 두 개가 겹칠 뻔한** 결정이라 올렸다 — 되돌리려면 저자의
-    슬라이드가 바뀐다.
-  - **`style` 탈출구를 레퍼런스의 절로 두고 ADR과 나눴다.** 저자가 읽을 것("무엇을 쓸 수
-    있고 언제 경고가 나는가")과 기여자가 읽을 것("왜 allowlist 밖이 에러가 아닌가")이
-    다르다. allowlist는 **구현 목록을 그대로 인용**했다 — 목록이 두 벌이 되면 경고 조건과
-    문서가 갈라지는데, 인용이 갈라지면 다음 사람이 코드를 보게 되므로 표로 다시 쓰지 않고
-    코드 블록으로 붙였다 (`core/style.go`의 `layoutStyleProperties()`와 줄 단위로 같다).
-  - **PPTX 절을 태그 표로 만든 이유**는 "컨테이너"라는 단어가 세 가지로 갈라지기 때문이다
-    (레이아웃 0개 · 리스트 1개 · `<group>` `grpSp`). 저자가 이 페이지에서 답을 받아야 하는
-    질문은 "그리드가 PowerPoint에서 무엇이 되는가"이고, 그 답은 대비 없이 쓰면 믿기 어렵다.
-    도형 수 등식을 함께 실은 것도 같은 이유다 — 검증 가능한 형태의 주장이다.
-  - **PRD를 세 곳만 고쳤다** (구현이 PRD를 따르는 것이 기본이므로 갈라진 곳만): ①
-    `cols`/`rows`에 "`<grid>` 전용"과 "수치 = 트랙 **개수**" — PRD 표는 컨테이너 속성을
-    태그로 좁히지 않아 `<row cols>`가 유효하게 읽혔고, 구현이 이름 층에서 막았다 (항목 01의
-    결정이 더 정확하다: 무효 선언을 조용히 버리는 것이 닫힌 어휘의 실패다). ② `wrap`에 "값
-    없는 표기도 같은 뜻" — 구현이 PRD보다 넓다 (`<slide skip>`의 선례를 따른 것이라 언어의
-    일관성 쪽이 옳다). ③ 자식 속성의 적용 대상에서 `<li>`·인라인 제외. 그리고 §7.4 끝에
-    ADR 0011·0012를 가리키는 두 줄. **표의 다른 행은 구현과 어긋나지 않았다** — 14 + 6
-    속성의 값 어휘와 CSS 대응이 PRD 표 그대로다.
-  - **`<grid wrap>`의 구멍을 문서에 적었다** ("알려진 구멍"으로). 미구현을 문서에 쓰지 않는
-    규칙과 반대 방향의 문제다 — 이것은 **구현된 동작**이고 그 동작이 조용히 무시된다는 사실을
-    저자가 알아야 한다. 고칠 자리(이름 층)는 03/01·03/03의 열린 질문에 그대로 있다.
-  - **문서 예제는 픽스처에서 그대로 가져왔다** (002는 카드 셋을 주석으로 줄였다) — 문서
-    예제가 곧 테스트된 코드라는 규칙이고, 인용한 산출 HTML도 골든에서 복사한 실제 바이트다.
-
-- **검증**: **`make docs`(strict) 통과** — 새 페이지 6개가 nav에 있고 상호 링크가 전부
-  해석된다 (`unrecognized_links: warn`이 strict에서 에러로 승격되므로 ADR·레퍼런스 사이
-  링크 오타가 있으면 여기서 멈춘다). `gofmt -l .` 무출력, `go vet ./...`, **`make test`
-  (컨테이너, finch) 전부 초록** — 코드 변경이 없으므로 전 패키지가 캐시 히트이고, `git
-  status`에 `testdata/` 변경이 없다 (골든 불변). 문서에 실은 사실들은 코드·골든·NOTES에서
-  대조했다: 진단 문구는 `soml/layout_test.go`·`core/layout_test.go`의 단정과 골든
-  `diagnostics.txt`, 산출 HTML은 `03_layout/golden/index.html`, 공간 토큰 값은
-  `core/theme.go`의 `minimalSpaces`, allowlist는 `core/style.go`, 도형 수 등식과 그리드
-  pitch는 NOTES 03/04·03/05의 실측이다.
-
-- **남긴 것**:
-  - **TASKS**: Iteration 3의 문서 체크박스 2개(+ 부모)를 켰다. **리뷰 체크박스는 열어
-    두었다** — 03/05가 남긴 사람 확인 4가지(4열 카드의 y·등간격, 각 카드가 독립된 편집 가능
-    텍스트 박스인지, spacer 여백이 도형 위치로 남았는지, 도형 하나를 끌어도 다른 것이 따라오지
-    않는지)가 대기 중이고, `review/03_layout/layout-deck.pptx`를 macOS Keynote/PowerPoint로
-    열어야 답이 나온다. Iteration 1·2의 리뷰 박스도 같은 방식으로 열려 있다.
-  - **문서를 쓰다 발견한 코드 문제** (구현 변경은 이 항목의 범위 밖이라 손대지 않았다):
-    (a) `cols`의 단일 수치 판정이 `isDigits`라서 `cols="200"`은 트랙 200개인데 `cols="200.0"`은
-    **200px 트랙 하나**가 된다 — 소수점 하나로 뜻이 뒤집히는 문법이라 문서에 쓸 수 없었다
-    (레퍼런스는 "무단위 정수 하나는 개수"까지만 적고 형태를 붙이는 길을 안내한다). 트랙 개수에
-    상한을 두거나 단일 수치를 개수로만 읽는 것(소수점은 에러)이 후보 처방이다. (b) `<grid wrap>`
-    (항목 01·03의 열린 질문) — 문서가 "알려진 구멍"으로 적어야 했다는 사실 자체가 이름 층에서
-    막을 근거다.
-  - Iteration 4(문서)가 이어받을 자리: `docs/reference/appearance.md`의 매핑 표가 도형
-    외관(fill·border·radius·shadow·opacity)으로 넓어지고, 새 절 "배치는 외관이 아니다"가
-    그 iteration에서 처음으로 **양쪽에 값이 있는** 요소를 만난다 (`<shape>`는 배치 채널과
-    외관 채널을 함께 쓰는 첫 태그다). `docs/reference/layouts.md`·`theme.md`는 Iteration 10이다
-    (`reference/index.md`가 그 사실을 적고 있다).
-  - **열린 질문**: 없다 — 이 항목이 새로 고른 것은 ADR 번호 배정과 PRD 갱신 범위뿐이고 둘 다
-    위에 적었다. 앞 항목들이 남긴 것(줄바꿈 임계값 정책의 결함, `<grid wrap>`, 스테이지를
-    `<col>`로 재정의하는 통합, 발표자 뷰의 레이아웃 육안 확인)은 그대로 열려 있다.
-
 ## Iteration 04 · 01-parser-shape — 파서가 `<shape>` 어휘를 연다
+
 <!-- item: 04/01-parser-shape -->
 
 - **한 것**:
   - `soml/shape.go` 신규 — 도형 카탈로그. `ShapeElement` 상수, `type` 12종의 **순서 있는**
-    목록(`shapeTypes` + `ShapeTypes()`), 속성 목록 2벌(`shapeOwnAttrs` = `type`·`id`,
-    `shapeAppearanceAttrs` = `variant` `fill` `border` `radius` `shadow` `opacity` `rotate`
-    `flip`), 파생 함수 `ShapeAttrs()`·`ShapeAppearanceAttrs()`·`shapeChildren()`,
-    그리고 `AnchorAttr` 상수.
+  목록(`shapeTypes` + `ShapeTypes()`), 속성 목록 2벌(`shapeOwnAttrs` = `type`·`id`,
+  `shapeAppearanceAttrs` = `variant` `fill` `border` `radius` `shadow` `opacity` `rotate`
+  `flip`), 파생 함수 `ShapeAttrs()`·`ShapeAppearanceAttrs()`·`shapeChildren()`,
+  그리고 `AnchorAttr` 상수.
   - `soml/subset.go` — `ElementKind`에 `KindShape` 추가(열거형은 여기 모은다는 03/01의
-    결정 그대로), `buildElementKinds`가 `<shape>`를 색인, 타입·색인 주석에 `shape.go`를 넣었다.
+  결정 그대로), `buildElementKinds`가 `<shape>`를 색인, 타입·색인 주석에 `shape.go`를 넣었다.
   - `soml/layout.go` — **박스 속성 카탈로그 재분할**: `containerFlowAttrs`에서 `pad`를 떼어
-    `boxPadAttrs`로, `containerBoxAttrs`를 `boxSizeAttrs`로 개명하고 둘을 잇는 `BoxAttrs()`를
-    내보냈다. `ContainerAttrs`는 `flow + pad + (track) + size` 순으로 이어 **기존 순서를 그대로**
-    유지한다. `layoutChildren()`에 `<shape>` 추가.
+  `boxPadAttrs`로, `containerBoxAttrs`를 `boxSizeAttrs`로 개명하고 둘을 잇는 `BoxAttrs()`를
+  내보냈다. `ContainerAttrs`는 `flow + pad + (track) + size` 순으로 이어 **기존 순서를 그대로**
+  유지한다. `layoutChildren()`에 `<shape>` 추가.
   - `soml/parse.go` — `buildElementSpecs`에 `<shape>`(속성 = `withChildPlacement(ShapeAttrs())`,
-    모델 = `modelElements`, 자식 = `shapeChildren()`), `<text>`·블록 속성 표에 `anchor`,
-    `slideChildren()`에 `<shape>`. 어휘 개방 주석에 Iteration 4를 적었다.
+  모델 = `modelElements`, 자식 = `shapeChildren()`), `<text>`·블록 속성 표에 `anchor`,
+  `slideChildren()`에 `<shape>`. 어휘 개방 주석에 Iteration 4를 적었다.
   - `soml/shape_test.go` 신규 — 정상 트리 14건(고유/외관 8종/박스/자식 배치/style/도형 안
-    text·블록 여럿·인라인·pre/슬라이드 직속/컨테이너 안 카드/자기 닫힘/12종 밖 `type`/`type`
-    없음), `anchor` 3건, Span 계약(짝 태그·자기 닫힘), 에러 24건(line:col + 문구),
-    종류 카탈로그 계약(`KindShape`·void 아님·역할 없음·I5·7·9 태그 부재),
-    `type` 12종 순서와 카탈로그 복사 방어, **박스 속성 공유 회귀**(`ContainerAttrs` 3태그의
-    목록·순서 동일 + 도형이 같은 목록을 받는지 + `<text>`·블록에는 열리지 않았는지),
-    `anchor` 커버리지 양방향, 도형의 자식 배치 속성, 픽스처 파싱(도형 12개 하한).
+  text·블록 여럿·인라인·pre/슬라이드 직속/컨테이너 안 카드/자기 닫힘/12종 밖 `type`/`type`
+  없음), `anchor` 3건, Span 계약(짝 태그·자기 닫힘), 에러 24건(line:col + 문구),
+  종류 카탈로그 계약(`KindShape`·void 아님·역할 없음·I5·7·9 태그 부재),
+  `type` 12종 순서와 카탈로그 복사 방어, **박스 속성 공유 회귀**(`ContainerAttrs` 3태그의
+  목록·순서 동일 + 도형이 같은 목록을 받는지 + `<text>`·블록에는 열리지 않았는지),
+  `anchor` 커버리지 양방향, 도형의 자식 배치 속성, 픽스처 파싱(도형 12개 하한).
   - `testdata/fixtures/_04_shape/`(비활성) — `balpyo.json` + 슬라이드 8개:
-    `001_shape_types`(`<grid cols="4">`에 12종 전수 — 항목 04·05의 프리셋 기하 시험대),
-    `002_token_colors`(토큰 색 + `border="1 solid muted"` + `fill="none"` — `schemeClr` 보존 계약),
-    `003_literal_colors`(리터럴 색만 — `srgbClr` 계약 충돌을 항목 06이 표로 다루도록 분리),
-    `004_appearance`(radius 토큰·수치, shadow, opacity, rotate, flip — 나머지 조건 고정),
-    `005_text_anchor`(`anchor` 3종 × `pad` + 자식 여럿), `006_cards`(4열 카드 그리드 —
-    PRD §7.8 dim-card를 손으로 펼친 것 + `span="2"` 배너), `007_variant`(도형 variant +
-    인라인이 덮는 장면), `008_variant_unknown`(모르는 variant 경고 경로).
+  `001_shape_types`(`<grid cols="4">`에 12종 전수 — 항목 04·05의 프리셋 기하 시험대),
+  `002_token_colors`(토큰 색 + `border="1 solid muted"` + `fill="none"` — `schemeClr` 보존 계약),
+  `003_literal_colors`(리터럴 색만 — `srgbClr` 계약 충돌을 항목 06이 표로 다루도록 분리),
+  `004_appearance`(radius 토큰·수치, shadow, opacity, rotate, flip — 나머지 조건 고정),
+  `005_text_anchor`(`anchor` 3종 × `pad` + 자식 여럿), `006_cards`(4열 카드 그리드 —
+  PRD §7.8 dim-card를 손으로 펼친 것 + `span="2"` 배너), `007_variant`(도형 variant +
+  인라인이 덮는 장면), `008_variant_unknown`(모르는 variant 경고 경로).
   - `soml/subset_test.go`·`soml/layout_test.go` — 속성·자식 어휘가 넓어져 진단 문구가 바뀐
-    기존 단정 2건 갱신(`<h1>`의 허용 속성에 `anchor`, `<row>`의 자식 어휘에 `<shape>`).
-    트리·배치 규칙 단정은 하나도 손대지 않았다.
-
+  기존 단정 2건 갱신(`<h1>`의 허용 속성에 `anchor`, `<row>`의 자식 어휘에 `<shape>`).
+  트리·배치 규칙 단정은 하나도 손대지 않았다.
 - **설계 결정과 근거**:
-  - **`<shape>`는 별도 종류(`KindShape`)다.** `KindSpacer`를 나눈 것과 같은 근거이지만 이유가
-    한 겹 더 있다: 도형은 **재는 것과 도형이 되는 것이 처음 일치하는 종류**다. 컨테이너는
-    재고 사라지고, `<li>`는 재지 않고 부모 도형에 담기는데, `<shape>`는 잰 rect가 곧 `xfrm`이
-    되면서 자신도 텍스트를 담는다. 종류를 나누지 않으면 geom·web·pptx가 각자
-    `name == "shape"` 비교를 든다.
+  - `**<shape>`는 별도 종류(`KindShape`)다.** `KindSpacer`를 나눈 것과 같은 근거이지만 이유가
+  한 겹 더 있다: 도형은 **재는 것과 도형이 되는 것이 처음 일치하는 종류**다. 컨테이너는
+  재고 사라지고, `<li>`는 재지 않고 부모 도형에 담기는데, `<shape>`는 잰 rect가 곧 `xfrm`이
+  되면서 자신도 텍스트를 담는다. 종류를 나누지 않으면 geom·web·pptx가 각자
+  `name == "shape"` 비교를 든다.
   - **크기·여백 목록을 컨테이너와 공유한다** (`BoxAttrs`). 크기는 컨테이너의 성질이 아니라
-    박스의 성질이므로 목록이 두 벌이 되면 PRD 표에 크기 속성이 하나 늘 때 어느 태그가 빠졌는지
-    사람이 세어야 한다 — `withChildPlacement`와 같은 근거다. **순서는 그대로 두었다**:
-    `pad`를 flow에서 뗐지만 `ContainerAttrs`가 `flow + pad + track + size`로 이어 붙여
-    기존 진단 문구가 한 글자도 움직이지 않는다 (그 사실을 새 테스트가 세 태그로 못 박는다).
-    도형에서는 트랙이 없으므로 `BoxAttrs()` 한 벌을 그대로 받는다.
+  박스의 성질이므로 목록이 두 벌이 되면 PRD 표에 크기 속성이 하나 늘 때 어느 태그가 빠졌는지
+  사람이 세어야 한다 — `withChildPlacement`와 같은 근거다. **순서는 그대로 두었다**:
+  `pad`를 flow에서 뗐지만 `ContainerAttrs`가 `flow + pad + track + size`로 이어 붙여
+  기존 진단 문구가 한 글자도 움직이지 않는다 (그 사실을 새 테스트가 세 태그로 못 박는다).
+  도형에서는 트랙이 없으므로 `BoxAttrs()` 한 벌을 그대로 받는다.
   - **도형에 `w`/`h`/`ratio`를 열었다.** 도형은 그 자체가 그림이라 내용이 없으면 잰 크기가 0이고
-    0×0 도형은 산출물에서 아무것도 아니다 — 빈 `<text>`가 텍스트 박스를 내는 정책과 갈라지는
-    자리다(그쪽은 저자가 자리를 확인해야 하는 콘텐츠다). 크기 없이는 배지·구분면·카드 배경이
-    전부 닫힌다. 반대로 `<text>`·블록에는 열지 **않았다**: 블록의 폭은 엔진 CSS가 100%로
-    정하고 있어(`.balpyo-text`) 여기서 열면 기존 골든 4개가 이 iteration과 무관한 이유로 움직인다.
-  - **`anchor`는 `<text>`와 블록 **둘 다**에 열었다** (항목 지시가 남긴 결정). 등가 표의
-    대칭이 근거다: 블록은 역할의 축약이므로(`<p>` ≡ `<text role="body">`) 블록이 받는 외관은
-    `<text>`가 받는 것과 같아야 등가가 속성 표에서도 성립한다. `<text>`에만 열면 카드 본문을
-    `<p>`로 쓰던 저자가 앵커를 쓰려고 태그를 바꿔야 하고, 그 순간 등가는 문서상의 약속으로만
-    남는다. `<li>`·인라인·컨테이너·**도형 자신**에는 열지 않았다 — 도형에 열면 같은 뜻의 선언이
-    두 자리에 생기고 어느 쪽이 이기는지 정할 근거가 없다.
+  0×0 도형은 산출물에서 아무것도 아니다 — 빈 `<text>`가 텍스트 박스를 내는 정책과 갈라지는
+  자리다(그쪽은 저자가 자리를 확인해야 하는 콘텐츠다). 크기 없이는 배지·구분면·카드 배경이
+  전부 닫힌다. 반대로 `<text>`·블록에는 열지 **않았다**: 블록의 폭은 엔진 CSS가 100%로
+  정하고 있어(`.balpyo-text`) 여기서 열면 기존 골든 4개가 이 iteration과 무관한 이유로 움직인다.
+  - `**anchor`는 `<text>`와 블록 둘 다에 열었다** (항목 지시가 남긴 결정). 등가 표의
+  대칭이 근거다: 블록은 역할의 축약이므로(`<p>` ≡ `<text role="body">`) 블록이 받는 외관은
+  `<text>`가 받는 것과 같아야 등가가 속성 표에서도 성립한다. `<text>`에만 열면 카드 본문을
+  `<p>`로 쓰던 저자가 앵커를 쓰려고 태그를 바꿔야 하고, 그 순간 등가는 문서상의 약속으로만
+  남는다. `<li>`·인라인·컨테이너·**도형 자신**에는 열지 않았다 — 도형에 열면 같은 뜻의 선언이
+  두 자리에 생기고 어느 쪽이 이기는지 정할 근거가 없다.
   - **도형의 자식은 텍스트 요소(`<text>` + 블록)뿐, 개수 제한 없음.** 리스트는 불릿 문단
-    조립과 도형 `txBody` 조립을 합치는 일이라 어휘를 여는 것과 다른 크기의 작업이고,
-    컨테이너·도형 중첩은 "도형은 `txBody` 하나"라는 이번 매핑과 부딪힌다 (겹침은 I6,
-    편집 단위는 I9). 개수는 문법으로 세지 않았다 — 자식 여럿은 `txBody`의 문단 여럿으로
-    이미 뜻이 있다(`writeListShape`의 선례).
-  - **`id`는 어휘만 열었다.** 산출물에 아무것도 그리지 않는 속성이고 `<slide id>`의 선례가
-    그렇다. 중복 검사도 하지 않았다 — 참조(`<arrow from>`)는 Iteration 7이고, 지금 할 수 있는
-    검사가 무엇인지는 값 층(항목 02)이 판단한다.
-  - **`stroke`/`cap`/`dash`는 열지 않았다** (line·arrow의 것). 도형에 받아 놓고 버리는 선언이
-    되고, 그 침묵이 닫힌 어휘가 막으려던 실패다. `<image>`·`<arrow>`·`<line>`·`<group>`·
-    `<icon>`·`<table>`·`<chart>`가 어휘 밖임을 에러 테스트가 못 박아, 뒤 iteration 전에 누가
-    픽스처에 쓰면 빨갛게 된다.
+  조립과 도형 `txBody` 조립을 합치는 일이라 어휘를 여는 것과 다른 크기의 작업이고,
+  컨테이너·도형 중첩은 "도형은 `txBody` 하나"라는 이번 매핑과 부딪힌다 (겹침은 I6,
+  편집 단위는 I9). 개수는 문법으로 세지 않았다 — 자식 여럿은 `txBody`의 문단 여럿으로
+  이미 뜻이 있다(`writeListShape`의 선례).
+  - `**id`는 어휘만 열었다.** 산출물에 아무것도 그리지 않는 속성이고 `<slide id>`의 선례가
+  그렇다. 중복 검사도 하지 않았다 — 참조(`<arrow from>`)는 Iteration 7이고, 지금 할 수 있는
+  검사가 무엇인지는 값 층(항목 02)이 판단한다.
+  - `**stroke`/`cap`/`dash`는 열지 않았다** (line·arrow의 것). 도형에 받아 놓고 버리는 선언이
+  되고, 그 침묵이 닫힌 어휘가 막으려던 실패다. `<image>`·`<arrow>`·`<line>`·`<group>`·
+  `<icon>`·`<table>`·`<chart>`가 어휘 밖임을 에러 테스트가 못 박아, 뒤 iteration 전에 누가
+  픽스처에 쓰면 빨갛게 된다.
   - **속성 목록을 내보냈다**(`ShapeAttrs`·`ShapeAppearanceAttrs`·`BoxAttrs`·`ShapeTypes`).
-    03/01은 "core가 값 어휘를 어떤 모양으로 요구할지 정해지기 전에 표면을 열지 않는다"며
-    닫아 두었지만, 항목 02가 실제로 `ContainerAttrs`를 소비하게 된 뒤라 이제는 두 벌이 되는
-    쪽이 더 비싸다. 네 함수 전부 복사본을 주고, 호출자가 카탈로그를 흔들 수 없다는 것을
-    테스트가 확인한다.
+  03/01은 "core가 값 어휘를 어떤 모양으로 요구할지 정해지기 전에 표면을 열지 않는다"며
+  닫아 두었지만, 항목 02가 실제로 `ContainerAttrs`를 소비하게 된 뒤라 이제는 두 벌이 되는
+  쪽이 더 비싸다. 네 함수 전부 복사본을 주고, 호출자가 카탈로그를 흔들 수 없다는 것을
+  테스트가 확인한다.
   - **픽스처의 리터럴 색을 슬라이드로 분리했다.** `fill="#0F65F9"`는 정상적으로 `srgbClr`를
-    내는데 지금 픽스처 계약은 "슬라이드 파트에 `srgbClr` 0건"이다
-    (`internal/testkit.TestTextFixtureGoldenSlidesKeepSchemeClr`). 섞여 있으면 항목 06이
-    계약을 슬라이드 단위로 나눌 수가 없다.
-
-- **검증**: `gofmt -l .` 무출력, `go vet ./...`, **`make test`(컨테이너, finch) 전부 초록** —
-  골든은 하나도 움직이지 않았다 (`git status`에 `testdata/*/golden/**` 변경 없음; 새 픽스처는
-  `_` 접두로 수집되지 않고 기존 픽스처의 파싱 결과는 그대로다). 호스트 `go test ./...`는
-  03_layout·02_text_subset 골든의 텍스트 폭(cx)이 다른 **기존** 그 차이만 빨갛고, 같은 실패가
-  변경 전(`git stash`) 상태에서도 그대로 난다는 것을 확인했다 (macOS 폰트 메트릭 — 게이트는
-  컨테이너).
-  게이트 밖 확인: `go run ./cmd/balpyo build --project testdata/fixtures/_04_shape
-  --target html,pptx`가 값 층 진단 0건(경고 1건 = 008의 모르는 텍스트 variant)으로 지나
-  `slides/001_shape_types.slide:9:5 <shape>를 웹으로 렌더하는 매핑이 없다`로 **명시적으로**
-  멈춘다 — 어휘는 열렸고 렌더 매핑 부재는 침묵이 아니라 에러라는 사실을 이 항목 상태에서
-  눈으로 확인했다 (항목 04·05가 이 에러를 없앤다). 이 확인 과정에서 `gap="none"`이 공간 토큰
-  어휘 밖이라는 것이 드러나 픽스처를 `gap="0"`으로 고쳤다 (아래 열린 질문).
-
+  내는데 지금 픽스처 계약은 "슬라이드 파트에 `srgbClr` 0건"이다
+  (`internal/testkit.TestTextFixtureGoldenSlidesKeepSchemeClr`). 섞여 있으면 항목 06이
+  계약을 슬라이드 단위로 나눌 수가 없다.
+- **검증**: `gofmt -l .` 무출력, `go vet ./...`, `**make test`(컨테이너, finch) 전부 초록** —
+골든은 하나도 움직이지 않았다 (`git status`에 `testdata/*/golden/**` 변경 없음; 새 픽스처는
+`_` 접두로 수집되지 않고 기존 픽스처의 파싱 결과는 그대로다). 호스트 `go test ./...`는
+03_layout·02_text_subset 골든의 텍스트 폭(cx)이 다른 **기존** 그 차이만 빨갛고, 같은 실패가
+변경 전(`git stash`) 상태에서도 그대로 난다는 것을 확인했다 (macOS 폰트 메트릭 — 게이트는
+컨테이너).
+게이트 밖 확인: `go run ./cmd/balpyo build --project testdata/fixtures/_04_shape --target html,pptx`가 값 층 진단 0건(경고 1건 = 008의 모르는 텍스트 variant)으로 지나
+`slides/001_shape_types.slide:9:5 <shape>를 웹으로 렌더하는 매핑이 없다`로 **명시적으로**
+멈춘다 — 어휘는 열렸고 렌더 매핑 부재는 침묵이 아니라 에러라는 사실을 이 항목 상태에서
+눈으로 확인했다 (항목 04·05가 이 에러를 없앤다). 이 확인 과정에서 `gap="none"`이 공간 토큰
+어휘 밖이라는 것이 드러나 픽스처를 `gap="0"`으로 고쳤다 (아래 열린 질문).
 - **남긴 것**:
   - 항목 02·03(core)이 이어받을 표면: `ShapeTypes()`(12종 검사와 모르는 `type` 진단),
-    `ShapeAppearanceAttrs()`(캐스케이드가 해석할 속성), `BoxAttrs()`(도형의 크기·여백),
-    `AnchorAttr`(값 어휘 — 아래 열린 질문), 그리고 `Appearance`에 도형 외관 형제 필드를 붙이는
-    일(`soml/appearance.go`의 주석이 그 자리를 이미 예고한다). 파서는 이름만 봤으므로
-    `<shape type="dodecagon">`·`fill="어쩌구">`는 지금 통과한다.
+  `ShapeAppearanceAttrs()`(캐스케이드가 해석할 속성), `BoxAttrs()`(도형의 크기·여백),
+  `AnchorAttr`(값 어휘 — 아래 열린 질문), 그리고 `Appearance`에 도형 외관 형제 필드를 붙이는
+  일(`soml/appearance.go`의 주석이 그 자리를 이미 예고한다). 파서는 이름만 봤으므로
+  `<shape type="dodecagon">`·`fill="어쩌구">`는 지금 통과한다.
   - 항목 04·05가 이어받을 표면: `KindShape` 분기. 웹은 모양을 그려야 하고 PPTX는 `prstGeom`을
-    내야 하며, 컨테이너와 달리 **잰 rect가 그대로 도형 좌표**다.
+  내야 하며, 컨테이너와 달리 **잰 rect가 그대로 도형 좌표**다.
   - 항목 06: `_04_shape`의 `_` 제거 + 골든. 003의 `srgbClr`와 픽스처 계약 충돌, 008의 경고
-    문구가 처음 골든 `diagnostics.txt`에 실린다.
+  문구가 처음 골든 `diagnostics.txt`에 실린다.
   - 항목 07(문서): `docs/reference/soml/shape.md` 신규와 `appearance.md`의 도형 행. 갱신해야
-    하는 낡은 문서는 `soml/slide.md`·`layout.md`의 자식 어휘 목록(`<shape>`가 빠져 있다)과
-    `text.md`·`text-subset.md`의 속성 표·진단 예시(`anchor`가 넓어졌다)다.
+  하는 낡은 문서는 `soml/slide.md`·`layout.md`의 자식 어휘 목록(`<shape>`가 빠져 있다)과
+  `text.md`·`text-subset.md`의 속성 표·진단 예시(`anchor`가 넓어졌다)다.
   - **열린 질문** (PRD/TASKS로 정할 수 없어 임의로 고른 것):
-    (a) **`anchor`의 값 어휘.** 픽스처는 `start`/`center`/`end`를 쓴다 — `align`이 논리 이름
-    3+1종을 쓰고(`soml.TextAligns`) OOXML `bodyPr@anchor`가 `t`/`ctr`/`b` 셋이라 1:1로 붙기
-    때문이다. `top`/`middle`/`bottom`을 쓰는 길도 있지만 그러면 같은 축의 두 속성이 다른
-    어휘를 쓴다. 값 층(항목 02)이 정하고, 다르게 정하면 픽스처 005·006을 함께 고친다.
-    (b) **도형 variant 이름.** 픽스처 007은 PRD §7.8의 `card-header`/`card-body`를 쓴다 —
-    항목 03이 테마에 정의하는 이름이 다르면 그 항목이 픽스처를 고쳐야 한다. 008의 오타
-    (`card-heder`)도 같이 움직인다.
-    (c) **`surface` 색 토큰**이 픽스처 002·004·005·006에 쓰인다 — `core/theme.go`의 주석이
-    "Iteration 4에서 함께 들어온다"고 적고 있으므로 항목 03의 일이고, 지금은 값 층이 도형
-    속성을 아예 보지 않아 조용히 지나간다.
-    (d) **공간 토큰 `none`.** PRD §7.8의 dim-card 예제는 `gap="none"`을 쓰는데 minimal 테마의
-    공간 토큰은 `xs`~`2xl`이라 에러가 난다. 픽스처는 `gap="0"`으로 우회했다 — 토큰 `none`(=0)을
-    추가할지는 테마의 결정(항목 03 또는 Iteration 10)이고, 추가하지 않으면 PRD §7.8 예제를
-    고쳐야 한다.
-    (e) **도형에 `align`을 열지 않았다.** PRD §7.6에서 `align`은 text 행의 속성이고 도형의
-    가로 정렬은 안쪽 텍스트가 소유한다고 읽었다. 다만 `anchor`(세로)를 텍스트가 갖는 것과
-    대칭이므로 이 해석이 맞다고 보았고, 도형 안 텍스트의 가로 정렬이 부모 도형 폭을 기준으로
-    도는지는 항목 04가 CSS를 짜 보며 확인할 것.
+  (a) `**anchor`의 값 어휘.** 픽스처는 `start`/`center`/`end`를 쓴다 — `align`이 논리 이름
+  3+1종을 쓰고(`soml.TextAligns`) OOXML `bodyPr@anchor`가 `t`/`ctr`/`b` 셋이라 1:1로 붙기
+  때문이다. `top`/`middle`/`bottom`을 쓰는 길도 있지만 그러면 같은 축의 두 속성이 다른
+  어휘를 쓴다. 값 층(항목 02)이 정하고, 다르게 정하면 픽스처 005·006을 함께 고친다.
+  (b) **도형 variant 이름.** 픽스처 007은 PRD §7.8의 `card-header`/`card-body`를 쓴다 —
+  항목 03이 테마에 정의하는 이름이 다르면 그 항목이 픽스처를 고쳐야 한다. 008의 오타
+  (`card-heder`)도 같이 움직인다.
+  (c) `**surface` 색 토큰**이 픽스처 002·004·005·006에 쓰인다 — `core/theme.go`의 주석이
+  "Iteration 4에서 함께 들어온다"고 적고 있으므로 항목 03의 일이고, 지금은 값 층이 도형
+  속성을 아예 보지 않아 조용히 지나간다.
+  (d) **공간 토큰 `none`.** PRD §7.8의 dim-card 예제는 `gap="none"`을 쓰는데 minimal 테마의
+  공간 토큰은 `xs`~`2xl`이라 에러가 난다. 픽스처는` gap="0"`으로 우회했다 — 토큰` none`(=0)을 추가할지는 테마의 결정(항목 03 또는 Iteration 10)이고, 추가하지 않으면 PRD §7.8 예제를 고쳐야 한다. (e) **도형에` align`을 열지 않았다.** PRD §7.6에서` align`은 text 행의 속성이고 도형의 가로 정렬은 안쪽 텍스트가 소유한다고 읽었다. 다만` anchor`(세로)를 텍스트가 갖는 것과
+  대칭이므로 이 해석이 맞다고 보았고, 도형 안 텍스트의 가로 정렬이 부모 도형 폭을 기준으로
+  도는지는 항목 04가 CSS를 짜 보며 확인할 것.
+
+## Iteration 04 · 02-core-appearance — 도형 토큰 + 외관 값 문법 (단색)
+
+<!-- item: 04/02-core-appearance -->
+
+- **한 것**:
+  - `soml/shapestyle.go` 신규 — **확정 도형 외관**. `ShapeStyle`(Type·ID·Fill·Border·Radius·
+    Shadow·Opacity·Rotate·Flip + 임베드 `Box`), `Fill`(색 또는 `none`), `Border`(굵기·스타일·
+    색 또는 `none`), `Radius`(토큰 이름 + px), 그리고 **`Box`**(`Pad`·크기 6종·`Ratio`) —
+    `ContainerLayout`에서 떼어 낸 것을 두 요소가 임베드로 공유한다. `Element.ShapeStyle()`
+    접근자도 여기 있다.
+  - `soml/appearance.go` — `Appearance.Shape *ShapeStyle`(Text의 형제), `TextStyle.Anchor`,
+    `TextAnchor` 어휘(`top`/`center`/`bottom` + `TextAnchors()`), 테마 표에
+    `Radii []RadiusToken`·`Shadows []ShadowToken`과 조회·이름 목록 4종.
+  - `soml/shape.go` — 값 어휘 두 벌: `BorderStyle`(`solid`/`dashed`/`dotted` + `BorderStyles()`),
+    `Flip`(`h`/`v`/`hv` + `Flips()`).
+  - `soml/placement.go` — `ContainerLayout`에서 박스 필드(`Pad`·크기·`Ratio`)를 떼고
+    `Box`를 임베드했다. **필드 선택자는 그대로다**(`container.Pad`) — 렌더러 3곳(web/pptx/geom)이
+    한 줄도 바뀌지 않았고, 그래서 배치 CSS 선언 순서도 그대로다 (03_layout 골든 불변).
+  - `core/theme.go` — `surface` 색 토큰(#F3F4F6, 슬롯 lt2 → 참조 bg2), `minimalRadii()`
+    (sm 6 · md 12 · lg 24), `minimalShadows()`(soft: dist 4 · dir 90 · blur 16 · fg · alpha 0.15).
+  - `core/shape.go` 신규 — 값 해석. `resolveShape`와 속성별 함수(`shapeType`·`shapeID`·`fill`·
+    `border`(+`borderWidth`·`borderStyle`)·`radius`·`shadow`·`opacity`·`rotate`·`flip`·`anchor`),
+    진단용 어휘 목록 4종.
+  - `core/layout.go` — `containerAttr`에서 박스 속성을 떼어 **`boxAttr`**로 만들고 도형과
+    공유한다. `splitValues`를 **괄호 인식**으로 바꿨다 (아래 결정).
+  - `core/resolve.go` — `resolver.ids`(슬라이드 범위 id 중복 검사 상태), `node`에 도형 갈래,
+    `color`를 `colorValue(name, raw, span)`로 쪼개 border 조각이 같은 색 문법을 지나게,
+    `inlinePatch`에 `anchor`, `attrExample`에 도형 속성 9종 + `anchor`.
+  - `core/cascade.go` — `textPatch.anchor` + `mergeText`의 한 줄 (캐스케이드의 유일한 병합
+    지점을 유지).
+  - `core/shape_test.go` 신규 — 값 표 30건(속성 전수 × 값 형태), `type` 12종 전수와 필수·어휘
+    진단, 색 에러 5건(모르는 토큰·`gradient(…)`·`shade(…)`·잘못된 리터럴), border 축약 7건,
+    radius의 형제 속성 검증, 나머지 값 위반 13건, **박스 문법 공유 대조**(도형 Box ==
+    컨테이너 Box, `BoxAttrs()` 커버리지), 빈 외관 불변, id 중복(슬라이드 범위), `anchor`
+    3종 + 논리 이름 진단 + 미지정 시 빈 값, 도형 안 텍스트 외관 불변, 외관+배치 공존,
+    픽스처 `_04_shape` 해석(경고 1건 = 008의 텍스트 variant, 프리셋 12종 도달, 토큰 색 보존).
+  - `core/layout_test.go` — `ContainerLayout` 리터럴 10건을 `Box:`로 감쌌다 (단정 내용 불변).
+  - `testdata/fixtures/_04_shape/slides/005,006` — `anchor="start"/"end"` →
+    `anchor="top"/"bottom"` (어휘 결정에 맞춘 것 — 아래).
+  - 골든 8줄: 픽스처 4개의 `index.html`에 `--balpyo-color-surface` 선언 1줄, `theme1.xml`의
+    `lt2`가 빌린 값(FFFFFF)에서 surface(F3F4F6)로. **그 8줄이 diff의 전부다.**
+
+- **설계 결정과 근거**:
+  - **`Box`를 임베드로 공유한다.** 이름 있는 필드(`container.Box.Pad`)로 두면 기존 렌더러
+    전부가 한 겹 더 들어가야 하고, 그 변경이 배치 CSS를 건드릴 위험을 이 항목과 무관한
+    이유로 만든다. 임베드는 선택자를 그대로 두므로 골든이 움직이지 않는 것이 구조로 보장된다
+    (실제로 렌더러 파일은 하나도 바뀌지 않았다).
+  - **`type` 없음·오타 모두 에러.** `role`의 결(진단하고 기본값으로 계속)과 갈리는 근거는
+    **기본값의 존재**다: `<p>` ≡ `<text role="body">`는 언어가 정한 등가라 생략에 뜻이
+    있지만(PRD §7.7) 도형에는 그런 등가가 없고, `<shape/>`가 조용히 사각형이 되면 저자의
+    오타(`type="elipse"`)와 구별되지 않는다.
+  - **border 스타일 이름은 CSS 쪽**(`dashed`/`dotted`, OOXML의 `dash`/`dot`이 아니다):
+    축약 자체가 CSS `border`의 표기이므로 그 안에 OOXML 어휘를 섞으면 둘 다 아닌 제3의
+    표기가 된다. PRD §7.6 표의 `dash` 행 예시도 `dashed`다. 어휘를 셋으로 닫은 기준은
+    `prstDash`에 대응이 있는 것만이다 (`double`/`groove`는 PPTX에서 조용히 실선이 된다).
+  - **border는 조각 3개 고정 순서**다 (`<굵기> <스타일> <색>`). 순서를 자유롭게 두면
+    `border="solid 3"`의 진단이 "무엇이 빠졌는가"를 말할 수 없다. 굵기 0도 에러다 —
+    "테두리 없음"의 표기가 둘이 되면(`0 solid muted` vs `none`) 렌더러마다 `w="0"`과
+    `noFill` 중 무엇을 낼지 판단이 생긴다.
+  - **`splitValues`를 괄호 인식으로 바꿨다.** PRD §7.6의 그라디언트 테두리 표기는
+    `border="3 gradient(accent1 accent4 accent5)"`인데, 공백을 모두 조각 경계로 세면 그
+    표기가 "5조각"(또는 괄호 인식 후 "2조각") 에러로 끝나 저자가 **아직 없는 기능**이라는
+    사실에 도달하지 못한다. 그래서 (1) 괄호 안 공백은 조각이 아니고 (2) 조각에 `(`가 있으면
+    조각 수보다 **먼저** 색 문법이 진단한다 ("색 함수 gradient(…)는 아직 쓸 수 없다 —
+    Iteration 8"). `pad`·`cols`도 같은 split을 쓰지만 그쪽 값에 괄호가 오면 지금도 에러이고,
+    괄호 인식은 그 진단을 조각 수에서 값 문법으로 옮길 뿐이다.
+  - **radius는 `type="rounded-rect"`에서만 허용**하고 아니면 에러다 (진단이 고칠 방법을
+    말한다). 다른 프리셋에는 조정값을 실을 곳이 없어 **웹만 둥글어지고 PPTX는 각진 채**
+    남는다 — 이 테스트가 그 조용한 갈라짐의 회귀 장치다. `type`이 아예 해석되지 않은 도형에는
+    두 번째 진단을 얹지 않는다 (고칠 곳이 하나다).
+  - **shadow는 토큰만.** CSS 4수치와 OOXML `outerShdw`가 1:1이 아니다 (번짐 정의가 다르고
+    `spread`에 대응이 없다). 확정 값은 **토큰 항목 그대로**다(`*soml.ShadowToken`) — 이름은
+    웹의 변수 참조, 파라미터는 PPTX가 굽는 값이고, 이는 `Length`가 토큰 이름과 px를 함께
+    담는 것과 같은 계약이다. 오프셋을 **극좌표(dist·dir)** 로 담은 이유: OOXML이 극좌표이고
+    dir가 60000분의 1도 정수라, 직교 → 극 변환은 산출 경계에서 반올림 손실을 만든다.
+  - **radius·shadow 토큰의 clrScheme 슬롯 계약**: radius는 **없다**(OOXML에 반경 테마 개념이
+    아예 없다 — `prstGeom/avLst`의 조정값은 도형마다 구워진다). shadow는 **있지만 v1은 쓰지
+    않는다**(`fmtScheme/effectStyleLst`가 그 자리인데 스타일이 셋뿐이고 `effectRef`로 고르는
+    구조라 도형마다 다른 그림자를 실을 수 없다). 두 문장이 다르므로 주석에 따로 적었다.
+    그림자 **색**에는 계약이 걸린다 — `soml.Color`가 토큰 참조를 유지하므로 `outerShdw`가
+    `schemeClr`를 낼 수 있다.
+  - **`anchor` 어휘는 물리 이름 `top`/`center`/`bottom`**이다. `TextAlign`이 논리 이름을 쓴
+    근거는 문단 방향이 가로축의 뜻을 뒤집는다는 것이고 세로축에는 그 근거가 없다 (v1은
+    세로쓰기를 지원하지 않는다). 그래서 항목 01이 픽스처에 쓴 `start`/`end`를 `top`/`bottom`으로
+    고쳤다. `start`/`end`를 쓰면 대응 이름을 짚는 진단이 난다 (`align`의 left/right와 같은 태도).
+  - **`TextStyle.Anchor`는 역할 기본값이 채우지 않는 유일한 필드**다 (미지정 = 빈 문자열).
+    기본값을 정하면 뜻이 없는 자리(슬라이드 직속 텍스트 박스 — 잰 rect가 곧 내용 크기라 앵커가
+    움직일 여백이 없다)까지 선언이 실려 기존 골든 4개가 이 항목과 무관한 이유로 움직인다.
+  - **id 중복 검사 범위는 슬라이드**다 (`resolver`가 슬라이드 하나의 상태라 자리가 곧 범위다).
+    참조는 슬라이드를 넘지 않으므로(I7) 덱 전역 유일은 저자가 슬라이드마다 `db`를 쓰는 것을
+    막을 뿐이다. `id`를 `ShapeStyle`에 담은 이유: 식별자는 외관이 아니지만(`Appearance.Link`의
+    구별) 렌더러가 Attrs를 다시 읽지 않아야 하고, PPTX 도형 이름에 저자의 id를 실을지는 항목
+    05의 결정이다. **id의 문자 문법(공백·중복 외 형식)은 검사하지 않았다** — 참조 문법이
+    정해지는 I7의 일이다.
+  - **`surface` 슬롯은 lt2(참조 bg2)**: surface는 배경이므로 clrScheme의 두 번째 밝은 자리가
+    뜻이 맞고, dk2는 이미 muted가 쓴다. 그 결과 `theme1.xml`의 lt2가 "빌린 값"에서 실제
+    토큰으로 바뀌었다 (골든 4줄). **`accent2`는 넣지 않았다** — 픽스처가 쓰지 않는다.
+  - **variant는 손대지 않았다** (도형이든 텍스트든 도형 쪽 표는 항목 03의 것이다). 그래서
+    `_04_shape/007`·`008`의 도형 variant는 지금 조용하고, 커버리지 테스트가 `variant`를
+    `pending`으로 명시해 그 항목이 오면 지울 줄을 남겼다.
+  - **radius 사다리 6/12/24**: 공간 사다리의 최소 눈금(6px)에 얹혀 xs·sm·md와 같은 값이다 —
+    카드가 안쪽 여백과 모서리를 나란히 보이므로 두 값이 같은 눈금이어야 한다. 공간 토큰을
+    그대로 쓰게 하는 길은 버렸다 (여백은 리듬, 반경은 형태 — 한쪽을 조율하면 다른 쪽이 끌려간다).
+
+- **검증**: `gofmt -l .`(무출력), `go vet ./...`, `make golden`(8줄 — 위에 전부 적었다),
+  **`make test`(컨테이너) 초록**. 컨테이너에서 좌표·픽셀 골든은 **하나도 움직이지 않았다**
+  (박스 구조체를 임베드로 나눈 것이 산출물에 영향이 없다는 증거다).
+  주의: **호스트에서 `go test ./...`는 픽스처 골든 2건이 빨갛다** —
+  `02_text_subset/slide2·3`, `03_layout/slide2·4·6·7`의 `a:ext`가 다르다. 이 항목 전
+  (HEAD의 별도 워크트리)에서도 같은 실패가 나므로 호스트 폰트 차이이고 이 커밋과 무관하다.
+  게이트는 컨테이너다 (`make test`).
+
+- **남긴 것**:
+  - `ShapeStyle`·`TextStyle.Anchor`·테마의 radius/shadow 표가 **아직 어느 렌더러도 읽지
+    않는다** — 항목 04(웹 CSS)·05(OOXML)가 소비한다. 웹은 반경·그림자 토큰을
+    `--balpyo-radius-*`/`--balpyo-shadow-*` 변수로 낼지 정해야 한다 (색·공간은 변수로 나가고
+    있다). 지금 내지 않는 이유는 소비자가 없는 선언이 골든을 키우기 때문이다.
+  - **캐스케이드가 없다** (항목 03): 지금은 `<shape type="rect"/>`의 fill/border가 nil로
+    남아 PRD §8.3의 컴포넌트 기본값(`fill: surface`, `border: 1 solid muted`, `radius: md`)이
+    적용되지 않는다. 도형 variant 표 이름(`card-header`·`card-body`)은 `_04_shape/007`이
+    가정하고 있다.
+  - **문서가 낡았다** (항목 07이 고친다): `docs/reference/soml/text.md`가 색 토큰 진단 문구를
+    그대로 싣고 있는데, 토큰 목록에 `surface`가 늘고 문구에 속성 이름 접두가 붙었다
+    (`fill의 색 토큰 "brand"가 테마에 없다`).
+  - **열린 질문 3건**:
+    (a) **`anchor`를 도형이 어떻게 읽는가.** 자식이 여럿일 때(`<h3>` + `<p>`) 도형의
+    `bodyPr@anchor`는 하나뿐인데 자식마다 다른 앵커를 쓸 수 있다. 값 층은 자식마다 확정
+    값을 남기므로 "첫 자식의 앵커를 쓴다/충돌은 경고다"의 선택은 항목 04·05의 것이다.
+    (b) **`opacity`가 도형 전체인가 채움만인가.** CSS `opacity`는 자식 텍스트까지 흐리게
+    하지만 OOXML은 알파를 `solidFill` 안에 넣는 것이 자연스럽다 (도형 전체 투명도는
+    `a:alphaModFix` 효과다). `_04_shape/004`의 `opacity="0.4"` 도형이 그 차이를 그림으로
+    보일 것이다 — 두 타깃이 갈라지면 ADR 감이다.
+    (c) **`rotate`와 지오메트리 패스.** `getBoundingClientRect`는 회전된 박스의 외접
+    사각형을 재므로(`core/style.go`의 allowlist 주석이 같은 이유로 `rotate`를 뺐다)
+    회전 도형의 rect가 실제 도형보다 크다. 웹에서 `transform: rotate()`를 쓰면 PPTX
+    `xfrm@rot`과 좌표가 어긋날 수 있고, 그 보정은 항목 04·05가 재 보며 정해야 한다.

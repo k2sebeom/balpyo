@@ -57,19 +57,12 @@ type ContainerLayout struct {
 	// Wrap은 `flex-wrap: wrap`이다. 값 없는 속성(`<row wrap>`)이 참을 뜻하므로 포인터가
 	// 필요 없다 — 거짓은 CSS 기본값(nowrap)과 같고, 끄는 표기는 속성을 지우는 것이다.
 	Wrap bool
-	Pad  *Pad
 	Cols *Tracks
 	Rows *Tracks
-	// 크기·비율은 컨테이너 자신의 박스다. 자식 배치(Placement)와 나뉘어 있는 이유는
-	// 소유자가 다르기 때문이다 — 여기 값은 컨테이너가 자기 크기를 정한 것이고, Placement는
-	// 부모 안에서 자기 자리를 정한 것이다.
-	Width     *Length
-	Height    *Length
-	MinWidth  *Length
-	MinHeight *Length
-	MaxWidth  *Length
-	MaxHeight *Length
-	Ratio     *Ratio
+	// Box는 컨테이너 자신의 박스다 — 안쪽 여백·크기·비율. `<shape>`와 **같은 구조체**를
+	// 공유한다 (Box의 주석 — 카탈로그를 BoxAttrs로 나눈 것의 자료구조 쪽 절반).
+	// 임베드이므로 `container.Pad`·`container.Width`는 그대로 읽힌다.
+	Box
 }
 
 // Placement는 부모 컨테이너 안에서 자기 자리를 정하는 확정 값이다 (PRD §7.4 자식 표).

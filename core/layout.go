@@ -68,6 +68,10 @@ func (r *resolver) resolveLayout(elem, parent *soml.Element) {
 
 // containerAttr은 컨테이너 속성 하나를 해석한다 (표 순서 = PRD §7.4 표 순서).
 //
+// 박스 속성(`pad`·크기·`ratio`)은 이 switch에 없다 — **도형과 공유하는 헬퍼**(boxAttr)가
+// 소유한다. 이어 붙인 카탈로그가 한 벌인 것(soml.BoxAttrs)의 값 층 쪽 절반이고, 여기에 표를
+// 다시 적으면 같은 표기가 두 곳에서 해석된다.
+//
 // 틀린 값은 확정 배치에 실리지 않는다 — 외관 해석과 같은 정책이다 (틀린 size가 역할
 // 기본값을 남기는 것처럼, 틀린 gap은 "gap 없음"으로 남는다). 그래야 진단 하나가 다른
 // 속성의 진단을 삼키지 않고 저자가 한 번에 다 고친다.
@@ -89,10 +93,6 @@ func (r *resolver) containerAttr(container *soml.ContainerLayout, attr soml.Attr
 		if wrap, ok := r.wrap(attr); ok {
 			container.Wrap = wrap
 		}
-	case "pad":
-		if pad, ok := r.pad(attr); ok {
-			container.Pad = &pad
-		}
 	case "cols":
 		if tracks, ok := r.tracks(attr); ok {
 			container.Cols = &tracks
@@ -101,37 +101,59 @@ func (r *resolver) containerAttr(container *soml.ContainerLayout, attr soml.Attr
 		if tracks, ok := r.tracks(attr); ok {
 			container.Rows = &tracks
 		}
+	default:
+		if !r.boxAttr(&container.Box, attr) {
+			r.catalogGap(attr)
+		}
+	}
+}
+
+// boxAttr은 박스 속성 하나를 해석한다 — 안쪽 여백·크기·비율 (soml.BoxAttrs, 표 순서 =
+// PRD §7.4 순서). 목록에 없는 속성이면 거짓을 돌려주고 호출자가 판단한다.
+//
+// **레이아웃 컨테이너와 `<shape>`가 이 함수를 공유한다.** 크기와 안쪽 여백은 컨테이너의
+// 성질이 아니라 박스의 성질이고(soml.Box), 두 요소가 같은 표기를 같은 뜻으로 받는다. 값
+// 문법을 도형용으로 다시 쓰면 같은 문자열이 두 곳에서 해석되고, 그 둘이 갈라지는 것은 배치
+// 하나가 웹에서만 먹는 것으로만 드러난다. `fill`이 "해당 축의 100%"인 계약(ADR 0015)도
+// 그대로 공유된다.
+func (r *resolver) boxAttr(box *soml.Box, attr soml.Attr) bool {
+	switch attr.Name {
+	case "pad":
+		if pad, ok := r.pad(attr); ok {
+			box.Pad = &pad
+		}
 	case "w":
 		if length, ok := r.length(attr, lengthSyntax{fill: true}); ok {
-			container.Width = &length
+			box.Width = &length
 		}
 	case "h":
 		if length, ok := r.length(attr, lengthSyntax{fill: true}); ok {
-			container.Height = &length
+			box.Height = &length
 		}
 	case "min-w":
 		if length, ok := r.length(attr, lengthSyntax{fill: true}); ok {
-			container.MinWidth = &length
+			box.MinWidth = &length
 		}
 	case "min-h":
 		if length, ok := r.length(attr, lengthSyntax{fill: true}); ok {
-			container.MinHeight = &length
+			box.MinHeight = &length
 		}
 	case "max-w":
 		if length, ok := r.length(attr, lengthSyntax{fill: true}); ok {
-			container.MaxWidth = &length
+			box.MaxWidth = &length
 		}
 	case "max-h":
 		if length, ok := r.length(attr, lengthSyntax{fill: true}); ok {
-			container.MaxHeight = &length
+			box.MaxHeight = &length
 		}
 	case "ratio":
 		if ratio, ok := r.ratio(attr); ok {
-			container.Ratio = &ratio
+			box.Ratio = &ratio
 		}
 	default:
-		r.catalogGap(attr)
+		return false
 	}
+	return true
 }
 
 // placementAttr은 자식 배치 속성 하나를 해석한다 (표 순서 = PRD §7.4 자식 표 순서).
@@ -544,11 +566,28 @@ func (p valuePart) span(attr soml.Attr) soml.Span {
 
 // splitValues는 공백으로 구분된 조각을 오프셋과 함께 나눈다. strings.Fields를 쓰지 않는
 // 이유는 오프셋이 필요하기 때문이다.
+//
+// **괄호 안의 공백은 조각 경계가 아니다.** 색 함수의 인자가 공백 구분이기 때문이다
+// (`gradient(accent1 accent4 accent5)` — PRD §7.6). 괄호를 세지 않으면 그 표기가
+// `border`에서 조각 수 에러로 끝나 "색 함수는 Iteration 8"이라는 정직한 진단에 도달하지
+// 못한다 (문법은 맞고 아직 없는 것이므로 조각 수를 세는 진단은 저자를 엉뚱한 곳으로 보낸다).
+// 열린 괄호가 닫히지 않으면 값 끝까지 한 조각으로 본다 — 그 조각을 받는 해석기가 함수
+// 문법으로 진단한다.
 func splitValues(raw string) []valuePart {
 	var parts []valuePart
-	start := -1
+	start, depth := -1, 0
 	for i := 0; i <= len(raw); i++ {
-		if i < len(raw) && !isASCIISpace(raw[i]) {
+		if i < len(raw) {
+			switch raw[i] {
+			case '(':
+				depth++
+			case ')':
+				if depth > 0 {
+					depth--
+				}
+			}
+		}
+		if i < len(raw) && (depth > 0 || !isASCIISpace(raw[i])) {
 			if start < 0 {
 				start = i
 			}

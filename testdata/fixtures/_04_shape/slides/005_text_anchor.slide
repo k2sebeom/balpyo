@@ -9,13 +9,13 @@
   <h2>도형 안 텍스트의 세로 앵커</h2>
   <row gap="md" align="stretch">
     <shape type="rect" fill="surface" border="1 solid muted" w="240" h="220" pad="md">
-      <p anchor="start">anchor=start</p>
+      <p anchor="top">anchor=top</p>
     </shape>
     <shape type="rect" fill="surface" border="1 solid muted" w="240" h="220" pad="md">
       <p anchor="center">anchor=center</p>
     </shape>
     <shape type="rect" fill="surface" border="1 solid muted" w="240" h="220" pad="md">
-      <p anchor="end">anchor=end</p>
+      <p anchor="bottom">anchor=bottom</p>
     </shape>
     <shape type="rect" fill="surface" border="1 solid muted" w="240" h="220">
       <p anchor="center">pad 없음 — 글자가 변에 붙는다</p>

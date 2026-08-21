@@ -9,14 +9,18 @@ import "github.com/k2sebeom/balpyo/soml"
 // 스키마를 고정하게 되고, 스키마는 사용자 파일이 되는 순간 바꾸기 어려워진다. 하드코딩된
 // 표는 두 렌더러가 실제로 무엇을 요구하는지 드러낸 다음에 파일로 나간다.
 //
-// 담는 것은 이번 iteration이 쓰는 만큼이다 — 색 4종, 폰트 3종, 텍스트 역할 5종. 도형이
-// 필요한 토큰(surface, accent2~6, radius/shadow)은 Iteration 4에서 함께 들어온다.
+// 담는 것은 이번 iteration이 쓰는 만큼이다 — 색 5종, 폰트 3종, 공간 6종, 반경 3종,
+// 그림자 1종, 텍스트 역할 5종. 어휘를 늘리는 근거는 하나다: **픽스처가 실제로 쓴다.**
+// 그래서 PRD §8.4의 표준 어휘 중 `accent2`는 아직 없다 (도형 픽스처가 쓰지 않는다 — 쓰지
+// 않는 토큰을 넣으면 어느 값이 실제로 두 타깃에서 검증되었는지 표만 보고는 알 수 없다).
 func minimalTheme() soml.Theme {
 	return soml.Theme{
-		Name:   "minimal",
-		Colors: minimalColors(),
-		Fonts:  minimalFonts(),
-		Spaces: minimalSpaces(),
+		Name:    "minimal",
+		Colors:  minimalColors(),
+		Fonts:   minimalFonts(),
+		Spaces:  minimalSpaces(),
+		Radii:   minimalRadii(),
+		Shadows: minimalShadows(),
 	}
 }
 
@@ -29,11 +33,19 @@ func minimalTheme() soml.Theme {
 // 값은 흰 배경 위의 최소 테마다: 순수 검정 대신 살짝 든 검정(#1A1A1A)이 화면에서 덜 딱딱하고,
 // muted와 accent1은 흰 배경 대비 4.5:1을 넘겨(각각 약 4.8:1, 4.9:1) 캡션과 소제목이
 // 프로젝터에서도 읽힌다.
+//
+// `surface`는 도형이 요구하는 토큰이다 (PRD §8.3의 컴포넌트 기본 채움 `"fill": "surface"`) —
+// 카드 배경이 흰 스테이지에서 보이려면 bg와 다른 값이어야 한다. #F3F4F6은 muted(#6B7280)와
+// 같은 회색 계열의 밝은 끝이고, 그 위의 fg는 대비 15:1을 넘어 본문이 카드 안에서도 읽힌다.
+// 슬롯을 lt2(참조 bg2)에 두는 이유: surface는 **배경**이므로 clrScheme의 두 번째 밝은 자리가
+// 뜻이 맞고, 남은 자리 중 dk2는 이미 muted가 쓴다. 슬롯 없는 색을 하나라도 만들면 그
+// 도형만 PowerPoint의 테마 색 편집을 따라가지 못한다 (soml.ColorToken의 계약).
 func minimalColors() []soml.ColorToken {
 	return []soml.ColorToken{
 		{Name: "fg", RGB: "1A1A1A", Slot: "dk1", Ref: "tx1"},
 		{Name: "bg", RGB: "FFFFFF", Slot: "lt1", Ref: "bg1"},
 		{Name: "muted", RGB: "6B7280", Slot: "dk2", Ref: "tx2"},
+		{Name: "surface", RGB: "F3F4F6", Slot: "lt2", Ref: "bg2"},
 		{Name: "accent1", RGB: "0F65F9", Slot: "accent1", Ref: "accent1"},
 	}
 }
@@ -85,6 +97,45 @@ func minimalSpaces() []soml.SpaceToken {
 		{Name: "lg", Px: 36},
 		{Name: "xl", Px: 48},
 		{Name: "2xl", Px: 72},
+	}
+}
+
+// minimalRadii는 모서리 반경 토큰 표다 (PRD §8.4의 `shape.radius-*`, 어휘 3종).
+//
+// 값은 공간 사다리와 **같은 눈금**에서 나온다 (minimalSpaces의 수직 리듬): 최소 눈금 6px에
+// 얹혀 6 · 12 · 24이고, 각각 공간 토큰 xs·sm·md와 같은 값이다. 반경이 여백과 같은 눈금을
+// 쓰는 이유는 카드가 그 둘을 나란히 보이기 때문이다 — 안쪽 여백 24px에 모서리 7px 같은 값이
+// 섞이면 카드가 손으로 그린 것처럼 보인다.
+//
+// 사다리가 공간(6종)보다 짧은 이유는 반경이 **포화**하기 때문이다: 짧은 변의 절반을 넘으면
+// 모양이 더 바뀌지 않는다 (알약이 된다). 그래서 PRD §8.4도 반경 어휘를 sm/md/lg 셋으로
+// 적는다.
+//
+// 공간 토큰을 그대로 쓰게 하는 길(`radius="md"`가 space md를 가리키는 것)과 저울질했고
+// 버렸다: 두 사다리의 뜻이 다르므로(여백은 리듬, 반경은 형태) 한쪽을 조율하면 다른 쪽이
+// 끌려가고, 테마 제작자가 반경만 바꿀 방법이 사라진다.
+func minimalRadii() []soml.RadiusToken {
+	return []soml.RadiusToken{
+		{Name: "sm", Px: 6},
+		{Name: "md", Px: 12},
+		{Name: "lg", Px: 24},
+	}
+}
+
+// minimalShadows는 그림자 토큰 표다 (PRD §8.4의 `shape.shadow-soft`, 어휘 1종).
+//
+// 어휘가 하나인 근거는 색 토큰과 같다 — 픽스처가 쓰는 만큼이다 (`shadow="soft"`).
+//
+// 값은 "떠 있지만 떠 보이지 않는" 카드다: 아래로 4px(Dir 90도) 밀고 16px 번지며, 색은
+// **fg 토큰**이고 알파 0.15다. 검정 리터럴 대신 fg를 쓰는 이유는 clrScheme 참조가 그림자에도
+// 유지되어야 하기 때문이다 (soml.ShadowToken) — 어두운 테마로 바꾸면 그림자도 그 테마의
+// 어두운 색을 따라간다. 거리 4는 리듬의 최소 눈금 6보다 작다: 그림자는 배치가 아니라
+// 빛의 방향이고, 눈금에 맞추면 카드가 종이에서 들린 것처럼 보인다. 번짐 16 ≈ 거리의 4배가
+// "soft"의 근거이고(그림자 경계가 눈에 보이지 않는 비율), 알파 0.15는 흰 배경에서 회색
+// #E6E6E6 정도로 읽혀 surface(#F3F4F6)와 구별된다.
+func minimalShadows() []soml.ShadowToken {
+	return []soml.ShadowToken{
+		{Name: "soft", Dist: 4, Dir: 90, Blur: 16, Color: soml.TokenColor("fg"), Alpha: 0.15},
 	}
 }
 

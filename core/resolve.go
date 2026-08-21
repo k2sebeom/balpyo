@@ -56,6 +56,10 @@ type resolver struct {
 	theme soml.Theme
 	file  string
 	diags soml.Diagnostics
+	// ids는 이 슬라이드에서 이미 쓴 도형 `id`와 그 자리다 (중복 진단이 처음 자리를 가리켜야
+	// 한다). 상태가 resolver에 있는 것이 곧 검사 범위가 슬라이드라는 뜻이다 — 근거는
+	// resolver.shapeID의 주석에 있다.
+	ids map[string]soml.Span
 }
 
 func (r *resolver) errorf(span soml.Span, format string, args ...any) {
@@ -81,6 +85,12 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 		return
 	}
 	r.resolveLayout(elem, parent)
+	if elem.Name == soml.ShapeElement {
+		// 도형은 세 번째 갈래다 (외관·배치에 이어) — 자식은 텍스트 요소이므로 아래 순회가
+		// 기존 텍스트 경로로 데려간다. 부모가 도형이라는 사실이 텍스트 해석을 바꾸지 않는다:
+		// 바꾸는 것은 상속이고, 상속은 지금 구조에 없다.
+		r.resolveShape(elem)
+	}
 	if role, ok := r.textRole(elem); ok {
 		r.resolveText(elem, role)
 		// 텍스트 역할 요소의 자식은 문자 데이터와 인라인 태그뿐이다 (파서의 modelInline) —
@@ -171,6 +181,10 @@ func (r *resolver) inlinePatch(elem *soml.Element) textPatch {
 			if align, ok := r.align(attr); ok {
 				patch.align = &align
 			}
+		case soml.AnchorAttr:
+			if anchor, ok := r.anchor(attr); ok {
+				patch.anchor = &anchor
+			}
 		}
 	}
 	return patch
@@ -234,24 +248,34 @@ func (r *resolver) color(attr soml.Attr) (soml.Color, bool) {
 	if !r.hasValue(attr) {
 		return soml.Color{}, false
 	}
-	raw := attr.Value
+	return r.colorValue(attr.Name, attr.Value, attr.ValueSpan)
+}
+
+// colorValue는 색 값 하나를 해석한다 — 속성이 아니라 (이름, 값, 구간)을 받는 이유는
+// lengthValue와 같다: 값 하나가 색을 조각으로 담는다 (`border="1 solid muted"`). 진단은
+// 문제가 된 **조각**을 가리킨다.
+//
+// 도형의 `fill`·`border` 색이 텍스트 `color`와 이 함수를 공유하는 것이 계약이다 — 색 문법이
+// 속성마다 따로 있으면 같은 값이 자리에 따라 다르게 읽히고, 그 차이는 두 산출물을 나란히
+// 볼 때까지 보이지 않는다.
+func (r *resolver) colorValue(name, raw string, span soml.Span) (soml.Color, bool) {
 	if i := strings.IndexByte(raw, '('); i >= 0 {
 		// 색 함수는 외관 값 문법에 있지만(PRD §7.6) Iteration 8에서 열린다. "알 수 없는 토큰"
 		// 으로 뭉개면 저자가 오타를 찾다가 시간을 쓴다 — 문법은 맞고 아직 없다고 말한다.
-		r.errorf(attr.ValueSpan, "색 함수 %s(…)는 아직 쓸 수 없다 (gradient·shade·tint·alpha는 Iteration 8) — 토큰 이름이나 #RRGGBB 리터럴을 쓴다", raw[:i])
+		r.errorf(span, "색 함수 %s(…)는 아직 쓸 수 없다 (gradient·shade·tint·alpha는 Iteration 8) — 토큰 이름이나 #RRGGBB 리터럴을 쓴다", raw[:i])
 		return soml.Color{}, false
 	}
 	if strings.HasPrefix(raw, "#") {
 		rgb, ok := hexRGB(raw[1:])
 		if !ok {
-			r.errorf(attr.ValueSpan, "색 리터럴은 #RRGGBB 또는 #RGB 형태다 (%q)", raw)
+			r.errorf(span, "색 리터럴은 #RRGGBB 또는 #RGB 형태다 (%q)", raw)
 			return soml.Color{}, false
 		}
 		return soml.LiteralColor(rgb), true
 	}
 	if _, known := r.theme.Color(raw); !known {
-		r.errorf(attr.ValueSpan, "색 토큰 %q가 테마에 없다 (쓸 수 있는 토큰: %s, 또는 #RRGGBB 리터럴)",
-			raw, strings.Join(r.theme.ColorNames(), ", "))
+		r.errorf(span, "%s의 색 토큰 %q가 테마에 없다 (쓸 수 있는 토큰: %s, 또는 #RRGGBB 리터럴)",
+			name, raw, strings.Join(r.theme.ColorNames(), ", "))
 		return soml.Color{}, false
 	}
 	return soml.TokenColor(raw), true
@@ -305,6 +329,27 @@ func attrExample(name string) string {
 		return "accent1"
 	case "align":
 		return "center"
+	case soml.AnchorAttr:
+		return "center"
+	// 도형 외관 속성 (PRD §7.6 표의 shape 행 순서).
+	case "type":
+		return "rect"
+	case "id":
+		return "db"
+	case "fill":
+		return "surface"
+	case "border":
+		return "1 solid muted"
+	case "radius":
+		return "md"
+	case "shadow":
+		return "soft"
+	case "opacity":
+		return "0.8"
+	case "rotate":
+		return "45"
+	case "flip":
+		return "h"
 	case "weight":
 		return "bold"
 	case "href":

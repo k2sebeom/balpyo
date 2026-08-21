@@ -14,7 +14,7 @@
         <text color="bg" align="center">공정성</text>
       </shape>
       <shape type="rect" fill="surface" border="1 solid muted" w="fill" h="160" pad="md">
-        <p anchor="start">데이터와 모델의 편향을 측정한다.</p>
+        <p anchor="top">데이터와 모델의 편향을 측정한다.</p>
       </shape>
     </col>
     <col gap="0">
@@ -22,7 +22,7 @@
         <text color="bg" align="center">신뢰성</text>
       </shape>
       <shape type="rect" fill="surface" border="1 solid muted" w="fill" h="160" pad="md">
-        <p anchor="start">실패 모드를 정의하고 회귀로 막는다.</p>
+        <p anchor="top">실패 모드를 정의하고 회귀로 막는다.</p>
       </shape>
     </col>
     <col gap="0">
@@ -30,7 +30,7 @@
         <text color="bg" align="center">투명성</text>
       </shape>
       <shape type="rect" fill="surface" border="1 solid muted" w="fill" h="160" pad="md">
-        <p anchor="start">판단의 근거를 사람이 읽을 수 있게 남긴다.</p>
+        <p anchor="top">판단의 근거를 사람이 읽을 수 있게 남긴다.</p>
       </shape>
     </col>
     <col gap="0">
@@ -38,7 +38,7 @@
         <text color="bg" align="center">책임성</text>
       </shape>
       <shape type="rect" fill="surface" border="1 solid muted" w="fill" h="160" pad="md">
-        <p anchor="start">사고의 소유자와 대응 절차가 문서에 있다.</p>
+        <p anchor="top">사고의 소유자와 대응 절차가 문서에 있다.</p>
       </shape>
     </col>
     <shape type="rounded-rect" span="2" fill="none" border="3 solid accent1" radius="lg" w="fill" h="120" pad="md">

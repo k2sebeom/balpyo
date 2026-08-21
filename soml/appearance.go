@@ -13,8 +13,12 @@ const TextElement = "text"
 // 나란히 렌더해 보기 전까지 드러나지 않는다.
 type Appearance struct {
 	// Text는 텍스트 외관이다. <text>와 (Iteration 2의) 텍스트 서브셋 태그에만 채워진다.
-	// 도형 외관(fill/border/radius/shadow)은 Iteration 4에서 여기 형제로 붙는다.
 	Text *TextStyle
+	// Shape는 도형 외관이다 (shapestyle.go) — `<shape>`에만 채워진다. Text와 형제인 것이
+	// 이 계약이 텍스트 밖으로 처음 나간 자리다: 값 어휘·캐스케이드를 core가 한 번만
+	// 적용하고 렌더러는 읽기만 한다. 도형 외관이 값 층을 두 번 지나면 웹의 CSS와 PPTX의
+	// OOXML이 갈라진다.
+	Shape *ShapeStyle
 	// Link는 하이퍼링크 목적지다 (<a href>의 값, 원문 그대로). 외관이 아니라 **행동**이라
 	// TextStyle 밖에 둔다 — 밑줄·색은 스타일이고, 목적지는 렌더러가 웹의 href와 PPTX의
 	// hlinkClick으로 잇는다. 여기 두는 것은 "렌더러가 Attrs를 다시 읽지 않는다"는 계약의
@@ -66,6 +70,14 @@ type TextStyle struct {
 	LineHeight float64
 	Color      Color
 	Align      TextAlign
+	// Anchor는 **세로 앵커**다 (PRD §7.6의 text 행). 정하지 않으면 빈 문자열이다.
+	//
+	// 다른 필드와 달리 역할 기본값이 채우지 않는 유일한 자리다: 앵커가 뜻을 갖는 곳은
+	// 내용보다 큰 박스 안이고, 그런 박스는 도형뿐이다 (슬라이드 직속 텍스트 박스는 잰
+	// rect가 곧 내용 크기라 앵커가 움직일 여백이 없다). 기본값을 정하면 모든 텍스트가
+	// `bodyPr@anchor`·flex 정렬 선언을 하나 더 싣게 되고, 그 선언은 뜻이 없는 자리에서도
+	// 산출물을 흔든다.
+	Anchor TextAnchor
 }
 
 // TextRole은 텍스트 역할이다 — 1층의 HTML 서브셋(`<p>`, `<h2>` …)과 2층의 `<text role>`이
@@ -108,6 +120,26 @@ const (
 // TextAligns는 정렬 어휘 전체다 (순서 = 진단 메시지 순서).
 func TextAligns() []TextAlign {
 	return []TextAlign{AlignStart, AlignCenter, AlignEnd, AlignJustify}
+}
+
+// TextAnchor는 박스 안 텍스트의 **세로 정렬**이다 (`anchor`).
+//
+// 값은 TextAlign과 달리 **물리 이름**이다 (`start`/`end`가 아니라 `top`/`bottom`).
+// TextAlign이 논리 이름을 고른 근거는 문단 방향(rtl)이 가로축의 뜻을 뒤집는다는 것이고,
+// **세로축에는 그 근거가 없다** — v1은 세로쓰기를 지원하지 않으므로 위는 항상 위다. 논리
+// 이름을 쓰면 두 축의 어휘가 같아 보이는 대신 "무엇이 뒤집힐 수 있는가"라는 구별을 잃는다.
+// 가운데만 TextAlign과 이름을 공유한다 (`center` — 뒤집힘과 무관한 값이다).
+type TextAnchor string
+
+const (
+	AnchorTop    TextAnchor = "top"
+	AnchorCenter TextAnchor = "center"
+	AnchorBottom TextAnchor = "bottom"
+)
+
+// TextAnchors는 세로 앵커 어휘 전체다 (순서 = 위에서 아래로 = 진단 메시지 순서).
+func TextAnchors() []TextAnchor {
+	return []TextAnchor{AnchorTop, AnchorCenter, AnchorBottom}
 }
 
 // Color는 해석이 끝난 색이다. **토큰 참조**와 **리터럴 RGB** 두 상태를 갖는다.
@@ -160,6 +192,12 @@ type Theme struct {
 	// 값 어휘가 여기서 온다. 색·폰트와 함께 이 표에 있는 이유: 배치조차 테마의 리듬을
 	// 따라가야 두 타깃의 여백이 한 곳에서 나온다.
 	Spaces []SpaceToken
+	// Radii는 모서리 반경 토큰이다 (PRD §8.4의 `shape.radius-*`) — `radius="lg"`의 값
+	// 어휘다.
+	Radii []RadiusToken
+	// Shadows는 그림자 토큰이다 (PRD §8.4의 `shape.shadow-soft`) — `shadow="soft"`의 값
+	// 어휘이자 **유일한** 어휘다 (도형 외관은 그림자 수치를 받지 않는다 — ShadowToken).
+	Shadows []ShadowToken
 }
 
 // Color는 이름으로 색 토큰을 찾는다.
@@ -209,6 +247,97 @@ func (t Theme) SpaceNames() []string {
 		names[i] = token.Name
 	}
 	return names
+}
+
+// Radius는 이름으로 반경 토큰을 찾는다.
+func (t Theme) Radius(name string) (RadiusToken, bool) {
+	for _, token := range t.Radii {
+		if token.Name == name {
+			return token, true
+		}
+	}
+	return RadiusToken{}, false
+}
+
+// RadiusNames는 반경 토큰 이름 목록이다 (ColorNames와 같은 태도).
+func (t Theme) RadiusNames() []string {
+	names := make([]string, len(t.Radii))
+	for i, token := range t.Radii {
+		names[i] = token.Name
+	}
+	return names
+}
+
+// Shadow는 이름으로 그림자 토큰을 찾는다.
+func (t Theme) Shadow(name string) (ShadowToken, bool) {
+	for _, token := range t.Shadows {
+		if token.Name == name {
+			return token, true
+		}
+	}
+	return ShadowToken{}, false
+}
+
+// ShadowNames는 그림자 토큰 이름 목록이다 (ColorNames와 같은 태도).
+func (t Theme) ShadowNames() []string {
+	names := make([]string, len(t.Shadows))
+	for i, token := range t.Shadows {
+		names[i] = token.Name
+	}
+	return names
+}
+
+// RadiusToken은 모서리 반경 토큰 하나다 — `radius="lg"`가 가리키는 곳.
+//
+// **clrScheme 슬롯 계약이 여기에는 없다** (SpaceToken과 같은 비대칭이지만 이유가 다르다):
+// OOXML에 반경이라는 **테마 개념이 아예 없다.** 반경은 프리셋 지오메트리의 조정값
+// (`prstGeom/avLst`의 `adj`)이라 도형마다 구워지고, 테마 파트에서 조정값을 가리키는 자리가
+// 없다. PowerPoint에서 모서리를 바꾸는 것은 도형의 노란 핸들을 끄는 일이지 토큰을 바꾸는
+// 일이 아니다 — 배치가 좌표로 구워지는 것과 같은 종류의 손실이다.
+type RadiusToken struct {
+	// Name은 PRD §8.4의 `shape.radius-*` 어휘다: sm, md, lg.
+	Name string
+	// Px는 논리 스테이지 px다 (PRD §13-5).
+	Px float64
+}
+
+// ShadowToken은 그림자 토큰 하나다 — `shadow="soft"`가 가리키는 곳.
+//
+// **도형 외관은 그림자를 토큰으로만 받는다** (수치 축약 없음). 근거는 CSS `box-shadow`의
+// 4수치와 OOXML `outerShdw`가 1:1이 아니라는 것이다: 번짐 반경의 정의가 다르고(CSS는
+// 가우시안 표준편차의 2배, OOXML `blurRad`는 자체 정의), CSS의 확산(`spread`)에는 대응
+// 항목이 아예 없다. 저자가 수치를 쓰면 두 타깃이 다르게 그려지고, 토큰이면 **양쪽 값을
+// 테마가 소유한다** — FontToken이 Latin/EastAsian/Generic을 한 표에서 내는 것과 같은 계약을
+// 그림자로 넓힌 것이다.
+//
+// 그래서 필드는 **두 타깃을 다 만들 수 있는 파라미터**다. 오프셋을 극좌표(Dist·Dir)로 담는
+// 이유: OOXML `outerShdw@dist/dir`가 극좌표이고 CSS는 직교(dx/dy)이므로 한쪽을 골라야
+// 하는데, 극좌표 → 직교는 렌더 시점의 삼각함수 한 번으로 정확히 나오고 반대 방향은
+// `atan2`의 결과를 60000분의 1도 정수로 반올림해야 한다. 손실이 있는 방향을 산출 경계에
+// 두지 않는다.
+//
+// **clrScheme 슬롯 계약**: 그림자 자체에는 없지만 색에는 있다 (Color가 토큰 참조를
+// 유지하므로 `outerShdw`가 `schemeClr`를 낼 수 있다). 테마 파트에 그림자를 실을 자리가
+// **없지는 않다** — `fmtScheme/effectStyleLst`가 그것이다. 그런데 그 목록은 스타일이 세
+// 개뿐이고 도형이 `style/effectRef`로 하나를 고르는 구조라, 도형마다 다른 그림자를 실을 수
+// 없다. 즉 "없다"가 아니라 **"있지만 v1은 쓰지 않는다"**다 (매핑의 실제 결정은 항목 05).
+type ShadowToken struct {
+	// Name은 PRD §8.4의 `shape.shadow-*` 어휘다: soft.
+	Name string
+	// Dist는 그림자가 도형에서 밀려난 거리다 (논리 px).
+	Dist float64
+	// Dir는 그림자가 밀려난 방향이다 (도, 시계방향, 0 = 오른쪽). 웹과 OOXML이 같은 규약을
+	// 쓴다 — y축이 아래로 향하므로 90도가 아래다.
+	Dir float64
+	// Blur는 번짐 반경이다 (논리 px). 두 엔진의 정의가 정확히 같지 않다는 사실이 값을
+	// 토큰에 가둔 이유다 (타입 주석).
+	Blur float64
+	// Color는 그림자 색이다 — 토큰 참조가 유지된다 (PPTX가 `schemeClr`를 내려면 필요하다).
+	Color Color
+	// Alpha는 그림자 색의 불투명도다 (0~1). 색과 분리한 이유: 색 변형 함수 `alpha()`는
+	// Iteration 8이고, 그때까지 토큰 색에 투명도를 실을 표기가 값 문법에 없다. 그림자는
+	// 반투명이 기본이므로 표가 그 값을 직접 갖는다.
+	Alpha float64
 }
 
 // SpaceToken은 공간 토큰 하나다 — `gap="xl"`이 가리키는 곳.

@@ -25,6 +25,7 @@ type textPatch struct {
 	lineHeight *float64
 	color      *soml.Color
 	align      *soml.TextAlign
+	anchor     *soml.TextAnchor
 }
 
 // mergeText는 patch가 정한 필드만 style에 얹는다.
@@ -50,6 +51,9 @@ func mergeText(style *soml.TextStyle, patch textPatch) {
 	}
 	if patch.align != nil {
 		style.Align = *patch.align
+	}
+	if patch.anchor != nil {
+		style.Anchor = *patch.anchor
 	}
 }
 
