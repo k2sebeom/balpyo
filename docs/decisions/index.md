@@ -21,6 +21,13 @@
 | [0013](0013-measured-kinds-include-layout.md) | 측정 대상에 레이아웃 컨테이너와 `<spacer>`를 넣는다 | 3 | 확정 (0009의 후속) |
 | [0014](0014-style-escape-hatch-boundary.md) | `style` 탈출구는 문법만 에러, allowlist 밖은 경고, 값은 보지 않는다 | 3 | 확정 |
 | [0015](0015-fill-is-hundred-percent.md) | `fill`은 해당 축의 100%다 (`grow`와 겹치지 않는다) | 3 | 확정 |
+| [0016](0016-shape-text-is-shape-body.md) | 도형 안 텍스트는 같은 도형의 본문이다 | 4 | 확정 |
+| [0017](0017-shape-geometry-from-ooxml-presets.md) | 도형 기하의 출처는 OOXML 프리셋 정의다 (정규 공간을 늘리고 조정값이 맞춘다) | 4 | 확정 |
+| [0018](0018-opacity-compiles-to-color-alpha.md) | `opacity`는 합성 불투명도가 아니라 색 알파로 컴파일된다 | 4 | 확정 |
+| [0019](0019-radius-is-rounded-rect-only.md) | `radius`는 `rounded-rect` 전용이고 테마 기본값만 조용히 버려진다 | 4 | 확정 (I10 재검토) |
+| [0020](0020-shadow-tokens-only.md) | `shadow`는 토큰만 받는다 (수치 축약을 열지 않는다) | 4 | 확정 |
+| [0021](0021-measure-view-disables-transforms.md) | 측정 뷰에서 변형을 끈다 (회전은 잰 뒤에 얹힌다) | 4 | 확정 (0006의 후속) |
+| [0022](0022-shape-variants-do-not-inherit.md) | 도형 variant는 자식 텍스트의 외관을 담지 않는다 | 4 | 확정 |
 
 PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다. 그 결정들의
 색인은 PRD에 있고, 이 표는 **그 이후 구현 중에 새로 확정한 것**만 담는다.

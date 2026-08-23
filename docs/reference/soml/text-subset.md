@@ -9,8 +9,8 @@ HTML의 익숙한 텍스트 태그를 그대로 쓰는 서브셋이다 (PRD §7.
 
 | 태그 | 종류 | 허용 속성 | 배치 규칙 |
 |---|---|---|---|
-| `h1` `h2` `h3` `p` `blockquote` | 블록 | `variant` `size` `color` `align` + [자식 배치 속성](layout.md) | 슬라이드 또는 레이아웃 컨테이너 직속. 내용은 문자 데이터 + 인라인 태그 |
-| `pre` | 블록 | `variant` `size` `color` `align` + 자식 배치 속성 | 슬라이드 또는 레이아웃 컨테이너 직속. 내용은 **문자 데이터만** (공백 원문 보존) |
+| `h1` `h2` `h3` `p` `blockquote` | 블록 | `variant` `size` `color` `align` `anchor` + [자식 배치 속성](layout.md) | 슬라이드 또는 레이아웃 컨테이너 직속. 내용은 문자 데이터 + 인라인 태그 |
+| `pre` | 블록 | `variant` `size` `color` `align` `anchor` + 자식 배치 속성 | 슬라이드 또는 레이아웃 컨테이너 직속. 내용은 **문자 데이터만** (공백 원문 보존) |
 | `ul` `ol` | 리스트 컨테이너 | 자식 배치 속성만 | 슬라이드 또는 레이아웃 컨테이너 직속. 자식은 `<li>`만 |
 | `li` | 리스트 항목 | 없음 | `<ul>`/`<ol>` 안에서만. 내용은 문자 데이터 + 인라인 태그 |
 | `strong` `em` `code` | 인라인 | 없음 | 블록·`<text>`·`<li>` 안. 인라인끼리 중첩 가능 |
@@ -196,7 +196,7 @@ CSS가 0으로 명시하므로 **브라우저 기본 스타일에 기대는 값�
 | `<a>` 안의 `<a>` (중첩 포함) | `<a> 안에 <a>를 겹칠 수 없다` |
 | `<br>`을 여닫아 썼다 | `void 태그 <br>은 내용을 가질 수 없다 (<br/>로 쓴다)` |
 | `<pre>` 안에 요소를 썼다 | `<pre> 안에는 문자 데이터만 올 수 있다 (<strong>는 쓸 수 없다)` |
-| 블록에 `role`을 썼다 | `<h1>에 알 수 없는 속성 role (쓸 수 있는 속성: variant, size, color, align, grow, shrink, basis, span, self, order, style)` |
+| 블록에 `role`을 썼다 | `<h1>에 알 수 없는 속성 role (쓸 수 있는 속성: variant, size, color, align, anchor, grow, shrink, basis, span, self, order, style)` |
 | `<span size>` | `<span>에 알 수 없는 속성 size (쓸 수 있는 속성: color, weight)` |
 
 외관 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다. 블록의 `size`/`color`/`align`

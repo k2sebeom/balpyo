@@ -27,6 +27,7 @@ nav:
       - SOML — text: reference/soml/text.md
       - SOML — 텍스트 서브셋: reference/soml/text-subset.md
       - SOML — 레이아웃: reference/soml/layout.md
+      - SOML — shape: reference/soml/shape.md
       - SOML — note: reference/soml/note.md
       - 외관 속성: reference/appearance.md
       - CLI: reference/cli.md
@@ -53,6 +54,13 @@ nav:
       - 0013 측정 대상에 레이아웃을 넣는다: decisions/0013-measured-kinds-include-layout.md
       - 0014 style 탈출구의 경계: decisions/0014-style-escape-hatch-boundary.md
       - 0015 fill은 해당 축의 100%: decisions/0015-fill-is-hundred-percent.md
+      - 0016 도형 안 텍스트는 도형의 본문: decisions/0016-shape-text-is-shape-body.md
+      - 0017 도형 기하는 OOXML 프리셋에서 유도한다: decisions/0017-shape-geometry-from-ooxml-presets.md
+      - 0018 opacity는 색 알파로 컴파일된다: decisions/0018-opacity-compiles-to-color-alpha.md
+      - 0019 radius는 rounded-rect 전용: decisions/0019-radius-is-rounded-rect-only.md
+      - 0020 shadow는 토큰만 받는다: decisions/0020-shadow-tokens-only.md
+      - 0021 측정 뷰에서 변형을 끈다: decisions/0021-measure-view-disables-transforms.md
+      - 0022 도형 variant는 상속하지 않는다: decisions/0022-shape-variants-do-not-inherit.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |

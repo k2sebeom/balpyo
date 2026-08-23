@@ -7,10 +7,11 @@ Hugo가 Markdown 콘텐츠를 테마로 렌더링하는 정적 사이트 생성�
 balpyo는 SOML 슬라이드를 테마로 렌더링하는 **프레젠테이션 생성기**다.
 
 !!! note "현재 상태"
-    Iteration 3까지 구현되었다 — `<slide>`/`<text>`/`<note>`와 텍스트 서브셋, 그리고
-    레이아웃 태그(`<row>`/`<col>`/`<grid>`/`<spacer>`)까지 파싱 → 외관·배치 해석 →
-    웹 + 네이티브 PPTX 전 구간이 뚫려 있고, 최대 리스크였던 텍스트 메트릭은 측정으로
-    허용 오차가 확정되었다 (PRD §13-1). **지금 동작하는 것**은 [레퍼런스](reference/index.md)에
+    Iteration 4까지 구현되었다 — `<slide>`/`<text>`/`<note>`와 텍스트 서브셋,
+    레이아웃 태그(`<row>`/`<col>`/`<grid>`/`<spacer>`), 그리고 `<shape>` 12종 + 외관
+    속성(단색)까지 파싱 → 외관·배치 해석 → 웹 + 네이티브 PPTX 전 구간이 뚫려 있다.
+    최대 리스크였던 텍스트 메트릭은 측정으로 허용 오차가 확정되었고 (PRD §13-1), 도형
+    프리셋의 기하는 두 렌더의 도형별 픽셀 비교가 12종 전수로 판정한다. **지금 동작하는 것**은 [레퍼런스](reference/index.md)에
     있다 — 이 문서의 나머지는 목표 명세이며 아직 전부 동작하지 않는다. 최신 진행 상황은
     [TASKS.md](https://github.com/k2sebeom/balpyo/blob/main/TASKS.md)를 참고한다.
 
@@ -257,7 +258,7 @@ slides/*.slide ─파싱─▶ ┌───────────────�
 | 컴포넌트 | 웹 렌더 | PPTX 렌더 (OOXML) |
 |---|---|---|
 | `<text>` | 텍스트 요소 | 텍스트 박스 (`sp`+`txBody`) |
-| `<shape>` | div/SVG | 프리셋 도형 (`sp`+`prstGeom`) |
+| `<shape>` | 박스 div + 그림 svg | 프리셋 도형 (`sp`+`prstGeom`) |
 | `<image>` | img | 그림 (`pic`) |
 | `<arrow>` | SVG 패스 (앵커 자동 계산) | 커넥터 (`cxnSp`) |
 | `<line>` | SVG 라인 | 커넥터 (화살촉 없음) |
@@ -410,7 +411,7 @@ deck.pptx (PowerPoint/Keynote에서 열어 편집 가능)
 | **색 변형** (`shade()`, `alpha()`) | `color-mix()` / rgba | `schemeClr` + `lumMod`/`lumOff`/`alpha` |
 | `cap` / `dash` | `stroke-linecap`, `stroke-dasharray` | `ln@cap`, `prstDash` |
 | `rotate` / `flip` | `transform` | `xfrm@rot`, `flipH`/`flipV` |
-| `opacity` / `shadow` | `opacity` / `box-shadow` | alpha / `effectLst` outerShdw |
+| `opacity` / `shadow` | 색 알파 / `filter: drop-shadow` | 색 안의 `a:alpha` / `effectLst` outerShdw |
 | 위치·크기 | (브라우저가 원본) | `xfrm` (EMU) |
 
 실물 기업 덱 역분석 결과 "디자인된 느낌"은 굵은 글씨 항목(**그라디언트 3종, 토큰 색 변형**)에

@@ -46,9 +46,28 @@ SOML에는 선언 채널이 **둘**이다 (PRD §5.3): 이 페이지가 담는 *
 
 ### `variant` — 테마가 이름 붙인 외관 번들
 
-`variant` 속성은 `<text>`와 블록 태그(`h1`~`h3`, `p`, `blockquote`, `pre`)가 받는다.
-**어휘는 테마 소유다 — 표준화하지 않는다** (PRD §13-6): 내장 `minimal` 테마는 `kicker`
-(크기 18 + 굵기 700 + `accent1`)와 `lead`(크기 32)를 정의한다.
+`variant` 속성은 `<text>`와 블록 태그(`h1`~`h3`, `p`, `blockquote`, `pre`), 그리고
+[`<shape>`](soml/shape.md)가 받는다. **어휘는 테마 소유이고 표준화하지 않는다** (PRD §13-6).
+
+**어휘가 두 벌이다** — 텍스트 variant와 도형 variant는 이름 공간이 다르고 서로를 모른다.
+내장 `minimal` 테마:
+
+| 요소 | variant | 담는 것 |
+|---|---|---|
+| 텍스트 | `kicker` | 크기 18 + 굵기 700 + `accent1` |
+| 텍스트 | `lead` | 크기 32 |
+| 도형 | `card` | `fill: bg` · `radius: lg` |
+| 도형 | `card-header` | `border: none` · `radius: sm` (채움은 정하지 않는 **부분 패치**) |
+| 도형 | `card-body` | `fill: bg` |
+| 도형 | `card-backdrop` | `fill: none` · `border: 3 solid accent1` · `radius: lg` |
+| 도형 | `stat-card` | `border: none` · `shadow: soft` · `radius: lg` |
+| 도형 | `badge` | `border: 1 solid accent1` · `radius: lg` |
+
+**도형 variant는 자식 텍스트의 외관을 담지 않는다.** `variant="card-header"`가 그 안의
+글자를 굵게 만들지 않는다 — 담게 하면 캐스케이드가 트리를 타고 내려가는 **상속**이 되고,
+상속은 한 요소 안에서 끝나는 지금의 병합과 다른 두 번째 메커니즘이다
+([ADR 0022](../decisions/0022-shape-variants-do-not-inherit.md)). 카드 제목의 타이포그래피는
+자식에 직접 적는다 (`<h3>` 또는 `<text role="heading">`).
 
 **테마에 없는 variant는 에러가 아니라 경고 + 기본 외관 폴백이다** (PRD §13-6) — variant
 어휘는 테마의 사유물이라, 다른 테마로 만든 콘텐츠가 이 테마에서 빌드되지 않으면 콘텐츠의
@@ -58,6 +77,8 @@ SOML에는 선언 채널이 **둘**이다 (PRD §5.3): 이 페이지가 담는 *
 ```
 slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: kicker, lead)
 ```
+
+문구는 텍스트와 도형이 **같고 나열된 목록만 다르다** — 어느 어휘인지는 목록이 말한다.
 
 `testdata/fixtures/02_text_subset/slides/006_variant.slide`:
 
@@ -71,6 +92,23 @@ slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — �
 
 값이 없거나 빈 `variant`(`<p variant>`·`variant=""`)는 다른 외관 속성과 같이 에러다 —
 "값 없음"은 폴백할 뜻조차 정할 수 없는 형태다.
+
+### 컴포넌트 기본값 — 도형 캐스케이드의 바닥
+
+텍스트는 `role`이 캐스케이드의 바닥을 깔지만 **도형에는 역할이 없다.** 그 자리를 테마의
+컴포넌트 기본값이 대신한다 (PRD §8.3):
+
+| 요소 | 기본값 |
+|---|---|
+| `<shape>` | `fill: surface` · `border: 1 solid muted` · `radius: md` |
+
+그래서 `<shape type="rect"/>`만 써도 채움과 테두리가 확정된다. 값이 비어 남으면 채우는 판단이
+렌더러로 내려가고, 두 타깃이 서로 다른 값을 채우는 순간 웹과 PPTX가 갈라진다.
+
+- **기본값의 `radius: md`는 `rounded-rect`가 아닌 프리셋에서 조용히 버려진다.** 저자가 인라인
+  으로 적은 `radius`는 에러이지만(고칠 수 있으므로 진단이 고칠 방법을 말한다) 테마 기본값에
+  같은 진단을 내면 `<shape type="rect"/>`가 무조건 에러가 된다
+  ([ADR 0019](../decisions/0019-radius-is-rounded-rect-only.md)).
 
 ## 텍스트 역할 5종
 
@@ -90,8 +128,8 @@ slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — �
 
 ## 토큰 색은 참조로 남는다 — 제품의 핵심 계약
 
-`color="accent1"` 같은 토큰 색은 해석 후에도 **토큰 이름으로** 남고, 렌더러가 RGB로
-눕히지 않는다:
+`color="accent1"`·`fill="surface"` 같은 토큰 색은 해석 후에도 **토큰 이름으로** 남고,
+렌더러가 RGB로 눕히지 않는다:
 
 - **웹**: 요소는 `color: var(--balpyo-color-accent1)`을 받고, 토큰의 실제 RGB는 테마 층
   (`@layer balpyo.theme`)의 `:root` 선언 **한 곳**에만 나온다. 변수 하나를 바꾸면 그
@@ -101,11 +139,21 @@ slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — �
   PowerPoint의 테마 색 편집을 따라간다** — 사용자가 PowerPoint에서 강조색을 바꾸면
   덱의 모든 강조색 글자가 함께 바뀐다.
 
+**리터럴 색은 반대다.** `fill="#0F65F9"`는 산출 PPTX에서 `<a:srgbClr val="0F65F9"/>`가 되고,
+그것이 **정상이다** — 리터럴은 테마 참조가 아니라는 사실이 값의 형태에 그대로 보여야 한다.
+차이가 나타나는 자리는 하나뿐이다: **PowerPoint에서 디자인 탭의 테마 색을 바꾸면 토큰으로
+칠한 도형만 따라오고 리터럴로 칠한 도형은 그대로 남는다.** 같은 RGB를 토큰으로 쓴 도형과
+리터럴로 쓴 도형이 그 순간 갈라지는 것이 **이 제품이 토큰을 권하는 공식적인 이유**다.
+
 토큰을 어느 지점에서든 리터럴 RGB로 눕히면 이 참조를 복원할 방법이 없다. 그래서 해석된
-색(`soml.Color`)은 토큰 참조와 리터럴 두 상태를 구분해 담고, 픽스처 테스트가 슬라이드
-파트에 `srgbClr`가 없는지(토큰만 쓴 덱 기준) 감시한다. 폰트 토큰도 같은 구조다 —
-`heading`/`body`는 fontScheme의 major/minor 참조(`+mj-lt`/`+mn-lt`)로 나가 테마 폰트
+색(`soml.Color`)은 토큰 참조와 리터럴 두 상태를 구분해 담고, 픽스처 테스트가 슬라이드 파트의
+`srgbClr` 값을 **슬라이드별 리터럴 색 전수 표와 정확히 맞댄다** — 표에 없는 `srgbClr`는
+토큰이 어딘가에서 눕은 것이다 ([테스트 환경](../internals/testing.md)). 폰트 토큰도 같은
+구조다 — `heading`/`body`는 fontScheme의 major/minor 참조(`+mj-lt`/`+mn-lt`)로 나가 테마 폰트
 변경을 따라가고, `mono`만 fontScheme에 세 번째 자리가 없어 리터럴 typeface로 나간다.
+
+자동 검사가 볼 수 있는 것은 "XML에 참조가 남았다"까지다. **실제로 따라오는지는 사람이
+PowerPoint에서 확인한다** — 각 iteration의 리뷰 단계가 그 자리다.
 
 ## 매핑 표
 
@@ -122,11 +170,59 @@ slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — �
 | `color` (토큰) | 토큰 이름 | `color: var(--balpyo-color-<토큰>)` | `a:solidFill/a:schemeClr@val` = 토큰의 Ref |
 | `color` (리터럴) | 대문자 6자리 hex | `color: #RRGGBB` | `a:solidFill/a:srgbClr@val="RRGGBB"` |
 | `align` | 논리 이름 | `text-align: start\|center\|end\|justify` | `a:pPr@algn` = `l`\|`ctr`\|`r`\|`just` |
+| `anchor` | `top` `center` `bottom` | (부모 도형의) `justify-content: start\|center\|end` | (부모 도형의) `a:bodyPr@anchor` = `t`\|`ctr`\|`b` |
 
 - OOXML `algn`의 `l`/`r`은 물리 이름처럼 보이지만 문단 방향(RTL)에 따라 뜻이 뒤집히는
-  **논리 값**이다 — SOML이 `start`/`end`를 쓰는 이유와 정확히 짝이 맞는다.
+  **논리 값**이다 — SOML이 `start`/`end`를 쓰는 이유와 정확히 짝이 맞는다. `anchor`가
+  반대로 **물리 이름**(`top`/`bottom`)인 것도 같은 기준이다: 세로축은 문단 방향으로 뒤집히지
+  않으므로 논리 이름을 쓸 근거가 없다.
+- **`anchor`는 뜻이 보이는 자리가 [도형 안](soml/shape.md)뿐이다.** 확정 값은 텍스트가 갖지만
+  선언이 나가는 자리는 **부모 도형**이다 (웹은 도형 div의 flex 정렬, PPTX는 도형 `bodyPr`) —
+  둘 다 박스에 하나뿐이라 도형의 앵커는 **첫 자식이 정한다.** 슬라이드 직속 텍스트 박스에서는
+  선언이 아예 나가지 않는다: 잰 rect가 곧 내용 크기라 세로로 움직일 여백이 없다.
 - 확정 값은 요소의 인라인 `style` 속성으로 나간다 — cascade layer 위에 있으므로 저자
   CSS가 외관을 덮지 못한다 ([ADR 0003](../decisions/0003-inline-style-appearance.md)).
+
+### 도형 외관 (단색)
+
+[`<shape>`](soml/shape.md)의 외관 8종이다. **정하지 않은 속성은 선언을 하나도 내지 않는다** —
+`shadow`·`opacity`·`rotate`·`flip`의 미지정은 두 타깃의 암묵 기본값이 같아 렌더러가 채울
+판단이 없다.
+
+| 속성 | 확정 값 | 웹 (생성 CSS) | PPTX (OOXML) |
+|---|---|---|---|
+| `fill` (토큰) | 토큰 이름 | 그림 svg의 `fill: var(--balpyo-color-<토큰>)` | `a:solidFill/a:schemeClr@val` |
+| `fill` (리터럴) | hex | `fill: #RRGGBB` | `a:solidFill/a:srgbClr@val` |
+| `fill="none"` | `none` 상태 | `fill: none` | `a:noFill` |
+| `border` (굵기) | 논리 px | `stroke-width: <px>px` | `a:ln@w` = px × 9525 (EMU) |
+| `border` (색) | 색 | `stroke: var(…)` 또는 `#RRGGBB` | `a:ln/a:solidFill/…Clr` |
+| `border` (스타일) | `solid` `dashed` `dotted` | `stroke-dasharray` — 4:3 / 1:3 (굵기 배수) | `a:prstDash@val` = `solid`·**`dash`**·**`dot`** |
+| `border="none"` | `none` 상태 | `stroke: none` | `a:ln/a:noFill` |
+| `radius` | 토큰 이름 + px | SVG `<rect rx="<px>">` (기하 속성) | `prstGeom/avLst`의 `adj` = 100000 × radius ÷ min(w,h) |
+| `shadow` | 토큰 항목 그대로 | `filter: drop-shadow(var(--balpyo-shadow-<토큰>))` | `a:effectLst/a:outerShdw` (dist·dir·blurRad + 색 + `rotWithShape="1"`) |
+| `opacity` | 0~1 실수 | 그림 svg의 `opacity` | 채움·선·그림자 **색 안의** `a:alpha@val` (100000분율) |
+| `rotate` | 각도 | 박스 div의 `transform: rotate(<deg>deg)` | `a:xfrm@rot` = 각도 × 60000 (한 바퀴로 정규화) |
+| `flip` | `h` `v` `hv` | 그림 svg의 `transform: scaleX(-1)` 등 | `a:xfrm@flipH`/`@flipV` |
+
+- **선언이 박스(div)와 그림(svg)으로 갈라지는 기준은 OOXML의 자리다**: `rotate`는
+  `xfrm@rot`이 텍스트까지 함께 돌리므로 박스, `flip`은 `flipH`가 글자를 뒤집지 않으므로
+  그림, `opacity`는 알파가 `solidFill` 안에 있으므로 그림이다.
+- **`border` 스타일 이름은 CSS 쪽이고 파선 수치가 두 타깃을 잇는다.** 어휘가
+  `dashed`/`dotted`인 것은 축약 자체가 CSS `border`의 표기이기 때문이고, OOXML로는
+  `dash`/`dot`으로 간다 — CSS `border-style: dashed`의 패턴은 UA가 정하므로 이름을 옮길 수
+  없고 **수치(`prstDash`의 비율 4:3·1:3)를 웹이 `stroke-dasharray`로 내는 것**이 두 타깃이
+  같은 간격을 갖는 유일한 길이다. 어휘를 셋으로 닫은 기준은 `prstDash`에 대응이 있는 것만이다
+  (`double`/`groove`는 PPTX에서 조용히 실선이 된다).
+- **`radius`는 웹에서도 확정 수치로 나간다** (토큰 변수 참조가 아니다). SVG 기하 속성(`rx`)은
+  커스텀 프로퍼티를 이식성 있게 참조할 수 없고, 무엇보다 **OOXML에도 반경 테마 개념이 없어**
+  두 타깃이 같은 방식으로 값을 굽는다 (아래 토큰 표).
+- **`shadow`의 색만 참조로 남는다**: 웹은
+  `color-mix(in srgb, var(--balpyo-color-fg) 15%, transparent)`, PPTX는 `outerShdw` 안의
+  `schemeClr` + `alpha`다. rgba로 눕히면 그 도형의 그림자만 옛 색으로 남는다.
+- **`opacity`는 합성 불투명도가 아니다.** 반투명 도형 안의 글자는 또렷하다 — 웹은 선언이 그림
+  svg에 걸려 자식 텍스트를 건드리지 않고, PPTX는 알파를 색 안에만 싣는다
+  ([ADR 0018](../decisions/0018-opacity-compiles-to-color-alpha.md)). 그림자 알파는 도형
+  불투명도와 **곱한다** (웹에서 그림자가 그 svg의 필터 결과이므로 함께 흐려진다).
 
 ### 인라인 서식 (텍스트 런)
 
@@ -180,6 +276,7 @@ slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — �
 | `fg` | `1A1A1A` | `dk1` | `tx1` |
 | `bg` | `FFFFFF` | `lt1` | `bg1` |
 | `muted` | `6B7280` | `dk2` | `tx2` |
+| `surface` | `F3F4F6` | `lt2` | `bg2` |
 | `accent1` | `0F65F9` | `accent1` | `accent1` |
 
 슬라이드 바탕도 `bg` 토큰에서 나온다 (웹은 `.balpyo-slide { background: var(--balpyo-color-bg) }`,
@@ -220,6 +317,37 @@ PPTX는 마스터 배경의 `bg1` 참조).
 4·8·16·32 같은 2의 거듭제곱 사다리를 쓰지 않은 이유는 36px 줄박스의 약수·배수가 아니어서
 여백이 글줄 격자에서 매번 미끄러지기 때문이다. 스테이지 여백(64px)은 아직 이 표 밖에 있다 —
 PRD §8.4의 `slidePadding` 토큰이 들어오는 Iteration 10이 합칠 자리다.
+
+반경 토큰 (`radius` 값 어휘) — 공간 사다리의 최소 눈금(6px)에 얹혀 있다. 카드가 안쪽 여백과
+모서리를 나란히 보이므로 두 값이 같은 눈금이어야 한다:
+
+| 토큰 | 값(px) | 공간 사다리에서의 자리 | PPTX 슬롯 |
+|---|---|---|---|
+| `sm` | 6 | = `xs` | **없음** — OOXML 테마에 반경 개념이 아예 없다 |
+| `md` | 12 | = `sm` | **없음** (동일) |
+| `lg` | 24 | = `md` | **없음** (동일) |
+
+그림자 토큰 (`shadow` 값 어휘) — 오프셋을 **극좌표**(거리·방향)로 담는 이유는 OOXML이
+극좌표이고 방향이 60000분의 1도 정수라, 직교 → 극 변환을 산출 경계에 두면 반올림 손실이
+그쪽에 생기기 때문이다 (변환하는 쪽이 웹이다):
+
+| 토큰 | 거리 | 방향 | 번짐 | 색 | PPTX 슬롯 |
+|---|---|---|---|---|---|
+| `soft` | 4px | 90° (아래) | 16px | `fg` × 알파 0.15 | **v1은 쓰지 않는다** (아래) |
+
+- **반경 토큰에는 PPTX 슬롯이 없다** — 공간 토큰과 같은 처지이지만 이유가 다르다. 공간은
+  배치가 좌표로 구워져서 참조할 대상이 없는 것이고, 반경은 **OOXML 테마 파트에 반경이라는
+  개념 자체가 없다**: `prstGeom/avLst`의 조정값은 도형마다 구워진다. 그래서 웹도 반경을
+  변수 참조가 아니라 확정 수치로 낸다 (두 타깃이 같은 방식으로 굽는다).
+- **그림자에는 슬롯이 있지만 v1은 쓰지 않는다.** `fmtScheme/effectStyleLst`가 그 자리인데
+  스타일이 **셋뿐**이고 도형이 `style/effectRef`로 하나를 고르는 구조라, 토큰이 셋을 넘는
+  순간 "어떤 도형의 그림자가 다른 토큰의 값으로 그려진다"로 무너진다. 그래서 도형마다
+  `effectLst/outerShdw`를 직접 낸다 — **그림자의 색만은 참조로 남는다**
+  ([ADR 0020](../decisions/0020-shadow-tokens-only.md), 슬롯 없음의 선례는
+  [ADR 0012](../decisions/0012-space-tokens-have-no-theme-slot.md)).
+- 그림자를 **수치로 쓸 수 없는** 이유도 여기 있다: CSS `box-shadow`의 4수치와 `outerShdw`의
+  파라미터가 1:1이 아니라(번짐 정의가 다르고 `spread`에 대응이 없다) 같은 수치가 두 타깃에서
+  다른 그림이 된다. 토큰은 웹에서 변수 참조로, PPTX에서 구운 파라미터로 각자 나간다.
 
 ## 값 문법
 

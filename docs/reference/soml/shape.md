@@ -1,0 +1,328 @@
+# `<shape>` — 프리셋 도형 12종
+
+도형 하나다. `type`이 **어떤 프리셋 지오메트리인가**를 정하고, 외관 속성이 채움·테두리·
+모서리·그림자·투명도·변형을 정하며, 자식으로 텍스트를 담을 수 있다.
+
+이 페이지의 중심은 아래 **12종 표**다. 어휘를 12종으로 닫은 기준은 하나다: **OOXML 프리셋
+지오메트리에 대응이 있는 것만** 넣는다 (PRD §7.5). 그래서 도형은 PPTX에서 그림이 아니라
+`prstGeom` 도형이 되고, PowerPoint에서 "도형 모양 변경"으로 다른 프리셋이 될 수 있다.
+
+## `type` 12종
+
+| SOML `type` | 웹에서 그려지는 것 | OOXML `prstGeom@prst` |
+|---|---|---|
+| `rect` | SVG `<rect>` (px 공간) | `rect` |
+| `rounded-rect` | SVG `<rect rx>` (px 공간) | `roundRect` |
+| `ellipse` | SVG `<ellipse>` (px 공간) | `ellipse` |
+| `diamond` | SVG `<path>` (정규 공간) | `diamond` |
+| `cylinder` | SVG `<path>` (정규 공간) | **`can`** |
+| `chevron` | SVG `<path>` (정규 공간) | `chevron` |
+| `arrow-right` | SVG `<path>` (정규 공간) | **`rightArrow`** |
+| `hexagon` | SVG `<path>` (정규 공간) | `hexagon` |
+| `parallelogram` | SVG `<path>` (정규 공간) | `parallelogram` |
+| `callout` | SVG `<path>` (정규 공간) | **`wedgeRectCallout`** |
+| `star` | SVG `<path>` (정규 공간) | **`star5`** |
+| `cloud` | SVG `<path>` (정규 공간) | `cloud` |
+
+굵게 표시한 넷은 **이름이 갈라지는 행**이다 — SOML 이름은 저자가 찾을 만한 말이고
+(`cylinder`·`arrow-right`), OOXML 이름은 규격이 정한 것이다 (`can`·`rightArrow`).
+직접 `prstGeom` 이름을 쓰게 하지 않는 이유는 어휘가 규격의 190여 종으로 열려 웹에서 그릴 수
+없는 프리셋이 섞이기 때문이다.
+
+- `type`은 **생략할 수 없다**. `<shape/>`가 조용히 사각형이 되면 저자의 오타
+  (`type="elipse"`)와 구별되지 않는다. `<p>` ≡ `<text role="body">`처럼 언어가 정한 등가가
+  도형에는 없다 (PRD §7.7과 갈라지는 자리).
+- **기하의 출처는 OOXML 프리셋 정의다** (ECMA-376의 `presetShapeDefinitions`). 눈대중 SVG를
+  그리지 않은 이유와 그 유도가 어떻게 검증되는지는
+  [ADR 0017](../../decisions/0017-shape-geometry-from-ooxml-presets.md)에 있다.
+- **정규 공간의 아홉 프리셋은 정사각형에서 평가한 경로를 도형 박스로 늘린다.** 그래서
+  정사각형이 아닌 박스에서 노치·모서리 비율이 PowerPoint의 기본 모양과 다를 수 있고, **PPTX가
+  `avLst` 조정값으로 웹을 맞춘다** (같은 ADR). 두 타깃이 같은 모양인 것은 픽스처의 도형별 픽셀
+  비교가 12종 전수로 판정한다 ([테스트 환경](../../internals/testing.md)).
+
+## 속성
+
+### 고유 속성
+
+| 속성 | 값 | 기본값 | 뜻 |
+|---|---|---|---|
+| `type` | 위 표의 12종 | **필수** | 프리셋 지오메트리 |
+| `id` | 임의 이름 | 없음 | 도형 이름 — **아직 아무것도 그리지 않는다** (아래) |
+
+`id`는 어휘에 있고 중복 검사도 받지만 **산출물에 나가지 않는다**. 참조하는 쪽
+(`<arrow from="db">`)이 Iteration 7이고, 그때까지 `id`를 PPTX 도형 이름이나 웹 속성에
+실으면 두 타깃의 식별자 규칙이 미리 갈라진다 — 그래서 지금은 "이 슬라이드에서 유일한
+이름"이라는 계약만 지킨다. 같은 슬라이드에 같은 `id`가 둘이면 에러다 (범위가 슬라이드인
+이유: 참조가 슬라이드를 넘지 않는다).
+
+### 외관 속성 8종
+
+값 어휘와 캐스케이드는 [외관 속성](../appearance.md)이 소유한다. 여기서는 도형에서의 뜻만
+적는다.
+
+| 속성 | 값 | 도형에서의 뜻 |
+|---|---|---|
+| `variant` | 테마가 정의한 이름 | 외관 번들 — **도형 어휘와 텍스트 어휘는 별개 표다** |
+| `fill` | 색 토큰 · `#RRGGBB` · `none` | 면 채움 |
+| `border` | `<굵기> <스타일> <색>` · `none` | 외곽선 — 경로 **중앙**에 그려진다 (아래) |
+| `radius` | radius 토큰 · 수치 | 모서리 반경 — **`type="rounded-rect"` 전용** |
+| `shadow` | shadow 토큰 | 그림자 — 수치는 받지 않는다 |
+| `opacity` | 0~1 실수 | 채움·테두리의 투명도 — **글자는 흐려지지 않는다** |
+| `rotate` | 각도 수치 (음수 허용) | 시계방향 회전 — 글자까지 함께 돈다 |
+| `flip` | `h` `v` `hv` | 대칭 — **글자는 뒤집히지 않는다** |
+
+도형은 `variant`가 없어도 **외관이 확정된다**: 테마의 컴포넌트 기본값이 캐스케이드의 바닥에
+있어 `<shape type="rect"/>`도 `fill: surface` + `border: 1 solid muted` + `radius: md`를
+받는다 (PRD §8.3). 도형에는 텍스트의 `role`에 해당하는 단이 없으므로 그 자리를 컴포넌트
+기본값이 대신한다.
+
+- **`radius`는 `rounded-rect`에서만 쓴다.** 다른 프리셋에는 반경 조정값을 실을 자리가 없어
+  **웹만 둥글어지고 PPTX는 각진 채** 남는다 — 그 조용한 갈라짐을 값 층이 에러로 막는다
+  ([ADR 0019](../../decisions/0019-radius-is-rounded-rect-only.md)).
+- **`shadow`는 토큰만 받는다.** CSS 축약 4수치와 OOXML `outerShdw`가 1:1이 아니라 같은
+  수치가 두 타깃에서 다르게 그려진다 (같은 ADR과 이웃한 근거 —
+  [ADR 0020](../../decisions/0020-shadow-tokens-only.md)).
+- **`opacity`는 합성 불투명도가 아니라 색의 알파로 컴파일된다.** 그래서 반투명 도형 안의
+  글자는 또렷하다 ([ADR 0018](../../decisions/0018-opacity-compiles-to-color-alpha.md)).
+- **테두리는 굵기의 절반이 도형 박스 밖으로 번진다** — 양 타깃 모두 외곽선 중앙 규약이므로
+  (SVG `stroke`, OOXML `a:ln`) 같은 자리에 같은 만큼 번진다. 보정하지 않는 것이 두 타깃을
+  맞추는 길이다.
+
+### 자기 박스 — 여백과 크기
+
+| 속성 | 값 | CSS 대응 |
+|---|---|---|
+| `pad` | 공간 토큰 · 수치 (1~4값) | `padding` — 도형 안 텍스트의 안쪽 여백 |
+| `w` / `h` | 수치 · `%` · `fill` | `width` / `height` |
+| `min-w` / `min-h` · `max-w` / `max-h` | 수치 · `%` · `fill` | `min-*` / `max-*` |
+| `ratio` | `W:H` 정수 쌍 | `aspect-ratio` |
+
+**이 목록은 [레이아웃 컨테이너](layout.md)의 크기·여백 속성과 같은 한 벌이다** — 크기는
+컨테이너의 성질이 아니라 박스의 성질이므로 두 요소가 같은 표를 공유한다. 그래서
+`<row w="fill">`와 `<shape w="fill">`의 값 어휘·진단이 한 글자도 다르지 않다.
+
+- **도형에는 크기를 적는 것이 보통이다.** 도형은 그 자체가 그림이라 내용이 없으면 잰 크기가
+  0이고, 0×0 도형은 산출물에서 아무것도 아니다 — 빈 `<text></text>`가 텍스트 박스를 내는
+  것과 갈라지는 자리다 (그쪽은 저자가 자리를 확인해야 하는 콘텐츠다).
+- `pad`에 **백분율은 쓸 수 없다.** CSS 백분율 padding은 부모의 **폭** 기준인데 OOXML 인셋은
+  절대 EMU라, 잰 도형 rect만으로는 웹이 쓴 값을 복원할 수 없다 — 근사해서 내면 글자 위치가
+  조용히 어긋난다. 진단은 PPTX 조립 단계에서 난다 (`도형의 pad는 백분율을 쓸 수 없다 (…%) —
+  OOXML bodyPr 인셋은 절대 EMU이고 CSS 백분율 padding은 부모 폭 기준이다`) — 컨테이너의
+  `pad`는 백분율을 받는다 (컨테이너의 여백은 좌표로 구워지고 인셋이 되지 않는다).
+
+### 자식 배치 속성
+
+도형도 컨테이너의 자식이 될 수 있으므로 `grow`/`shrink`/`basis`/`span`/`self`/`order`/`style`을
+받는다 ([레이아웃 태그](layout.md)의 자식 속성 표와 같은 한 벌). `<grid cols="4">` 안의
+`<shape span="2">`가 두 칸을 차지한다.
+
+## 도형 안 텍스트
+
+자식 어휘는 **`<text>`와 블록 태그**(`h1`~`h3`, `p`, `blockquote`, `pre`)다. 개수 제한은
+없다 — 자식 여럿은 문단 여럿이다.
+
+```html
+<shape type="rounded-rect" fill="surface" border="1 solid muted" w="400" h="140" pad="lg">
+  <h3>문단 둘</h3>
+  <p>도형 하나에 자식 여럿은 문단 여럿이다.</p>
+</shape>
+```
+
+- **리스트(`<ul>`/`<ol>`)와 중첩 컨테이너·중첩 도형은 아직 자식이 아니다.** 리스트는 불릿
+  문단 조립과 도형 본문 조립을 합치는 일이고, 겹침은 Iteration 6(`<stack>`), 편집 단위 묶음은
+  Iteration 9(`<group>`)다.
+- **`anchor`가 뜻을 갖는 유일한 자리가 도형 안이다** — 세로 앵커는 [`<text>`](text.md)의
+  속성이고, 슬라이드 직속 텍스트 박스는 잰 rect가 곧 내용 크기라 세로로 움직일 여백이 없다.
+- 도형의 앵커는 **첫 자식이 정한다.** 앵커는 자식마다 확정되지만 박스의 성질이라 도형 하나에
+  하나뿐이다 (웹은 flex `justify-content` 하나, PPTX는 `bodyPr@anchor` 하나) — 뒤 자식의 다른
+  앵커는 조용히 버려진다.
+- `pad`와 `anchor`는 함께 배치를 만든다: `pad`가 안쪽 여백을 만들고 그 안에서 `anchor`가
+  세로 자리를 정한다.
+
+**구조가 두 타깃에서 비대칭이다**: 웹은 도형 div **안에 중첩된 텍스트 박스**이고, PPTX는
+**같은 도형의 본문**(`txBody`)이다. 그래서 도형 안 텍스트는 재기는 하지만 자기 좌표를 갖지
+않는다 ([지오메트리 패스](../../internals/geometry-pass.md),
+[ADR 0016](../../decisions/0016-shape-text-is-shape-body.md)).
+
+## 예제
+
+`testdata/fixtures/04_shape/slides/002_token_colors.slide` — 토큰 색과 `fill="none"`:
+
+```html
+<slide id="shape-token-colors">
+  <h2>토큰 색은 테마 참조로 보존된다</h2>
+  <row gap="lg" align="stretch">
+    <shape type="rounded-rect" fill="surface" border="1 solid muted" radius="md" w="300" h="160" pad="md">
+      <h3>surface</h3>
+      <p>배경은 토큰 surface, 테두리는 muted다.</p>
+    </shape>
+    <shape type="rounded-rect" fill="accent1" radius="md" w="300" h="160" pad="md">
+      <h3 color="bg">accent1</h3>
+      <p color="bg">글자색도 토큰(bg)이다.</p>
+    </shape>
+    <shape type="rect" fill="none" border="3 solid accent1" w="300" h="160" pad="md">
+      <p>fill="none" — 채움 없는 테두리 도형.</p>
+    </shape>
+  </row>
+</slide>
+```
+
+`004_appearance.slide` — 나머지 외관 속성 (각각 한 속성만 다르다):
+
+```html
+<row gap="md" align="center">
+  <shape type="rounded-rect" fill="accent1" radius="sm" w="180" h="120" pad="sm">…</shape>
+  <shape type="rounded-rect" fill="accent1" radius="lg" w="180" h="120" pad="sm">…</shape>
+  <shape type="rounded-rect" fill="accent1" radius="32" w="180" h="120" pad="sm">…</shape>
+</row>
+<row gap="md" align="center">
+  <shape type="rect" fill="surface" shadow="soft" w="180" h="120" pad="sm">…</shape>
+  <shape type="rect" fill="accent1" opacity="0.4" w="180" h="120" pad="sm">…</shape>
+  <shape type="rect" fill="accent1" rotate="45" w="120" h="120"/>
+  <shape type="chevron" fill="muted" flip="h" w="180" h="120" pad="sm">…</shape>
+</row>
+```
+
+`006_cards.slide` — 카드 그리드 (헤더 도형 + 본문 도형을 `<col gap="0">`으로 붙인다):
+
+```html
+<grid cols="4" gap="lg">
+  <col gap="0">
+    <shape type="rounded-rect" fill="accent1" radius="md" w="fill" pad="sm">
+      <text color="bg" align="center">공정성</text>
+    </shape>
+    <shape type="rect" fill="surface" border="1 solid muted" w="fill" h="160" pad="md">
+      <p anchor="top">데이터와 모델의 편향을 측정한다.</p>
+    </shape>
+  </col>
+  <!-- … 카드 셋 … -->
+  <shape type="rounded-rect" span="2" fill="none" border="3 solid accent1" radius="lg" w="fill" h="120" pad="md">
+    <p anchor="center">span="2" — 도형도 컨테이너의 자식이므로 배치 속성을 받는다.</p>
+  </shape>
+</grid>
+```
+
+## 렌더 결과
+
+### 웹 — 박스 div + 그림 svg
+
+도형은 **`<div>` 하나와 그 안의 `<svg>` 하나**다. 박스가 자리·크기·회전·앵커를 갖고, svg가
+채움·테두리·그림자·투명도·대칭을 갖는다:
+
+```html
+<div class="balpyo-shape" data-balpyo-id="s0.1.0.0" data-balpyo-el="shape"
+     style="width: 220px; height: 110px">
+<svg class="balpyo-shape-ink" aria-hidden="true"
+     style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%"/></svg>
+</div>
+```
+
+**12종 전부 SVG 한 벌이다** — 사각형·둥근 사각형·타원까지 SVG로 그린다. CSS
+`clip-path`로 세 종을 그리는 길을 버린 이유는 클리핑이 테두리와 그림자를 함께 자르고,
+컴포넌트 기본값이 `border: 1 solid muted`라 테두리가 예외가 아니라 기본이기 때문이다.
+
+- **박스와 그림의 분담이 OOXML의 자리에서 나온다**: `rotate`는 `xfrm@rot`이 텍스트까지 함께
+  돌리므로 박스, `flip`은 `flipH`/`flipV`가 글자를 뒤집지 않으므로 그림, `opacity`는 알파가
+  `solidFill` 안에 있으므로 그림이다.
+- **그림자는 `box-shadow`가 아니라 `filter: drop-shadow`다.** box-shadow는 박스의 사각형을
+  따르므로 열두 종 중 아홉이 엉뚱한 사각 그림자를 얻는다 — drop-shadow는 실루엣의 알파를
+  따라가 `outerShdw`와 같은 그림이 된다. (PRD §9.4 표의 `box-shadow` 칸을 이 결정이 갱신한다.)
+- 회전은 엔진 CSS의 클래스(`.balpyo-shape-rotate`)와 인라인 커스텀 프로퍼티로 갈라져 있다 —
+  측정 뷰가 변형을 끌 수 있어야 하기 때문이다
+  ([ADR 0021](../../decisions/0021-measure-view-disables-transforms.md)).
+- svg는 `overflow: visible`이다 — 테두리 번짐과 `callout`의 꼬리가 박스 밖에 그려진다.
+- 자식 텍스트는 `position: relative`로 그림 위에 온다 (절대 배치된 svg보다 뒤에 칠해져야
+  글자가 보인다).
+
+### PPTX — 프리셋 도형 하나
+
+**도형은 `sp` + `prstGeom` 하나가 되고, 도형 안 텍스트는 같은 도형의 본문이 된다.**
+
+```xml
+<p:sp>
+  <p:nvSpPr>
+    <p:cNvPr id="3" name="shape s1.1.0"/>
+    <p:cNvSpPr/>                      <!-- txBox="1"이 없다 = 텍스트 박스가 아니라 도형 -->
+    <p:nvPr/>
+  </p:nvSpPr>
+  <p:spPr>
+    <a:xfrm><a:off x="609600" y="1283940"/><a:ext cx="2857500" cy="1524000"/></a:xfrm>
+    <a:prstGeom prst="roundRect">
+      <a:avLst><a:gd name="adj" fmla="val 7500"/></a:avLst>
+    </a:prstGeom>
+    <a:solidFill><a:schemeClr val="bg2"/></a:solidFill>
+    <a:ln w="9525">
+      <a:solidFill><a:schemeClr val="tx2"/></a:solidFill>
+      <a:prstDash val="solid"/>
+    </a:ln>
+  </p:spPr>
+  <p:txBody>
+    <a:bodyPr wrap="square" lIns="228600" tIns="228600" rIns="228600" bIns="228600" anchor="t">
+      <a:noAutofit/>
+    </a:bodyPr>
+    …문단들…
+  </p:txBody>
+</p:sp>
+```
+
+- **`txBox="1"`을 붙이지 않는다.** PowerPoint는 텍스트 박스와 도형에 다른 서식 창을 주고,
+  도형이 텍스트 박스로 표시되면 "도형 모양 변경"이 사라진다.
+- **안전 여유를 적용하지 않는다.** 텍스트 박스는 잰 폭에 +4%를 더하지만(PRD §13-1) 도형의
+  박스는 글자를 잰 결과가 아니라 **저자가 정한 크기**다 — 넓히면 그림이 커지고 글자가 도형
+  밖으로 나간다. 그 대가는 [테스트 환경](../../internals/testing.md)에 측정과 함께 있다.
+- `pad` → `bodyPr`의 네 인셋(EMU), `anchor` → `bodyPr@anchor`(`t`/`ctr`/`b`),
+  `wrap`은 언제나 `square`다 (본문에 `bodyPr`이 하나뿐이라 도형 안 `<pre>` 하나 때문에
+  형제 문단의 줄바꿈을 끌 수 없다).
+
+### 내 슬라이드는 PPTX에서 도형 몇 개가 되는가
+
+| SOML | PPTX 도형 수 |
+|---|---|
+| 레이아웃 컨테이너 (`<row>` `<col>` `<grid>`) | **0개** — 자식이 절대 좌표 도형이 된다 |
+| `<spacer/>` | **0개** — 배치 수단이라 남을 것이 없다 |
+| 리스트 컨테이너 (`<ul>` `<ol>`) | **1개** — 불릿 문단이 한 텍스트 박스에 산다 |
+| **`<shape>`** | **1개** — 그리고 **자식 텍스트를 흡수한다** |
+| `<text>`·블록 태그 (슬라이드 직속·컨테이너 안) | 1개씩 |
+
+네 번째 행이 이 iteration이 더한 것이고, 앞의 셋과 정반대인 자리가 하나 있다: **컨테이너는
+사라지면서 자식이 도형이 되고, 도형은 남으면서 자식을 흡수한다.** 그래서 `<col>` 안에
+도형 둘을 넣은 카드는 도형 2개이고, 도형 안에 `<h3>` + `<p>`를 넣은 카드는 도형 1개다.
+
+## 빌드 에러가 나는 조건
+
+파서(`soml.Parse`) — 이름·자식 어휘:
+
+| 조건 | 진단 메시지 |
+|---|---|
+| 도형 안에 문자 데이터를 직접 썼다 | `<shape> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)` |
+| 도형의 자식으로 리스트·컨테이너를 썼다 | `<shape>의 자식으로 <ul>는 올 수 없다 (쓸 수 있는 태그: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>)` |
+| 어휘 밖의 속성 | `<shape>에 알 수 없는 속성 stroke (쓸 수 있는 속성: type, id, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, style)` |
+| `<image>`·`<arrow>`·`<line>`·`<group>`을 썼다 | `알 수 없는 태그 <image> (쓸 수 있는 태그: …)` |
+
+값 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다:
+
+| 조건 | 진단 메시지 |
+|---|---|
+| `type`이 없다 | `<shape>에 type이 필요하다 (쓸 수 있는 종류: rect, rounded-rect, ellipse, diamond, cylinder, chevron, arrow-right, hexagon, parallelogram, callout, star, cloud) — 도형의 종류는 추측할 수 없다` |
+| `type`이 12종 밖이다 | `알 수 없는 도형 type "elipse" (쓸 수 있는 종류: …)` |
+| 같은 슬라이드에 `id`가 둘 | `id "db"가 이 슬라이드에 이미 있다 (…) — 참조가 어느 도형인지 정할 수 없다` |
+| 테마에 없는 색 토큰 | `fill의 색 토큰 "brand"가 테마에 없다 (쓸 수 있는 토큰: fg, bg, muted, surface, accent1, 또는 #RRGGBB 리터럴)` |
+| **`gradient(…)`를 썼다** | `색 함수 gradient(…)는 아직 쓸 수 없다 (gradient·shade·tint·alpha는 Iteration 8) — 토큰 이름이나 #RRGGBB 리터럴을 쓴다` |
+| `border` 조각 수가 3이 아니다 | `border는 \`<굵기> <스타일> <색>\` 3조각이다 ("solid muted"는 2조각) — 예: "1 solid muted", 또는 "none"` |
+| `border` 굵기가 0 이하 | `border의 굵기는 0보다 커야 한다 ("0") — 테두리를 지우려면 border="none"을 쓴다` |
+| 어휘 밖의 `border` 스타일 | `알 수 없는 border 스타일 "double" (쓸 수 있는 값: solid, dashed, dotted) — 조각 순서는 \`<굵기> <스타일> <색>\`이다` |
+| `radius`를 `rounded-rect` 밖에 썼다 | `radius는 type="rounded-rect"에서만 쓴다 (지금은 "rect") — 다른 프리셋에는 반경 조정값이 없어 웹만 둥글어진다` |
+| 모르는 `radius` 토큰 | `radius 값이 수치가 아니다 ("huge") — 토큰(sm, md, lg)이나 수치를 쓴다` |
+| 모르는 `shadow` 토큰 | `알 수 없는 shadow 토큰 "hard" (쓸 수 있는 토큰: soft) — 그림자는 수치가 아니라 토큰으로 쓴다 (두 타깃의 번짐 정의가 달라 같은 수치가 다르게 그려진다)` |
+| `opacity`에 `%`를 썼다 | `opacity에 %는 쓸 수 없다 ("40%") — 0~1 실수로 쓴다 (색 변형 alpha()와 표기를 하나로 유지한다)` |
+| `opacity`가 0~1 밖이다 | `opacity는 0~1 사이다 ("1.5")` |
+| `rotate`에 단위를 붙였다 | `rotate는 단위 없는 각도 수치다 ("45deg"의 "deg"를 뗀다) — 허용 접미사는 % 하나다 (PRD §13-5)` |
+| 어휘 밖의 `flip` | `알 수 없는 flip "both" (쓸 수 있는 값: h, v, hv — "hv"는 두 축 모두다)` |
+| 모르는 `variant` | **경고** — `variant "card-heder"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: card, card-header, card-body, card-backdrop, stat-card, badge)` |
+
+크기·여백 속성(`pad`·`w`/`h`·`ratio` …)의 진단은 [레이아웃 태그](layout.md)와 **같은
+문구**다 — 목록이 한 벌이므로 진단도 한 벌이다.
+
+모르는 `variant`만 경고인 이유: variant 어휘는 테마의 사유물이라 다른 테마로 만든 덱이
+빌드되지 않으면 콘텐츠의 이식성이 깨진다 (PRD §13-6). `--strict`가 경고를 에러로 승격한다
+([CLI](../cli.md)).

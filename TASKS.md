@@ -226,9 +226,9 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
 - [x] 구현: shape → 웹 div / PPTX `sp`, 외관 속성 → CSS / OOXML 양방향 컴파일 (§9.4 표)
 - [ ] 리뷰: PowerPoint/Keynote에서 도형 선택 → 진짜 프리셋 도형인지, **테마 색을 바꾸면
       도형 색이 따라가는지** 직접 확인
-- [ ] 문서:
-  - [ ] `docs/reference/soml/shape.md` — `type` 12종 표 (각각 웹/PPTX `prstGeom` 대응)
-  - [ ] `docs/reference/appearance.md` — `fill`/`border`/`radius`/`shadow`/`opacity`/
+- [x] 문서:
+  - [x] `docs/reference/soml/shape.md` — `type` 12종 표 (각각 웹/PPTX `prstGeom` 대응)
+  - [x] `docs/reference/appearance.md` — `fill`/`border`/`radius`/`shadow`/`opacity`/
         `rotate`/`flip` 행 추가 + **토큰 색 → `schemeClr` 보존** 계약 명문화
 
 ## Iteration 5 — `<image>`
@@ -385,3 +385,10 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
 | 측정 대상에 레이아웃 컨테이너와 `<spacer>`를 넣는다 (0009의 후속) | `docs/decisions/0013-measured-kinds-include-layout.md` | I3 |
 | `style` 탈출구는 문법만 에러, allowlist 밖은 경고, 값은 보지 않는다 | `docs/decisions/0014-style-escape-hatch-boundary.md` | I3 |
 | `fill`은 해당 축의 100%다 (`grow`와 겹치지 않게) | `docs/decisions/0015-fill-is-hundred-percent.md` | I3 |
+| 도형 안 텍스트는 같은 도형의 본문이다 (편집 단위 + 안전 여유 미적용) | `docs/decisions/0016-shape-text-is-shape-body.md` | I4 |
+| 도형 기하는 OOXML 프리셋 정의에서 유도한다 (정규 공간 늘림 + 조정값 보정) | `docs/decisions/0017-shape-geometry-from-ooxml-presets.md` | I4 |
+| `opacity`는 합성 불투명도가 아니라 색 알파다 (글자는 흐려지지 않는다) | `docs/decisions/0018-opacity-compiles-to-color-alpha.md` | I4 |
+| `radius`는 `rounded-rect` 전용, 테마 기본값만 조용히 버린다 (PRD §7.6 적용 대상 갱신, I10 재검토) | `docs/decisions/0019-radius-is-rounded-rect-only.md` | I4 |
+| `shadow`는 토큰만 받는다 (PRD §9.4의 `box-shadow` 칸을 `drop-shadow`로 갱신) | `docs/decisions/0020-shadow-tokens-only.md` | I4 |
+| 측정 뷰에서 변형을 끈다 — 회전은 잰 뒤에 얹힌다 (0006의 후속) | `docs/decisions/0021-measure-view-disables-transforms.md` | I4 |
+| 도형 variant는 자식 텍스트의 외관을 담지 않는다 (PRD §8.3 예제 갱신) | `docs/decisions/0022-shape-variants-do-not-inherit.md` | I4 |

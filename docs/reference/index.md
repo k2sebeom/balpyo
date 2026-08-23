@@ -15,16 +15,17 @@
 
 ## 현재 상태
 
-Iteration 3까지 구현된 어휘와 표면:
+Iteration 4까지 구현된 어휘와 표면:
 
 - 태그: [`<slide>`](soml/slide.md) (`id`·`skip`), [`<text>`](soml/text.md)
-  (`role`·`variant`·`size`·`color`·`align`), [`<note>`](soml/note.md),
+  (`role`·`variant`·`size`·`color`·`align`·`anchor`), [`<note>`](soml/note.md),
   [텍스트 서브셋](soml/text-subset.md) (`h1`~`h3`, `p`, `ul`/`ol`/`li`, `blockquote`,
   `pre`, `strong`, `em`, `code`, `a`, `br`, `span`),
   [레이아웃 태그](soml/layout.md) (`row`/`col`/`grid`/`spacer` + 컨테이너·자식 속성과
-  `style` 탈출구)
-- [외관 속성](appearance.md) — 4단 캐스케이드, 텍스트 역할 5종, 인라인 서식·리스트 매핑
-  표, 토큰 색 보존 계약, 공간 토큰
+  `style` 탈출구), [`<shape>`](soml/shape.md) (`type` 12종 + 외관 8종 + 박스 속성)
+- [외관 속성](appearance.md) — 4단 캐스케이드, 텍스트 역할 5종, 도형 컴포넌트 기본값과
+  variant 두 벌, 인라인 서식·리스트·도형 외관 매핑 표, 토큰 색 보존 계약, 공간·반경·그림자
+  토큰
 - [CLI](cli.md) — `build`(`--strict` 포함)와 `version`
 
 `layouts.md`(표준 레이아웃 카탈로그)와 `theme.md`(테마 패키지 포맷)는 Iteration 10에서

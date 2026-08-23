@@ -445,7 +445,7 @@ balpyo build --target pptx     # 네이티브 PPTX
 | 컴포넌트 | 주요 속성 | 웹 렌더 | PPTX 렌더 (OOXML) |
 |---|---|---|---|
 | `<text>` | role, align, anchor | 텍스트 요소 | 텍스트 박스 (`sp`+`txBody`) |
-| `<shape>` | type, id | div/SVG | 프리셋 도형 (`sp`+`prstGeom`) |
+| `<shape>` | type, id | 박스 div + 그림 svg | 프리셋 도형 (`sp`+`prstGeom`) |
 | `<image>` | src, fit(cover/contain), frame | img | 그림 (`pic`) |
 | `<arrow>` | from, to, label, heads, via | SVG 패스 (앵커 자동 계산) | 커넥터 (`cxnSp`) |
 | `<line>` | cap, dash, dir | SVG 라인 | 커넥터 (화살촉 없음) — 장식 구분선 |
@@ -486,8 +486,8 @@ balpyo build --target pptx     # 네이티브 PPTX
 |---|---|---|
 | `variant` | 모든 컴포넌트 | 테마가 정의한 외관 번들 이름 (`card-header`) |
 | `fill` | shape, group, table, slide | 토큰명(`surface`) · 리터럴(`#0F65F9`) · `gradient(…)` · `none` |
-| `border` | shape, image | `<굵기> <스타일\|gradient(…)> <색>` 축약 |
-| `radius` | shape, image | 토큰(`sm/md/lg`) 또는 수치 |
+| `border` | shape, image | `<굵기> <스타일\|gradient(…)> <색>` 축약 (조각 3개·순서 고정) 또는 `none` |
+| `radius` | shape(`type="rounded-rect"`), image | 토큰(`sm/md/lg`) 또는 수치 |
 | `stroke` | line, arrow | `<굵기> <색\|gradient(…)>` |
 | `cap` / `dash` / `heads` | line, arrow | `round`, `dashed`, `both` |
 | `role` | text | 텍스트 역할 (`title`/`heading`/`body`/`caption`/`code`) |
@@ -496,9 +496,22 @@ balpyo build --target pptx     # 네이티브 PPTX
 | `rotate` / `flip` | shape, image, group | `45`, `h` |
 
 - **색 값은 토큰명 우선.** 토큰명으로 선언된 색은 PPTX에서 `schemeClr` 참조로 보존되어,
-  **내보낸 파일이 PowerPoint 안에서도 테마 색 편집을 따라간다.**
+  **내보낸 파일이 PowerPoint 안에서도 테마 색 편집을 따라간다.** 리터럴로 쓴 색은
+  `srgbClr`로 나가 테마 편집을 따라가지 않는다 — 그 차이가 토큰을 권하는 이유다.
 - **해석 순서 (캐스케이드)**: 인라인 속성 > `variant` > 테마의 컴포넌트 기본값 >
   텍스트 역할/토큰. 병합은 엔진이 파싱 시점에 수행하며 결과는 타깃 무관이다.
+- **`border` 축약은 조각 3개·순서 고정이다 (확정, I4)**: `<굵기> <스타일> <색>`. 순서를
+  자유롭게 두면 `border="solid 3"`의 진단이 무엇이 빠졌는지 말할 수 없다. 스타일 어휘는
+  `prstDash`에 대응이 있는 셋(`solid`/`dashed`/`dotted`)이고, "테두리 없음"의 표기는
+  `none` **하나**다 (굵기 0은 에러 — 표기가 둘이면 렌더러마다 `w="0"`과 `noFill` 중 무엇을
+  낼지 판단이 생긴다).
+- **`radius`는 `type="rounded-rect"`에서만 쓴다 (확정, ADR 0019)**: 다른 프리셋에는 반경
+  조정값을 실을 자리가 없어 웹만 둥글어진다. 테마 컴포넌트 기본값의 `radius`는 그 프리셋에서
+  조용히 버려진다 (저자가 고칠 수 없는 진단을 내지 않는다).
+- **`shadow`는 토큰만 받는다 (확정, ADR 0020)**: CSS 4수치와 `outerShdw` 파라미터가 1:1이
+  아니라 같은 수치가 두 타깃에서 다르게 그려진다.
+- **`opacity`는 채움·선·그림자 색의 알파다 (확정, ADR 0018)** — 합성 불투명도가 아니므로
+  반투명 도형 안의 **글자는 흐려지지 않는다**.
 
 **외관 값 문법 (확정, §13-5)**
 
@@ -637,7 +650,7 @@ my-theme/
     "default":  { "fill": "surface", "border": "1 solid muted", "radius": "md" },
     "variants": {
       "card-backdrop": { "fill": "none", "border": "3 gradient(accent1 accent4 accent5)", "radius": "lg" },
-      "card-header":   { "fill": "none", "font": "heading", "size": 24, "weight": "bold" },
+      "card-header":   { "fill": "none", "border": "none", "radius": "sm" },
       "stat-card":     { "fill": "surface", "radius": "lg", "shadow": "soft" }
     }
   },
@@ -664,6 +677,12 @@ my-theme/
   `card-backdrop`, `stat-card`, `badge`)를 공유해 사실상의 관례를 만든다. 테마에 없는
   variant는 빌드 에러가 아니라 **컴포넌트 기본 외관으로 폴백 + 경고**다 (`--strict`로
   에러 승격 가능) — 콘텐츠의 테마 간 이식성을 지키기 위해서다.
+- **컴포넌트 variant는 그 컴포넌트 자신의 외관만 담는다 (확정, ADR 0022)**: 도형 variant에
+  `font`/`size`/`weight` 같은 텍스트 속성을 넣지 않는다. 넣으면 캐스케이드가 트리를 타고
+  내려가는 **상속**이 되고, 상속은 한 요소 안에서 끝나는 병합과 다른 두 번째 메커니즘이다
+  ("우선순위는 병합 함수 한 곳에 있다"는 계약의 예외가 된다). 카드 제목의 타이포그래피는
+  자식 텍스트가 소유한다 (`<h3>`의 태그 기본값 — §7.7). variant는 `type`도 정하지 않는다:
+  테마가 프리셋을 바꾸면 저자가 적은 도형이 테마에 따라 다른 그림이 된다.
 
 ### 8.4 토큰 어휘 (표준)
 
@@ -800,14 +819,14 @@ PDF 인쇄(`Page.printToPDF`)와 `<raw>`/`<chart>` 래스터화(`Page.captureScr
 | `border` (단색) | `border` | `ln` |
 | **`border=… gradient(…)`** | 엔진 구현 (SVG 오버레이/mask — CSS `border-image`는 radius와 조합 불가) | `ln` + `gradFill` |
 | **텍스트 `color=gradient(…)`** | `background-clip: text` | `rPr` + `gradFill` |
-| `radius` | `border-radius` | `prstGeom` 조정값 |
+| `radius` | `border-radius` (SVG 기하는 `rx`) | `prstGeom` 조정값 |
 | `font`/`size`/`weight`/`color`/`align` | `font-*`, `color`, `text-align` | `rPr` / `pPr` |
 | **색 변형** (`shade()`, `tint()`, `alpha()`) | `color-mix()` / rgba | `schemeClr` + `lumMod`/`lumOff`/`alpha` |
 | `cap` / `dash` | `stroke-linecap`, `stroke-dasharray` | `ln@cap`, `prstDash` |
 | `rotate` / `flip` | `transform` | `xfrm@rot`, `flipH`/`flipV` |
 | `anchor` / wrap / autofit | flex 정렬 / `white-space` | `bodyPr` anchor/wrap/autofit |
-| `opacity` | `opacity` | alpha |
-| `shadow` | `box-shadow` | `effectLst` outerShdw |
+| `opacity` | 그림 svg의 `opacity` (색 알파와 등가 — 글자는 흐려지지 않는다) | 채움·선·그림자 색 안의 `a:alpha` |
+| `shadow` | `filter: drop-shadow` (실루엣을 따라간다 — `box-shadow`는 박스 사각형을 따른다) | `effectLst` outerShdw |
 | 인라인 서식 (`strong`/`em`/`code`/`a`) | `<strong>` 등 | 텍스트 런 `rPr` / `hlinkClick` |
 | 위치·크기 (지오메트리 패스 결과) | (브라우저가 원본) | `xfrm` (EMU) |
 

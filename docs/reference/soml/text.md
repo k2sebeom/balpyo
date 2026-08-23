@@ -13,6 +13,7 @@
 | `size` | 단위 없는 수치 (논리 px) | 역할 기본값 | 폰트 크기 |
 | `color` | 색 토큰 이름 · `#RRGGBB` · `#RGB` | 역할 기본값 | 글자색 |
 | `align` | `start` `center` `end` `justify` | `start` | 문단 정렬 — 논리 이름이다 (`left`/`right` 아님) |
+| `anchor` | `top` `center` `bottom` | 없음 | 박스 안 **세로** 정렬 — 뜻이 보이는 자리는 [도형 안](shape.md)뿐이다 |
 
 역할 5종의 기본값 (내장 `minimal` 테마):
 
@@ -29,6 +30,16 @@
 - `align`이 논리 이름인 이유: CSS `text-align: start|end`와 OOXML `a:pPr@algn`이 둘 다
   문단 방향(RTL)에 따라 뜻이 유지되는 논리 값을 받는다. `left`를 쓰면 진단이 대응하는
   논리 이름(`start`)을 짚어 준다.
+- **`anchor`는 반대로 물리 이름이다** (`top`/`center`/`bottom`) — 세로축은 문단 방향으로
+  뒤집히지 않으므로 논리 이름을 쓸 근거가 없다 (v1은 세로쓰기를 지원하지 않는다).
+  `anchor="start"`를 쓰면 진단이 `top`을 짚어 준다.
+- **`anchor`는 기본값이 없는 유일한 속성이다.** 뜻이 보이는 자리가
+  [도형 안](shape.md)뿐이기 때문이다: 슬라이드 직속 텍스트 박스는 잰 rect가 곧 내용
+  크기라 세로로 움직일 여백이 없다 — 기본값을 정하면 뜻이 없는 자리에까지 선언이 실린다.
+  블록 태그(`<p anchor="center">`)도 같은 속성을 받는다 (`<p>` ≡ `<text role="body">`
+  등가가 속성 표에서도 성립해야 한다).
+- 도형 하나에 자식이 여럿이면 **첫 자식의 앵커**가 도형의 앵커다 — 웹의 flex 정렬과 OOXML
+  `bodyPr@anchor`가 둘 다 박스에 하나뿐이라, 뒤 자식의 다른 앵커는 조용히 버려진다.
 - 원문 개행과 들여쓰기는 파서가 접는다 — ASCII 공백 런은 한 칸이 되고 양 끝은 잘린다.
   두 렌더러가 **같은 문자열**을 받으므로 타깃 간 줄바꿈이 원문 서식에 의존하지 않는다.
 
@@ -80,7 +91,7 @@ PRD §13-1). 외관 매핑:
 | 조건 | 진단 메시지 |
 |---|---|
 | 자식으로 블록·리스트 요소를 썼다 | `<text> 안에는 문자 데이터와 인라인 태그만 올 수 있다 (<…>는 쓸 수 없다)` |
-| 어휘 밖의 속성 | `<text>에 알 수 없는 속성 … (쓸 수 있는 속성: role, variant, size, color, align, grow, shrink, basis, span, self, order, style)` |
+| 어휘 밖의 속성 | `<text>에 알 수 없는 속성 … (쓸 수 있는 속성: role, variant, size, color, align, anchor, grow, shrink, basis, span, self, order, style)` |
 
 속성 목록의 뒤쪽 일곱 개는 [자식 배치 속성](layout.md)이다 — `<text>`는 레이아웃
 컨테이너의 자식이 될 수 있으므로 `<row><text grow="1">`이 유효하다.
@@ -94,7 +105,7 @@ PRD §13-1). 외관 매핑:
 | `size`에 `%`를 썼다 | `size에 %는 쓸 수 없다 (…) — PPTX 폰트 크기는 절대값이라 상대 크기를 번역할 곳이 없다. 논리 px 수치나 role을 쓴다` |
 | `size`가 수치가 아니다 | `size 값이 수치가 아니다 (…)` |
 | `size`가 0 이하 | `size는 0보다 커야 한다 (…)` |
-| 테마에 없는 색 토큰 | `색 토큰 "…"가 테마에 없다 (쓸 수 있는 토큰: fg, bg, muted, accent1, 또는 #RRGGBB 리터럴)` |
+| 테마에 없는 색 토큰 | `color의 색 토큰 "…"가 테마에 없다 (쓸 수 있는 토큰: fg, bg, muted, surface, accent1, 또는 #RRGGBB 리터럴)` |
 | 색 리터럴 형식 오류 | `색 리터럴은 #RRGGBB 또는 #RGB 형태다 (…)` |
 | 색 함수를 썼다 | `색 함수 …(…)는 아직 쓸 수 없다 (gradient·shade·tint·alpha는 Iteration 8) — 토큰 이름이나 #RRGGBB 리터럴을 쓴다` |
 | 물리 정렬 이름 | `align은 논리 이름을 쓴다 — "left" 대신 "start" (RTL에서도 뜻이 유지된다)` |
