@@ -33,7 +33,7 @@ type DiffOptions struct {
 // 엔진 소관의 잔차다 — LibreOffice의 첫 기준선이 +2~5px 낮고, 스크립트 간격이 혼합 문자
 // 줄 안의 글리프를 최대 +3.3% 오른쪽으로 흘린다. 이 잔차가 구조적 갈라짐(줄 수·줄 위치·
 // 줄 폭)으로 번지는 것은 픽셀 비율이 아니라 잉크 띠 검사가 잡는다
-// (TestTextFixtureLineBreaksMatchLibreOffice) — 그래서 비율을 그 이상 조이지 않는다.
+// (TestFixtureLineBreaksMatchLibreOffice) — 그래서 비율을 그 이상 조이지 않는다.
 func DefaultDiffOptions() DiffOptions {
 	return DiffOptions{Channel: 32, MaxRatio: 0.025}
 }

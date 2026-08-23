@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld name="shape-token-colors">
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="h2 s1.0"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="609600"/>
+            <a:ext cx="11411712" cy="445740"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="3510"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="2700" b="1">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="+mj-lt"/>
+                <a:ea typeface="+mj-ea"/>
+              </a:rPr>
+              <a:t>토큰 색은 테마 참조로 보존된다</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="shape s1.1.0"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="1283940"/>
+            <a:ext cx="2857500" cy="1524000"/>
+          </a:xfrm>
+          <a:prstGeom prst="roundRect">
+            <a:avLst>
+              <a:gd name="adj" fmla="val 7500"/>
+            </a:avLst>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:schemeClr val="bg2"/>
+          </a:solidFill>
+          <a:ln w="9525">
+            <a:solidFill>
+              <a:schemeClr val="tx2"/>
+            </a:solidFill>
+            <a:prstDash val="solid"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="228600" tIns="228600" rIns="228600" bIns="228600" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="2730"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="2100" b="1">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="+mj-lt"/>
+                <a:ea typeface="+mj-ea"/>
+              </a:rPr>
+              <a:t>surface</a:t>
+            </a:r>
+          </a:p>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="2700"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1800" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>배경은 토큰 surface, 테두리는 muted다.</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="4" name="shape s1.1.1"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="3810000" y="1283940"/>
+            <a:ext cx="2857500" cy="1524000"/>
+          </a:xfrm>
+          <a:prstGeom prst="roundRect">
+            <a:avLst>
+              <a:gd name="adj" fmla="val 7500"/>
+            </a:avLst>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:schemeClr val="accent1"/>
+          </a:solidFill>
+          <a:ln w="9525">
+            <a:solidFill>
+              <a:schemeClr val="tx2"/>
+            </a:solidFill>
+            <a:prstDash val="solid"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="228600" tIns="228600" rIns="228600" bIns="228600" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="2730"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="2100" b="1">
+                <a:solidFill>
+                  <a:schemeClr val="bg1"/>
+                </a:solidFill>
+                <a:latin typeface="+mj-lt"/>
+                <a:ea typeface="+mj-ea"/>
+              </a:rPr>
+              <a:t>accent1</a:t>
+            </a:r>
+          </a:p>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="2700"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1800" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="bg1"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>글자색도 토큰(bg)이다.</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="5" name="shape s1.1.2"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7010400" y="1283940"/>
+            <a:ext cx="2857500" cy="1524000"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln w="28575">
+            <a:solidFill>
+              <a:schemeClr val="accent1"/>
+            </a:solidFill>
+            <a:prstDash val="solid"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="228600" tIns="228600" rIns="228600" bIns="228600" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="2700"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1800" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>fill=&quot;none&quot; — 채움 없는 테두리 도형.</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sld>

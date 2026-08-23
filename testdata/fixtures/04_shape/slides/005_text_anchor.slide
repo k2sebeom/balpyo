@@ -4,7 +4,13 @@
      그래서 도형 높이를 내용보다 크게(h=220) 고정해 앵커가 움직일 공간을 만든다.
      마지막 도형은 자식 여럿(h3 + p)을 담는다 — 도형의 콘텐츠 모델이 개수를 제한하지 않고,
      PPTX에서는 `txBody`의 문단 여럿이 된다 (항목 05). `pad`는 도형에서 안쪽 여백이고
-     PPTX `bodyPr` 인셋이 된다: 여백 없는 도형(pad 없음)과 나란히 두어 차이가 보인다. -->
+     PPTX `bodyPr` 인셋이 된다: 여백 없는 도형(pad 없음)과 나란히 두어 차이가 보인다.
+     **줄을 둘로 나눈 이유**(항목 06): 다섯 도형을 한 `<row>`에 두면 선언한 240px가 들어갈
+     자리가 없어(5×240 + 4×24 > 1152) flex가 도형을 213px로 줄이고, 그러면 앵커 라벨의
+     글자가 박스를 **정확히** 채워 여유가 0%가 된다 — LibreOffice의 스크립트 간격이 그
+     0%를 넘겨 라벨마다 줄이 하나 늘었다 (NOTES 04/05의 열린 질문 (a)가 그림이 된 것이다).
+     앵커를 보이려는 슬라이드가 줄바꿈 갈라짐을 시험하게 되므로 줄을 나눠 선언한 크기가
+     그대로 서게 했다. 여유의 성질 자체는 아래 두 문단 도형이 여전히 시험한다. -->
 <slide id="shape-text-anchor">
   <h2>도형 안 텍스트의 세로 앵커</h2>
   <row gap="md" align="stretch">
@@ -17,12 +23,14 @@
     <shape type="rect" fill="surface" border="1 solid muted" w="240" h="220" pad="md">
       <p anchor="bottom">anchor=bottom</p>
     </shape>
-    <shape type="rect" fill="surface" border="1 solid muted" w="240" h="220">
+  </row>
+  <row gap="md" align="stretch">
+    <shape type="rect" fill="surface" border="1 solid muted" w="360" h="140">
       <p anchor="center">pad 없음 — 글자가 변에 붙는다</p>
     </shape>
-    <shape type="rounded-rect" fill="surface" border="1 solid muted" w="280" h="220" pad="lg">
+    <shape type="rounded-rect" fill="surface" border="1 solid muted" w="400" h="140" pad="lg">
       <h3>문단 둘</h3>
-      <p>도형 하나에 자식 여럿은 txBody의 문단 여럿이다.</p>
+      <p>도형 하나에 자식 여럿은 문단 여럿이다.</p>
     </shape>
   </row>
 </slide>

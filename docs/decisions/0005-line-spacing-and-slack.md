@@ -60,7 +60,7 @@
 
 이 수치가 곧 회귀 감시선이 되었다 (PRD §13-1에 기입): 줄 수 차이 0, 세로 중심 ±6px,
 잉크 폭 ±4%, 픽셀 비율 2.5%. `internal/testkit`의 잉크 띠 테스트
-(`TestTextFixtureLineBreaksMatchLibreOffice`)와 픽셀 비교가 감시한다.
+(`TestFixtureLineBreaksMatchLibreOffice`)와 픽셀 비교가 감시한다.
 
 ## 결과
 

@@ -571,10 +571,10 @@ func TestResolveShapeKeepsPlacement(t *testing.T) {
 	}
 }
 
-// 픽스처는 이번 iteration 전체의 시험대다 (`_04_shape`는 아직 비활성 — 활성화는 뒤 항목).
+// 픽스처는 이번 iteration 전체의 시험대다 (`04_shape` — 항목 06이 수집 대상으로 켰다).
 // 값 층이 픽스처를 해석하는지, 경고가 나는 자리가 예상한 곳뿐인지 여기서 못 박는다.
 func TestResolveShapeFixture(t *testing.T) {
-	deck := readFixtureDeck(t, "_04_shape")
+	deck := readFixtureDeck(t, "04_shape")
 	diags := Resolve(deck)
 	for _, diag := range diags {
 		if diag.Severity != soml.SeverityWarning {

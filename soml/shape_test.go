@@ -504,12 +504,13 @@ func hasAttr(attrs []string, name string) bool {
 	return false
 }
 
-// 픽스처 `_04_shape`의 슬라이드가 파서 어휘와 어긋나지 않는지 파싱만 검증한다 — 골든·렌더
-// 검증은 픽스처 러너(internal/testkit)의 몫이고 이 픽스처는 아직 `_` 접두로 꺼져 있다
-// (렌더 매핑은 항목 04·05, 활성화는 항목 06). 모르는 variant 슬라이드도 파서에는 진단이
-// 없다: variant는 이름만 어휘에 있고 값 검사와 경고는 값 층(항목 03)이 소유한다.
+// 픽스처 `04_shape`의 슬라이드가 파서 어휘와 어긋나지 않는지 파싱만 검증한다 — 골든·렌더
+// 검증은 픽스처 러너(internal/testkit)의 몫이다 (항목 06이 그 러너에 이 픽스처를 넣었다).
+// 여기가 파서 단으로 남아 있는 이유: 어휘 위반은 골든 diff가 아니라 진단 문구로 드러나야
+// 한다. 모르는 variant 슬라이드도 파서에는 진단이 없다: variant는 이름만 어휘에 있고 값
+// 검사와 경고는 값 층(항목 03)이 소유한다.
 func TestParseShapeFixture(t *testing.T) {
-	dir := filepath.Join("..", "testdata", "fixtures", "_04_shape", "slides")
+	dir := filepath.Join("..", "testdata", "fixtures", "04_shape", "slides")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("픽스처 디렉토리를 읽을 수 없다: %v", err)

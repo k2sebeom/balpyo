@@ -65,6 +65,16 @@ var fixtureDiffOptions = map[string]DiffOptions{
 	// 허용 안이므로 구조 갈라짐이 아니다. 3.2%는 측정값에 앞 두 픽스처와 같은 폭의 여유를
 	// 더한 값이다 (2.1% → 2.5%, 3.04% → 3.5%와 같은 태도).
 	"03_layout": {Channel: 32, MaxRatio: 0.032},
+	// 측정 최대 3.18% (슬라이드 5 005_text_anchor — Iteration 4 항목 06). 도형이 들어오면
+	// 잔차의 성질이 하나 늘어난다: 모든 도형에 **외곽선이 하나씩** 생기고(컴포넌트 기본값이
+	// `border: 1 solid muted`다) 그 선은 양 타깃 모두 경로 중앙에 그려지므로, 굵기 1px 선의
+	// 반 픽셀 반올림이 두 래스터라이저에서 다르게 떨어지면 **둘레 전체**가 다른 픽셀로 세어진다
+	// (220×110 도형 하나의 둘레가 660px = 슬라이드의 0.07%이고, 도형이 스무 개면 1.4%다).
+	// 기하 자체는 이 비율이 아니라 도형별 크롭 비교가 판정한다
+	// (TestShapeFixturePresetGeometryPerShape — 12종 전수, 측정 최대 7.95%), 줄 수 갈라짐은
+	// 도형 안 줄 세기가 따로 잡는다 (TestShapeFixtureInShapeTextLineCounts). 그래서 이 비율은
+	// 잔차만 남은 수치다. 3.7%는 측정값에 앞 픽스처들과 같은 폭의 여유를 더한 값이다.
+	"04_shape": {Channel: 32, MaxRatio: 0.037},
 }
 
 // slideDiffOptions는 **슬라이드 한 장**의 픽셀 비교 허용 오차다 (`<픽스처>/<슬라이드 id>`).
@@ -78,8 +88,15 @@ var slideDiffOptions = map[string]DiffOptions{
 	// 차이의 대부분이고 남은 1.1%가 글리프 잔차다 (측정 6.11%, Iteration 3 항목 05).
 	// 7%는 측정값에 여유를 더한 값이다. 배치가 깨지면(박스가 다른 자리에 앉으면) 이 수치도
 	// 넘으므로 검사가 무력해지지는 않고, 좌표 자체는 0 오차로 따로 못 박혀 있다
-	// (TestTextFixtureCoordinatesMatchGeometry).
+	// (TestFixtureCoordinatesMatchGeometry).
 	"03_layout/style-appearance-warning": {Channel: 32, MaxRatio: 0.07},
+	// 006_cards: 도형이 가장 많은 슬라이드다 (제목 + 카드 8 + 배너 1 = 도형 10개, 그중 아홉이
+	// 외곽선을 갖는다) — 위의 둘레 잔차가 여기서 가장 크게 쌓인다. 더해서 첫 카드 본문은
+	// **알려진 줄바꿈 규칙 갈라짐**의 자리라(inShapeLineDivergences — 웹 2줄, LibreOffice 3줄)
+	// 그 문단의 글자가 통째로 다른 자리에 있다. 측정 4.62%(Iteration 4 항목 06)이고 5.2%는
+	// 거기에 여유를 더한 값이다. 갈라짐의 **범위**는 픽셀 비율이 아니라 줄 수 표가 단정하므로
+	// (표가 바뀌면 그 검사가 깨진다) 이 수치가 갈라짐을 덮어 감추지는 않는다.
+	"04_shape/shape-cards": {Channel: 32, MaxRatio: 0.052},
 }
 
 // CompareRenders는 픽스처의 웹 스크린샷과 PPTX 렌더를 슬라이드별로 비교한다.

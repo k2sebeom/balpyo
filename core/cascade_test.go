@@ -357,7 +357,7 @@ func TestThemeShapeVariantsAreDistinctFromComponentDefault(t *testing.T) {
 			t.Errorf("이름 목록 %d번 = %q, want %q", i, names[i], v.name)
 		}
 	}
-	// 권장 어휘(PRD §13-6)의 카드 세 조각은 픽스처가 가정하고 있다 (_04_shape/007).
+	// 권장 어휘(PRD §13-6)의 카드 세 조각은 픽스처가 가정하고 있다 (04_shape/007).
 	for _, want := range []string{"card", "card-header", "card-body"} {
 		if !seen[want] {
 			t.Errorf("권장 어휘 %q가 표에 없다 (PRD §13-6)", want)
@@ -390,7 +390,7 @@ func TestResolveShapeVariantStage(t *testing.T) {
 		t.Errorf("card-header border = %v, want none", header.Border)
 	}
 
-	// 인라인은 variant를 이긴다 (_04_shape/007의 오른쪽 열이 그림으로 보이는 장면).
+	// 인라인은 variant를 이긴다 (04_shape/007의 오른쪽 열이 그림으로 보이는 장면).
 	inline := resolvedShape(t, `type="rounded-rect" variant="card" fill="muted" radius="sm"`)
 	if inline.Fill == nil || inline.Fill.Color != soml.TokenColor("muted") {
 		t.Errorf("인라인 fill = %v, want 토큰 muted", inline.Fill)

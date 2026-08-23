@@ -638,7 +638,7 @@ func TestMeasureShapePadAndAnchor(t *testing.T) {
 
 // `<grid cols="4">` 안 도형 카드가 같은 y·등간격 x다 — 03_layout이 텍스트로 세운 계약
 // (TestMeasureGridCards)이 도형에서도 성립하는지 본다. 도형은 그 자체가 그림이므로 카드
-// 그리드가 이 iteration의 실제 용도다 (`_04_shape/006_cards`).
+// 그리드가 이 iteration의 실제 용도다 (`04_shape/006_cards`).
 //
 // Measure가 성공한다는 것 자체가 **Refs ↔ querySelectorAll 자리 맞대기 통과**다 — 측정 대상
 // 계약이 `<shape>`와 도형 안 텍스트까지 넓어졌으므로, 웹 렌더러와 geom.collect 중 한쪽만
