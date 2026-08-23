@@ -187,6 +187,54 @@ func TestShapeGeometryTableCoversVocabularyInOrder(t *testing.T) {
 	}
 }
 
+// 조정값 명세는 **늘림의 보정**이다 — 정규 공간을 늘린 프리셋 중 `ss` 의존이 있는 것만 갖고,
+// 값은 유도 주석의 공식과 같아야 한다 (평가는 render/pptx.AdjustValue).
+//
+// 표를 두 벌로 적는 이유는 shapePresets와 같다: 공식이 통째로 바뀌어도 코드에서 값을 가져오는
+// 테스트는 함께 따라가고, 조정값이 틀려도 **파일은 열린다** (프리셋이 조용히 다른 비율로
+// 그려진다).
+func TestShapeAdjustSpecsMatchStretchedGeometry(t *testing.T) {
+	want := map[string][]ShapeAdjust{
+		"rounded-rect":  {{Name: "adj", Base: 100000, Axis: AdjustAxisRadius, Max: 50000}},
+		"cylinder":      {{Name: "adj", Base: 25000, Axis: AdjustAxisHeight}},
+		"chevron":       {{Name: "adj", Base: 50000, Axis: AdjustAxisWidth}},
+		"arrow-right":   {{Name: "adj2", Base: 50000, Axis: AdjustAxisWidth}},
+		"hexagon":       {{Name: "adj", Base: 25000, Axis: AdjustAxisWidth}},
+		"parallelogram": {{Name: "adj", Base: 25000, Axis: AdjustAxisWidth}},
+	}
+	for _, geom := range shapeGeometries() {
+		adjusts, ok := ShapeAdjusts(geom.Type)
+		if !ok {
+			t.Fatalf("ShapeAdjusts(%q)가 표에 없다", geom.Type)
+		}
+		if len(adjusts) != len(want[geom.Type]) {
+			t.Errorf("%q의 조정값 %d개, want %d개 (%v)", geom.Type, len(adjusts), len(want[geom.Type]), adjusts)
+			continue
+		}
+		for i, adjust := range adjusts {
+			if adjust != want[geom.Type][i] {
+				t.Errorf("%q의 %d번째 조정값 = %+v, want %+v", geom.Type, i, adjust, want[geom.Type][i])
+			}
+		}
+		// 반경 축을 쓰는 프리셋은 기하에서도 반경을 받는 프리셋이어야 한다 — 두 사실이
+		// 갈라지면 웹은 `rx`를 그리고 PPTX는 조정값을 내지 않는(또는 반대의) 도형이 생긴다.
+		radiusAxis := false
+		for _, adjust := range adjusts {
+			if adjust.Axis == AdjustAxisRadius {
+				radiusAxis = true
+			}
+		}
+		if radiusAxis != geom.Rounded {
+			t.Errorf("%q: 반경 조정값 = %v인데 기하의 Rounded = %v", geom.Type, radiusAxis, geom.Rounded)
+		}
+	}
+	if _, ok := ShapeAdjusts("triangle"); ok {
+		// 빈 목록(조정값 없는 프리셋)과 구별되어야 PPTX가 "어휘에 있는데 표에 없는 프리셋"에서
+		// 멈출 수 있다.
+		t.Error("어휘 밖 type에 조정값 명세가 있다")
+	}
+}
+
 // 정규 공간의 도형만 늘어난다 — 늘린 공간에서는 선 굵기를 균일하게 유지해야 하고
 // (vector-effect), px 공간에는 늘림이 없으므로 그 선언이 없어야 한다 (rounded-rect의 반경이
 // 원형으로 남는 이유와 같은 자리다).

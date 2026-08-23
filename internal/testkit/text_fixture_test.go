@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k2sebeom/balpyo/core"
 	"github.com/k2sebeom/balpyo/render/geom"
 	"github.com/k2sebeom/balpyo/render/pptx"
 	"github.com/k2sebeom/balpyo/render/web"
@@ -249,15 +250,16 @@ func TestTextFixtureCoordinatesMatchGeometry(t *testing.T) {
 				t.Fatal(err)
 			}
 			parts := PPTXParts(t, data)
-			aligns := shapeAligns(t, result.Deck)
-			if len(aligns) != len(result.Geometry.Boxes) {
-				t.Fatalf("요소 %d개, 측정 박스 %d개", len(aligns), len(result.Geometry.Boxes))
+			roles := shapeRoles(t, result.Deck)
+			if len(roles) != len(result.Geometry.Boxes) {
+				t.Fatalf("요소 %d개, 측정 박스 %d개", len(roles), len(result.Geometry.Boxes))
 			}
 			for i, box := range result.Geometry.Boxes {
-				align := aligns[i]
-				if align == nil {
+				role := roles[i]
+				if role.rect == nil {
 					// 측정되지만 자기 도형을 갖지 않는 요소다: `<li>`는 컨테이너의 도형
-					// 하나가 좌표를 소유하고 (pptx.writeListShape), 레이아웃 컨테이너와
+					// 하나가 좌표를 소유하고 (pptx.writeListShape), **도형 안 텍스트**는
+					// 도형의 txBody 문단이 되며 (pptx.shapeBodyXML), 레이아웃 컨테이너와
 					// `<spacer>`는 도형이 아예 없다 (pptx.writeShapeNode) — 도형 수와의
 					// 관계는 아래 TestTextFixtureShapeCountExcludesNonShapeElements가 본다.
 					continue
@@ -267,29 +269,34 @@ func TestTextFixtureCoordinatesMatchGeometry(t *testing.T) {
 				if xml == "" {
 					t.Fatalf("파트 %s가 없다", part)
 				}
-				// 텍스트 박스는 잰 rect에 정렬 방향의 안전 여유를 더해 고정된다 (PRD §9.3,
-				// pptx.TextBoxRect) — 같은 함수로 기대값을 만들어 조립기가 그 값을 썼는지 본다.
-				rect := pptx.TextBoxRect(box.Rect, *align)
+				// 잰 rect → 도형 rect 변환은 종류가 정한다: 텍스트 박스는 정렬 방향의 안전
+				// 여유를 더하고(PRD §9.3, pptx.TextBoxRect) 도형은 잰 값 그대로다 — 저자가
+				// 정한 크기를 넓히면 그림이 커진다 (pptx.writeShapeSp). 같은 함수로 기대값을
+				// 만들어 조립기가 그 값을 썼는지 본다.
+				rect := role.rect(box.Rect)
 				x, y := pptx.Offset(rect)
 				cx, cy := pptx.Extent(rect)
 				xfrm := fmt.Sprintf("<a:off x=\"%d\" y=\"%d\"/>\n            <a:ext cx=\"%d\" cy=\"%d\"/>", x, y, cx, cy)
 				if !strings.Contains(xml, xfrm) {
-					t.Errorf("%s: %s의 xfrm이 측정값 %s(+여유)의 EMU와 다르다 (want %q)", part, box.ID, box.Rect, xfrm)
+					t.Errorf("%s: %s의 xfrm이 측정값 %s(→도형 rect)의 EMU와 다르다 (want %q)", part, box.ID, box.Rect, xfrm)
 				}
 			}
 		})
 	}
 }
 
-// 도형 수 = 측정 박스 수 − (레이아웃 컨테이너 + `<spacer>` + `<li>`).
+// 도형 수 = 측정 박스 수 − (레이아웃 컨테이너 + `<spacer>` + `<li>` + 도형 안 텍스트).
 //
 // 이 관계를 골든이 아니라 계약으로 두는 이유: "레이아웃 컨테이너는 도형이 되지 않는다"가
 // 골든 XML의 모양으로만 남으면, 컨테이너가 도형을 내기 시작한 변경은 골든 diff에서 "도형이
 // 하나 늘었다"로만 보이고 그것이 계약 위반인지 새 픽스처 슬라이드인지 사람이 판단해야 한다.
 // 측정 목록(geom.Refs — 컨테이너도 잰다)과 실제 도형 수를 맞대면 그 판단이 필요 없다.
 //
-// 종류 판정은 soml.KindOf(box.El)로 한다 — 측정 결과가 자기 태그 이름을 갖고 있고, 카탈로그가
-// 종류의 유일한 소유자이므로 (soml/subset.go) 테스트가 이름 목록을 따로 들지 않는다.
+// 항이 넷인 이유는 도형이 들어왔기 때문이다 (Iteration 4): `<shape>`는 **재는 것과 도형이
+// 되는 것이 처음 일치하는 종류**이지만 그 자식 텍스트는 재고도 도형이 되지 않는다 (부모
+// 도형의 txBody 문단이 된다 — pptx.shapeBodyXML). 그래서 종류 판정이 태그 이름만으로는
+// 부족하고 **부모가 도형인가**를 알아야 한다 — 판정을 shapeRoles의 순회 하나가 소유한다
+// (좌표 대조와 같은 목록이어야 두 검사가 같은 계약을 본다).
 func TestTextFixtureShapeCountExcludesNonShapeElements(t *testing.T) {
 	RequireChromium(t) // 지오메트리 패스가 브라우저를 띄운다.
 	for _, name := range textFixtureNames {
@@ -305,28 +312,34 @@ func TestTextFixtureShapeCountExcludesNonShapeElements(t *testing.T) {
 			}
 			parts := PPTXParts(t, data)
 
-			var want, containers, spacers, items int
-			for _, box := range result.Geometry.Boxes {
-				switch soml.KindOf(box.El) {
-				case soml.KindLayoutContainer:
-					containers++
-				case soml.KindSpacer:
-					spacers++
-				case soml.KindListItem:
-					items++
-				default:
+			roles := shapeRoles(t, result.Deck)
+			if len(roles) != len(result.Geometry.Boxes) {
+				t.Fatalf("요소 %d개, 측정 박스 %d개", len(roles), len(result.Geometry.Boxes))
+			}
+			want := 0
+			excluded := map[string]int{}
+			for _, role := range roles {
+				if role.rect != nil {
 					want++
+					continue
 				}
+				excluded[role.excluded]++
 			}
 			got := 0
 			for i := range result.Deck.Slides {
 				got += strings.Count(string(parts[fmt.Sprintf("ppt/slides/slide%d.xml", i+1)]), "<p:sp>")
 			}
-			t.Logf("측정 박스 %d개 − 컨테이너 %d − spacer %d − li %d = 도형 %d개",
-				len(result.Geometry.Boxes), containers, spacers, items, got)
+			// 등식을 로그에 그대로 적는다 — 항 이름이 순회의 분류에서 오므로 항이 늘면
+			// 로그도 함께 자란다 (손으로 적은 항 목록은 갱신을 잊는다).
+			terms := make([]string, 0, len(shapeExcludedKinds))
+			for _, kind := range shapeExcludedKinds {
+				terms = append(terms, fmt.Sprintf("− %s %d", kind, excluded[kind]))
+			}
+			t.Logf("측정 박스 %d개 %s = 도형 %d개",
+				len(roles), strings.Join(terms, " "), got)
 			if got != want {
-				t.Errorf("도형 %d개, want %d개 (측정 박스 %d − 컨테이너 %d − spacer %d − li %d)",
-					got, want, len(result.Geometry.Boxes), containers, spacers, items)
+				t.Errorf("도형 %d개, want %d개 (측정 박스 %d %s)",
+					got, want, len(roles), strings.Join(terms, " "))
 			}
 		})
 	}
@@ -432,55 +445,198 @@ func TestLayoutFixtureSameRowBoxesShareY(t *testing.T) {
 	}
 }
 
-// shapeAligns는 지오메트리와 같은 문서 순서(geom.Refs — 인라인은 자손까지 건너뛴다)로,
-// 측정된 요소마다 PPTX 조립기가 그 도형의 TextBoxRect에 쓰는 정렬을 모은다. 자기 도형을
-// 갖지 않는 요소는 nil이다 — `<li>`(컨테이너가 도형 하나다), 레이아웃 컨테이너와
-// `<spacer>`(도형이 아예 없다).
-func shapeAligns(t *testing.T, deck *soml.Deck) []*soml.TextAlign {
+// shapeRoles의 자리가 geom.Refs와 정확히 맞는가 — 좌표 대조와 도형 수 등식이 둘 다 이
+// 자리 맞대기 위에 서 있다 (어긋나면 좌표가 엉뚱한 요소의 변환과 만나고, 그 실패는 산출물을
+// 열어 보기 전까지 드러나지 않는다).
+//
+// 브라우저 없이 도는 검사다: geom.Refs는 덱 모델만 보고 만들어지므로(측정은 그 목록의 자리를
+// 채우는 일이다) 순회 두 벌의 대조는 파싱·해석만으로 성립한다. 도형이 든 덱을 여기서
+// 직접 만드는 이유는 도형 픽스처가 아직 비활성이기 때문이다 (항목 06이 켠다).
+func TestShapeRolesLineUpWithGeometryRefs(t *testing.T) {
+	stage, err := soml.Aspect16x9.Stage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := `<slide>
+  <ul>
+    <li>첫째 <strong>강조</strong></li>
+    <li>둘째</li>
+  </ul>
+  <col gap="md">
+    <text>컨테이너 안 텍스트</text>
+    <spacer/>
+    <shape type="rect" fill="surface" w="240" h="120" pad="sm">
+      <h3>도형 안 제목</h3>
+      <p anchor="center">도형 안 본문</p>
+    </shape>
+  </col>
+  <shape type="ellipse" fill="accent1" w="120" h="120"/>
+</slide>`
+	doc, diags := soml.Parse("slides/001.slide", src)
+	if err := diags.Err(); err != nil {
+		t.Fatalf("파싱 실패: %v", err)
+	}
+	deck := &soml.Deck{Title: "shape roles", Aspect: soml.Aspect16x9, Stage: stage}
+	deck.Slides = append(deck.Slides, &soml.Slide{
+		Index: 0, ID: "s1", Source: "slides/001.slide",
+		Notes: doc.Notes, Content: doc.Content, Tokens: doc.Tokens,
+	})
+	if err := core.Resolve(deck).Err(); err != nil {
+		t.Fatalf("외관 해석 실패: %v", err)
+	}
+
+	refs := geom.Refs(deck)
+	roles := shapeRoles(t, deck)
+	if len(roles) != len(refs) {
+		t.Fatalf("역할 %d개, 측정 대상 %d개", len(roles), len(refs))
+	}
+	// 요소 이름 → 기대 분류. 도형 안 텍스트(h3·p)와 슬라이드 직속 텍스트(text)가 **같은
+	// 종류인데 다른 분류**인 것이 이 순회의 존재 이유다.
+	want := []struct {
+		el       string
+		excluded string
+	}{
+		{"ul", ""},
+		{"li", "li"},
+		{"li", "li"},
+		{"col", "컨테이너"},
+		{"text", ""},
+		{"spacer", "spacer"},
+		{"shape", ""},
+		{"h3", "도형 안 텍스트"},
+		{"p", "도형 안 텍스트"},
+		{"shape", ""},
+	}
+	if len(want) != len(refs) {
+		t.Fatalf("기대표 %d행, 측정 대상 %d개 (%v)", len(want), len(refs), refs)
+	}
+	for i, ref := range refs {
+		if ref.El != want[i].el {
+			t.Fatalf("%d번째 측정 대상이 <%s>다 (want <%s>) — 기대표가 순회와 어긋났다",
+				i, ref.El, want[i].el)
+		}
+		role := roles[i]
+		if want[i].excluded == "" {
+			if role.rect == nil {
+				t.Errorf("%d번째 <%s>가 도형이 되지 않는다고 표시되었다 (%s)", i, ref.El, role.excluded)
+			}
+			continue
+		}
+		if role.rect != nil {
+			t.Errorf("%d번째 <%s>가 도형으로 표시되었다 — want %s", i, ref.El, want[i].excluded)
+		}
+		if role.excluded != want[i].excluded {
+			t.Errorf("%d번째 <%s>의 분류 = %q, want %q", i, ref.El, role.excluded, want[i].excluded)
+		}
+	}
+	// 분류 이름은 등식이 쓰는 어휘여야 한다 (로그의 항 이름이 순회에서 온다).
+	for _, role := range roles {
+		if role.excluded == "" {
+			continue
+		}
+		found := false
+		for _, kind := range shapeExcludedKinds {
+			if kind == role.excluded {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("분류 %q가 shapeExcludedKinds에 없다 — 등식의 항이 빠진다", role.excluded)
+		}
+	}
+	// 도형의 rect 변환은 잰 값 그대로이고, 텍스트 박스는 안전 여유를 더한다.
+	measured := geom.Rect{X: 64, Y: 64, W: 240, H: 120}
+	if got := roles[6].rect(measured); got != measured {
+		t.Errorf("도형의 rect가 %s로 변했다 — 저자가 정한 크기를 넓혔다", got)
+	}
+	if got := roles[4].rect(measured); got == measured {
+		t.Error("텍스트 박스에 안전 여유가 붙지 않았다")
+	}
+}
+
+// shapeExcludedKinds는 **측정되지만 도형이 되지 않는** 요소의 분류다 (등식의 항 이름,
+// 순서 = 등식에 적는 순서). shapeRoles가 붙이고 도형 수 등식이 로그에 그대로 쓴다.
+var shapeExcludedKinds = []string{"컨테이너", "spacer", "li", "도형 안 텍스트"}
+
+// shapeRole은 측정된 요소 하나가 PPTX에서 무엇이 되는지다.
+type shapeRole struct {
+	// rect는 잰 rect → 도형 rect 변환이다. nil이면 이 요소는 도형이 되지 않는다.
+	rect func(geom.Rect) geom.Rect
+	// excluded는 도형이 되지 않는 요소의 분류다 (shapeExcludedKinds의 값) — 도형이 되면
+	// 빈 문자열이다.
+	excluded string
+}
+
+// shapeRoles는 지오메트리와 같은 문서 순서(geom.Refs — 인라인은 자손까지 건너뛴다)로,
+// 측정된 요소마다 PPTX 조립기가 그 도형의 좌표를 만드는 방법을 모은다.
+//
+// 자기 도형을 갖지 않는 요소는 rect가 nil이다 — `<li>`(컨테이너가 도형 하나다), **도형 안
+// 텍스트**(부모 도형의 txBody 문단이다), 레이아웃 컨테이너와 `<spacer>`(도형이 아예 없다).
+// 이 목록 하나를 좌표 대조와 도형 수 등식이 함께 쓰는 이유: 두 검사가 다른 판정을 들면
+// 한쪽만 계약을 보게 되고, 어긋난 자리에서 좌표가 엉뚱한 요소와 만난다.
+func shapeRoles(t *testing.T, deck *soml.Deck) []shapeRole {
 	t.Helper()
-	var aligns []*soml.TextAlign
-	var walk func(slide *soml.Slide, node soml.Node)
-	walk = func(slide *soml.Slide, node soml.Node) {
+	var roles []shapeRole
+	textBox := func(align soml.TextAlign) func(geom.Rect) geom.Rect {
+		return func(r geom.Rect) geom.Rect { return pptx.TextBoxRect(r, align) }
+	}
+	// 도형은 잰 rect **그대로**다 — 안전 여유는 글자를 잰 박스의 장치이고 도형의 박스는
+	// 저자가 정한 크기다 (pptx.writeShapeSp).
+	asMeasured := func(r geom.Rect) geom.Rect { return r }
+
+	// inShape는 지금 도형 안을 걷고 있는지다 — 도형 안 텍스트는 태그 이름만으로는 슬라이드
+	// 직속 텍스트와 구별되지 않는다 (같은 `<p>`다).
+	var walk func(slide *soml.Slide, node soml.Node, inShape bool)
+	walk = func(slide *soml.Slide, node soml.Node, inShape bool) {
 		elem, ok := node.(*soml.Element)
 		if !ok {
 			// 문자 데이터는 자기 박스를 갖지 않는다 (geom.collect와 같은 규칙).
 			return
 		}
-		switch soml.KindOf(elem.Name) {
-		case soml.KindInline:
+		kind := soml.KindOf(elem.Name)
+		switch {
+		case kind == soml.KindInline:
 			// 인라인은 측정 대상이 아니다 — 자손까지 건너뛴다 (geom.collect의 규칙 그대로.
-			// 여기가 갈라지면 aligns와 Boxes의 자리가 어긋나 좌표가 엉뚱한 정렬과 만난다).
+			// 여기가 갈라지면 목록과 Boxes의 자리가 어긋나 좌표가 엉뚱한 요소와 만난다).
 			return
-		case soml.KindListContainer:
+		case inShape:
+			// 도형 안 텍스트는 **재지만 도형이 되지 않는다** (pptx.shapeBodyXML) — `<li>`와
+			// 같은 처지다. 자리를 비워 두어야 뒤따르는 형제의 좌표가 제 변환과 만난다.
+			roles = append(roles, shapeRole{excluded: "도형 안 텍스트"})
+		case kind == soml.KindShape:
+			roles = append(roles, shapeRole{rect: asMeasured})
+		case kind == soml.KindListContainer:
 			// 리스트 도형의 안전 여유는 언제나 start 정렬로 적용된다 — li는 align 속성을
 			// 받지 않아 확정 정렬이 항상 start다 (pptx.writeListShape의 결정).
-			align := soml.AlignStart
-			aligns = append(aligns, &align)
-		case soml.KindListItem:
-			aligns = append(aligns, nil)
-		case soml.KindLayoutContainer, soml.KindSpacer:
+			roles = append(roles, shapeRole{rect: textBox(soml.AlignStart)})
+		case kind == soml.KindListItem:
+			roles = append(roles, shapeRole{excluded: "li"})
+		case kind == soml.KindLayoutContainer:
 			// 레이아웃 컨테이너와 `<spacer>`는 **측정되지만 도형이 되지 않는다**
-			// (pptx.writeShapeNode — 이 iteration의 핵심 계약). 측정 목록에는 있으므로
-			// 자리를 비워 두어야 뒤따르는 자식의 좌표가 제 정렬과 만난다. 컨테이너는
-			// 자식으로 내려가고(아래 순회), spacer는 void라 자식이 없다.
-			aligns = append(aligns, nil)
+			// (pptx.writeShapeNode — Iteration 3의 핵심 계약). 컨테이너는 자식으로
+			// 내려가고(아래 순회), spacer는 void라 자식이 없다.
+			roles = append(roles, shapeRole{excluded: "컨테이너"})
+		case kind == soml.KindSpacer:
+			roles = append(roles, shapeRole{excluded: "spacer"})
 		default:
 			style := elem.TextStyle()
 			if style == nil {
 				t.Fatalf("%s: <%s>의 외관이 해석되지 않았다", slide.Source, elem.Name)
 			}
-			aligns = append(aligns, &style.Align)
+			roles = append(roles, shapeRole{rect: textBox(style.Align)})
 		}
 		for _, child := range elem.Children {
-			walk(slide, child)
+			// 도형의 자식은 도형 안이다 — 도형이 자식을 흡수하는 것과 컨테이너가 사라지는
+			// 것이 여기서 정반대로 갈린다 (pptx.writeShapeNode의 네 분기).
+			walk(slide, child, inShape || kind == soml.KindShape)
 		}
 	}
 	for _, slide := range deck.Slides {
 		for _, node := range slide.Content {
-			walk(slide, node)
+			walk(slide, node, false)
 		}
 	}
-	return aligns
+	return roles
 }
 
 // LibreOffice 렌더가 견뎌야 하는 글줄 오차의 임계값 (PRD §13-1의 수치 — 이 테스트가 잰

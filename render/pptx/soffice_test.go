@@ -19,10 +19,10 @@ import (
 )
 
 // LibreOffice가 텍스트 박스가 든 덱을 경고·복구 없이 여는지 본다. 원문은 실제 픽스처가
-// 요구하는 것들을 담는다 — 한글, &, 인라인 외관, 빈 요소, 리스트, 레이아웃, 그리고 노트.
-// 노트는 **2번 슬라이드에만** 있다: notesSlide2가 notesSlide1 없이 존재하는, 번호가 비어
-// 뛰는 경우다 (notesSlidePart의 번호 규칙) — 노트 파트는 관계·Content_Types가 조금만
-// 틀려도 복구 경고로 드러나므로 이 게이트가 여기서 특히 값을 한다.
+// 요구하는 것들을 담는다 — 한글, &, 인라인 외관, 빈 요소, 리스트, 레이아웃, 프리셋 도형,
+// 그리고 노트. 노트는 **2번 슬라이드에만** 있다: notesSlide2가 notesSlide1 없이 존재하는,
+// 번호가 비어 뛰는 경우다 (notesSlidePart의 번호 규칙) — 노트 파트는 관계·Content_Types가
+// 조금만 틀려도 복구 경고로 드러나므로 이 게이트가 여기서 특히 값을 한다.
 func TestLibreOfficeOpensTextShapes(t *testing.T) {
 	// 도구가 없으면 렌더를 시작하기 전에 건너뛴다(로컬) 또는 실패한다(테스트 이미지).
 	testkit.RequireSoffice(t)
@@ -92,6 +92,46 @@ func TestLibreOfficeOpensTextShapes(t *testing.T) {
       <col grow="1"></col>
     </row>
   </col>
+</slide>`,
+		// 프리셋 도형 12종 — `prstGeom` 이름이 틀리거나 `avLst` 문법이 어긋나면 여기서 처음
+		// 소리가 난다 (골든·단위 테스트는 초록인 채 사용자만 복구 경고를 본다). 조정값이
+		// 실리는 프리셋 여섯이 이 슬라이드에 다 있다 — 합성 지오메트리가 모든 도형에 같은
+		// rect를 주므로(1152×67.2) `ss = h`이고, 그래서 w 기준 조정값이 프리셋 기본값보다
+		// 훨씬 큰 값으로 계산된다: 상한을 넘는 조정값이 스키마 유효성을 깨지 않는지도 함께
+		// 지난다.
+		`<slide>
+  <row gap="md">
+    <shape type="rect" w="120" h="80"/>
+    <shape type="rounded-rect" w="120" h="80"/>
+    <shape type="ellipse" w="120" h="80"/>
+    <shape type="diamond" w="120" h="80"/>
+    <shape type="cylinder" w="120" h="80"/>
+    <shape type="chevron" w="120" h="80"/>
+  </row>
+  <row gap="md">
+    <shape type="arrow-right" w="120" h="80"/>
+    <shape type="hexagon" w="120" h="80"/>
+    <shape type="parallelogram" w="120" h="80"/>
+    <shape type="callout" w="120" h="80"/>
+    <shape type="star" w="120" h="80"/>
+    <shape type="cloud" w="120" h="80"/>
+  </row>
+</slide>`,
+		// 도형 외관 + 도형 안 텍스트 — `xfrm@rot`/`flipH`/`flipV`, `effectLst > outerShdw`,
+		// 색 안의 `a:alpha`, `bodyPr`의 인셋·앵커, 그리고 문단 여럿이 든 도형 하나가
+		// 복구 경고 없이 열리는지. `<a>`가 든 도형은 도형 sp의 txBody에서도 슬라이드
+		// rels의 External 관계가 살아나는지를 함께 지난다 (도형 본문의 첫 하이퍼링크다).
+		`<slide>
+  <row gap="lg" align="stretch">
+    <shape type="rounded-rect" fill="accent1" border="2 dashed muted" radius="lg" shadow="soft" opacity="0.4" rotate="-45" flip="hv" w="300" h="180" pad="md">
+      <h3 color="bg">회전·대칭·그림자</h3>
+      <p color="bg" anchor="center">알파는 채움·선·그림자 색 안에 산다.</p>
+    </shape>
+    <shape type="rect" fill="none" border="3 dotted accent1" w="300" h="180" pad="lg">
+      <p anchor="bottom">상세는 <a href="https://example.com/shape">도형 문서</a> 참고<br/>이어짐 줄</p>
+    </shape>
+    <shape type="chevron" fill="muted" w="180" h="180"/>
+  </row>
 </slide>`,
 	}
 	for i, src := range sources {

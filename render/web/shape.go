@@ -51,7 +51,7 @@ import (
 // 정규 100×100 공간**에 두고 `preserveAspectRatio="none"`으로 박스에 늘린다. 그 결과
 // `ss` 기반 조정값이 걸린 다섯 프리셋(rounded-rect·cylinder·chevron·arrow-right·hexagon·
 // parallelogram)은 PowerPoint의 기본 모양과 비율이 다르고, **PPTX 쪽이 측정된 박스로 계산한
-// `avLst` 조정값을 내어 같은 그림을 맞춘다** (각 표 행의 Adjust 메모 — 항목 05). 웹이 기준
+// `avLst` 조정값을 내어 같은 그림을 맞춘다** (각 표 행의 Adjust 명세 — ShapeAdjusts). 웹이 기준
 // 타깃이므로(PRD §9.1) 맞추는 쪽은 PPTX이고, 조정값을 실은 프리셋도 PowerPoint에서 여전히
 // 편집 가능한 진짜 프리셋 도형이다 (`radius` → `prstGeom` 조정값이 이미 같은 수단이다).
 //
@@ -164,10 +164,48 @@ type shapeGeometry struct {
 	Rounded bool
 	// Paths는 정규 공간의 경로다 (Space == spaceNormalized).
 	Paths []shapePath
-	// Adjust는 **늘린 그림을 PPTX에서 재현하는 조정값 공식**이다 (비어 있으면 프리셋 기본값
-	// 그대로 낸다 — 그 프리셋에는 `ss` 의존이 없다는 뜻이다). 항목 05가 읽을 메모이고,
-	// 여기 적어 두는 이유는 유도와 보정이 한곳에 있어야 나중에 한쪽만 바뀌지 않기 때문이다.
-	Adjust string
+	// Adjust는 **늘린 그림을 PPTX에서 재현하는 조정값 명세**다 (비어 있으면 프리셋 기본값
+	// 그대로 낸다 — 그 프리셋에는 `ss` 의존이 없다는 뜻이다). 여기 적어 두는 이유는 유도와
+	// 보정이 한곳에 있어야 나중에 한쪽만 바뀌지 않기 때문이다 — 평가는 PPTX 렌더러가 잰
+	// 박스로 한다 (ShapeAdjusts → render/pptx.AdjustValue).
+	Adjust []ShapeAdjust
+}
+
+// ShapeAdjustAxis는 조정값 비율의 분자다 — 늘린 정규 공간을 되돌리는 값의 출처.
+type ShapeAdjustAxis string
+
+const (
+	// AdjustAxisWidth는 도형 폭이다.
+	AdjustAxisWidth ShapeAdjustAxis = "w"
+	// AdjustAxisHeight는 도형 높이다.
+	AdjustAxisHeight ShapeAdjustAxis = "h"
+	// AdjustAxisRadius는 확정 모서리 반경이다 (rounded-rect 하나). 축이 아니라 값이지만
+	// 공식의 자리가 같다 — `ss`로 나눈 비율이 조정값이 되는 구조가 셋 다 같다.
+	AdjustAxisRadius ShapeAdjustAxis = "radius"
+)
+
+// ShapeAdjust는 `prstGeom/avLst` 조정값 하나의 명세다 (OOXML `a:gd`).
+//
+// 값은 `val = Base × Axis ÷ ss`다 (`ss = min(w, h)`, 100000분율). 이 형태로 담는 이유는
+// **웹이 정규 공간을 늘리기 때문**이다 (파일 머리 주석): 프리셋 공식의 `ss` 의존을 웹이
+// 표현할 수 없으므로 PPTX가 잰 박스로 조정값을 계산해 같은 그림을 맞춘다. 문자열 메모로
+// 두면 PPTX 쪽에 공식이 손으로 한 번 더 적히고, 그 두 벌이 갈라지는 것은 웹과 PPTX가 같은
+// 프리셋을 **다른 비율로** 그리는 것으로만 드러난다.
+//
+// 평가는 이 패키지가 하지 않는다 — 웹은 잰 박스를 모른다 (브라우저가 배치를 계산하고
+// 렌더러는 그 결과를 소비하지 않는다). 명세의 소유자와 평가의 소유자가 갈라지는 것은
+// ListTextIndent(웹이 소유하는 상수를 PPTX가 EMU로 환산한다)와 같은 구조다.
+type ShapeAdjust struct {
+	// Name은 `a:gd@name`이다 (`adj`·`adj1`·`adj2` — 프리셋이 정한 이름).
+	Name string
+	// Base는 정사각형(w = h = ss)에서의 조정값이다 — 곧 프리셋의 기본 조정값이거나,
+	// 웹이 정규 공간에서 평가한 값의 100000분율이다.
+	Base float64
+	// Axis는 Base에 곱할 비율의 분자다.
+	Axis ShapeAdjustAxis
+	// Max는 조정값의 상한이다 (0이면 상한 없음 — 그 프리셋의 `maxAdj`가 같은 축의 비율로
+	// 커져 이 공식이 구조적으로 그 안에 있다는 뜻이다).
+	Max float64
 }
 
 // shapeGeometries는 12종의 기하 유도표다 (순서 = soml.ShapeTypes의 순서 = PRD §7.5 표 순서).
@@ -186,10 +224,12 @@ func shapeGeometries() []shapeGeometry {
 			// roundRect: `adj=16667`이 `x1 = ss·adj/100000`(모서리 반지름)이고 모서리는
 			// 반지름 x1의 원호 넷이다. 반경은 저자·테마가 준 **px**이므로 정규 공간에 두면
 			// 늘어나 타원 모서리가 된다 — 그래서 px 공간의 `<rect rx>`다.
-			// Adjust: PPTX는 adj = 100000·r/ss로 되돌린다 (r = 확정 반경 px).
+			// Adjust: PPTX는 adj = 100000·radius/ss로 되돌린다. 상한 50000은 프리셋이
+			// adj를 `pin 0 adj 50000`으로 자르는 지점이고(짧은 변의 절반 = 완전한 반원),
+			// 브라우저가 `rx`를 박스 절반으로 자르는 것과 같은 규칙이다.
 			Type: "rounded-rect", Preset: "roundRect", Space: spacePixel,
 			Element: "rect", Attrs: `width="100%" height="100%"`, Rounded: true,
-			Adjust: "adj = 100000·radius/ss",
+			Adjust: []ShapeAdjust{{Name: "adj", Base: 100000, Axis: AdjustAxisRadius, Max: 50000}},
 		},
 		{
 			// ellipse: 프리셋은 wR = wd2, hR = hd2의 원호 넷 — 박스에 내접하는 타원이다.
@@ -207,47 +247,49 @@ func shapeGeometries() []shapeGeometry {
 			// 둘째는 뚜껑 타원의 선이다 (프리셋의 `fill="none"` 경로).
 			// 프리셋의 뚜껑에는 `fill="lighten"`이 걸려 있는데 CSS에 대응이 없다 (색 변형은
 			// Iteration 8) — 웹의 뚜껑은 같은 채움에 선만 얹힌다.
-			// Adjust: 웹이 h 기준으로 늘렸으므로 PPTX는 adj = 25000·h/ss.
+			// Adjust: 웹이 h 기준으로 늘렸으므로 PPTX는 adj = 25000·h/ss (프리셋의
+			// maxAdj = 50000·h/ss라 이 값은 언제나 그 절반이다 — 상한이 없다).
 			Type: "cylinder", Preset: "can", Space: spaceNormalized,
 			Paths: []shapePath{
 				{D: "M0,12.5 A50,12.5 0 0 1 100,12.5 L100,87.5 A50,12.5 0 0 1 0,87.5 Z"},
 				{D: "M100,12.5 A50,12.5 0 0 1 0,12.5 A50,12.5 0 0 1 100,12.5", Overlay: true},
 			},
-			Adjust: "adj = 25000·h/ss",
+			Adjust: []ShapeAdjust{{Name: "adj", Base: 25000, Axis: AdjustAxisHeight}},
 		},
 		{
 			// chevron: `adj=50000` → `x1 = ss·adj/100000` = 50(노치 깊이), `x2 = r - x1`.
 			// 경로는 (l,t) → (x2,t) → (r,vc) → (x2,b) → (l,b) → (x1,vc).
-			// Adjust: adj = 50000·w/ss (maxAdj = 100000·w/ss 안이다).
+			// Adjust: adj = 50000·w/ss (프리셋의 maxAdj = 100000·w/ss라 언제나 그 절반이다).
 			Type: "chevron", Preset: "chevron", Space: spaceNormalized,
 			Paths:  []shapePath{{D: "M0,0 L50,0 L100,50 L50,100 L0,100 L50,50 Z"}},
-			Adjust: "adj = 50000·w/ss",
+			Adjust: []ShapeAdjust{{Name: "adj", Base: 50000, Axis: AdjustAxisWidth}},
 		},
 		{
 			// rightArrow: `adj1=50000` → `dy1 = h·adj1/200000` = 25(축 절반, h 기준),
 			// `adj2=50000` → `dx1 = ss·adj2/100000` = 50(머리 길이), `x1 = r - dx1`.
 			// 경로는 (l,y1) → (x1,y1) → (x1,t) → (r,vc) → (x1,b) → (x1,y2) → (l,y2).
-			// Adjust: adj1은 h 기준이라 기본값 그대로, adj2 = 50000·w/ss.
+			// Adjust: adj1은 h 기준이라 프리셋 기본값 그대로 두고(avLst에 적지 않으면 기본값이
+			// 산다), adj2 = 50000·w/ss만 싣는다.
 			Type: "arrow-right", Preset: "rightArrow", Space: spaceNormalized,
 			Paths:  []shapePath{{D: "M0,25 L50,25 L50,0 L100,50 L50,100 L50,75 L0,75 Z"}},
-			Adjust: "adj2 = 50000·w/ss (adj1은 h 기준이라 기본값)",
+			Adjust: []ShapeAdjust{{Name: "adj2", Base: 50000, Axis: AdjustAxisWidth}},
 		},
 		{
 			// hexagon: `adj=25000` → `x1 = ss·adj/100000` = 25, `x2 = r - x1`.
 			// 세로는 `vf=115470`이 `shd2 = hd2·vf/100000`을, `dy1 = shd2·sin(60°)`이 hd2와
 			// 같아져 `y1 = t`·`y2 = b`가 된다 (기본 육각형은 박스 높이를 꽉 채운다).
-			// Adjust: adj = 25000·w/ss.
+			// Adjust: adj = 25000·w/ss (프리셋의 maxAdj = 50000·w/ss 안이다).
 			Type: "hexagon", Preset: "hexagon", Space: spaceNormalized,
 			Paths:  []shapePath{{D: "M0,50 L25,0 L75,0 L100,50 L75,100 L25,100 Z"}},
-			Adjust: "adj = 25000·w/ss",
+			Adjust: []ShapeAdjust{{Name: "adj", Base: 25000, Axis: AdjustAxisWidth}},
 		},
 		{
 			// parallelogram: `adj=25000` → `x2 = ss·adj/100000` = 25(기울기), `x5 = r - x2`.
 			// 경로는 (l,b) → (x2,t) → (r,t) → (x5,b).
-			// Adjust: adj = 25000·w/ss.
+			// Adjust: adj = 25000·w/ss (프리셋의 maxAdj = 100000·w/ss 안이다).
 			Type: "parallelogram", Preset: "parallelogram", Space: spaceNormalized,
 			Paths:  []shapePath{{D: "M0,100 L25,0 L100,0 L75,100 Z"}},
-			Adjust: "adj = 25000·w/ss",
+			Adjust: []ShapeAdjust{{Name: "adj", Base: 25000, Axis: AdjustAxisWidth}},
 		},
 		{
 			// wedgeRectCallout: `adj1=-20833`·`adj2=62500` → 꼬리 끝이
@@ -325,6 +367,22 @@ func ShapePreset(shapeType string) (string, bool) {
 		return "", false
 	}
 	return geom.Preset, true
+}
+
+// ShapeAdjusts는 이 프리셋이 요구하는 `prstGeom/avLst` 조정값 명세다 — 없으면 빈 목록이다.
+//
+// 내보내는 이유는 ShapePreset과 같다: 조정값 공식은 **웹이 정규 공간을 늘린 것의 보정**이라
+// (파일 머리 주석) 늘린 쪽과 같은 표에 있어야 한다. 표가 두 벌이면 기하를 고칠 때 보정을
+// 잊고, 그 어긋남은 같은 프리셋이 두 타깃에서 다른 비율로 그려지는 것으로만 드러난다.
+//
+// ok=false는 모르는 `type`이다 — 빈 목록(조정값 없는 프리셋)과 구별해야 PPTX 렌더러가
+// "어휘에 있는데 표에 없는 프리셋"에서 멈출 수 있다.
+func ShapeAdjusts(shapeType string) ([]ShapeAdjust, bool) {
+	geom, err := shapeGeometryOf(shapeType)
+	if err != nil {
+		return nil, false
+	}
+	return geom.Adjust, true
 }
 
 // ShapeAnchor는 도형이 쓸 세로 앵커다 — **첫 자식이 정한 값**이고, 정한 자식이 없으면 빈 값이다.
@@ -586,9 +644,11 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme) ([]string, error) {
 
 // dashArray는 테두리 스타일을 SVG `stroke-dasharray` 값으로 만든다 (실선은 빈 문자열).
 //
-// 수치는 OOXML `prstDash`의 비율이다 — `dash`가 4:3, `sysDot`이 1:3이고 단위는 **선 굵기**다
-// (ECMA-376의 프리셋 파선 표). CSS `border-style: dashed`의 패턴은 UA가 정하므로 그 이름을
-// 그대로 옮길 수 없고, 여기서 수치를 정하는 편이 두 타깃이 같은 간격을 갖는 유일한 길이다.
+// 수치는 OOXML `prstDash`의 비율이다 — ECMA-376의 프리셋 파선 표에서 `dash`가 4:3,
+// `dot`이 1:3이고 단위는 **선 굵기**다 (`sys*` 계열은 3:1·1:1로 촘촘한 다른 값이다 —
+// 계열 선택은 PPTX 매핑이 소유하고 render/pptx.prstDashValue가 이 수치와 짝을 맞춘다).
+// CSS `border-style: dashed`의 패턴은 UA가 정하므로 그 이름을 그대로 옮길 수 없고, 여기서
+// 수치를 정하는 편이 두 타깃이 같은 간격을 갖는 유일한 길이다.
 func dashArray(style soml.BorderStyle, width float64) (string, error) {
 	pattern := func(dash, gap float64) string {
 		return formatNumber(dash*width) + "px " + formatNumber(gap*width) + "px"

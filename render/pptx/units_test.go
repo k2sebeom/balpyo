@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/k2sebeom/balpyo/render/geom"
+	"github.com/k2sebeom/balpyo/render/web"
 	"github.com/k2sebeom/balpyo/soml"
 )
 
@@ -183,5 +184,108 @@ func TestSlideSizeMatchesPowerPointStandards(t *testing.T) {
 			t.Errorf("%s(%dx%dpx) = %dx%d EMU, want %dx%d (%s)",
 				tc.aspect, stage.Width, stage.Height, cx, cy, tc.wantCX, tc.wantCY, tc.wantInches)
 		}
+	}
+}
+
+// 회전은 단위 환산 + 정규화다 — 방향 규약이 두 타깃에서 같으므로 부호를 뒤집지 않는다.
+func TestRotation(t *testing.T) {
+	tests := []struct {
+		deg  float64
+		want int64
+	}{
+		{0, 0},
+		{45, 2700000},
+		{90, 5400000},
+		{359.5, 21570000},
+		// 음수·한 바퀴 이상은 접는다 — 뷰어의 관용에 기대지 않고, 재저장 diff가 이 속성에서
+		// 나지 않게 한다 (Rotation의 근거).
+		{-90, 16200000},
+		{-360, 0},
+		{360, 0},
+		{405, 2700000},
+		{-450, 16200000},
+		{720.5, 30000},
+	}
+	for _, tc := range tests {
+		got := Rotation(tc.deg)
+		if got != tc.want {
+			t.Errorf("Rotation(%v) = %d, want %d", tc.deg, got, tc.want)
+		}
+		if got < 0 || got >= FullRotation {
+			t.Errorf("Rotation(%v) = %d가 한 바퀴 밖이다", tc.deg, got)
+		}
+	}
+}
+
+// 알파는 100000분율이다 (0~1 검사는 값 층의 몫 — 환산 함수는 검증을 갖지 않는다).
+func TestAlpha(t *testing.T) {
+	tests := []struct {
+		v    float64
+		want int64
+	}{
+		{0, 0},
+		{0.15, 15000},
+		{0.4, 40000},
+		{0.06, 6000},
+		{1, 100000},
+		{0.123456, 12346}, // 반올림
+	}
+	for _, tc := range tests {
+		if got := Alpha(tc.v); got != tc.want {
+			t.Errorf("Alpha(%v) = %d, want %d", tc.v, got, tc.want)
+		}
+	}
+}
+
+// 조정값 평가 — `val = Base × 값 ÷ ss`의 경계들. 명세는 웹의 기하 표가 소유하고
+// (web.ShapeAdjusts) 여기서 잰 박스로 평가된다.
+func TestAdjustValue(t *testing.T) {
+	radiusSpec := web.ShapeAdjust{Name: "adj", Base: 100000, Axis: web.AdjustAxisRadius, Max: 50000}
+	widthSpec := web.ShapeAdjust{Name: "adj", Base: 50000, Axis: web.AdjustAxisWidth}
+	heightSpec := web.ShapeAdjust{Name: "adj", Base: 25000, Axis: web.AdjustAxisHeight}
+
+	tests := []struct {
+		name   string
+		spec   web.ShapeAdjust
+		rect   geom.Rect
+		radius float64
+		want   int64
+	}{
+		// 정사각형: ss가 두 축과 같으므로 w/h 기준 공식이 프리셋 기본값 그대로 남는다.
+		{"정사각형/폭", widthSpec, geom.Rect{W: 200, H: 200}, 0, 50000},
+		{"정사각형/높이", heightSpec, geom.Rect{W: 200, H: 200}, 0, 25000},
+		// 아주 납작한 도형: ss = h이므로 w 기준 조정값이 비율만큼 커진다 (늘린 정규 공간을
+		// 되돌리는 것이 이 값의 뜻이다).
+		{"납작/폭", widthSpec, geom.Rect{W: 1000, H: 50}, 0, 1000000},
+		{"납작/높이", heightSpec, geom.Rect{W: 1000, H: 50}, 0, 25000},
+		// 아주 좁은 도형: ss = w.
+		{"좁음/높이", heightSpec, geom.Rect{W: 50, H: 1000}, 0, 500000},
+		// 반경: ss의 절반이 상한이다 (adj 50000 = 완전한 반원).
+		{"반경/일반", radiusSpec, geom.Rect{W: 300, H: 160}, 12, 7500},
+		{"반경/상한 정확히", radiusSpec, geom.Rect{W: 300, H: 160}, 80, 50000},
+		{"반경/상한 넘김", radiusSpec, geom.Rect{W: 300, H: 160}, 400, 50000},
+		{"반경/0", radiusSpec, geom.Rect{W: 300, H: 160}, 0, 0},
+		{"반경/반올림", radiusSpec, geom.Rect{W: 220, H: 110}, 12, 10909},
+		// 크기 0 도형은 그릴 것이 없다 — 0으로 나눈 Inf가 val에 실리면 파일이 열리지 않는다.
+		{"크기 0", radiusSpec, geom.Rect{}, 12, 0},
+		{"높이 0", widthSpec, geom.Rect{W: 200}, 0, 0},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := AdjustValue(tc.spec, tc.rect, tc.radius)
+			if err != nil {
+				t.Fatalf("AdjustValue: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("AdjustValue(%s, %s, r=%v) = %d, want %d",
+					tc.spec.Name, tc.rect, tc.radius, got, tc.want)
+			}
+		})
+	}
+
+	// 기하 표에 축을 추가하고 평가를 잊으면 조용히 0이 되는 대신 멈춘다.
+	if _, err := AdjustValue(web.ShapeAdjust{Name: "adj", Base: 1, Axis: "diagonal"},
+		geom.Rect{W: 100, H: 100}, 0); err == nil {
+		t.Error("모르는 축은 에러여야 한다")
 	}
 }

@@ -1,9 +1,11 @@
 package pptx
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/k2sebeom/balpyo/render/geom"
+	"github.com/k2sebeom/balpyo/render/web"
 	"github.com/k2sebeom/balpyo/soml"
 )
 
@@ -18,6 +20,16 @@ const (
 	EMUPerInch = 914400
 	// PointsPerPixel은 폰트 크기 환산 계수다 (16px = 12pt).
 	PointsPerPixel = 0.75
+	// UnitsPerDegree는 OOXML 각도 단위다 (ST_Angle — 60000분의 1도). `xfrm@rot`과
+	// `outerShdw@dir`가 같은 단위를 쓴다.
+	UnitsPerDegree = 60000
+	// FullRotation은 한 바퀴다 (360 × UnitsPerDegree) — 각도 정규화의 법(modulus).
+	FullRotation = 360 * UnitsPerDegree
+	// PercentScale은 OOXML의 100000분율이다 (ST_Percentage의 정수 표기). 알파
+	// (`a:alpha@val`)와 프리셋 조정값(`a:gd fmla="val N"`)이 같은 눈금을 쓴다 — 둘 다
+	// "100000 = 100%"이고, 조정값에서 그 100%가 무엇의 100%인지는 프리셋이 정한다
+	// (web.ShapeAdjust).
+	PercentScale = 100000
 )
 
 // EMU는 논리 px를 EMU로 바꾼다. OOXML의 xfrm 좌표 단위다.
@@ -69,4 +81,76 @@ func Extent(r geom.Rect) (cx, cy int64) {
 // 9144000×6858000 = 10×7.5in — 둘 다 PowerPoint 표준 페이지 크기와 정확히 일치한다.
 func SlideSize(stage soml.Stage) (cx, cy int64) {
 	return EMU(float64(stage.Width)), EMU(float64(stage.Height))
+}
+
+// Rotation은 시계방향 각도(도)를 OOXML `xfrm@rot`으로 바꾼다.
+//
+// 두 타깃의 회전 방향 규약이 같아 부호를 뒤집지 않는다 (CSS `rotate()`도 시계방향이고 y축이
+// 아래로 향한다 — soml.ShapeStyle.Rotate). 그래서 이 함수가 하는 일은 단위와 **정규화**뿐이다:
+// 음수와 360 이상을 한 바퀴 안으로 접는다. 접는 이유는 뷰어의 관용에 기대지 않는 것이다 —
+// `rot="-2700000"`을 PowerPoint는 받지만 재저장하면 정규화해서 쓰므로, 우리가 먼저 정규화해
+// 두면 저자가 파일을 열어 저장했을 때의 diff가 이 속성에서 나지 않는다 (zipEpoch·rel id를
+// 결정적으로 두는 것과 같은 태도).
+//
+// 회전 **중심**은 환산에 없다: OOXML은 `ext`의 중심을 돌리고 웹의 `transform-origin` 기본값이
+// 같은 중심이라 보정할 값이 없다 (render/web/shape.go의 회전 절). 잰 rect도 회전 **전** 박스다
+// (측정 뷰가 변형을 끈다 — web.MeasureView), 그래서 좌표에 손댈 것이 없다.
+func Rotation(deg float64) int64 {
+	rot := int64(math.Round(deg*UnitsPerDegree)) % FullRotation
+	if rot < 0 {
+		rot += FullRotation
+	}
+	return rot
+}
+
+// Alpha는 0~1 불투명도를 OOXML `a:alpha@val`(100000분율)로 바꾼다.
+//
+// 범위를 여기서 막지 않는다 — 0~1 검사는 값 층(core)의 몫이고, 환산 함수가 검증을 가지면
+// 같은 규칙이 두 곳에 생긴다 (Extent가 크기 0을 막지 않는 것과 같은 근거).
+func Alpha(v float64) int64 {
+	return int64(math.Round(v * PercentScale))
+}
+
+// AdjustValue는 프리셋 조정값 명세를 잰 박스로 평가한다 — `prstGeom/avLst`의 `val N`이다.
+//
+// 공식은 `val = Base × 값 ÷ ss`이고 `ss = min(w, h)`다 (web.ShapeAdjust). 이 계산이 PPTX
+// 쪽에 있는 이유는 **웹이 도형의 픽셀 크기를 모르기 때문**이다: 웹은 프리셋을 정사각형에서
+// 평가한 정규 공간에 두고 박스에 늘리고(render/web/shape.go), 잰 박스는 지오메트리 패스를
+// 지나 이 렌더러에만 온다. 그래서 명세의 소유자(웹의 기하 표)와 평가의 소유자(여기)가
+// 갈라진다 — ListTextIndent를 웹이 소유하고 EMU 환산을 여기서 하는 것과 같은 구조다.
+//
+// 상한에서 자르는 이유: 프리셋은 조정값을 `pin`으로 자르므로 넘긴 값도 파일이 **열리고**
+// 뷰어가 조용히 잘라 그린다 — 넘겼다는 사실이 산출물의 모양으로도 드러나지 않는다.
+// 여기서 자르면 골든 XML이 실제로 그려질 값을 담는다.
+//
+// 크기 0 도형(`ss = 0`)은 조정값 0이다. 나눗셈을 피하려는 것이 아니라 그릴 것이 없기
+// 때문이고, 0으로 나눈 Inf가 `val`에 실리면 파일이 열리지 않는다.
+func AdjustValue(spec web.ShapeAdjust, rect geom.Rect, radius float64) (int64, error) {
+	var value float64
+	switch spec.Axis {
+	case web.AdjustAxisWidth:
+		value = rect.W
+	case web.AdjustAxisHeight:
+		value = rect.H
+	case web.AdjustAxisRadius:
+		value = radius
+	default:
+		// 기하 표에 축을 추가하고 평가를 잊으면 조용히 0(각진 모서리·기본 비율)이 되는
+		// 대신 멈춘다 — 렌더 매핑 부재를 에러로 두는 이 패키지의 태도 그대로다.
+		return 0, fmt.Errorf("조정값 %s의 축 %q를 모른다", spec.Name, string(spec.Axis))
+	}
+	ss := math.Min(rect.W, rect.H)
+	if ss <= 0 {
+		return 0, nil
+	}
+	val := math.Round(spec.Base * value / ss)
+	if spec.Max > 0 && val > spec.Max {
+		val = spec.Max
+	}
+	if val < 0 {
+		// 음수 반경·크기는 값 층이 막지만(core), 여기서도 0으로 눕힌다 — 음수 조정값은
+		// 프리셋마다 뜻이 다르고(callout의 꼬리는 음수가 정상이다) 반경에는 뜻이 없다.
+		val = 0
+	}
+	return int64(val), nil
 }

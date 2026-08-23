@@ -116,10 +116,12 @@ func (l *slideLinks) relID(url string) string {
 // 주지 않는다 (잰 rect는 이미 슬라이드 상대다 — geom 패키지 주석). 컨테이너 상대 좌표를
 // 다시 더하는 코드가 여기 없는 것이 "좌표 계산 0회"의 렌더러 쪽 절반이다.
 //
-// # "컨테이너"라는 같은 단어의 정반대 두 매핑
+// # 분기는 네 가지다 (같은 단어를 쓰는 개념들이 정반대로 매핑되는 자리)
 //
-//	리스트 컨테이너 (<ul>/<ol>)             → 도형 **하나** (writeListShape: 불릿 문단이 한 텍스트 박스에 산다)
-//	레이아웃 컨테이너 (<row>/<col>/<grid>)  → 도형 **0개**  (자식 좌표만 남고 컨테이너는 사라진다)
+//	리스트 컨테이너 (<ul>/<ol>)             → 도형 **하나**  (writeListShape: 불릿 문단이 한 텍스트 박스에 산다)
+//	<shape>                                 → 도형 **하나** + 자식을 **흡수** (writeShapeSp: 자식 텍스트가 이 도형의 txBody 문단이 된다)
+//	레이아웃 컨테이너 (<row>/<col>/<grid>)  → 도형 **0개** + 자식으로 **내려가기** (좌표만 남고 컨테이너는 사라진다)
+//	<spacer/>                               → 도형 **0개**  (자식도 없다 — void)
 //
 // 리스트는 하나의 텍스트 흐름이라 도형 하나가 편집 단위이고(항목마다 도형을 내면 편집 단위가
 // 조각난다), 레이아웃은 배치 **수단**이라 좌표로 구워진 뒤 산출물에 남을 것이 없다 —
@@ -128,9 +130,16 @@ func (l *slideLinks) relID(url string) string {
 // 정반대로 매핑되므로 테스트가 같은 슬라이드에서 이 대비를 단정한다 — 태그를 늘리는 사람이
 // 가장 헷갈릴 자리다.
 //
+// **`<shape>`는 컨테이너와 정반대로 처리된다**: 컨테이너는 사라지고 자식이 도형이 되는데,
+// 도형은 남고 자식이 사라진다 (자식 텍스트가 부모의 `txBody`가 되므로 여기서 **자식으로
+// 내려가지 않는다**). 그래서 도형 안 텍스트는 도형 id를 소비하지 않고, 잰 rect도 소비하지
+// 않는다 — `<li>`와 같은 처지다 (재지만 도형 좌표가 아니다 — render/web 패키지 주석의
+// 측정 대상 계약).
+//
 // `<group>` → `grpSp`(Iteration 9)와도 갈라진다: 그룹은 편집 단위로 묶이는 도형이고 레이아웃
 // 컨테이너는 사라지는 배치 수단이다 (PRD §7.5). 배치 태그가 `grpSp`가 되면 `<group>`과
-// `<row>`의 구분이 산출물에서 사라진다.
+// `<row>`의 구분이 산출물에서 사라진다. **도형이 자식을 흡수하는 것도 `grpSp`가 아니다** —
+// 그룹은 여러 도형을 묶는 것이고, 여기서는 텍스트가 도형 하나의 본문이 된다.
 func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node soml.Node, path []int, shapeID *int, g *geom.Geometry, links *slideLinks) error {
 	elem, ok := node.(*soml.Element)
 	if !ok {
@@ -157,6 +166,13 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 		if err := writeListShape(b, deck, slide, elem, id, *shapeID, g, links); err != nil {
 			return err
 		}
+		*shapeID++
+	case kind == soml.KindShape:
+		if err := writeShapeSp(b, deck, slide, elem, id, *shapeID, g, links); err != nil {
+			return err
+		}
+		// 자식으로 내려가지 않는다 (위 주석) — 자식 텍스트는 이 도형의 txBody가 되었고
+		// 자기 도형도 id도 갖지 않는다.
 		*shapeID++
 	case kind == soml.KindLayoutContainer:
 		// 컨테이너 자신은 도형이 되지 않고 자식으로 내려간다. 빈 컨테이너(`<row></row>`)는
@@ -207,8 +223,7 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	writeSp(b, shapeID, elem.Name+" "+id, TextBoxRect(box.Rect, style.Align), body)
-	return nil
+	return writeSp(b, textBoxSp(shapeID, elem.Name+" "+id, TextBoxRect(box.Rect, style.Align), body), deck.Theme)
 }
 
 // writeListShape는 리스트 컨테이너 하나(`<ul>`/`<ol>`)를 p:sp(텍스트 박스) **하나**로 쓴다 —
@@ -231,15 +246,208 @@ func writeListShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	writeSp(b, shapeID, elem.Name+" "+id, TextBoxRect(box.Rect, soml.AlignStart), body)
+	return writeSp(b, textBoxSp(shapeID, elem.Name+" "+id, TextBoxRect(box.Rect, soml.AlignStart), body), deck.Theme)
+}
+
+// writeShapeSp는 `<shape>` 하나를 p:sp(프리셋 도형)로 쓴다 — **자식 텍스트를 자기 txBody로
+// 흡수한다** (writeShapeNode의 네 분기).
+//
+// 좌표는 도형의 잰 rect **그대로**다. 안전 여유(TextBoxRect)를 적용하지 않는 것이 텍스트
+// 박스와 갈라지는 자리이고, 근거는 여유의 뜻이다: 그것은 "브라우저가 잰 글자 폭보다
+// LibreOffice가 넓게 잴 수 있다"를 흡수하는 장치인데(textBoxSlackRatio), 도형의 박스는
+// 글자를 잰 결과가 아니라 **저자가 정한 크기**다 (`w`/`h`/`ratio` — soml.ShapeAttrs의 근거).
+// 넓히면 그림이 커져 배치가 어긋나고 글자는 도형 밖으로 나간다. 도형 안 글자의 줄바꿈 여유는
+// 대신 `pad`를 뺀 안쪽과 글자 폭의 차이가 소유한다 — 구조적으로 더 크지만 보장은 아니다
+// (NOTES의 측정).
+func writeShapeSp(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, links *slideLinks) error {
+	box, ok := g.Box(id)
+	if !ok {
+		return fmt.Errorf("%s: %s <%s>의 측정된 좌표가 없다", slide.Source, id, elem.Name)
+	}
+	style := elem.ShapeStyle()
+	if style == nil {
+		// 해석되지 않은 외관을 기본값으로 그리면 PPTX만 그럴듯하게 나오고 웹과 갈라진다
+		// (render/web.writeShape와 같은 관문).
+		return fmt.Errorf("%s:%s <%s>의 도형 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+			slide.Source, elem.Span, elem.Name)
+	}
+	spec, err := shapeSp(shapeID, elem.Name+" "+id, box.Rect, *style)
+	if err != nil {
+		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
+	}
+	body, err := shapeBodyXML(elem, *style, deck.Theme, links)
+	if err != nil {
+		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
+	}
+	spec.body = body
+	if err := writeSp(b, spec, deck.Theme); err != nil {
+		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
+	}
 	return nil
 }
 
-// writeSp는 텍스트 박스 도형의 공통 골격을 쓴다 — nvSpPr(id·이름·txBox 표시)와
-// spPr(좌표·rect 프리셋·채움/선 없음) 사이에 조립된 txBody를 끼운다.
-func writeSp(b *strings.Builder, shapeID int, name string, rect geom.Rect, body string) {
-	x, y := Offset(rect)
-	cx, cy := Extent(rect)
+// spSpec은 p:sp 하나의 조립 명세다 — **텍스트 박스와 프리셋 도형이 같은 함수를 지난다**
+// (writeSp).
+//
+// 조립된 XML 조각이 아니라 값으로 받는 이유: 골격을 함수 하나에 두어야 스키마 순서
+// (CT_ShapeProperties의 xfrm → 지오메트리 → 채움 → ln → effectLst)가 한 곳에서만 지켜진다.
+// 조각을 받으면 호출자마다 순서를 다시 알아야 하고, 어긴 순서는 LibreOffice의 복구 경고로만
+// 드러난다.
+type spSpec struct {
+	id   int
+	name string
+	// rect는 도형 좌표다 — 텍스트 박스는 안전 여유를 더한 값, 도형은 잰 값 그대로다
+	// (writeShapeSp의 근거).
+	rect geom.Rect
+	// textBox는 `p:cNvSpPr@txBox`를 켠다. **도형에는 켜지 않는다**: PowerPoint가 텍스트
+	// 박스와 도형에 다른 서식 창을 주고, 도형이 텍스트 박스로 표시되면 "모양 변경"이
+	// 사라진다 — "내보낸 도형이 진짜 프리셋 도형인가"라는 리뷰 항목의 절반이 이 한 속성이다.
+	textBox bool
+	// rot은 `xfrm@rot`이다 (nil이면 속성 없음 — 회전을 정하지 않은 도형과 텍스트 박스).
+	rot          *int64
+	flipH, flipV bool
+	// preset은 `prstGeom@prst`이고 adjust는 `avLst`의 조정값이다 (빈 목록이면 `<a:avLst/>`).
+	preset string
+	adjust []spAdjust
+	// fill·border는 확정 외관이다. 텍스트 박스는 둘 다 `none`을 준다 — 명시하지 않으면
+	// 테마 fmtScheme의 기본 채움/선이 상속되어 웹에 없는 사각형이 그려진다.
+	fill   soml.Fill
+	border soml.Border
+	// shadow는 그림자 토큰이다 (nil이면 effectLst 없음).
+	shadow *soml.ShadowToken
+	// alpha는 채움·선·그림자 색에 실을 불투명도다 (nil이면 알파 없음).
+	//
+	// **OOXML에는 도형 단위 불투명도가 없다** — 알파는 색 안에 산다. 웹도 그림(svg)에만
+	// `opacity`를 걸어 자식 텍스트를 건드리지 않으므로(render/web.shapeInkCSS), 이쪽도
+	// 채움·선·그림자 색에만 싣는다. **텍스트 런 색에 같은 알파를 싣는 길은 버렸다**: 웹이
+	// 글자를 흐리게 하지 않으므로 그렇게 하면 두 타깃이 갈라진다 (도형 전체 투명도인
+	// `a:alphaModFix`를 쓰지 않는 이유도 같다 — 그쪽은 글자까지 흐려진다).
+	alpha *float64
+	// body는 조립된 p:txBody다 (빈 문자열이면 본문 없음).
+	body string
+}
+
+// spAdjust는 `avLst`의 조정값 하나다 — 잰 박스로 평가가 끝난 값이다 (AdjustValue).
+type spAdjust struct {
+	name string
+	val  int64
+}
+
+// rectPreset은 텍스트 박스의 프리셋 이름이다 — 도형 어휘의 `rect`와 같은 값이지만
+// (web.ShapePreset("rect")) 텍스트 박스는 도형 어휘를 거치지 않는다.
+const rectPreset = "rect"
+
+// textBoxSp는 텍스트 박스 도형의 명세다 — 도형과 갈라지는 값이 여기 한곳에 모인다
+// (`txBox="1"`, `rect` 프리셋, 채움·선 없음, 변형·효과 없음).
+func textBoxSp(id int, name string, rect geom.Rect, body string) spSpec {
+	return spSpec{
+		id: id, name: name, rect: rect, textBox: true,
+		preset: rectPreset,
+		fill:   soml.NoFill(), border: soml.NoBorder(),
+		body: body,
+	}
+}
+
+// shapeSp는 확정 도형 외관을 p:sp 명세로 컴파일한다 (PRD §9.4 표의 오른쪽 열).
+//
+// **순서는 PRD 표 순서다** (fill → border → radius → shadow → opacity → rotate → flip) —
+// 웹의 shapeInkCSS와 나란히 읽을 수 있어야 "표에 있고 한쪽에만 있는 행"이 눈에 띈다.
+// `radius`는 여기서 **기하**가 된다 (`avLst` 조정값): 그것이 OOXML에서 반경이 사는 유일한
+// 자리이고, 웹에서 그것이 SVG `rx`인 것과 짝이다.
+func shapeSp(id int, name string, rect geom.Rect, style soml.ShapeStyle) (spSpec, error) {
+	preset, ok := web.ShapePreset(style.Type)
+	if !ok {
+		// 어휘에 프리셋을 더하고 매핑을 잊으면 조용히 사각형이 되는 대신 멈춘다 — `prst`
+		// 이름이 틀려도 파일은 열리므로(뷰어가 모르는 프리셋을 무시한다) 이 관문과 골든
+		// 어서션만이 그것을 잡는다.
+		return spSpec{}, fmt.Errorf("도형 type %q의 prstGeom 매핑이 없다", style.Type)
+	}
+	spec := spSpec{id: id, name: name, rect: rect, preset: preset}
+	if style.Fill == nil {
+		return spSpec{}, fmt.Errorf("채움이 해석되지 않았다")
+	}
+	spec.fill = *style.Fill
+	if style.Border == nil {
+		return spSpec{}, fmt.Errorf("테두리가 해석되지 않았다")
+	}
+	spec.border = *style.Border
+	adjust, err := shapeAdjusts(style, rect)
+	if err != nil {
+		return spSpec{}, err
+	}
+	spec.adjust = adjust
+	spec.shadow = style.Shadow
+	if style.Opacity != nil {
+		if *style.Opacity < 0 || *style.Opacity > 1 {
+			// 웹과 같은 관문이다 (shapeInkCSS) — 범위 밖 알파는 뷰어가 조용히 자른다.
+			return spSpec{}, fmt.Errorf("불투명도 %v가 0~1 밖이다", *style.Opacity)
+		}
+		spec.alpha = style.Opacity
+	}
+	if style.Rotate != nil {
+		rot := Rotation(*style.Rotate)
+		spec.rot = &rot
+	}
+	switch style.Flip {
+	case "":
+	case soml.FlipH:
+		spec.flipH = true
+	case soml.FlipV:
+		spec.flipV = true
+	case soml.FlipBoth:
+		spec.flipH, spec.flipV = true, true
+	default:
+		return spSpec{}, fmt.Errorf("flip %q는 대칭 어휘 밖이다", string(style.Flip))
+	}
+	return spec, nil
+}
+
+// shapeAdjusts는 이 도형의 `avLst` 조정값이다 — 명세는 웹의 기하 표가 소유하고(web.ShapeAdjusts)
+// 평가는 잰 박스로 여기서 한다 (AdjustValue).
+//
+// `radius`가 프리셋과 어긋나면 에러다 (웹의 writeShapeInk와 같은 관문): rounded-rect에 반경이
+// 없으면 두 타깃의 암묵 기본값이 다르고(CSS 0 ↔ roundRect 16.67%), 다른 프리셋에 반경이
+// 남아 있으면 실을 자리가 없어 **웹만 둥글어진다**. core가 이미 막지만 렌더러가 마지막
+// 관문이다. 어느 프리셋이 반경을 받는지는 표가 말한다 — 이름 비교를 두 번째로 적지 않는다.
+func shapeAdjusts(style soml.ShapeStyle, rect geom.Rect) ([]spAdjust, error) {
+	specs, ok := web.ShapeAdjusts(style.Type)
+	if !ok {
+		return nil, fmt.Errorf("도형 type %q의 조정값 명세가 없다", style.Type)
+	}
+	needsRadius := false
+	for _, spec := range specs {
+		if spec.Axis == web.AdjustAxisRadius {
+			needsRadius = true
+		}
+	}
+	var radius float64
+	switch {
+	case needsRadius && style.Radius == nil:
+		return nil, fmt.Errorf("type=%q인데 반경이 해석되지 않았다", style.Type)
+	case !needsRadius && style.Radius != nil:
+		return nil, fmt.Errorf("type=%q에는 반경을 실을 자리가 없다", style.Type)
+	case needsRadius:
+		radius = style.Radius.Px
+	}
+	adjusts := make([]spAdjust, 0, len(specs))
+	for _, spec := range specs {
+		val, err := AdjustValue(spec, rect, radius)
+		if err != nil {
+			return nil, err
+		}
+		adjusts = append(adjusts, spAdjust{name: spec.Name, val: val})
+	}
+	return adjusts, nil
+}
+
+// writeSp는 도형 하나의 골격을 쓴다 — nvSpPr(id·이름·txBox 표시)와 spPr(좌표·변형·프리셋
+// 지오메트리·채움·선·효과) 사이에 조립된 txBody를 끼운다.
+//
+// 자식 순서는 CT_ShapeProperties가 정한 그대로다: xfrm → 지오메트리 → 채움 → ln →
+// effectLst. 어기면 LibreOffice가 복구를 묻는다 (rPr의 hlinkClick 자리와 같은 종류의 제약).
+func writeSp(b *strings.Builder, spec spSpec, theme soml.Theme) error {
+	x, y := Offset(spec.rect)
+	cx, cy := Extent(spec.rect)
 
 	w := func(depth int, line string) {
 		b.WriteString("\n" + shapeIndent + strings.Repeat("  ", depth) + line)
@@ -247,28 +455,188 @@ func writeSp(b *strings.Builder, shapeID int, name string, rect geom.Rect, body 
 	w(0, "<p:sp>")
 	w(1, "<p:nvSpPr>")
 	// 이름은 지오메트리 식별자다 — PowerPoint 선택 창과 진단 메시지가 같은 이름으로
-	// 같은 요소를 가리킨다.
-	w(2, fmt.Sprintf(`<p:cNvPr id="%d" name="%s"/>`, shapeID, escapeXML(name)))
-	w(2, `<p:cNvSpPr txBox="1"/>`)
+	// 같은 요소를 가리킨다. 저자의 `id`(soml.ShapeStyle.ID)는 아직 산출물에 나가지 않는다:
+	// 그것은 `<arrow from="db">`의 참조 대상 이름이고(Iteration 7), 웹도 쓰지 않는다.
+	w(2, fmt.Sprintf(`<p:cNvPr id="%d" name="%s"/>`, spec.id, escapeXML(spec.name)))
+	if spec.textBox {
+		w(2, `<p:cNvSpPr txBox="1"/>`)
+	} else {
+		w(2, "<p:cNvSpPr/>")
+	}
 	w(2, "<p:nvPr/>")
 	w(1, "</p:nvSpPr>")
 	w(1, "<p:spPr>")
-	w(2, "<a:xfrm>")
+	// 회전·대칭은 xfrm의 **속성**이고 좌표를 건드리지 않는다: 회전 중심이 `ext`의 중심이고
+	// 잰 rect는 회전 **전** 박스이므로 보정할 값이 없다 (Rotation의 주석). flipH/flipV는
+	// 기하만 뒤집고 글자는 읽히는 방향으로 남는다 — 웹이 대칭을 그림에만 걸어 글자를 거울로
+	// 만들지 않는 것과 같은 그림이다 (render/web.shapeInkCSS).
+	w(2, "<a:xfrm"+xfrmAttrs(spec)+">")
 	w(3, fmt.Sprintf(`<a:off x="%d" y="%d"/>`, x, y))
 	w(3, fmt.Sprintf(`<a:ext cx="%d" cy="%d"/>`, cx, cy))
 	w(2, "</a:xfrm>")
-	w(2, `<a:prstGeom prst="rect">`)
-	w(3, "<a:avLst/>")
+	w(2, fmt.Sprintf(`<a:prstGeom prst="%s">`, spec.preset))
+	if len(spec.adjust) == 0 {
+		w(3, "<a:avLst/>")
+	} else {
+		w(3, "<a:avLst>")
+		for _, adjust := range spec.adjust {
+			// 명시하지 않은 조정값은 프리셋 기본값이 산다 — avLst는 전체 목록이 아니라
+			// 덮어쓰기다 (rightArrow가 adj2만 싣는 근거 — web.ShapeAdjusts).
+			w(4, fmt.Sprintf(`<a:gd name="%s" fmla="val %d"/>`, adjust.name, adjust.val))
+		}
+		w(3, "</a:avLst>")
+	}
 	w(2, "</a:prstGeom>")
-	// 텍스트 박스는 배경도 테두리도 갖지 않는다 — 명시하지 않으면 테마 fmtScheme의
-	// 기본 채움/선이 상속되어 웹에 없는 사각형이 그려진다.
-	w(2, "<a:noFill/>")
-	w(2, "<a:ln>")
-	w(3, "<a:noFill/>")
-	w(2, "</a:ln>")
+	if err := writeFill(w, 2, spec.fill, spec.alpha, theme); err != nil {
+		return err
+	}
+	if err := writeLine(w, 2, spec.border, spec.alpha, theme); err != nil {
+		return err
+	}
+	if err := writeEffect(w, 2, spec.shadow, spec.alpha, theme); err != nil {
+		return err
+	}
 	w(1, "</p:spPr>")
-	b.WriteString(body)
+	b.WriteString(spec.body)
 	w(0, "</p:sp>")
+	return nil
+}
+
+// xfrmAttrs는 `a:xfrm`의 변형 속성이다 — 없으면 빈 문자열이다 (텍스트 박스의 xfrm에는
+// 속성이 없고, 그래서 텍스트 박스 산출은 이 함수가 생기기 전과 바이트가 같다).
+func xfrmAttrs(spec spSpec) string {
+	var attrs string
+	if spec.rot != nil {
+		attrs += fmt.Sprintf(` rot="%d"`, *spec.rot)
+	}
+	// flipH/flipV는 rot 뒤다 (CT_Transform2D의 속성 순서 — 속성 순서는 스키마 유효성과
+	// 무관하지만 골든이 한 가지 표기로 남는다).
+	if spec.flipH {
+		attrs += ` flipH="1"`
+	}
+	if spec.flipV {
+		attrs += ` flipV="1"`
+	}
+	return attrs
+}
+
+// writeFill은 확정 채움을 spPr의 채움 요소로 쓴다 — `none`은 `a:noFill`, 색은 `a:solidFill`이다.
+func writeFill(w func(depth int, line string), depth int, fill soml.Fill, alpha *float64, theme soml.Theme) error {
+	if fill.None {
+		// 웹의 `fill: none`(그리지 않는다)과 정확히 짝이다 — 투명한 채움이 아니라 채움 없음이다.
+		w(depth, "<a:noFill/>")
+		return nil
+	}
+	w(depth, "<a:solidFill>")
+	if err := writeColor(w, depth+1, fill.Color, alpha, theme); err != nil {
+		return err
+	}
+	w(depth, "</a:solidFill>")
+	return nil
+}
+
+// writeLine은 확정 테두리를 `a:ln`으로 쓴다 — 굵기는 속성(EMU), 색은 solidFill 자식, 스타일은
+// prstDash 자식이다 (조각이 서로 다른 자리에 실리는 것이 soml.Border를 3조각으로 푼 이유다).
+//
+// **`a:ln`은 도형 외곽선 중앙에 그려진다** — 웹도 SVG `stroke`로 경로 중앙에 그리므로 굵기의
+// 절반이 잰 박스 밖으로 **두 타깃 모두** 번진다 (render/web/shape.go의 테두리 절). 그래서
+// 도형 rect를 굵기 절반만큼 줄이는 보정을 하지 않는다: 보정하면 PPTX만 작아진다.
+func writeLine(w func(depth int, line string), depth int, border soml.Border, alpha *float64, theme soml.Theme) error {
+	if border.None {
+		// 선 없음도 **명시한다** — 비워 두면 테마 fmtScheme의 기본 선이 상속되어 웹에 없는
+		// 외곽선이 그려진다 (textBoxSp의 근거와 같다).
+		w(depth, "<a:ln>")
+		w(depth+1, "<a:noFill/>")
+		w(depth, "</a:ln>")
+		return nil
+	}
+	if border.Width <= 0 {
+		return fmt.Errorf("테두리 굵기가 해석되지 않았다 (%v)", border.Width)
+	}
+	dash, err := prstDashValue(border.Style)
+	if err != nil {
+		return err
+	}
+	w(depth, fmt.Sprintf(`<a:ln w="%d">`, EMU(border.Width)))
+	w(depth+1, "<a:solidFill>")
+	if err := writeColor(w, depth+2, border.Color, alpha, theme); err != nil {
+		return err
+	}
+	w(depth+1, "</a:solidFill>")
+	// 스키마 순서(CT_LineProperties): 채움 → prstDash → 조인·화살촉.
+	w(depth+1, fmt.Sprintf(`<a:prstDash val="%s"/>`, dash))
+	w(depth, "</a:ln>")
+	return nil
+}
+
+// writeEffect는 그림자 토큰을 `effectLst > outerShdw`로 쓴다 (그림자가 없으면 아무것도 쓰지
+// 않는다 — soml.ShapeStyle의 "정하지 않음" 계약).
+//
+// **`fmtScheme/effectStyleLst` 참조로 내는 길을 버렸다.** 그 목록은 스타일이 세 개뿐이고
+// 도형이 `style/effectRef`로 하나를 고르는 구조라, 도형마다 다른 그림자를 실을 수 없다 —
+// 그림자 토큰이 셋을 넘는 순간 매핑이 무너지고, 무너지는 방식은 "어떤 도형의 그림자가 다른
+// 토큰의 값으로 그려진다"다 (soml.ShadowToken이 남긴 결정을 여기서 닫는다). 도형마다 값을
+// 굽는 대가는 테마에서 그림자를 편집할 수 없다는 것이고, 그것은 반경·공간과 같은 종류의
+// 손실이다 (OOXML에 그 테마 개념이 없다).
+//
+// 극좌표를 그대로 낸다 — `outerShdw@dist/dir`가 극좌표이므로 변환이 없다. 직교로 푸는 쪽은
+// 웹이다 (render/web.shadowVarsCSS): 손실 있는 방향(atan2 → 60000분의 1도 반올림)을 산출
+// 경계에 두지 않는다는 결정의 결과가 이 비대칭이다.
+//
+// `rotWithShape="1"`인 이유: 웹에서 회전은 **박스**에 걸리고 그림자는 그 안 svg의
+// `filter`이므로 그림자가 도형과 함께 돈다 (render/web/shape.go의 박스/그림 분담). 0으로 두면
+// 45도 회전 도형의 그림자만 두 타깃에서 다른 방향으로 진다.
+func writeEffect(w func(depth int, line string), depth int, shadow *soml.ShadowToken, alpha *float64, theme soml.Theme) error {
+	if shadow == nil {
+		return nil
+	}
+	w(depth, "<a:effectLst>")
+	w(depth+1, fmt.Sprintf(`<a:outerShdw blurRad="%d" dist="%d" dir="%d" rotWithShape="1">`,
+		EMU(shadow.Blur), EMU(shadow.Dist), Rotation(shadow.Dir)))
+	if err := writeColor(w, depth+2, shadow.Color, shadowAlpha(*shadow, alpha), theme); err != nil {
+		return err
+	}
+	w(depth+1, "</a:outerShdw>")
+	w(depth, "</a:effectLst>")
+	return nil
+}
+
+// shadowAlpha는 그림자 색의 실효 불투명도다 — 토큰의 알파에 도형 불투명도를 곱한다
+// (1 이상이면 nil: 알파 요소를 내지 않는다).
+//
+// 곱하는 근거는 웹의 합성 순서다: `opacity`가 svg에 걸리고 그림자는 그 svg의 `filter`
+// 결과이므로 그림자도 함께 흐려진다 (render/web.shapeInkCSS). 곱하지 않으면 반투명 도형의
+// 그림자만 PPTX에서 진하게 남는다.
+func shadowAlpha(shadow soml.ShadowToken, opacity *float64) *float64 {
+	alpha := shadow.Alpha
+	if opacity != nil {
+		alpha *= *opacity
+	}
+	if alpha >= 1 {
+		return nil
+	}
+	return &alpha
+}
+
+// prstDashValue는 테두리 스타일을 OOXML `a:prstDash@val`로 만든다.
+//
+// **계열 선택이 이 함수의 내용 전부다** (soml.BorderStyle이 렌더 매핑에 넘긴 결정): `sys*`
+// 계열이 아니라 `dash`(4:3)·`dot`(1:3)을 고른다. 근거는 웹이 이미 그 비율을 냈다는 것이다 —
+// `stroke-dasharray`의 수치가 ECMA-376의 프리셋 파선 표에서 왔고(render/web.dashArray),
+// `sysDash`(3:1)·`sysDot`(1:1)을 고르면 같은 저자 값이 두 타깃에서 다른 간격으로 그려진다.
+// 이름이 아니라 **수치**가 두 타깃을 잇는 것이 파선의 계약이다.
+func prstDashValue(style soml.BorderStyle) (string, error) {
+	switch style {
+	case soml.BorderSolid:
+		// 실선도 명시한다 — 비워 두면 뷰어·테마의 기본값에 기대게 된다 (선 없음을 명시하는
+		// 것과 같은 근거).
+		return "solid", nil
+	case soml.BorderDashed:
+		return "dash", nil
+	case soml.BorderDotted:
+		return "dot", nil
+	}
+	return "", fmt.Errorf("테두리 스타일 %q는 어휘 밖이다", string(style))
 }
 
 // textBodyXML은 해석된 텍스트 외관과 블록의 자식들을 p:txBody로 컴파일한다 (PRD §9.4의
@@ -276,16 +644,6 @@ func writeSp(b *strings.Builder, shapeID int, name string, rect geom.Rect, body 
 // 문단 서식은 블록의 확정 스타일에서, 런 서식은 잎을 감싼 가장 안쪽 요소의 확정 스타일에서
 // 나온다 — 요소의 Attrs를 다시 읽지 않는다 (render/web.textStyleCSS와 같은 계약).
 func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, links *slideLinks) (string, error) {
-	algn, err := algnValue(style.Align)
-	if err != nil {
-		return "", err
-	}
-	// 블록 자체의 색·폰트·메트릭도 여기서 먼저 검증한다 — 런이 없는 빈 요소에서도 해석되지
-	// 않은 외관은 소리를 내야 한다 (writeTextShape의 빈 도형 정책과 짝).
-	if err := checkTextStyle(style, theme); err != nil {
-		return "", err
-	}
-
 	var b strings.Builder
 	w := func(depth int, line string) {
 		b.WriteString("\n" + shapeIndent + strings.Repeat("  ", depth) + line)
@@ -297,6 +655,10 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, lin
 	// 박스 고정 + 오버플로 허용이다 (PRD §13-1) — autofit 위임은 폰트 크기를 바꿔 웹과의
 	// 시각 일치를 깬다. pre만 wrap="none"이다: 웹이 줄바꿈하지 않기로 했으므로
 	// (render/web.writeBlock의 white-space: pre) PPTX가 접으면 줄 수가 갈라진다.
+	//
+	// anchor="t"는 슬라이드 직속 텍스트 박스의 고정값이다 — 잰 rect가 곧 내용 크기라 세로
+	// 앵커가 움직일 여백이 없다 (soml.TextStyle.Anchor). 앵커가 뜻을 갖는 자리는 도형
+	// 안이고, 그쪽 bodyPr은 shapeBodyXML이 낸다.
 	wrap := "square"
 	if elem.Name == "pre" {
 		wrap = "none"
@@ -306,6 +668,30 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, lin
 	w(3, "<a:noAutofit/>")
 	w(2, "</a:bodyPr>")
 	w(2, "<a:lstStyle/>")
+	// 빈 텍스트는 런 없는 문단으로 남는다 — 도형 자체는 낸다 (writeTextShape의 정책).
+	if err := writeTextParagraph(w, elem, style, theme, links); err != nil {
+		return "", err
+	}
+	w(1, "</p:txBody>")
+	return b.String(), nil
+}
+
+// writeTextParagraph는 텍스트 요소 하나를 마커 없는 문단(a:p)으로 쓴다 — 블록 하나가 문단
+// 하나이고, **도형 안 텍스트도 같은 함수를 지난다** (shapeBodyXML).
+//
+// 한 함수인 이유: 도형 안 텍스트가 슬라이드 직속 텍스트와 다른 문단 서식을 받으면, 같은
+// `<p>`가 도형 안에서만 다르게 그려진다 — 부모가 도형이라는 사실은 텍스트 해석을 바꾸지
+// 않는다는 값 층의 결정(core/shape.go)의 렌더러 쪽 절반이다.
+func writeTextParagraph(w func(depth int, line string), elem *soml.Element, style soml.TextStyle, theme soml.Theme, links *slideLinks) error {
+	algn, err := algnValue(style.Align)
+	if err != nil {
+		return err
+	}
+	// 블록 자체의 색·폰트·메트릭도 여기서 먼저 검증한다 — 런이 없는 빈 요소에서도 해석되지
+	// 않은 외관은 소리를 내야 한다 (writeTextShape의 빈 도형 정책과 짝).
+	if err := checkTextStyle(style, theme); err != nil {
+		return err
+	}
 	w(2, "<a:p>")
 	w(3, fmt.Sprintf(`<a:pPr algn="%s">`, algn))
 	w(4, "<a:lnSpc>")
@@ -313,13 +699,120 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, lin
 	w(5, fmt.Sprintf(`<a:spcPts val="%d"/>`, LineSpacing(style.LineHeight, style.Size)))
 	w(4, "</a:lnSpc>")
 	w(3, "</a:pPr>")
-	// 빈 텍스트는 런 없는 문단으로 남는다 — 도형 자체는 낸다 (writeTextShape의 정책).
 	if err := writeRuns(w, elem, style, theme, links, runContext{}); err != nil {
-		return "", err
+		return err
 	}
 	w(2, "</a:p>")
+	return nil
+}
+
+// shapeBodyXML은 도형의 자식 텍스트를 그 도형의 p:txBody로 컴파일한다 — **자식 하나가 문단
+// (a:p) 하나**다 (리스트가 `<li>` 하나를 문단 하나로 내는 것과 같은 구조 — listBodyXML).
+//
+// 도형 `sp` 하나와 텍스트 `sp` 하나로 나누는 대안을 버린 근거는 **편집 단위**다: PowerPoint
+// 에서 도형을 끌면 글자가 따라와야 하고, 두 도형으로 내면 저자가 카드를 옮길 때마다 글자를
+// 따로 옮긴다 (리스트를 도형 하나로 낸 것과 같은 근거). 그래서 도형 안 텍스트는 자기 도형도
+// 도형 id도 갖지 않고, 잰 rect도 소비되지 않는다 (writeShapeNode).
+//
+// bodyPr이 텍스트 박스와 갈라지는 자리는 셋이다:
+//   - **인셋은 저자의 `pad`**다 (텍스트 박스는 0). 웹에서 `pad`가 도형의 padding이고
+//     `box-sizing: border-box`라 잰 박스를 키우지 않으므로(render/web.shapeBoxCSS), 같은 값이
+//     같은 자리에 들어가는 것이 두 타깃의 글자 위치를 맞춘다.
+//   - **앵커는 첫 자식이 정한다** (web.ShapeAnchor — 규칙을 웹과 공유해야 두 타깃의 앵커가
+//     갈라지지 않는다). 정한 자식이 없으면 `t`이고, 그것이 flex의 기본 분배와 같은 뜻이다.
+//   - wrap은 **언제나 square**다. `<pre>` 자식이 있어도 바꾸지 않는다: bodyPr은 본문 하나에
+//     하나뿐이라 wrap="none"은 형제 문단까지 줄바꿈하지 않게 만들고, 그러면 그려진 도형 밖으로
+//     글자가 나가는 것이 **pre가 아닌 자식에서** 일어난다. 대가는 도형 안 `<pre>`의 긴 줄이
+//     웹에서는 넘치고 PPTX에서는 접히는 것이고, 그 갈라짐은 그 자식 하나에 갇힌다.
+func shapeBodyXML(elem *soml.Element, style soml.ShapeStyle, theme soml.Theme, links *slideLinks) (string, error) {
+	anchor, err := bodyAnchorValue(web.ShapeAnchor(elem))
+	if err != nil {
+		return "", err
+	}
+	insets, err := bodyInsets(style.Pad)
+	if err != nil {
+		return "", err
+	}
+
+	var b strings.Builder
+	w := func(depth int, line string) {
+		b.WriteString("\n" + shapeIndent + strings.Repeat("  ", depth) + line)
+	}
+	w(1, `<p:txBody>`)
+	w(2, fmt.Sprintf(`<a:bodyPr wrap="square" %s anchor="%s">`, insets, anchor))
+	w(3, "<a:noAutofit/>")
+	w(2, "</a:bodyPr>")
+	w(2, "<a:lstStyle/>")
+	if len(elem.Children) == 0 {
+		// 자식 없는 도형(`<shape/>`)도 txBody를 갖는다 — CT_TextBody가 문단 하나 이상을
+		// 요구하므로(p+) 서식 없는 빈 문단이 스키마를 채운다 (li 없는 리스트와 같은 처리).
+		// 본문을 아예 내지 않는 길도 있었지만(txBody는 sp의 선택 자식이다) 그러면 저자가
+		// PowerPoint에서 그 도형에 글자를 넣을 때 서식이 뷰어 기본값에서 온다.
+		w(2, "<a:p/>")
+	}
+	for _, child := range elem.Children {
+		text, ok := child.(*soml.Element)
+		if !ok {
+			// 도형 직속 문자 데이터는 파서가 막는다 (modelElements) — 여기 도달했다면
+			// 파서를 거치지 않은 덱이므로 조용히 건너뛰지 않고 멈춘다.
+			return "", fmt.Errorf("<%s> 안에 요소가 아닌 노드 %T가 있다", elem.Name, child)
+		}
+		if text.Name != soml.TextElement && soml.KindOf(text.Name) != soml.KindBlock {
+			// 콘텐츠 모델상 도형의 자식은 텍스트 요소뿐이다 (파서의 children allowlist —
+			// soml.shapeChildren). 리스트·중첩 도형은 어휘가 닫혀 있고, 열리는 날 이
+			// 함수가 불릿 문단 조립과 만나야 한다.
+			return "", fmt.Errorf("%s <%s> 안의 <%s>를 PPTX로 렌더하는 매핑이 없다",
+				text.Span, elem.Name, text.Name)
+		}
+		textStyle := text.TextStyle()
+		if textStyle == nil {
+			return "", fmt.Errorf("%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+				text.Span, text.Name)
+		}
+		if err := writeTextParagraph(w, text, *textStyle, theme, links); err != nil {
+			return "", err
+		}
+	}
 	w(1, "</p:txBody>")
 	return b.String(), nil
+}
+
+// bodyAnchorValue는 세로 앵커를 `bodyPr@anchor`로 만든다 (빈 앵커는 위 = OOXML 기본값).
+//
+// 물리 이름(top/bottom)이 OOXML에서도 물리 이름인 것은 세로축에 방향 전환이 없기 때문이다 —
+// `algn`이 논리 값(l/r)인 것과 갈라지는 지점이고, soml.TextAnchor가 물리 이름을 고른 근거와
+// 같다. 웹은 같은 값을 flex 주축 분배로 낸다 (render/web.anchorValue).
+func bodyAnchorValue(anchor soml.TextAnchor) (string, error) {
+	switch anchor {
+	case "", soml.AnchorTop:
+		return "t", nil
+	case soml.AnchorCenter:
+		return "ctr", nil
+	case soml.AnchorBottom:
+		return "b", nil
+	}
+	return "", fmt.Errorf("anchor %q는 세로 앵커 어휘 밖이다", string(anchor))
+}
+
+// bodyInsets는 도형의 `pad`를 `bodyPr`의 인셋 속성 넷으로 만든다 (`pad`가 없으면 전부 0).
+//
+// 백분율 `pad`는 에러다. CSS 백분율 padding은 **부모의 폭**에 대한 비율인데(자기 폭이 아니다)
+// OOXML 인셋은 절대 EMU이므로, 잰 도형 rect만으로는 웹이 실제로 쓴 값을 복원할 수 없다.
+// 근사해서 내면 도형 안 글자 위치가 조용히 어긋나므로 — 두 타깃이 다른 값을 쓰는 것을
+// 렌더러가 아는 순간 멈추는 편이 낫다 (해석되지 않은 값을 에러로 두는 것과 같은 태도).
+func bodyInsets(pad *soml.Pad) (string, error) {
+	insets := [4]int64{}
+	if pad != nil {
+		for i, side := range [4]soml.Length{pad.Left, pad.Top, pad.Right, pad.Bottom} {
+			if side.Percent {
+				return "", fmt.Errorf("도형의 pad는 백분율을 쓸 수 없다 (%v%%) — OOXML bodyPr 인셋은 절대 EMU이고 CSS 백분율 padding은 부모 폭 기준이다",
+					side.Value)
+			}
+			insets[i] = EMU(side.Value)
+		}
+	}
+	return fmt.Sprintf(`lIns="%d" tIns="%d" rIns="%d" bIns="%d"`,
+		insets[0], insets[1], insets[2], insets[3]), nil
 }
 
 // checkTextStyle은 확정 텍스트 스타일이 OOXML로 컴파일될 수 있는지 검증한다 — 웹 렌더러의
@@ -625,29 +1118,63 @@ func underlineValue(underline bool) string {
 	return "none"
 }
 
-// colorXML은 해석된 색을 채움 자식 요소로 만든다.
+// colorXML은 해석된 색을 채움 자식 요소로 만든다 (알파 없는 한 줄 표기).
 //
 // 토큰은 **schemeClr 참조로 남는다** — 여기서 RGB로 눕히면 내보낸 파일이 PowerPoint의
 // 테마 색 편집을 따라가지 못한다 (soml.Color의 주석, 제품 핵심 계약). 참조 이름은 토큰
 // 표의 Ref다 (clrMap을 거친 이름 — 파생 규칙을 여기 두지 않는다).
+//
+// **도형의 채움·선·그림자도 이 함수를 지난다** (colorElem을 거쳐 writeColor로) — 색 컴파일
+// 경로가 둘이 되면 한쪽만 토큰을 눕히고, 그 어긋남은 "이 도형만 테마 색을 따라가지 않는다"로만
+// 드러난다.
 func colorXML(color soml.Color, theme soml.Theme) (string, error) {
+	name, attrs, err := colorElem(color, theme)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("<%s %s/>", name, attrs), nil
+}
+
+// colorElem은 색 요소의 태그 이름과 속성이다 — 알파를 자식으로 갖는 표기(writeColor)와 한 줄
+// 표기(colorXML)가 같은 판정을 쓰도록 나눠 둔 자리다.
+func colorElem(color soml.Color, theme soml.Theme) (name, attrs string, err error) {
 	switch {
 	case color.IsZero():
-		return "", fmt.Errorf("색이 해석되지 않았다")
+		return "", "", fmt.Errorf("색이 해석되지 않았다")
 	case color.IsToken():
 		token, ok := theme.Color(color.Token)
 		if !ok {
-			return "", fmt.Errorf("색 토큰 %q가 테마에 없다", color.Token)
+			return "", "", fmt.Errorf("색 토큰 %q가 테마에 없다", color.Token)
 		}
 		if token.Ref == "" {
 			// Ref 없는 토큰은 schemeClr를 만들 수 없다 — RGB로 눕히는 폴백은 토큰 보존
 			// 계약을 조용히 깨므로 두지 않는다.
-			return "", fmt.Errorf("색 토큰 %q에 schemeClr 참조(Ref)가 없다", color.Token)
+			return "", "", fmt.Errorf("색 토큰 %q에 schemeClr 참조(Ref)가 없다", color.Token)
 		}
-		return fmt.Sprintf(`<a:schemeClr val="%s"/>`, token.Ref), nil
+		return "a:schemeClr", fmt.Sprintf(`val="%s"`, token.Ref), nil
 	default:
-		return fmt.Sprintf(`<a:srgbClr val="%s"/>`, color.RGB), nil
+		return "a:srgbClr", fmt.Sprintf(`val="%s"`, color.RGB), nil
 	}
+}
+
+// writeColor는 색을 채움 요소의 자식으로 쓴다 — 알파가 있으면 색 요소가 `a:alpha` 자식을 갖는다.
+//
+// **알파가 색 안에 사는 것이 OOXML의 구조다** (도형 단위 불투명도가 없다 — spSpec.alpha).
+// 그래서 채움·선·그림자가 각자 자기 색에 같은 알파를 싣고, 웹은 그림 svg 하나에 `opacity`를
+// 걸어 같은 결과를 낸다 (render/web.shapeInkCSS).
+func writeColor(w func(depth int, line string), depth int, color soml.Color, alpha *float64, theme soml.Theme) error {
+	name, attrs, err := colorElem(color, theme)
+	if err != nil {
+		return err
+	}
+	if alpha == nil {
+		w(depth, fmt.Sprintf("<%s %s/>", name, attrs))
+		return nil
+	}
+	w(depth, fmt.Sprintf("<%s %s>", name, attrs))
+	w(depth+1, fmt.Sprintf(`<a:alpha val="%d"/>`, Alpha(*alpha)))
+	w(depth, fmt.Sprintf("</%s>", name))
+	return nil
 }
 
 // typefaces는 폰트 토큰을 rPr의 latin/ea 요소로 만든다 (값은 typefaceValues).

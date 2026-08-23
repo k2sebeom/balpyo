@@ -220,10 +220,10 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
   `chevron` `arrow-right` `hexagon` `parallelogram` `callout` `star` `cloud`)
 - 외관: `fill`(토큰/리터럴/`none`), `border`(단색), `radius`, `shadow`, `opacity`,
   `rotate`/`flip` — **그라디언트는 Iteration 8**
-- [ ] 테스트: type → `prstGeom` 매핑 12종 전수, **토큰 색 → `schemeClr` 보존** (산출
+- [x] 테스트: type → `prstGeom` 매핑 12종 전수, **토큰 색 → `schemeClr` 보존** (산출
       XML에 리터럴 RGB가 아닌 테마 참조가 있는지 — 제품 핵심 계약), `radius` →
       `prstGeom` 조정값, 도형 내 `<text>` 앵커링
-- [ ] 구현: shape → 웹 div / PPTX `sp`, 외관 속성 → CSS / OOXML 양방향 컴파일 (§9.4 표)
+- [x] 구현: shape → 웹 div / PPTX `sp`, 외관 속성 → CSS / OOXML 양방향 컴파일 (§9.4 표)
 - [ ] 리뷰: PowerPoint/Keynote에서 도형 선택 → 진짜 프리셋 도형인지, **테마 색을 바꾸면
       도형 색이 따라가는지** 직접 확인
 - [ ] 문서:
