@@ -45,7 +45,7 @@
 지금 어휘에서 `<slide>`의 자식으로 올 수 있는 것은 `<text>`·`<note>`,
 [텍스트 서브셋](text-subset.md)의 블록·리스트 태그(`h1`~`h3`, `p`, `blockquote`, `pre`,
 `ul`/`ol`), [레이아웃 태그](layout.md)(`row`/`col`/`grid`/`spacer`), 그리고
-[`<shape>`](shape.md)다. 인라인 태그는
+[`<shape>`](shape.md)·[`<image>`](image.md)다. 인라인 태그는
 슬라이드 직속이 될 수 없다 — 블록 안에 쓴다. 콘텐츠 자식은 [자식 배치 속성](layout.md)
 (`grow`·`self`·`order` …)도 받는다 — 슬라이드의 세로 스택 자신이 flex 컨테이너다.
 
@@ -58,7 +58,7 @@
 | 루트가 `<slide>`가 아니다 | `루트 요소는 <slide>여야 한다 (<text>는 그 안에 쓴다)` |
 | 파일에 `<slide>`가 없다 | `루트 요소 <slide>가 없다` |
 | 파일에 `<slide>`가 둘 이상 | `루트 요소 <slide>는 파일에 하나여야 한다 (슬라이드 하나가 파일 하나다)` |
-| 어휘 밖의 자식 태그 | `<slide>의 자식으로 <…>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <spacer>)` |
+| 어휘 밖의 자식 태그 | `<slide>의 자식으로 <…>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <image>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <spacer>)` |
 | 문자 데이터를 직접 썼다 | `<slide> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)` |
 | 어휘 밖의 속성 | `<slide>에 알 수 없는 속성 … (쓸 수 있는 속성: id, skip)` |
 | `id`에 값이 없다 (`<slide id>`) | `id 속성에는 값이 필요하다 (id="architecture")` |

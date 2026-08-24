@@ -28,6 +28,7 @@ nav:
       - SOML — 텍스트 서브셋: reference/soml/text-subset.md
       - SOML — 레이아웃: reference/soml/layout.md
       - SOML — shape: reference/soml/shape.md
+      - SOML — image: reference/soml/image.md
       - SOML — note: reference/soml/note.md
       - 외관 속성: reference/appearance.md
       - CLI: reference/cli.md
@@ -61,6 +62,11 @@ nav:
       - 0020 shadow는 토큰만 받는다: decisions/0020-shadow-tokens-only.md
       - 0021 측정 뷰에서 변형을 끈다: decisions/0021-measure-view-disables-transforms.md
       - 0022 도형 variant는 상속하지 않는다: decisions/0022-shape-variants-do-not-inherit.md
+      - 0023 에셋 표는 덱이 소유한다: decisions/0023-assets-live-in-the-deck.md
+      - 0024 src는 프로젝트 루트 기준이다: decisions/0024-src-is-project-relative.md
+      - 0025 이미지 포맷은 PNG·JPEG 2종: decisions/0025-image-formats-are-png-and-jpeg.md
+      - 0026 contain은 박스를 그림에 맞춘다: decisions/0026-contain-fits-the-box-to-the-picture.md
+      - 0027 alt을 열고 frame을 닫는다: decisions/0027-open-alt-close-frame.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |

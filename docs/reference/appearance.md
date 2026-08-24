@@ -47,10 +47,12 @@ SOML에는 선언 채널이 **둘**이다 (PRD §5.3): 이 페이지가 담는 *
 ### `variant` — 테마가 이름 붙인 외관 번들
 
 `variant` 속성은 `<text>`와 블록 태그(`h1`~`h3`, `p`, `blockquote`, `pre`), 그리고
-[`<shape>`](soml/shape.md)가 받는다. **어휘는 테마 소유이고 표준화하지 않는다** (PRD §13-6).
+[`<shape>`](soml/shape.md)·[`<image>`](soml/image.md)가 받는다. **어휘는 테마 소유이고
+표준화하지 않는다** (PRD §13-6).
 
-**어휘가 두 벌이다** — 텍스트 variant와 도형 variant는 이름 공간이 다르고 서로를 모른다.
-내장 `minimal` 테마:
+**어휘가 세 벌이다** — 텍스트·도형·이미지 variant는 이름 공간이 다르고 서로를 모른다. 표를
+합치면 `<image variant="card">`가 도형 번들을 받아 `fill`을 정하려 들고(이미지에 없는 채널이다)
+그 값이 조용히 버려진다. 내장 `minimal` 테마:
 
 | 요소 | variant | 담는 것 |
 |---|---|---|
@@ -62,6 +64,12 @@ SOML에는 선언 채널이 **둘**이다 (PRD §5.3): 이 페이지가 담는 *
 | 도형 | `card-backdrop` | `fill: none` · `border: 3 solid accent1` · `radius: lg` |
 | 도형 | `stat-card` | `border: none` · `shadow: soft` · `radius: lg` |
 | 도형 | `badge` | `border: 1 solid accent1` · `radius: lg` |
+| 이미지 | `framed` | `border: 1 solid muted` · `radius: md` · `shadow: soft` |
+
+**이미지 어휘에 이름이 하나뿐인 것은 그 하나가 결정의 실물이기 때문이다.** PRD §7.5가 적었던
+`frame` 속성을 열지 않고 액자를 번들로 옮긴 것이 Iteration 5의 결정이고
+([ADR 0027](../decisions/0027-open-alt-close-frame.md)), 액자가 뜻하는 세 조각을 **함께** 정하는
+것이 번들의 뜻이다 — 저자가 `border`만 쓰면 액자가 아니라 선 하나다.
 
 **도형 variant는 자식 텍스트의 외관을 담지 않는다.** `variant="card-header"`가 그 안의
 글자를 굵게 만들지 않는다 — 담게 하면 캐스케이드가 트리를 타고 내려가는 **상속**이 되고,
@@ -101,6 +109,7 @@ slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — �
 | 요소 | 기본값 |
 |---|---|
 | `<shape>` | `fill: surface` · `border: 1 solid muted` · `radius: md` |
+| `<image>` | **없음** (빈 패치) |
 
 그래서 `<shape type="rect"/>`만 써도 채움과 테두리가 확정된다. 값이 비어 남으면 채우는 판단이
 렌더러로 내려가고, 두 타깃이 서로 다른 값을 채우는 순간 웹과 PPTX가 갈라진다.
@@ -108,7 +117,17 @@ slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — �
 - **기본값의 `radius: md`는 `rounded-rect`가 아닌 프리셋에서 조용히 버려진다.** 저자가 인라인
   으로 적은 `radius`는 에러이지만(고칠 수 있으므로 진단이 고칠 방법을 말한다) 테마 기본값에
   같은 진단을 내면 `<shape type="rect"/>`가 무조건 에러가 된다
-  ([ADR 0019](../decisions/0019-radius-is-rounded-rect-only.md)).
+  ([ADR 0019](../decisions/0019-radius-is-rounded-rect-only.md)). **그 제약은 도형의 것이다** —
+  그림에서 `radius`는 언제나 유효하다 (그림은 프리셋이 아니라 자기 클립을 갖는다, 아래 이미지
+  외관 표).
+- **이미지 행이 비어 있는 것은 도형과 정면으로 갈라지는 결정이다.** "값이 비면 렌더러가 채우는
+  판단을 한다"는 위의 근거가 그림에는 걸리지 않는다 — 채움 없는 도형은 보이지 않지만 그림은
+  자기 픽셀을 갖고, 두 타깃의 암묵 기본값도 갈라지지 않는다 (웹 `<img>`와 PPTX `pic`은 둘 다
+  장식 없이 그린다). 기본으로 테두리를 두르면 스크린샷·도표에 이중 경계가 생기고 저자가 모든
+  그림에 `border="none"`을 적어야 한다. 액자는 `variant="framed"`가 소유한다.
+- **`fit`은 이 단에 없다.** 기본값 `contain`은 **언어**가 갖는다 (`soml.DefaultImageFit`) —
+  `fit`은 외관 번들이 아니라 그림의 의미이고, 테마를 바꿨을 때 얼굴이 잘리기 시작하면 안 된다.
+  `<p>` ≡ `<text role="body">` 등가가 테마가 아니라 언어에 있는 것과 같은 자리의 결정이다.
 
 ## 텍스트 역할 5종
 
@@ -223,6 +242,52 @@ PowerPoint에서 확인한다** — 각 iteration의 리뷰 단계가 그 자리
   svg에 걸려 자식 텍스트를 건드리지 않고, PPTX는 알파를 색 안에만 싣는다
   ([ADR 0018](../decisions/0018-opacity-compiles-to-color-alpha.md)). 그림자 알파는 도형
   불투명도와 **곱한다** (웹에서 그림자가 그 svg의 필터 결과이므로 함께 흐려진다).
+
+### 이미지 외관
+
+[`<image>`](soml/image.md)의 외관 7종이다. **값 문법은 도형과 같은 함수가 해석하고 갈라지는 것은
+값을 싣는 자리뿐이다** — 도형은 SVG 프로퍼티(`stroke`·`rx`)에, 그림은 CSS
+(`border-*`·`border-radius`)에 건다. 그림에는 `fill`이 없다 (아래).
+
+| 속성 | 확정 값 | 웹 (`<img>`의 CSS) | PPTX (`p:pic`) |
+|---|---|---|---|
+| `fit="cover"` | `cover` | `width: 100%` · `height: 100%` · `object-fit: cover` | `a:blipFill/a:srcRect` 크롭 (넘치는 축을 양쪽 절반씩) |
+| `fit="contain"` | `contain` | `max-width: 100%` · `max-height: 100%` | 크롭 없음 — 잰 rect가 이미 맞춰진 그림이다 |
+| `alt` | 문자열 (생략 ≡ `""`) | `alt` 속성 — **언제나 낸다** | `p:cNvPr@descr` — **값이 있을 때만** 낸다 |
+| `border` (굵기) | 논리 px | `border-width: <px>px` | `a:ln@w` = px × 9525 (EMU) |
+| `border` (색) | 색 | `border-color: var(…)` 또는 `#RRGGBB` | `a:ln/a:solidFill/…Clr` |
+| `border` (스타일) | `solid` `dashed` `dotted` | `border-style: <이름>` — **간격은 UA가 정한다** | `a:prstDash@val` = `solid`·`dash`·`dot` |
+| `border="none"` · 미지정 | `none` 상태 · nil | 선언 없음 | `a:ln/a:noFill` (둘이 같은 산출이다) |
+| `radius` | 토큰 이름 + px | `border-radius: <px>px` | `prstGeom prst="roundRect"` + `avLst`의 `adj` (도형과 **같은 명세**) |
+| `shadow` | 토큰 항목 그대로 | `filter: drop-shadow(var(--balpyo-shadow-<토큰>))` | `a:effectLst/a:outerShdw` |
+| `opacity` | 0~1 실수 | `opacity` | **`a:blip/a:alphaModFix@amt`** + 선·그림자 색의 `a:alpha` |
+| `rotate` | 각도 | 박스가 아니라 `<img>`의 `transform: rotate(…)` | `a:xfrm@rot` = 각도 × 60000 |
+| `flip` | `h` `v` `hv` | 같은 `transform`의 `scale(…)` | `a:xfrm@flipH`/`@flipV` |
+
+- **`opacity`가 그림에서는 `alphaModFix`다.** 도형에서 그 효과를 버린 근거는 그것이 도형 안
+  **글자까지** 흐리게 한다는 것이었고, 그림에는 담을 글자가 없다 — 그래서 여기서는 CSS
+  `opacity`와 정확한 대응이고, [ADR 0018](../decisions/0018-opacity-compiles-to-color-alpha.md)의
+  "색 알파" 규칙이 색 없는 그림에서 가는 자리가 이것이다. 테두리·그림자 색에도 같은 알파가
+  실린다 (CSS `opacity`는 테두리를 포함한 요소 전체를 흐리게 하고 `drop-shadow`의 결과도 함께
+  흐려진다). 그림자 알파는 도형과 같이 토큰 알파와 **곱한다**.
+- **`radius`에는 프리셋 제약이 없다** (도형과 갈라지는 자리다 — 위 컴포넌트 기본값 절). 값
+  문법과 조정값 명세는 도형의 `rounded-rect`와 같은 곳에서 나온다: 같은 `radius="md"`가 도형과
+  그림에서 다른 모서리로 그려지면 저자는 그 차이를 둘을 나란히 놓고서야 본다.
+- **테두리의 위치가 두 타깃에서 다르다.** CSS 테두리는 박스 안쪽(`box-sizing: border-box`),
+  OOXML `a:ln`은 경계 중앙이라 PPTX의 그림이 굵기만큼 크게 그려진다 — 보정하지 않는 이유는 잰
+  rect가 그대로 `xfrm`이 된다는 계약이고, 1px에서 그 대가는 그림 면적의 4.9%다
+  ([테스트 환경](../internals/testing.md)). 도형에는 이 문제가 없었다 (SVG `stroke`도 경로
+  중앙이라 양쪽이 같은 규약이었다).
+- **미지정 테두리와 `border="none"`이 같은 산출인 것도 도형과 다르다.** 도형은 컴포넌트
+  기본값이 테두리를 채우므로 "해석되지 않았다"가 버그이지만, 이미지 기본값은 비어 있어 nil이
+  정상 상태다 — 둘 다 "선 없음"이라는 같은 그림이므로 산출도 같아야 한다.
+- **`fill`은 없다.** PRD §7.6 표의 `fill` 적용 대상에 image가 없고, 그림 뒤의 칠이 보이는 자리는
+  `contain`의 여백뿐인데 그 여백은 PPTX에서 `pic`의 박스 밖이다 — 받아 놓고 한 타깃에서만 그리는
+  속성이 된다.
+- **회전과 대칭이 하나의 `transform`을 나눠 쓴다** (도형은 회전을 박스에, 대칭을 그림 svg에
+  걸어 선언이 둘이다). 그림은 요소가 하나뿐이라 `transform`의 마지막 선언만 남으므로 커스텀
+  프로퍼티 둘로 합성한다: `rotate(…) scale(…)` — 오른쪽이 먼저 적용되므로 "대칭 후 회전"이고
+  OOXML `xfrm`(뒤집힌 기하를 `rot`으로 돌린다)과 같은 순서다.
 
 ### 인라인 서식 (텍스트 런)
 

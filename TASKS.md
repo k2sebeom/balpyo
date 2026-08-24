@@ -233,12 +233,13 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
 
 ## Iteration 5 — `<image>`
 
-- 태그: `<image>` (`src`, `fit=cover/contain`, `frame`, `border`, `radius`)
+- 태그: `<image>` (`src`, `fit=cover/contain`, `alt`, `border`, `radius`) — `frame`은 열지
+  않고 액자를 테마 variant `framed`로 옮겼다 (ADR 0027, PRD §7.5 갱신)
 - [x] 테스트: 에셋 수집·PPTX 미디어 파트/관계 파일, `fit` → `object-fit` / `srcRect`
       크롭 등가성, 없는 `src` 빌드 에러
 - [x] 구현: 이미지 파이프라인 (assets/ 해석, PPTX `pic` + rels)
 - [ ] 리뷰: cover 크롭이 양 타깃에서 같은 영역을 보여주는지
-- [ ] 문서: `docs/reference/soml/image.md` (`src` 해석 규칙 — assets/ 상대 경로 포함)
+- [x] 문서: `docs/reference/soml/image.md` (`src` 해석 규칙 — assets/ 상대 경로 포함)
 
 ## Iteration 6 — `<stack>` + `layout="canvas"` + 절대 배치
 
@@ -392,3 +393,8 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
 | `shadow`는 토큰만 받는다 (PRD §9.4의 `box-shadow` 칸을 `drop-shadow`로 갱신) | `docs/decisions/0020-shadow-tokens-only.md` | I4 |
 | 측정 뷰에서 변형을 끈다 — 회전은 잰 뒤에 얹힌다 (0006의 후속) | `docs/decisions/0021-measure-view-disables-transforms.md` | I4 |
 | 도형 variant는 자식 텍스트의 외관을 담지 않는다 (PRD §8.3 예제 갱신) | `docs/decisions/0022-shape-variants-do-not-inherit.md` | I4 |
+| 에셋 표는 덱 모델이 소유한다 (0004의 경계를 다시 그린다 — 에셋은 파생이 아니라 입력이다) | `docs/decisions/0023-assets-live-in-the-deck.md` | I5 |
+| `src`는 프로젝트 루트 기준이고 프로젝트 밖·URL·`data:`는 막는다 (재현 가능한 빌드 + 오프라인 발표) | `docs/decisions/0024-src-is-project-relative.md` | I5 |
+| 이미지 포맷은 PNG·JPEG 2종이고 확장자가 아니라 내용으로 판정한다 | `docs/decisions/0025-image-formats-are-png-and-jpeg.md` | I5 |
+| `fit="contain"`은 박스를 그림에 맞춘다 (`object-fit`을 쓰지 않는다 — 잰 rect가 곧 `xfrm`) | `docs/decisions/0026-contain-fits-the-box-to-the-picture.md` | I5 |
+| `alt`을 열고 `frame`을 닫는다 (PRD §7.5 표 갱신 — 액자는 variant `framed`) | `docs/decisions/0027-open-alt-close-frame.md` | I5 |

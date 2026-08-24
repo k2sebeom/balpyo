@@ -19,8 +19,8 @@
 
 - 세 컨테이너의 자식 어휘는 같다: `<text>`, 블록 태그(`h1`~`h3`, `p`, `blockquote`,
   `pre`), 리스트 컨테이너(`ul`/`ol`), **레이아웃 컨테이너**(중첩), [`<shape>`](shape.md),
-  `<spacer>`. `<note>`는 올 수 없다 — 노트는 콘텐츠가 아니라 슬라이드 메타데이터다.
-  `<li>`도 올 수 없다 (리스트 컨테이너의 자식으로만 온다).
+  [`<image>`](image.md), `<spacer>`. `<note>`는 올 수 없다 — 노트는 콘텐츠가 아니라 슬라이드
+  메타데이터다. `<li>`도 올 수 없다 (리스트 컨테이너의 자식으로만 온다).
 - 컨테이너 안에 문자 데이터를 직접 쓸 수 없다 — `<text>`나 블록 태그로 감싼다. 배치
   컨테이너에 글을 직접 담으면 PPTX에서 그 글이 실릴 도형이 없다.
 - `<spacer>`는 void 요소다 — `<spacer/>`로만 쓰고 자식도 문자 데이터도 갖지 않는다.
@@ -362,7 +362,7 @@ slides/007_style_appearance.slide:8:24: warning: style의 "background" 선언은
 |---|---|
 | `<spacer>`에 자식·문자 데이터를 썼다 | `void 태그 <spacer>은 내용을 가질 수 없다 (<spacer/>로 쓴다)` |
 | 컨테이너 안에 문자 데이터를 직접 썼다 | `<row> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)` |
-| 어휘 밖의 자식 태그 | `<row>의 자식으로 <note>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <spacer>)` |
+| 어휘 밖의 자식 태그 | `<row>의 자식으로 <note>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <image>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <spacer>)` |
 | flex 컨테이너에 트랙을 썼다 | `<row>에 알 수 없는 속성 cols (쓸 수 있는 속성: gap, align, justify, wrap, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, style)` |
 | `<spacer>`에 컨테이너 속성을 썼다 | `<spacer>에 알 수 없는 속성 gap (쓸 수 있는 속성: grow, shrink, basis, span, self, order, style)` |
 | `<li>`에 배치 속성을 썼다 | `<li>에는 속성을 쓸 수 없다 (grow)` |

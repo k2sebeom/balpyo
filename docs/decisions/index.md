@@ -28,6 +28,11 @@
 | [0020](0020-shadow-tokens-only.md) | `shadow`는 토큰만 받는다 (수치 축약을 열지 않는다) | 4 | 확정 |
 | [0021](0021-measure-view-disables-transforms.md) | 측정 뷰에서 변형을 끈다 (회전은 잰 뒤에 얹힌다) | 4 | 확정 (0006의 후속) |
 | [0022](0022-shape-variants-do-not-inherit.md) | 도형 variant는 자식 텍스트의 외관을 담지 않는다 | 4 | 확정 |
+| [0023](0023-assets-live-in-the-deck.md) | 에셋 표는 덱 모델이 소유한다 (지오메트리와 달리 곁 표가 아니다) | 5 | 확정 (0004의 경계를 다시 그린다) |
+| [0024](0024-src-is-project-relative.md) | `src`는 프로젝트 루트 기준이고 프로젝트 밖·네트워크는 막는다 | 5 | 확정 |
+| [0025](0025-image-formats-are-png-and-jpeg.md) | 이미지 포맷은 PNG·JPEG 2종이고 내용으로 판정한다 | 5 | 확정 |
+| [0026](0026-contain-fits-the-box-to-the-picture.md) | `fit="contain"`은 박스를 그림에 맞춘다 (`object-fit`을 쓰지 않는다) | 5 | 확정 |
+| [0027](0027-open-alt-close-frame.md) | `alt`을 열고 `frame`을 닫는다 (PRD §7.5 표 갱신) | 5 | 확정 |
 
 PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다. 그 결정들의
 색인은 PRD에 있고, 이 표는 **그 이후 구현 중에 새로 확정한 것**만 담는다.
