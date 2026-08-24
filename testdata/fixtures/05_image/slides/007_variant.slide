@@ -1,0 +1,33 @@
+<!-- 이미지 `variant` — 테마가 이름 붙인 외관 번들이고(PRD §7.6) 이름은 minimal 테마의
+     사유물이다 (PRD §13-6). 이 슬라이드가 있는 이유는 항목 01이 **`frame` 속성을 열지 않은
+     결정**의 실물 증거를 여기에 두기로 했기 때문이다 (NOTES 05/01의 열린 질문 (c) — 항목 02가
+     `framed`를 정의하면 픽스처에 그 칸을 더한다): 액자는 속성이 아니라 테두리·모서리·그림자
+     **세 조각을 함께 정하는 번들**이고, 저자가 `border`만 쓰면 액자가 아니라 선 하나다.
+     004_appearance가 속성 하나씩을 보이는 것과 정반대의 자리이므로 슬라이드를 갈라 둔다.
+
+     캐스케이드가 넷째 단(인라인)에서 뒤집히는 장면이 같은 슬라이드에 있어야 순서가 보인다
+     (04_shape/007_variant와 같은 구성): 오른쪽 칸은 같은 variant에 `border`만 인라인으로
+     덮으므로 모서리·그림자는 테마의 것이 남고 테두리만 저자의 것이 된다. 왼쪽 칸은 아무
+     장식이 없다 — **이미지 컴포넌트 기본값이 비어 있다**는 항목 02의 결정(도형과 정면으로
+     갈라지는 자리)이 그 칸에서 보인다.
+
+     캡션이 짧은 이유는 001_fit과 같다: 세 칸 트랙에서 여유가 0에 가까워지면 LibreOffice가
+     캡션을 한 줄 더 접고(측정: 그 두 줄이 이 슬라이드 픽셀 오차 1.87%의 절반이었다) 이
+     슬라이드가 시험하려는 캐스케이드 순서가 그 잔차에 묻힌다. -->
+<slide id="image-variant">
+  <h2>variant는 테마가 정한 액자다</h2>
+  <row gap="lg" align="center">
+    <col gap="xs">
+      <image src="assets/wide.png" fit="contain" w="240" h="180" alt="장식 없는 그림"/>
+      <text role="caption">기본 — 테마가 얹지 않는다</text>
+    </col>
+    <col gap="xs">
+      <image src="assets/wide.png" fit="contain" variant="framed" w="240" h="180" alt="액자를 씌운 그림"/>
+      <text role="caption">framed — 액자 한 벌</text>
+    </col>
+    <col gap="xs">
+      <image src="assets/wide.png" fit="contain" variant="framed" border="2 solid accent1" w="240" h="180" alt="액자에 테두리를 덮은 그림"/>
+      <text role="caption">인라인 border가 이긴다</text>
+    </col>
+  </row>
+</slide>

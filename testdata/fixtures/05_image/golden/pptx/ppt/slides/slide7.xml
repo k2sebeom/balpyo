@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld name="image-variant">
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="h2 s6.0"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="609600"/>
+            <a:ext cx="11411712" cy="445740"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="3510"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="2700" b="1">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="+mj-lt"/>
+                <a:ea typeface="+mj-ea"/>
+              </a:rPr>
+              <a:t>variant는 테마가 정한 액자다</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:pic>
+        <p:nvPicPr>
+          <p:cNvPr id="3" name="image s6.1.0.0" descr="장식 없는 그림"/>
+          <p:cNvPicPr/>
+          <p:nvPr/>
+        </p:nvPicPr>
+        <p:blipFill>
+          <a:blip r:embed="rId3"/>
+          <a:stretch>
+            <a:fillRect/>
+          </a:stretch>
+        </p:blipFill>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="1569690"/>
+            <a:ext cx="2286000" cy="1143000"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+      </p:pic>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="4" name="text s6.1.0.1"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="3055590"/>
+            <a:ext cx="2377440" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>기본 — 테마가 얹지 않는다</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:pic>
+        <p:nvPicPr>
+          <p:cNvPr id="5" name="image s6.1.1.0" descr="액자를 씌운 그림"/>
+          <p:cNvPicPr/>
+          <p:nvPr/>
+        </p:nvPicPr>
+        <p:blipFill>
+          <a:blip r:embed="rId3"/>
+          <a:stretch>
+            <a:fillRect/>
+          </a:stretch>
+        </p:blipFill>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="3238500" y="1564928"/>
+            <a:ext cx="2286000" cy="1152525"/>
+          </a:xfrm>
+          <a:prstGeom prst="roundRect">
+            <a:avLst>
+              <a:gd name="adj" fmla="val 9917"/>
+            </a:avLst>
+          </a:prstGeom>
+          <a:ln w="9525">
+            <a:solidFill>
+              <a:schemeClr val="tx2"/>
+            </a:solidFill>
+            <a:prstDash val="solid"/>
+          </a:ln>
+          <a:effectLst>
+            <a:outerShdw blurRad="152400" dist="38100" dir="5400000" rotWithShape="1">
+              <a:schemeClr val="tx1">
+                <a:alpha val="15000"/>
+              </a:schemeClr>
+            </a:outerShdw>
+          </a:effectLst>
+        </p:spPr>
+      </p:pic>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="6" name="text s6.1.1.1"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="3238500" y="3055590"/>
+            <a:ext cx="2377440" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>framed — 액자 한 벌</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:pic>
+        <p:nvPicPr>
+          <p:cNvPr id="7" name="image s6.1.2.0" descr="액자에 테두리를 덮은 그림"/>
+          <p:cNvPicPr/>
+          <p:nvPr/>
+        </p:nvPicPr>
+        <p:blipFill>
+          <a:blip r:embed="rId3"/>
+          <a:stretch>
+            <a:fillRect/>
+          </a:stretch>
+        </p:blipFill>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="5867400" y="1560165"/>
+            <a:ext cx="2286000" cy="1162050"/>
+          </a:xfrm>
+          <a:prstGeom prst="roundRect">
+            <a:avLst>
+              <a:gd name="adj" fmla="val 9836"/>
+            </a:avLst>
+          </a:prstGeom>
+          <a:ln w="19050">
+            <a:solidFill>
+              <a:schemeClr val="accent1"/>
+            </a:solidFill>
+            <a:prstDash val="solid"/>
+          </a:ln>
+          <a:effectLst>
+            <a:outerShdw blurRad="152400" dist="38100" dir="5400000" rotWithShape="1">
+              <a:schemeClr val="tx1">
+                <a:alpha val="15000"/>
+              </a:schemeClr>
+            </a:outerShdw>
+          </a:effectLst>
+        </p:spPr>
+      </p:pic>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="8" name="text s6.1.2.1"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="5867400" y="3055590"/>
+            <a:ext cx="2377440" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>인라인 border가 이긴다</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sld>

@@ -22,16 +22,17 @@ import (
 //     각각을 따로 단정하는 이유는 한 곳만 보는 테스트가 나머지 두 곳의 어긋남을 통과시키기
 //     때문이다 (그리고 그 실패는 "파일은 열리는데 그림 자리가 빈다"다).
 
-// imageFixtureDir은 실제 에셋 바이트를 가진 유일한 프로젝트다 (골든은 아직 없다 — 항목 05가
-// 켠다). 그림 테스트가 디스크를 쓰는 이유는 값이 디스크를 가리키기 때문이다: 손으로 만든
+// imageFixtureDir은 실제 에셋 바이트를 가진 유일한 프로젝트다 (골든은 항목 05가 만들었다).
+// 그림 테스트가 디스크를 쓰는 이유는 값이 디스크를 가리키기 때문이다: 손으로 만든
 // 바이트로 재면 고유 크기가 커밋된 파일과 갈라져도 알 수 없다.
-const imageFixtureDir = "../../testdata/fixtures/_05_image"
+const imageFixtureDir = "../../testdata/fixtures/05_image"
 
-// 픽스처 에셋의 고유 크기 (커밋된 파일의 사실 — soml/asset_test.go·core/asset_test.go가 같은
-// 값을 단정한다). `fit`은 종횡비가 박스와 다를 때만 뜻이 있어 가로/세로 각각이 필요하다.
+// 픽스처 에셋의 고유 크기 (커밋된 파일의 사실 — core/asset_test.go가 같은 값을 단정한다).
+// `fit`은 종횡비가 박스와 다를 때만 뜻이 있어 가로/세로 각각이 필요하고, 아래 크롭 표는
+// **비율만** 쓰므로(2:1·1:2) 픽셀 수가 바뀌어도 기대값이 움직이지 않는다.
 const (
-	wideSrc  = `src="assets/wide.png"` // 16×8 (2:1)
-	tallSrc  = `src="assets/tall.png"` // 8×16 (1:2)
+	wideSrc  = `src="assets/wide.png"` // 1200×600 (2:1)
+	tallSrc  = `src="assets/tall.png"` // 600×1200 (1:2)
 	photoSrc = `src="assets/photo.jpg"`
 )
 

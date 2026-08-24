@@ -1,6 +1,7 @@
 package testkit
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"math"
@@ -38,6 +39,15 @@ const (
 	// 들어왔다 — fixtureLiteralColors), 그리고 "가장 흔한 색이 배경"이라는 잉크 띠의
 	// 전제(칠한 도형이 큰 면을 덮는다 — inkBandSkipSlides).
 	shapeFixtureName = "04_shape"
+	// imageFixtureName은 Iteration 5의 그림 픽스처다 (`fit` 2종 + 외관 + 포맷·파트 재사용 +
+	// variant — 항목 05/05가 활성화했다). 여기서 처음으로 **골든에 바이너리가 들어간다**:
+	// 웹 산출 에셋(`assets/*`)과 PPTX 미디어 파트(`ppt/media/*`)가 같은 그림을 두 번 담는다
+	// (두 산출물이 각자 온전해야 하므로 정상이다 — 에셋 파일이 작아야 하는 이유가 여기다).
+	// 도형 픽스처가 깨뜨린 두 전제(리터럴 색·잉크 띠의 단색 배경)에서 이 픽스처는 앞쪽만
+	// 되돌린다: 그림의 테두리도 토큰 색이라 슬라이드 파트에 `srgbClr`가 0건이지만
+	// (fixtureLiteralColors에 행이 없다), 큰 색면은 도형보다 오히려 넓다 — inkBandSkipSlides가
+	// 그 사실을 슬라이드마다 적는다.
+	imageFixtureName = "05_image"
 )
 
 // fixtureNames는 픽스처 수준 검증(파트 목록·색 계약·좌표 대조·도형 수 등식·잉크 띠)이 도는
@@ -47,7 +57,8 @@ const (
 // 것은 텍스트가 아니라 **픽스처 하나의 산출물 전체**다. 이름이 `textFixtureNames`로 남아
 // 있으면 도형 픽스처를 넣는 것이 표의 뜻을 어기는 일처럼 보이고, 그러면 다음 사람이 같은
 // 계약을 받을 픽스처를 두 번째 표에 적는다.
-var fixtureNames = []string{textFixtureName, textSubsetFixtureName, layoutFixtureName, shapeFixtureName}
+var fixtureNames = []string{textFixtureName, textSubsetFixtureName, layoutFixtureName, shapeFixtureName,
+	imageFixtureName}
 
 // fixtureByName은 픽스처 러너와 같은 수집 경로로 픽스처를 집는다 — 경로를 직접 조립하면
 // 러너가 못 보는 픽스처를 여기만 보는 상태가 생길 수 있다.
@@ -209,6 +220,63 @@ var goldenPartLists = map[string][]string{
 		"pptx/ppt/slides/slide8.xml",
 		"pptx/ppt/theme/theme1.xml",
 	},
+	imageFixtureName: {
+		// **바이너리 골든이 처음 들어온 자리다.** 웹 산출 에셋 4장과 PPTX 미디어 파트 4장이
+		// 같은 그림을 두 번 담는다 — 두 산출물이 각자 온전해야 하기 때문이고, 목록이 그
+		// 중복을 눈에 보이게 갖고 있는 것이 정상이다 (골든이 커지는 대가는 에셋을 작게
+		// 만들어 치른다: 네 장 합쳐 6.3KB).
+		//
+		// **파트 목록 전수 검사가 XML만 가정하지 않는지도 이 픽스처가 처음 시험한다** —
+		// 목록은 골든 디렉토리를 순회해 만들므로 확장자를 보지 않는다 (AssertGoldenTree도
+		// 바이너리를 바이트로 비교한다).
+		"assets/dot.png",
+		"assets/photo.jpg",
+		"assets/tall.png",
+		"assets/wide.png",
+		"index.html",
+		"pptx/[Content_Types].xml",
+		"pptx/_rels/.rels",
+		"pptx/docProps/app.xml",
+		"pptx/docProps/core.xml",
+		"pptx/ppt/_rels/presentation.xml.rels",
+		// 미디어 파트는 **에셋 표 순서**로 번호가 붙고 확장자는 포맷에서 온다
+		// (image1=wide.png, image2=tall.png, image3=dot.png, image4=photo.jpg —
+		// `.jpg`가 하나뿐이라 Content_Types의 Default도 포맷당 하나다). 덱이 `wide.png`를
+		// 다섯 번 쓰는데 파트가 하나인 것이 중복 제거 계약의 실물이다.
+		"pptx/ppt/media/image1.png",
+		"pptx/ppt/media/image2.png",
+		"pptx/ppt/media/image3.png",
+		"pptx/ppt/media/image4.jpg",
+		"pptx/ppt/notesMasters/_rels/notesMaster1.xml.rels",
+		"pptx/ppt/notesMasters/notesMaster1.xml",
+		// 노트는 004(그림+텍스트)에만 있다 — 그 슬라이드가 노트·하이퍼링크·미디어를 한
+		// rels에 함께 실은 유일한 자리이고(rId2 노트 · rId3 그림 · rId4 링크), 관계 번호가
+		// 어긋날 수 있는 곳이 실물에서 여기뿐이다.
+		"pptx/ppt/notesSlides/_rels/notesSlide4.xml.rels",
+		"pptx/ppt/notesSlides/notesSlide4.xml",
+		"pptx/ppt/presentation.xml",
+		"pptx/ppt/slideLayouts/_rels/slideLayout1.xml.rels",
+		"pptx/ppt/slideLayouts/slideLayout1.xml",
+		"pptx/ppt/slideMasters/_rels/slideMaster1.xml.rels",
+		"pptx/ppt/slideMasters/slideMaster1.xml",
+		"pptx/ppt/slides/_rels/slide1.xml.rels",
+		"pptx/ppt/slides/_rels/slide2.xml.rels",
+		"pptx/ppt/slides/_rels/slide3.xml.rels",
+		"pptx/ppt/slides/_rels/slide4.xml.rels",
+		"pptx/ppt/slides/_rels/slide5.xml.rels",
+		"pptx/ppt/slides/_rels/slide6.xml.rels",
+		"pptx/ppt/slides/_rels/slide7.xml.rels",
+		"pptx/ppt/slides/slide1.xml",
+		"pptx/ppt/slides/slide2.xml",
+		"pptx/ppt/slides/slide3.xml",
+		"pptx/ppt/slides/slide4.xml",
+		"pptx/ppt/slides/slide5.xml",
+		"pptx/ppt/slides/slide6.xml",
+		"pptx/ppt/slides/slide7.xml",
+		"pptx/ppt/theme/theme1.xml",
+		// diagnostics.txt는 **없다** — 그림 픽스처는 경고 없이 빌드되어야 한다 (모르는
+		// variant를 쓰는 슬라이드가 없다: 007은 테마에 있는 `framed`를 쓴다).
+	},
 }
 
 // 골든에 들어간 파트 목록을 픽스처별로 통째로 단정한다.
@@ -256,6 +324,7 @@ var slideCounts = map[string]int{
 	textSubsetFixtureName: 6,
 	layoutFixtureName:     7,
 	shapeFixtureName:      8,
+	imageFixtureName:      7,
 }
 
 // fixtureLiteralColors는 슬라이드 파트에 **리터럴 색으로 나와야 하는** 값의 전수 목록이다
@@ -1259,6 +1328,175 @@ func shapeRoles(t *testing.T, deck *soml.Deck) []shapeRole {
 	return roles
 }
 
+// imageRegionDiffMaxRatio는 **그림 하나**(잰 rect)의 픽셀 오차 허용 비율이다.
+//
+// 슬라이드 전체 비율(fixtureDiffOptions)과 갈라 두는 이유가 이 iteration의 핵심 계약이다:
+// 슬라이드는 대부분 배경이므로 크롭 축이 뒤바뀐 그림 하나는 전체 비율에서 희석된다 (006의
+// 전면 그림처럼 큰 그림 하나가 슬라이드의 45%인 슬라이드도 있지만, 001·005는 그림 하나가
+// 3~5%다 — 축이 뒤바뀌어도 픽스처 임계값 안에 든다). 그림만 잘라 보면 `cover`가 **다른 부분**을
+// 보여주는 것이 곧바로 수치가 된다: 잘린 쪽이 바뀌면 표식(좌상단 흰 사각형)이 크롭 안에서
+// 사라지거나 나타나므로 오차가 그림 면적의 수십 %가 된다.
+//
+// 여유를 넣지 않고 **잰 rect 그대로** 자르는 이유: 그림자·회전 외접 사각형·경계 중앙에
+// 그려지는 `a:ln`은 rect 밖으로 24px까지 퍼지는데, 픽스처의 가장 좁은 칸 간격이 `gap="md"`
+// = 24px이라 여유를 그만큼 주면 **이웃 그림이 크롭에 들어온다** (도형은 여유 16px < 간격
+// 24px으로 그 문제를 피했다 — shapeCropMargin). 밖으로 나간 잉크의 판정은 슬라이드 전체
+// 비교가 갖고, 이 검사는 "그림의 어느 부분이 어디에 그려졌는가"만 본다.
+//
+// 6%는 측정값에 여유를 더한 값이다 (항목 05/05의 측정 — 아래 로그의 표): 22장 중 최대는
+// 004_image_text의 `cover` 그림 4.05%이고 그 잔차의 정체는 **리샘플링 커널**이다. 두 렌더러가
+// 같은 배율로 줄이지 않으므로(브라우저는 부드럽게, LibreOffice는 거칠게) 표식 경계의 한 줄이
+// 서로 다른 픽셀로 떨어진다 — 그림 안이 단색인 2색 에셋을 고른 이유가 이것이고(잔차가 경계에만
+// 남는다), 그래서 오차는 그림 크기가 아니라 **경계의 길이**에 비례한다.
+const imageRegionDiffMaxRatio = 0.06
+
+// imageRegionDiffMinPixels는 그림 오차의 **절대 하한 허용값**이다 (다른 픽셀 수).
+//
+// 잔차는 표식 경계에 남으므로 픽셀 수가 그림 **크기와 무의존**한데(리샘플링 커널의 차이는
+// 경계 한 줄에서 난다) 비율은 면적으로 나눈 값이다 — 아주 작은 그림에서는 그 한 줄이 큰
+// 비율로 계산되어 **방법 문제로 죽는다**: 001_fit의 `dot.png`(16×8 = 128픽셀)에서 경계
+// 20픽셀이 13.9%다. 32는 그 측정값에 여유를 더한 값이고, 게이트를 약화하지 않는다 — 크롭
+// 축이 갈라지는 `cover` 그림은 전부 17,000픽셀 이상이라 6%가 1,000픽셀을 넘고, 그 그림들에서
+// 이 하한은 판정에 닿지 않는다. loLineWidthMinPx가 짧은 잉크 띠에 둔 하한과 같은 종류의
+// 장치다 (그쪽은 AA 잡음 1px, 이쪽은 경계 한 줄).
+const imageRegionDiffMinPixels = 32
+
+// 그림이 두 타깃에서 **같은 영역을 같은 자리에** 보여주는가 — 그림마다 잰다.
+//
+// 이 iteration의 가장 큰 판정이다 (TASKS Iteration 5의 리뷰 포인트 "cover 크롭이 양 타깃에서
+// 같은 영역을 보여주는지"의 자동 절반). 웹은 `object-fit: cover`가 중앙을 보여주고 PPTX는
+// `srcRect`로 양쪽에서 같은 몫을 자르는데(pptx.coverCrop), 두 계산이 어긋나면 **같은 그림의
+// 다른 부분**이 같은 자리에 그려진다 — 좌표 대조(xfrm == 측정 EMU)는 그것을 볼 수 없다.
+func TestImageFixturePictureRegions(t *testing.T) {
+	RequireChromium(t)
+	RequireSoffice(t)
+	RequirePdftoppm(t)
+
+	fixture := fixtureByName(t, imageFixtureName)
+	result := fixture.Build(t)
+	if result.Geometry == nil {
+		t.Fatal("빌드에 지오메트리가 없다")
+	}
+	stage := result.Deck.Stage
+	shots := RenderPPTX(t, fixture.Output(t, result, ".pptx"), image.Pt(stage.Width, stage.Height))
+	browser := NewBrowser(t)
+	browser.Load(t, filepath.Join(result.OutDir, web.IndexFile))
+
+	worst, worstAt := 0.0, ""
+	pictures := 0
+	for i, slide := range result.Deck.Slides {
+		var boxes []geom.Box
+		for _, box := range result.Geometry.Boxes {
+			if box.Slide == i && box.El == soml.ImageElement {
+				boxes = append(boxes, box)
+			}
+		}
+		if len(boxes) == 0 {
+			continue
+		}
+		webImg := browser.ScreenshotElement(t, web.SlideIndexSelector(i))
+		loImg := shots[i]
+		for _, box := range boxes {
+			cmp, err := Diff(cropImage(webImg, box.Rect), cropImage(loImg, box.Rect), DefaultDiffOptions())
+			if err != nil {
+				t.Fatalf("%s/%s: %v", slide.ID, box.ID, err)
+			}
+			pictures++
+			t.Logf("%-16s %-10s %s: %s", slide.ID, box.ID, box.Rect, cmp)
+			if cmp.Ratio > worst {
+				worst, worstAt = cmp.Ratio, slide.ID+"/"+box.ID
+			}
+			if cmp.Ratio > imageRegionDiffMaxRatio && cmp.Changed > imageRegionDiffMinPixels {
+				t.Errorf("%s/%s: 그림 안 픽셀 오차 %.2f%%가 허용 %.2f%%를 넘는다 — 크롭이 갈라졌다면 "+
+					"고칠 곳은 오차가 아니라 웹의 `fit` CSS(render/web.imageFitCSS)와 크롭 계산(pptx.coverCrop)이다",
+					slide.ID, box.ID, cmp.Ratio*100, imageRegionDiffMaxRatio*100)
+			}
+		}
+	}
+	if pictures != imageFixturePictures {
+		t.Errorf("그림 %d개를 쟀다, want %d개 — 픽스처가 바뀌면 이 수를 함께 고친다", pictures, imageFixturePictures)
+	}
+	t.Logf("가장 큰 그림 오차: %s %.2f%% (허용 %.2f%%, 그림 %d개)",
+		worstAt, worst*100, imageRegionDiffMaxRatio*100, pictures)
+}
+
+// imageFixturePictures는 그림 픽스처의 `<image>` 수다 (문서 전체).
+//
+// 수를 못 박는 이유: 위 검사는 측정 목록을 걷다가 그림을 찾으므로, 순회가 그림을 놓치기
+// 시작하면 **아무것도 비교하지 않고 통과한다** (측정 목록에서 `<image>`가 빠지는 실패가
+// 정확히 그 모양이다). 슬라이드별 내역은 001 5 + 002 6 + 003 3 + 004 1 + 005 5 + 006 1 +
+// 007 3 = 24다.
+const imageFixturePictures = 24
+
+// 산출 에셋과 미디어 파트가 **입력 파일과 바이트가 같은가** — 엔진은 그림을 고치지 않는다.
+//
+// 골든이 이미 두 자리의 바이트를 갖고 있지만(웹 `assets/*`·PPTX `ppt/media/*`) 골든은
+// "지난번과 같은가"만 말한다: 엔진이 리사이즈·재압축을 시작하면 골든을 한 번 갱신한 뒤로는
+// 아무도 그것을 보지 않는다. 이 검사는 기준을 **커밋된 입력 파일**에 두므로 그 경로가 없다.
+//
+// 미디어 파트 이름의 기대값을 에셋 표에서 만드는 것도 계약이다: 파트 번호는 표의 자리이고
+// 확장자는 **포맷**에서 나온다 (NOTES 05/04 — `.jpg`·`.jpeg`가 한 Content_Types Default로
+// 모이게 하는 결정). 이름을 손으로 적으면 그 두 규칙이 테스트에서 사라진다.
+func TestImageFixtureAssetsAreByteIdentical(t *testing.T) {
+	RequireChromium(t) // 지오메트리 패스가 브라우저를 띄운다.
+	fixture := fixtureByName(t, imageFixtureName)
+	result := fixture.Build(t)
+
+	if len(result.Deck.Assets) == 0 {
+		t.Fatal("그림 픽스처의 에셋 표가 비었다")
+	}
+	data, err := os.ReadFile(fixture.Output(t, result, ".pptx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := PPTXParts(t, data)
+	media := map[string][]byte{}
+	for name, part := range parts {
+		if strings.HasPrefix(name, "ppt/media/") {
+			media[name] = part
+		}
+	}
+
+	for i, asset := range result.Deck.Assets {
+		want, err := os.ReadFile(filepath.Join(fixture.Dir, filepath.FromSlash(asset.Key)))
+		if err != nil {
+			t.Fatalf("픽스처 에셋을 읽을 수 없다: %v", err)
+		}
+		// 웹: 산출 디렉토리에 저자가 쓴 경로 그대로 나간다 (render/web.assetFiles).
+		got, err := os.ReadFile(filepath.Join(result.OutDir, filepath.FromSlash(asset.Key)))
+		if err != nil {
+			t.Errorf("웹 산출에 에셋이 없다: %v", err)
+		} else if !bytes.Equal(got, want) {
+			t.Errorf("웹 산출 %s의 바이트가 입력과 다르다 (%dB vs %dB) — 엔진이 그림을 고쳤다",
+				asset.Key, len(got), len(want))
+		}
+		// PPTX: 파트 이름은 표의 자리 + 포맷의 확장자다.
+		part := fmt.Sprintf("ppt/media/image%d%s", i+1, asset.Format.Ext())
+		if got, ok := media[part]; !ok {
+			t.Errorf("미디어 파트 %s가 없다 (있는 것: %v)", part, mediaNames(media))
+		} else if !bytes.Equal(got, want) {
+			t.Errorf("%s의 바이트가 %s와 다르다 (%dB vs %dB) — 엔진이 그림을 고쳤다",
+				part, asset.Key, len(got), len(want))
+		}
+		delete(media, part)
+		t.Logf("%-16s → %s (%dB, %dx%d)", asset.Key, part, len(want), asset.Width, asset.Height)
+	}
+	// 표에 없는 파트가 남으면 쓰이지 않는 그림이 패키지에 실린 것이다 (파일이 부푼다).
+	for name := range media {
+		t.Errorf("에셋 표에 없는 미디어 파트가 패키지에 있다: %s", name)
+	}
+}
+
+// mediaNames는 진단용 파트 이름 목록이다 (정렬순 — 맵 순회 순서가 메시지를 흔들지 않게).
+func mediaNames(media map[string][]byte) []string {
+	names := make([]string, 0, len(media))
+	for name := range media {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
 // LibreOffice 렌더가 견뎌야 하는 글줄 오차의 임계값 (PRD §13-1의 수치 — 이 테스트가 잰
 // 값에 여유를 더해 못 박은 회귀 감시선이다. 측정값은 NOTES.md 01/07의 표에 있다).
 const (
@@ -1334,6 +1572,26 @@ var inkBandSkipSlides = map[string]bool{
 	"04_shape/shape-cards":           true,
 	"04_shape/shape-variant":         true,
 	"04_shape/shape-variant-unknown": true,
+	// 05_image 전 슬라이드: 그림이 들어오면 전제가 **도형보다 더 크게** 깨진다. 도형의 채움은
+	// 잰 rect 하나를 덮지만 그림은 그 자체가 큰 색면이고, 무엇보다 **잰 줄이 없는 자리에
+	// 잉크가 있다** — 그래서 판정이 "허용 오차를 넘었다"가 아니라 `띠에 주인이 없다`로
+	// 죽는다 (측정: 001의 첫 줄 그림 네 장이 1068×202px 띠 **하나**가 되고, 006의 전면 그림은
+	// 1152×360px 띠 하나다. 004처럼 오른쪽에 글이 있는 슬라이드에서는 그림 띠가 그 글줄과
+	// 겹쳐 **주인을 찾아 통과하는데**, 그때 재는 것은 글자가 아니라 그림이다 — 값 완화보다
+	// 나쁜, 뜻이 뒤바뀐 통과다).
+	//
+	// 이 픽스처는 일곱 슬라이드 전부에 그림이 있어 "그림이 없는 슬라이드 한정"으로 좁힐
+	// 자리가 없다. 잃는 것과 남는 것: 슬라이드 직속 텍스트(제목·캡션)의 줄바꿈 계약은
+	// 01~03 픽스처가 같은 검사로 이미 지키고, 그림의 자리·크기는 좌표 대조가 0 오차로
+	// (TestFixtureCoordinatesMatchGeometry), 그림의 **내용**은 그림별 크롭 비교가
+	// (TestImageFixturePictureRegions) 판정한다.
+	"05_image/image-fit":        true,
+	"05_image/image-appearance": true,
+	"05_image/image-formats":    true,
+	"05_image/image-text":       true,
+	"05_image/image-grid":       true,
+	"05_image/image-full":       true,
+	"05_image/image-variant":    true,
 }
 
 // 두 렌더 엔진이 같은 자리에서 줄을 나누는가 — Iteration 1의 리뷰 포인트를 수치로 판정한다

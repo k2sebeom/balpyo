@@ -6,7 +6,7 @@
      하고(그림의 테두리도 `schemeClr`), 그 판정을 항목 05가 픽스처 수준 테스트로 받는다.
      `flip`은 좌우 대칭이 아닌 그림에서만 눈에 보이므로 표식이 좌상단에 있는 에셋을 쓴다.
      `fill`은 여기 없다 — 이미지에는 열지 않았다 (soml.imageAppearanceAttrs).
-     `variant`도 없다 — 테마의 이미지 컴포넌트는 항목 02가 정의한다. -->
+     `variant`도 여기 없다 — 번들은 속성 하나씩과 정반대의 자리이므로 007_variant가 소유한다. -->
 <slide id="image-appearance">
   <h2>테두리·모서리·그림자·투명도·회전</h2>
   <row gap="md" align="center">

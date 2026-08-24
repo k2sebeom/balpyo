@@ -20,8 +20,8 @@ import (
 // 항목으로 나온다).
 
 // imageFixture는 그림 픽스처다 — 실제 에셋 바이트를 가진 유일한 프로젝트이므로 이 패키지의
-// 이미지 테스트가 그 디렉토리를 파일 시스템으로 쓴다 (골든은 아직 없다 — 항목 05가 켠다).
-const imageFixture = "_05_image"
+// 이미지 테스트가 그 디렉토리를 파일 시스템으로 쓴다 (골든은 항목 05가 만들었다).
+const imageFixture = "05_image"
 
 // imageDeck은 서브셋 원문을 파이프라인과 같은 순서로 덱으로 만든다 — 파싱 → 해석 →
 // **에셋 패스**.
@@ -460,8 +460,8 @@ func TestRenderFixtureAssetsAreDeduplicatedAndDeterministic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 픽스처는 세 에셋을 여섯 슬라이드에서 열 번 넘게 쓴다.
-	wantPaths := []string{"assets/photo.jpg", "assets/tall.png", "assets/wide.png", IndexFile}
+	// 픽스처는 네 에셋을 일곱 슬라이드에서 스물네 번 쓴다 (wide.png 혼자 열다섯 번이다).
+	wantPaths := []string{"assets/dot.png", "assets/photo.jpg", "assets/tall.png", "assets/wide.png", IndexFile}
 	if got := files.Paths(); strings.Join(got, ",") != strings.Join(wantPaths, ",") {
 		t.Errorf("산출 파일 = %v, want %v", got, wantPaths)
 	}

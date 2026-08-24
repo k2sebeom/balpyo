@@ -1,0 +1,50 @@
+<!-- `fit` 2종 × 박스보다 **넓은 그림**·**좁은 그림**의 4칸이다. `fit`은 박스가 정해진
+     다음에만 뜻을 가지므로(soml.ImageAttrs) 네 칸 모두 `ratio`로 박스를 못 박고, 그 비율을
+     그림의 고유 비율과 **다르게** 둔다 (wide.png는 2:1, tall.png는 1:2, 박스는 4:3) —
+     비율이 같으면 cover와 contain이 같은 그림을 내고 이 슬라이드가 아무것도 시험하지 않는다.
+     항목 04의 크롭 등가성(`srcRect`)이 여기서 그림이 되고, 항목 05의 픽셀 비교가 크롭 축·
+     방향의 유일한 자동 판정이다. 에셋이 좌상단에만 표식을 가진 2색 그림인 이유가 이것이다:
+     대칭이면 축이 뒤바뀌어도 픽셀 비교가 통과한다.
+
+     **네 칸을 한 줄에 둔 것은 항목 05다.** 2×2였을 때는 `contain` 두 칸이 고유 크기 16×8로
+     남아 격자의 둘째 줄이 8px이었고(에셋이 박스보다 작았다), 에셋을 박스보다 크게 만든 뒤에는
+     그 줄이 418px이 되어 슬라이드 밖으로 나간다. 한 줄로 줄이면 네 조합이 그대로 남고 박스가
+     252×189가 된다 — 여전히 에셋(1200×600·600×1200)보다 작으므로 `contain`이 **줄이는**
+     경로를 탄다.
+
+     마지막 줄의 `dot.png`(16×8)는 그 반대 경로다: **`contain`은 확대하지 않는다**
+     (`max-*`는 위로 키우지 않는다 — NOTES 05/03의 실측). 이 엔진의 `contain`이 CSS
+     `object-fit: contain`이 아니라 `scale-down`에 가깝다는 사실을 픽스처가 그림으로 갖고
+     있어야, 저자가 "작은 그림이 왜 커지지 않나"를 산출물에서 확인할 수 있다.
+
+     **캡션이 짧은 것도 항목 05의 결정이다.** 트랙이 270px로 좁아지면서 원래 문장
+     (`cover · 넓은 그림 (좌우가 잘린다)`)의 여유 비율이 0.0%가 되었고, LibreOffice가 낱말
+     경계에서만 끊는 규칙 + 스크립트 간격 때문에 **캡션이 두 줄로 접혔다** (측정: 001 슬라이드
+     픽셀 오차 2.21%의 대부분이 그 두 줄이었다). 이 슬라이드가 시험하는 것은 `fit`이므로
+     줄바꿈 여유를 시험하는 문장을 여기 두지 않는다 — 04_shape/007_variant에서 같은 판단으로
+     본문을 줄인 선례가 있다. 잘린 쪽이 어디인지는 그림이 보여 준다. -->
+<slide id="image-fit">
+  <h2>fit — cover와 contain</h2>
+  <grid cols="4" gap="md">
+    <col gap="xs">
+      <image src="assets/wide.png" fit="cover" w="fill" ratio="4:3" alt="넓은 그림을 박스에 채운 것"/>
+      <text role="caption">cover · 넓은 그림</text>
+    </col>
+    <col gap="xs">
+      <image src="assets/tall.png" fit="cover" w="fill" ratio="4:3" alt="좁은 그림을 박스에 채운 것"/>
+      <text role="caption">cover · 좁은 그림</text>
+    </col>
+    <col gap="xs">
+      <image src="assets/wide.png" fit="contain" w="fill" ratio="4:3" alt="넓은 그림을 박스에 맞춘 것"/>
+      <text role="caption">contain · 넓은 그림</text>
+    </col>
+    <col gap="xs">
+      <image src="assets/tall.png" fit="contain" w="fill" ratio="4:3" alt="좁은 그림을 박스에 맞춘 것"/>
+      <text role="caption">contain · 좁은 그림</text>
+    </col>
+  </grid>
+  <row gap="sm" align="center">
+    <image src="assets/dot.png" fit="contain" w="240" h="120" alt="고유 크기가 박스보다 작은 그림"/>
+    <text role="caption">contain은 확대하지 않는다 — 고유 크기 16×8 그림은 240×120 박스 안에서 16×8로 남는다</text>
+  </row>
+</slide>

@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>image deck</title>
+<meta name="author" content="balpyo">
+<style>
+@layer balpyo.base, balpyo.theme, balpyo.author;
+
+@layer balpyo.base {
+  :root {
+    --balpyo-stage-width: 1280px;
+    --balpyo-stage-height: 720px;
+  }
+
+  * { box-sizing: border-box; }
+
+  /* 뷰어 크롬의 바탕 — 슬라이드 밖의 색이므로 덱의 색이 아니다 (테마 토큰이 아닌 유일한 색). */
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #111;
+  }
+
+  .balpyo-deck {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 24px;
+  }
+
+  /* 슬라이드는 논리 스테이지 크기를 그대로 갖는다. 저자·웹·지오메트리 패스가 같은
+     좌표계를 쓰므로 지오메트리 패스가 읽은 rect가 곧 PPTX 좌표다 (환산 분기 없음). */
+  .balpyo-slide {
+    position: relative;
+    width: var(--balpyo-stage-width);
+    height: var(--balpyo-stage-height);
+    overflow: hidden;
+  }
+
+  /* 스테이지는 자식을 문서 순서대로 세로로 쌓는다. 여백 64px은 1280폭의 5%로,
+     프로젝터의 오버스캔에서도 글자가 잘리지 않는다. */
+  .balpyo-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* 텍스트 블록은 콘텐츠 폭 전체를 갖는다 — 줄바꿈 폭이 확정되어야 브라우저가 잰 박스가
+     PPTX 텍스트 박스로 그대로 간다. flex: 0 0 auto는 스택이 스테이지보다 길 때 박스가
+     눌리는 것을 막는다 (기본 정책은 박스 고정 + 오버플로 허용 — PRD §13-1). */
+  .balpyo-text {
+    margin: 0;
+    width: 100%;
+    flex: 0 0 auto;
+  }
+
+  /* 레이아웃 태그 = CSS flex/grid의 이름 바꾸기 층 (PRD §7.4). 여기 있는 것은 태그의
+     정의 그 자체이고, 요소마다 다른 값(gap·align·pad·cols…)은 인라인 style로 나간다. */
+  .balpyo-row { display: flex; flex-direction: row; }
+  .balpyo-col { display: flex; flex-direction: column; }
+  .balpyo-grid { display: grid; }
+
+  /* <spacer>는 밀어내기가 내용인 빈 박스다. flex: 1은 남은 공간을 전부 받는다는 뜻이고,
+     저자가 적은 배치 속성(<spacer grow="2">)은 인라인 style로 이 값을 덮는다. */
+  .balpyo-spacer { flex: 1; }
+
+  /* 레이아웃 컨테이너의 자식은 **브라우저 기본값**으로 돌아간다.
+     스테이지의 세로 스택은 텍스트·리스트에 확정 폭(width: 100%)과 눌리지 않는
+     flex(0 0 auto)를 준다 (contentCSS) — 스택 안에서 줄바꿈을 결정적으로 만들기 위한
+     규칙이다. 그 규칙이 컨테이너 안까지 따라오면 자식마다 부모 폭 전체를 요구하는 셈이 되어
+     가로 컨테이너를 넘치고, <spacer>가 받을 "남은 공간"이 사라진다 (실측으로 드러났다 —
+     render/geom의 spacer 테스트). 컨테이너 안에서 폭을 정하는 것은 컨테이너다: 트랙,
+     교차축 정렬(stretch), 그리고 자식이 적은 basis/grow가 그 값을 만든다.
+     폭이 확정된다는 사실은 그대로다 — 브라우저가 정하고 지오메트리 패스가 그 값을 잰다. */
+  :is(.balpyo-row, .balpyo-col, .balpyo-grid) > :is(.balpyo-text, .balpyo-list) {
+    width: auto;
+    flex: 0 1 auto;
+  }
+
+  /* <image>는 **박스 하나와 그림 하나**다. 박스는 저자가 준 크기이고 그림은 그 안에서
+     맞춰진 실제 rect다 (=PPTX xfrm). 가운데 정렬인 이유는 `contain`의 여백이 한쪽으로
+     몰리지 않아야 하기 때문이다 — object-fit의 기본 정렬(50% 50%)과 같은 자리에 그림이 온다.
+     flex: 0 0 auto는 스택이 스테이지보다 길 때 박스가 눌리는 것을 막는다 (박스 고정 정책,
+     .balpyo-text와 같은 근거) — 눌린 박스를 재면 PPTX가 그 크기로 그림을 그린다.
+
+     min-*: 0은 flex/grid 항목의 **자동 최소 크기**를 끈다. 켜져 있으면 박스가 내용보다 작을 수
+     없어서 `ratio`가 진 박스가 그림 때문에 커진다 — 실측: `fit="cover" w="fill" ratio="4:3"`
+     칸에 세로로 긴 그림(8×16)을 넣으면 박스가 558×418.5가 아니라 **558×1116**이 되고
+     (그림의 height:100% 가 순환을 만나 auto로 풀리고, 그 높이가 다시 박스의 최소 높이가 된다)
+     잰 rect가 저자가 준 박스를 넘어 슬라이드 밖으로 나간다. 박스는 저자가 준 크기여야 한다. */
+  .balpyo-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  /* display: block은 인라인 <img>의 기준선 아래 여백을 없앤다 — 그 여백은 박스에만 생기고
+     그림에는 없어서, 남겨 두면 저자가 준 박스와 그림 사이에 설명할 수 없는 몇 px이 남는다.
+     min-*: 0은 flex 항목의 자동 최소 크기를 끈다 (그림이 박스보다 클 때 max-*가 줄이는 것을
+     자동 최소 크기가 막는다 — 그러면 contain이 넘친다). */
+  .balpyo-image-ink {
+    display: block;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  /* 회전·대칭 — 선언은 여기, 값은 인라인 커스텀 프로퍼티다 (imageRotateVar·imageFlipVar).
+     측정 뷰가 이 선언을 무효화해야 잰 rect가 **회전 전** 박스가 된다: 실측에서 200×100 그림에
+     rotate(15deg)를 걸면 getBoundingClientRect가 219.07×148.36을 준다. 대칭은 bbox를 바꾸지
+     않으므로 함께 꺼도 잰 rect가 같다 (도형은 대칭이 그림 svg에 걸려 측정 뷰가 건드리지
+     않는다 — 요소가 하나인 그림에서는 나눌 수 없고, 나눌 필요도 없다는 뜻이다). */
+  .balpyo-image-transform {
+    transform: rotate(var(--balpyo-image-rotate, 0deg)) var(--balpyo-image-flip, scale(1));
+  }
+  html[data-balpyo-view="measure"] .balpyo-image-transform {
+    transform: none;
+  }
+
+  /* ── 발표자 뷰 ── 런타임 JS가 <html>에 data-balpyo-view="presenter"를 켠다.
+     속성이 없으면(JS 꺼짐, 또는 지오메트리 패스가 지운 상태) 위의 세로 스택 그대로다. */
+  .balpyo-viewer-bar, .balpyo-viewer-notes { display: none; }
+
+  html[data-balpyo-view="presenter"] { height: 100%; }
+  html[data-balpyo-view="presenter"] body { height: 100%; overflow: hidden; }
+  html[data-balpyo-view="presenter"] .balpyo-deck {
+    position: fixed;
+    inset: 0;
+    padding: 0;
+    display: block;
+  }
+
+  /* 슬라이드는 전부 화면 가운데 겹쳐 두고 활성 슬라이드만 보인다. display가 아니라
+     visibility인 이유와 transform 스케일인 이유는 파일 머리 주석에 있다. */
+  html[data-balpyo-view="presenter"] .balpyo-slide {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(var(--balpyo-view-scale, 1));
+    visibility: hidden;
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-active {
+    visibility: visible;
+  }
+
+  html[data-balpyo-view="presenter"] .balpyo-viewer-bar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    position: fixed;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    z-index: 10;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(20, 20, 22, 0.88);
+    color: #ddd;
+    font: 14px/1 system-ui, sans-serif;
+  }
+  .balpyo-viewer-bar button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    padding: 8px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .balpyo-viewer-bar button:hover { background: rgba(255, 255, 255, 0.12); }
+  .balpyo-viewer-bar button:disabled { opacity: 0.35; cursor: default; background: transparent; }
+  .balpyo-viewer-bar button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.18); }
+  .balpyo-viewer-counter {
+    padding: 0 10px;
+    color: #aaa;
+    font-variant-numeric: tabular-nums;
+  }
+
+  html[data-balpyo-view="presenter"] .balpyo-viewer-notes {
+    display: block;
+    position: fixed;
+    left: 50%;
+    bottom: 64px;
+    transform: translateX(-50%);
+    z-index: 10;
+    width: min(640px, calc(100vw - 48px));
+    max-height: 40vh;
+    overflow-y: auto;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: rgba(20, 20, 22, 0.92);
+    color: #e6e6e6;
+    font: 15px/1.6 system-ui, sans-serif;
+    white-space: pre-wrap;
+  }
+  /* hidden 속성이 이겨야 한다 — 위의 display: block이 UA 스타일을 덮으므로 명시한다. */
+  html[data-balpyo-view="presenter"] .balpyo-viewer-notes[hidden] { display: none; }
+  .balpyo-viewer-notes.balpyo-viewer-empty { color: #999; font-style: italic; }
+}
+
+@layer balpyo.theme {
+  /* 테마 "minimal"의 토큰 표 — 웹 변수와 PPTX 테마 파트가 이 한 표에서 나온다. */
+  :root {
+    --balpyo-color-fg: #1A1A1A;
+    --balpyo-color-bg: #FFFFFF;
+    --balpyo-color-muted: #6B7280;
+    --balpyo-color-surface: #F3F4F6;
+    --balpyo-color-accent1: #0F65F9;
+    --balpyo-font-heading: "Noto Sans", "Noto Sans CJK KR", sans-serif;
+    --balpyo-font-body: "Noto Sans", "Noto Sans CJK KR", sans-serif;
+    --balpyo-font-mono: "Noto Sans Mono", "Noto Sans CJK KR", monospace;
+    --balpyo-space-xs: 6px;
+    --balpyo-space-sm: 12px;
+    --balpyo-space-md: 24px;
+    --balpyo-space-lg: 36px;
+    --balpyo-space-xl: 48px;
+    --balpyo-space-2xl: 72px;
+    --balpyo-shadow-soft: 0px 4px 16px color-mix(in srgb, var(--balpyo-color-fg) 15%, transparent);
+  }
+
+  .balpyo-slide { background: var(--balpyo-color-bg); }
+}
+</style>
+</head>
+<body>
+<div class="balpyo-deck" data-aspect="16:9" data-slides="7">
+<section class="balpyo-slide" id="image-fit" data-slide-index="0" data-slide-source="slides/001_fit.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s0.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">fit — cover와 contain</h2>
+<div class="balpyo-grid" data-balpyo-id="s0.1" data-balpyo-el="grid" style="gap: var(--balpyo-space-md); grid-template-columns: repeat(4, 1fr)">
+<div class="balpyo-col" data-balpyo-id="s0.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-image" style="width: 100%; aspect-ratio: 4 / 3">
+<img class="balpyo-image-ink" data-balpyo-id="s0.1.0.0" data-balpyo-el="image" src="assets/wide.png" alt="넓은 그림을 박스에 채운 것" style="width: 100%; height: 100%; object-fit: cover">
+</div>
+<div class="balpyo-text" data-balpyo-id="s0.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">cover · 넓은 그림</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s0.1.1" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-image" style="width: 100%; aspect-ratio: 4 / 3">
+<img class="balpyo-image-ink" data-balpyo-id="s0.1.1.0" data-balpyo-el="image" src="assets/tall.png" alt="좁은 그림을 박스에 채운 것" style="width: 100%; height: 100%; object-fit: cover">
+</div>
+<div class="balpyo-text" data-balpyo-id="s0.1.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">cover · 좁은 그림</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s0.1.2" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-image" style="width: 100%; aspect-ratio: 4 / 3">
+<img class="balpyo-image-ink" data-balpyo-id="s0.1.2.0" data-balpyo-el="image" src="assets/wide.png" alt="넓은 그림을 박스에 맞춘 것" style="max-width: 100%; max-height: 100%">
+</div>
+<div class="balpyo-text" data-balpyo-id="s0.1.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">contain · 넓은 그림</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s0.1.3" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-image" style="width: 100%; aspect-ratio: 4 / 3">
+<img class="balpyo-image-ink" data-balpyo-id="s0.1.3.0" data-balpyo-el="image" src="assets/tall.png" alt="좁은 그림을 박스에 맞춘 것" style="max-width: 100%; max-height: 100%">
+</div>
+<div class="balpyo-text" data-balpyo-id="s0.1.3.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">contain · 좁은 그림</div>
+</div>
+</div>
+<div class="balpyo-row" data-balpyo-id="s0.2" data-balpyo-el="row" style="gap: var(--balpyo-space-sm); align-items: center">
+<div class="balpyo-image" style="width: 240px; height: 120px">
+<img class="balpyo-image-ink" data-balpyo-id="s0.2.0" data-balpyo-el="image" src="assets/dot.png" alt="고유 크기가 박스보다 작은 그림" style="max-width: 100%; max-height: 100%">
+</div>
+<div class="balpyo-text" data-balpyo-id="s0.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">contain은 확대하지 않는다 — 고유 크기 16×8 그림은 240×120 박스 안에서 16×8로 남는다</div>
+</div>
+</div>
+</section>
+<section class="balpyo-slide" id="image-appearance" data-slide-index="1" data-slide-source="slides/002_appearance.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s1.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">테두리·모서리·그림자·투명도·회전</h2>
+<div class="balpyo-row" data-balpyo-id="s1.1" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center">
+<div class="balpyo-image" style="width: 200px; height: 150px">
+<img class="balpyo-image-ink" data-balpyo-id="s1.1.0" data-balpyo-el="image" src="assets/wide.png" alt="테두리" style="max-width: 100%; max-height: 100%; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted)">
+</div>
+<div class="balpyo-image" style="width: 200px; height: 150px">
+<img class="balpyo-image-ink" data-balpyo-id="s1.1.1" data-balpyo-el="image" src="assets/wide.png" alt="둥근 모서리" style="max-width: 100%; max-height: 100%; border-radius: 24px">
+</div>
+<div class="balpyo-image" style="width: 200px; height: 150px">
+<img class="balpyo-image-ink" data-balpyo-id="s1.1.2" data-balpyo-el="image" src="assets/wide.png" alt="그림자" style="max-width: 100%; max-height: 100%; filter: drop-shadow(var(--balpyo-shadow-soft))">
+</div>
+</div>
+<div class="balpyo-row" data-balpyo-id="s1.2" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center">
+<div class="balpyo-image" style="width: 200px; height: 150px">
+<img class="balpyo-image-ink" data-balpyo-id="s1.2.0" data-balpyo-el="image" src="assets/wide.png" alt="반투명" style="max-width: 100%; max-height: 100%; opacity: 0.4">
+</div>
+<div class="balpyo-image" style="width: 200px; height: 150px">
+<img class="balpyo-image-ink balpyo-image-transform" data-balpyo-id="s1.2.1" data-balpyo-el="image" src="assets/wide.png" alt="회전" style="max-width: 100%; max-height: 100%; --balpyo-image-rotate: 15deg">
+</div>
+<div class="balpyo-image" style="width: 200px; height: 150px">
+<img class="balpyo-image-ink balpyo-image-transform" data-balpyo-id="s1.2.2" data-balpyo-el="image" src="assets/wide.png" alt="좌우 대칭" style="max-width: 100%; max-height: 100%; --balpyo-image-flip: scaleX(-1)">
+</div>
+</div>
+</div>
+</section>
+<section class="balpyo-slide" id="image-formats" data-slide-index="2" data-slide-source="slides/003_formats_reuse.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s2.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">PNG · JPEG · 같은 그림 두 번</h2>
+<div class="balpyo-row" data-balpyo-id="s2.1" data-balpyo-el="row" style="gap: var(--balpyo-space-lg); align-items: center">
+<div class="balpyo-col" data-balpyo-id="s2.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-image" style="width: 240px; height: 180px">
+<img class="balpyo-image-ink" data-balpyo-id="s2.1.0.0" data-balpyo-el="image" src="assets/wide.png" alt="PNG 에셋" style="max-width: 100%; max-height: 100%">
+</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">wide.png</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s2.1.1" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-image" style="width: 240px; height: 180px">
+<img class="balpyo-image-ink" data-balpyo-id="s2.1.1.0" data-balpyo-el="image" src="assets/photo.jpg" alt="JPEG 에셋" style="max-width: 100%; max-height: 100%">
+</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">photo.jpg</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s2.1.2" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-image" style="width: 240px; height: 180px">
+<img class="balpyo-image-ink" data-balpyo-id="s2.1.2.0" data-balpyo-el="image" src="assets/wide.png" alt="같은 PNG를 다시 쓴 것" style="max-width: 100%; max-height: 100%">
+</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">wide.png (같은 파트)</div>
+</div>
+</div>
+</div>
+</section>
+<section class="balpyo-slide" id="image-text" data-slide-index="3" data-slide-source="slides/004_image_text.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s3.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">그림과 텍스트</h2>
+<div class="balpyo-row" data-balpyo-id="s3.1" data-balpyo-el="row" style="gap: var(--balpyo-space-xl); align-items: center">
+<div class="balpyo-col" data-balpyo-id="s3.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); flex-basis: 520px">
+<div class="balpyo-image" style="width: 100%; aspect-ratio: 4 / 3">
+<img class="balpyo-image-ink" data-balpyo-id="s3.1.0.0" data-balpyo-el="image" src="assets/tall.png" alt="구성도" style="width: 100%; height: 100%; object-fit: cover">
+</div>
+<div class="balpyo-text" data-balpyo-id="s3.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">그림 1. 구성도 — 캡션은 그림의 자식이 아니라 형제다</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s3.1.1" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
+<h3 class="balpyo-text" data-balpyo-id="s3.1.1.0" data-balpyo-el="h3" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">담을 것이 없는 태그</h3>
+<p class="balpyo-text" data-balpyo-id="s3.1.1.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">그림은 void다. 그림 안 글자는 도형의 일이고, 그림 위 글자는 겹침의 일이다.</p>
+<p class="balpyo-text" data-balpyo-id="s3.1.1.2" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">자세한 규칙은 <a href="https://balpyo.dev/reference/soml/image" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: underline">레퍼런스</a>에 있다.</p>
+</div>
+</div>
+</div>
+<div class="balpyo-notes" hidden>그림은 왼쪽, 규칙은 오른쪽. 링크는 발표 중에 열지 않는다.</div>
+</section>
+<section class="balpyo-slide" id="image-grid" data-slide-index="4" data-slide-source="slides/005_grid.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s4.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">그림 그리드</h2>
+<div class="balpyo-grid" data-balpyo-id="s4.1" data-balpyo-el="grid" style="gap: var(--balpyo-space-md); grid-template-columns: repeat(4, 1fr)">
+<div class="balpyo-image" style="width: 100%; aspect-ratio: 1 / 1">
+<img class="balpyo-image-ink" data-balpyo-id="s4.1.0" data-balpyo-el="image" src="assets/wide.png" alt="첫째 칸" style="width: 100%; height: 100%; object-fit: cover">
+</div>
+<div class="balpyo-image" style="width: 100%; aspect-ratio: 1 / 1">
+<img class="balpyo-image-ink" data-balpyo-id="s4.1.1" data-balpyo-el="image" src="assets/tall.png" alt="둘째 칸" style="width: 100%; height: 100%; object-fit: cover">
+</div>
+<div class="balpyo-image" style="width: 100%; aspect-ratio: 1 / 1">
+<img class="balpyo-image-ink" data-balpyo-id="s4.1.2" data-balpyo-el="image" src="assets/photo.jpg" alt="셋째 칸" style="width: 100%; height: 100%; object-fit: cover">
+</div>
+<div class="balpyo-image" style="padding: var(--balpyo-space-md) var(--balpyo-space-md) var(--balpyo-space-md) var(--balpyo-space-md); width: 100%; aspect-ratio: 1 / 1">
+<img class="balpyo-image-ink" data-balpyo-id="s4.1.3" data-balpyo-el="image" src="assets/wide.png" alt="여백이 있는 칸" style="max-width: 100%; max-height: 100%">
+</div>
+<div class="balpyo-image" style="width: 100%; aspect-ratio: 3 / 1; grid-column: span 2">
+<img class="balpyo-image-ink" data-balpyo-id="s4.1.4" data-balpyo-el="image" src="assets/tall.png" alt="두 칸을 차지하는 그림" style="max-width: 100%; max-height: 100%">
+</div>
+</div>
+</div>
+</section>
+<section class="balpyo-slide" id="image-full" data-slide-index="5" data-slide-source="slides/006_full_bleed.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s5.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">전면 그림</h2>
+<div class="balpyo-image" style="width: 100%; height: 360px">
+<img class="balpyo-image-ink" data-balpyo-id="s5.1" data-balpyo-el="image" src="assets/photo.jpg" alt="전면 그림" style="width: 100%; height: 100%; object-fit: cover">
+</div>
+<div class="balpyo-spacer" data-balpyo-id="s5.2" data-balpyo-el="spacer"></div>
+<div class="balpyo-text" data-balpyo-id="s5.3" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">배율은 고유 크기가 아니라 w·h·ratio가 정한다 — 이 그림은 1152×360으로 놓였다.</div>
+</div>
+</section>
+<section class="balpyo-slide" id="image-variant" data-slide-index="6" data-slide-source="slides/007_variant.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s6.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">variant는 테마가 정한 액자다</h2>
+<div class="balpyo-row" data-balpyo-id="s6.1" data-balpyo-el="row" style="gap: var(--balpyo-space-lg); align-items: center">
+<div class="balpyo-col" data-balpyo-id="s6.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-image" style="width: 240px; height: 180px">
+<img class="balpyo-image-ink" data-balpyo-id="s6.1.0.0" data-balpyo-el="image" src="assets/wide.png" alt="장식 없는 그림" style="max-width: 100%; max-height: 100%">
+</div>
+<div class="balpyo-text" data-balpyo-id="s6.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">기본 — 테마가 얹지 않는다</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s6.1.1" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-image" style="width: 240px; height: 180px">
+<img class="balpyo-image-ink" data-balpyo-id="s6.1.1.0" data-balpyo-el="image" src="assets/wide.png" alt="액자를 씌운 그림" style="max-width: 100%; max-height: 100%; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); border-radius: 12px; filter: drop-shadow(var(--balpyo-shadow-soft))">
+</div>
+<div class="balpyo-text" data-balpyo-id="s6.1.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">framed — 액자 한 벌</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s6.1.2" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-image" style="width: 240px; height: 180px">
+<img class="balpyo-image-ink" data-balpyo-id="s6.1.2.0" data-balpyo-el="image" src="assets/wide.png" alt="액자에 테두리를 덮은 그림" style="max-width: 100%; max-height: 100%; border-width: 2px; border-style: solid; border-color: var(--balpyo-color-accent1); border-radius: 12px; filter: drop-shadow(var(--balpyo-shadow-soft))">
+</div>
+<div class="balpyo-text" data-balpyo-id="s6.1.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">인라인 border가 이긴다</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<script>
+(() => {
+  "use strict";
+  const root = document.documentElement;
+  const slides = Array.from(document.querySelectorAll(".balpyo-slide"));
+  if (slides.length === 0) return;
+
+  const button = (cls, label, text) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = cls;
+    b.setAttribute("aria-label", label);
+    b.textContent = text;
+    return b;
+  };
+  const prev = button("balpyo-viewer-prev", "Previous slide", "‹");
+  const next = button("balpyo-viewer-next", "Next slide", "›");
+  const notesToggle = button("balpyo-viewer-notes-toggle", "Toggle speaker notes", "Notes");
+  notesToggle.setAttribute("aria-pressed", "false");
+  const counter = document.createElement("span");
+  counter.className = "balpyo-viewer-counter";
+
+  const bar = document.createElement("nav");
+  bar.className = "balpyo-viewer-bar";
+  bar.setAttribute("aria-label", "Presentation controls");
+  bar.append(prev, counter, next, notesToggle);
+
+  const notes = document.createElement("aside");
+  notes.className = "balpyo-viewer-notes";
+  notes.setAttribute("aria-label", "Speaker notes");
+  notes.hidden = true;
+
+  document.body.append(notes, bar);
+
+  let current = -1;
+
+  // 배율은 창에 꽉 차는 fit이다. 레이아웃 크기(offsetWidth)는 transform과 무관하게 논리
+  // 스테이지이므로, 잰 값을 다시 스케일하는 되먹임이 없다.
+  const fit = () => {
+    const scale = Math.min(
+      window.innerWidth / slides[0].offsetWidth,
+      window.innerHeight / slides[0].offsetHeight);
+    root.style.setProperty("--balpyo-view-scale", String(scale));
+  };
+
+  const show = (index, writeHash) => {
+    const target = Math.min(Math.max(index, 0), slides.length - 1);
+    if (target === current) return;
+    if (current >= 0) slides[current].classList.remove("balpyo-viewer-active");
+    current = target;
+    const slide = slides[current];
+    slide.classList.add("balpyo-viewer-active");
+    counter.textContent = (current + 1) + " / " + slides.length;
+    prev.disabled = current === 0;
+    next.disabled = current === slides.length - 1;
+    const note = slide.querySelector(".balpyo-notes");
+    notes.textContent = note ? note.textContent : "No notes for this slide.";
+    notes.classList.toggle("balpyo-viewer-empty", !note);
+    if (writeHash) {
+      // 히스토리를 쌓지 않는다 — 뒤로 가기가 슬라이드를 되감으면 발표 중에 페이지를
+      // 떠나는 길이 없어진다. file://에서 막는 브라우저가 있어도 조용히 넘어간다.
+      try { history.replaceState(null, "", "#/" + encodeURIComponent(slide.id)); } catch (e) {}
+    }
+  };
+
+  const fromHash = () => {
+    let raw = location.hash.replace(/^#\/?/, "");
+    try { raw = decodeURIComponent(raw); } catch (e) {}
+    if (raw === "") return 0;
+    const byID = slides.findIndex((s) => s.id === raw);
+    if (byID >= 0) return byID;
+    const n = Number(raw);
+    if (Number.isInteger(n) && n >= 1 && n <= slides.length) return n - 1;
+    return 0;
+  };
+
+  prev.addEventListener("click", () => show(current - 1, true));
+  next.addEventListener("click", () => show(current + 1, true));
+  notesToggle.addEventListener("click", () => {
+    notes.hidden = !notes.hidden;
+    notesToggle.setAttribute("aria-pressed", String(!notes.hidden));
+  });
+  window.addEventListener("hashchange", () => show(fromHash(), false));
+  window.addEventListener("resize", fit);
+  window.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    switch (e.key) {
+    case "ArrowRight": case "ArrowDown": case "PageDown": case " ":
+      e.preventDefault(); show(current + 1, true); break;
+    case "ArrowLeft": case "ArrowUp": case "PageUp":
+      e.preventDefault(); show(current - 1, true); break;
+    case "Home": e.preventDefault(); show(0, true); break;
+    case "End": e.preventDefault(); show(slides.length - 1, true); break;
+    case "n": case "N": notesToggle.click(); break;
+    }
+  });
+
+  root.setAttribute("data-balpyo-view", "presenter");
+  fit();
+  // 해시가 있으면 그 슬라이드로 열되 해시는 손대지 않는다 — 사용자가 준 딥링크 형태
+  // (번호든 id든)를 열자마자 바꿔치지 않는다. 해시가 없으면 첫 슬라이드고 URL은 깨끗하다.
+  show(fromHash(), false);
+})();
+</script>
+</body>
+</html>

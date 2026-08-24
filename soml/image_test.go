@@ -427,12 +427,12 @@ func TestImageChildVocabulary(t *testing.T) {
 	}
 }
 
-// 픽스처 `_05_image`의 슬라이드가 파서 어휘와 어긋나지 않는지 파싱만 검증한다 — 골든·렌더
-// 검증은 픽스처 러너(internal/testkit)의 몫이고 활성화는 항목 05다 (`_` 접두가 그 표시다).
+// 픽스처 `05_image`의 슬라이드가 파서 어휘와 어긋나지 않는지 파싱만 검증한다 — 골든·렌더
+// 검증은 픽스처 러너(internal/testkit)의 몫이다 (항목 05가 스위트에 편입했다).
 // 여기가 파서 단으로 남아 있는 이유: 어휘 위반은 골든 diff가 아니라 진단 문구로 드러나야
 // 한다. 없는 `src`·모르는 variant는 파서에 진단이 없다 — 값 검사는 값 층(항목 02)이 소유한다.
 func TestParseImageFixture(t *testing.T) {
-	root := filepath.Join("..", "testdata", "fixtures", "_05_image")
+	root := filepath.Join("..", "testdata", "fixtures", "05_image")
 	dir := filepath.Join(root, "slides")
 	entries, err := os.ReadDir(dir)
 	if err != nil {

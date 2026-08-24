@@ -211,19 +211,19 @@ func TestResolveAssetsWithoutFS(t *testing.T) {
 	}
 }
 
-// 픽스처는 이번 iteration 전체의 시험대다 (`_05_image` — 아직 꺼져 있다: 항목 05가 켠다).
+// 픽스처는 이번 iteration 전체의 시험대다 (`05_image` — 항목 05가 스위트에 편입했다).
 // 값 층과 에셋 패스가 픽스처를 통째로 해석하는지, 표의 항목이 예상한 셋뿐인지 못 박는다.
 func TestResolveImageFixture(t *testing.T) {
-	deck := readFixtureDeck(t, "_05_image")
+	deck := readFixtureDeck(t, "05_image")
 	if diags := Resolve(deck); len(diags) != 0 {
 		t.Fatalf("픽스처 해석 진단이 없어야 한다: %v", diags)
 	}
-	dir := filepath.Join("..", "testdata", "fixtures", "_05_image")
+	dir := filepath.Join("..", "testdata", "fixtures", "05_image")
 	if diags := ResolveAssets(deck, os.DirFS(dir)); len(diags) != 0 {
 		t.Fatalf("픽스처 에셋 진단이 없어야 한다: %v", diags)
 	}
-	// 순서는 첫 사용의 문서 순서다 — 001_fit이 wide·tall을, 003이 photo를 처음 쓴다.
-	want := []string{"assets/wide.png", "assets/tall.png", "assets/photo.jpg"}
+	// 순서는 첫 사용의 문서 순서다 — 001_fit이 wide·tall·dot을, 003이 photo를 처음 쓴다.
+	want := []string{"assets/wide.png", "assets/tall.png", "assets/dot.png", "assets/photo.jpg"}
 	if !reflect.DeepEqual(deck.Assets.Keys(), want) {
 		t.Errorf("에셋 표 = %v, want %v", deck.Assets.Keys(), want)
 	}
@@ -240,11 +240,15 @@ func TestResolveImageFixture(t *testing.T) {
 			t.Errorf("%s의 바이트가 파일과 다르다", asset.Key)
 		}
 	}
-	// 고유 크기는 픽스처가 못 박은 값이다 (NOTES 05/01: wide 16×8, tall 8×16, photo 16×8).
+	// 고유 크기는 픽스처가 못 박은 값이다. 항목 05/05가 세 장을 **박스보다 크게** 다시 만들었고
+	// (그 전에는 wide 16×8·tall 8×16·photo 16×8이라 `contain` 칸이 전부 16×8 점으로 남았다 —
+	// NOTES 05/03의 열린 질문 (a)), 확대하지 않는 경로를 보이는 아주 작은 그림 하나를
+	// `dot.png`로 남겼다.
 	sizes := map[string][2]int{
-		"assets/wide.png":  {16, 8},
-		"assets/tall.png":  {8, 16},
-		"assets/photo.jpg": {16, 8},
+		"assets/wide.png":  {1200, 600},
+		"assets/tall.png":  {600, 1200},
+		"assets/photo.jpg": {1200, 600},
+		"assets/dot.png":   {16, 8},
 	}
 	for key, size := range sizes {
 		asset, ok := deck.Assets.Get(key)

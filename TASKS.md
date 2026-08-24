@@ -234,7 +234,7 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
 ## Iteration 5 — `<image>`
 
 - 태그: `<image>` (`src`, `fit=cover/contain`, `frame`, `border`, `radius`)
-- [ ] 테스트: 에셋 수집·PPTX 미디어 파트/관계 파일, `fit` → `object-fit` / `srcRect`
+- [x] 테스트: 에셋 수집·PPTX 미디어 파트/관계 파일, `fit` → `object-fit` / `srcRect`
       크롭 등가성, 없는 `src` 빌드 에러
 - [x] 구현: 이미지 파이프라인 (assets/ 해석, PPTX `pic` + rels)
 - [ ] 리뷰: cover 크롭이 양 타깃에서 같은 영역을 보여주는지

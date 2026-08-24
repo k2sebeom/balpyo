@@ -749,7 +749,7 @@ func TestMeasureShapeInkStylesResolve(t *testing.T) {
 func imageDeck(t *testing.T, bodies ...string) *soml.Deck {
 	t.Helper()
 	deck := layoutDeck(t, bodies...)
-	dir := filepath.Join("..", "..", "testdata", "fixtures", "_05_image")
+	dir := filepath.Join("..", "..", "testdata", "fixtures", "05_image")
 	if err := core.ResolveAssets(deck, os.DirFS(dir)).Err(); err != nil {
 		t.Fatalf("에셋 해석 실패: %v", err)
 	}
@@ -759,12 +759,16 @@ func imageDeck(t *testing.T, bodies ...string) *soml.Deck {
 // **이 테스트가 `fit` 결정의 판정이다** (render/web/image.go의 fit 절): 잰 rect가 저자가 준
 // 박스가 아니라 **그려진 그림**이어야 PPTX가 letterbox를 다시 계산하지 않는다.
 //
-// 수치는 픽스처 에셋의 고유 크기에서 나온다 — wide.png 16×8(2:1), tall.png 8×16(1:2).
+// 수치는 픽스처 에셋의 고유 크기에서 나온다 — wide.png 1200×600(2:1), dot.png 16×8(2:1).
+// **확대하지 않는 경로에는 dot.png를 쓴다**: 항목 05/05가 에셋을 박스보다 크게 만든 뒤
+// (그래야 픽스처의 `contain` 칸이 16×8 점으로 남지 않는다) 박스보다 작은 그림은 스테이지
+// (1280×720)보다 큰 박스를 만들어야 재현되는데, 그런 박스는 이 엔진에 없다. 픽스처에 아주
+// 작은 그림을 한 장 남겨 둔 이유가 이것이고, 그 그림은 001_fit의 마지막 줄이기도 하다.
 func TestMeasureImageFitRects(t *testing.T) {
 	testkit.RequireChromium(t)
 	deck := imageDeck(t, `<row gap="md">
     <image src="assets/wide.png" fit="cover" w="480" h="240" alt="cover"/>
-    <image src="assets/wide.png" fit="contain" w="480" h="240" alt="contain 확대 없음"/>
+    <image src="assets/dot.png" fit="contain" w="480" h="240" alt="contain 확대 없음"/>
     <image src="assets/wide.png" fit="contain" w="8" h="8" alt="contain 축소"/>
     <image src="assets/tall.png" fit="contain" w="4" h="8" alt="contain 축소 세로"/>
   </row>`)
@@ -914,14 +918,14 @@ func TestOpenFailsOnBrokenImage(t *testing.T) {
 // 나오는 것이 대기의 관측 가능한 결과다.
 func TestMeasureImageWaitsForDecode(t *testing.T) {
 	testkit.RequireChromium(t)
-	deck := imageDeck(t, `<image src="assets/tall.png" fit="contain" alt="고유 크기"/>`)
+	deck := imageDeck(t, `<image src="assets/dot.png" fit="contain" alt="고유 크기"/>`)
 	g := measureLayout(t, deck)
 	box, ok := g.Box("s0.0")
 	if !ok {
 		t.Fatal("s0이 없다")
 	}
-	// 크기 속성이 없는 그림의 박스는 고유 크기다 (tall.png 8×16) — 디코드 전이라면 0×0이다.
-	if box.Rect.W != 8 || box.Rect.H != 16 {
-		t.Errorf("고유 크기 그림의 rect = %s, want 8×16 (디코드를 기다리지 않았다)", box.Rect)
+	// 크기 속성이 없는 그림의 박스는 고유 크기다 (dot.png 16×8) — 디코드 전이라면 0×0이다.
+	if box.Rect.W != 16 || box.Rect.H != 8 {
+		t.Errorf("고유 크기 그림의 rect = %s, want 16×8 (디코드를 기다리지 않았다)", box.Rect)
 	}
 }
