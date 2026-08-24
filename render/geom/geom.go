@@ -132,6 +132,11 @@ func collect(refs []Ref, slide *soml.Slide, node soml.Node, path []int) []Ref {
 		// **안** 텍스트는 재지만 소비되지 않는다 (PPTX에서는 같은 도형의 `txBody` 문단이다) —
 		// `<li>`와 같은 처지이고, 그래서 도형 수 등식에 항이 하나 늘었다 (render/web의
 		// 측정 대상 계약).
+		//
+		// **`<image>`도 잰다** (Iteration 5) — 재는 것과 도형이 되는 것이 일치하는 두 번째
+		// 종류다: 잰 rect가 `pic`의 `xfrm`이 된다. 웹에서 재는 요소는 `<img>`이고 저자가 준
+		// 박스는 식별자를 갖지 않으므로(render/web/image.go), 덱 요소 하나 ↔ 식별자 하나가
+		// 유지되고 이 순회는 그림을 **다른 종류와 똑같이** 담으면 된다. 자손은 없다 (void).
 		return refs
 	}
 	refs = append(refs, Ref{

@@ -65,6 +65,12 @@ func fixtureDeck(t *testing.T, name string) *soml.Deck {
 	if err := core.Resolve(deck).Err(); err != nil {
 		t.Fatalf("외관 해석 실패: %v", err)
 	}
+	// 에셋 패스는 Resolve 다음이다 (pipeline.LoadDeck과 같은 순서) — `<image>`가 있는 픽스처는
+	// 이 표 없이는 렌더되지 않는다 (render/web/image.go의 관문). 그림이 없는 픽스처에서는 빈
+	// 표가 되므로 기존 골든은 움직이지 않는다.
+	if err := core.ResolveAssets(deck, os.DirFS(dir)).Err(); err != nil {
+		t.Fatalf("에셋 해석 실패: %v", err)
+	}
 	return deck
 }
 

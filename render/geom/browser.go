@@ -170,15 +170,18 @@ func (s *Session) run(actions ...chromedp.Action) error {
 	return chromedp.Run(ctx, actions...)
 }
 
-// Open은 로컬 HTML 파일을 연다. 폰트가 다 실린 뒤에 돌아온다 — 폰트 로드 전에 잰 좌표는 대체
-// 폰트의 글자 폭으로 계산된 것이어서 줄바꿈부터 다르다.
+// Open은 로컬 HTML 파일을 연다. **폰트와 이미지가 다 실린 뒤에** 돌아온다 — 로드 전에 잰
+// 좌표는 대체 폰트의 글자 폭으로 계산된 것이어서 줄바꿈부터 다르고, 이미지는 고유 크기를
+// 모르는 상태의 박스다 (실측: 디코드 전 `naturalWidth`가 0이고 `<img>`의 rect가 0×0이다 —
+// 그 좌표가 그대로 PPTX `pic`의 `xfrm`이 된다).
 //
 // 열자마자 **문서 뷰로 되돌린다** (web.DocumentViewExpr). 웹 산출물의 런타임은 로드 즉시
 // 발표자 뷰를 켜는데, 발표자 뷰는 슬라이드를 겹치고 화면에 맞춰 스케일하므로 그 배치에서
 // 잰 rect는 논리 스테이지와 어긋난다 (newGeometry의 크기 검증이 잡는 바로 그 상태).
 // 발표자 뷰의 CSS는 전부 <html>의 속성 하나에 걸려 있어 지우면 측정 배치로 돌아오고,
 // balpyo 산출물이 아닌 페이지에서는 이 평가가 아무 일도 하지 않는다. 여기(모든 열기의
-// 관문)에서 되돌려야 지오메트리 패스와 스크린샷 하네스가 같은 배치를 본다.
+// 관문)에서 되돌려야 지오메트리 패스와 스크린샷 하네스가 같은 배치를 본다 — 이미지 대기를
+// 같은 자리에 둔 근거도 같다: 스크린샷 하네스(internal/testkit)가 같은 대기를 공짜로 받는다.
 func (s *Session) Open(htmlPath string) error {
 	abs, err := filepath.Abs(htmlPath)
 	if err != nil {
@@ -190,11 +193,34 @@ func (s *Session) Open(htmlPath string) error {
 		chromedp.WaitReady("body", chromedp.ByQuery),
 		chromedp.Evaluate(web.DocumentViewExpr(), nil),
 		chromedp.Evaluate(`document.fonts.ready.then(() => true)`, nil, withAwaitPromise),
+		chromedp.Evaluate(imagesReadyScript, nil, withAwaitPromise),
 	); err != nil {
 		return fmt.Errorf("%s를 열 수 없다: %w", htmlPath, err)
 	}
 	return nil
 }
+
+// imagesReadyScript는 문서의 모든 이미지가 디코드될 때까지 기다리고, **읽히지 않은 이미지가
+// 하나라도 있으면 던진다**.
+//
+// 실패를 통과시키면 그림 없는 PPTX가 **정상으로 열린다**: 에셋 패스의 존재·포맷 검사를 지나온
+// 파일이 브라우저에서 읽히지 않는 경우(산출 파일이 빠졌다, 경로가 어긋났다, 브라우저가 그
+// 변형을 모른다)가 여기서 잡히는 마지막 자리다. 판정을 `naturalWidth === 0`으로 두는 이유는
+// `decode()`의 거부가 유일한 실패 신호가 아니기 때문이다 — 404는 `complete`가 true인 채
+// 고유 크기가 0으로 남는다 (실측).
+//
+// `decode()`를 쓰고 `complete`를 함께 보는 이유: `complete`는 로드가 끝났다는 뜻이고 디코드가
+// 끝났다는 뜻이 아니다. 거부를 삼키는 것(`catch`)은 실패를 무시하는 것이 아니라 **판정을 한
+// 곳으로 모으는 것**이다 — 거부한 이미지는 아래 고유 크기 검사에서 이름과 함께 걸린다.
+const imagesReadyScript = `(async () => {
+  const images = Array.from(document.images);
+  await Promise.all(images.map((img) => img.decode().catch(() => null)));
+  const broken = images.filter((img) => img.naturalWidth === 0).map((img) => img.getAttribute("src"));
+  if (broken.length > 0) {
+    throw new Error("이미지를 읽을 수 없다: " + broken.join(", "));
+  }
+  return true;
+})()`
 
 // withAwaitPromise는 프로미스가 풀릴 때까지 기다리는 평가 옵션이다.
 func withAwaitPromise(p *runtime.EvaluateParams) *runtime.EvaluateParams {

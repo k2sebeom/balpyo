@@ -1218,3 +1218,135 @@
     (c) **`Ext()`와 미디어 파트 이름의 소유.** `.jpg`/`.jpeg` 두 확장자가 한 포맷이므로 항목 04가
     파트 이름을 `Format`에서 만들 것(`image1.jpeg`)인지 원본 확장자에서 만들 것인지 정해야 한다.
     이 항목의 권고는 `Format`이다 — Content_Types의 `Default` 항목이 포맷당 하나로 모인다.
+
+## Iteration 5 · 03-web-image — 잰 rect가 그려진 그림이다: `<img>` + 에셋 산출 + 디코드 대기
+<!-- item: 05/03-web-image -->
+
+- **한 것**:
+  - `render/web/image.go` (신규) — `<image>` → **박스 div + `<img>`**. `writeImage`,
+    `imageBoxCSS`(pad·크기·비율·자식 배치), `imageInkCSS`(fit + 외관 6종), `imageFitCSS`·
+    `containFitDecls`·`boxHasSize`, `borderStyleValue`, `imageCSS`(엔진 CSS), `assetFiles`
+    (에셋 → `render.Files`), 클래스 셋(`balpyo-image`·`balpyo-image-ink`·
+    `balpyo-image-transform`)과 커스텀 프로퍼티 둘(`--balpyo-image-rotate`·`--balpyo-image-flip`).
+  - `render/web/content.go` — `writeNode`에 `KindImage` 갈래, `features.images`,
+    `contentCSS`에 `imageCSS()`, `spaceTokens()`에 이미지, **`shadowTokens()` 신설**
+    (그림자 변수를 참조하는 어휘가 도형·그림 둘이 되었다). `style.go`의 조건이 그것을 쓴다.
+  - `render/web/web.go` — `Render`가 `index.html` + 에셋을 낸다. 패키지 주석의 **측정 대상
+    계약**에 `<image>` 행(재는 요소는 `<img>`이고 저자 박스는 식별자를 갖지 않는다).
+  - `render/geom/browser.go` — `Session.Open`에 **이미지 디코드 대기 + 로드 실패 에러**
+    (`imagesReadyScript`). `geom.go`의 `collect` 주석에 이미지 행.
+  - 테스트: `render/web/image_test.go`(신규 — 외관 전수·`fit` 전수·`alt`·박스/배치·에셋
+    `Files` 계약·중복 제거·결정성·도형과의 값 대조), `render/geom/measure_browser_test.go`
+    (브라우저 6건: fit rect, `pad`, 회전 무효화, `ratio` 박스 회귀, 깨진 그림 에러, 디코드 대기),
+    `render/web/fixture_test.go`·`measure_browser_test.go`의 헬퍼가 에셋 패스와 **파일 전부
+    쓰기**를 하도록 고쳤다 (에셋 없이 재면 0×0을 잰다).
+
+- **설계 결정과 근거**:
+  - **박스 하나와 `<img>` 하나로 냈다 — 그리고 식별자는 `<img>`가 갖는다.** 항목 지시는
+    `<img>` 하나를 말했지만 지시의 CSS 표(`100%`·`max-*: 100%`)는 **부모가 준 공간**을
+    기준으로 하므로 저자의 `w`/`h`/`ratio`가 같은 요소에 실리면 성립하지 않는다: `w="fill"
+    ratio="4:3"`가 `<img>`에 걸리면 그것이 요소 크기가 되고 `<img>`의 기본 `object-fit`은
+    `fill`이라 **그림이 늘어난다**. 박스를 부모로 올리면 `100%`가 저자의 박스를 가리키고 잰
+    rect는 언제나 그려진 그림이다. 도형과 층 수는 같고 **식별자가 붙는 층만 반대**다
+    (도형은 겉 박스를 잰다 — 그림 svg가 박스를 덮으므로 둘이 같다).
+  - **`fit` 매핑은 지시의 표 그대로다** (cover = `width/height:100%` + `object-fit:cover`,
+    contain = `max-width/max-height:100%`, `object-fit` 없음). 실측으로 확인한 성질이
+    결정의 일부다 — 아래 검증.
+  - **크기 속성이 없는 그림은 `fit`이 아무것도 하지 않는다** (`boxHasSize`가 그 분기다).
+    `cover`의 `width:100%`를 조건 없이 내면 고유 크기 그림이 부모 폭까지 늘어나
+    (실측 16×8 → 1152×576) "크기 속성이 없으면 고유 크기"(soml.ImageAttrs의 계약)가 `fit`
+    값에 따라 깨진다. min/max는 크기로 세지 않는다 — 한계는 박스가 아니고, `contain`의
+    매핑이 이미 그 한계를 지킨다.
+  - **외관은 값 함수를 공유하고 프로퍼티만 갈라진다.** 지시의 "도형의 CSS 조립을 재사용한다"를
+    문자 그대로 할 수는 없다: 도형의 외관은 SVG 프로퍼티(`fill`·`stroke`·`rx`)이고 `<img>`에
+    그것은 아무 일도 하지 않는다. 그래서 `colorValue`·`flipValue`·`formatNumber`·
+    `shadowVarPrefix`·그림자 토큰 검사를 **함수째 공유**하고, 값을 싣는 프로퍼티만
+    `border-width`/`border-style`/`border-color`/`border-radius`로 갈랐다. 그 공유를
+    `TestImageAndShapeShareAppearanceValues`가 **값 단위로** 대조한다 (같은 `border="2 solid
+    muted"`가 두 타깃에서 같은 `var(--balpyo-color-muted)`·`2px`를 내는지).
+  - **파선 간격은 UA에 맡겼다** (알려진 갈라짐 하나). 도형은 `stroke-dasharray`로 OOXML
+    `prstDash`의 비율을 정확히 내지만 CSS `border-style: dashed`의 간격은 UA가 정한다.
+    맞추려면 그림을 svg 안에 넣어야 하고 그러면 `<img>`가 주는 것(고유 크기·`alt`·디코드
+    신호)을 전부 잃는다 — 그 값이 파선 간격보다 크다고 판단했다.
+  - **회전과 대칭이 한 `transform`을 나눠 쓴다** (커스텀 프로퍼티 둘 + 표식 클래스 하나).
+    도형은 회전을 박스에, 대칭을 그림에 걸어 선언이 둘이지만 그림은 요소가 하나여서
+    `transform`의 마지막 선언만 남는다. 합성은 `rotate(…) scale(…)`이고 오른쪽이 먼저
+    적용되므로 "대칭 후 회전" — OOXML `xfrm`(flipH/flipV로 뒤집은 기하를 `rot`으로 돌린다)과
+    같은 순서다. 선언을 엔진 CSS에 둔 이유는 도형과 같다: 인라인 style은 층 밖에서 이기므로
+    측정 뷰가 덮을 수 없다.
+  - **래퍼에 `min-width: 0; min-height: 0`을 넣었다** — 실측이 만든 결정이다 (아래 검증).
+  - **`alt`은 언제나 낸다** (없으면 `alt=""`). 항목 01·02의 결정을 실물로 닫은 자리다.
+  - **`src`가 빈 그림과 에셋 표에 없는 그림은 멈춘다.** `<img src="">`는 브라우저가 **현재
+    문서를 다시 받는** 요청이고, 표에 없으면 산출물에 바이트가 없어 깨진 이미지가 된다 —
+    둘 다 측정이 0×0을 재서 그 좌표를 PPTX `xfrm`으로 보내는 경로다.
+  - **에셋 경로는 `Asset.Key` 그대로**이고 바이트는 표의 것을 그대로 넘긴다(복사 없음 —
+    엔진은 그림을 고치지 않는다). `index.html`과 같은 이름의 에셋은 에러다 (산출 문서를
+    덮어쓰는 길을 닫는다).
+  - **`shadowTokens()`를 새로 뺐다** (`feat.shapes`를 그대로 쓰지 않았다): 도형 없이 그림만
+    있는 덱에서 그림자 변수 선언이 빠지면 `var()`가 조용히 무시되어 **그림자가 사라진다**.
+    `spaceTokens()`도 같은 이유로 이미지를 더했다 (`pad`가 공간 토큰을 받는다).
+
+- **검증**: `gofmt -l .`(무출력), `go vet ./...`, **`make test DOCKER=finch` 전부 초록**
+  (컨테이너가 진짜 게이트다 — 픽스처 골든 테스트까지 통과했으므로 **웹 골든 4개는 한 바이트도
+  움직이지 않았다**). 호스트 `go test ./...`에서는 `01_text`~`04_shape` 골든의 `a:ext cx`만
+  어긋나는데 05/01·05/02가 기록한 폰트 메트릭 차이와 같은 diff다 (텍스트 폭뿐이고 이 항목의
+  산출물은 골든에 없다).
+
+  브라우저로 **직접 잰 수치**(이 항목의 결정 근거다. `/tmp`에 최소 페이지를 띄워 재고,
+  같은 결론을 `render/geom`의 브라우저 테스트가 산출물로 다시 확인한다):
+  - **`max-*`는 위로 키우지 않는다.** 고유 크기 16×8 그림을 560×420 박스에 `contain`으로
+    넣으면 잰 rect가 **16×8**로 남는다 (`object-fit: contain`이면 560×280이 된다). 그래서 이
+    엔진의 `contain`은 "박스를 넘지 않는다"이고 "박스를 채운다"가 아니다.
+  - **확대와 "박스 = 그림"을 CSS로 함께 얻을 수 없다.** `aspect-ratio: W/H` + `width:100%` +
+    `max-height:100%`로 확대를 열어 보면 세로로 긴 그림에서 **비율이 깨진다**: 280×210 박스에
+    8×16 그림이 280×210으로 늘어난다 (폭이 확정된 요소에서 `max-height`의 자름이 폭으로
+    되돌지 않는다). `width:100%; height:auto; max-height:100%`도 같다. 좌표가 한 곳(브라우저)
+    에서 오는 쪽을 골랐다.
+  - **박스보다 큰 그림은 비율을 지키며 줄어든다** (`contain`이 실제로 맞추는 경로): 4:3
+    560×420 박스에서 400×1200 그림은 140×420, 1200×400 그림은 560×186.66이다.
+  - **래퍼의 자동 최소 크기가 박스를 키운다.** `min-*: 0`이 없으면 `fit="cover" w="fill"
+    ratio="4:3"` 칸에 8×16 그림이 들어갔을 때 박스가 558×418.5가 아니라 **558×1116**이 되고
+    (그림의 `height:100%`가 순환을 만나 auto로 풀리고 그 높이가 박스의 최소 높이가 된다) 잰
+    rect가 슬라이드 밖으로 나간다. 픽스처 001_fit에서 실제로 드러났고
+    `TestMeasureImageRatioBoxIsNotGrownByPicture`가 그 구조를 그대로 회귀 테스트로 받는다.
+  - **디코드 전 rect는 0×0이다** (`naturalWidth === 0`). 대기의 근거가 계약만이 아니라
+    **관측**이라는 뜻이다 — 지연 응답 서버로 재현했고, `contain`에서는 그 0이 그대로 잰 값이
+    된다. 404는 `complete`가 true인 채 고유 크기가 0으로 남으므로 판정을 `decode()`의 거부가
+    아니라 `naturalWidth === 0`에 두었다.
+  - `pad="20"`인 240×120 cover 칸의 잰 rect는 **200×80**이고 위치가 20px 안쪽이다 —
+    **PPTX가 `xfrm`에서 여백을 다시 뺄 필요가 없다** (항목 01의 열린 질문 (a)를 이 수치가 닫는
+    쪽으로 기울인다: 여백은 웹에서 박스가 흡수하고 측정값은 이미 그림이다).
+
+  손으로 확인한 것: `go run ./cmd/balpyo build --project testdata/fixtures/_05_image
+  --target html`이 **`index.html` + `assets/{photo.jpg,tall.png,wide.png}`** 네 파일을 내고,
+  `cmp`로 세 에셋이 커밋된 바이트와 동일하다. 산출물을 브라우저로 열어 슬라이드를 찍어 보면
+  001_fit의 cover 두 칸이 각각 좌우·위아래가 잘린 그림으로 나온다 (크롭 축이 뒤바뀌지 않았다).
+
+- **남긴 것**:
+  - 항목 04가 이어받을 표면: 잰 rect가 **그려진 그림**이므로 `pic`의 `xfrm`은 측정값 그대로다
+    (여백·letterbox 계산이 없다). `fit`은 `blipFill`에서 `cover`만 `srcRect` 크롭이 필요하고
+    `contain`은 **크롭 없이 채우면 된다**(박스가 이미 그림 비율이다). 외관은
+    `soml.ImageStyle` + `deck.Assets`에서 나오고, 웹이 쓴 값과 대조할 자리는
+    `TestImageAndShapeShareAppearanceValues`의 표다.
+  - 항목 05가 이어받을 것: 픽스처는 여전히 `_` 접두다. PPTX 렌더러는 아직 `<image>`에서
+    "매핑이 없다"로 멈춘다 (`--target pptx` 빌드는 실패한다).
+  - **열린 질문 4건**:
+    (a) **`contain`이 확대하지 않는 것** (위 실측). 픽스처 에셋이 16×8이라 002_appearance의
+    그림이 전부 16×8 점으로 나오고, 그 크기에서는 테두리·반경·그림자의 픽셀 비교가 뜻을 갖지
+    못한다 (스크린샷으로 확인했다: 회전만 눈에 보인다). **항목 05가 에셋을 박스보다 크게 다시
+    만드는 것**이 가장 값싼 해결이고(실제 덱의 사진은 언제나 박스보다 크다), 그것으로도 부족하다고
+    판단되면 `contain`을 `object-fit: contain`으로 바꾸는 길이 남아 있다 — 다만 그것은 PPTX가
+    letterbox를 다시 계산한다는 뜻이고(좌표 계산이 두 곳에 생긴다) 항목 03이 버린 쪽이다.
+    ADR(항목 06)에 이 저울질을 그대로 적어야 한다: 지금의 `fit="contain"`은 CSS
+    `object-fit: scale-down`에 가깝다.
+    (b) **CSS 테두리는 안쪽에 그려진다.** `box-sizing: border-box`이므로 잰 rect는 테두리를
+    포함하고 그림 영역은 그만큼 작다. PPTX `pic`의 `a:ln`은 도형 경계 **중앙**이라 그림이
+    테두리 굵기만큼 크게 그려진다 — 1~3px 규모의 갈라짐이고, 항목 04가 `xfrm`을 테두리만큼
+    줄일지 픽셀 비교의 임계값으로 흡수할지 정한다 (도형은 SVG 선이 경로 중앙이라 이 문제가
+    없었다).
+    (c) **파선 간격** (위 결정). 두 타깃의 파선이 갈라지는 것을 픽셀 비교가 어떻게 볼지는
+    항목 05에서 처음 드러난다.
+    (d) **`.balpyo-shape`에는 `flex: 0 0 auto`와 `min-*: 0`이 없다.** 그림에서 필요했던 이유
+    (`ratio` 박스가 내용 때문에 커진다)가 도형에도 걸릴 수 있다 — 도형의 svg는 절대 배치라
+    자동 최소 크기에 기여하지 않아 지금은 드러나지 않지만, 도형 안 텍스트가 박스보다 크면
+    같은 모양의 실패가 된다. 이 항목의 범위 밖이라 손대지 않았다 (골든 4개가 움직인다).

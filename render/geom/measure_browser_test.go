@@ -57,23 +57,30 @@ func browserDeck(t *testing.T) *soml.Deck {
 	return deck
 }
 
-// renderHTML은 덱을 임시 디렉토리의 index.html로 쓴다 — 측정 대상은 사용자가 받는 것과 같은
-// 바이트여야 한다.
+// renderHTML은 덱을 임시 디렉토리에 쓴다 — 측정 대상은 사용자가 받는 것과 같은 바이트여야
+// 한다. **파일 전부를 쓴다**: 웹 산출물은 Iteration 5부터 index.html + 에셋이고, 에셋을
+// 빼고 재면 브라우저가 깨진 이미지의 박스(0×0)를 잰다 (render/web/image.go의 에셋 절).
 func renderHTML(t *testing.T, deck *soml.Deck, transform func(string) string) string {
 	t.Helper()
 	files, err := web.New().Render(deck)
 	if err != nil {
 		t.Fatal(err)
 	}
-	html := string(files[web.IndexFile])
-	if transform != nil {
-		html = transform(html)
+	dir := t.TempDir()
+	for _, name := range files.Paths() {
+		data := files[name]
+		if name == web.IndexFile && transform != nil {
+			data = []byte(transform(string(data)))
+		}
+		dest := filepath.Join(dir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(dest, data, 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
-	path := filepath.Join(t.TempDir(), web.IndexFile)
-	if err := os.WriteFile(path, []byte(html), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	return path
+	return filepath.Join(dir, web.IndexFile)
 }
 
 func TestMeasureReadsSlideRelativeBoxes(t *testing.T) {
@@ -734,5 +741,187 @@ func TestMeasureShapeInkStylesResolve(t *testing.T) {
 	}
 	if got.Opacity != "0.4" {
 		t.Errorf("불투명도 = %q, want 0.4", got.Opacity)
+	}
+}
+
+// imageDeck은 그림이 있는 덱이다 — layoutDeck에 **에셋 패스**를 더한 것이다 (값이 디스크를
+// 가리키므로 core.ResolveAssets 없이는 렌더되지 않는다). 파일 시스템은 그림 픽스처다.
+func imageDeck(t *testing.T, bodies ...string) *soml.Deck {
+	t.Helper()
+	deck := layoutDeck(t, bodies...)
+	dir := filepath.Join("..", "..", "testdata", "fixtures", "_05_image")
+	if err := core.ResolveAssets(deck, os.DirFS(dir)).Err(); err != nil {
+		t.Fatalf("에셋 해석 실패: %v", err)
+	}
+	return deck
+}
+
+// **이 테스트가 `fit` 결정의 판정이다** (render/web/image.go의 fit 절): 잰 rect가 저자가 준
+// 박스가 아니라 **그려진 그림**이어야 PPTX가 letterbox를 다시 계산하지 않는다.
+//
+// 수치는 픽스처 에셋의 고유 크기에서 나온다 — wide.png 16×8(2:1), tall.png 8×16(1:2).
+func TestMeasureImageFitRects(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := imageDeck(t, `<row gap="md">
+    <image src="assets/wide.png" fit="cover" w="480" h="240" alt="cover"/>
+    <image src="assets/wide.png" fit="contain" w="480" h="240" alt="contain 확대 없음"/>
+    <image src="assets/wide.png" fit="contain" w="8" h="8" alt="contain 축소"/>
+    <image src="assets/tall.png" fit="contain" w="4" h="8" alt="contain 축소 세로"/>
+  </row>`)
+	g := measureLayout(t, deck)
+
+	for _, tc := range []struct {
+		id   string
+		name string
+		w, h float64
+	}{
+		// cover: 박스 = 그림 (넘치는 쪽은 잘린다 — 잰 rect가 곧 저자가 준 박스다).
+		{"s0.0.0", "cover", 480, 240},
+		// contain: `max-*`는 위로 키우지 않으므로 박스보다 작은 그림은 고유 크기로 남는다.
+		// 이 수치가 항목 03의 결정에서 **확대를 포기한 자리**의 실물이다.
+		{"s0.0.1", "contain (박스가 그림보다 크다)", 16, 8},
+		// contain: 박스보다 큰 그림은 비율을 지키며 줄어든다 — 폭 8이 걸려 높이가 4가 된다.
+		{"s0.0.2", "contain (폭이 걸린다)", 8, 4},
+		// 세로로 긴 그림은 높이가 걸린다 — 8이 걸려 폭이 4가 된다 (축이 뒤바뀌어도 맞는지).
+		{"s0.0.3", "contain (높이가 걸린다)", 4, 8},
+	} {
+		box, ok := g.Box(tc.id)
+		if !ok {
+			t.Fatalf("%s가 없다: %+v", tc.id, g.Boxes)
+		}
+		if box.El != soml.ImageElement {
+			t.Errorf("%s의 태그 = %q, want %q", tc.id, box.El, soml.ImageElement)
+		}
+		if box.Rect.W != tc.w || box.Rect.H != tc.h {
+			t.Errorf("%s(%s)의 rect = %s, want %v×%v — 잰 rect가 그려진 그림이 아니다",
+				tc.id, tc.name, box.Rect, tc.w, tc.h)
+		}
+	}
+	// 저자가 준 박스는 재지 않는다 (식별자가 없다) — 덱 요소 하나에 박스 하나여야 PPTX가
+	// 그림마다 `pic` 하나를 낸다.
+	if len(g.Boxes) != len(geom.Refs(deck)) {
+		t.Errorf("박스 %d개, 덱 요소 %d개 — 박스 div가 측정에 섞였다", len(g.Boxes), len(geom.Refs(deck)))
+	}
+}
+
+// `pad`는 그림 영역을 줄인다 (항목 01이 `pad`를 이미지에 열어 둔 결정의 실물) — 잰 rect가
+// 여백을 뺀 그림이므로 PPTX가 `xfrm`에서 여백을 다시 뺄 일이 없다.
+func TestMeasureImagePadShrinksPicture(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := imageDeck(t, `<row gap="md">
+    <image src="assets/wide.png" fit="cover" w="240" h="120" alt="여백 없음"/>
+    <image src="assets/wide.png" fit="cover" w="240" h="120" pad="20" alt="여백 20"/>
+  </row>`)
+	g := measureLayout(t, deck)
+	plain, ok := g.Box("s0.0.0")
+	if !ok {
+		t.Fatal("s0.0.0이 없다")
+	}
+	padded, ok := g.Box("s0.0.1")
+	if !ok {
+		t.Fatal("s0.0.1이 없다")
+	}
+	if plain.Rect.W != 240 || plain.Rect.H != 120 {
+		t.Errorf("여백 없는 그림 = %s, want 240×120", plain.Rect)
+	}
+	// 4변 20px → 그림은 200×80이고, 박스는 여전히 240×120이다 (border-box).
+	if padded.Rect.W != 200 || padded.Rect.H != 80 {
+		t.Errorf("여백 20인 그림 = %s, want 200×80", padded.Rect)
+	}
+	if padded.Rect.X-plain.Rect.X < 20 {
+		t.Errorf("여백이 안쪽으로 들어가지 않았다: %s vs %s", padded.Rect, plain.Rect)
+	}
+}
+
+// 회전한 그림의 잰 rect는 **회전 전** 박스다 (측정 뷰가 변형을 무효화한다 — 도형과 같은 계약).
+// 무효화가 없으면 실측에서 200×100 그림이 219.07×148.36으로 돌아온다.
+func TestMeasureImageRotationIsUndone(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := imageDeck(t, `<row gap="md">
+    <image src="assets/wide.png" fit="cover" w="200" h="100" alt="회전 없음"/>
+    <image src="assets/wide.png" fit="cover" w="200" h="100" rotate="45" alt="회전"/>
+    <image src="assets/wide.png" fit="cover" w="200" h="100" flip="h" alt="대칭"/>
+  </row>`)
+	g := measureLayout(t, deck)
+	for _, id := range []string{"s0.0.0", "s0.0.1", "s0.0.2"} {
+		box, ok := g.Box(id)
+		if !ok {
+			t.Fatalf("%s가 없다", id)
+		}
+		if box.Rect.W != 200 || box.Rect.H != 100 {
+			t.Errorf("%s의 rect = %s, want 200×100 — 변형이 잰 rect에 섞였다", id, box.Rect)
+		}
+	}
+}
+
+// `ratio`가 진 박스는 **저자가 준 크기 그대로**여야 한다 — flex/grid 항목의 자동 최소 크기가
+// 켜져 있으면 박스가 그림 때문에 커진다 (실측: 세로로 긴 그림의 cover 칸이 558×418.5 대신
+// 558×1116이 되고 잰 rect가 슬라이드 밖으로 나간다 — imageCSS의 min-*: 0 주석).
+//
+// 픽스처 001_fit의 구조를 그대로 쓴다 (그 슬라이드에서 실제로 드러난 실패다).
+func TestMeasureImageRatioBoxIsNotGrownByPicture(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := imageDeck(t, `<grid cols="2" gap="lg">
+    <col gap="xs">
+      <image src="assets/wide.png" fit="cover" w="fill" ratio="4:3" alt="넓은 그림"/>
+      <text role="caption">cover · 넓은 그림</text>
+    </col>
+    <col gap="xs">
+      <image src="assets/tall.png" fit="cover" w="fill" ratio="4:3" alt="좁은 그림"/>
+      <text role="caption">cover · 좁은 그림</text>
+    </col>
+  </grid>`)
+	g := measureLayout(t, deck)
+	// 그리드 두 칸의 폭은 (1152 − gap lg 36) / 2 = 558이고 4:3 박스의 높이는 418.5다.
+	for _, id := range []string{"s0.0.0.0", "s0.0.1.0"} {
+		box, ok := g.Box(id)
+		if !ok {
+			t.Fatalf("%s가 없다: %+v", id, g.Boxes)
+		}
+		if box.Rect.W != 558 || box.Rect.H != 418.5 {
+			t.Errorf("%s의 rect = %s, want 558×418.5 — 박스가 그림 때문에 커졌다", id, box.Rect)
+		}
+	}
+}
+
+// 로드 실패는 **에러**다. 통과시키면 그림 없는 PPTX가 정상으로 열린다 — 에셋 패스의 존재
+// 검사를 지나온 파일이 브라우저에서 읽히지 않는 경우(산출 파일이 빠졌다, 경로가 어긋났다)가
+// 여기서 잡히는 마지막 자리다.
+func TestOpenFailsOnBrokenImage(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := imageDeck(t, `<image src="assets/wide.png" fit="cover" w="200" h="100" alt="깨진 그림"/>`)
+	path := renderHTML(t, deck, func(html string) string {
+		// 산출 문서만 고쳐 없는 파일을 가리키게 한다 (에셋 파일은 그대로 남는다) — 렌더러가
+		// 낸 경로와 실제 파일이 어긋난 상태의 재현이다.
+		return strings.Replace(html, `src="assets/wide.png"`, `src="assets/missing.png"`, 1)
+	})
+	session, err := geom.Launch("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
+	err = session.Open(path)
+	if err == nil {
+		t.Fatal("읽히지 않는 그림이 있는 페이지를 그냥 열었다 — 그 상태로 재면 rect가 0×0이다")
+	}
+	if !strings.Contains(err.Error(), "assets/missing.png") {
+		t.Errorf("진단이 어느 src인지 말하지 않는다: %v", err)
+	}
+}
+
+// 그림이 다 실린 뒤에 재는지: 대기가 없으면 고유 크기를 모르는 `<img>`의 rect가 0×0이다
+// (`contain`의 박스가 곧 그림이므로 그 0이 PPTX `pic`의 `xfrm`으로 간다). 0이 아닌 rect가
+// 나오는 것이 대기의 관측 가능한 결과다.
+func TestMeasureImageWaitsForDecode(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := imageDeck(t, `<image src="assets/tall.png" fit="contain" alt="고유 크기"/>`)
+	g := measureLayout(t, deck)
+	box, ok := g.Box("s0.0")
+	if !ok {
+		t.Fatal("s0이 없다")
+	}
+	// 크기 속성이 없는 그림의 박스는 고유 크기다 (tall.png 8×16) — 디코드 전이라면 0×0이다.
+	if box.Rect.W != 8 || box.Rect.H != 16 {
+		t.Errorf("고유 크기 그림의 rect = %s, want 8×16 (디코드를 기다리지 않았다)", box.Rect)
 	}
 }

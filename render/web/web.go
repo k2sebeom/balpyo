@@ -10,9 +10,9 @@
 // # 요소 식별자 — 지오메트리 패스의 계약
 //
 // **박스를 갖는 요소**는 모두 `data-balpyo-id` 속성을 갖는다: 블록 종류(soml.KindOf의
-// 카탈로그: `<text>`·블록·리스트 컨테이너·`<li>`)와 **레이아웃 컨테이너·`<spacer>`·`<shape>`**다.
-// 인라인·void(`<br>`)에는 붙이지 않는다 — 여러 줄에 걸친 인라인의 rect는 뜻이 없고,
-// PPTX에서 인라인은 박스가 아니라 런이다.
+// 카탈로그: `<text>`·블록·리스트 컨테이너·`<li>`)와 **레이아웃 컨테이너·`<spacer>`·`<shape>`·
+// `<image>`**다. 인라인·void(`<br>`)에는 붙이지 않는다 — 여러 줄에 걸친 인라인의 rect는 뜻이
+// 없고, PPTX에서 인라인은 박스가 아니라 런이다.
 //
 // 레이아웃 컨테이너와 `<spacer>`를 재는 이유는 `<li>`를 재 둔 것과 같다 (ADR 0009의 후속):
 // PPTX가 그 rect를 소비하지 않아도(컨테이너는 도형이 아니다 — 자식 좌표만 남고 컨테이너는
@@ -26,6 +26,11 @@
 //
 // 마지막 항이 이 iteration에서 생겼다: 도형 안 텍스트는 웹에서 중첩된 박스이지만 PPTX에서는
 // 같은 도형의 `txBody` 문단이므로 그 rect를 아무도 소비하지 않는다 (render/web/shape.go).
+//
+// **`<image>`가 그 두 번째 종류다** (Iteration 5): 잰 rect가 곧 `pic`의 `xfrm`이므로 등식의
+// 좌변에 그림이 함께 들어간다 (도형 수 → `pic`+`sp` 수). 다만 재는 요소가 **`<img>`**이고
+// 저자가 준 박스(`.balpyo-image`)는 식별자를 갖지 않는다 — 그 둘은 `fit="contain"`에서
+// 갈라지고, `xfrm`이 되어야 하는 것은 그려진 그림이다 (render/web/image.go의 fit 절).
 //
 // 지오메트리 패스(geom.Refs)가 **같은 카탈로그로** 기대 목록을 만들므로, 이 대칭이 깨지면
 // 자리 맞대기 검증이 런타임에 소리를 낸다. 지오메트리 패스는 이 속성으로 요소를
@@ -52,7 +57,8 @@
 // 태그는 확정된 soml.ContainerLayout·soml.Placement만 읽어 flex/grid CSS로 컴파일하고
 // (layout.go), 공간 토큰은 색과 같은 이유로 변수 참조로 남는다. 도형은 확정된
 // soml.ShapeStyle을 SVG 기하와 그림 CSS로 컴파일한다 (shape.go — 프리셋 기하의 출처와
-// 테두리·측정의 계약이 그 파일의 머리 주석에 있다).
+// 테두리·측정의 계약이 그 파일의 머리 주석에 있다). 그림은 확정된 soml.ImageStyle을 `<img>`의
+// `fit`·외관 CSS로 컴파일하고 에셋 바이트를 산출 파일로 낸다 (image.go).
 //
 // # 뷰는 셋이다
 //
@@ -82,7 +88,12 @@ func New() *Renderer { return &Renderer{} }
 // Target은 render.TargetHTML이다.
 func (*Renderer) Target() render.Target { return render.TargetHTML }
 
-// Render는 덱을 index.html 하나로 만든다.
+// Render는 덱을 index.html과 **에셋 파일들**로 만든다.
+//
+// 산출물이 파일 하나가 아니게 된 것은 Iteration 5다 (`<image>`): 문서는 여전히 자체
+// 완결형이지만 그림은 별도 파일로 나가고, 그 이유가 렌더러에 있어야 측정과 배포가 같은
+// 바이트를 본다 (image.go의 에셋 절). 오프라인 발표는 `index.html` + assets를 함께 두는
+// 것이다 (PRD §9.1).
 func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 	if deck == nil {
 		return nil, fmt.Errorf("덱이 nil이다")
@@ -131,7 +142,15 @@ func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 	b.WriteString("</body>\n")
 	b.WriteString("</html>\n")
 
-	return render.Files{IndexFile: []byte(b.String())}, nil
+	assets, err := assetFiles(deck)
+	if err != nil {
+		return nil, err
+	}
+	files := render.Files{IndexFile: []byte(b.String())}
+	for name, data := range assets {
+		files[name] = data
+	}
+	return files, nil
 }
 
 // writeSlide는 슬라이드 하나를 쓴다.

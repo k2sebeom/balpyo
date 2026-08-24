@@ -30,7 +30,7 @@ const (
 // spaces는 덱이 공간 토큰을 참조하는지다 (레이아웃 태그가 있는 덱 — web.features). 참조가
 // 없을 때 선언을 내지 않는 이유는 골든이다: 레이아웃을 쓰지 않은 덱의 산출물이 이
 // iteration 때문에 달라지면 diff가 무엇이 변했는지 말해 주지 못한다. 그림자 토큰도 같은
-// 이유로 도형이 있는 덱에만 나간다 (feat.shapes).
+// 이유로 **참조하는 어휘**(도형·그림)가 있는 덱에만 나간다 (feat.shadowTokens).
 //
 // 테마 층(`@layer balpyo.theme`)에 넣는 이유: 저자 CSS가 같은 변수를 덮어쓸 수 있어야 하고
 // (author 층이 뒤), 엔진 기본 CSS는 이 변수를 참조하되 이기지 못해야 한다 (base 층이 앞).
@@ -57,7 +57,7 @@ func themeCSS(theme soml.Theme, feat features) string {
 		// 따라간다는 계약(PRD §8.4)의 웹 쪽 절반이다.
 		b.WriteString(spaceVarsCSS(theme))
 	}
-	if feat.shapes {
+	if feat.shadowTokens() {
 		// 그림자도 같은 계약이다 (shadowVarsCSS) — 요소는 var()로 가리키고 표가 선언한다.
 		b.WriteString(shadowVarsCSS(theme))
 	}
