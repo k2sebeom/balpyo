@@ -989,3 +989,105 @@
     `<shape type="diamond">` 안에 긴 글자를 쓰면 PowerPoint에서 다르게 접힌다는 사실은
     도형 안 텍스트 절의 눈에 띄는 자리(admonition)에 있어야 할 수 있다. 지금 적지 않은 이유는
     그 갈라짐의 범위를 수치로 재지 않았기 때문이다 (픽스처에서 그 조합을 뺐다).
+
+## Iteration 5 · 01-parser-image — 파서가 `<image>` 어휘를 연다
+<!-- item: 05/01-parser-image -->
+
+- **한 것**:
+  - `soml/image.go` (신규) — 이미지 카탈로그. `ImageElement`, `ImageFit`(`FitCover`·
+    `FitContain`)과 `ImageFits()`, 속성 표 넷(`imageOwnAttrs`=`src fit alt`,
+    `imageAppearanceAttrs`=`variant border radius shadow opacity rotate flip`, 박스는
+    `BoxAttrs()` 공유, 자식 배치는 `withChildPlacement`), `ImageAttrs()`·
+    `ImageAppearanceAttrs()`. `shape.go`·`layout.go`·`subset.go`와 같은 자리·같은 태도다.
+  - `soml/subset.go` — `ElementKind`에 `KindImage`(열거형은 여기 모은다는 03/01의 결정),
+    `elementKinds`에 등록, `IsVoidElement`에 `<image>` 추가.
+  - `soml/parse.go` — `elementSpecs`에 `<image>`(`modelVoid`, 자식 어휘 없음),
+    `slideChildren()`에 `<image>`.
+  - `soml/layout.go` — `layoutChildren()`에 `<image>` (컴포넌트 셋이 앞에 온다:
+    `text shape image`).
+  - `soml/image_test.go` (신규) — 정상 트리 13종·`HasValue`·Span·에러 21종(line:col과 문구
+    단정)·종류 카탈로그·`fit` 어휘 순서와 복사본 계약·속성 표 넷의 순서·자식 어휘 두 자리.
+  - `soml/shape_test.go`·`soml/layout_test.go` — `<image>`가 어휘 안으로 들어온 만큼만 고쳤다
+    ("image는 아직 어휘 밖이다" 케이스 삭제, `<row>` 자식 어휘 진단 문구에 `<image>` 추가).
+  - `testdata/fixtures/_05_image/` (비활성) — 슬라이드 6개 + **에셋 3개**(프로젝트에
+    `assets/`가 처음 생긴다): `001_fit`(fit 2종 × 넓은/좁은 그림 4칸), `002_appearance`
+    (외관 6종 각각 한 속성만), `003_formats_reuse`(PNG·JPEG + 같은 `src` 두 번),
+    `004_image_text`(2단 + 링크 + 노트), `005_grid`(`<grid cols="3">`·`span`·`pad`),
+    `006_full_bleed`(슬라이드 직속 + `<spacer/>`).
+  - `PRD.md` §7.5 — `<image>` 행의 `frame`을 지우고 `alt`을 넣었고, 두 결정의 근거를 절의
+    불릿으로 남겼다 (ADR은 항목 06).
+
+- **설계 결정과 근거**:
+  - **`frame`을 열지 않았다** (PRD 표에서 지웠다). 뜻이 PRD 어디에도 정의되어 있지 않고
+    (§7.6 속성 표에 행이 없다), 액자가 뜻하는 것(테두리+반경+그림자의 묶음)은 이미
+    `variant`가 소유하는 채널이다. 열면 캐스케이드에 5단이 생기고 `variant`와 `frame`이
+    충돌할 때의 승자를 정해야 하는데, 그 규칙은 저자가 외울 이유가 없다. 항목 02가 테마에
+    `framed` variant를 정의하면 그것이 이 결정의 실물 증거가 된다.
+  - **`alt`을 열었다** (PRD 표에 넣었다). 기준은 이 저장소가 속성을 여는 기준 그 자체다 —
+    양 타깃에 실을 자리가 있다: 웹 `<img alt>`, PPTX `p:cNvPr@descr`. 자리가 있는데 열지
+    않으면 산출물이 접근성 없는 그림을 내고 저자가 고칠 방법이 아예 없다. 생략 시 웹이
+    `alt=""`(장식 이미지)를 내는 것까지가 결정의 일부이고, 그 절반은 항목 03의 몫이다.
+  - **`fill`을 열지 않았다.** PRD §7.6 표의 적용 대상에 image가 없고, 그림 뒤의 칠이 보이는
+    자리는 `contain`의 여백뿐인데 그 여백은 PPTX에서 `pic`의 박스 밖이다 — 색을 받아 놓고 한
+    타깃에서만 그리는 속성이 된다.
+  - **`pad`는 `BoxAttrs()` 한 벌 그대로 받았다** (도형·컨테이너와 공유). 양 타깃에 자리가
+    있다고 판단했다: 웹은 `<img>`의 padding이 콘텐츠 박스를 줄이고 `object-fit`이 그 박스에
+    적용되며, PPTX는 `pic`의 `xfrm`을 여백만큼 줄여 내면 같은 결과다 (`bodyPr`의 인셋은
+    텍스트의 것이라 쓰지 않는다). 목록을 갈라 두는 길과 저울질했고 공유를 골랐다 — 두 벌이
+    되면 PRD 표에 크기 속성이 하나 늘 때 어느 태그가 빠졌는지 사람이 세어야 한다.
+    **되돌릴 자리는 `005_grid`의 `pad="md"` 칸이다** (아래 열린 질문).
+  - **`KindImage`를 별도 종류로 두었다.** `KindShape`와 합치지 않은 근거는 하나로 갈라진다:
+    도형은 자식 텍스트를 `txBody`로 흡수하고 그림은 담을 것이 없으며, PPTX에서 `sp`와 `pic`은
+    다른 요소다. 합쳐 두면 두 렌더러가 다시 이름으로 갈라야 한다. **재는 것과 도형이 되는
+    것이 일치하는 두 번째 종류**다 (ADR 0009·0013의 표에 행이 하나 는다 — 항목 06).
+  - **`modelVoid`.** `<image src="…" />` 하나가 전부다. 캡션은 형제 `<text>`이고
+    (`004_image_text`·`001_fit`이 그 표기), 그림 안 글자는 도형의 일, 그림 위 글자는
+    Iteration 6의 `<stack>`이다. 부작용 하나를 확인했다: void 위반의 진단은 여는 태그
+    한 줄이고 안쪽 내용은 진단하지 않는다 (기존 `<spacer>`·`<br>`의 동작을 그대로 받는다) —
+    `<image>...</image>`를 쓴 저자는 "void 태그 `<image>`은 내용을 가질 수 없다" 하나를 본다.
+  - **`shapeChildren()`에는 넣지 않았다.** 도형 안 그림은 PPTX에서 `sp` 안의 `pic`이 아니라
+    도형의 `blipFill`이거나 그룹이고, 둘 다 "도형은 `txBody` 하나를 갖는다"는 Iteration 4의
+    매핑과 다른 것이다.
+  - **`fit` 어휘를 2종으로 닫았다** (`cover`·`contain`, PRD 순서). CSS `object-fit`의
+    `fill`/`scale-down`/`none`을 버린 근거는 `<shape type>`을 OOXML 프리셋으로 닫은 것과 같다 —
+    `none`은 `pic`의 박스 밖으로 그림이 넘치는 상태라 PPTX에 대응이 아예 없다. 타입을 둔
+    이유는 `BorderStyle`·`Flip`과 같다 (확정 값이 될 자리가 있다).
+  - **에셋을 손으로 만들어 커밋했다** (생성 스크립트를 남기지 않았다 — 골든은 결정적이어야
+    한다). `wide.png` 16×8(97B), `tall.png` 8×16(98B), `photo.jpg` 16×8(652B). 전부 2색이고
+    **표식이 좌상단에만** 있다: `fit` 검증은 종횡비가 박스와 다를 때만 뜻이 있어 세로/가로
+    각각을 만들었고, 대칭이면 크롭 축이 뒤바뀌어도 픽셀 비교가 통과한다. 픽스처의 박스는
+    전부 `ratio`로 못 박고 그림의 고유 비율과 다르게 두었다 (같으면 cover와 contain이 같은
+    그림을 낸다). 사진 한 장을 넣으면 저장소가 그 대가를 영구히 낸다 — 골든에 웹·PPTX 양쪽으로
+    바이너리가 들어간다 (항목 05).
+
+- **검증**: `gofmt -l .`(무출력), `go vet ./...`, **`make test DOCKER=finch` 초록**
+  (컨테이너가 진짜 게이트다). 골든은 한 파일도 움직이지 않았다 — 픽스처가 `_` 접두로 꺼져
+  있고 기존 어휘의 파싱 결과가 바뀌지 않는다는 계약의 실물 확인이다.
+  호스트(macOS)에서 `go test ./...`을 돌리면 `01_text`~`04_shape` 골든의 텍스트 폭
+  (`a:ext cx`)이 어긋나는데, `git stash`로 이 커밋의 변경을 전부 뺀 상태에서도 **같은 diff**가
+  나오는 것을 확인했다 — 폰트 메트릭이 컨테이너 밖에서 다른 것이고 이 항목과 무관하다.
+  픽스처의 `src`가 실제 파일을 가리키는지는 파서 테스트가 `os.Stat`으로 단정한다 (파서는
+  파일을 보지 않으므로 그 단정이 여기 있어야 항목 02 전에 오타가 잡힌다).
+
+- **남긴 것**:
+  - 항목 02가 이어받을 표면: `ImageAttrs()`·`ImageAppearanceAttrs()`·`ImageFits()`(값 층이
+    소비할 목록), `KindImage`(순회의 분기), `Attr.HasValue`(`<image src>`와 `src=""`의 구별 —
+    "경로가 없다"와 "경로가 비었다"를 다른 진단으로 낼 수 있다). 두 렌더러는 여전히
+    `<image>`에서 "매핑이 없다"로 멈춘다 (`render/web.writeNode`·`render/pptx.writeShapeNode`의
+    기존 가드 — 이 항목이 손대지 않았다).
+  - **문서가 아직 낡았다** (항목 06의 몫): `docs/reference/soml/slide.md`의 `<slide>` 자식
+    어휘, `docs/reference/soml/layout.md`의 `<row>` 자식 어휘와 진단 표, `shape.md`의
+    "`<image>`를 썼다 → 알 수 없는 태그" 행. 이 항목에서 고치지 않은 이유는 미구현 동작을
+    레퍼런스에 쓰지 않는 규칙이다 — 지금 `<image>`는 파싱만 되고 그려지지 않는다.
+  - **열린 질문 3건**:
+    (a) **`pad`를 이미지에 열어 둔 것** (위 결정). 항목 03·04가 두 타깃의 계산을 실제로 맞추지
+    못하면 `<image>`용 속성 목록을 따로 이어 `pad`만 떼고, `005_grid`의 `pad="md"` 칸을
+    지운다. 그 판단의 기준을 정해 둔다: 웹의 잰 rect가 padding을 포함한 박스이므로 PPTX가
+    `xfrm`을 줄일 때 **좌표 대조 테스트**(`xfrm` == 측정값 EMU, 0 오차)와 부딪히면 그것이
+    갈라지는 증거다.
+    (b) **`alt` 없는 그림의 웹 산출** — `alt=""`를 내기로 한 것은 이 항목의 결정이지만 실물은
+    항목 03이 낸다. PPTX `descr`을 생략할지 빈 문자열로 낼지는 아직 정하지 않았다 (PowerPoint의
+    대체 텍스트 칸이 빈 것과 속성이 없는 것의 차이를 확인하지 못했다 — 항목 04).
+    (c) **픽스처에 `variant`를 쓰지 않았다.** 테마의 이미지 컴포넌트와 variant 이름은 항목 02의
+    결정이므로 이름을 미리 굳히지 않았다 — 항목 02가 `framed`를 정의하면 `002_appearance`에
+    그 칸을 더하는 것이 `frame`을 열지 않은 결정의 실물 증거가 된다.

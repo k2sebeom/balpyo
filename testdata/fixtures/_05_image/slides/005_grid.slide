@@ -1,0 +1,19 @@
+<!-- 그림 그리드 — `<grid cols="3">`의 칸에 그림이 들어가고, 마지막 칸이 `span="2"`로 두 칸을
+     차지한다 (이미지도 컨테이너의 자식이므로 배치 속성을 받는다 — withChildPlacement).
+     03_layout/002_grid_cards가 같은 배치를 텍스트로, 04_shape/006_cards가 도형으로 만든
+     슬라이드다. 세 픽스처를 나란히 놓으면 컨테이너의 자식 어휘가 iteration마다 어떻게
+     넓어졌는지가 산출물로 보인다.
+
+     `pad`가 붙은 칸이 하나 있다 — 그림에서 여백은 그림 영역을 줄이는 것이고(soml.ImageAttrs)
+     양 타깃의 계산이 갈라지는지가 항목 03·04에서 이 칸으로 드러난다. 갈라지면 목록에서
+     `pad`를 떼는 것이 답이고, 그 결정이 이 칸을 지운다. -->
+<slide id="image-grid">
+  <h2>그림 그리드</h2>
+  <grid cols="3" gap="md">
+    <image src="assets/wide.png" fit="cover" w="fill" ratio="1:1" alt="첫째 칸"/>
+    <image src="assets/tall.png" fit="cover" w="fill" ratio="1:1" alt="둘째 칸"/>
+    <image src="assets/photo.jpg" fit="cover" w="fill" ratio="1:1" alt="셋째 칸"/>
+    <image src="assets/wide.png" fit="contain" pad="md" w="fill" ratio="1:1" alt="여백이 있는 칸"/>
+    <image src="assets/tall.png" fit="contain" span="2" w="fill" ratio="2:1" alt="두 칸을 차지하는 그림"/>
+  </grid>
+</slide>

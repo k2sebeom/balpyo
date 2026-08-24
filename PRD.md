@@ -446,7 +446,7 @@ balpyo build --target pptx     # 네이티브 PPTX
 |---|---|---|---|
 | `<text>` | role, align, anchor | 텍스트 요소 | 텍스트 박스 (`sp`+`txBody`) |
 | `<shape>` | type, id | 박스 div + 그림 svg | 프리셋 도형 (`sp`+`prstGeom`) |
-| `<image>` | src, fit(cover/contain), frame | img | 그림 (`pic`) |
+| `<image>` | src, fit(cover/contain), alt | img | 그림 (`pic`) |
 | `<arrow>` | from, to, label, heads, via | SVG 패스 (앵커 자동 계산) | 커넥터 (`cxnSp`) |
 | `<line>` | cap, dash, dir | SVG 라인 | 커넥터 (화살촉 없음) — 장식 구분선 |
 | `<group>` | (레이아웃 속성) | div | 그룹 (`grpSp`) |
@@ -458,6 +458,15 @@ balpyo build --target pptx     # 네이티브 PPTX
   `cylinder`, `chevron`, `arrow-right`, `hexagon`, `parallelogram`, `callout`,
   `star`, `cloud`. 모두 OOXML 프리셋 지오메트리의 부분집합이며, 확장 시에도 OOXML에
   존재하는 것만 추가해 번역 가능성을 지킨다.
+- **`<image>`의 `frame`을 지우고 `alt`을 넣었다 (확정, I5)**: `frame`은 뜻이 이 문서
+  어디에도 정의되어 있지 않았고(§7.6의 속성 표에 행이 없다), 액자가 뜻하는 것(테두리+반경+
+  그림자의 묶음)은 이미 `variant`가 소유하는 채널이다 — 같은 것을 두 이름으로 받으면
+  캐스케이드에 단이 하나 늘고 둘이 충돌할 때의 승자를 저자가 외워야 한다.
+  `<image variant="framed">`가 그 자리다. 반대로 `alt`은 **양 타깃에 실을 자리가 있다**:
+  웹은 `<img alt>`, PPTX는 `p:cNvPr@descr`(PowerPoint의 "대체 텍스트" 칸)이다 — 자리가
+  있는데 열지 않으면 산출물이 접근성 없는 그림을 내고 저자가 고칠 방법이 없다. `<image>`는
+  `fill`도 받지 않는다 (§7.6 표의 적용 대상 그대로 — 그림 뒤의 칠이 보이는 자리는
+  `contain`의 여백뿐이고 그 여백은 PPTX에서 `pic`의 박스 밖이다).
 - **`<arrow>`는 GUI PowerPoint보다 나은 지점이다**: `from`/`to`로 도형 `id`를 참조하면
   앵커를 자동 계산하고, 배치가 바뀌어도 연결이 유지된다.
 - **`<arrow>` 앵커 시맨틱 (확정, §13-4)**: 기본은 **자동 앵커** — 두 도형의 중심을 잇는

@@ -122,8 +122,10 @@ func withChildPlacement(attrs []string) []string {
 
 // layoutChildren은 레이아웃 컨테이너의 자식 어휘다 (순서 = 진단 순서).
 //
-// 컴포넌트(`<text>`·`<shape>`)가 앞에 오고 텍스트 서브셋·레이아웃이 뒤따른다. `<shape>`가
-// 여기 있는 것이 이번 iteration의 핵심 장면이다 — `<grid cols="4">` 안의 카드 도형.
+// 컴포넌트(`<text>`·`<shape>`·`<image>`)가 앞에 오고 텍스트 서브셋·레이아웃이 뒤따른다.
+// `<shape>`가 여기 있는 것이 Iteration 4의 핵심 장면이었다 — `<grid cols="4">` 안의 카드
+// 도형. `<image>`가 더해진 것이 Iteration 5의 핵심 장면이다 — 그림+텍스트 2단(`<row>`)과
+// 그림 그리드(`<grid cols="3">`).
 //
 // 레이아웃 컨테이너가 자신도 목록에 있는 것은 의도다 — 중첩 레이아웃(`<row>` 안의
 // `<col>`)이 이 어휘의 핵심 장면이다. `<note>`는 없다: 노트는 콘텐츠가 아니라 슬라이드
@@ -131,8 +133,8 @@ func withChildPlacement(attrs []string) []string {
 // 슬라이드의 노트인가"가 같은 답이면서 트리 위치만 다른 중복이 된다. `<li>`도 없다 —
 // 리스트 컨테이너의 자식으로만 온다.
 func layoutChildren() []string {
-	children := make([]string, 0, 2+len(blockElements)+len(listContainerElements)+len(layoutContainerElements)+1)
-	children = append(children, TextElement, ShapeElement)
+	children := make([]string, 0, 3+len(blockElements)+len(listContainerElements)+len(layoutContainerElements)+1)
+	children = append(children, TextElement, ShapeElement, ImageElement)
 	children = append(children, blockElements...)
 	children = append(children, listContainerElements...)
 	children = append(children, layoutContainerElements...)

@@ -7,8 +7,8 @@ package soml
 // 소비한다. 네 층이 각자 이름 목록을 들고 있으면 태그 하나를 추가할 때 한 곳을 빼먹는 것이
 // 곧 "좌표가 엉뚱한 요소에 붙는" 조용한 실패다.
 
-// ElementKind는 요소의 종류다 — 텍스트 서브셋과 레이아웃(layout.go)·도형(shape.go)을 함께
-// 담는다.
+// ElementKind는 요소의 종류다 — 텍스트 서브셋과 레이아웃(layout.go)·도형(shape.go)·
+// 이미지(image.go)를 함께 담는다.
 //
 // 열거형을 파일 하나에 모으는 이유: 카탈로그 파일은 어휘별로 나뉘어도 **종류 값은 한
 // 곳에서 봐야** 두 어휘가 같은 값을 쓰거나 빈 값을 남기는 사고가 없다. 이름 목록과
@@ -44,6 +44,17 @@ const (
 	// 각자 `name == "shape"` 비교를 들게 되고, 그것이 카탈로그를 한 곳에 둔 이유를
 	// 무너뜨린다 (KindSpacer의 근거와 같은 종류다).
 	KindShape
+	// KindImage는 <image>다 (image.go). 별도 종류인 근거는 KindShape와 같다 — 네 층의
+	// 산출이 전부 다르다: 콘텐츠 모델이 다르고(void다 — 담을 것이 없다), 잰 rect가
+	// **그림 좌표로 쓰이고**(`p:pic`의 `xfrm`), 웹은 `<img>`를 내고, PPTX는 `blipFill` +
+	// 미디어 파트를 낸다. 종류를 나누지 않으면 네 층이 각자 `name == "image"` 비교를 들게
+	// 된다 (ADR 0009·0013의 표에 새 행이 하나 는다).
+	//
+	// **재는 것과 도형이 되는 것이 일치하는 두 번째 종류다** (KindShape가 첫 번째).
+	// KindShape와 합치지 않는 이유가 그 하나로 갈라진다: 도형은 자기 안에 `txBody`를
+	// 담고(자식 텍스트를 흡수한다) 그림은 담을 것이 없으며, PPTX에서 `sp`와 `pic`은 다른
+	// 요소다 — 합쳐 두면 두 렌더러가 다시 이름으로 갈라야 한다.
+	KindImage
 )
 
 // 종류별 이름 목록. **순서가 곧 진단 메시지와 문서의 순서다** — 맵이 아니라 슬라이스인
@@ -61,8 +72,8 @@ const ListItemElement = "li"
 // `<br/>`(자기 닫힘)로만 쓴다. 렌더러가 런 분할에서 이 이름을 특별 취급한다.
 const BreakElement = "br"
 
-// elementKinds는 이름 → 종류 색인이다. 위의 순서 있는 목록과 레이아웃·도형 카탈로그
-// (layout.go·shape.go)에서 파생된다 — 종류를 갖는 이름은 전부 여기를 지난다.
+// elementKinds는 이름 → 종류 색인이다. 위의 순서 있는 목록과 레이아웃·도형·이미지 카탈로그
+// (layout.go·shape.go·image.go)에서 파생된다 — 종류를 갖는 이름은 전부 여기를 지난다.
 var elementKinds = buildElementKinds()
 
 func buildElementKinds() map[string]ElementKind {
@@ -82,6 +93,7 @@ func buildElementKinds() map[string]ElementKind {
 	}
 	kinds[SpacerElement] = KindSpacer
 	kinds[ShapeElement] = KindShape
+	kinds[ImageElement] = KindImage
 	return kinds
 }
 
@@ -91,9 +103,12 @@ func KindOf(name string) ElementKind {
 }
 
 // IsVoidElement는 이 이름이 void 요소(자식·문자 데이터를 갖지 않는 요소)인지 보고한다.
-// `<br>`(런 분할)과 `<spacer>`(밀어내기)가 그것이다 — 둘 다 자기 닫힘으로만 쓴다.
+// `<br>`(런 분할)·`<spacer>`(밀어내기)·`<image>`(그림)가 그것이다 — 전부 자기 닫힘으로만
+// 쓴다. 그림이 void인 근거는 `<image src="…" />` 하나가 전부이고 담을 것이 없다는 것이다:
+// 캡션은 `<image>`의 자식이 아니라 **형제 `<text>`**이고, 그림 안 글자는 도형의 일이며
+// (`<shape>` 안 `<text>`) 그림 **위** 글자는 겹침(Iteration 6의 `<stack>`)의 일이다.
 func IsVoidElement(name string) bool {
-	return name == BreakElement || name == SpacerElement
+	return name == BreakElement || name == SpacerElement || name == ImageElement
 }
 
 // TagTextRole은 블록·리스트 항목 태그의 텍스트 역할이다 — PRD §7.7의 등가 표

@@ -17,9 +17,9 @@ const noteElement = "note"
 //
 // 어휘는 iteration을 따라 열린다 — 텍스트 서브셋(subset.go의 카탈로그)은 Iteration 2,
 // 레이아웃 태그(layout.go의 카탈로그)는 Iteration 3, `<shape>`(shape.go의 카탈로그)는
-// Iteration 4, `<stack>`은 Iteration 6이다. 어휘를 미리 열어 두면 "파싱은 되는데 렌더는
-// 안 되는" 상태가 생기고, 그것이 닫힌 어휘로 막으려던 바로 그 조용한 실패다. 렌더 매핑이
-// 아직 없는 태그는 렌더러가 명시적으로 멈춘다
+// Iteration 4, `<image>`(image.go의 카탈로그)는 Iteration 5, `<stack>`은 Iteration 6이다.
+// 어휘를 미리 열어 두면 "파싱은 되는데 렌더는 안 되는" 상태가 생기고, 그것이 닫힌 어휘로
+// 막으려던 바로 그 조용한 실패다. 렌더 매핑이 아직 없는 태그는 렌더러가 명시적으로 멈춘다
 // (render/web.writeNode, render/pptx.writeShapeNode).
 var elementSpecs = buildElementSpecs()
 
@@ -49,6 +49,16 @@ func buildElementSpecs() map[string]elementSpec {
 			attrs:    withChildPlacement(ShapeAttrs()),
 			model:    modelElements,
 			children: shapeChildren(),
+		},
+		ImageElement: {
+			// 고유 → 외관 → 박스(pad·크기) → 자식 배치 순이다 (ImageAttrs). 이미지도
+			// 레이아웃 컨테이너의 자식이 될 수 있으므로 `<grid><image span="2">`이 유효하고,
+			// 그림+텍스트 2단·그림 그리드가 Iteration 5의 흔한 장면이다.
+			//
+			// void다 — `<image src="…" />` 하나가 전부이고 담을 것이 없다 (IsVoidElement의
+			// 주석에 근거가 있다). 자식을 넣은 `<image>`는 파서가 멈춘다.
+			attrs: withChildPlacement(ImageAttrs()),
+			model: modelVoid,
 		},
 		noteElement: {model: modelText},
 	}
@@ -119,13 +129,15 @@ func buildElementSpecs() map[string]elementSpec {
 
 // slideChildren은 <slide>의 자식 어휘다. 순서가 진단 메시지의 순서다.
 //
-// 컴포넌트(`<text>`·`<shape>`)가 앞에 오고 `<note>`·텍스트 서브셋·레이아웃이 뒤따른다.
-// 슬라이드 직속 도형은 세로 스택의 한 칸이다 — 표제 아래 구분면·배지가 그 자리다.
+// 컴포넌트(`<text>`·`<shape>`·`<image>`)가 앞에 오고 `<note>`·텍스트 서브셋·레이아웃이
+// 뒤따른다. 슬라이드 직속 도형은 세로 스택의 한 칸이다 — 표제 아래 구분면·배지가 그
+// 자리다. 슬라이드 직속 이미지도 같은 자리이고 그것이 전면 그림(PRD §7.3의 `image-full`)의
+// 표기다.
 //
 // 레이아웃 컨테이너와 `<spacer>`가 들어 있다: 슬라이드 직속 `<spacer>`는 세로 스택에서
 // 밀어내기가 되므로 뜻이 있다 (머리글 아래 여백을 늘려 꼬리글을 바닥에 붙이는 배치).
 func slideChildren() []string {
-	children := []string{TextElement, ShapeElement, noteElement}
+	children := []string{TextElement, ShapeElement, ImageElement, noteElement}
 	children = append(children, blockElements...)
 	children = append(children, listContainerElements...)
 	children = append(children, layoutContainerElements...)

@@ -246,13 +246,9 @@ func TestParseShapeErrors(t *testing.T) {
 			want: []string{"1:27 <shape>에 알 수 없는 속성 fil"},
 		},
 		{
-			// `<image>`·`<arrow>`·`<line>`·`<group>`은 Iteration 5·7·9다 — 렌더 매핑 없는
-			// 태그를 어휘에 열면 저자가 쓴 것이 조용히 무시된다.
-			name: "image는 아직 어휘 밖이다",
-			src:  `<slide><image src="a.png"/></slide>`,
-			want: []string{"1:9 알 수 없는 태그 <image>"},
-		},
-		{
+			// `<arrow>`·`<line>`·`<group>`은 Iteration 7·9다 — 렌더 매핑 없는 태그를 어휘에
+			// 열면 저자가 쓴 것이 조용히 무시된다. `<image>`는 Iteration 5에 열렸다
+			// (image_test.go).
 			name: "arrow는 아직 어휘 밖이다",
 			src:  `<slide><shape type="rect" id="a"/><arrow from="a" to="b"/></slide>`,
 			want: []string{"1:36 알 수 없는 태그 <arrow>"},
@@ -359,8 +355,9 @@ func TestShapeKind(t *testing.T) {
 	if role, ok := TagTextRole(ShapeElement); ok {
 		t.Errorf("TagTextRole(%q) = %q — 도형은 역할 표에 없어야 한다", ShapeElement, role)
 	}
-	// Iteration 5·7·9의 컴포넌트는 카탈로그에도 어휘에도 없어야 한다.
-	for _, name := range []string{"image", "arrow", "line", "group", "icon", "table", "chart"} {
+	// Iteration 6·7·9의 컴포넌트는 카탈로그에도 어휘에도 없어야 한다. `<image>`는
+	// Iteration 5에 열렸다 (image.go — TestImageKind가 그 계약을 본다).
+	for _, name := range []string{"stack", "arrow", "line", "group", "icon", "table", "chart"} {
 		if KindOf(name) != KindNone {
 			t.Errorf("<%s>가 카탈로그에 있다 — 뒤 iteration의 어휘다", name)
 		}

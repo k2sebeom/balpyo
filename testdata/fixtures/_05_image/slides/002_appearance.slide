@@ -1,0 +1,22 @@
+<!-- 외관 속성 전수: `border`(토큰 색), `radius`, `shadow`, `opacity`, `rotate`, `flip`
+     (PRD §7.6의 image 행). 한 슬라이드에 모으는 이유는 04_shape/004_appearance와 같다 —
+     각각이 **한 속성만** 다른 그림이어야 항목 03·04의 CSS/OOXML 매핑이 서로를 덮어쓰지
+     않는지 보인다. 그래서 나머지 조건(같은 에셋·같은 박스·contain)을 고정한다.
+     `border`가 토큰 색인 것이 픽스처 색 계약의 시험대다: 슬라이드 파트에 `srgbClr`가 없어야
+     하고(그림의 테두리도 `schemeClr`), 그 판정을 항목 05가 픽스처 수준 테스트로 받는다.
+     `flip`은 좌우 대칭이 아닌 그림에서만 눈에 보이므로 표식이 좌상단에 있는 에셋을 쓴다.
+     `fill`은 여기 없다 — 이미지에는 열지 않았다 (soml.imageAppearanceAttrs).
+     `variant`도 없다 — 테마의 이미지 컴포넌트는 항목 02가 정의한다. -->
+<slide id="image-appearance">
+  <h2>테두리·모서리·그림자·투명도·회전</h2>
+  <row gap="md" align="center">
+    <image src="assets/wide.png" fit="contain" border="1 solid muted" w="200" h="150" alt="테두리"/>
+    <image src="assets/wide.png" fit="contain" radius="lg" w="200" h="150" alt="둥근 모서리"/>
+    <image src="assets/wide.png" fit="contain" shadow="soft" w="200" h="150" alt="그림자"/>
+  </row>
+  <row gap="md" align="center">
+    <image src="assets/wide.png" fit="contain" opacity="0.4" w="200" h="150" alt="반투명"/>
+    <image src="assets/wide.png" fit="contain" rotate="15" w="200" h="150" alt="회전"/>
+    <image src="assets/wide.png" fit="contain" flip="h" w="200" h="150" alt="좌우 대칭"/>
+  </row>
+</slide>

@@ -1,0 +1,23 @@
+<!-- 그림+텍스트 2단 — PRD §7.3의 `image-text` 레이아웃을 컨테이너로 손으로 펼친 모습이다
+     (`layout=`/`slot=`은 Iteration 10). 그림이 `<row>`의 자식이므로 자식 배치 속성을 받고
+     (`basis`), 캡션이 **형제 `<text>`**인 것이 void 결정의 실물이다 (soml.IsVoidElement).
+
+     이 슬라이드에 **링크와 노트가 함께** 있는 이유는 관계 id 배정이다: 슬라이드 rels에
+     노트(rId2 — 노트가 없어도 예약된다)·하이퍼링크·**미디어**가 한 파트에 함께 실리는 상태가
+     여기서 처음 생긴다. 번호가 어긋나면 PowerPoint가 파일을 열지 못하거나 링크가 엉뚱한
+     곳을 가리키고, 그 실패는 이 슬라이드에서만 드러난다 (항목 04). -->
+<slide id="image-text">
+  <h2>그림과 텍스트</h2>
+  <row gap="xl" align="center">
+    <col gap="xs" basis="520">
+      <image src="assets/tall.png" fit="cover" w="fill" ratio="4:3" alt="구성도"/>
+      <text role="caption">그림 1. 구성도 — 캡션은 그림의 자식이 아니라 형제다</text>
+    </col>
+    <col gap="sm">
+      <h3>담을 것이 없는 태그</h3>
+      <p>그림은 void다. 그림 안 글자는 도형의 일이고, 그림 위 글자는 겹침의 일이다.</p>
+      <p>자세한 규칙은 <a href="https://balpyo.dev/reference/soml/image">레퍼런스</a>에 있다.</p>
+    </col>
+  </row>
+  <note>그림은 왼쪽, 규칙은 오른쪽. 링크는 발표 중에 열지 않는다.</note>
+</slide>

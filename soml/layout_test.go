@@ -147,10 +147,11 @@ func TestParseLayoutErrors(t *testing.T) {
 		},
 		{
 			// 노트는 콘텐츠가 아니라 슬라이드 메타데이터다 (SlideDoc.Notes). 목록에 <shape>가
-			// 들어온 것은 Iteration 4다 — 컨테이너 안 도형이 카드 그리드의 핵심 장면이다.
+			// 들어온 것은 Iteration 4, <image>는 Iteration 5다 — 컨테이너 안 도형이 카드
+			// 그리드의 핵심 장면이고, 컨테이너 안 그림이 그림+텍스트 2단의 핵심 장면이다.
 			name: "컨테이너 안의 note",
 			src:  `<slide><row><note>메모</note></row></slide>`,
-			want: []string{"1:14 <row>의 자식으로 <note>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <spacer>)"},
+			want: []string{"1:14 <row>의 자식으로 <note>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <image>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <spacer>)"},
 		},
 		{
 			name: "컨테이너 안의 li",

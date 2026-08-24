@@ -1,0 +1,28 @@
+<!-- `fit` 2종 × 박스보다 **넓은 그림**·**좁은 그림**의 4칸 표다. `fit`은 박스가 정해진
+     다음에만 뜻을 가지므로(soml.ImageAttrs) 네 칸 모두 `ratio`로 박스를 못 박고, 그 비율을
+     그림의 고유 비율과 **다르게** 둔다 (wide.png는 2:1, tall.png는 1:2, 박스는 4:3) —
+     비율이 같으면 cover와 contain이 같은 그림을 내고 이 슬라이드가 아무것도 시험하지 않는다.
+     항목 04의 크롭 등가성(`srcRect`)이 여기서 그림이 되고, 항목 05의 픽셀 비교가 크롭 축·
+     방향의 유일한 자동 판정이다. 에셋이 좌상단에만 표식을 가진 2색 그림인 이유가 이것이다:
+     대칭이면 축이 뒤바뀌어도 픽셀 비교가 통과한다. -->
+<slide id="image-fit">
+  <h2>fit — cover와 contain</h2>
+  <grid cols="2" gap="lg">
+    <col gap="xs">
+      <image src="assets/wide.png" fit="cover" w="fill" ratio="4:3" alt="넓은 그림을 박스에 채운 것"/>
+      <text role="caption">cover · 넓은 그림 (좌우가 잘린다)</text>
+    </col>
+    <col gap="xs">
+      <image src="assets/tall.png" fit="cover" w="fill" ratio="4:3" alt="좁은 그림을 박스에 채운 것"/>
+      <text role="caption">cover · 좁은 그림 (위아래가 잘린다)</text>
+    </col>
+    <col gap="xs">
+      <image src="assets/wide.png" fit="contain" w="fill" ratio="4:3" alt="넓은 그림을 박스에 맞춘 것"/>
+      <text role="caption">contain · 넓은 그림 (위아래에 여백)</text>
+    </col>
+    <col gap="xs">
+      <image src="assets/tall.png" fit="contain" w="fill" ratio="4:3" alt="좁은 그림을 박스에 맞춘 것"/>
+      <text role="caption">contain · 좁은 그림 (좌우에 여백)</text>
+    </col>
+  </grid>
+</slide>
