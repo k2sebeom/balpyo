@@ -77,7 +77,10 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 		return nil, nil, err
 	}
 
-	files, err := soml.Collect(os.DirFS(projectDir), cfg.SlidesDir)
+	// 프로젝트 루트를 **한 fs.FS로** 본다: 슬라이드 수집과 에셋 해석의 경로 기준이 하나라는
+	// 사실이 그 한 값으로 보인다 (`<image src>`는 프로젝트 루트 기준이다 — core.ResolveAssets).
+	fsys := os.DirFS(projectDir)
+	files, err := soml.Collect(fsys, cfg.SlidesDir)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -124,6 +127,9 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 	}
 
 	diags = append(diags, core.Resolve(deck)...)
+	// 에셋 패스는 Resolve 다음, Validate 형제다 — 확정 값의 `src`를 읽고 **디스크를 봐야** 알
+	// 수 있는 것(존재·포맷·고유 크기)을 본다. 파일 시스템이 여기서만 core로 넘어간다.
+	diags = append(diags, core.ResolveAssets(deck, fsys)...)
 	diags = append(diags, core.Validate(deck)...)
 	if opts.Strict {
 		diags = diags.Strict()

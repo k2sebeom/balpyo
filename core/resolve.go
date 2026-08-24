@@ -92,6 +92,12 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 		// 바꾸는 것은 상속이고, 상속은 지금 구조에 없다.
 		r.resolveShape(elem)
 	}
+	if elem.Name == soml.ImageElement {
+		// 네 번째 갈래다. 도형과 나란히 두고 같은 기계를 쓰지만(캐스케이드·값 문법) 확정 값이
+		// 형제인 이유는 담을 것이 다르다는 것이다 (soml.Appearance.Image). 그림은 void이므로
+		// 아래 순회가 데려갈 자식이 없다.
+		r.resolveImage(elem)
+	}
 	if role, ok := r.textRole(elem); ok {
 		r.resolveText(elem, role)
 		// 텍스트 역할 요소의 자식은 문자 데이터와 인라인 태그뿐이다 (파서의 modelInline) —
@@ -376,6 +382,13 @@ func attrExample(name string) string {
 		return "45"
 	case "flip":
 		return "h"
+	// 이미지 속성 (PRD §7.5 표의 image 행 순서).
+	case "src":
+		return "assets/photo.png"
+	case "fit":
+		return "contain"
+	case "alt":
+		return "chart"
 	case "weight":
 		return "bold"
 	case "href":

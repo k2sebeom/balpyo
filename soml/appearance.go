@@ -19,6 +19,11 @@ type Appearance struct {
 	// 적용하고 렌더러는 읽기만 한다. 도형 외관이 값 층을 두 번 지나면 웹의 CSS와 PPTX의
 	// OOXML이 갈라진다.
 	Shape *ShapeStyle
+	// Image는 이미지 외관이다 (imagestyle.go) — `<image>`에만 채워진다. Shape와 형제로
+	// 두고 **한 구조체로 합치지 않는 이유**는 담을 것이 다르다는 것이다: 도형은
+	// `type`·`fill`·`id`를, 그림은 `src`·`fit`·`alt`를 갖는다. 값 문법이 겹치는 부분은
+	// 구조가 아니라 **함수**로 공유한다 (core의 border·radius·shadow 해석).
+	Image *ImageStyle
 	// Link는 하이퍼링크 목적지다 (<a href>의 값, 원문 그대로). 외관이 아니라 **행동**이라
 	// TextStyle 밖에 둔다 — 밑줄·색은 스타일이고, 목적지는 렌더러가 웹의 href와 PPTX의
 	// hlinkClick으로 잇는다. 여기 두는 것은 "렌더러가 Attrs를 다시 읽지 않는다"는 계약의

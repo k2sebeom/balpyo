@@ -1,6 +1,10 @@
 package pipeline
 
 import (
+	"bytes"
+	"image"
+	"image/color"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -334,4 +338,69 @@ func TestPPTXFileNameFollowsTitle(t *testing.T) {
 	if got, want := pptx.FileName(deck), "2026-아키텍처-리뷰.pptx"; got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
+}
+
+// 에셋 패스가 조립에 들어와 있는지 — `<image src>`의 기준이 **프로젝트 루트**이고, 표는 슬라이드
+// 수집과 **같은 fs.FS**에서 채워진다 (LoadDeck의 fsys 하나).
+func TestLoadDeckResolvesAssets(t *testing.T) {
+	wide := testPNG(t, 16, 8)
+	dir := newProject(t, map[string]string{
+		"balpyo.json": `{"title": "그림"}`,
+		// 챕터 안 슬라이드가 같은 그림을 가리킨다 — 기준이 슬라이드 파일이면 이 경로가 달라야
+		// 하고, 프로젝트 루트 기준이므로 루트 직속 슬라이드와 **같은 표기**다.
+		"slides/001_title.slide":      "<slide id=\"a\">\n  <image src=\"assets/wide.png\"/>\n</slide>\n",
+		"slides/02_deep/001_in.slide": "<slide id=\"b\">\n  <image src=\"./assets/wide.png\"/>\n</slide>\n",
+		"assets/wide.png":             string(wide),
+	})
+	deck, diags, err := LoadDeck(Options{ProjectDir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(diags) != 0 {
+		t.Errorf("진단이 없어야 한다: %v", diags)
+	}
+	// 같은 파일을 두 슬라이드가 가리켜도 표 항목은 하나다 (정규화 키 → 미디어 파트 하나).
+	if len(deck.Assets) != 1 {
+		t.Fatalf("에셋 %d개, want 1개: %v", len(deck.Assets), deck.Assets.Keys())
+	}
+	asset := deck.Assets[0]
+	if asset.Key != "assets/wide.png" || asset.Format != soml.FormatPNG ||
+		asset.Width != 16 || asset.Height != 8 {
+		t.Errorf("에셋 = %+v, want assets/wide.png png 16×8", soml.Asset{Key: asset.Key,
+			Format: asset.Format, Width: asset.Width, Height: asset.Height})
+	}
+	if string(asset.Bytes) != string(wide) {
+		t.Error("에셋 바이트가 커밋된 파일과 다르다 — 엔진은 바이트를 고치지 않는다")
+	}
+}
+
+// 없는 `src`는 **빌드 에러**다 (TASKS Iteration 5) — 산출물이 빈 그림 자리를 갖고 나가면
+// 저자는 발표 직전에 그것을 발견한다.
+func TestLoadDeckRejectsMissingAsset(t *testing.T) {
+	dir := newProject(t, map[string]string{
+		"slides/001_title.slide": "<slide id=\"a\">\n  <image src=\"assets/none.png\"/>\n</slide>\n",
+	})
+	_, diags, err := LoadDeck(Options{ProjectDir: dir})
+	if err == nil {
+		t.Fatal("없는 src는 빌드 에러여야 한다")
+	}
+	if !diags.HasErrors() || !strings.Contains(diags[0].Message, "파일이 없다") {
+		t.Errorf("진단 = %v, want 파일이 없다", diags)
+	}
+	// 진단은 슬라이드 파일의 값 위치를 가리킨다 — 저자가 에디터에서 바로 고친다.
+	if diags[0].File != "slides/001_title.slide" || diags[0].Span.Start.Line != 2 {
+		t.Errorf("위치 = %s:%s", diags[0].File, diags[0].Span.Start)
+	}
+}
+
+// testPNG는 w×h PNG 바이트다 (테스트가 그때 만든다 — 커밋된 바이너리를 픽스처 밖에 두지 않는다).
+func testPNG(t *testing.T, w, h int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	img.Set(0, 0, color.RGBA{R: 255, A: 255})
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
 }

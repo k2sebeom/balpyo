@@ -498,3 +498,172 @@ func TestResolveShapeVariantDoesNotTouchChildText(t *testing.T) {
 		})
 	}
 }
+
+// ── 이미지 캐스케이드 ───────────────────────────────────────────────────────
+//
+// 세 번째 채널이다 (텍스트·도형에 이어). 아래 테스트가 못 박는 것도 값이 아니라 **구조**다:
+// 이미지가 같은 병합 기계를 쓰고(mergeImage ↔ mergeShape ↔ mergeText), 우선순위가
+// resolveImage의 병합 세 줄에만 있다는 것.
+
+// componentImageStyle는 컴포넌트 기본값만 얹은 확정 외관이다 — 캐스케이드의 **바닥**이고,
+// 모르는 variant의 폴백 기대값이자 표 기반 테스트(image_test.go)의 기대값 바닥이다.
+//
+// `fit`이 바닥에 함께 있는 것은 그것이 **언어의 기본값**이기 때문이다 (soml.DefaultImageFit) —
+// 테마 단이 아니므로 패치가 아니라 초기값으로 들어간다.
+func componentImageStyle() soml.ImageStyle {
+	style := soml.ImageStyle{Fit: soml.DefaultImageFit}
+	mergeImage(&style, imageComponentDefault())
+	return style
+}
+
+// 우선순위 표: 인라인 > variant > 컴포넌트 기본값. 도형과 같은 모양이고(역할이 없다),
+// 갈라지는 자리는 바닥의 **값**이다 — 이미지의 컴포넌트 기본값은 비어 있다.
+func TestMergeImageCascadeOrder(t *testing.T) {
+	component := imagePatch{border: solidBorder(1, "muted")}
+	variant := imagePatch{border: solidBorder(2, "accent1")}
+	inline := imagePatch{border: ptr(soml.NoBorder())}
+	empty := imagePatch{}
+
+	cases := []struct {
+		name                       string
+		component, variant, inline imagePatch
+		want                       *soml.Border
+	}{
+		{"인라인이 전부를 이긴다", component, variant, inline, ptr(soml.NoBorder())},
+		{"인라인이 빠지면 variant", component, variant, empty, solidBorder(2, "accent1")},
+		{"variant까지 빠지면 컴포넌트 기본값", component, empty, empty, solidBorder(1, "muted")},
+		{"전부 빠지면 비어 남는다", empty, empty, empty, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			style := soml.ImageStyle{Fit: soml.DefaultImageFit}
+			mergeImage(&style, tc.component)
+			mergeImage(&style, tc.variant)
+			mergeImage(&style, tc.inline)
+			if !reflect.DeepEqual(style.Border, tc.want) {
+				t.Errorf("Border = %v, want %v", style.Border, tc.want)
+			}
+		})
+	}
+
+	// 필드마다 어느 단에서 왔는지 구별되게 짠 표 — 세 단이 서로 다른 필드를 정할 때 각자의
+	// 값이 남는지는 한 필드로는 보이지 않는다.
+	style := soml.ImageStyle{Src: "assets/wide.png", Fit: soml.FitCover}
+	mergeImage(&style, imagePatch{border: solidBorder(1, "muted"), radius: ptr(soml.TokenRadius("md", 12)),
+		opacity: ptr(1.0)})
+	mergeImage(&style, imagePatch{radius: ptr(soml.TokenRadius("lg", 24)), shadow: ptr(minimalShadows()[0])})
+	mergeImage(&style, imagePatch{rotate: ptr(45.0)})
+	want := soml.ImageStyle{
+		Src:     "assets/wide.png",
+		Fit:     soml.FitCover,
+		Border:  solidBorder(1, "muted"),         // 컴포넌트 기본값
+		Radius:  ptr(soml.TokenRadius("lg", 24)), // variant (기본값 md를 이긴다)
+		Shadow:  ptr(minimalShadows()[0]),        // variant
+		Opacity: ptr(1.0),                        // 컴포넌트 기본값
+		Rotate:  ptr(45.0),                       // 인라인
+	}
+	if !reflect.DeepEqual(style, want) {
+		t.Errorf("단별 병합 = %s, want %s", showImage(style), showImage(want))
+	}
+}
+
+// 부분성: 패치는 정한 필드만 얹고, 캐스케이드 밖 필드(src·fit·alt·박스)는 건드리지 않는다.
+func TestMergeImageAppliesOnlySetFields(t *testing.T) {
+	base := componentImageStyle()
+	base.Src = "assets/wide.png"
+
+	got := base
+	mergeImage(&got, imagePatch{})
+	if !reflect.DeepEqual(got, base) {
+		t.Errorf("빈 패치가 외관을 바꿨다: %s → %s", showImage(base), showImage(got))
+	}
+
+	full := imagePatch{
+		border:  ptr(soml.NoBorder()),
+		radius:  ptr(soml.PxRadius(9)),
+		shadow:  ptr(minimalShadows()[0]),
+		opacity: ptr(0.5),
+		rotate:  ptr(45.0),
+		flip:    ptr(soml.FlipBoth),
+	}
+	got = base
+	got.Alt, got.Box = "설명", soml.Box{Width: ptr(soml.Px(220))}
+	mergeImage(&got, full)
+	// ImageStyle에 외관 필드가 늘었는데 imagePatch가 따라가지 않으면 이 단정이 잡는다
+	// (shapePatch의 전체 패치 단정과 같은 장치).
+	value := reflect.ValueOf(got)
+	for i := 0; i < value.NumField(); i++ {
+		switch name := value.Type().Field(i).Name; name {
+		case "Src", "Fit", "Alt", "Box":
+			// 캐스케이드 밖이다 — 테마가 정할 수 없는 값이라 패치에 필드가 없다.
+		default:
+			if value.Field(i).IsZero() {
+				t.Errorf("전체 패치가 %s를 정하지 않았다 — imagePatch에 필드가 빠졌다", name)
+			}
+		}
+	}
+	if got.Src != base.Src || got.Fit != base.Fit || got.Alt != "설명" ||
+		got.Box.Width == nil || *got.Box.Width != soml.Px(220) {
+		t.Errorf("병합이 캐스케이드 밖 필드를 건드렸다: %s", showImage(got))
+	}
+
+	// "정하지 않음"과 0값의 구별 — 0을 명시한 패치는 0을 얹는다.
+	got = base
+	mergeImage(&got, imagePatch{opacity: ptr(0.0), rotate: ptr(0.0)})
+	if got.Opacity == nil || *got.Opacity != 0 || got.Rotate == nil || *got.Rotate != 0 {
+		t.Errorf("명시된 0값이 적용되지 않았다: %s", showImage(got))
+	}
+}
+
+// minimal 테마의 이미지 variant 표: `framed`가 **`frame` 속성을 열지 않은 결정의 실물**이다
+// (액자는 속성이 아니라 테마가 정의한 번들이다 — 항목 01). 컴포넌트 기본값이 비어 있으므로
+// variant는 아무 필드나 정해도 구별되지만, 이름 목록의 순서는 여전히 계약이다 (경고가
+// 나열하는 어휘).
+func TestThemeImageVariants(t *testing.T) {
+	theme := minimalTheme()
+	variants := imageVariants(theme)
+	if len(variants) == 0 {
+		t.Fatal("이미지 variant가 없다 — 액자가 테마의 번들이라는 결정에 실물이 없다")
+	}
+	seen := map[string]bool{}
+	for _, v := range variants {
+		if seen[v.name] {
+			t.Errorf("variant 이름이 중복됐다: %q", v.name)
+		}
+		seen[v.name] = true
+		if v.patch == (imagePatch{}) {
+			t.Errorf("variant %q가 아무 필드도 정하지 않는다", v.name)
+		}
+	}
+	if !seen["framed"] {
+		t.Error("`framed`가 표에 없다 — `frame` 속성을 열지 않은 결정의 실물이 사라졌다")
+	}
+	// framed는 액자의 세 조각을 함께 정한다 — 한 속성으로 대신할 수 없는 번들이라는 사실이
+	// 이 단정이다.
+	patch, ok := imageVariantPatch(theme, "framed")
+	if !ok {
+		t.Fatal("framed를 찾지 못했다")
+	}
+	if patch.border == nil || patch.radius == nil || patch.shadow == nil {
+		t.Errorf("framed = %+v, want 테두리+반경+그림자", patch)
+	}
+	names := imageVariantNames(theme)
+	if len(names) != len(variants) {
+		t.Fatalf("이름 %d개, variant %d개", len(names), len(variants))
+	}
+	for i, v := range variants {
+		if names[i] != v.name {
+			t.Errorf("이름 목록 %d번 = %q, want %q", i, names[i], v.name)
+		}
+	}
+	// 어휘 표는 셋이고 서로를 오염시키지 않는다 — 요소 종류가 어느 표를 볼지 정한다.
+	if _, ok := imageVariantPatch(theme, "card"); ok {
+		t.Error("이미지 표에 도형 variant 이름이 들어왔다")
+	}
+	if _, ok := shapeVariantPatch(theme, "framed"); ok {
+		t.Error("도형 표에 이미지 variant 이름이 들어왔다")
+	}
+	if _, ok := textVariantPatch("framed"); ok {
+		t.Error("텍스트 표에 이미지 variant 이름이 들어왔다")
+	}
+}

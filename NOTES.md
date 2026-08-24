@@ -1091,3 +1091,130 @@
     (c) **픽스처에 `variant`를 쓰지 않았다.** 테마의 이미지 컴포넌트와 variant 이름은 항목 02의
     결정이므로 이름을 미리 굳히지 않았다 — 항목 02가 `framed`를 정의하면 `002_appearance`에
     그 칸을 더하는 것이 `frame`을 열지 않은 결정의 실물 증거가 된다.
+
+## Iteration 5 · 02-core-assets — 값이 디스크를 가리킨다: 에셋 표 + 이미지 확정 외관
+<!-- item: 05/02-core-assets -->
+
+- **한 것**:
+  - `soml/asset.go` (신규) — 에셋 표. `ImageFormat`(`FormatPNG`·`FormatJPEG`)·`ImageFormats()`,
+    확장자 표(`imageExts` → `ImageExts()`·`ImageFormatForExt()`), `Asset`(키·포맷·고유 크기·
+    바이트 + `Ext()`), `Assets []Asset`(`Get`·`Keys`). 표를 **덱에 두었다** — `soml/deck.go`의
+    `Deck.Assets`(Theme의 형제).
+  - `soml/imagestyle.go` (신규) — `ImageStyle`(`Src`·`Fit`·`Alt` + 외관 6종 + `Box`)과
+    `Element.ImageStyle()`. `soml/appearance.go`에 `Appearance.Image`를 `Shape`의 형제로 달았다.
+  - `soml/image.go` — `DefaultImageFit = FitContain`(언어의 기본값).
+  - `core/image.go` (신규) — `<image>` 속성의 값 해석. `resolveImage`(4단 캐스케이드),
+    `imageVariant`, `imageAttrs`, `imageSrc`(경로 문법·정규화·확장자 어휘), `srcScheme`,
+    `imageExtReason`, `imageFit`(+`cssOnlyFits`), `imageAlt`, 진단용 목록 둘.
+  - `core/asset.go` (신규) — 에셋 패스. `ResolveAssets(deck, fs.FS)` + `assetPass`(순회·`load`)와
+    `extForFormat`. `image/png`·`image/jpeg`를 blank import로 등록한다.
+  - `core/cascade.go` — `imagePatch`·`mergeImage` (세 번째 병합 복제).
+  - `core/theme.go` — `imageComponentDefault()`(빈 패치), `imageVariants`/`imageVariantPatch`/
+    `imageVariantNames` (`framed` = border 1 solid muted + radius md + shadow soft).
+  - `core/shape.go` — `radius`에서 **값 문법만** `radiusValue`로 떼어 이미지와 공유한다
+    (프리셋 제약은 도형에 남는다). `core/resolve.go` — `node`에 `<image>` 갈래,
+    `attrExample`에 `src`·`fit`·`alt`.
+  - `internal/pipeline/pipeline.go` — `os.DirFS(projectDir)`를 `fsys` 하나로 올려 `soml.Collect`와
+    `core.ResolveAssets`가 **같은 fs.FS**를 쓴다. 호출 순서는 Resolve → ResolveAssets → Validate.
+  - 테스트: `soml/asset_test.go`(신규), `core/image_test.go`(신규 — 표 전수·`src` 규칙·에러
+    전수·도형과의 값 문법 대조·캐스케이드 단), `core/asset_test.go`(신규 — `fstest.MapFS` 표·
+    에러 전수·`_05_image` 픽스처 통째 해석), `core/cascade_test.go`(이미지 캐스케이드 3건),
+    `internal/pipeline/pipeline_test.go`(조립 2건).
+
+- **설계 결정과 근거**:
+  - **에셋 표는 `Deck.Assets`다** (곁 표가 아니다). ADR 0004(지오메트리는 곁 표)의 두 근거가
+    여기서는 성립하지 않는다: 에셋은 파생이 아니라 **입력**이고, 렌더 전에 결정적으로 한 번
+    채워지므로 `--target html,pptx`와 `pptx,html`이 같은 덱을 본다. 곁 표 + 생성자 주입은 두
+    렌더러의 생성자를 모두 바꾸는데, 그 타입은 어차피 `soml`에 살아야 한다(core는 렌더러를,
+    렌더러는 core를 임포트하지 않는다) — 즉 타입은 덱 패키지의 것이고, 그러면 덱에 필드로 두는
+    것보다 얻는 것이 없다. `fs.FS` 핸들을 덱에 싣는 길은 버렸다(렌더러의 순수성과 테스트의
+    디스크 무의존이 함께 깨진다). ADR은 항목 06이 쓴다.
+  - **고유 크기는 표에만 있다** — `ImageStyle`에 담지 않았다 (항목 지시의 "확정 값에 고유 크기"와
+    갈라지는 자리다). 근거: 같은 그림을 두 번 쓴 슬라이드에서 두 확정 값이 자기 크기를 다르게
+    말할 수 있게 되고, 그것이 이 저장소가 가장 비싸다고 못 박은 실패(같은 사실의 두 벌)다.
+    두 렌더러는 바이트를 얻으려고 어차피 표를 조회하므로(`deck.Assets.Get(style.Src)`) 조회가
+    한 번 더 생기지도 않는다. 확정 값은 **어느 에셋인가**(`Src`)만 담는다.
+  - **키는 `path.Clean`만 한다 — 대소문자를 눕히지 않는다.** 항목 지시의 "확장자를 소문자로
+    정규화한다"는 요구는 **Format이 소유하게** 했다: 키로 파일을 다시 읽고(웹이 산출 디렉토리로
+    복사한다) 대소문자를 구별하는 파일 시스템에서 `A.PNG`를 `a.png`로 눕히면 그 파일이 사라진다.
+    콘텐츠 타입·미디어 파트 이름은 확장자가 아니라 `Asset.Format`에서 나오면 되고(그래서
+    `.jpg`와 `.JPEG`가 한 `Default` 항목으로 모인다), 확장자 대소문자를 무시하는 것은
+    `ImageFormatForExt`가 한다. `Asset.Ext()`가 소문자 확장자를 한 곳에서 준다 (항목 04가 쓸 표면).
+  - **값 층을 둘로 나눈 선은 "디스크를 보는가"다.** `Resolve`는 경로 **문법**과 어휘(절대 경로·
+    `..`·URL·역슬래시·확장자)를, `ResolveAssets`는 파일이 실제로 무엇인지(존재·디렉토리·헤더·
+    고유 크기)를 본다. 그래야 에디터(lsp)가 프로젝트를 열지 않고도 문법 진단을 전부 낸다.
+    `ResolveAssets`를 `Validate`의 형제로 둔 이유는 계약이 같기 때문이다: 파일 하나를 넘어야
+    알 수 있는 것을 Resolve 다음에 본다.
+  - **역슬래시를 막았다** (항목 지시에 없는 규칙 하나를 더했다). `src="assets\wide.png"`를
+    조용히 `/`로 바꾸면 역슬래시를 파일 이름에 쓸 수 있는 파일 시스템에서 다른 파일을 가리키고,
+    그 차이는 CI에서만 드러난다. 막으면 진단이 첫 번째 고칠 것을 정확히 말한다.
+  - **`fit` 기본값은 언어에 두었다** (`soml.DefaultImageFit`, 테마의 컴포넌트 기본값이 아니다).
+    `fit`은 외관 번들이 아니라 그림의 의미이고, 테마를 바꿨을 때 얼굴이 잘리기 시작하면 안 된다 —
+    `<p>` ≡ `<text role="body">`가 테마가 아니라 언어에 있는 것과 같은 자리의 결정이다.
+  - **이미지 컴포넌트 기본값은 비었다** (도형과 정면으로 갈라진다). "값이 비면 렌더러가 채우는
+    판단을 한다"는 도형의 근거가 그림에는 걸리지 않는다: 채움 없는 도형은 보이지 않지만 그림은
+    자기 픽셀을 갖고, 두 타깃의 암묵 기본값도 갈라지지 않는다(웹 `<img>`·PPTX `pic` 둘 다 장식
+    없이 그린다). 기본으로 테두리를 두르면 스크린샷·도표에 이중 경계가 생기고 저자가 모든
+    그림에 `border="none"`을 적어야 한다. 액자는 **variant `framed`**가 소유한다 — 항목 01이
+    `frame` 속성을 열지 않은 결정의 실물이고, 세 조각(테두리·반경·그림자)을 함께 정하는 것이
+    "번들"의 뜻이다.
+  - **`imagePatch`를 새로 만들었다** (`shapePatch` 재사용을 버렸다). 이미지 패치가 도형 패치의
+    부분집합(fill 하나 차이)이라 "도형 패치를 쓰고 fill만 버린다"가 가능해 보이지만, 그러면
+    **버리는 코드**가 "테마가 정할 수 있는 것"의 두 번째 정의가 된다. 병합이 한눈에 보이는 대입
+    목록인 것이 cascade.go의 값이고, 구조를 뽑는 것은 네 번째 채널(`<group>` — Iteration 9)이다.
+    반면 **값 문법은 함수로 공유했다** (border·shadow·opacity·rotate·flip·박스는 도형의 함수를
+    그대로 부르고, radius는 `radiusValue`로 문법만 떼었다) — 그 공유를 테스트가 값·진단 문구
+    양쪽으로 대조한다.
+  - **`radius`는 이미지에서 항상 유효하다.** ADR 0019의 근거는 프리셋 기하에 반경 조정값 자리가
+    없다는 것이었고, 그림은 프리셋이 아니라 자기 클립을 갖는다(웹 `border-radius`, PPTX
+    `pic/spPr/prstGeom prst="roundRect"`). 그 ADR의 적용 범위가 도형에 한정된다는 사실을 코드
+    주석에 남겼고 문서는 항목 06이 고친다.
+  - **`alt=""`를 받는다** (다른 외관 속성의 "비어 있다" 에러를 적용하지 않았다). `<img>`에서 속성
+    없음과 빈 문자열은 스크린 리더에 다른 뜻이고 빈 문자열이 "장식 이미지"의 표기다. 생략과
+    `alt=""`는 같은 확정 값이 된다(둘 다 웹에서 `alt=""`로 나간다 — 항목 01의 결정). 값 **없는**
+    `alt`은 여전히 에러다. `src`도 `hasValue`를 그대로 쓰지 않았다: "지우면 기본값을 쓴다"가
+    `src`에서는 틀린 안내다(기본값이 없다).
+  - **진단은 이유와 대안을 말한다.** 지원하지 않는 확장자마다 이유가 다르므로
+    (`imageExtReason`) svg는 `svgBlip`+폴백을, gif는 애니메이션을, webp는 버전별 지원을 말하고
+    전부 "png나 jpeg로 내보낸다"로 끝난다. `fit="fill"`은 CSS 지식에서 온 값이므로 오타로 다루지
+    않고 "PPTX에 대응이 없다 + `ratio`로 박스를 맞춘다"로 건너올 길을 준다.
+  - **실패한 키도 `seen`에 넣는다** — 같은 오타를 슬라이드 수만큼 읽지 않게. 표는 매번 처음부터
+    만든다(두 번 불러도 같은 표).
+  - **PPTX/JPEG 디코더만 등록했다** (`image/gif`를 넣지 않았다). 어휘를 2종으로 닫은 결정이 그
+    두 줄로도 강제된다: `.png` 이름의 gif는 `image.ErrFormat`으로 걸리고 진단이 "내용이 png가
+    아니다"를 말한다.
+
+- **검증**: `gofmt -l .`(무출력), `go vet ./...`, **`make test DOCKER=finch` 초록**(컨테이너가
+  진짜 게이트다 — 픽스처 골든 테스트까지 통과했으므로 **골든은 한 바이트도 움직이지 않았다**).
+  호스트(macOS) `go test ./...`에서는 `01_text`~`04_shape` 골든의 `a:ext cx`가 어긋나는데,
+  `git worktree add /tmp/balpyo-head HEAD`로 만든 **이 커밋의 변경이 없는 트리에서 같은 diff**가
+  나오는 것을 확인했다 (폰트 메트릭이 컨테이너 밖에서 다른 것이고 이 항목과 무관하다 —
+  05/01의 관찰과 같다).
+  손으로 확인한 것: `go run ./cmd/balpyo build --project testdata/fixtures/_05_image --target html`이
+  `slides/001_fit.slide:12:7 <image>를 웹으로 렌더하는 매핑이 없다`로 멈춘다 — 값 층과 에셋
+  패스가 픽스처 6장·에셋 3개를 **진단 없이** 통과하고 렌더 매핑에서만 멈춘다는 뜻이다
+  (항목 03·04가 이어받을 정확한 지점).
+  픽스처 에셋의 고유 크기가 05/01의 기록(wide 16×8, tall 8×16, photo 16×8)과 같고 표의 바이트가
+  커밋된 파일과 동일하다는 것을 `TestResolveImageFixture`가 단정한다.
+
+- **남긴 것**:
+  - 항목 03·04가 이어받을 표면: `soml.ImageStyle`(확정 외관 — 렌더러는 이것만 읽는다),
+    `deck.Assets`(`Get(style.Src)` → 바이트·포맷·고유 크기, `Asset.Ext()`, `Assets.Keys()`의
+    결정적 순서 = 미디어 파트 번호의 근거), `soml.ImageFormats()`/`ImageExts()`(Content_Types의
+    `Default` 항목), `core.ResolveAssets`(호출은 pipeline이 이미 한다).
+  - 두 렌더러는 여전히 `<image>`에서 "매핑이 없다"로 멈춘다 (위 검증 참조). 픽스처는 `_` 접두다.
+  - **문서가 아직 낡았다** (항목 06): `docs/reference/soml/image.md`(신규 — `src` 해석 규칙·포맷
+    2종·`fit`·외관), ADR 두 건(에셋 표를 덱에 둔 결정, ADR 0019의 적용 범위가 도형이라는 사실),
+    ADR 0009·0013의 측정 대상 표에 `<image>` 행, `appearance.md`의 적용 대상 열.
+  - **열린 질문 3건**:
+    (a) **`Asset.Bytes`를 덱에 싣는 비용.** 큰 사진 여러 장이 든 덱은 그 전부가 메모리에 남는다
+    (렌더러가 바이트를 쓰는 시점까지). 지금은 픽스처가 1KB 미만이라 관찰할 것이 없지만, 실제 덱에서
+    문제가 되면 표에 `Open() (io.ReadCloser, error)`를 얹는 길이 남아 있다 — 다만 그것은 렌더러의
+    순수성을 다시 여는 결정이므로 값이 아니라 계약의 변경이다.
+    (b) **EXIF 방향 태그.** 관찰하지 못했다 (픽스처의 JPEG에 EXIF가 없다). 엔진이 바이트를 고치지
+    않기로 했으므로 방향 태그를 가진 JPEG는 브라우저(태그를 존중한다)와 PowerPoint(버전마다 갈린다)에서
+    다르게 보일 수 있다 — 항목 03·04가 두 산출물을 나란히 볼 때 확인할 자리이고, 갈라지면 진단으로
+    막는 것(바이트를 고치지 않는 결정과 일관)이 답이라고 본다.
+    (c) **`Ext()`와 미디어 파트 이름의 소유.** `.jpg`/`.jpeg` 두 확장자가 한 포맷이므로 항목 04가
+    파트 이름을 `Format`에서 만들 것(`image1.jpeg`)인지 원본 확장자에서 만들 것인지 정해야 한다.
+    이 항목의 권고는 `Format`이다 — Content_Types의 `Default` 항목이 포맷당 하나로 모인다.

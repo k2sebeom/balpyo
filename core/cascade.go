@@ -120,3 +120,53 @@ func mergeShape(style *soml.ShapeStyle, patch shapePatch) {
 		style.Flip = *patch.flip
 	}
 }
+
+// imagePatch는 이미지 외관의 부분 지정이다 — shapePatch의 이미지 판이고 규약이 같다.
+//
+// **fill이 없다**: PRD §7.6 표의 `fill` 적용 대상에 image가 없고, 그림 뒤의 칠이 보이는
+// 자리는 `fit="contain"`의 여백뿐인데 그 여백은 PPTX에서 `pic`의 박스 밖이다 (soml/image.go의
+// 근거). shapePatch를 그대로 재사용하면 테마 표가 그림에 fill을 정할 수 있게 되고, 그 값은
+// 웹에서만 그려지거나 조용히 버려진다 — 어느 쪽이든 표를 읽는 사람이 뜻을 알 수 없다.
+//
+// **Src·Fit·Alt·Box는 없다.** Src는 어느 파일인가이고(테마가 정할 수 있으면 저자가 쓴 그림이
+// 테마에 따라 다른 파일이 된다 — textPatch에 Role이, shapePatch에 Type이 없는 것과 같은
+// 자리의 결정), Fit은 그림의 **의미**이지 장식이 아니라 언어가 기본값을 갖고
+// (soml.DefaultImageFit), Alt은 콘텐츠이고, Box는 배치 채널이다.
+type imagePatch struct {
+	border  *soml.Border
+	radius  *soml.Radius
+	shadow  *soml.ShadowToken
+	opacity *float64
+	rotate  *float64
+	flip    *soml.Flip
+}
+
+// mergeImage는 patch가 정한 필드만 style에 얹는다 — mergeText·mergeShape와 **같은 계약**이다.
+//
+// 세 번째 복제다. 제네릭으로 합치는 길을 여기서 다시 저울질했고 또 버렸다: 이미지 패치가
+// 도형 패치의 부분집합(fill 하나 차이)이라 "도형 패치를 재사용하고 fill만 버린다"가 가능해
+// 보이지만, 그러면 **버리는 코드**가 생기고 그 코드가 곧 "테마가 정할 수 있는 것"의 두 번째
+// 정의가 된다 (imagePatch의 필드 목록이 첫 번째다). 병합이 한눈에 보이는 대입 목록인 것이
+// 이 파일의 값이고, 구조를 뽑는 것은 네 번째 채널(`<group>` — Iteration 9)에서 한다.
+func mergeImage(style *soml.ImageStyle, patch imagePatch) {
+	// 포인터를 그대로 대입하지 않고 값을 복사한다 (mergeShape와 같은 근거 — 테마 표가
+	// 캐시되는 날 한 그림을 고치는 코드가 테마를 고친다).
+	if patch.border != nil {
+		style.Border = ptr(*patch.border)
+	}
+	if patch.radius != nil {
+		style.Radius = ptr(*patch.radius)
+	}
+	if patch.shadow != nil {
+		style.Shadow = ptr(*patch.shadow)
+	}
+	if patch.opacity != nil {
+		style.Opacity = ptr(*patch.opacity)
+	}
+	if patch.rotate != nil {
+		style.Rotate = ptr(*patch.rotate)
+	}
+	if patch.flip != nil {
+		style.Flip = *patch.flip
+	}
+}

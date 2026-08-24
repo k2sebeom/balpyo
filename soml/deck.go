@@ -53,7 +53,12 @@ type Deck struct {
 	Stage  Stage
 	// Theme는 해석된 외관의 색·폰트 참조가 가리키는 토큰 표다 (appearance.go). core.Resolve가
 	// 채우고, 두 렌더러가 이 한 표에서 CSS 변수와 PPTX 테마 파트를 만든다.
-	Theme  Theme
+	Theme Theme
+	// Assets는 `<image src>`가 가리킨 파일의 바이트·포맷·고유 크기다 (asset.go).
+	// core.ResolveAssets가 채우고 두 렌더러가 읽는다 — **Theme의 형제**다: 파생 데이터가
+	// 아니라 입력이고, 렌더 전에 결정적으로 한 번 채워지므로 타깃 순서와 무관하다
+	// (곁 표로 두지 않은 근거는 asset.go의 패키지 주석에 있다).
+	Assets Assets
 	Slides []*Slide
 }
 

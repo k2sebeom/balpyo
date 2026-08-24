@@ -384,10 +384,80 @@ func shapeVariantNames(theme soml.Theme) []string {
 	return names
 }
 
+// imageComponentDefault는 이미지 컴포넌트의 기본 외관 패치다 — 캐스케이드의 셋째 단이고
+// **비어 있다.**
+//
+// 도형과 정면으로 갈라지는 자리다 (shapeComponentDefault는 채움·테두리·반경을 정한다).
+// 근거는 "값이 비면 렌더러가 채우는 판단을 하게 된다"는 그 규칙이 그림에는 걸리지 않는다는
+// 것이다: 채움 없는 도형은 **보이지 않으므로** 두 타깃이 각자 무언가를 채우게 되지만, 그림은
+// 자기 픽셀을 갖고 있어 장식이 하나도 없어도 완전한 그림이다. 두 타깃의 암묵 기본값도 여기서는
+// 갈라지지 않는다 — 웹 `<img>`와 PPTX `pic`은 둘 다 테두리·그림자 없이 그린다.
+//
+// 그래서 **액자는 저자가 말한다**: 기본으로 테두리를 두르면 스크린샷·도표처럼 자기 배경이 있는
+// 그림에 이중 경계가 생기고, 저자가 그것을 지우는 표기(`border="none"`)를 모든 그림에 적어야
+// 한다. 액자가 필요한 자리에는 variant가 있다 (imageVariants의 `framed`) — 그 번들이 `frame`
+// 속성을 열지 않은 결정(항목 01)의 실물이다.
+//
+// 인자를 받지 않는 것도 그 결과다 (shapeComponentDefault는 반경 토큰을 찾느라 테마를 받는다).
+// Iteration 10의 components.json이 이 자리에 값을 실을 수 있고, 그때 인자가 생긴다.
+func imageComponentDefault() imagePatch {
+	return imagePatch{}
+}
+
+// imageVariant는 테마가 이름 붙인 이미지 외관 번들 하나다.
+type imageVariant struct {
+	name  string
+	patch imagePatch
+}
+
+// imageVariants는 minimal 테마의 이미지 variant 표다 — 캐스케이드의 둘째 단.
+//
+// 하나뿐인 이유는 도형 표와 어휘를 늘리는 기준이 같기 때문이다: variant는 이미 검증된 토큰의
+// **조합**이라 산출물 위험이 없지만, 이름이 관례가 되므로 뜻이 분명한 것만 넣는다. 액자
+// (`framed`)는 PRD가 `frame` 속성으로 적었던 그 뜻이고, 그것을 속성이 아니라 번들로 옮긴 것이
+// Iteration 5의 결정이다 (항목 01) — 표에 이름이 하나라도 있어야 그 결정에 실물이 있다.
+//
+// 값은 **컴포넌트 기본값과 구별된다**: 기본값이 비어 있으므로 세 필드 전부가 델타다. 세 조각을
+// 함께 정하는 것이 번들의 뜻이다 — 저자가 `border`만 쓰면 액자가 아니라 선 하나이고, 그 차이를
+// 테마가 정하는 것이 `frame` 속성 대신 variant를 고른 이유다.
+func imageVariants(theme soml.Theme) []imageVariant {
+	patch := imagePatch{border: solidBorder(1, "muted")}
+	if radius := radiusToken(theme, "md"); radius != nil {
+		patch.radius = radius
+	}
+	if shadow := shadowToken(theme, "soft"); shadow != nil {
+		patch.shadow = shadow
+	}
+	return []imageVariant{{name: "framed", patch: patch}}
+}
+
+// imageVariantPatch는 이름으로 이미지 variant를 찾는다 (shapeVariantPatch의 이미지 판).
+//
+// 표가 **셋**이 된 것이 계약이다 (텍스트·도형·이미지): 세 어휘가 같은 이름을 가질 수 있고,
+// 요소 종류가 어느 표를 볼지 정한다. 표를 합치면 `<image variant="card">`가 도형 외관 번들을
+// 받아 fill을 정하려 들고(이미지에 없는 채널이다) 그 값이 조용히 버려진다.
+func imageVariantPatch(theme soml.Theme, name string) (imagePatch, bool) {
+	for _, v := range imageVariants(theme) {
+		if v.name == name {
+			return v.patch, true
+		}
+	}
+	return imagePatch{}, false
+}
+
+// imageVariantNames는 이미지 variant 이름 목록이다 — 경고가 나열하는 어휘다.
+func imageVariantNames(theme soml.Theme) []string {
+	variants := imageVariants(theme)
+	names := make([]string, len(variants))
+	for i, v := range variants {
+		names[i] = v.name
+	}
+	return names
+}
+
 // 아래 넷은 테마 표가 값을 **한 줄로** 적기 위한 도구다 (ptr와 같은 자리). 토큰 이름을 받는
 // 이유는 표의 색·반경·그림자가 전부 토큰 참조여야 하기 때문이다 — 테마가 리터럴을 쓰면
 // PPTX에서 `schemeClr` 참조가 끊겨 그 도형만 테마 색 편집을 따라가지 못한다 (제품 핵심 계약).
-
 func colorFill(token string) *soml.Fill { return ptr(soml.ColorFill(soml.TokenColor(token))) }
 
 func solidBorder(width float64, token string) *soml.Border {

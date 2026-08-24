@@ -310,8 +310,8 @@ func (r *resolver) borderStyle(part valuePart, attr soml.Attr) (soml.BorderStyle
 // (태그를 바꾸는 것이 고칠 방법이라 이름 층이 막았다)과 `span`이 부모를 보는 것(부모를 봐야
 // 하는 검증은 값 층이 한다). 여기는 **형제 속성**을 보는 자리이므로 값 층이다.
 //
-// 토큰 표를 수치 판정보다 먼저 보는 이유는 length와 같다 (lengthValue의 주석) — 표에 있는
-// 이름은 토큰이고, 없으면 수치 문법이 판정한다.
+// **이 제약은 도형의 것이다** (ADR 0019의 적용 범위): `<image radius>`는 프리셋이 아니라 자기
+// 클립을 갖기 때문에 언제나 유효하고, 그래서 값 문법만 떼어 공유한다 (radiusValue).
 func (r *resolver) radius(attr soml.Attr, shapeType string) (soml.Radius, bool) {
 	if !r.hasValue(attr) {
 		return soml.Radius{}, false
@@ -326,6 +326,18 @@ func (r *resolver) radius(attr soml.Attr, shapeType string) (soml.Radius, bool) 
 			roundedRectType, shapeType)
 		return soml.Radius{}, false
 	}
+	return r.radiusValue(attr)
+}
+
+// radiusValue는 반경의 **값 문법**이다 — 토큰 또는 무단위 px 수치. 값이 있다는 것은 호출자가
+// 이미 확인했다 (hasValue).
+//
+// 도형과 이미지가 이 함수를 공유한다: 프리셋 제약은 도형의 것이지만 값 문법은 하나다 — 두 벌이
+// 되면 같은 표기가 자리에 따라 다르게 읽히고, 그 갈라짐은 두 산출물을 나란히 볼 때 드러난다.
+//
+// 토큰 표를 수치 판정보다 먼저 보는 이유는 length와 같다 (lengthValue의 주석) — 표에 있는
+// 이름은 토큰이고, 없으면 수치 문법이 판정한다.
+func (r *resolver) radiusValue(attr soml.Attr) (soml.Radius, bool) {
 	if token, ok := r.theme.Radius(attr.Value); ok {
 		// 토큰 **이름**이 확정 값에 남는다 — 웹이 변수 참조로 내야 테마를 바꿨을 때 모서리가
 		// 따라 움직인다 (soml.Radius.Token, 색·공간 토큰과 같은 근거).
