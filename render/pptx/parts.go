@@ -54,8 +54,9 @@ type part struct {
 }
 
 // buildParts는 덱 하나를 OOXML 파트 목록으로 만든다: 프레젠테이션 + 마스터 + 빈 레이아웃 +
-// 테마(토큰 표에서 컴파일) + 슬라이드당 spTree(텍스트 박스) + 노트가 있으면 노트 마스터와
-// 노트 슬라이드. 도형 12종은 Iteration 4, 레이아웃 카탈로그·플레이스홀더는 Iteration 10이다.
+// 테마(토큰 표에서 컴파일) + **미디어 파트**(에셋 표에서 — 유일하게 XML이 아닌 파트다) +
+// 슬라이드당 spTree + 노트가 있으면 노트 마스터와 노트 슬라이드. 레이아웃 카탈로그·
+// 플레이스홀더는 Iteration 10이다.
 //
 // g는 지오메트리 패스가 잰 좌표다. 좌표가 필요한 요소가 없는 덱(빈 슬라이드만)은 nil로 온다 —
 // 요소가 있는데 nil이면 Renderer.checkGeometry가 이미 멈췄다.
@@ -91,6 +92,7 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		ClrScheme        string
 		FontScheme       string
 		NotesLayout      notesLayout
+		MediaDefaults    []mediaDefault
 	}{
 		Deck:       deck,
 		SlideCX:    cx,
@@ -116,6 +118,13 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		data.NotesLayout = notesMasterLayout(data.NotesCX, data.NotesCY, cx, cy)
 	}
 
+	// 미디어 파트의 콘텐츠 타입은 **덱에 실제로 든 포맷만** 선언한다 (mediaDefaults) —
+	// Content_Types 템플릿이 이 목록을 돈다. 파트 자체는 아래에서 붙인다.
+	mediaDefs, err := mediaDefaults(deck)
+	if err != nil {
+		return nil, err
+	}
+	data.MediaDefaults = mediaDefs
 	templates := []struct {
 		name string
 		text string
@@ -138,7 +147,7 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 			struct{ name, text string }{notesMasterRelsPart, notesMasterRelsXML},
 		)
 	}
-	parts := make([]part, 0, len(templates)+3*len(deck.Slides))
+	parts := make([]part, 0, len(templates)+len(deck.Assets)+3*len(deck.Slides))
 	for _, tpl := range templates {
 		rendered, err := renderTemplate(tpl.name, tpl.text, data)
 		if err != nil {
@@ -146,10 +155,19 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		}
 		parts = append(parts, part{name: tpl.name, data: rendered})
 	}
+	// 미디어는 **덱의 것**이다 (테마와 같은 층) — 슬라이드마다 다시 세지 않는다. 파트를
+	// 슬라이드보다 앞에 두는 이유는 패키지를 풀어 본 사람이 그림을 슬라이드보다 먼저 만나는
+	// 것이 자연스럽기 때문이고, 순서는 결정적이면 어디든 유효하다 (zipParts는 이 순서를
+	// 지킨다 — [Content_Types].xml만 첫 엔트리여야 한다).
+	media, err := mediaParts(deck)
+	if err != nil {
+		return nil, err
+	}
+	parts = append(parts, media...)
 
 	for i, slide := range deck.Slides {
 		n := i + 1
-		shapes, links, err := shapesXML(deck, slide, g)
+		shapes, rels, err := shapesXML(deck, slide, g)
 		if err != nil {
 			return nil, err
 		}
@@ -160,23 +178,20 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		if err != nil {
 			return nil, err
 		}
-		// 하이퍼링크 관계의 id·순서는 shapesXML의 순회가 배정한 그대로다 — hlinkClick의
-		// r:id와 이 목록이 다른 곳에서 나오면 어긋난 순간이 파일을 열 때까지 조용하다.
-		linkRels := make([]slideLinkRel, len(links.urls))
-		for j, url := range links.urls {
-			linkRels[j] = slideLinkRel{ID: fmt.Sprintf("rId%d", hyperlinkRelBase+j), Target: url}
-		}
-		rels, err := renderTemplate(slideRelsPart(n), slideRelsTemplate, struct {
+		// 관계의 id·순서는 shapesXML의 순회가 배정한 그대로다 — `hlinkClick@r:id`·
+		// `blip@r:embed`와 이 목록이 다른 곳에서 나오면 어긋난 순간이 파일을 열 때까지
+		// 조용하다 (링크가 죽거나 그림 자리가 빈다).
+		relsPart, err := renderTemplate(slideRelsPart(n), slideRelsTemplate, struct {
 			*soml.Slide
-			N     int
-			Links []slideLinkRel
-		}{slide, n, linkRels})
+			N    int
+			Rels []slideRel
+		}{slide, n, rels.items})
 		if err != nil {
 			return nil, err
 		}
 		parts = append(parts,
 			part{name: slidePart(n), data: rendered},
-			part{name: slideRelsPart(n), data: rels},
+			part{name: slideRelsPart(n), data: relsPart},
 		)
 		// 빈 `<note></note>`는 Notes == ""이므로 노트 파트를 내지 않는다 — 웹 렌더러가
 		// balpyo-notes div를 내지 않는 판정과 같다 (render/web.writeSlide).
@@ -277,6 +292,9 @@ const xmlDecl = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` + "\n"
 const contentTypesTemplate = xmlDecl + `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
+{{- range .MediaDefaults}}
+  <Default Extension="{{.Ext}}" ContentType="{{.ContentType}}"/>
+{{- end}}
   <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
   <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
   <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
@@ -455,23 +473,21 @@ const slideTemplate = xmlDecl + `<p:sld xmlns:a="http://schemas.openxmlformats.o
 </p:sld>
 `
 
-// slideLinkRel은 슬라이드 rels 파트에 실리는 외부 하이퍼링크 관계 하나다.
-type slideLinkRel struct {
-	ID     string
-	Target string
-}
-
-// 관계 id 배정: rId1 = 레이아웃, rId2 = 노트 슬라이드(없어도 예약 — hyperlinkRelBase의
-// 주석), rId3부터 외부 하이퍼링크가 문서 순서로 붙는다 (shape.go의 slideLinks가 배정한다).
-// TargetMode="External"이 없으면 소비자가 URL을 패키지 내부 파트 경로로 읽는다 — 그 파일은
-// 열리기는 하고 링크만 조용히 죽는다.
+// 관계 id 배정: rId1 = 레이아웃, rId2 = 노트 슬라이드(없어도 예약 — slideRelBase의 주석),
+// rId3부터 **외부 하이퍼링크와 미디어(그림)가 문서 순서로** 붙는다 (shape.go의 slideRels가
+// 한 카운터로 배정한다 — 종류마다 구간을 나누지 않은 근거는 그 타입의 주석에 있다).
+//
+// Type과 TargetMode가 데이터인 것이 이 템플릿의 전부다: 한 목록에 두 종류가 섞이므로 템플릿이
+// 종류를 알면 배정과 출력이 두 곳에서 종류를 판단하게 된다. 하이퍼링크의
+// `TargetMode="External"`이 빠지면 소비자가 URL을 패키지 내부 파트 경로로 읽어 링크가 조용히
+// 죽고, 반대로 미디어에 그것이 붙으면 그림 자리가 빈다.
 const slideRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
 {{- if .Notes}}
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide{{.N}}.xml"/>
 {{- end}}
-{{- range .Links}}
-  <Relationship Id="{{.ID}}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="{{xml .Target}}" TargetMode="External"/>
+{{- range .Rels}}
+  <Relationship Id="{{.ID}}" Type="{{.Type}}" Target="{{xml .Target}}"{{if .TargetMode}} TargetMode="{{.TargetMode}}"{{end}}/>
 {{- end}}
 </Relationships>
 `

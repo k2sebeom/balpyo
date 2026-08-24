@@ -56,7 +56,7 @@ func TextBoxRect(r geom.Rect, align soml.TextAlign) geom.Rect {
 	return r
 }
 
-// shapesXML은 슬라이드 콘텐츠를 p:sp 목록으로 컴파일한다 — 이 함수가 지오메트리(①)와
+// shapesXML은 슬라이드 콘텐츠를 도형 목록으로 컴파일한다 — 이 함수가 지오메트리(①)와
 // 해석된 외관(②)이 OOXML에서 만나는 자리다 (PRD §9.3).
 //
 // 문서 순서가 곧 spTree 순서다: OOXML은 나중 도형이 위에 그려지므로, 저자가 쓴 순서가
@@ -66,46 +66,77 @@ func TextBoxRect(r geom.Rect, align soml.TextAlign) geom.Rect {
 // 도형 수는 측정 박스 수와 같지 않다 — 깊이 우선 순회가 중첩에서도 문서 순서를 유지한다.
 //
 // 결과는 빈 문자열(요소 없음)이거나, 각 도형이 "\n"으로 시작해 개행 없이 끝나는 조각이다 —
-// slideTemplate의 `{{.Shapes}}` 자리에 그대로 들어간다. 함께 돌려주는 links는 순회가
-// 배정한 외부 하이퍼링크 관계 목록이다 — 슬라이드 rels 파트가 같은 배정을 실어야
-// hlinkClick의 r:id가 살아난다 (buildParts).
-func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, *slideLinks, error) {
+// slideTemplate의 `{{.Shapes}}` 자리에 그대로 들어간다. 함께 돌려주는 rels는 순회가 배정한
+// 관계 목록이다 — 슬라이드 rels 파트가 같은 배정을 실어야 `hlinkClick@r:id`와
+// `blip@r:embed`가 살아난다 (buildParts).
+func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, *slideRels, error) {
 	var b strings.Builder
-	links := &slideLinks{}
+	rels := &slideRels{}
 	id := firstShapeID
 	for i, node := range slide.Content {
-		if err := writeShapeNode(&b, deck, slide, node, []int{i}, &id, g, links); err != nil {
+		if err := writeShapeNode(&b, deck, slide, node, []int{i}, &id, g, rels); err != nil {
 			return "", nil, err
 		}
 	}
-	return b.String(), links, nil
+	return b.String(), rels, nil
 }
 
-// slideLinks는 슬라이드 하나가 배정한 외부 하이퍼링크 관계 목록이다.
+// slideRels는 슬라이드 하나가 배정한 관계 목록이다 — 외부 하이퍼링크(`hlinkClick`)와
+// 미디어(`blip@r:embed`)가 **한 카운터**를 나눠 쓴다.
 //
 // rel id는 결정적이어야 한다 — 같은 덱을 두 번 조립하면 같은 바이트가 나와야 골든 비교가
-// 성립한다. 배정은 순회의 문서 순서를 따르고, **같은 URL은 관계 하나를 재사용한다**:
+// 성립한다. 배정은 순회의 문서 순서를 따르고, **같은 목적지는 관계 하나를 재사용한다**:
 // OPC 관계의 정체는 (Type, Target, TargetMode)이라 같은 목적지의 관계 둘은 정보가 없고,
-// PowerPoint도 저장하며 하나로 합치므로 매번 내면 재저장 diff에 잡음만 남는다.
-type slideLinks struct {
-	urls []string
+// PowerPoint도 저장하며 하나로 합치므로 매번 내면 재저장 diff에 잡음만 남는다 — 같은 그림을
+// 두 번 쓴 슬라이드의 두 `p:pic`이 같은 `r:embed`를 가리키는 것이 그 결과다.
+//
+// **번호를 한 카운터로 둔 것이 이 타입의 내용 전부다.** 종류마다 번호 구간을 주려면
+// (예: 그림은 `하이퍼링크 수 + 3`부터) 첫 그림을 쓰는 순간 그 슬라이드의 **총 하이퍼링크
+// 수**를 이미 알아야 하고, 그러려면 슬라이드를 두 번 걸어야 한다 — 두 순회는 어긋날 수 있고
+// 어긋난 순간이 파일을 열 때까지 조용하다 (그림이 사라지거나 링크가 그림을 가리킨다). 한
+// 카운터로 문서 순서대로 배정하면 그 어긋남을 만들 방법 자체가 없다.
+type slideRels struct {
+	items []slideRel
 }
 
-// hyperlinkRelBase는 첫 하이퍼링크 관계의 번호다. rId1은 레이아웃, rId2는 노트 슬라이드
-// 자리로 **노트가 없어도 예약**한다 — 노트 유무가 링크 번호를 밀면 노트 한 줄을 더한
-// 커밋의 diff에 링크 관계 전부가 잡음으로 실린다. OPC 관계 id는 임의 문자열이라 빈
-// 번호는 유효하다 (notesSlidePart의 번호 규칙과 같은 태도).
-const hyperlinkRelBase = 3
+// slideRel은 슬라이드 rels 파트에 실리는 관계 하나다 — 템플릿이 이 값을 그대로 쓴다
+// (Type이 데이터인 이유: 한 목록에 두 종류가 섞이므로 템플릿이 종류를 알면 안 된다).
+type slideRel struct {
+	ID     string
+	Type   string
+	Target string
+	// TargetMode는 패키지 **밖** 대상에만 있다 (하이퍼링크). 미디어는 패키지 안의 파트라
+	// 빈 값이고, 템플릿이 그때 속성을 아예 내지 않는다 — 내부 파트에
+	// `TargetMode="External"`이 붙으면 소비자가 파트 경로를 URL로 읽어 그림이 조용히 사라진다.
+	TargetMode string
+}
 
-// relID는 URL의 관계 id다 — 처음 보는 URL이면 다음 번호를 배정한다.
-func (l *slideLinks) relID(url string) string {
-	for i, seen := range l.urls {
-		if seen == url {
-			return fmt.Sprintf("rId%d", hyperlinkRelBase+i)
+// slideRelBase는 첫 배정 관계의 번호다. rId1은 레이아웃, rId2는 노트 슬라이드 자리로
+// **노트가 없어도 예약**한다 — 노트 유무가 뒤 번호를 밀면 노트 한 줄을 더한 커밋의 diff에
+// 관계 전부가 잡음으로 실린다. OPC 관계 id는 임의 문자열이라 빈 번호는 유효하다
+// (notesSlidePart의 번호 규칙과 같은 태도).
+const slideRelBase = 3
+
+// relID는 목적지의 관계 id다 — 처음 보는 목적지면 다음 번호를 배정한다.
+func (r *slideRels) relID(relType, target, targetMode string) string {
+	for _, item := range r.items {
+		if item.Type == relType && item.Target == target {
+			return item.ID
 		}
 	}
-	l.urls = append(l.urls, url)
-	return fmt.Sprintf("rId%d", hyperlinkRelBase+len(l.urls)-1)
+	id := fmt.Sprintf("rId%d", slideRelBase+len(r.items))
+	r.items = append(r.items, slideRel{ID: id, Type: relType, Target: target, TargetMode: targetMode})
+	return id
+}
+
+// linkID는 외부 하이퍼링크의 관계 id다.
+func (r *slideRels) linkID(url string) string {
+	return r.relID(hyperlinkRelType, url, externalTargetMode)
+}
+
+// mediaID는 미디어 파트의 관계 id다 (target은 슬라이드 파트 기준 상대 경로 — mediaTarget).
+func (r *slideRels) mediaID(target string) string {
+	return r.relID(imageRelType, target, "")
 }
 
 // writeShapeNode는 콘텐츠 노드 하나를 도형으로 쓴다 — 자기 도형을 갖지 않는 노드는 자식으로
@@ -116,10 +147,11 @@ func (l *slideLinks) relID(url string) string {
 // 주지 않는다 (잰 rect는 이미 슬라이드 상대다 — geom 패키지 주석). 컨테이너 상대 좌표를
 // 다시 더하는 코드가 여기 없는 것이 "좌표 계산 0회"의 렌더러 쪽 절반이다.
 //
-// # 분기는 네 가지다 (같은 단어를 쓰는 개념들이 정반대로 매핑되는 자리)
+// # 분기는 다섯 가지다 (같은 단어를 쓰는 개념들이 정반대로 매핑되는 자리)
 //
 //	리스트 컨테이너 (<ul>/<ol>)             → 도형 **하나**  (writeListShape: 불릿 문단이 한 텍스트 박스에 산다)
 //	<shape>                                 → 도형 **하나** + 자식을 **흡수** (writeShapeSp: 자식 텍스트가 이 도형의 txBody 문단이 된다)
+//	<image/>                                → 도형 **하나**  (writePicShape: p:sp가 아니라 **p:pic**이다 — 자식은 없다)
 //	레이아웃 컨테이너 (<row>/<col>/<grid>)  → 도형 **0개** + 자식으로 **내려가기** (좌표만 남고 컨테이너는 사라진다)
 //	<spacer/>                               → 도형 **0개**  (자식도 없다 — void)
 //
@@ -140,7 +172,7 @@ func (l *slideLinks) relID(url string) string {
 // 컨테이너는 사라지는 배치 수단이다 (PRD §7.5). 배치 태그가 `grpSp`가 되면 `<group>`과
 // `<row>`의 구분이 산출물에서 사라진다. **도형이 자식을 흡수하는 것도 `grpSp`가 아니다** —
 // 그룹은 여러 도형을 묶는 것이고, 여기서는 텍스트가 도형 하나의 본문이 된다.
-func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node soml.Node, path []int, shapeID *int, g *geom.Geometry, links *slideLinks) error {
+func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node soml.Node, path []int, shapeID *int, g *geom.Geometry, rels *slideRels) error {
 	elem, ok := node.(*soml.Element)
 	if !ok {
 		// 슬라이드 콘텐츠와 레이아웃 컨테이너는 요소만 담는다 (파서의 modelElements) —
@@ -154,25 +186,33 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 	kind := soml.KindOf(elem.Name)
 	switch {
 	case elem.Name == soml.TextElement || kind == soml.KindBlock:
-		if err := writeTextShape(b, deck, slide, elem, id, *shapeID, g, links); err != nil {
+		if err := writeTextShape(b, deck, slide, elem, id, *shapeID, g, rels); err != nil {
 			return err
 		}
 		// 도형 id는 **도형을 실제로 낸 자리에서만** 오른다 (컨테이너는 id를 소비하지
 		// 않는다 — 도형 id는 도형에만 붙는다): 번호가 배치 구조에 따라 뛰면 슬라이드에
 		// `<row>` 하나를 더한 커밋의 diff에 도형 번호 전부가 잡음으로 실린다 — 노트가
-		// 없어도 rId2를 예약한 것과 같은 태도다 (hyperlinkRelBase).
+		// 없어도 rId2를 예약한 것과 같은 태도다 (slideRelBase).
 		*shapeID++
 	case kind == soml.KindListContainer:
-		if err := writeListShape(b, deck, slide, elem, id, *shapeID, g, links); err != nil {
+		if err := writeListShape(b, deck, slide, elem, id, *shapeID, g, rels); err != nil {
 			return err
 		}
 		*shapeID++
 	case kind == soml.KindShape:
-		if err := writeShapeSp(b, deck, slide, elem, id, *shapeID, g, links); err != nil {
+		if err := writeShapeSp(b, deck, slide, elem, id, *shapeID, g, rels); err != nil {
 			return err
 		}
 		// 자식으로 내려가지 않는다 (위 주석) — 자식 텍스트는 이 도형의 txBody가 되었고
 		// 자기 도형도 id도 갖지 않는다.
+		*shapeID++
+	case kind == soml.KindImage:
+		// 그림은 **재고 도형이 되는** 두 번째 종류다 (`<shape>`가 첫째다) — 다만 요소가
+		// `p:sp`가 아니라 `p:pic`이다. 도형 id는 한 공간을 나눠 쓴다: `p:sp`와 `p:pic`의
+		// id가 겹치면 PowerPoint가 파일을 복구한다 (spTree 안에서 유일해야 한다).
+		if err := writePicShape(b, deck, slide, elem, id, *shapeID, g, rels); err != nil {
+			return err
+		}
 		*shapeID++
 	case kind == soml.KindLayoutContainer:
 		// 컨테이너 자신은 도형이 되지 않고 자식으로 내려간다. 빈 컨테이너(`<row></row>`)는
@@ -183,7 +223,7 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 		// (shapesXML의 계약, 웹의 문서 순서 스택과 같은 규칙 — Iteration 6의 겹침이 이
 		// 순서 위에 선다).
 		for i, child := range elem.Children {
-			if err := writeShapeNode(b, deck, slide, child, web.ChildPath(path, i), shapeID, g, links); err != nil {
+			if err := writeShapeNode(b, deck, slide, child, web.ChildPath(path, i), shapeID, g, rels); err != nil {
 				return err
 			}
 		}
@@ -205,7 +245,7 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 // 빈 텍스트·크기 0 박스도 도형을 낸다. 건너뛰면 spTree 순서(=z-순서)와 도형 id가 내용에
 // 따라 흔들리고, 저자는 빈 요소가 산출물 어디에 있는지 PowerPoint에서 확인할 수 없다 —
 // 크기 0 도형은 OOXML에서 유효하므로 (Extent가 이 판단을 호출자에게 남긴 이유) 그대로 낸다.
-func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, links *slideLinks) error {
+func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, rels *slideRels) error {
 	box, ok := g.Box(id)
 	if !ok {
 		// checkGeometry의 Verify가 먼저 잡지만, 이 함수 단독 호출에서도 좌표 없는 도형이
@@ -219,7 +259,7 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 		return fmt.Errorf("%s:%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
 			slide.Source, elem.Span, elem.Name)
 	}
-	body, err := textBodyXML(elem, *style, deck.Theme, links)
+	body, err := textBodyXML(elem, *style, deck.Theme, rels)
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
@@ -237,12 +277,12 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 // 근거(스크립트 간격)는 텍스트 폭 기준인데 리스트 폭에는 마커 자리(ListTextIndent)가
 // 포함되어 절대 여유가 텍스트만일 때보다 약간 크다 — 줄 늘어남(LibreOffice에서 한 줄
 // 증가)을 막는 안전한 방향의 오차이므로 그대로 두고, 실제 판정은 항목 08의 픽셀 비교가 한다.
-func writeListShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, links *slideLinks) error {
+func writeListShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, rels *slideRels) error {
 	box, ok := g.Box(id)
 	if !ok {
 		return fmt.Errorf("%s: %s <%s>의 측정된 좌표가 없다", slide.Source, id, elem.Name)
 	}
-	body, err := listBodyXML(elem, deck.Theme, links)
+	body, err := listBodyXML(elem, deck.Theme, rels)
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
@@ -259,7 +299,7 @@ func writeListShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 // 넓히면 그림이 커져 배치가 어긋나고 글자는 도형 밖으로 나간다. 도형 안 글자의 줄바꿈 여유는
 // 대신 `pad`를 뺀 안쪽과 글자 폭의 차이가 소유한다 — 구조적으로 더 크지만 보장은 아니다
 // (NOTES의 측정).
-func writeShapeSp(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, links *slideLinks) error {
+func writeShapeSp(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, rels *slideRels) error {
 	box, ok := g.Box(id)
 	if !ok {
 		return fmt.Errorf("%s: %s <%s>의 측정된 좌표가 없다", slide.Source, id, elem.Name)
@@ -275,7 +315,7 @@ func writeShapeSp(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	body, err := shapeBodyXML(elem, *style, deck.Theme, links)
+	body, err := shapeBodyXML(elem, *style, deck.Theme, rels)
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
@@ -303,9 +343,8 @@ type spSpec struct {
 	// 박스와 도형에 다른 서식 창을 주고, 도형이 텍스트 박스로 표시되면 "모양 변경"이
 	// 사라진다 — "내보낸 도형이 진짜 프리셋 도형인가"라는 리뷰 항목의 절반이 이 한 속성이다.
 	textBox bool
-	// rot은 `xfrm@rot`이다 (nil이면 속성 없음 — 회전을 정하지 않은 도형과 텍스트 박스).
-	rot          *int64
-	flipH, flipV bool
+	// xfrm는 회전·대칭이다 — **그림과 같은 코드**를 쓴다 (transformOf).
+	xfrm
 	// preset은 `prstGeom@prst`이고 adjust는 `avLst`의 조정값이다 (빈 목록이면 `<a:avLst/>`).
 	preset string
 	adjust []spAdjust
@@ -384,21 +423,11 @@ func shapeSp(id int, name string, rect geom.Rect, style soml.ShapeStyle) (spSpec
 		}
 		spec.alpha = style.Opacity
 	}
-	if style.Rotate != nil {
-		rot := Rotation(*style.Rotate)
-		spec.rot = &rot
+	transform, err := transformOf(style.Rotate, style.Flip)
+	if err != nil {
+		return spSpec{}, err
 	}
-	switch style.Flip {
-	case "":
-	case soml.FlipH:
-		spec.flipH = true
-	case soml.FlipV:
-		spec.flipV = true
-	case soml.FlipBoth:
-		spec.flipH, spec.flipV = true, true
-	default:
-		return spSpec{}, fmt.Errorf("flip %q는 대칭 어휘 밖이다", string(style.Flip))
-	}
+	spec.xfrm = transform
 	return spec, nil
 }
 
@@ -470,23 +499,11 @@ func writeSp(b *strings.Builder, spec spSpec, theme soml.Theme) error {
 	// 잰 rect는 회전 **전** 박스이므로 보정할 값이 없다 (Rotation의 주석). flipH/flipV는
 	// 기하만 뒤집고 글자는 읽히는 방향으로 남는다 — 웹이 대칭을 그림에만 걸어 글자를 거울로
 	// 만들지 않는 것과 같은 그림이다 (render/web.shapeInkCSS).
-	w(2, "<a:xfrm"+xfrmAttrs(spec)+">")
+	w(2, "<a:xfrm"+spec.attrs()+">")
 	w(3, fmt.Sprintf(`<a:off x="%d" y="%d"/>`, x, y))
 	w(3, fmt.Sprintf(`<a:ext cx="%d" cy="%d"/>`, cx, cy))
 	w(2, "</a:xfrm>")
-	w(2, fmt.Sprintf(`<a:prstGeom prst="%s">`, spec.preset))
-	if len(spec.adjust) == 0 {
-		w(3, "<a:avLst/>")
-	} else {
-		w(3, "<a:avLst>")
-		for _, adjust := range spec.adjust {
-			// 명시하지 않은 조정값은 프리셋 기본값이 산다 — avLst는 전체 목록이 아니라
-			// 덮어쓰기다 (rightArrow가 adj2만 싣는 근거 — web.ShapeAdjusts).
-			w(4, fmt.Sprintf(`<a:gd name="%s" fmla="val %d"/>`, adjust.name, adjust.val))
-		}
-		w(3, "</a:avLst>")
-	}
-	w(2, "</a:prstGeom>")
+	writeGeom(w, 2, spec.preset, spec.adjust)
 	if err := writeFill(w, 2, spec.fill, spec.alpha, theme); err != nil {
 		return err
 	}
@@ -502,19 +519,69 @@ func writeSp(b *strings.Builder, spec spSpec, theme soml.Theme) error {
 	return nil
 }
 
-// xfrmAttrs는 `a:xfrm`의 변형 속성이다 — 없으면 빈 문자열이다 (텍스트 박스의 xfrm에는
-// 속성이 없고, 그래서 텍스트 박스 산출은 이 함수가 생기기 전과 바이트가 같다).
-func xfrmAttrs(spec spSpec) string {
+// writeGeom은 프리셋 지오메트리와 조정값을 쓴다 — **도형과 그림이 같은 함수를 지난다**
+// (그림의 프리셋은 `rect` 또는 `roundRect` 둘뿐이지만 조립은 같은 모양이다 — image.go).
+func writeGeom(w func(depth int, line string), depth int, preset string, adjust []spAdjust) {
+	w(depth, fmt.Sprintf(`<a:prstGeom prst="%s">`, preset))
+	if len(adjust) == 0 {
+		w(depth+1, "<a:avLst/>")
+	} else {
+		w(depth+1, "<a:avLst>")
+		for _, item := range adjust {
+			// 명시하지 않은 조정값은 프리셋 기본값이 산다 — avLst는 전체 목록이 아니라
+			// 덮어쓰기다 (rightArrow가 adj2만 싣는 근거 — web.ShapeAdjusts).
+			w(depth+2, fmt.Sprintf(`<a:gd name="%s" fmla="val %d"/>`, item.name, item.val))
+		}
+		w(depth+1, "</a:avLst>")
+	}
+	w(depth, "</a:prstGeom>")
+}
+
+// xfrm는 `a:xfrm`의 변형(회전·대칭)이다 — 도형(p:sp)과 그림(p:pic)이 **같은 값**을 쓴다.
+//
+// 두 요소가 같은 CT_Transform2D를 갖고 두 타깃의 회전 규약도 하나이므로(Rotation), 조립을
+// 나누면 같은 저자 표기가 두 요소에서 다른 속성이 될 길이 생긴다 — `rotate="15"`가 도형에는
+// 실리고 그림에는 빠지는 종류의 실패는 두 산출물을 나란히 볼 때까지 보이지 않는다.
+type xfrm struct {
+	// rot은 `xfrm@rot`이다 (nil이면 속성 없음 — 회전을 정하지 않은 도형·그림과 텍스트 박스).
+	rot          *int64
+	flipH, flipV bool
+}
+
+// transformOf는 확정 외관의 회전·대칭을 xfrm으로 컴파일한다 (도형·그림 공용).
+func transformOf(rotate *float64, flip soml.Flip) (xfrm, error) {
+	var t xfrm
+	if rotate != nil {
+		rot := Rotation(*rotate)
+		t.rot = &rot
+	}
+	switch flip {
+	case "":
+	case soml.FlipH:
+		t.flipH = true
+	case soml.FlipV:
+		t.flipV = true
+	case soml.FlipBoth:
+		t.flipH, t.flipV = true, true
+	default:
+		return xfrm{}, fmt.Errorf("flip %q는 대칭 어휘 밖이다", string(flip))
+	}
+	return t, nil
+}
+
+// attrs는 `a:xfrm`의 변형 속성이다 — 없으면 빈 문자열이다 (텍스트 박스의 xfrm에는 속성이
+// 없고, 그래서 텍스트 박스 산출은 이 함수가 생기기 전과 바이트가 같다).
+func (t xfrm) attrs() string {
 	var attrs string
-	if spec.rot != nil {
-		attrs += fmt.Sprintf(` rot="%d"`, *spec.rot)
+	if t.rot != nil {
+		attrs += fmt.Sprintf(` rot="%d"`, *t.rot)
 	}
 	// flipH/flipV는 rot 뒤다 (CT_Transform2D의 속성 순서 — 속성 순서는 스키마 유효성과
 	// 무관하지만 골든이 한 가지 표기로 남는다).
-	if spec.flipH {
+	if t.flipH {
 		attrs += ` flipH="1"`
 	}
-	if spec.flipV {
+	if t.flipV {
 		attrs += ` flipV="1"`
 	}
 	return attrs
@@ -643,7 +710,7 @@ func prstDashValue(style soml.BorderStyle) (string, error) {
 // `font`/`size`/`weight`/`color`/`align` 행과 "인라인 서식 → 텍스트 런 rPr/hlinkClick" 행).
 // 문단 서식은 블록의 확정 스타일에서, 런 서식은 잎을 감싼 가장 안쪽 요소의 확정 스타일에서
 // 나온다 — 요소의 Attrs를 다시 읽지 않는다 (render/web.textStyleCSS와 같은 계약).
-func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, links *slideLinks) (string, error) {
+func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rels *slideRels) (string, error) {
 	var b strings.Builder
 	w := func(depth int, line string) {
 		b.WriteString("\n" + shapeIndent + strings.Repeat("  ", depth) + line)
@@ -669,7 +736,7 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, lin
 	w(2, "</a:bodyPr>")
 	w(2, "<a:lstStyle/>")
 	// 빈 텍스트는 런 없는 문단으로 남는다 — 도형 자체는 낸다 (writeTextShape의 정책).
-	if err := writeTextParagraph(w, elem, style, theme, links); err != nil {
+	if err := writeTextParagraph(w, elem, style, theme, rels); err != nil {
 		return "", err
 	}
 	w(1, "</p:txBody>")
@@ -682,7 +749,7 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, lin
 // 한 함수인 이유: 도형 안 텍스트가 슬라이드 직속 텍스트와 다른 문단 서식을 받으면, 같은
 // `<p>`가 도형 안에서만 다르게 그려진다 — 부모가 도형이라는 사실은 텍스트 해석을 바꾸지
 // 않는다는 값 층의 결정(core/shape.go)의 렌더러 쪽 절반이다.
-func writeTextParagraph(w func(depth int, line string), elem *soml.Element, style soml.TextStyle, theme soml.Theme, links *slideLinks) error {
+func writeTextParagraph(w func(depth int, line string), elem *soml.Element, style soml.TextStyle, theme soml.Theme, rels *slideRels) error {
 	algn, err := algnValue(style.Align)
 	if err != nil {
 		return err
@@ -699,7 +766,7 @@ func writeTextParagraph(w func(depth int, line string), elem *soml.Element, styl
 	w(5, fmt.Sprintf(`<a:spcPts val="%d"/>`, LineSpacing(style.LineHeight, style.Size)))
 	w(4, "</a:lnSpc>")
 	w(3, "</a:pPr>")
-	if err := writeRuns(w, elem, style, theme, links, runContext{}); err != nil {
+	if err := writeRuns(w, elem, style, theme, rels, runContext{}); err != nil {
 		return err
 	}
 	w(2, "</a:p>")
@@ -724,7 +791,7 @@ func writeTextParagraph(w func(depth int, line string), elem *soml.Element, styl
 //     하나뿐이라 wrap="none"은 형제 문단까지 줄바꿈하지 않게 만들고, 그러면 그려진 도형 밖으로
 //     글자가 나가는 것이 **pre가 아닌 자식에서** 일어난다. 대가는 도형 안 `<pre>`의 긴 줄이
 //     웹에서는 넘치고 PPTX에서는 접히는 것이고, 그 갈라짐은 그 자식 하나에 갇힌다.
-func shapeBodyXML(elem *soml.Element, style soml.ShapeStyle, theme soml.Theme, links *slideLinks) (string, error) {
+func shapeBodyXML(elem *soml.Element, style soml.ShapeStyle, theme soml.Theme, rels *slideRels) (string, error) {
 	anchor, err := bodyAnchorValue(web.ShapeAnchor(elem))
 	if err != nil {
 		return "", err
@@ -769,7 +836,7 @@ func shapeBodyXML(elem *soml.Element, style soml.ShapeStyle, theme soml.Theme, l
 			return "", fmt.Errorf("%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
 				text.Span, text.Name)
 		}
-		if err := writeTextParagraph(w, text, *textStyle, theme, links); err != nil {
+		if err := writeTextParagraph(w, text, *textStyle, theme, rels); err != nil {
 			return "", err
 		}
 	}
@@ -840,7 +907,7 @@ func checkTextStyle(style soml.TextStyle, theme soml.Theme) error {
 // listBodyXML은 리스트 컨테이너의 자식들을 p:txBody로 컴파일한다 — `<li>` 하나가 문단
 // (a:p) 하나다 (PRD §9.4의 "리스트 → buChar/들여쓰기" 행). 문단 서식은 li의 확정
 // 스타일에서, 들여쓰기·마커는 웹 리스트 CSS 상수(render/web — 항목 05)에서 나온다.
-func listBodyXML(list *soml.Element, theme soml.Theme, links *slideLinks) (string, error) {
+func listBodyXML(list *soml.Element, theme soml.Theme, rels *slideRels) (string, error) {
 	var b strings.Builder
 	w := func(depth int, line string) {
 		b.WriteString("\n" + shapeIndent + strings.Repeat("  ", depth) + line)
@@ -872,7 +939,7 @@ func listBodyXML(list *soml.Element, theme soml.Theme, links *slideLinks) (strin
 			return "", fmt.Errorf("%s <%s> 안의 <%s>를 PPTX로 렌더하는 매핑이 없다",
 				li.Span, list.Name, li.Name)
 		}
-		if err := writeListItem(w, list, li, theme, links); err != nil {
+		if err := writeListItem(w, list, li, theme, rels); err != nil {
 			return "", err
 		}
 	}
@@ -893,7 +960,7 @@ func listBodyXML(list *soml.Element, theme soml.Theme, links *slideLinks) (strin
 // 크기·모양이 흔들리고, 웹의 마커(li::before)는 li의 폰트를 상속하므로 짝이 맞으려면
 // 같은 폰트여야 한다. 색·크기는 명시하지 않는다: OOXML 기본(buClrTx/buSzTx)이 이미
 // "텍스트를 따른다"이고, 그것이 정확히 ::before의 상속과 같은 뜻이다.
-func writeListItem(w func(depth int, line string), list, li *soml.Element, theme soml.Theme, links *slideLinks) error {
+func writeListItem(w func(depth int, line string), list, li *soml.Element, theme soml.Theme, rels *slideRels) error {
 	style := li.TextStyle()
 	if style == nil {
 		return fmt.Errorf("%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
@@ -927,7 +994,7 @@ func writeListItem(w func(depth int, line string), list, li *soml.Element, theme
 	w(3, "</a:pPr>")
 	// li 안의 인라인은 블록과 같은 런 분할기를 지난다 (항목 06) — <br/>은 같은 문단 안의
 	// a:br(마커 없는 이어짐 줄)이고, 빈 li는 런 없는 문단으로 남는다 (자리와 순서 보존).
-	if err := writeRuns(w, li, *style, theme, links, runContext{}); err != nil {
+	if err := writeRuns(w, li, *style, theme, rels, runContext{}); err != nil {
 		return err
 	}
 	w(2, "</a:p>")
@@ -980,11 +1047,11 @@ type runContext struct {
 // (soml lexConten의 "다음 `<`까지") 잎의 경계는 대개 요소이고, 주석이 문자 데이터를 쪼갠
 // 경우에만 같은 스타일의 이웃 런이 생긴다 — rPr가 같은 이웃 런은 뷰어에서 구별되지 않는
 // 유효한 XML이라 합치는 코드는 값어치가 없다.
-func writeRuns(w func(depth int, line string), parent *soml.Element, style soml.TextStyle, theme soml.Theme, links *slideLinks, ctx runContext) error {
+func writeRuns(w func(depth int, line string), parent *soml.Element, style soml.TextStyle, theme soml.Theme, rels *slideRels, ctx runContext) error {
 	for _, child := range parent.Children {
 		switch node := child.(type) {
 		case *soml.Text:
-			if err := writeTextRuns(w, node.Value, style, theme, links, ctx); err != nil {
+			if err := writeTextRuns(w, node.Value, style, theme, rels, ctx); err != nil {
 				return err
 			}
 		case *soml.Element:
@@ -1015,7 +1082,7 @@ func writeRuns(w func(depth int, line string), parent *soml.Element, style soml.
 						node.Span)
 				}
 			}
-			if err := writeRuns(w, node, *childStyle, theme, links, childCtx); err != nil {
+			if err := writeRuns(w, node, *childStyle, theme, rels, childCtx); err != nil {
 				return err
 			}
 		default:
@@ -1031,7 +1098,7 @@ func writeRuns(w func(depth int, line string), parent *soml.Element, style soml.
 // pre와 같은 결정이다 — 한쪽이 개행을 접으면 줄 수가 갈라진다. 문단을 줄마다 쪼개는 대안은
 // 버렸다: 문단 사이 간격이 줄간격과 달라질 수 있고, pre는 한 문단의 여러 줄이다. 빈 줄은
 // a:br만 남는다 — 빈 a:t는 유효하지만 정보가 없다.
-func writeTextRuns(w func(depth int, line string), text string, style soml.TextStyle, theme soml.Theme, links *slideLinks, ctx runContext) error {
+func writeTextRuns(w func(depth int, line string), text string, style soml.TextStyle, theme soml.Theme, rels *slideRels, ctx runContext) error {
 	fill, err := colorXML(style.Color, theme)
 	if err != nil {
 		return err
@@ -1066,7 +1133,7 @@ func writeTextRuns(w func(depth int, line string), text string, style soml.TextS
 		if ctx.link != "" {
 			// hlinkClick은 latin/ea 뒤다 — CT_TextCharacterProperties의 자식 순서가 폰트
 			// 요소들 뒤에 hlinkClick을 둔다 (어기면 LibreOffice가 복구를 묻는다).
-			w(5, fmt.Sprintf(`<a:hlinkClick r:id="%s"/>`, links.relID(ctx.link)))
+			w(5, fmt.Sprintf(`<a:hlinkClick r:id="%s"/>`, rels.linkID(ctx.link)))
 		}
 		w(4, "</a:rPr>")
 		w(4, fmt.Sprintf("<a:t>%s</a:t>", escapeXML(line)))

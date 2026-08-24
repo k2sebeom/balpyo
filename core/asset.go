@@ -167,7 +167,7 @@ func (p *assetPass) load(key string, span soml.Span) (soml.Asset, bool) {
 	}
 	if soml.ImageFormat(format) != declared {
 		p.errorf(span, "%s의 확장자는 %s를 말하는데 내용은 %s다 — [Content_Types]가 확장자로 콘텐츠 타입을 정하므로 이대로는 PowerPoint가 파일을 열지 못한다 (확장자를 %q로 바꾼다)",
-			key, declared, format, extForFormat(soml.ImageFormat(format)))
+			key, declared, format, soml.ImageFormat(format).Ext())
 		return soml.Asset{}, false
 	}
 	if config.Width <= 0 || config.Height <= 0 {
@@ -183,15 +183,4 @@ func (p *assetPass) load(key string, span soml.Span) (soml.Asset, bool) {
 		Height: config.Height,
 		Bytes:  data,
 	}, true
-}
-
-// extForFormat은 포맷을 적는 **첫** 확장자다 — 불일치 진단이 "무엇으로 바꾸라"를 말할 수 있게.
-// 목록은 soml이 소유하므로 여기서 손으로 적지 않는다 (`.jpg`와 `.jpeg`의 우선순위도 그 표다).
-func extForFormat(format soml.ImageFormat) string {
-	for _, ext := range soml.ImageExts() {
-		if got, ok := soml.ImageFormatForExt(ext); ok && got == format {
-			return ext
-		}
-	}
-	return ""
 }

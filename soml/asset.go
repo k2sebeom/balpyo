@@ -70,6 +70,24 @@ func ImageExts() []string {
 	return exts
 }
 
+// Ext는 이 포맷을 적는 **첫** 확장자다 (`.png`·`.jpg`) — 표의 순서가 그 우선순위다.
+//
+// 포맷 → 확장자 방향이 필요한 자리가 둘이다: 확장자·내용 불일치 진단이 "무엇으로 바꾸라"를
+// 말할 때(core의 에셋 패스)와 **PPTX 미디어 파트 이름**을 지을 때(render/pptx). 파트 이름을
+// 저자가 쓴 확장자가 아니라 이 값으로 짓는 이유는 `[Content_Types].xml`의 `Default`가
+// **확장자로** 콘텐츠 타입을 정하기 때문이다: `.JPG`·`.jpg`·`.jpeg`가 한 포맷이므로 이름을
+// 포맷에서 만들면 Default 항목이 포맷당 하나로 모이고, 확장자 대소문자 매칭을 소비자의
+// 관용에 맡기지 않는다 (Asset.Key가 대소문자를 눕히지 않는 결정의 짝이다 — 키는 디스크를
+// 가리키고 파트 이름은 패키지 안의 이름이다).
+func (f ImageFormat) Ext() string {
+	for _, entry := range imageExts {
+		if entry.format == f {
+			return entry.ext
+		}
+	}
+	return ""
+}
+
 // ImageFormatForExt는 확장자가 선언하는 포맷이다. 비교는 **대소문자를 무시한다** — `.PNG`와
 // `.png`가 다른 포맷이 되면 저자가 파일 이름의 대문자 때문에 그리지 못하는 그림을 얻는다.
 func ImageFormatForExt(ext string) (ImageFormat, bool) {

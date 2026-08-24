@@ -9,6 +9,8 @@
 //
 // computed-style 역추론은 없다. ①과 ②가 만나는 자리는 shape.go의 shapesXML이다 —
 // `<text>` 하나가 p:sp(텍스트 박스) 하나가 되고, 좌표는 xfrm, 외관은 rPr/pPr가 된다.
+// `<image>`는 p:sp가 아니라 **p:pic**이 되고, 그 그림의 바이트가 패키지의 미디어 파트로
+// 나간다 — 파트·관계·콘텐츠 타입 세 자리가 함께 맞아야 하는 유일한 요소다 (image.go).
 // 레이아웃 태그(`<row>`/`<col>`/`<grid>`/`<spacer>`)는 **도형이 되지 않는다**: 배치는 ①에서
 // 좌표로 구워지므로 자식의 절대 좌표만 남고 컨테이너 자체는 사라진다 (writeShapeNode).
 // 테마 파트(clrScheme/fontScheme)는 덱의 토큰 표에서 컴파일된다 (theme.go).

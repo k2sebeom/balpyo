@@ -422,6 +422,11 @@ func TestFixtureCoordinatesMatchGeometry(t *testing.T) {
 // 도형의 txBody 문단이 된다 — pptx.shapeBodyXML). 그래서 종류 판정이 태그 이름만으로는
 // 부족하고 **부모가 도형인가**를 알아야 한다 — 판정을 shapeRoles의 순회 하나가 소유한다
 // (좌표 대조와 같은 목록이어야 두 검사가 같은 계약을 본다).
+//
+// **"도형"의 뜻이 Iteration 5에서 넓어졌다**: `<image>`도 재고 도형이 되지만 그 요소는
+// `p:sp`가 아니라 `p:pic`이다 (pptx.writePicShape). 등식의 항이 아니라 항의 뜻이 넓어진 것이라
+// 세는 쪽(countedShapeTags)이 두 태그를 함께 센다 — `p:sp`만 세면 그림이 든 슬라이드에서
+// 등식이 "도형이 하나 모자라다"로 깨지고, 그것은 계약 위반이 아니라 세는 코드의 낡음이다.
 func TestFixtureShapeCountExcludesNonShapeElements(t *testing.T) {
 	RequireChromium(t) // 지오메트리 패스가 브라우저를 띄운다.
 	for _, name := range fixtureNames {
@@ -452,7 +457,7 @@ func TestFixtureShapeCountExcludesNonShapeElements(t *testing.T) {
 			}
 			got := 0
 			for i := range result.Deck.Slides {
-				got += strings.Count(string(parts[fmt.Sprintf("ppt/slides/slide%d.xml", i+1)]), "<p:sp>")
+				got += countShapes(string(parts[fmt.Sprintf("ppt/slides/slide%d.xml", i+1)]))
 			}
 			// 등식을 로그에 그대로 적는다 — 항 이름이 순회의 분류에서 오므로 항이 늘면
 			// 로그도 함께 자란다 (손으로 적은 항 목록은 갱신을 잊는다).
@@ -518,7 +523,7 @@ func TestShapeFixtureSlideShapeCounts(t *testing.T) {
 			continue
 		}
 		seen[id] = true
-		if got := strings.Count(xml, "<p:sp>"); got != want {
+		if got := countShapes(xml); got != want {
 			t.Errorf("%s(%s): 도형 %d개, want %d개", slide, id, got, want)
 		}
 	}
@@ -1147,6 +1152,23 @@ func TestShapeRolesLineUpWithGeometryRefs(t *testing.T) {
 	}
 }
 
+// countedShapeTags는 **재고 도형이 되는** 요소의 spTree 태그다.
+//
+// 이름을 손으로 비교하지 않고 목록으로 두는 이유: 종류가 늘 때(Iteration 5의 `p:pic`,
+// Iteration 9의 `p:grpSp`) 세는 자리가 하나여야 도형 수 등식과 슬라이드별 표가 같은 것을
+// 센다. 두 곳에서 세면 한쪽만 갱신되고, 그 어긋남은 "등식은 통과하는데 표가 깨진다"로 나타나
+// 원인이 계약인지 세는 코드인지 알 수 없다.
+var countedShapeTags = []string{"<p:sp>", "<p:pic>"}
+
+// countShapes는 슬라이드 파트의 도형 수다 (`p:sp` + `p:pic`).
+func countShapes(xml string) int {
+	n := 0
+	for _, tag := range countedShapeTags {
+		n += strings.Count(xml, tag)
+	}
+	return n
+}
+
 // shapeExcludedKinds는 **측정되지만 도형이 되지 않는** 요소의 분류다 (등식의 항 이름,
 // 순서 = 등식에 적는 순서). shapeRoles가 붙이고 도형 수 등식이 로그에 그대로 쓴다.
 var shapeExcludedKinds = []string{"컨테이너", "spacer", "li", "도형 안 텍스트"}
@@ -1197,6 +1219,11 @@ func shapeRoles(t *testing.T, deck *soml.Deck) []shapeRole {
 			// 같은 처지다. 자리를 비워 두어야 뒤따르는 형제의 좌표가 제 변환과 만난다.
 			roles = append(roles, shapeRole{excluded: "도형 안 텍스트"})
 		case kind == soml.KindShape:
+			roles = append(roles, shapeRole{rect: asMeasured})
+		case kind == soml.KindImage:
+			// 그림도 **재고 도형이 된다** (요소는 `p:pic`이다 — pptx.writePicShape). 좌표는
+			// 도형과 같이 잰 rect 그대로다: 잰 rect가 이미 그려진 그림이므로 여백·안전 여유를
+			// 더할 것이 없다 (render/web/image.go의 fit 결정).
 			roles = append(roles, shapeRole{rect: asMeasured})
 		case kind == soml.KindListContainer:
 			// 리스트 도형의 안전 여유는 언제나 start 정렬로 적용된다 — li는 align 속성을

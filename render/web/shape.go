@@ -229,7 +229,7 @@ func shapeGeometries() []shapeGeometry {
 			// 브라우저가 `rx`를 박스 절반으로 자르는 것과 같은 규칙이다.
 			Type: "rounded-rect", Preset: "roundRect", Space: spacePixel,
 			Element: "rect", Attrs: `width="100%" height="100%"`, Rounded: true,
-			Adjust: []ShapeAdjust{{Name: "adj", Base: 100000, Axis: AdjustAxisRadius, Max: 50000}},
+			Adjust: []ShapeAdjust{RoundRectAdjust()},
 		},
 		{
 			// ellipse: 프리셋은 wR = wd2, hR = hd2의 원호 넷 — 박스에 내접하는 타원이다.
@@ -383,6 +383,20 @@ func ShapeAdjusts(shapeType string) ([]ShapeAdjust, bool) {
 		return nil, false
 	}
 	return geom.Adjust, true
+}
+
+// RoundRectAdjust는 `roundRect` 프리셋의 반경 조정값 명세다 — **도형과 그림이 같은 것을
+// 쓴다**.
+//
+// `<shape type="rounded-rect">`(위 기하 표의 행)와 `radius`가 있는 `<image>`
+// (render/pptx의 `pic/spPr/prstGeom`)가 같은 프리셋을 같은 공식으로 되돌려야 한다: 같은
+// `radius="md"`가 두 요소에서 다른 모서리로 그려지면 저자는 그 차이를 도형과 그림을 나란히
+// 놓고서야 본다. 값(`adj = 100000·radius/ss`, 상한 50000 = 짧은 변의 절반)의 근거는 표의
+// 그 행 주석에 있다 — 여기서 다시 적지 않는다.
+//
+// 함수인 이유는 ShapeAdjusts와 같다: 값 타입의 복사본을 주어 호출자가 표를 바꿀 수 없게 한다.
+func RoundRectAdjust() ShapeAdjust {
+	return ShapeAdjust{Name: "adj", Base: 100000, Axis: AdjustAxisRadius, Max: 50000}
 }
 
 // ShapeAnchor는 도형이 쓸 세로 앵커다 — **첫 자식이 정한 값**이고, 정한 자식이 없으면 빈 값이다.
