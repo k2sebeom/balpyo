@@ -40,6 +40,9 @@ func Resolve(deck *soml.Deck) soml.Diagnostics {
 		// 레이아웃 어휘는 슬라이드마다 도는 이 루프 머리에서 확정한다 — 파일 하나로
 		// 판정되므로 Validate(파일을 넘어야 아는 것 — 슬라이드 ID 충돌)가 아니라 여기다.
 		r.slideLayout(slide)
+		// 확정된 layout을 resolver에 싣는다 — canvas 슬라이드의 직속 자식에서 `x`/`y`가
+		// 유효한지 판정하려면 배치 해석이 슬라이드의 layout을 알아야 한다 (coordParentOK).
+		r.layout = slide.Layout
 		for _, node := range slide.Content {
 			// 슬라이드 직속 노드의 부모는 없다 — 배치 해석이 부모를 보는 이유는
 			// resolveLayout의 주석에 있다 (span은 <grid>의 자식에서만 뜻이 있다).
@@ -59,7 +62,12 @@ func Resolve(deck *soml.Deck) soml.Diagnostics {
 type resolver struct {
 	theme soml.Theme
 	file  string
-	diags soml.Diagnostics
+	// layout은 이 슬라이드의 확정 레이아웃이다 (slideLayout이 채운다). 배치 검증이 슬라이드를
+	// 알아야 하는 유일한 자리가 canvas다: `x`/`y`는 <stack>의 자식이거나 canvas 슬라이드의
+	// 직속 자식에서만 쓸 수 있는데, 후자는 부모가 요소가 아니므로(parent == nil) 부모만으로는
+	// 판정할 수 없다 (coordParentOK).
+	layout soml.SlideLayout
+	diags  soml.Diagnostics
 	// ids는 이 슬라이드에서 이미 쓴 도형 `id`와 그 자리다 (중복 진단이 처음 자리를 가리켜야
 	// 한다). 상태가 resolver에 있는 것이 곧 검사 범위가 슬라이드라는 뜻이다 — 근거는
 	// resolver.shapeID의 주석에 있다.
@@ -449,6 +457,10 @@ func attrExample(name string) string {
 		return "center"
 	case "order":
 		return "-1"
+	case "at":
+		return "center"
+	case "x", "y":
+		return "40"
 	case soml.StyleAttr:
 		return "align-content: space-evenly"
 	}

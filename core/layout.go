@@ -43,6 +43,10 @@ func (r *resolver) resolveLayout(elem, parent *soml.Element) {
 		containerNames = soml.ContainerAttrs(elem.Name)
 	}
 	var placement soml.Placement
+	// at과 x/y는 같은 축의 위치를 정하는 두 채널이다 — 함께 쓰면 어느 쪽이 이기는지 저자가
+	// 외워야 하므로 묻는다 (variant/frame을 함께 받지 않은 것과 같은 기준, ADR 0027). 충돌을
+	// 여기서 한 번 판정해 진단을 한 번만 내고, 충돌한 채널은 확정 배치에 싣지 않는다.
+	anchorConflict := r.placementConflict(elem)
 	for _, attr := range elem.Attrs {
 		// 이름 목록은 카탈로그(soml)에서 온다 — core가 자기 목록을 들면 파서가 연 속성과
 		// 값 층이 해석하는 속성이 갈라지고, 갈라진 쪽은 조용히 무시된다.
@@ -50,7 +54,7 @@ func (r *resolver) resolveLayout(elem, parent *soml.Element) {
 		case container != nil && containsName(containerNames, attr.Name):
 			r.containerAttr(container, attr)
 		case containsName(soml.ChildPlacementAttrs(), attr.Name):
-			r.placementAttr(&placement, attr, parent)
+			r.placementAttr(&placement, attr, parent, anchorConflict)
 		}
 	}
 	if container == nil && placement == (soml.Placement{}) {
@@ -157,7 +161,11 @@ func (r *resolver) boxAttr(box *soml.Box, attr soml.Attr) bool {
 }
 
 // placementAttr은 자식 배치 속성 하나를 해석한다 (표 순서 = PRD §7.4 자식 표 순서).
-func (r *resolver) placementAttr(placement *soml.Placement, attr soml.Attr, parent *soml.Element) {
+//
+// anchorConflict는 at과 x/y를 함께 썼는지다 (resolveLayout이 한 번 판정한다). 참이면 두
+// 채널(at·x·y)을 확정 배치에 싣지 않는다 — 진단은 이미 한 번 났고, 충돌한 값을 실으면
+// 저자가 고친 뒤의 결과를 예측할 수 없다 (틀린 값을 싣지 않는 값 층의 정책과 같다).
+func (r *resolver) placementAttr(placement *soml.Placement, attr soml.Attr, parent *soml.Element, anchorConflict bool) {
 	switch attr.Name {
 	case "grow":
 		if n, ok := r.nonNegativeInt(attr); ok {
@@ -187,6 +195,18 @@ func (r *resolver) placementAttr(placement *soml.Placement, attr soml.Attr, pare
 		if n, ok := r.integer(attr); ok {
 			placement.Order = &n
 		}
+	case "at":
+		if anchor, ok := r.stackAnchor(attr, parent, anchorConflict); ok {
+			placement.At = anchor
+		}
+	case "x", "y":
+		if length, ok := r.coord(attr, parent, anchorConflict); ok {
+			if attr.Name == "x" {
+				placement.X = &length
+			} else {
+				placement.Y = &length
+			}
+		}
 	case soml.StyleAttr:
 		if style, ok := r.placementStyle(attr); ok {
 			placement.Style = style
@@ -194,6 +214,29 @@ func (r *resolver) placementAttr(placement *soml.Placement, attr soml.Attr, pare
 	default:
 		r.catalogGap(attr)
 	}
+}
+
+// placementConflict는 at과 x/y를 같은 자식에 함께 썼는지 판정하고, 그렇다면 진단한다.
+//
+// 둘 다 자리를 정하는 채널이라(at은 9지점 앵커, x/y는 절대 오프셋) 겹치면 CSS에서
+// 절대 배치된 grid 자식의 `place-self`가 정적 위치에만 작용한다는 규칙이 결과를 정하는데,
+// 그것은 저자가 외울 이유가 없는 규칙이다. 어느 쪽이 이기는지 정하는 대신 **묻는다** —
+// variant와 frame을 함께 받지 않은 것과 같은 기준(ADR 0027)이다. 진단은 두 속성의 위치를
+// 모두 가리켜 저자가 어느 하나를 지울지 고르게 한다.
+func (r *resolver) placementConflict(elem *soml.Element) bool {
+	at, hasAt := elem.Attr("at")
+	x, hasX := elem.Attr("x")
+	y, hasY := elem.Attr("y")
+	if !hasAt || (!hasX && !hasY) {
+		return false
+	}
+	coord := x
+	if !hasX {
+		coord = y
+	}
+	r.errorf(at.NameSpan, "at과 %s를 함께 쓸 수 없다 (%s는 %s에 있다) — 둘 다 자리를 정하는 채널이라 하나만 쓴다 (at은 9지점 앵커, x/y는 절대 오프셋)",
+		coord.Name, coord.Name, coord.NameSpan.Start)
+	return true
 }
 
 // catalogGap은 카탈로그(soml)가 연 배치 속성을 값 층이 모르는 상태다 — 엔진 버그다.
@@ -210,6 +253,11 @@ type lengthSyntax struct {
 	tokens bool
 	// fill은 `fill`을 받는지다 (크기 속성).
 	fill bool
+	// signed는 음수를 받는지다. 좌표(`x`/`y`)에만 참이다 — 크기(폭·gap·basis)의 음수는 CSS가
+	// 무효로 버리는 선언이지만, 좌표의 음수는 정당하다 (박스 밖으로 반쯤 걸친 배지는 오버레이의
+	// 가장 흔한 장면이다). 한 함수가 두 규칙(크기의 음수 금지 · 좌표의 음수 허용)을 갖게 되므로
+	// 회귀가 이 축에서 난다 — 크기 속성의 음수 금지 테스트가 그대로 남아 있어야 한다.
+	signed bool
 }
 
 // length는 속성 하나를 길이로 해석한다.
@@ -272,8 +320,9 @@ func (r *resolver) lengthValue(name, raw string, span soml.Span, syntax lengthSy
 		r.errorf(span, "%s 값이 수치가 아니다 (%q) — %s를 쓴다", name, raw, lengthForms(syntax))
 		return soml.Length{}, false
 	}
-	if n < 0 {
+	if n < 0 && !syntax.signed {
 		// 음수 길이는 CSS가 무효로 버리는 선언이다 — 조용히 사라지므로 값 층에서 막는다.
+		// 좌표(signed)는 예외다: 음수 오프셋이 정당하다 (lengthSyntax.signed의 근거).
 		r.errorf(span, "%s는 0보다 작을 수 없다 (%q)", name, raw)
 		return soml.Length{}, false
 	}
@@ -550,6 +599,129 @@ func parentDesc(parent *soml.Element) string {
 		return "여기는 슬라이드 직속이다"
 	}
 	return fmt.Sprintf("부모는 <%s>다", parent.Name)
+}
+
+// stackAnchor는 `at`의 9지점 앵커를 해석한다.
+//
+// **`<stack>`의 자식에서만 뜻이 있다** (PRD §7.4). span과 같은 자리의 부모를 아는 검증이다 —
+// 파서는 부모를 모르는 자리에서 속성 표를 만들기 때문에 이름 층에서 막을 수 없었다. flex/grid
+// 컨테이너나 슬라이드 직속에서 `place-self`의 9지점은 뜻이 없어(단일 셀 grid가 아니다) 조용히
+// 버려지고, 그 침묵이 닫힌 어휘가 막으려던 실패다.
+//
+// 검사 순서는 span과 같다: 값(어휘) 먼저, 부모 나중. `<row at="center">`은 어휘를 통과하고
+// 부모에서 걸리고, `at="top"`(stack 안)은 어휘에서 걸린다 — 두 진단이 겹치지 않는다.
+func (r *resolver) stackAnchor(attr soml.Attr, parent *soml.Element, conflict bool) (soml.StackAnchor, bool) {
+	if conflict {
+		return "", false
+	}
+	if !r.hasValue(attr) {
+		return "", false
+	}
+	raw := attr.Value
+	for _, anchor := range soml.StackAnchors() {
+		if string(anchor) == raw {
+			if parent == nil || parent.Name != soml.StackElement {
+				r.errorf(attr.NameSpan, "at은 <%s>의 자식에서만 쓴다 (%s) — 겹침이 필요하면 <%s>으로 감싼다",
+					soml.StackElement, parentDesc(parent), soml.StackElement)
+				return "", false
+			}
+			return anchor, true
+		}
+	}
+	// 흔한 오타·짧은 이름·축이 뒤바뀐 이름은 올바른 9지점을 짚어 준다 — 고치는 방법이 진단
+	// 안에 있어야 한 번에 끝난다 (boxAlign의 flex- 접두 안내와 같은 태도).
+	if suggestion, ok := anchorTypo(raw); ok {
+		r.errorf(attr.ValueSpan, "알 수 없는 at %q — %q를 뜻한 것인가? (9지점 앵커: %s)",
+			raw, string(suggestion), stackAnchorList())
+		return "", false
+	}
+	r.errorf(attr.ValueSpan, "알 수 없는 at %q (쓸 수 있는 9지점 앵커: %s)", raw, stackAnchorList())
+	return "", false
+}
+
+// coord는 `x`/`y`의 절대 오프셋을 해석한다.
+//
+// 값 문법은 수치(논리 px)·`%`·**음수**·소수다 (lengthSyntax{signed}). 공간 토큰(`x="md"`)과
+// `fill`은 받지 않는다: 토큰은 여백·간격의 어휘라 테마를 따라 움직이는 것이 옳지만 좌표가
+// 테마 교체로 움직이면 겹침이 깨지고, `fill`은 크기이지 위치가 아니다 (lengthSyntax{}가 그
+// 구분을 표현한다).
+//
+// **`<stack>`의 자식이거나 canvas 슬라이드의 직속 자식에서만 뜻이 있다.** 후자는 부모가
+// 요소가 아니라 슬라이드다 (parent == nil) — 그래서 슬라이드의 확정 layout(r.layout)을 본다.
+// content 슬라이드의 직속 자식에서 막는 것이 요점이다: 지금 스테이지는 세로 flex이므로 절대
+// 배치가 "되기는" 하지만, 되는 것을 열어 두면 canvas라는 이름이 아무것도 뜻하지 않게 되고
+// 테마가 배치를 소유하는 레이아웃의 슬롯 안에 좌표를 박는 길이 열린다 (1층·2층 경계).
+func (r *resolver) coord(attr soml.Attr, parent *soml.Element, conflict bool) (soml.Length, bool) {
+	if conflict {
+		return soml.Length{}, false
+	}
+	if !r.hasValue(attr) {
+		return soml.Length{}, false
+	}
+	length, ok := r.lengthValue(attr.Name, attr.Value, attr.ValueSpan, lengthSyntax{signed: true})
+	if !ok {
+		return soml.Length{}, false
+	}
+	if !r.coordParentOK(parent) {
+		r.errorf(attr.NameSpan, "%s는 <%s>의 자식이나 layout=\"canvas\" 슬라이드의 직속 자식에서만 쓴다 (%s) — <%s>으로 감싸거나 슬라이드에 layout=\"canvas\"를 준다",
+			attr.Name, soml.StackElement, parentDesc(parent), soml.StackElement)
+		return soml.Length{}, false
+	}
+	return length, true
+}
+
+// coordParentOK는 `x`/`y`가 유효한 부모에 있는지다 — <stack>의 자식이거나 canvas 슬라이드의
+// 직속 자식(parent == nil이고 슬라이드 layout이 canvas)이다.
+func (r *resolver) coordParentOK(parent *soml.Element) bool {
+	if parent != nil {
+		return parent.Name == soml.StackElement
+	}
+	return r.layout == soml.LayoutCanvas
+}
+
+// anchorTypo는 흔한 오타·짧은 이름·축이 뒤바뀐 이름을 올바른 9지점으로 잇는다.
+//
+// 짧은 이름(`top`)은 축을 하나만 적은 것이므로 나머지 축을 center로 채운 자리를 권한다.
+// 축이 뒤바뀐 이름(`right-top`)은 어휘가 세로-가로 순서(`top-right`)라는 규칙으로 되짚어
+// 준다. `center-center`는 어휘에 없는 자리라 `center` 한 단어를 권한다 (같은 자리를 두
+// 이름으로 받지 않는다는 기준). 공백·붙여쓴 표기(`top left`·`topleft`)도 하이픈 표기로
+// 이끈다.
+func anchorTypo(raw string) (soml.StackAnchor, bool) {
+	anchor, ok := map[string]soml.StackAnchor{
+		"top":           soml.StackTopCenter,
+		"bottom":        soml.StackBottomCenter,
+		"left":          soml.StackCenterLeft,
+		"right":         soml.StackCenterRight,
+		"middle":        soml.StackCenter,
+		"center-center": soml.StackCenter,
+		"topleft":       soml.StackTopLeft,
+		"topright":      soml.StackTopRight,
+		"bottomleft":    soml.StackBottomLeft,
+		"bottomright":   soml.StackBottomRight,
+		"top left":      soml.StackTopLeft,
+		"top center":    soml.StackTopCenter,
+		"top right":     soml.StackTopRight,
+		"bottom left":   soml.StackBottomLeft,
+		"bottom center": soml.StackBottomCenter,
+		"bottom right":  soml.StackBottomRight,
+		"left-top":      soml.StackTopLeft,
+		"right-top":     soml.StackTopRight,
+		"left-bottom":   soml.StackBottomLeft,
+		"right-bottom":  soml.StackBottomRight,
+		"left-center":   soml.StackCenterLeft,
+		"right-center":  soml.StackCenterRight,
+	}[raw]
+	return anchor, ok
+}
+
+// stackAnchorList는 진단에 실을 9지점 어휘 목록이다 — 어휘 정의(soml.StackAnchors)와 메시지가
+// 갈라지지 않도록 손으로 쓰지 않는다 (boxAlignList와 같은 태도).
+func stackAnchorList() string {
+	names := make([]string, 0, len(soml.StackAnchors()))
+	for _, anchor := range soml.StackAnchors() {
+		names = append(names, string(anchor))
+	}
+	return strings.Join(names, ", ")
 }
 
 // valuePart는 값 안의 조각 하나다 — 조각의 원문과 값 안 오프셋을 함께 들고 다니는 이유는

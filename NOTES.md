@@ -1967,3 +1967,75 @@
   - **`transition`·`data-balpyo-layout` 표식은 열지 않았다** — 각각 런타임 P0의 남은 몫과
     Iteration 10(레이아웃이 11종이 되는 시점)이다. 지금 내면 골든에 소비자 없는 속성이 남는다.
   - **docs·PRD·ADR은 항목 07이다.**
+
+
+## Iteration 6 · 03-core-placement — `at` 9지점 앵커 · `x`/`y` 좌표 · 부모를 아는 검증
+
+<!-- item: 06/03-core-placement -->
+
+- **한 것**:
+  - `soml/placement.go` — `StackAnchor` 타입 + 9지점 상수(`StackTopLeft`…`StackBottomRight`)와
+    `StackAnchors()` 목록(3×3 격자 순서 = 진단·문서 순서). `Placement`에 `At StackAnchor` +
+    `X *Length` + `Y *Length` 세 필드를 `Order` 뒤·`Style` 앞에 더했다(PRD 자식 표 순서). 셋 다
+    비교 가능해 `placement == (soml.Placement{})`의 제로값 판정(배치 없는 요소는 nil)이 그대로다.
+  - `core/layout.go` — `lengthSyntax`에 `signed` 축 추가, `lengthValue`의 음수 금지를
+    `!syntax.signed`로 gate. `placementAttr`에 `at`/`x`/`y` 분기 + `anchorConflict` 인자.
+    새 헬퍼: `stackAnchor`(어휘+부모 검증), `coord`(값 문법+부모 검증), `coordParentOK`,
+    `placementConflict`(at+x/y 동시 사용 진단), `anchorTypo`(짧은 이름·축 뒤바뀜 안내),
+    `stackAnchorList`.
+  - `core/resolve.go` — `resolver`에 `layout soml.SlideLayout` 필드, `Resolve`의 슬라이드
+    루프에서 `slideLayout` 뒤 대입. `attrExample`에 `at`(center)·`x`/`y`(40) 행 추가.
+  - 테스트(`core/layout_test.go`) — `TestResolvePlacement`에 at/x/y 커버리지 행 추가하고
+    항목 01이 남긴 `pendingItem03` 면제를 지웠다. 새 테스트: 9지점 전수, 좌표 문법(±·%·소수·
+    미지정 축 nil), at 부모 인식, x/y 부모 인식(canvas 포함), at+x/y 충돌, 어휘 진단(오타·토큰·
+    fill·단위), signed 회귀(w/gap/basis 음수 금지 + x/y 음수 허용), `_06_stack` 픽스처의 배치
+    진단 0건. `resolveSlide`·`readFixtureDeck` 헬퍼가 파서의 `doc.Layout`을 슬라이드로 나르게
+    했다(파이프라인과 같은 경로여야 canvas 검증을 테스트할 수 있다).
+
+- **설계 결정과 근거**:
+  - **9지점은 합성 이름의 닫힌 목록.** 짧은 이름(`top`)과 저울질했고 합성(`top-center`)을
+    골랐다: 진단이 3×3으로 읽히고 두 축을 잇는 규칙에서 이름을 유도할 수 있다. `BoxAlign`
+    두 개(align×justify)로 눕히는 길은 `at="stretch-baseline"` 같은 조합을 문법상 열어 버려
+    버렸다. `center-center`는 받지 않고 `center`를 권한다(같은 자리 두 이름 금지 — ADR 0027).
+  - **상수 접두는 `Stack`.** 타입명 전체(`StackAnchor…`)는 표 테스트에서 너무 길고, `Anchor…`는
+    기존 `TextAnchor`의 `AnchorCenter`와 충돌한다. `StackCenter`는 짧고 충돌이 없다. — 열린
+    질문이었고 임의로 골랐다(BoxAlign은 타입명 전체를 쓰지만 TextAnchor/TextAlign은 접미만 쓴다 —
+    저장소가 두 관용을 다 갖고 있어 충돌 회피를 우선했다).
+  - **`x`/`y`는 signed·토큰 없음·fill 없음.** 좌표에 음수는 정당하다(박스 밖 배지) — `signed`
+    축을 더하되 크기 속성의 음수 금지는 그대로 남겼다(한 함수 두 규칙이라 회귀 테스트를 나란히
+    뒀다). 공간 토큰은 여백의 어휘라 좌표가 테마 교체로 움직이면 겹침이 깨지고, `fill`은 크기이지
+    위치가 아니다 — `lengthSyntax{}`가 이미 그 구분을 표현한다(basis가 선례).
+  - **at+x/y 동시 사용은 묻는다.** 둘 다 자리를 정하는 채널이고 CSS의 겹침 결과(절대 배치된 grid
+    자식의 place-self)는 저자가 외울 규칙이 아니다 — 어느 쪽이 이기는지 정하는 대신 에러(ADR 0027의
+    variant/frame 기준). 진단은 `at`을 가리키고 x의 자리를 문구에 담으며, 충돌한 채널은 싣지 않는다.
+  - **부모를 아는 검증 3종.** `resolver.span`의 자리에서, `at`은 `<stack>`만, `x`/`y`는 `<stack>`
+    이나 **canvas 슬라이드의 직속 자식**(parent == nil이고 슬라이드 layout이 canvas)만 받는다.
+    후자 때문에 resolver가 슬라이드 layout을 알아야 했다(`r.layout`). content 슬라이드 직속에서
+    막는 것이 요점 — 열어 두면 canvas라는 이름이 뜻을 잃고 Iteration 10의 테마 레이아웃 슬롯에
+    좌표를 박는 길이 열린다. 검사 순서는 span과 같다(값 먼저, 부모 나중 — 두 진단이 겹치지 않게).
+  - **캔버스 컨테이너 속성은 아무 것도 열지 않았다** — 캔버스 스테이지는 요소가 아니라 테마의
+    것이므로 저자가 `gap`·`pad`를 줄 자리가 없다. 배치를 원하면 `<stack>`·`<row>`를 직접 쓴다
+    (슬롯·레이아웃 속성은 Iteration 10).
+
+- **검증**: `gofmt -l .`(무출력)·`go vet ./...`(무출력)·`make test`(컨테이너 — 전 패키지 ok,
+  testkit 골든 불변). 호스트 `go test ./...`은 04_shape·05_image의 PPTX `a:ext cx`(텍스트 폭
+  측정)가 골든과 달랐으나 컨테이너에서 전부 통과 — 폰트 메트릭이 호스트/컨테이너에서 다른
+  환경 차이이고 이 항목과 무관하다(렌더러는 아직 At/X/Y를 읽지 않고, 두 픽스처는 stack/at/x/y를
+  쓰지 않는다). 골든은 갱신하지 않았다.
+
+- **남긴 것**:
+  - **웹·PPTX·지오메트리 매핑은 항목 04·05다.** 이 항목의 산출은 확정 값까지(`Placement.At`/`X`/`Y`)
+    이고, `place-self`(웹)·잰 rect·음수 `a:off`(PPTX)는 다음 항목이 읽는다. 렌더러가 새 필드를
+    읽기 시작할 때 골든이 처음 움직인다.
+  - **열린 질문 — `_06_stack` 픽스처의 "진단 0건"은 테마가 막고 있다.** 픽스처가 `accent2`~`accent5`·
+    `on-accent`를 쓰는데 하드코딩 `minimalTheme`에는 `accent1`까지만 있다(core/theme.go의 주석이
+    그 최소성을 근거로 적었다). 그래서 이 항목의 픽스처 테스트는 "진단 0건"이 아니라 "**배치 진단
+    0건**"(남은 진단이 전부 색 토큰 외관 진단)을 단정한다. 그 팔레트를 채우는 것은 배치와 무관하고
+    **픽스처 활성화(항목 06)의 몫**이다 — 항목 06이 테마에 색을 더하고 픽스처를 `06_stack`으로
+    옮길 때 이 테스트를 "진단 0건"으로 조일 수 있다.
+  - **`<arrow from="db@top">`의 앵커 어휘(Iteration 7)와 합치려는 유혹.** 이름이 `at`과 비슷하지만
+    다른 채널이다 — `at`은 자기 자리(place-self), `@top`은 연결점이다. 두 어휘를 한 타입으로 합치면
+    `StackAnchor`가 연결점 의미까지 지게 되어 닫힌 9지점 목록이 흐려진다. 합치지 않는다.
+  - **`style` 탈출구에 `z-index`는 이번에도 넣지 않았다** — z-순서는 문서 순서라는 계약(PRD §13-3)이
+    있고 탈출구로 순서를 뒤집으면 PPTX에 이식되지 않는 겹침이 생긴다(항목 04의 칠 순서 ADR과 같은
+    자리 — 항목 07).

@@ -91,6 +91,16 @@ type Placement struct {
 	Span  *int
 	Self  BoxAlign
 	Order *int
+	// At은 stack 셀 안 9지점 앵커다 (`place-self`) — `<stack>`의 자식에서만 뜻이 있고, 그
+	// 검증은 부모를 아는 core의 순회가 한다 (span과 같은 자리). 정하지 않으면 빈 문자열이고,
+	// 그때 자식은 컨테이너의 align/justify 기본 정렬을 따른다.
+	At StackAnchor
+	// X·Y는 부모 축 기준 **절대 오프셋**이다 — `<stack>`의 자식이거나 canvas 슬라이드의
+	// 직속 자식에서만 뜻이 있다 (부모를 아는 core의 순회가 검증한다). 정하지 않은 축은
+	// nil로 남는다 (`x`만 준 자식은 Y가 nil). 좌표는 크기가 아니므로 음수를 받는다 (박스
+	// 밖으로 걸친 배지) — soml.Length가 이미 담을 수 있고, 그 부호 허용은 값 층이 gate한다.
+	X *Length
+	Y *Length
 	// Style은 정규화된 **배치 CSS 선언 목록**이다 (탈출구 — PRD §7.9). `prop: value`를
 	// `; `로 이은 문자열이고, 빈 문자열이면 선언이 없다. 문자열인 이유: 웹 렌더러가 인라인
 	// style에 그대로 이어 붙이는 것이 이 값의 유일한 소비처이고, 값 문법은 엔진이 보지
@@ -227,6 +237,42 @@ const (
 func BoxJustifies() []BoxJustify {
 	return []BoxJustify{BoxJustifyStart, BoxJustifyCenter, BoxJustifyEnd,
 		BoxJustifyBetween, BoxJustifyAround, BoxJustifyEvenly}
+}
+
+// StackAnchor는 stack 셀 안 자식의 **9지점 앵커**다 (`at` — PRD §7.4·§7.4의 자식 표).
+//
+// 어휘는 3×3 격자의 **합성 이름**이다 (`top-left`…`bottom-right`). 짧은 이름(`top`·`left`)과
+// 저울질했고 합성을 골랐다: 진단 목록이 3×3으로 읽히고, 저자가 표를 외우지 않아도 "세로 축
+// 하나 · 가로 축 하나를 잇는다"는 규칙에서 이름을 유도할 수 있다. `center`만 한 단어인 것이
+// 유일한 예외이며 `center-center`는 받지 않는다 — 같은 자리를 두 이름으로 받지 않는다는
+// 기준(ADR 0027)이다.
+//
+// BoxAlign 두 개(align/justify 쌍)로 눕히는 길과도 저울질했고 닫는 쪽을 골랐다: 확정 값에서
+// 웹이 `place-self`로 내는 것이 정확히 그 일이지만, 어휘를 align×justify로 열면
+// `at="stretch-baseline"` 같은 조합이 문법상 가능해진다. 9지점은 **닫힌 목록**이어야 한다.
+type StackAnchor string
+
+const (
+	StackTopLeft      StackAnchor = "top-left"
+	StackTopCenter    StackAnchor = "top-center"
+	StackTopRight     StackAnchor = "top-right"
+	StackCenterLeft   StackAnchor = "center-left"
+	StackCenter       StackAnchor = "center"
+	StackCenterRight  StackAnchor = "center-right"
+	StackBottomLeft   StackAnchor = "bottom-left"
+	StackBottomCenter StackAnchor = "bottom-center"
+	StackBottomRight  StackAnchor = "bottom-right"
+)
+
+// StackAnchors는 9지점 앵커 어휘 전체다 — **순서가 곧 3×3 격자 순서이자 진단·문서 순서다**
+// (위 행부터, 각 행은 왼쪽부터). 어휘 정의와 진단 목록이 갈라지지 않도록 core가 이 목록을
+// 소비한다 (BoxAligns와 같은 태도).
+func StackAnchors() []StackAnchor {
+	return []StackAnchor{
+		StackTopLeft, StackTopCenter, StackTopRight,
+		StackCenterLeft, StackCenter, StackCenterRight,
+		StackBottomLeft, StackBottomCenter, StackBottomRight,
+	}
 }
 
 // Container는 이 요소의 확정 컨테이너 배치다. 컨테이너가 아니거나 해석 전이면 nil이다 —

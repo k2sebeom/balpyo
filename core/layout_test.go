@@ -158,6 +158,11 @@ func TestResolvePlacement(t *testing.T) {
 		{"self", "self", "row", `self="center"`, soml.Placement{Self: soml.BoxAlignCenter}},
 		// order만 음수를 받는다 — "먼저 보이게"의 CSS 관용 표기다.
 		{"order 음수", "order", "row", `order="-1"`, soml.Placement{Order: ptr(-1)}},
+		// at·x·y는 겹침 배치 채널이다 — `at`은 stack 셀의 9지점 앵커, `x`/`y`는 절대 오프셋.
+		// stack의 자식에서만(또는 x/y는 canvas 직속에서도) 뜻이 있다 (부모 한정은 아래 별도 테스트).
+		{"at 앵커", "at", "stack", `at="center"`, soml.Placement{At: soml.StackCenter}},
+		{"x 수치", "x", "stack", `x="40"`, soml.Placement{X: ptr(soml.Px(40))}},
+		{"y 백분율", "y", "stack", `y="50%"`, soml.Placement{Y: ptr(soml.Percent(50))}},
 		{"style", soml.StyleAttr, "row", `style="place-self: end"`,
 			soml.Placement{Style: "place-self: end"}},
 	}
@@ -183,12 +188,11 @@ func TestResolvePlacement(t *testing.T) {
 	for _, tc := range cases {
 		covered[tc.attr] = true
 	}
-	// at·x·y는 Iteration 6 항목 01에서 **이름만** 열렸다 — 값 해석(9지점 앵커 어휘,
-	// x/y 값 문법, `at`은 stack만·`x`/`y`는 stack·canvas만이라는 부모 한정)은 항목 03의
-	// 몫이다. 항목 03이 placementAttr에 분기를 더하면서 이 면제를 지운다.
-	pendingItem03 := map[string]bool{"at": true, "x": true, "y": true}
+	// 자식 배치 속성은 전부 값 해석이 있어야 한다 — 카탈로그가 연 속성을 값 층이 모르면
+	// 저자가 쓴 배치가 산출물에서 조용히 사라진다. at·x·y의 값 어휘(9지점 앵커·좌표 문법)와
+	// 부모 한정 검증은 항목 03이 더했다 (아래 전수·부모 인식 테스트가 짝이다).
 	for _, attr := range soml.ChildPlacementAttrs() {
-		if !covered[attr] && !pendingItem03[attr] {
+		if !covered[attr] {
 			t.Errorf("자식 배치 속성 %q의 해석 테스트가 없다", attr)
 		}
 	}
@@ -313,6 +317,297 @@ func TestResolveBoxJustifyVocabulary(t *testing.T) {
 			}
 		})
 	}
+}
+
+// canvasSlide는 layout="canvas" 슬라이드다 — layoutSlide와 같은 2칸 들여쓰기라 진단 위치
+// 단정이 같은 열에서 읽힌다. `x`/`y`가 canvas 슬라이드의 직속 자식에서 유효한지 보려면
+// 슬라이드의 layout이 canvas여야 한다 (coordParentOK).
+func canvasSlide(content string) string {
+	return "<slide id=\"canvas\" layout=\"canvas\">\n  " + content + "\n</slide>\n"
+}
+
+// at의 9지점 앵커 어휘 전수 — 순서 있는 슬라이스가 소유하고(진단이 결정적) 어휘 전체가 실제로
+// 해석되는지 못 박는다. stack의 자식에서만 뜻이 있으므로 부모는 stack이다.
+func TestResolveStackAnchorVocabulary(t *testing.T) {
+	for _, anchor := range soml.StackAnchors() {
+		t.Run(string(anchor), func(t *testing.T) {
+			elem := resolvedElement(t, childSrc("stack", `at="`+string(anchor)+`"`), "p")
+			placement := elem.Placement()
+			if placement == nil || placement.At != anchor {
+				t.Fatalf("at = %+v, want %q", placement, anchor)
+			}
+			// at은 자식 배치다 — 컨테이너가 아니다.
+			if elem.Container() != nil {
+				t.Errorf("컨테이너 배치가 붙었다: %+v", *elem.Container())
+			}
+		})
+	}
+}
+
+// x/y의 값 문법 — 수치·%·음수·소수. 지정하지 않은 축은 nil로 남는다 ("정하지 않음"과 0을
+// 구별한다 — 골든 불변의 근거와 같은 종류).
+func TestResolveCoordSyntax(t *testing.T) {
+	cases := []struct {
+		name  string
+		decl  string
+		wantX *soml.Length
+		wantY *soml.Length
+	}{
+		{"x 수치", `x="120"`, ptr(soml.Px(120)), nil},
+		{"y 수치", `y="80"`, nil, ptr(soml.Px(80))},
+		{"x 백분율", `x="50%"`, ptr(soml.Percent(50)), nil},
+		{"x 음수", `x="-16"`, ptr(soml.Px(-16)), nil},
+		{"y 음수 백분율", `y="-12.5%"`, nil, ptr(soml.Percent(-12.5))},
+		{"x 소수", `x="12.5"`, ptr(soml.Px(12.5)), nil},
+		{"x y 함께", `x="10" y="-20"`, ptr(soml.Px(10)), ptr(soml.Px(-20))},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			placement := resolvedElement(t, childSrc("stack", tc.decl), "p").Placement()
+			if placement == nil {
+				t.Fatal("<p>에 확정 배치가 없다")
+			}
+			if !reflect.DeepEqual(placement.X, tc.wantX) {
+				t.Errorf("x = %v, want %v", showCoord(placement.X), showCoord(tc.wantX))
+			}
+			if !reflect.DeepEqual(placement.Y, tc.wantY) {
+				t.Errorf("y = %v, want %v", showCoord(placement.Y), showCoord(tc.wantY))
+			}
+		})
+	}
+}
+
+// 부모 인식 — 같은 속성이 <stack> 안에서는 통과하고 <row> 안·슬라이드 직속에서는 실패한다
+// (resolver.span의 테스트가 하는 방식으로 쌍을 나란히 둔다). at은 stack만, x/y는 stack이나
+// canvas 직속만이다 — 이 경계가 틀리면 캔버스 전체가 절대 배치 지대가 된다.
+func TestResolveAtNeedsStackParent(t *testing.T) {
+	if p := resolvedElement(t, childSrc("stack", `at="center"`), "p").Placement(); p == nil ||
+		p.At != soml.StackCenter {
+		t.Fatalf("<stack>의 자식 at이 해석되지 않았다: %+v", p)
+	}
+	cases := []struct {
+		name    string
+		content string
+		col     int
+	}{
+		{"flex 컨테이너의 자식", `<row><p at="center">내용</p></row>`, 11},
+		{"슬라이드 직속", `<p at="center">내용</p>`, 6},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			deck, diags := resolveSlide(t, layoutSlide(tc.content))
+			if len(diags) != 1 {
+				t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+			}
+			diag := diags[0]
+			if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "at은 <stack>") {
+				t.Errorf("진단 = %q, want at 부모 진단", diag.String())
+			}
+			// 진단은 속성 **이름**을 가리킨다 — 고칠 것이 값이 아니라 속성의 자리다 (span과 같다).
+			if diag.Span.Start.Line != 2 || diag.Span.Start.Col != tc.col {
+				t.Errorf("위치 = %s, want 2:%d", diag.Span.Start, tc.col)
+			}
+			if p := findElement(t, deck, "p").Placement(); p != nil && p.At != "" {
+				t.Errorf("무효한 at이 실렸다: %+v", *p)
+			}
+		})
+	}
+}
+
+// x/y의 부모 인식 — <stack>의 자식과 canvas 슬라이드의 직속 자식은 통과하고, content 슬라이드의
+// 직속·어느 슬라이드든 <row>의 자식은 실패한다. canvas 슬라이드의 <row> 자식이 실패하는 것이
+// 경계의 요점이다 (부모가 stack도 canvas 직속도 아니다 — 캔버스가 통째로 절대 배치 지대가 되면
+// 안 된다).
+func TestResolveCoordNeedsStackOrCanvas(t *testing.T) {
+	// 통과: <stack>의 자식.
+	if p := resolvedElement(t, childSrc("stack", `x="40"`), "p").Placement(); p == nil ||
+		p.X == nil || *p.X != soml.Px(40) {
+		t.Fatalf("<stack>의 자식 x가 해석되지 않았다: %+v", p)
+	}
+	// 통과: canvas 슬라이드의 직속 자식 (부모가 요소가 아니다 — parent == nil이고 layout canvas).
+	if p := resolvedElement(t, canvasSlide(`<p x="40">내용</p>`), "p").Placement(); p == nil ||
+		p.X == nil || *p.X != soml.Px(40) {
+		t.Fatalf("canvas 직속 x가 해석되지 않았다: %+v", p)
+	}
+	cases := []struct {
+		name string
+		src  string
+		col  int
+	}{
+		{"content 슬라이드 직속", layoutSlide(`<p x="40">내용</p>`), 6},
+		{"content의 <row> 자식", layoutSlide(`<row><p x="40">내용</p></row>`), 11},
+		{"canvas의 <row> 자식", canvasSlide(`<row><p x="40">내용</p></row>`), 11},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			deck, diags := resolveSlide(t, tc.src)
+			if len(diags) != 1 {
+				t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+			}
+			diag := diags[0]
+			// 진단이 고칠 방법(<stack>·layout="canvas")을 담는다.
+			if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "canvas") ||
+				!strings.Contains(diag.Message, soml.StackElement) {
+				t.Errorf("진단 = %q, want x 부모 진단", diag.String())
+			}
+			if diag.Span.Start.Line != 2 || diag.Span.Start.Col != tc.col {
+				t.Errorf("위치 = %s, want 2:%d", diag.Span.Start, tc.col)
+			}
+			if p := findElement(t, deck, "p").Placement(); p != nil && p.X != nil {
+				t.Errorf("무효한 x가 실렸다: %+v", *p)
+			}
+		})
+	}
+}
+
+// at과 x/y를 같은 자식에 함께 쓰면 에러다 — 둘 다 자리를 정하는 채널이라 하나만 쓴다
+// (ADR 0027의 variant/frame 기준). 진단은 하나이고 at을 가리키며 x의 자리를 문구에 담는다.
+// 충돌한 채널은 확정 배치에 실리지 않는다 (저자가 고친 뒤의 결과를 예측할 수 있어야 한다).
+func TestResolveAnchorCoordConflict(t *testing.T) {
+	deck, diags := resolveSlide(t, layoutSlide(`<stack><p at="center" x="10" y="20">내용</p></stack>`))
+	if len(diags) != 1 {
+		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+	}
+	diag := diags[0]
+	if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "함께 쓸 수 없다") {
+		t.Errorf("진단 = %q, want at/x 충돌", diag.String())
+	}
+	// at의 이름 자리를 가리킨다: <stack>(3-9) 뒤 <p (10-12), a=13.
+	if diag.Span.Start.Line != 2 || diag.Span.Start.Col != 13 {
+		t.Errorf("위치 = %s, want 2:13", diag.Span.Start)
+	}
+	// 충돌한 at/x/y는 실리지 않는다 — 다른 배치 속성이 없으므로 Placement 자체가 nil이다.
+	if p := findElement(t, deck, "p").Placement(); p != nil {
+		t.Errorf("충돌한 배치가 실렸다: %+v", *p)
+	}
+}
+
+// at의 어휘 진단 — 짧은 이름·오타·축 뒤바뀜은 올바른 9지점을 짚어 주고(고치는 방법이 진단
+// 안에 있다), 값 없는 at·x/y의 값 문법 위반은 문제가 된 조각을 line:col로 가리킨다.
+func TestResolveAnchorCoordDiagnostics(t *testing.T) {
+	cases := []struct {
+		name     string
+		content  string
+		line     int
+		col      int
+		contains string
+	}{
+		// at — 짧은 이름은 나머지 축을 center로 채운 자리를 권한다.
+		{"at 짧은 이름", `<stack><p at="top">내용</p></stack>`, 2, 17, "top-center"},
+		{"at 축 뒤바뀜", `<stack><p at="right-top">내용</p></stack>`, 2, 17, "top-right"},
+		{"at 오타", `<stack><p at="centre">내용</p></stack>`, 2, 17, "알 수 없는 at"},
+		{"at 어휘 밖", `<stack><p at="stretch">내용</p></stack>`, 2, 17, "알 수 없는 at"},
+		{"center-center 거부", `<stack><p at="center-center">내용</p></stack>`, 2, 17, "center"},
+		{"값 없는 at", `<stack><p at>내용</p></stack>`, 2, 13, "값이 필요하다"},
+		// x/y — 좌표는 토큰·fill을 받지 않고, 단위 접미사는 기존 numberSuffix 진단을 재사용한다.
+		{"x 공간 토큰", `<stack><p x="md">내용</p></stack>`, 2, 16, "gap·pad에만"},
+		{"x fill", `<stack><p x="fill">내용</p></stack>`, 2, 16, "수치가 아니다"},
+		{"x 단위 접미사", `<stack><p x="10px">내용</p></stack>`, 2, 16, "단위 없는 논리 px"},
+		{"값 없는 y", `<stack><p y>내용</p></stack>`, 2, 13, "값이 필요하다"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, diags := resolveSlide(t, layoutSlide(tc.content))
+			if len(diags) != 1 {
+				t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+			}
+			diag := diags[0]
+			if !diag.Span.Start.IsValid() || diag.Span.Start.Line != tc.line || diag.Span.Start.Col != tc.col {
+				t.Errorf("위치 = %s, want %d:%d (%s)", diag.Span.Start, tc.line, tc.col, diag.Message)
+			}
+			if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, tc.contains) {
+				t.Errorf("진단 = %q, want %q 포함", diag.String(), tc.contains)
+			}
+		})
+	}
+}
+
+// signed 축의 회귀 (항목 03이 lengthValue에 signed를 더했다): 크기·간격·basis의 음수는
+// **여전히** 에러이고 좌표 x/y의 음수만 통과한다. 한 함수가 두 규칙을 갖게 되므로 회귀가
+// 여기서 난다 — 두 규칙을 한 테스트에 나란히 둔다.
+func TestResolveSignedAxisRegression(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		content string
+		col     int
+	}{
+		{"음수 폭", `<row w="-10"><p>내용</p></row>`, 11},
+		{"음수 gap", `<row gap="-4"><p>내용</p></row>`, 13},
+		{"음수 basis", `<row><p basis="-1">내용</p></row>`, 18},
+		{"음수 min-h", `<row min-h="-5"><p>내용</p></row>`, 15},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, diags := resolveSlide(t, layoutSlide(tc.content))
+			if len(diags) != 1 {
+				t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+			}
+			diag := diags[0]
+			if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "0보다 작을 수 없다") {
+				t.Errorf("진단 = %q, want 음수 금지", diag.String())
+			}
+			if diag.Span.Start.Line != 2 || diag.Span.Start.Col != tc.col {
+				t.Errorf("위치 = %s, want 2:%d", diag.Span.Start, tc.col)
+			}
+		})
+	}
+	// 좌표는 음수를 받는다 — 박스 밖으로 걸친 배지.
+	p := resolvedElement(t, childSrc("stack", `x="-16" y="-8"`), "p").Placement()
+	if p == nil || p.X == nil || *p.X != soml.Px(-16) || p.Y == nil || *p.Y != soml.Px(-8) {
+		t.Fatalf("음수 좌표가 해석되지 않았다: %+v", p)
+	}
+}
+
+// _06_stack 픽스처는 이 iteration 전체의 시험대다 (항목 06이 활성화하고 골든을 붙인다). 이
+// 항목의 몫은 **배치**이므로, 값 층이 픽스처의 at/x/y/stack을 진단 없이 해석하는지 못 박는다.
+//
+// 남은 진단은 전부 색 토큰(accent2~5·on-accent)이 하드코딩 테마(minimalTheme)에 아직 없어서
+// 나는 외관 진단이다 — 그 팔레트를 채우는 것은 픽스처 활성화(항목 06)의 몫이고 배치와 무관하다.
+// 그래서 "진단 0건"이 아니라 "**배치 진단 0건**"을 단정한다: 배치 진단이 하나라도 있으면 색
+// 토큰 진단이 아니므로 여기서 빨갛게 된다.
+func TestResolveStackFixture(t *testing.T) {
+	deck := readFixtureDeck(t, "_06_stack")
+	diags := Resolve(deck)
+	for _, diag := range diags {
+		// 모든 진단은 색 토큰 외관 진단이어야 한다 — 배치(at/x/y/stack/canvas) 진단이 새면
+		// 이 문자열을 담지 않으므로 드러난다.
+		if !strings.Contains(diag.Message, "색 토큰") {
+			t.Errorf("배치 관련 진단이 픽스처에서 났다: %s", diag.String())
+		}
+	}
+	// 9지점 앵커가 전부 확정 배치에 실렸는지 (001_anchors가 9개를 전수로 쓴다 — accent1·surface만
+	// 써서 색 진단 없이 해석된다).
+	seen := map[soml.StackAnchor]bool{}
+	var walk func(node soml.Node)
+	walk = func(node soml.Node) {
+		elem, ok := node.(*soml.Element)
+		if !ok {
+			return
+		}
+		if p := elem.Placement(); p != nil && p.At != "" {
+			seen[p.At] = true
+		}
+		for _, child := range elem.Children {
+			walk(child)
+		}
+	}
+	for _, slide := range deck.Slides {
+		for _, node := range slide.Content {
+			walk(node)
+		}
+	}
+	for _, anchor := range soml.StackAnchors() {
+		if !seen[anchor] {
+			t.Errorf("9지점 앵커 %q가 픽스처에서 확정되지 않았다", anchor)
+		}
+	}
+}
+
+// showCoord는 실패 메시지용 좌표 문자열이다 — 포인터라 %v로는 주소만 보인다.
+func showCoord(l *soml.Length) string {
+	if l == nil {
+		return "nil"
+	}
+	return showLength(*l)
 }
 
 // 공간 토큰과 수치가 같은 자리에서 갈라지는 경계 — 진단의 정확도가 이 판정에 달려 있다
@@ -562,7 +857,9 @@ func readFixtureDeck(t *testing.T, fixture string) *soml.Deck {
 			t.Fatalf("%s 파서 진단: %v", name, parseDiags)
 		}
 		deck.Slides = append(deck.Slides, &soml.Slide{
-			Index: len(deck.Slides), ID: doc.ID, Source: doc.File, Content: doc.Content, Tokens: doc.Tokens,
+			Index: len(deck.Slides), ID: doc.ID, Source: doc.File,
+			Layout: soml.SlideLayout(doc.Layout), LayoutSpan: doc.LayoutSpan,
+			Content: doc.Content, Tokens: doc.Tokens,
 		})
 	}
 	return deck

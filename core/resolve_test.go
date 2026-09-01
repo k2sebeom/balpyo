@@ -16,10 +16,12 @@ func resolveSlide(t *testing.T, src string) (*soml.Deck, soml.Diagnostics) {
 		t.Fatalf("파서 진단이 없어야 한다: %v", parseDiags)
 	}
 	deck := &soml.Deck{Slides: []*soml.Slide{{
-		ID:      "text",
-		Source:  doc.File,
-		Content: doc.Content,
-		Tokens:  doc.Tokens,
+		ID:         "text",
+		Source:     doc.File,
+		Layout:     soml.SlideLayout(doc.Layout),
+		LayoutSpan: doc.LayoutSpan,
+		Content:    doc.Content,
+		Tokens:     doc.Tokens,
 	}}}
 	return deck, Resolve(deck)
 }
