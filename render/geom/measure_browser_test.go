@@ -929,3 +929,237 @@ func TestMeasureImageWaitsForDecode(t *testing.T) {
 		t.Errorf("고유 크기 그림의 rect = %s, want 16×8 (디코드를 기다리지 않았다)", box.Rect)
 	}
 }
+
+// canvasDeck은 layout="canvas" 슬라이드로 만든 해석된 덱이다 — layoutDeck과 같은 경로에
+// **파이프라인처럼 layout 값·구간을 Slide로 옮긴다** (subsetDeck·layoutDeck은 layout을
+// 싣지 않으므로 캔버스 스테이지를 잴 수 없다).
+func canvasDeck(t *testing.T, bodies ...string) *soml.Deck {
+	t.Helper()
+	stage, err := soml.Aspect16x9.Stage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	deck := &soml.Deck{Title: "canvas", Lang: "ko", Aspect: soml.Aspect16x9, Stage: stage}
+	for i, body := range bodies {
+		source := fmt.Sprintf("slides/%03d_canvas%s", i+1, soml.Ext)
+		id := fmt.Sprintf("canvas%d", i)
+		doc, diags := soml.Parse(source, fmt.Sprintf("<slide id=%q layout=\"canvas\">\n%s\n</slide>\n", id, body))
+		if err := diags.Err(); err != nil {
+			t.Fatalf("파싱 실패: %v", err)
+		}
+		deck.Slides = append(deck.Slides, &soml.Slide{
+			Index: i, ID: id, Source: source,
+			Layout: soml.SlideLayout(doc.Layout), LayoutSpan: doc.LayoutSpan,
+			Notes: doc.Notes, Content: doc.Content,
+		})
+	}
+	if err := core.Resolve(deck).Err(); err != nil {
+		t.Fatalf("해석 실패: %v", err)
+	}
+	return deck
+}
+
+// `<stack>`의 크기는 **가장 큰 자식**에 맞춰 자동 결정된다 (PRD §13-3) — 단일 셀 grid로
+// 겹치되 자식이 in-flow로 남는다는 계약의 실측이다. absolute 전면 방식이었다면 컨테이너가
+// 0으로 붕괴한다. stack 자신도 측정 대상이므로(geom.Refs) 그 rect가 큰 자식과 같은지 본다.
+//
+// `self="start"`로 스테이지의 세로 스택 stretch(교차축=가로)를 끈다 — 끄지 않으면 stack이
+// row·grid처럼 스테이지 콘텐츠 폭 전체로 늘어나 **내재 크기**가 가려진다 (늘어나도 겹침·앵커는
+// 그대로지만, "가장 큰 자식"을 관측하려면 늘어나지 않아야 한다).
+func TestMeasureStackSizedToLargestChild(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := layoutDeck(t, `<stack self="start">
+    <shape type="rect" fill="surface" w="300" h="200"/>
+    <shape type="rect" fill="accent1" w="120" h="80"/>
+  </stack>`)
+	g := measureLayout(t, deck)
+
+	stack := boxOf(t, g, "s0.0")
+	big := boxOf(t, g, "s0.0.0")
+	if math.Abs(stack.Rect.W-300) > 0.5 || math.Abs(stack.Rect.H-200) > 0.5 {
+		t.Errorf("stack 크기 = %s, want 300×200 (가장 큰 자식)", stack.Rect)
+	}
+	if stack.Rect.W != big.Rect.W || stack.Rect.H != big.Rect.H {
+		t.Errorf("stack %s와 가장 큰 자식 %s의 크기가 다르다", stack.Rect, big.Rect)
+	}
+	// 두 자식이 같은 칸에 겹친다 — 두 rect의 좌상단이 같다 (grid-area 1/1).
+	small := boxOf(t, g, "s0.0.1")
+	if math.Abs(big.Rect.X-small.Rect.X) > 0.5 || math.Abs(big.Rect.Y-small.Rect.Y) > 0.5 {
+		t.Errorf("자식이 같은 칸에 겹치지 않는다: %s, %s", big.Rect, small.Rect)
+	}
+}
+
+// `at` 9지점 앵커가 셀 안 자식의 자리를 정한다 (place-self) — TASKS의 "9지점 앵커 좌표
+// 스냅샷"이다. 축 순서(place-self: <세로> <가로>)가 뒤집히면 대각 4개가 어긋나므로 9종을
+// 전수로 잰다. 스택 크기를 400×300으로 못 박아 앵커가 움직일 방이 있게 한다.
+func TestMeasureStackNineAnchors(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := layoutDeck(t, `<stack w="400" h="300">
+    <text at="top-left">TL</text>
+    <text at="top-center">TC</text>
+    <text at="top-right">TR</text>
+    <text at="center-left">CL</text>
+    <text at="center">C</text>
+    <text at="center-right">CR</text>
+    <text at="bottom-left">BL</text>
+    <text at="bottom-center">BC</text>
+    <text at="bottom-right">BR</text>
+  </stack>`)
+	g := measureLayout(t, deck)
+	stack := boxOf(t, g, "s0.0")
+	if math.Abs(stack.Rect.W-400) > 0.5 || math.Abs(stack.Rect.H-300) > 0.5 {
+		t.Fatalf("stack 크기 = %s, want 400×300 (명시 크기)", stack.Rect)
+	}
+
+	const ( // 세로·가로 앵커 축
+		start = iota
+		mid
+		end
+	)
+	for i, tc := range []struct {
+		name       string
+		vert, hori int
+	}{
+		{"top-left", start, start}, {"top-center", start, mid}, {"top-right", start, end},
+		{"center-left", mid, start}, {"center", mid, mid}, {"center-right", mid, end},
+		{"bottom-left", end, start}, {"bottom-center", end, mid}, {"bottom-right", end, end},
+	} {
+		child := boxOf(t, g, fmt.Sprintf("s0.0.%d", i))
+		// 가로: start→왼쪽 변, mid→중심, end→오른쪽 변.
+		var gotX, wantX float64
+		switch tc.hori {
+		case start:
+			gotX, wantX = child.Rect.X, stack.Rect.X
+		case mid:
+			gotX, wantX = child.Rect.X+child.Rect.W/2, (stack.Rect.X+stack.Rect.Right())/2
+		default:
+			gotX, wantX = child.Rect.Right(), stack.Rect.Right()
+		}
+		if math.Abs(gotX-wantX) > 1 {
+			t.Errorf("%s: 가로 위치 = %v, want %v (%s)", tc.name, gotX, wantX, child.Rect)
+		}
+		// 세로: start→위 변, mid→중심, end→아래 변.
+		var gotY, wantY float64
+		switch tc.vert {
+		case start:
+			gotY, wantY = child.Rect.Y, stack.Rect.Y
+		case mid:
+			gotY, wantY = child.Rect.Y+child.Rect.H/2, (stack.Rect.Y+stack.Rect.Bottom())/2
+		default:
+			gotY, wantY = child.Rect.Bottom(), stack.Rect.Bottom()
+		}
+		if math.Abs(gotY-wantY) > 1 {
+			t.Errorf("%s: 세로 위치 = %v, want %v (%s)", tc.name, gotY, wantY, child.Rect)
+		}
+	}
+}
+
+// `x`/`y` 자식은 부모(stack) 상대 좌표로 절대 배치된다 — stack이 위치 지정 조상(포함 블록)
+// 이므로 자식이 스테이지까지 올라가지 않는다 (항목 04의 2번 결정). 여백이 없으므로 x=20은
+// stack 좌상단에서 20px이다.
+func TestMeasureStackAbsoluteOffsetIsParentRelative(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := layoutDeck(t, `<stack w="400" h="300">
+    <shape type="rect" fill="surface" w="400" h="300"/>
+    <text x="20" y="30">badge</text>
+  </stack>`)
+	g := measureLayout(t, deck)
+	stack := boxOf(t, g, "s0.0")
+	badge := boxOf(t, g, "s0.0.1")
+	if want := stack.Rect.X + 20; math.Abs(badge.Rect.X-want) > 0.5 {
+		t.Errorf("x=20 자식의 x = %v, want %v (stack.x + 20)", badge.Rect.X, want)
+	}
+	if want := stack.Rect.Y + 30; math.Abs(badge.Rect.Y-want) > 0.5 {
+		t.Errorf("y=30 자식의 y = %v, want %v (stack.y + 30)", badge.Rect.Y, want)
+	}
+}
+
+// **캔버스 직속 자식의 `x="0"`은 슬라이드 좌표 64에 앉는다** (항목 04의 6번 결정의 실물).
+// 스테이지 여백이 64px이고 절대 배치의 포함 블록이 스테이지의 콘텐츠 상자(여백 안쪽)이기
+// 때문이다 — 저자는 여백 밖(가장자리 64px)에 닿으려면 음수 좌표를 쓴다. PRD §13-3의 "스테이지
+// 절대 좌표와 자연히 일치"는 여백이 0일 때만 성립하므로 그 문장은 항목 07이 고친다.
+func TestMeasureCanvasChildCountsFromPaddingBox(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := canvasDeck(t, `<text x="0" y="0">corner</text>
+  <text x="100" y="50">inner</text>`)
+	g := measureLayout(t, deck)
+	corner := boxOf(t, g, "s0.0")
+	if math.Abs(corner.Rect.X-64) > 0.5 || math.Abs(corner.Rect.Y-64) > 0.5 {
+		t.Errorf("캔버스 x=0 y=0 자식의 rect = %s, want (64,64) (스테이지 여백 안쪽)", corner.Rect)
+	}
+	inner := boxOf(t, g, "s0.1")
+	if math.Abs(inner.Rect.X-164) > 0.5 || math.Abs(inner.Rect.Y-114) > 0.5 {
+		t.Errorf("캔버스 x=100 y=50 자식의 rect = %s, want (164,114)", inner.Rect)
+	}
+	// 음수 좌표로 여백 밖(가장자리)에 닿는다 — x=-64는 슬라이드 좌표 0이다.
+	edge := canvasDeck(t, `<text x="-64" y="-64">edge</text>`)
+	ge := measureLayout(t, edge)
+	e := boxOf(t, ge, "s0.0")
+	if math.Abs(e.Rect.X-0) > 0.5 || math.Abs(e.Rect.Y-0) > 0.5 {
+		t.Errorf("캔버스 x=-64 자식의 rect = %s, want (0,0) (여백 밖 가장자리)", e.Rect)
+	}
+}
+
+// **칠 순서 회귀** — 이 항목에서 가장 중요한 결정의 실측이다 (항목 04의 4번).
+//
+// x/y 자식(absolute)과 정적 자식이 겹칠 때, 웹의 기본 칠 순서는 문서 순서가 아니다: 위치
+// 지정되지 않은 자손을 먼저, 위치 지정된 자손을 나중에 칠한다. 그래서 문서상 **앞**인 x/y
+// 자식이 뒤에 칠해져 PPTX(문서 순서 = 뒤가 위)와 겹침이 반대가 된다. stack 자식 전체에
+// `position:relative`를 주면 형제가 문서 순서로 칠해져 계약이 복원된다.
+//
+// 겹친 지점의 픽셀 색으로 판정하고, `position:relative` 한 줄을 빼면 색이 뒤집히는지 함께
+// 본다 — 계약을 지키는 코드가 없어도 통과하는 테스트는 계약을 지키지 않는다.
+//
+// **자식은 도형이 아니라 배경색 블록이다**: `.balpyo-shape`는 그 자체로 position:relative라
+// (render/web/shape.go) 도형 자식은 stack 규칙과 무관하게 이미 위치 지정 요소다 — 그러면
+// position:relative를 빼도 순서가 뒤집히지 않아 회귀가 성립하지 않는다. 평범한 블록은
+// 기본이 정적이므로 이 규칙이 실제로 칠 순서를 바꾸는 유일한 자리다. 배경색은 배치
+// allowlist 밖이라 경고가 붙지만(PRD §7.9) 빌드는 통과한다 — 폭·높이는 allowlist 안이다.
+func TestStackPaintOrderIsDocumentOrder(t *testing.T) {
+	testkit.RequireChromium(t)
+	// 자식 1(문서상 앞): x/y로 absolute, accent1(파랑 #0F65F9). 자식 2(문서상 뒤): 정적,
+	// fg(검정 #1A1A1A). 둘 다 200×200을 채워 완전히 겹친다. PPTX는 뒤(자식 2)를 위에 그리므로
+	// 겹친 픽셀은 검정이어야 한다.
+	deck := layoutDeck(t, `<stack w="200" h="200">
+    <p x="0" y="0" style="width: 200px; height: 200px; background: #0F65F9"></p>
+    <p style="width: 200px; height: 200px; background: #1A1A1A"></p>
+  </stack>`)
+
+	const (
+		blue = "accent1(파랑, 문서상 앞)"
+		dark = "fg(검정, 문서상 뒤)"
+	)
+	// classify는 겹친 중심 픽셀이 어느 자식의 색인지 본다.
+	classify := func(t *testing.T, transform func(string) string) string {
+		t.Helper()
+		path := renderHTML(t, deck, transform)
+		browser := testkit.NewBrowser(t)
+		browser.Load(t, path)
+		img := browser.ScreenshotElement(t, web.ElementSelector())
+		b := img.Bounds()
+		r16, g16, bl16, _ := img.At(b.Min.X+b.Dx()/2, b.Min.Y+b.Dy()/2).RGBA()
+		r, gg, bb := int(r16>>8), int(g16>>8), int(bl16>>8)
+		// accent1 #0F65F9(15,101,249) vs fg #1A1A1A(26,26,26). 파랑 채널이 결정적이다.
+		if bb > 150 && r < 120 {
+			return blue
+		}
+		if r < 80 && gg < 80 && bb < 80 {
+			return dark
+		}
+		t.Fatalf("겹친 픽셀 색을 분류할 수 없다: rgb(%d,%d,%d)", r, gg, bb)
+		return ""
+	}
+
+	// 계약대로: 겹친 픽셀은 문서상 뒤(fg)의 색이다.
+	if got := classify(t, nil); got != dark {
+		t.Errorf("겹친 픽셀 = %s, want %s (문서 순서 = 뒤가 위)", got, dark)
+	}
+	// `position: relative` 한 줄을 빼면 x/y 자식이 정적 자식보다 뒤에 칠해져 색이 뒤집힌다 —
+	// 이 뒤집힘이 없으면 위 단정은 계약 없이도 통과한다.
+	stripped := classify(t, func(html string) string {
+		return strings.Replace(html, "    grid-area: 1 / 1;\n    position: relative;\n", "    grid-area: 1 / 1;\n", 1)
+	})
+	if stripped != blue {
+		t.Errorf("position:relative를 뺐는데 겹친 픽셀 = %s, want %s (뒤집힘이 없으면 테스트가 계약을 지키지 않는다)", stripped, blue)
+	}
+}

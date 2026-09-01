@@ -2039,3 +2039,104 @@
   - **`style` 탈출구에 `z-index`는 이번에도 넣지 않았다** — z-순서는 문서 순서라는 계약(PRD §13-3)이
     있고 탈출구로 순서를 뒤집으면 PPTX에 이식되지 않는 겹침이 생긴다(항목 04의 칠 순서 ADR과 같은
     자리 — 항목 07).
+
+## Iteration 6 · 04-web-stack — 웹: 단일 셀 grid 겹침 · `place-self` · 절대 배치 · 캔버스 스테이지
+
+<!-- item: 06/04-web-stack -->
+
+- **한 것**:
+  - `render/web/layout.go` — 클래스 상수 `stackClass = "balpyo-stack"`, `containerClass`에
+    `FlowStack` 분기. `appendPlacement`에 `At` → `place-self`, `X`/`Y` → `position:absolute;
+    left/top`(지정한 축만) 선언을 `order` 뒤·`style` 앞에 더했다. 새 헬퍼 `stackAnchorValue`
+    (어휘 검증 + place-self 조립)·`anchorAxes`(9지점 → (블록,인라인) 정렬 쌍 표). 새 함수
+    `stackCSS()` — stack·캔버스 스테이지의 엔진 CSS를 **layoutCSS와 별도 절**로 낸다.
+  - `render/web/content.go` — `features`에 `stack`·`canvas` 추가. `contentFeatures`가 stack을
+    흐름(`soml.FlowOf == FlowStack`)으로, canvas를 `slide.Layout == LayoutCanvas`로 켠다.
+    `contentCSS`가 `feat.stack || feat.canvas`일 때 `stackCSS()`를 잇는다. `writeStage`가
+    canvas 슬라이드에 `balpyo-stage-canvas` 클래스를 더한다.
+  - 테스트(`render/web/layout_test.go`) — `placementCases`에 `at` 9종 전수 + `x`/`y` 행을
+    넣고 `TestLayoutVocabularyIsFullyMapped`의 `pendingItem04` 면제를 지웠다. 새 테스트:
+    단일 셀 grid 겹침 CSS, 칠 순서용 자식 position:relative, 자식 폭 초기화(별도 규칙),
+    x/y가 translate 아닌 left/top(변형 금지), 미지정 축 생략, 중첩·grid>stack, stack CSS
+    조건부(골든 불변), 캔버스 스테이지=stack, content 스테이지 비-canvas. 새 헬퍼
+    `canvasDeck`(파이프라인처럼 `doc.Layout`을 Slide로 나른다).
+  - 브라우저 테스트(`render/geom/measure_browser_test.go`) — 가장 큰 자식 크기, 9지점 앵커
+    좌표 스냅샷, x/y 부모 상대 오프셋, 캔버스 자식의 패딩 박스 기준(x=0→64, x=-64→0),
+    칠 순서 회귀(겹친 픽셀 색 + position:relative 제거 시 뒤집힘). 새 헬퍼 `canvasDeck`.
+
+- **설계 결정과 근거** (혼자 정한 것 전부):
+  - **칠 순서 계약 복원 = stack 자식 전체에 `position:relative`.** 웹은 같은 쌓임 문맥에서
+    위치 지정되지 않은 자손을 먼저, 위치 지정된 자손을 나중에 칠하므로, 문서상 앞인 x/y
+    자식(absolute)이 정적 형제보다 위에 칠해져 PPTX(문서 순서 = 뒤가 위)와 겹침이 반대가
+    된다. 자식 전부를 위치 지정 요소로 만들면 z-index:auto 형제가 문서 순서로 칠해진다
+    (absolute가 relative를 덮어도 같은 단계). **버린 길: 엔진이 자식마다 `z-index:N`.** 골든에
+    문서 순서와 중복된 수치가 들고, z-index는 저자에게 닫아 둔 채널(PRD §13-3)이라 엔진이
+    쓰면 저자 CSS가 이길 수 없는 값이 하나 는다. — **PPTX 쪽 계약을 웹이 맞추는 첫 사례**다
+    (지금까지는 브라우저가 재고 PPTX가 따랐다). ADR은 항목 07.
+    - 회귀 실측(`TestStackPaintOrderIsDocumentOrder`): 200×200 배경색 블록 둘(문서상 앞은
+      x/y absolute 파랑 `#0F65F9`, 뒤는 정적 검정 `#1A1A1A`)을 완전히 겹치고 중심 픽셀을 잰다.
+      계약대로면 검정(뒤가 위, rgb≈26,26,26), `position:relative` 한 줄을 빼면 파랑
+      (rgb≈15,101,249)으로 **뒤집힌다**. 자식을 도형이 아니라 블록으로 둔 이유: `.balpyo-shape`가
+      그 자체로 position:relative라(render/web/shape.go) 도형 자식은 stack 규칙과 무관하게 이미
+      위치 지정 요소여서 회귀가 성립하지 않는다 — 이 규칙이 칠 순서를 실제로 바꾸는 자리는
+      정적이 기본인 평범한 블록뿐이다.
+  - **캔버스 스테이지는 stack이다.** `:is(.balpyo-stack, .balpyo-stage-canvas)` 한 선택자가
+    겹침·앵커·칠 순서를 한 벌로 유지한다. 캔버스를 `display:block`으로 따로 만들면 규칙이
+    두 곳에 생기고 갈라져도 픽셀 비교에서만 드러난다. `at`은 스테이지가 stack이므로 자연히
+    유효하다 — 항목 03이 `x`/`y`만 canvas에 허용했으나 검증은 부모(canvas 직속)로 하고 웹은
+    스테이지를 stack으로 내므로 `at`도 캔버스 직속에서 동작한다(닫아 두지 않았다). 스테이지는
+    요소가 아니라 테마의 것이므로 `pad`·`w`를 저자가 줄 자리는 없다(그 크기는 항상 스테이지).
+  - **여백 유지 + 좌표는 패딩 박스 기준.** 스테이지 여백 64px을 유지하고, 절대 배치의 포함
+    블록을 스테이지/스택의 콘텐츠 상자(여백 안쪽)로 둔다. 그래서 **캔버스 자식의 `x="0"`은
+    슬라이드 좌표 (64,64)에 앉는다.** 근거는 TASKS의 캔버스 정의("테마는 배경/여백만 소유")
+    — 여백을 0으로 두면 테마가 소유하는 것이 배경뿐이 되고 슬라이드마다 여백을 저자가 다시
+    적어야 한다. 대가: 저자는 여백 밖(가장자리 64px)에 닿으려면 음수 좌표를 쓴다(`x="-64"` →
+    슬라이드 좌표 0, 실측 확인). PRD §13-3의 "canvas 직계 자식은 스테이지 절대 좌표와 자연히
+    일치"는 여백이 0일 때만 성립하므로 그 문장은 항목 07이 고친다(ADR과 같은 커밋).
+  - **포함 블록은 `.balpyo-stack { position: relative }` + `grid-area: 1/1`로 만든다.** grid
+    컨테이너가 위치 지정 조상이면 absolute 자식의 포함 블록이 **grid area**(콘텐츠 상자, 여백
+    안쪽)가 된다 — 이것이 x=0이 여백을 존중하는 근거다. relative가 없으면 자식이 가장 가까운
+    위치 지정 조상(스테이지)까지 올라가 `<stack pad>`의 자식이 여백을 무시한다. 오프셋 없는
+    relative는 잰 rect를 움직이지 않는다(실측: `TestMeasureStackAbsoluteOffsetIsParentRelative`).
+    캔버스 스테이지는 이미 `.balpyo-stage`가 position:relative라 새로 만들 것이 없다.
+  - **stackCSS는 별도 조건부 절.** layoutCSS()는 `feat.layout`이 켜진 모든 덱(03_layout·
+    04_shape·05_image)에 나가므로 그 문자열에 stack 규칙을 끼우면 stack을 안 쓴 골든이 움직인다.
+    자식 폭 초기화(`width:auto`)도 기존 `:is(.balpyo-row,.balpyo-col,.balpyo-grid) > …` 선택자에
+    끼우지 않고 stack 전용 규칙으로 냈다(같은 이유).
+  - **`grid-template-*`을 내지 않는다.** 암시 트랙 하나가 정확히 필요한 것이고, 명시하면
+    `cols`를 닫아 둔 항목 01의 결정과 두 벌이 된다(단일 셀이 곧 겹침이자 "가장 큰 자식" 크기).
+  - **`place-self: <align-self> <justify-self>` (세로 먼저).** align-self가 블록 축, justify-self가
+    인라인 축이다. 축을 뒤집으면 9지점 중 대각 4개가 어긋나므로 `anchorAxes`를 축 쌍 표로 두고
+    9종을 전수 테스트한다(웹 스냅샷 + 브라우저 좌표 스냅샷 둘 다). `center`는 `center center`다.
+
+- **검증**:
+  - `gofmt -l .` 무출력, `go vet ./render/... ./soml/... ./core/...` 무출력.
+  - `go test ./render/web/ ./soml/ ./core/ ./render/pptx/` — 전부 ok.
+  - `go test ./render/geom/` — 새 stack/canvas 브라우저 테스트 5종 포함 전부 통과(로컬 macOS
+    Chromium). 좌표·칠 순서 단정은 폰트 폭이 아니라 배치 오프셋·고정 크기 박스를 보므로 폰트
+    환경에 무관하다.
+  - **골든 불변(항목 04의 3번 판정)**: 임시 테스트로 `00_empty`·`01_text`~`05_image`의
+    `index.html`을 `web.New().Render(fixtureDeck)`와 맞대 **바이트 동일** 확인(통과 후 임시 테스트
+    삭제). stack·canvas를 안 쓰는 덱에는 stackCSS가 나가지 않는다는 조건부 CSS가 그 근거다.
+  - **`make test`(컨테이너 게이트)는 이 환경에서 Docker가 없어 돌리지 못했다** — 이 항목의
+    유일한 미검증 게이트다. 호스트 `go test ./...`은 `internal/testkit`의 03_layout·04_shape·
+    05_image PPTX `a:ext cx`(텍스트 폭 측정)가 골든과 달라 실패하는데, **이 실패는 이 항목의
+    변경 없이 clean 트리(git stash)에서도 같은 값으로 재현**된다 — 호스트 macOS Chromium과
+    컨테이너의 폰트 메트릭 차이일 뿐 이 항목과 무관하다(세 픽스처는 stack/canvas를 쓰지 않고
+    웹 index.html은 바이트 동일). 골든은 갱신하지 않았다.
+
+- **남긴 것**:
+  - **PPTX 겹침 순서(항목 05)**: 웹의 칠 순서를 문서 순서로 못 박았고, PPTX가 그 문서 순서를
+    `spTree`에 그대로 실어야 두 타깃이 같은 겹침이 된다. 레이아웃 컨테이너는 도형이 되지 않고
+    자식만 남으므로 stack의 자식 순서가 그대로 도형 순서다.
+  - **픽스처 활성화·골든·픽셀 비교(항목 06)**: `_06_stack`은 여전히 꺼져 있다. 배지/워터마크
+    배합(항목 01의 6번)의 웹·PPTX 겹침 순서가 같은지는 항목 06의 픽셀 비교가 본다.
+  - **ADR·PRD 갱신(항목 07)**: 세 결정(칠 순서 = position:relative, 캔버스 스테이지 = stack,
+    여백 유지 + 패딩 박스 좌표)의 ADR과 PRD §13-3 문장 수정(여백 0 전제)이 남았다 — 근거는
+    위에 적었다.
+  - **열린 질문 — 캔버스 전용(컨테이너 없음) 덱에서 x/y 토큰 길이.** `feat.canvas`만 켜지고
+    `feat.layout`이 꺼진 덱(레이아웃 컨테이너 0개, 텍스트만 x/y로 배치)에서 `x`/`y`가 공간
+    토큰이면 공간 변수 선언이 나가지 않는다(spaceTokens는 layout||shapes||images). 항목 03이
+    x/y를 토큰 없음으로 gate했으므로(NOTES 06/03) 지금은 도달 불가능한 경로다 — 항목 03의
+    그 결정이 바뀌면 `spaceTokens`에 canvas를 더해야 한다. 지금은 더하지 않았다.
+  - **`grid-template-*`·명시 트랙을 stack에 여는 유혹**은 계속 닫아 둔다(항목 01의 `cols` 결정).

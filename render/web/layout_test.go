@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k2sebeom/balpyo/core"
 	"github.com/k2sebeom/balpyo/soml"
 )
 
@@ -98,6 +99,23 @@ func placementCases() []layoutCase {
 		{"self", "baseline", "row", `self="baseline"`, "align-self: baseline"},
 		// order는 음수를 받는다 — "먼저 보이게"의 CSS 관용 표기다.
 		{"order", "음수", "row", `order="-1"`, "order: -1"},
+		// at — 9지점 앵커가 place-self 조합으로 나간다. 부모는 stack이다 (core가 부모를 보고
+		// at을 stack 자식으로 한정한다). 축 순서(place-self: <세로> <가로>)가 뒤집히면 9지점
+		// 중 4개가 대각으로 어긋나므로 9종을 전수로 둔다 (표 순서 = StackAnchors 순서).
+		{"at", "top-left", "stack", `at="top-left"`, "place-self: start start"},
+		{"at", "top-center", "stack", `at="top-center"`, "place-self: start center"},
+		{"at", "top-right", "stack", `at="top-right"`, "place-self: start end"},
+		{"at", "center-left", "stack", `at="center-left"`, "place-self: center start"},
+		{"at", "center", "stack", `at="center"`, "place-self: center center"},
+		{"at", "center-right", "stack", `at="center-right"`, "place-self: center end"},
+		{"at", "bottom-left", "stack", `at="bottom-left"`, "place-self: end start"},
+		{"at", "bottom-center", "stack", `at="bottom-center"`, "place-self: end center"},
+		{"at", "bottom-right", "stack", `at="bottom-right"`, "place-self: end end"},
+		// x/y — 그 자식만 absolute로 전환하고 부모 상대 좌표를 left/top으로 낸다. 좌표는
+		// 크기가 아니므로 음수를 받는다 (박스 밖으로 걸친 배지). transform:translate은 쓰지
+		// 않는다 (측정 뷰가 변형을 끄기 때문 — appendPlacement의 근거).
+		{"x", "수치", "stack", `x="20"`, "left: 20px"},
+		{"y", "백분율", "stack", `y="10%"`, "top: 10%"},
 		{"style", "배치 탈출구", "row", `style="place-self: end"`, "place-self: end"},
 	}
 }
@@ -209,12 +227,8 @@ func TestLayoutVocabularyIsFullyMapped(t *testing.T) {
 		}
 	}
 	placement := covered(placementCases())
-	// at·x·y는 Iteration 6 항목 01에서 파서 어휘에만 열렸다 — 겹침 CSS 매핑(place-self의
-	// 9지점, x/y의 절대 배치)은 항목 04의 몫이다. 항목 04가 appendPlacement에 겹침 선언을
-	// 더하면서 placementCases에 행을 넣고 이 면제를 지운다.
-	pendingItem04 := map[string]bool{"at": true, "x": true, "y": true}
 	for _, attr := range soml.ChildPlacementAttrs() {
-		if !placement[attr] && !pendingItem04[attr] {
+		if !placement[attr] {
 			t.Errorf("자식 배치 속성 %q의 CSS 매핑 검증이 없다 (PRD §7.4 자식 표의 행이 빠졌다)", attr)
 		}
 	}
@@ -458,6 +472,215 @@ func TestLayoutRenderIsDeterministic(t *testing.T) {
 	if a != b {
 		t.Error("레이아웃 렌더 결과가 실행마다 다르다")
 	}
+}
+
+// `<stack>`은 단일 셀 grid다 — 모든 자식이 `grid-area: 1/1`에 겹치고 stack의 크기가 가장 큰
+// 자식에 맞춰 자동 결정된다 (PRD §13-3). `grid-template-*`은 내지 않는다: 암시 트랙 하나가
+// 정확히 필요한 것이고, 명시하면 `cols`를 닫아 둔 항목 01의 결정과 두 벌이 된다.
+func TestStackCompilesToSingleCellGridOverlap(t *testing.T) {
+	out := renderString(t, subsetDeck(t, `<stack><p>겹침</p></stack>`))
+	// 컨테이너는 stack 흐름의 엔진 CSS 클래스를 든다 (containerClass의 FlowStack 분기).
+	open := openTagOf(t, out, "s0.0")
+	if want := fmt.Sprintf("class=%q", stackClass); !strings.Contains(open, want) {
+		t.Errorf("<stack>의 여는 태그에 %s가 없다: %s", want, open)
+	}
+	css := between(t, out, "<style>", "</style>")
+	for _, want := range []string{
+		".balpyo-stack { display: grid;",
+		"grid-area: 1 / 1;",
+	} {
+		if !strings.Contains(css, want) {
+			t.Errorf("stack 엔진 CSS에 %q가 없다", want)
+		}
+	}
+	// 겹침을 absolute 전면 방식으로 하지 않는다 (컨테이너 크기가 소실된다) — grid-area가
+	// 그 근거다. grid-template-*을 내면 암시 트랙 하나라는 계약이 깨진다 (`cols`를 닫아 둔
+	// 항목 01의 결정과 두 벌이 된다).
+	stackRule := between(t, css, ".balpyo-stack {", "}")
+	for _, absent := range []string{"grid-template-columns", "grid-template-rows"} {
+		if strings.Contains(stackRule, absent) {
+			t.Errorf("stack 규칙에 %q가 있다 — 암시 트랙 하나여야 한다: %s", absent, stackRule)
+		}
+	}
+}
+
+// stack의 모든 자식은 위치 지정 요소다 (`position: relative`) — 칠 순서를 문서 순서로
+// 되돌리는 계약이다 (PRD §13-3, 항목 04의 4번 결정). CSS는 위치 지정된 형제를 문서 순서로
+// 칠하므로, x/y 자식(absolute)과 정적 자식이 섞여도 겹침 순서가 PPTX(문서 순서)와 갈라지지
+// 않는다. 이 한 줄이 없으면 절대 배치 자식이 정적 자식보다 뒤에 칠해져 순서가 뒤집힌다.
+func TestStackChildrenArePositionedForPaintOrder(t *testing.T) {
+	css := between(t, renderString(t, subsetDeck(t, `<stack><p>겹침</p></stack>`)), "<style>", "</style>")
+	// 겹침·칠 순서 규칙이 stack 자식 전체(`> *`)에 걸린다.
+	if !strings.Contains(css, "position: relative;") {
+		t.Error("stack 자식에 position: relative(칠 순서 계약)가 없다")
+	}
+}
+
+// stack 자식의 텍스트·리스트는 확정 폭(width: 100%)에서 벗어나 auto로 돌아간다 — 그래야
+// `at`의 justify-self가 칸 안에서 자식을 움직인다 (폭이 칸을 다 먹으면 앵커가 아무것도 하지
+// 않는다). **기존 컨테이너 자식 초기화 선택자에 stack을 끼워 넣지 않고 전용 규칙을 낸다** —
+// 그 선택자는 feat.layout이 켜진 모든 덱에 나가므로(layoutCSS) 끼워 넣으면 골든이 움직인다.
+func TestStackChildResetsWidthInSeparateRule(t *testing.T) {
+	css := between(t, renderString(t, subsetDeck(t, `<stack><p>겹침</p></stack>`)), "<style>", "</style>")
+	if !strings.Contains(css, ".balpyo-stack") || !strings.Contains(css, "width: auto;") {
+		t.Errorf("stack 자식의 width: auto 초기화가 없다:\n%s", css)
+	}
+	// 기존 row/col/grid 초기화 선택자에 stack이 섞이지 않았다 — 섞이면 그 규칙이 나가는
+	// 모든 골든이 움직인다 (03_layout·04_shape·05_image).
+	base := ":is(.balpyo-row, .balpyo-col, .balpyo-grid) > :is(.balpyo-text, .balpyo-list) {"
+	if idx := strings.Index(css, base); idx >= 0 {
+		line := css[idx:]
+		line = line[:strings.Index(line, "{")]
+		if strings.Contains(line, "stack") {
+			t.Errorf("기존 컨테이너 자식 초기화 선택자에 stack이 끼어들었다: %s", line)
+		}
+	}
+}
+
+// `x`/`y`는 그 자식만 absolute로 전환하고 좌표를 left/top으로 낸다 — **transform:translate을
+// 쓰지 않는다.** 측정 뷰가 변형을 끄므로(ADR 0021) translate로 위치를 내면 잰 rect에 위치가
+// 없고 PPTX가 겹치지 않은 좌표를 받는다. 다음 사람이 translate가 더 짧다고 바꾸는 것을
+// 막는 회귀다.
+func TestAbsolutePlacementUsesLeftTopNotTransform(t *testing.T) {
+	open := openTagOf(t, renderString(t, subsetDeck(t, `<stack><p x="20" y="30">배지</p></stack>`)), "s0.0.0")
+	for _, want := range []string{"position: absolute", "left: 20px", "top: 30px"} {
+		if !strings.Contains(open, want) {
+			t.Errorf("x/y 자식의 style에 %q가 없다: %s", want, open)
+		}
+	}
+	for _, forbidden := range []string{"transform", "translate"} {
+		if strings.Contains(open, forbidden) {
+			t.Errorf("x/y 배치에 %q가 나갔다 — 측정 뷰가 변형을 끈다: %s", forbidden, open)
+		}
+	}
+}
+
+// 지정하지 않은 축은 선언을 내지 않는다 (`top: auto` = 정적 위치) — "정하지 않은 것에
+// 기본값을 내지 않는다"는 containerCSS의 규칙 그대로다.
+func TestAbsolutePlacementOmitsUnsetAxis(t *testing.T) {
+	xOnly := openTagOf(t, renderString(t, subsetDeck(t, `<stack><p x="20">가로만</p></stack>`)), "s0.0.0")
+	if !strings.Contains(xOnly, "left: 20px") {
+		t.Errorf("x만 준 자식에 left가 없다: %s", xOnly)
+	}
+	if strings.Contains(xOnly, "top:") {
+		t.Errorf("x만 준 자식에 top이 나갔다 (지정하지 않은 축): %s", xOnly)
+	}
+	yOnly := openTagOf(t, renderString(t, subsetDeck(t, `<stack><p y="30">세로만</p></stack>`)), "s0.0.0")
+	if !strings.Contains(yOnly, "top: 30px") {
+		t.Errorf("y만 준 자식에 top이 없다: %s", yOnly)
+	}
+	if strings.Contains(yOnly, "left:") {
+		t.Errorf("y만 준 자식에 left가 나갔다 (지정하지 않은 축): %s", yOnly)
+	}
+	// 둘 다 있으면 position: absolute는 한 번만 나간다.
+	both := openTagOf(t, renderString(t, subsetDeck(t, `<stack><p x="20" y="30">둘</p></stack>`)), "s0.0.0")
+	if got := strings.Count(both, "position: absolute"); got != 1 {
+		t.Errorf("position: absolute가 %d번 나온다, want 1: %s", got, both)
+	}
+}
+
+// `<stack>` 안 stack, `<grid>` 안 stack — 중첩과 자식 배치가 함께 붙은 경우다. 식별자는
+// 슬라이스 인덱스 경로이고 각 stack이 자기 CSS를 든다.
+func TestNestedAndGridStack(t *testing.T) {
+	out := renderString(t, subsetDeck(t, `
+  <stack>
+    <stack><p at="center">안쪽</p></stack>
+  </stack>
+  <grid cols="2">
+    <stack><p at="bottom-right">셀 안 stack</p></stack>
+  </grid>`))
+	for _, tc := range []struct{ id, el string }{
+		{"s0.0", "stack"}, {"s0.0.0", "stack"}, {"s0.0.0.0", "p"},
+		{"s0.1", "grid"}, {"s0.1.0", "stack"}, {"s0.1.0.0", "p"},
+	} {
+		open := openTagOf(t, out, tc.id)
+		if want := fmt.Sprintf("%s=%q", ElAttr, tc.el); !strings.Contains(open, want) {
+			t.Errorf("%s의 여는 태그에 %s가 없다: %s", tc.id, want, open)
+		}
+	}
+	// 셀 안 stack 자식의 앵커가 place-self로 나간다.
+	if inner := openTagOf(t, out, "s0.1.0.0"); !strings.Contains(inner, "place-self: end end") {
+		t.Errorf("grid>stack 자식의 앵커가 place-self로 나오지 않았다: %s", inner)
+	}
+}
+
+// **stack·canvas를 쓰지 않은 덱에는 stack CSS가 나가지 않는다** — 골든 불변의 근거다
+// (listCSS·layoutCSS를 조건부로 둔 것과 같은 태도). 이 계약이 깨지면 01_text~05_image
+// 골든이 이 iteration과 무관한 이유로 움직인다.
+func TestStackCSSOnlyWhenStackOrCanvasUsed(t *testing.T) {
+	// 레이아웃을 쓰지만 stack은 아닌 덱 (row).
+	row := renderString(t, subsetDeck(t, `<row gap="md"><p>자식</p></row>`))
+	for _, absent := range []string{".balpyo-stack", "balpyo-stage-canvas", "grid-area: 1 / 1"} {
+		if strings.Contains(row, absent) {
+			t.Errorf("stack이 없는 덱의 산출물에 %q가 있다", absent)
+		}
+	}
+	// stack을 쓴 덱.
+	stack := renderString(t, subsetDeck(t, `<stack><p>겹침</p></stack>`))
+	if !strings.Contains(stack, ".balpyo-stack { display: grid;") {
+		t.Error("stack을 쓴 덱에 stack CSS가 없다")
+	}
+}
+
+// **캔버스 스테이지는 stack이다** (항목 04의 5번 결정) — 스테이지가 단일 셀 grid가 되어
+// 자식이 `x`/`y`·`at`으로 자기 자리를 정한다. 겹침 구현이 한 벌로 유지되도록 stack과 같은
+// CSS 절을 공유한다.
+func TestCanvasStageIsStack(t *testing.T) {
+	out := renderString(t, canvasDeck(t, `<text x="0" y="0">모서리</text>`))
+	// 스테이지가 캔버스 표기를 든다 (기존 balpyo-stage에 더해).
+	if !strings.Contains(out, `<div class="balpyo-stage balpyo-stage-canvas">`) {
+		t.Errorf("캔버스 스테이지에 balpyo-stage-canvas 클래스가 없다:\n%s", out)
+	}
+	css := between(t, out, "<style>", "</style>")
+	for _, want := range []string{
+		".balpyo-stage-canvas { display: grid;",
+		"grid-area: 1 / 1;",
+	} {
+		if !strings.Contains(css, want) {
+			t.Errorf("캔버스 스테이지 CSS에 %q가 없다", want)
+		}
+	}
+	// 캔버스 직속 자식의 x/y가 absolute로 나간다.
+	if open := openTagOf(t, out, "s0.0"); !strings.Contains(open, "position: absolute") || !strings.Contains(open, "left: 0px") {
+		t.Errorf("캔버스 자식의 x/y가 절대 배치로 나오지 않았다: %s", open)
+	}
+}
+
+// 기본(content) 슬라이드의 스테이지는 캔버스 표기를 갖지 않는다 — content와 canvas의
+// 산출물이 갈라지는 유일한 자리가 이 클래스다.
+func TestContentStageIsNotCanvas(t *testing.T) {
+	out := renderString(t, subsetDeck(t, `<p>세로 스택</p>`))
+	if strings.Contains(out, "balpyo-stage-canvas") {
+		t.Errorf("content 슬라이드의 스테이지에 캔버스 표기가 나왔다:\n%s", stageOf(t, out))
+	}
+}
+
+// canvasDeck은 layout="canvas" 슬라이드를 파이프라인처럼(layout 값·구간을 Slide로 옮기고
+// 해석) 만든 덱이다 — subsetDeck은 `<slide id="subset">`만 내므로 layout을 실을 수 없다
+// (core/slide_test.go resolveLayoutSlide와 같은 경로).
+func canvasDeck(t *testing.T, body string) *soml.Deck {
+	t.Helper()
+	const source = "slides/001_canvas.slide"
+	doc, diags := soml.Parse(source, `<slide id="canvas" layout="canvas">`+"\n"+body+"\n</slide>\n")
+	if err := diags.Err(); err != nil {
+		t.Fatalf("파싱 실패: %v", err)
+	}
+	stage, err := soml.Aspect16x9.Stage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	deck := &soml.Deck{
+		Title: "캔버스", Lang: "ko", Aspect: soml.Aspect16x9, Stage: stage,
+		Slides: []*soml.Slide{{
+			Index: 0, ID: "canvas", Source: source,
+			Layout: soml.SlideLayout(doc.Layout), LayoutSpan: doc.LayoutSpan,
+			Notes: doc.Notes, Content: doc.Content,
+		}},
+	}
+	if err := core.Resolve(deck).Err(); err != nil {
+		t.Fatalf("외관 해석 실패: %v", err)
+	}
+	return deck
 }
 
 // containerBody는 컨테이너 속성 한 행의 슬라이드 본문이다 — 컨테이너는 슬라이드 직속(s0.0)이다.

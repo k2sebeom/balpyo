@@ -100,13 +100,22 @@ const ListBulletChar = "\u2022" // •
 //   - 세로 정렬(가운데·아래)은 레이아웃의 선택이지 텍스트의 성질이 아니다 — 표지의 가운데
 //     정렬은 Iteration 10의 `layout="title"`이 소유한다. 그때까지 위에서 아래로 쌓는다.
 func writeStage(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
+	// 캔버스 스테이지는 stack이다 (PRD §13-3) — 스테이지가 단일 셀 grid가 되어 자식이
+	// `x`/`y`·`at`으로 자기 자리를 정한다. 세로 스택(기본)과 갈라지는 자리는 이 클래스
+	// 하나뿐이고, 겹침 CSS는 stack과 한 벌을 공유한다 (stackCSS). 스테이지를 `<col>`로
+	// 재정의하는 통합은 Iteration 10(`layout=`/`slot=`)의 몫이다 — 여기서는 canvas 분기만
+	// 넣고 그 통합까지 하지 않는다.
+	stageClass := "balpyo-stage"
+	if slide.Layout == soml.LayoutCanvas {
+		stageClass += " balpyo-stage-canvas"
+	}
 	if len(slide.Content) == 0 {
 		// 빈 스테이지는 빈 요소 하나다 — 콘텐츠가 없는 슬라이드의 산출물이 콘텐츠 렌더가
 		// 붙었다는 이유로 달라지면 골든 diff가 무엇이 움직였는지 말해 주지 못한다.
-		b.WriteString(`<div class="balpyo-stage"></div>` + "\n")
+		fmt.Fprintf(b, "<div class=%q></div>\n", stageClass)
 		return nil
 	}
-	b.WriteString(`<div class="balpyo-stage">` + "\n")
+	fmt.Fprintf(b, "<div class=%q>\n", stageClass)
 	for i, node := range slide.Content {
 		if err := writeNode(b, deck, slide, node, []int{i}); err != nil {
 			return err
@@ -389,6 +398,12 @@ func contentCSS(feat features) string {
 	if feat.layout {
 		css += layoutCSS()
 	}
+	if feat.stack || feat.canvas {
+		// stack 규칙은 layoutCSS와 별도 절이다 — stack이나 canvas를 실제로 쓴 덱에만 나가
+		// 골든 불변을 지킨다 (stackCSS의 근거). 캔버스 스테이지가 stack과 같은 겹침 CSS를
+		// 공유하므로 두 조건이 같은 절을 켠다.
+		css += stackCSS()
+	}
 	if feat.shapes {
 		css += shapeCSS()
 	}
@@ -458,6 +473,14 @@ type features struct {
 	// `gap`/`pad`뿐이다 (soml.Length의 토큰 상태를 만드는 속성이 그 둘이다). 레이아웃
 	// 태그가 없는 덱에 선언만 내면 참조 없는 변수가 골든에 남는다.
 	layout bool
+	// stack은 `<stack>`이 있는지다 (stackCSS). layout과 따로 두는 이유는 골든 불변이다:
+	// stack CSS를 layoutCSS에 넣으면 stack을 안 쓴 레이아웃 덱(03_layout 등)의 골든이
+	// 움직인다. `<stack>`은 레이아웃 컨테이너이기도 하므로 이 필드가 참이면 layout도 참이다
+	// (그래서 stack 덱의 pad 토큰은 공간 변수를 얻는다).
+	stack bool
+	// canvas는 layout="canvas" 슬라이드가 있는지다 (캔버스 스테이지 CSS). 캔버스 스테이지는
+	// stack과 같은 겹침 절(stackCSS)을 공유하므로 stack과 함께 그 절을 켠다.
+	canvas bool
 	// shapes는 `<shape>`가 있는지다 (shapeCSS + 그림자 토큰 변수).
 	//
 	// 그림자 변수를 이 조건에 매단 이유는 공간 토큰과 같다 — 참조하는 자리가 도형의
@@ -502,6 +525,12 @@ func contentFeatures(deck *soml.Deck) features {
 				feat.lists = true
 			case soml.KindLayoutContainer, soml.KindSpacer:
 				feat.layout = true
+				// `<stack>`은 레이아웃 컨테이너이지만 겹침 CSS는 별도 절이다 — 흐름으로
+				// 가른다 (soml.FlowOf). 종류가 아니라 흐름으로 갈리는 것이 Iteration 6의
+				// 결정이고(soml.FlowStack), 그 결정의 렌더러 쪽 절반이 이 판정이다.
+				if soml.FlowOf(elem.Name) == soml.FlowStack {
+					feat.stack = true
+				}
 			case soml.KindShape:
 				feat.shapes = true
 			case soml.KindImage:
@@ -511,6 +540,11 @@ func contentFeatures(deck *soml.Deck) features {
 		}
 	}
 	for _, slide := range deck.Slides {
+		if slide.Layout == soml.LayoutCanvas {
+			// 캔버스 스테이지는 stack이다 (PRD §13-3) — 스테이지 CSS(stackCSS)가 이때만
+			// 나간다. 슬라이드 수준 어휘라 콘텐츠 순회가 아니라 여기서 켠다.
+			feat.canvas = true
+		}
 		walk(slide.Content)
 	}
 	return feat

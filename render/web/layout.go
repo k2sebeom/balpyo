@@ -48,6 +48,7 @@ const (
 	rowClass    = "balpyo-row"
 	colClass    = "balpyo-col"
 	gridClass   = "balpyo-grid"
+	stackClass  = "balpyo-stack"
 	spacerClass = "balpyo-spacer"
 )
 
@@ -72,6 +73,8 @@ func containerClass(flow soml.ContainerFlow) (string, error) {
 		return colClass, nil
 	case soml.FlowGrid:
 		return gridClass, nil
+	case soml.FlowStack:
+		return stackClass, nil
 	}
 	return "", fmt.Errorf("배치 흐름 %d를 CSS로 낼 매핑이 없다", int(flow))
 }
@@ -250,6 +253,29 @@ func appendPlacement(decls []string, placement *soml.Placement) ([]string, error
 	if placement.Order != nil {
 		decls = append(decls, fmt.Sprintf("order: %d", *placement.Order))
 	}
+	if placement.At != "" {
+		self, err := stackAnchorValue(placement.At)
+		if err != nil {
+			return nil, err
+		}
+		decls = append(decls, "place-self: "+self)
+	}
+	// x/y는 그 자식만 absolute로 전환하고 부모 상대 좌표를 left/top으로 낸다 (PRD §7.4·§13-3).
+	//
+	// **transform: translate()를 쓰지 않는다.** 측정 뷰가 변형을 끄기 때문이다 (ADR 0021,
+	// render/web/shape.go·image.go의 측정 뷰). 변형으로 위치를 내면 지오메트리 패스가 잰
+	// rect에 위치가 남지 않고, PPTX는 겹치지 않은 좌표를 받아 웹과 갈라진다 — translate가 더
+	// 짧다고 바꾸는 것을 막는 근거가 이 주석이다. 지정하지 않은 축은 선언을 내지 않는다
+	// (`top: auto` = 정적 위치) — containerCSS의 "정하지 않은 것에 기본값을 내지 않는다"와 같다.
+	if placement.X != nil || placement.Y != nil {
+		decls = append(decls, "position: absolute")
+		if placement.X != nil {
+			decls = append(decls, "left: "+lengthValue(*placement.X))
+		}
+		if placement.Y != nil {
+			decls = append(decls, "top: "+lengthValue(*placement.Y))
+		}
+	}
 	if placement.Style != "" {
 		// core가 정규화한 선언 목록을 그대로 잇는다 (`프로퍼티: 값`을 `; `로 이은 문자열).
 		// 원문 Attrs를 읽지 않는다 — 값 검증·경고를 지나지 않은 문자열이 산출물에 실릴
@@ -343,6 +369,49 @@ func boxAlignValue(align soml.BoxAlign, attr string) (string, error) {
 	return "", fmt.Errorf("%s %q는 교차축 정렬 어휘 밖이다", attr, string(align))
 }
 
+// stackAnchorValue는 stack 셀 안 9지점 앵커를 `place-self` 값으로 만든다.
+//
+// **축 순서는 `place-self: <align-self> <justify-self>`다** — align-self가 블록 축(세로),
+// justify-self가 인라인 축(가로)이다. 순서를 뒤집으면 9지점 중 대각 4개(top-right 등)가
+// 어긋나므로 매핑을 축 쌍으로 나눠 두고, 표 기반 테스트가 9종을 전수로 대조한다. 어휘 밖
+// 값은 에러다 — 해석되지 않은 값이 CSS로 흘러가면 브라우저가 조용히 무시한다 (boxAlignValue와
+// 같은 태도).
+func stackAnchorValue(anchor soml.StackAnchor) (string, error) {
+	block, inline, ok := anchorAxes(anchor)
+	if !ok {
+		return "", fmt.Errorf("at %q는 9지점 앵커 어휘 밖이다", string(anchor))
+	}
+	return block + " " + inline, nil
+}
+
+// anchorAxes는 9지점 앵커를 (블록 축, 인라인 축) 정렬 쌍으로 나눈다 — 세로(top/center/bottom)와
+// 가로(left/center/right)가 각각 CSS의 start/center/end로 매핑된다. 표를 그대로 두는 이유는
+// 검증 가능성이다: 이름 하나가 곧 place-self 한 값이므로 9종 전수 테스트가 대각의 어긋남을
+// 잡는다.
+func anchorAxes(anchor soml.StackAnchor) (block, inline string, ok bool) {
+	switch anchor {
+	case soml.StackTopLeft:
+		return "start", "start", true
+	case soml.StackTopCenter:
+		return "start", "center", true
+	case soml.StackTopRight:
+		return "start", "end", true
+	case soml.StackCenterLeft:
+		return "center", "start", true
+	case soml.StackCenter:
+		return "center", "center", true
+	case soml.StackCenterRight:
+		return "center", "end", true
+	case soml.StackBottomLeft:
+		return "end", "start", true
+	case soml.StackBottomCenter:
+		return "end", "center", true
+	case soml.StackBottomRight:
+		return "end", "end", true
+	}
+	return "", "", false
+}
+
 // boxJustifyValue는 주축 분배를 CSS 값으로 만든다 — `space-*` 접두를 다시 붙이는 자리다.
 //
 // 접두를 뗀 이름을 어휘로 고른 것은 PRD §7.4이고(저자가 `between`으로 적는다), 번역은
@@ -386,6 +455,65 @@ func layoutCSS() string {
   :is(.balpyo-row, .balpyo-col, .balpyo-grid) > :is(.balpyo-text, .balpyo-list) {
     width: auto;
     flex: 0 1 auto;
+  }
+`
+}
+
+// stackCSS는 `<stack>`과 캔버스 스테이지의 엔진 CSS다 — **layoutCSS와 별도 절**로 낸다.
+//
+// 별도 절인 이유는 골든 불변이다: layoutCSS()는 feat.layout이 켜진 모든 덱에 나가므로
+// (03_layout·04_shape·05_image), 그 문자열에 stack 규칙을 끼워 넣으면 stack을 쓰지 않은
+// 골든이 이 iteration 때문에 움직인다. 저장소의 원칙은 **새 어휘를 쓴 덱에서만 CSS가
+// 달라지는 것**이라, 이 절은 stack이나 canvas를 실제로 쓴 덱에만 나간다 (contentCSS의 조건).
+//
+// # 겹침은 한 벌이다 — stack과 캔버스 스테이지가 같은 규칙을 쓴다
+//
+// 캔버스 스테이지가 stack과 같은 배치를 갖는 것이 항목 04의 결정이다 (PRD §13-3): 캔버스를
+// display:block으로 따로 만들면 겹침·앵커·칠 순서 규칙이 두 곳에 생기고, 갈라져도 픽셀
+// 비교에서만 드러난다. 그래서 `:is(.balpyo-stack, .balpyo-stage-canvas)` 한 선택자가 둘을
+// 함께 겨눈다.
+//
+//   - 단일 셀 grid + `grid-area: 1/1`: 모든 자식이 같은 칸에 겹치되 in-flow로 남으므로
+//     stack의 크기가 **가장 큰 자식**에 맞춰 자동 결정된다 (absolute 전면 방식은 컨테이너
+//     크기가 소실되어 배제 — PRD §13-3). `grid-template-*`을 내지 않는다: 암시 트랙 하나가
+//     정확히 필요한 것이고, 명시하면 `cols`를 닫아 둔 항목 01의 결정과 두 벌이 된다.
+//   - `position: relative`(stack 자신): 절대 배치(x/y) 자식의 포함 블록을 stack의 패딩
+//     박스로 만든다. 이것이 없으면 grid 컨테이너가 위치 지정 조상이 아니어서 x/y 자식이
+//     가장 가까운 위치 지정 조상(스테이지)까지 올라가 배치된다 — `<stack pad>`의 자식이
+//     여백 안쪽부터 세려면(항목 04의 2번 결정) stack이 포함 블록이어야 한다. 오프셋이 없는
+//     relative는 박스를 움직이지 않으므로 잰 rect는 그대로다. (캔버스 스테이지는 이미
+//     position: relative다 — contentCSS의 .balpyo-stage. 그래서 새로 만들 것이 없다.)
+//   - `> * { position: relative }`(자식): **칠 순서를 문서 순서로 되돌린다** (항목 04의 4번
+//     결정 — 이 절에서 가장 중요한 한 줄). CSS는 같은 쌓임 문맥에서 위치 지정되지 않은
+//     자손을 먼저, 위치 지정된 자손을 나중에 칠한다. 그래서 x/y 자식(absolute)과 정적 자식이
+//     섞이면 문서상 앞인 x/y 자식이 뒤에 칠해져 겹침 순서가 PPTX(문서 순서 = 뒤가 위)와
+//     반대가 된다. 모든 자식을 위치 지정 요소로 만들면 형제끼리 z-index:auto일 때 문서
+//     순서로 칠해지므로(x/y 자식의 position:absolute가 이 선언을 덮어도 같은 단계에 남는다)
+//     한 줄로 계약이 복원된다. 엔진이 자식마다 z-index:N을 내는 길과 저울질했고 버렸다:
+//     골든에 문서 순서와 중복된 수치가 들어가고, z-index는 저자에게 닫아 둔 채널(PRD §13-3)
+//     이라 엔진이 쓰면 저자 CSS가 이길 수 없는 값이 하나 는다 (ADR — 항목 07).
+//   - 자식 폭 초기화: 텍스트·리스트의 확정 폭(width:100%, contentCSS)을 auto로 되돌린다.
+//     폭이 칸을 다 먹으면 `at`의 justify-self가 자식을 움직일 여지가 없다. **기존 컨테이너
+//     자식 초기화 선택자(layoutCSS)에 stack을 끼워 넣지 않고 여기 따로 낸다** — 그 선택자는
+//     골든이 움직이는 자리이기 때문이다.
+func stackCSS() string {
+	return `
+  /* <stack>·캔버스 스테이지 = 단일 셀 grid 겹침 (PRD §13-3). 자식이 grid-area 1/1에
+     겹치되 in-flow로 남아 stack 크기가 가장 큰 자식에 맞춰 자동 결정된다. position:relative는
+     x/y 자식의 포함 블록을 만들고(패딩 박스 기준), 자식의 position:relative는 칠 순서를
+     문서 순서로 되돌린다 (위치 지정 형제는 문서 순서로 칠해진다 — 별도 z-index 없음). */
+  .balpyo-stack { display: grid; position: relative; }
+  .balpyo-stage-canvas { display: grid; }
+  :is(.balpyo-stack, .balpyo-stage-canvas) > * {
+    grid-area: 1 / 1;
+    position: relative;
+  }
+
+  /* stack 자식의 텍스트·리스트는 확정 폭에서 벗어나 auto로 돌아간다 — 폭이 칸을 다 먹으면
+     at의 justify-self가 자식을 움직이지 못한다. 기존 row/col/grid 초기화와 별도 규칙이다
+     (그 규칙은 stack 없는 골든에도 나가므로 stack을 끼워 넣으면 골든이 움직인다). */
+  :is(.balpyo-stack, .balpyo-stage-canvas) > :is(.balpyo-text, .balpyo-list) {
+    width: auto;
   }
 `
 }
