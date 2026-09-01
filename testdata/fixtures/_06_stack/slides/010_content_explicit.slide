@@ -1,0 +1,12 @@
+<!-- layout="content"을 **명시한** 슬라이드 — 기본 동작(세로 스택)에 이름이 있으므로 저자가
+     명시하는 것은 정당한 표기다. 이 항목의 결정(content를 함께 여는 것)이 실제 저자 표기가
+     되는 자리다: 이 슬라이드의 산출물은 layout 속성이 없는 동일 내용 슬라이드와 바이트가
+     같아야 한다 (DefaultSlideLayout == LayoutContent). -->
+<slide id="content-explicit" layout="content">
+  <h1>명시한 content</h1>
+  <p>layout="content"는 기본 스테이지(세로 스택)의 이름이다.</p>
+  <ul>
+    <li>속성이 없을 때의 기본값과 같은 이름</li>
+    <li>산출물은 layout 없는 덱과 바이트가 같다</li>
+  </ul>
+</slide>

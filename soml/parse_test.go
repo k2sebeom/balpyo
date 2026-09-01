@@ -137,6 +137,39 @@ func TestParseSlideAttributes(t *testing.T) {
 	}
 }
 
+// layout은 파서가 원문 값과 **값 구간**만 싣는다 — 어휘(content·canvas) 검사는 core다
+// (레이아웃 어휘는 테마와 함께 자라므로 파서가 알 수 없다). 진단이 값에 밑줄을 그으려면
+// LayoutSpan이 부호를 제외한 값 구간을 가리켜야 한다.
+func TestParseSlideLayout(t *testing.T) {
+	tests := []struct {
+		name       string
+		src        string
+		wantLayout string
+	}{
+		{name: "layout 없음", src: `<slide></slide>`},
+		{name: "content", src: `<slide layout="content"></slide>`, wantLayout: "content"},
+		{name: "canvas", src: `<slide layout="canvas"></slide>`, wantLayout: "canvas"},
+		// 어휘 밖 값도 파서는 원문 그대로 싣는다 — 판정은 core의 몫이다.
+		{name: "어휘 밖 값도 원문 그대로", src: `<slide layout="titel"></slide>`, wantLayout: "titel"},
+		{name: "layout과 id 함께", src: `<slide layout="canvas" id="hero"></slide>`, wantLayout: "canvas"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := parseOK(t, tc.src)
+			if doc.Layout != tc.wantLayout {
+				t.Errorf("Layout = %q, want %q", doc.Layout, tc.wantLayout)
+			}
+			if tc.wantLayout == "" {
+				return
+			}
+			// 값 스팬은 인용 부호를 제외한다 — core의 진단이 부호가 아니라 값에 밑줄을 긋는다.
+			if got := doc.LayoutSpan.Text(tc.src); got != tc.wantLayout {
+				t.Errorf("LayoutSpan = %q, want %q", got, tc.wantLayout)
+			}
+		})
+	}
+}
+
 // 공백 접기는 결정적이어야 한다 — 웹은 브라우저가 접고 PPTX는 접지 않으므로 파서가 접는다.
 func TestParseCollapsesWhitespace(t *testing.T) {
 	tests := []struct {
@@ -202,8 +235,10 @@ func TestParseErrors(t *testing.T) {
 		},
 		{
 			name: "알 수 없는 속성",
-			src:  `<slide layout="title"></slide>`,
-			want: []string{"1:8 알 수 없는 속성 layout"},
+			// `layout`은 Iteration 6에 열렸으므로(값 어휘는 core가 본다) 파서 진단이 아니다.
+			// `reveal`은 여전히 닫혀 있다 (parse.go의 주석 — 웹 런타임 Phase 2).
+			src:  `<slide reveal="fade"></slide>`,
+			want: []string{"1:8 알 수 없는 속성 reveal"},
 		},
 		{
 			name: "<note>에는 속성이 없다",
@@ -289,6 +324,18 @@ func TestParseErrors(t *testing.T) {
 			want: []string{"1:14 skip 값은 true 또는 false다"},
 		},
 		{
+			// 파서는 layout의 문법만 본다 — 값 없는 layout은 뜻을 정할 수 없다.
+			// 어휘(content·canvas) 검사는 core다.
+			name: "값 없는 layout",
+			src:  `<slide layout></slide>`,
+			want: []string{"1:8 layout 속성에는 값이 필요하다"},
+		},
+		{
+			name: "layout이 비었다",
+			src:  `<slide layout=""></slide>`,
+			want: []string{"1:16 layout 속성이 비어 있다"},
+		},
+		{
 			name: "속성 중복",
 			src:  `<slide id="a" id="b"></slide>`,
 			want: []string{"1:15 속성 id가 중복됐다"},
@@ -323,9 +370,9 @@ func TestParseErrors(t *testing.T) {
 		},
 		{
 			name: "한 파일의 진단을 모아 낸다",
-			src:  "<slide layout=\"a\">\n  <txt>제목</txt>\n  <text badattr=\"1\">본문</text>\n</slide>",
+			src:  "<slide reveal=\"a\">\n  <txt>제목</txt>\n  <text badattr=\"1\">본문</text>\n</slide>",
 			want: []string{
-				"1:8 알 수 없는 속성 layout",
+				"1:8 알 수 없는 속성 reveal",
 				"2:4 알 수 없는 태그 <txt>",
 				"3:9 알 수 없는 속성 badattr",
 			},

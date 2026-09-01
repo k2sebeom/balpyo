@@ -116,13 +116,15 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 			id = file.DerivedID()
 		}
 		deck.Slides = append(deck.Slides, &soml.Slide{
-			Index:   len(deck.Slides),
-			ID:      id,
-			Source:  source,
-			Chapter: file.Chapter,
-			Notes:   doc.Notes,
-			Content: doc.Content,
-			Tokens:  doc.Tokens,
+			Index:      len(deck.Slides),
+			ID:         id,
+			Source:     source,
+			Chapter:    file.Chapter,
+			Layout:     soml.SlideLayout(doc.Layout),
+			LayoutSpan: doc.LayoutSpan,
+			Notes:      doc.Notes,
+			Content:    doc.Content,
+			Tokens:     doc.Tokens,
 		})
 	}
 

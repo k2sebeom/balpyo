@@ -404,3 +404,108 @@ func testPNG(t *testing.T, w, h int) []byte {
 	}
 	return buf.Bytes()
 }
+
+// layout 값이 파서 → 파이프라인 → core를 지나 Slide.Layout에 **확정 값**으로 도착한다.
+// 생략한 슬라이드는 core가 기본값(content)으로 채운다 — 렌더러가 빈 값을 보지 않는다.
+func TestLoadDeckAppliesSlideLayout(t *testing.T) {
+	dir := newProject(t, map[string]string{
+		"slides/001_free.slide":    `<slide id="free" layout="canvas"></slide>`,
+		"slides/002_default.slide": `<slide id="default"></slide>`,
+	})
+	deck, diags, err := LoadDeck(Options{ProjectDir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(diags) != 0 {
+		t.Errorf("진단이 없어야 한다: %v", diags)
+	}
+	if deck.Slides[0].Layout != soml.LayoutCanvas {
+		t.Errorf("Slides[0].Layout = %q, want canvas", deck.Slides[0].Layout)
+	}
+	if deck.Slides[1].Layout != soml.LayoutContent {
+		t.Errorf("Slides[1].Layout = %q, want content(기본값)", deck.Slides[1].Layout)
+	}
+}
+
+// 어휘 밖 layout은 파일:행:열을 가진 빌드 에러다 — core가 값 층에서 잡는다.
+func TestLoadDeckRejectsUnknownLayout(t *testing.T) {
+	dir := newProject(t, map[string]string{
+		"slides/001_title.slide": "<slide id=\"a\" layout=\"two-column\"></slide>\n",
+	})
+	_, diags, err := LoadDeck(Options{ProjectDir: dir})
+	if err == nil {
+		t.Fatal("어휘 밖 layout은 빌드 에러여야 한다")
+	}
+	if len(diags) != 1 || !strings.Contains(diags[0].Message, "알 수 없는 layout") {
+		t.Fatalf("진단 = %v, want '알 수 없는 layout'", diags)
+	}
+	// 진단은 슬라이드 파일의 값 위치를 가리킨다 — 저자가 에디터에서 바로 고친다.
+	if diags[0].File != "slides/001_title.slide" || diags[0].Span.Start.Line != 1 || diags[0].Span.Start.Col != 23 {
+		t.Errorf("위치 = %s:%s, want slides/001_title.slide:1:23", diags[0].File, diags[0].Span.Start)
+	}
+}
+
+// filesEqual은 두 산출 파일 집합이 경로·바이트까지 같은지 본다.
+func filesEqual(t *testing.T, a, b render.Files) {
+	t.Helper()
+	ap, bp := a.Paths(), b.Paths()
+	if len(ap) != len(bp) {
+		t.Fatalf("파일 수가 다르다: %v vs %v", ap, bp)
+	}
+	for i, name := range ap {
+		if bp[i] != name {
+			t.Fatalf("파일 경로가 다르다: %v vs %v", ap, bp)
+		}
+		if !bytes.Equal(a[name], b[name]) {
+			t.Errorf("%s의 바이트가 다르다", name)
+		}
+	}
+}
+
+// 이 항목에서 layout 값은 렌더러에 닿을 뿐 아무도 읽지 않는다 — layout="content"·"canvas"를
+// 쓴 덱의 **웹 산출물**이 layout 없는 덱과 바이트가 같아야 항목 04의 골든 diff가 순수하게
+// 캔버스 배치만 담는다. 웹 렌더는 브라우저가 필요 없어 이 검사는 결정적이다.
+func TestBuildLayoutWebOutputInvariant(t *testing.T) {
+	webFiles := func(attr string) render.Files {
+		dir := newProject(t, map[string]string{
+			"balpyo.json":            `{"title": "t"}`,
+			"slides/001_title.slide": "<slide id=\"a\"" + attr + ">\n  <h1>제목</h1>\n  <p>본문 한 줄</p>\n</slide>\n",
+		})
+		deck, _, err := LoadDeck(Options{ProjectDir: dir})
+		if err != nil {
+			t.Fatal(err)
+		}
+		files, _, err := Render(deck, []render.Target{render.TargetHTML})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return files[render.TargetHTML]
+	}
+	base := webFiles("")
+	filesEqual(t, base, webFiles(` layout="content"`))
+	filesEqual(t, base, webFiles(` layout="canvas"`))
+}
+
+// canvas는 PPTX 파트를 새로 요구하지 않는다 (모든 슬라이드가 slideLayout1.xml 하나를
+// 가리키고 도형은 절대 좌표다). 빈 슬라이드는 잴 요소가 없어 브라우저 없이 렌더되므로,
+// 이 검사가 layout 이름이 PPTX 바이트에 새지 않는지를 결정적으로 못 박는다.
+func TestBuildLayoutPPTXOutputInvariant(t *testing.T) {
+	pptxFiles := func(attr string) render.Files {
+		dir := newProject(t, map[string]string{
+			"balpyo.json":            `{"title": "t"}`,
+			"slides/001_title.slide": "<slide id=\"a\"" + attr + "></slide>\n",
+		})
+		deck, _, err := LoadDeck(Options{ProjectDir: dir})
+		if err != nil {
+			t.Fatal(err)
+		}
+		files, _, err := Render(deck, []render.Target{render.TargetPPTX})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return files[render.TargetPPTX]
+	}
+	base := pptxFiles("")
+	filesEqual(t, base, pptxFiles(` layout="content"`))
+	filesEqual(t, base, pptxFiles(` layout="canvas"`))
+}

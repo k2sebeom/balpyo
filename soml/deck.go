@@ -43,6 +43,36 @@ func (a Aspect) Stage() (Stage, error) {
 	}
 }
 
+// SlideLayout은 슬라이드의 배치 레이아웃이다 (`<slide layout>`). 어휘는 2종으로 시작한다
+// (PRD §7.3의 카탈로그 11종 중 나머지 9종은 슬롯·테마 레이아웃과 함께 Iteration 10이다).
+//
+// Aspect와 나란히 여기 있는 이유: 둘 다 슬라이드의 **구조**를 정하는 닫힌 어휘이고 외관이
+// 아니다. 외관 어휘(role·align)가 테마와 함께 자라 appearance.go에 있는 것과 갈라진다 —
+// 레이아웃 카탈로그는 엔진이 소유하고(렌더러가 배치 코드를 갖는 이름만 열린다), 테마가
+// 더하는 것은 Iteration 10의 표준 레이아웃 위에 얹는 테마 레이아웃이다.
+type SlideLayout string
+
+const (
+	// LayoutContent는 세로 스택이다 — **현재 스테이지의 이름**이다 (render/web.writeStage).
+	// `layout`을 생략한 슬라이드의 기본값이자, 저자가 명시할 수 있는 정당한 표기다: 구현된
+	// 동작에 이름이 있는데 어휘에서 닫아 두면 `layout="content"`가 에러가 된다.
+	LayoutContent SlideLayout = "content"
+	// LayoutCanvas는 자유 배치다 — 스테이지가 자식을 세로로 쌓지 않고 자식이 `x`/`y`·`at`으로
+	// 자기 자리를 정한다. **배치 시맨틱(스테이지 CSS)은 Iteration 6 항목 04다** — 이 이름이
+	// 렌더러에 닿아도 아직 아무도 읽지 않으므로 산출물은 바뀌지 않는다.
+	LayoutCanvas SlideLayout = "canvas"
+)
+
+// DefaultSlideLayout은 `layout`을 생략한 슬라이드의 레이아웃이다 — 속성이 없을 때의 기본값과
+// 저자가 명시한 `layout="content"`가 같은 이름을 갖는다 (그래서 둘의 산출물이 바이트가 같다).
+const DefaultSlideLayout = LayoutContent
+
+// SlideLayouts는 레이아웃 어휘 전체다. 순서가 진단 메시지에 실리는 순서이자 문서 순서다 —
+// 기본값(content)이 먼저, 새로 여는 canvas가 뒤다.
+func SlideLayouts() []SlideLayout {
+	return []SlideLayout{LayoutContent, LayoutCanvas}
+}
+
 // Deck은 정규화된 덱 모델이다. 렌더러가 보는 유일한 입력이며, 여기 도달한 시점에는
 // 합성 컴포넌트가 전개되고 외관이 해석되어 있다.
 type Deck struct {
@@ -72,6 +102,16 @@ type Slide struct {
 	Source string
 	// Chapter는 슬라이드가 속한 하위 디렉토리 경로다. 루트 직속이면 빈 문자열이다.
 	Chapter string
+	// Layout은 슬라이드 배치 레이아웃이다 (`<slide layout>`, PRD §7.3). 파이프라인이
+	// SlideDoc.Layout(원문)을 옮기고 core.Resolve가 2종 어휘를 확정한다 — 어휘 밖 값은
+	// 진단이 되고, 생략된 슬라이드는 DefaultSlideLayout(content)으로 채워진다. 렌더러는
+	// 문자열이 아니라 이 타입을 소비한다 (항목 04) — `"canvas"`가 세 렌더러에 흩어지지
+	// 않게 한다.
+	Layout SlideLayout
+	// LayoutSpan은 layout 값 구간이다 — core의 어휘 진단이 부호가 아니라 값을 가리키게
+	// 한다. Slide에 루트 요소 참조가 없으므로(덱 모델은 해석이 끝난 값이다) 값과 함께
+	// 구간을 나른다.
+	LayoutSpan Span
 	// Notes는 발표자 노트다 (`<note>`). PPTX에서는 노트 슬라이드가 된다.
 	Notes string
 	// Content는 슬라이드 콘텐츠 트리다 (`<note>`는 여기 없다 — Notes로 간다).

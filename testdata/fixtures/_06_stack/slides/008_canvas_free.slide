@@ -1,0 +1,11 @@
+<!-- layout="canvas" + `x`/`y` 자유 배치 — 스테이지가 자식을 세로로 쌓지 않고 자식이 자기
+     자리를 정한다. 이 항목(02)에서는 layout 이름이 렌더러에 닿을 뿐 배치 시맨틱은 아직
+     없으므로(항목 04) 산출물은 layout 없는 덱과 바이트가 같다. 배치 값 문법(부호·단위·%)은
+     값 층(항목 03)이 본다. -->
+<slide id="canvas-free" layout="canvas">
+  <h2>자유 배치</h2>
+  <shape type="rounded-rect" fill="surface" w="240" h="160" x="80" y="120"/>
+  <shape type="ellipse" fill="accent1" w="96" h="96" x="50%" y="40%"/>
+  <text size="18" color="on-accent" x="120" y="160">캔버스</text>
+  <shape type="star" fill="accent4" w="64" h="64" x="-24" y="24"/>
+</slide>

@@ -1,0 +1,13 @@
+<!-- layout="canvas" + 그 안에 <stack> 중첩 — 캔버스의 자유 배치와 stack의 겹침이 만나는
+     장면이다. 캔버스 자식으로 놓인 stack이 자기 셀 좌표계를 다시 연다. layout 이름은
+     이 항목에서 렌더러에 닿을 뿐이고(항목 04가 스테이지 CSS를 정한다), stack 내부의
+     `at`/`x`/`y`는 값 층(항목 03)의 몫이다. -->
+<slide id="canvas-stack" layout="canvas">
+  <h2>캔버스 위 겹침</h2>
+  <stack w="320" h="220" x="100" y="140">
+    <shape type="rounded-rect" fill="surface" w="fill" h="fill"/>
+    <shape type="ellipse" fill="accent2" w="72" h="72" at="center"/>
+    <text size="14" color="muted" at="bottom-right">배지</text>
+  </stack>
+  <shape type="rect" fill="accent1" w="48" h="48" x="70%" y="60%"/>
+</slide>

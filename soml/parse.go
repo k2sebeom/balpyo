@@ -29,7 +29,11 @@ var elementSpecs = buildElementSpecs()
 func buildElementSpecs() map[string]elementSpec {
 	specs := map[string]elementSpec{
 		RootElement: {
-			attrs: []string{"id", "skip"},
+			// 순서는 PRD §7.1 표 순서다 — `layout` `id` `skip`(진단이 이 순서를 싣는다).
+			// `layout`은 슬라이드 수준 속성 중 **렌더러의 배치를 바꾸는 첫 속성**이다
+			// (id는 딥링크, skip은 덱에서 빠진다). 값 어휘(content·canvas)는 core가 본다 —
+			// fillSlide가 문법만 보는 이유와 같다.
+			attrs: []string{"layout", "id", "skip"},
 			model: modelElements,
 			// PRD §7.7의 `reveal` 속성은 열지 않는다 — 웹 런타임의 reveal은 Phase 2이고,
 			// 렌더가 없는 속성을 어휘에 열면 닫힌 어휘가 막으려던 조용한 무시가 된다.
@@ -188,6 +192,13 @@ type SlideDoc struct {
 	// Skip은 `<slide skip>`이다. true면 렌더에서 제외된다 (PRD §7.1). 제외 판정은 파서가
 	// 노출하고 덱에서 빼는 것은 파이프라인이 한다 — Index가 남은 슬라이드 기준이어야 하므로.
 	Skip bool
+	// Layout은 `<slide layout>`의 값이다 (원문 그대로). 속성이 없으면 빈 문자열이다 —
+	// 어휘 검사(2종)는 core가 한다: 레이아웃 어휘는 테마(Iteration 10)와 함께 자라므로
+	// 파서가 알 수 있는 것이 아니다 (fillSlide의 주석과 같은 경계). 파서는 문법만 본다
+	// (값 없는 `<slide layout>`·빈 값 `layout=""`).
+	Layout string
+	// LayoutSpan은 layout 값 구간이다 — core의 어휘 진단이 값에 밑줄을 긋게 한다.
+	LayoutSpan Span
 	// Notes는 `<note>`의 텍스트다.
 	Notes string
 	// Content는 `<slide>`의 콘텐츠 자식이다 (`<note>` 제외).
@@ -648,6 +659,20 @@ func (p *parser) fillSlide(doc *SlideDoc) {
 		case attr.Value == "false":
 		default:
 			p.errorf(attr.ValueSpan, "skip 값은 true 또는 false다 (%q)", attr.Value)
+		}
+	}
+	if attr, ok := root.Attr("layout"); ok {
+		// 파서는 문법만 본다 — 값 없는 `<slide layout>`과 빈 값 `layout=""`은 뜻을 정할 수
+		// 없는 형태이므로 여기서 진단하고, **어휘(content·canvas) 검사는 core**다 (레이아웃
+		// 어휘는 테마와 함께 자라므로 파서가 알 수 없다). 원문 값과 구간을 그대로 나른다.
+		switch {
+		case !attr.HasValue:
+			p.errorf(attr.NameSpan, "layout 속성에는 값이 필요하다 (layout=\"canvas\")")
+		case attr.Value == "":
+			p.errorf(attr.ValueSpan, "layout 속성이 비어 있다 (지우면 content로 계속한다)")
+		default:
+			doc.Layout = attr.Value
+			doc.LayoutSpan = attr.ValueSpan
 		}
 	}
 

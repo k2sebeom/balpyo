@@ -37,6 +37,9 @@ func Resolve(deck *soml.Deck) soml.Diagnostics {
 	var diags soml.Diagnostics
 	for _, slide := range deck.Slides {
 		r := resolver{theme: deck.Theme, file: slide.Source}
+		// 레이아웃 어휘는 슬라이드마다 도는 이 루프 머리에서 확정한다 — 파일 하나로
+		// 판정되므로 Validate(파일을 넘어야 아는 것 — 슬라이드 ID 충돌)가 아니라 여기다.
+		r.slideLayout(slide)
 		for _, node := range slide.Content {
 			// 슬라이드 직속 노드의 부모는 없다 — 배치 해석이 부모를 보는 이유는
 			// resolveLayout의 주석에 있다 (span은 <grid>의 자식에서만 뜻이 있다).
@@ -69,6 +72,31 @@ func (r *resolver) errorf(span soml.Span, format string, args ...any) {
 
 func (r *resolver) warnf(span soml.Span, format string, args ...any) {
 	r.diags = append(r.diags, soml.Warningf(r.file, span, format, args...))
+}
+
+// slideLayout은 슬라이드 레이아웃 어휘(2종)를 확정한다. 파서는 layout 값을 원문으로 남기고
+// (레이아웃 어휘는 테마와 함께 자란다 — Iteration 10) 문법만 보므로, 어휘 검사는 값 층인
+// 여기다. 어휘 밖 값은 **line:col을 가진** 진단이다 — Slide.LayoutSpan이 값 구간을 가리켜
+// 진단이 부호가 아니라 값에 밑줄을 긋는다.
+//
+// 생략된 슬라이드(빈 문자열)는 DefaultSlideLayout(content)으로 채운다 — 렌더러가 빈 값을
+// 보지 않고, 속성을 명시한 슬라이드와 생략한 슬라이드가 같은 값을 갖는다. 어휘 밖 값도
+// 폴백하지 않고 진단으로 막는 것이 계약이다 (`layout="titel"` 오타가 조용히 기본 레이아웃으로
+// 렌더되면 닫힌 어휘가 막으려던 실패가 된다 — Iteration 10의 "미구현 테마 레이아웃 → 폴백"과
+// 다른 규칙이다). 진단 뒤 기본값을 넣는 것은 회복용일 뿐이다: 진단이 있으면 빌드는 렌더에
+// 닿지 않는다.
+func (r *resolver) slideLayout(slide *soml.Slide) {
+	if slide.Layout == "" {
+		slide.Layout = soml.DefaultSlideLayout
+		return
+	}
+	for _, layout := range soml.SlideLayouts() {
+		if slide.Layout == layout {
+			return
+		}
+	}
+	r.errorf(slide.LayoutSpan, "알 수 없는 layout %q (쓸 수 있는 layout: %s)", string(slide.Layout), layoutList())
+	slide.Layout = soml.DefaultSlideLayout
 }
 
 // node는 콘텐츠 트리를 훑는다. 외관을 갖는 요소만 외관을 해석하고, **배치는 요소 종류와
@@ -486,6 +514,16 @@ func alignList() string {
 	names := make([]string, 0, len(soml.TextAligns()))
 	for _, align := range soml.TextAligns() {
 		names = append(names, string(align))
+	}
+	return strings.Join(names, ", ")
+}
+
+// layoutList는 진단에 실을 슬라이드 레이아웃 어휘 목록이다 — 어휘 정의(soml.SlideLayouts)와
+// 메시지가 갈라지지 않도록 목록을 손으로 쓰지 않는다.
+func layoutList() string {
+	names := make([]string, 0, len(soml.SlideLayouts()))
+	for _, layout := range soml.SlideLayouts() {
+		names = append(names, string(layout))
 	}
 	return strings.Join(names, ", ")
 }

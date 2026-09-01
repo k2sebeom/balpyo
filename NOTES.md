@@ -1896,3 +1896,74 @@
   - **docs·PRD·ADR은 항목 07이다.** `docs/reference/soml/*.md`의 예제 진단이 자식 배치 목록을
     `…, self, order, style`로 적고 있어 이제 낡았다(`at, x, y`가 든다) — 테스트가 아니라
     문서라 게이트를 막지 않으므로 항목 07이 한 번에 고친다.
+
+
+## Iteration 6 · 02-slide-layout — `<slide layout>`과 `canvas`: 슬라이드 수준 어휘의 첫 전달 경로
+
+<!-- item: 06/02-slide-layout -->
+
+- **한 것**:
+  - `soml/deck.go` — `SlideLayout` 타입 + 상수 2종(`LayoutContent`=`"content"`,
+    `LayoutCanvas`=`"canvas"`), `DefaultSlideLayout`(=content), `SlideLayouts()` 목록
+    (Aspect와 나란히 — 둘 다 슬라이드 **구조**의 닫힌 어휘다). `Slide`에 `Layout SlideLayout`
+    + `LayoutSpan Span` 추가(렌더러가 문자열이 아니라 타입을 소비한다).
+  - `soml/parse.go` — `elementSpecs`의 `slide` 항목 attrs를 `{"layout", "id", "skip"}`으로
+    (PRD §7.1 표 순서), `SlideDoc`에 `Layout string` + `LayoutSpan Span`, `fillSlide`에서
+    layout **문법만** 검사(값 없는 `<slide layout>`·빈 값 `layout=""`은 파서 진단, 원문 값·
+    구간을 그대로 싣는다 — 어휘 검사는 core).
+  - `internal/pipeline/pipeline.go` — `Slide` 조립에 `Layout: soml.SlideLayout(doc.Layout)` +
+    `LayoutSpan: doc.LayoutSpan` 추가(파서 → 파이프라인 → core 전달 경로).
+  - `core/resolve.go` — `Resolve`의 슬라이드 루프 **머리**에서 `r.slideLayout(slide)` 호출,
+    `slideLayout` 메서드(2종 어휘 검사 + 생략은 content로 채움 + 어휘 밖은 line:col 진단 후
+    회복 기본값), `layoutList()` 헬퍼(roleList/alignList와 같은 구조 — 어휘 정의와 메시지가
+    갈라지지 않게).
+  - `soml/parse_test.go` — "알 수 없는 속성"·"한 파일의 진단을 모아 낸다" 두 케이스의
+    `layout`을 `reveal`로 바꿨다(`layout`이 열렸으므로 더는 파서 진단이 아니다), layout 문법
+    에러 2종(값 없음·빈 값) 추가, `TestParseSlideLayout`(값 원문·값 구간·생략 시 빈 문자열).
+  - `core/slide_test.go`(신규) — `TestResolveSlideLayoutConfirmed`(생략·content·canvas가 확정
+    값에 도착), `TestResolveSlideLayoutUnknown`(어휘 밖 값이 값을 가리키는 line:col 진단 +
+    허용 목록 `content, canvas` + 회복 기본값), `TestSlideLayoutVocabulary`(어휘 2종·기본값).
+  - `internal/pipeline/pipeline_test.go` — `TestLoadDeckAppliesSlideLayout`(전달 경로),
+    `TestLoadDeckRejectsUnknownLayout`(어휘 밖은 파일:행:열 빌드 에러), **산출물 불변 2종**:
+    `TestBuildLayoutWebOutputInvariant`(content·canvas 덱의 웹 산출물이 layout 없는 덱과
+    바이트가 같다 — 브라우저 불필요), `TestBuildLayoutPPTXOutputInvariant`(빈 슬라이드로
+    PPTX 바이트 불변 — canvas가 파트를 새로 요구하지 않는다).
+  - `testdata/fixtures/_06_stack/`(여전히 비활성) — 슬라이드 3개 추가: `008_canvas_free`
+    (`layout="canvas"` + `x`/`y` 자유 배치), `009_canvas_stack`(`layout="canvas"` + 안에
+    `<stack>` 중첩), `010_content_explicit`(`layout="content"` 명시 — 2번 결정이 저자 표기가
+    되는 자리).
+
+- **설계 결정과 근거**:
+  - **`content`를 함께 열었다.** `content`는 이미 구현된 동작(세로 스택, `writeStage`)의
+    이름이다 — 어휘에서 닫아 두면 저자가 명시한 `layout="content"`가 에러가 되고, 기본값을
+    명시하는 것은 정당한 표기다. 나머지 9종은 어휘 밖 에러다(허용 목록을 진단에 싣는다) —
+    Iteration 10의 "미구현 테마 레이아웃 → 폴백 + 경고"는 **테마가 구현 안 한 표준 레이아웃**의
+    규칙이고, 엔진이 이름조차 모르는 지금과 다르다(폴백을 미리 만들면 `layout="titel"` 오타가
+    조용히 기본으로 렌더된다). ADR은 항목 07.
+  - **파서는 문법, 어휘는 core.** `fillSlide` 위 주석의 기준("외관 값의 어휘는 테마와 함께
+    자라므로 파서가 알 수 없다")이 layout에 그대로 적용된다 — Iteration 10에서 테마가
+    `layout="corp-hero"`를 더하면 파서는 어휘를 알 수 없다. 진단이 line:col을 가지려면 값
+    구간이 필요한데 `soml.Slide`에 루트 요소 참조가 없으므로(덱 모델은 해석이 끝난 값이다 —
+    렌더러가 원문 트리를 다시 읽으면 core를 우회하는 길이 열린다) **값과 함께 Span을 싣는**
+    쪽을 골랐다. 버린 선택지: `Slide`에 루트 `*Element`를 싣기(경계가 무너진다), 파서가
+    어휘까지 보기(Iteration 10에 반드시 옮겨야 하는 검사를 지금 잘못된 층에 둔다).
+  - **검사는 `Resolve`의 슬라이드 루프 머리다.** `layout`은 파일 하나로 판정되므로
+    `Validate`(파일을 넘어야 아는 것 — 슬라이드 ID 충돌)가 아니라 `Resolve`다. 그 경계를
+    주석에 적었다.
+  - **확정 값을 `soml.SlideLayout` 타입으로 눕혔다.** 렌더러가 문자열 비교를 들면 `"canvas"`가
+    세 렌더러에 흩어진다 — `BoxAligns`·`ShapeTypes`·`Theme.ColorNames`와 같은 구조(어휘는
+    soml, 검사는 core).
+
+- **남긴 것**:
+  - **PPTX·웹은 이 항목에서 layout 값을 읽지 않는다.** 캔버스 배치 시맨틱(스테이지가 자식을
+    세로로 쌓지 않는다)은 **항목 04**(웹 `writeStage` 분기)다. 이 항목의 계약은 "layout을 쓴
+    덱의 산출물이 layout 없는 덱과 바이트가 같다"이고, 산출물 불변 테스트가 그것을 못 박는다 —
+    항목 04가 그 테스트를 뒤집을 때 무엇이 바뀌는지가 그 항목의 골든 diff다.
+  - **Iteration 10에서 레이아웃 파트가 둘 이상이 될 때 함께 움직이는 네 자리**(슬롯·
+    플레이스홀더가 생기는 시점): `render/pptx/parts.go`의 `sldLayoutIdLst`,
+    `masterRelsTemplate`, `contentTypesTemplate`의 `Override`, 슬라이드 rels의 `rId1`
+    (`Target="../slideLayouts/slideLayout1.xml"`). 지금은 모든 슬라이드가 blank
+    `slideLayout1.xml` 하나를 가리키므로 `canvas`는 새 파트를 요구하지 않는다.
+  - **`transition`·`data-balpyo-layout` 표식은 열지 않았다** — 각각 런타임 P0의 남은 몫과
+    Iteration 10(레이아웃이 11종이 되는 시점)이다. 지금 내면 골든에 소비자 없는 속성이 남는다.
+  - **docs·PRD·ADR은 항목 07이다.**
