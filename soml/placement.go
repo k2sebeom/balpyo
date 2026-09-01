@@ -29,6 +29,13 @@ const (
 	FlowColumn
 	// FlowGrid는 `<grid>`다 — `display:grid`.
 	FlowGrid
+	// FlowStack은 `<stack>`이다 — 단일 셀 `display:grid`로 모든 자식이 같은 칸에 겹친다
+	// (PRD §13-3). **KindStack이 아니라 흐름으로 갈리는** 것이 Iteration 6의 결정이다:
+	// 파서(콘텐츠 모델·자식 어휘)·core(컨테이너 속성 해석)·PPTX(도형 0개 + 자식 재귀)·
+	// 지오메트리(재지만 좌표 미소비)가 `<row>`와 전부 같고, 다른 것은 웹의 CSS 한 줄뿐이며
+	// 그 한 줄은 이미 종류가 아니라 흐름으로 갈린다. FlowOf의 존재가 곧 확장 지점이다
+	// (ADR — 항목 07).
+	FlowStack
 )
 
 // FlowOf는 레이아웃 컨테이너 태그의 배치 흐름이다. 컨테이너가 아닌 이름에도 FlowRow를
@@ -40,6 +47,8 @@ func FlowOf(name string) ContainerFlow {
 		return FlowColumn
 	case GridElement:
 		return FlowGrid
+	case StackElement:
+		return FlowStack
 	}
 	return FlowRow
 }

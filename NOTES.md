@@ -1820,3 +1820,79 @@
     하나"만 말한다. 테마 패키지가 에셋을 갖는 Iteration 10이 되면 `src`의 기준이 프로젝트
     루트뿐이라는 ADR 0024의 결정이 다시 열리고(테마 에셋을 어떻게 가리키는가), 그 자리가
     이 페이지의 `src` 절인지 `theme.md`인지 정하지 않았다.
+
+
+## Iteration 6 · 01-parser-stack — 파서가 `<stack>`과 자식 `at`·`x`·`y`를 연다
+
+<!-- item: 06/01-parser-stack -->
+
+- **한 것**:
+  - `soml/layout.go` — `StackElement`(`"stack"`) 상수, `layoutContainerElements`에 `<grid>`
+    뒤로 `<stack>` 추가(이 한 줄이 문법·종류·자식 어휘·측정·PPTX 재귀를 자동으로 따라오게
+    한다), `ContainerAttrs`에 stack 분기(`stackFlowAttrs`=`align justify` — `gap`·`wrap`을
+    뺐다), `childPlacementAttrs`에 `order` 뒤·`style` 앞으로 `at x y` 추가. 파일 상단·상수·
+    목록의 주석을 "stack은 여기 없다"에서 "Iteration 6에 열렸다"로 고쳤다.
+  - `soml/placement.go` — `ContainerFlow`에 `FlowStack` 추가(`FlowGrid` 뒤), `FlowOf`에
+    `StackElement → FlowStack` 분기. **새 종류 `KindStack`을 만들지 않았다** (아래 근거).
+  - `soml/layout_test.go` — 정상 트리 6종 추가(정렬 속성·`at` 앵커·`x`/`y` 절대·컨테이너 안
+    stack·중첩 stack), "stack은 아직 어휘 밖이다"·"at은 아직 어휘 밖이다" 두 에러 케이스를
+    **뒤집어** 새 닫힌-어휘 에러 6종으로(stack `cols`/`gap`/`wrap` 없음·stack 안 note·닫히지
+    않은 stack·`<li at>`), `TestLayoutKinds`를 stack이 `KindLayoutContainer`·`FlowStack`·
+    문법 표에 있음과 `ContainerAttrs(stack/row/grid)`·`ChildPlacementAttrs()` 순서를 못 박는
+    테스트로 확장(arrow/line/group 닫힘 단정은 남겼다), `_06_stack` 파싱 전용 테스트 추가.
+  - `soml/placement_test.go` — `FlowOf` 커버리지 표에 `{StackElement, FlowStack}` 추가.
+  - `soml/shape_test.go`·`soml/image_test.go` — "뒤 iteration의 어휘" 루프에서 `stack` 제거
+    (arrow/line/group/icon/table/chart는 남겼다), "도형 안의 stack" 에러 케이스 추가(도형은
+    `txBody` 하나라는 매핑이 그대로다 — `shapeChildren`은 손대지 않았다).
+  - **진단 순서를 싣는 하드코딩 테스트 문구를 함께 움직였다** (자식 배치 목록에 `at, x, y`가
+    `order` 뒤·`style` 앞으로 든다): `layout_test.go`(row cols·spacer gap·note 자식 목록),
+    `shape_test.go`(shape stroke·ul anchor), `subset_test.go`(h1 role·ul variant),
+    `image_test.go`(image fill).
+  - `core/layout_test.go`·`render/web/layout_test.go` — 자식 배치 커버리지 테스트에서 `at`·
+    `x`·`y`를 **면제**했다(주석에 항목 03/04가 지운다고 명시). 게이트를 초록으로 두기 위한
+    최소 변경이다 (아래 남긴 것 — 이 iteration에서 가장 설명이 필요한 diff).
+  - `testdata/fixtures/_06_stack/` (비활성) — `balpyo.json` + 슬라이드 7개(9지점 앵커 전수·
+    배지 오버레이·워터마크·z-순서(positioned/non-positioned 혼합)·`x`/`y` 절대(양수·음수·`%`)·
+    컨테이너 안 stack·stack 안 stack) + `dot.png`(05_image에서 복사). 이 iteration의 계약이
+    슬라이드 하나에 하나씩 대응한다. canvas 슬라이드는 항목 02가 더한다.
+
+- **설계 결정과 근거**:
+  - **`KindStack`을 만들지 않고 `FlowStack`으로 갈랐다.** 종류를 나누는 기준은 "여러 층의
+    산출이 다른가"였다. stack은 파서(콘텐츠 모델·자식 어휘)·core(컨테이너 속성 해석)·PPTX
+    (도형 0개 + 자식 재귀)·지오메트리(재지만 좌표 미소비)가 `<row>`와 **전부 같고**, 다른
+    것은 웹의 CSS 한 줄뿐이며 그 한 줄은 이미 종류가 아니라 흐름(`ContainerFlow`)으로
+    갈린다. 종류를 늘리면 세 렌더러의 스위치·측정 목록·도형 수 등식의 "컨테이너" 항이 전부
+    "컨테이너 또는 stack"이 된다 — 같은 규칙을 두 이름으로 세는 코드다. `FlowOf`의 존재가 곧
+    확장 지점이라는 설계이고, ADR로 남긴다(항목 07).
+  - **stack에서 `gap`·`wrap`을 뺐다** (`stackFlowAttrs`). 단일 셀 grid에는 셀 사이가 없어
+    `gap`이 산출 CSS에 나가도 아무것도 하지 않고, `wrap`은 flex 전용이라 grid 흐름인
+    stack에서 무효다. 받아 놓고 아무것도 하지 않는 속성은 저자가 "왜 안 되지"를 산출물에서
+    발견하게 만들고, 그것이 닫힌 어휘로 막으려던 실패의 변종이다. `cols`/`rows`는 grid 전용
+    분기(`name == GridElement`)라 자동으로 닫혀 있다 — 단일 셀이 stack의 정의다 (PRD §13-3).
+  - **`at`·`x`·`y`는 이름만 열었다.** 목록이 한 벌(`childPlacementAttrs`)이라 `withChildPlacement`를
+    부르는 모든 태그에 함께 열린다 — `span`의 선례와 같다. 부모 한정(`at`은 stack만,
+    `x`/`y`는 stack·canvas만)과 값 어휘는 부모를 아는 core의 순회가 한다(항목 03). 파서는
+    `<row at="center">`도 통과시킨다.
+  - **`shapeChildren`을 손대지 않았다.** 도형 위 배지·그림 위 글자는 stack의 **형제 자식**으로
+    쓴다 (`_06_stack/002_badge_overlay`가 그 표기) — "도형은 `txBody` 하나를 갖는다"는
+    Iteration 4의 매핑을 지킨다.
+  - **stack의 `justify` 어휘 자리는 열어 두었다.** stack에서 `justify`가 `justify-content`인지
+    `justify-items`인지는 값 어휘(6종 vs 5종)가 갈리는 문제이고 **항목 04의 결정**이다 —
+    지금은 `justify`를 그대로 두고, 항목 04가 정한 뒤 어휘를 좁혀야 하면 그때 좁힌다.
+
+- **남긴 것**:
+  - **`core`·`web`의 자식 배치 커버리지 테스트에 `at`/`x`/`y` 면제를 넣었다** — 이 항목에서
+    가장 설명이 필요한 변경이다. 두 테스트(`core.TestResolvePlacement`,
+    `web.TestLayoutVocabularyIsFullyMapped`)는 `soml.ChildPlacementAttrs()`를 순회해 "표에
+    있고 코드에 없는 행"을 잡는데, `at`/`x`/`y`가 이름만 열린 상태라 값 해석(항목 03)·CSS
+    매핑(항목 04)이 아직 없어 빨개진다. 면제 맵(`pendingItem03`/`pendingItem04`)에 주석으로
+    "항목 03/04가 분기를 더하면서 이 면제를 지운다"를 박아 두었다. 항목 01만으로 게이트를
+    초록으로 두려면 이 최소 변경이 불가피했다 — `span`이 이미 mapped라 선례가 없었다.
+  - **`<grid wrap>`의 무의미한 개방은 고치지 않았다** (지나가다 본 것). `wrap`은 flex 전용
+    (`flex-wrap`)인데 `<grid>`가 `containerFlowAttrs`를 그대로 받아 `<grid wrap>`이 받아
+    놓고 버려지는 선언이 된다 — stack에서 `wrap`을 뺀 것과 같은 근거로 닫혀야 하지만, 이번
+    범위는 stack이고 grid의 어휘를 좁히면 03_layout 골든이 무관한 이유로 움직인다. 발견만
+    적어 둔다.
+  - **docs·PRD·ADR은 항목 07이다.** `docs/reference/soml/*.md`의 예제 진단이 자식 배치 목록을
+    `…, self, order, style`로 적고 있어 이제 낡았다(`at, x, y`가 든다) — 테스트가 아니라
+    문서라 게이트를 막지 않으므로 항목 07이 한 번에 고친다.

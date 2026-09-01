@@ -191,6 +191,14 @@ func TestParseShapeErrors(t *testing.T) {
 			want: []string{"1:28 <shape>의 자식으로 <row>는 올 수 없다"},
 		},
 		{
+			// stack이 어휘에 열렸어도 도형 안 겹침은 열리지 않는다 — 도형은 txBody 하나를
+			// 갖는다는 Iteration 4의 매핑이 그대로다 (shapeChildren). 그림 위 글자·도형 위
+			// 배지는 stack의 **형제 자식**으로 쓴다.
+			name: "도형 안의 stack",
+			src:  `<slide><shape type="rect"><stack><text>a</text></stack></shape></slide>`,
+			want: []string{"1:28 <shape>의 자식으로 <stack>는 올 수 없다"},
+		},
+		{
 			name: "도형 안의 spacer",
 			src:  `<slide><shape type="rect"><spacer/></shape></slide>`,
 			want: []string{"1:28 <shape>의 자식으로 <spacer>는 올 수 없다"},
@@ -222,7 +230,7 @@ func TestParseShapeErrors(t *testing.T) {
 			// 놓고 버리지 않는다. 진단이 도형의 속성 표 전체를 순서대로 싣는다.
 			name: "도형에 stroke는 없다",
 			src:  `<slide><shape type="rect" stroke="2 accent1"/></slide>`,
-			want: []string{`1:27 <shape>에 알 수 없는 속성 stroke (쓸 수 있는 속성: type, id, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, style)`},
+			want: []string{`1:27 <shape>에 알 수 없는 속성 stroke (쓸 수 있는 속성: type, id, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style)`},
 		},
 		{
 			name: "도형에 dash는 없다",
@@ -278,7 +286,7 @@ func TestParseShapeErrors(t *testing.T) {
 		{
 			name: "리스트 컨테이너에는 anchor가 없다",
 			src:  `<slide><ul anchor="center"><li>항목</li></ul></slide>`,
-			want: []string{"1:12 <ul>에 알 수 없는 속성 anchor (쓸 수 있는 속성: grow, shrink, basis, span, self, order, style)"},
+			want: []string{"1:12 <ul>에 알 수 없는 속성 anchor (쓸 수 있는 속성: grow, shrink, basis, span, self, order, at, x, y, style)"},
 		},
 		{
 			// 컨테이너는 자기 외관을 갖지 않는다 — 앵커도 텍스트의 것이다.
@@ -355,9 +363,9 @@ func TestShapeKind(t *testing.T) {
 	if role, ok := TagTextRole(ShapeElement); ok {
 		t.Errorf("TagTextRole(%q) = %q — 도형은 역할 표에 없어야 한다", ShapeElement, role)
 	}
-	// Iteration 6·7·9의 컴포넌트는 카탈로그에도 어휘에도 없어야 한다. `<image>`는
-	// Iteration 5에 열렸다 (image.go — TestImageKind가 그 계약을 본다).
-	for _, name := range []string{"stack", "arrow", "line", "group", "icon", "table", "chart"} {
+	// Iteration 7·9의 컴포넌트는 카탈로그에도 어휘에도 없어야 한다. `<image>`는 Iteration
+	// 5에, `<stack>`은 Iteration 6에 열렸다 (image.go·layout.go의 계약 테스트가 본다).
+	for _, name := range []string{"arrow", "line", "group", "icon", "table", "chart"} {
 		if KindOf(name) != KindNone {
 			t.Errorf("<%s>가 카탈로그에 있다 — 뒤 iteration의 어휘다", name)
 		}

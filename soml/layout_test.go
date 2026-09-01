@@ -88,6 +88,36 @@ func TestParseLayout(t *testing.T) {
 			want: `row[style=align-content: space-evenly](p[style=margin-inline-start: 40px]("a"))`,
 		},
 		{
+			// stack은 단일 셀 겹침 컨테이너다 — align/justify는 셀 안 모든 자식의 기본 정렬.
+			name: "stack의 정렬 속성",
+			src:  `<slide><stack align="center" justify="center"><text>배지</text></stack></slide>`,
+			want: `stack[align=center justify=center](text("배지"))`,
+		},
+		{
+			// at은 자식 하나가 셀 안에서 자기 앵커를 정한다 (place-self) — 이름만 파서가 열고
+			// 9지점 값 어휘는 값 층이 본다.
+			name: "stack 자식의 at 앵커",
+			src:  `<slide><stack><shape type="rect" at="top-right"/><text at="center">글자</text></stack></slide>`,
+			want: `stack(shape[type=rect at=top-right] text[at=center]("글자"))`,
+		},
+		{
+			// x/y는 절대 오프셋이다 — 부호·단위·백분율의 값 문법은 값 층이 본다.
+			name: "stack 자식의 x·y 절대 배치",
+			src:  `<slide><stack><image src="assets/dot.png" x="20" y="-10"/><shape type="star" x="50%" y="0"/></stack></slide>`,
+			want: `stack(image[src=assets/dot.png x=20 y=-10] shape[type=star x=50% y=0])`,
+		},
+		{
+			// 겹침이 흐름 배치와 만나는 장면 — grid 셀 안의 stack, row 안의 stack.
+			name: "stack이 컨테이너의 자식",
+			src:  `<slide><grid cols="2"><stack><text>a</text></stack></grid><row><stack><text>b</text></stack></row></slide>`,
+			want: `grid[cols=2](stack(text("a"))) row(stack(text("b")))`,
+		},
+		{
+			name: "stack 안의 stack — 중첩 겹침",
+			src:  `<slide><stack><stack><text>안쪽</text></stack></stack></slide>`,
+			want: `stack(stack(text("안쪽")))`,
+		},
+		{
 			name: "깊은 중첩 — grid 안의 row 안의 col",
 			src:  `<slide><grid cols="2"><row><col><p>a</p></col></row></grid></slide>`,
 			want: `grid[cols=2](row(col(p("a"))))`,
@@ -151,7 +181,7 @@ func TestParseLayoutErrors(t *testing.T) {
 			// 그리드의 핵심 장면이고, 컨테이너 안 그림이 그림+텍스트 2단의 핵심 장면이다.
 			name: "컨테이너 안의 note",
 			src:  `<slide><row><note>메모</note></row></slide>`,
-			want: []string{"1:14 <row>의 자식으로 <note>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <image>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <spacer>)"},
+			want: []string{"1:14 <row>의 자식으로 <note>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <image>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
 		},
 		{
 			name: "컨테이너 안의 li",
@@ -179,7 +209,7 @@ func TestParseLayoutErrors(t *testing.T) {
 			// grid-template-*는 flex 컨테이너의 CSS에서 무효다 — 받아 놓고 버리지 않는다.
 			name: "row에는 cols가 없다",
 			src:  `<slide><row cols="3"></row></slide>`,
-			want: []string{"1:13 <row>에 알 수 없는 속성 cols (쓸 수 있는 속성: gap, align, justify, wrap, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, style)"},
+			want: []string{"1:13 <row>에 알 수 없는 속성 cols (쓸 수 있는 속성: gap, align, justify, wrap, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style)"},
 		},
 		{
 			name: "col에는 rows가 없다",
@@ -189,18 +219,46 @@ func TestParseLayoutErrors(t *testing.T) {
 		{
 			name: "spacer는 컨테이너가 아니다",
 			src:  `<slide><spacer gap="lg"/></slide>`,
-			want: []string{"1:16 <spacer>에 알 수 없는 속성 gap (쓸 수 있는 속성: grow, shrink, basis, span, self, order, style)"},
+			want: []string{"1:16 <spacer>에 알 수 없는 속성 gap (쓸 수 있는 속성: grow, shrink, basis, span, self, order, at, x, y, style)"},
 		},
 		{
-			// <stack>과 at·x·y는 Iteration 6이다 — 겹침 렌더가 없는 채로 열지 않는다.
-			name: "stack은 아직 어휘 밖이다",
-			src:  `<slide><stack><text>a</text></stack></slide>`,
-			want: []string{"1:9 알 수 없는 태그 <stack>"},
+			// <stack>은 Iteration 6에 열렸다 — 이제 단일 셀 겹침 컨테이너다. cols/rows는
+			// 절대 열지 않는다: 단일 셀이라는 것이 stack의 정의다 (stackFlowAttrs·PRD §13-3).
+			name: "stack에는 cols가 없다 (단일 셀)",
+			src:  `<slide><stack cols="2"><text>a</text></stack></slide>`,
+			want: []string{"1:15 <stack>에 알 수 없는 속성 cols (쓸 수 있는 속성: align, justify, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style)"},
 		},
 		{
-			name: "stack 자식 속성 at은 아직 어휘 밖이다",
-			src:  `<slide><grid at="top-left"></grid></slide>`,
-			want: []string{"1:14 <grid>에 알 수 없는 속성 at"},
+			// gap은 셀 사이의 간격인데 자식이 전부 같은 칸에 있어 뜻이 없다 — 받아 놓고
+			// 아무것도 하지 않는 속성은 열지 않는다 (stackFlowAttrs).
+			name: "stack에는 gap이 없다",
+			src:  `<slide><stack gap="md"><text>a</text></stack></slide>`,
+			want: []string{"1:15 <stack>에 알 수 없는 속성 gap"},
+		},
+		{
+			// wrap은 flex 전용(`flex-wrap`)이라 grid 흐름인 stack에서 무효다.
+			name: "stack에는 wrap이 없다",
+			src:  `<slide><stack wrap="true"><text>a</text></stack></slide>`,
+			want: []string{"1:15 <stack>에 알 수 없는 속성 wrap"},
+		},
+		{
+			// 노트는 콘텐츠가 아니라 슬라이드 메타데이터다 (layoutChildren의 근거와 같다) —
+			// stack도 레이아웃 컨테이너이므로 자식 어휘가 같다.
+			name: "stack 안의 note",
+			src:  `<slide><stack><note>메모</note></stack></slide>`,
+			want: []string{"1:16 <stack>의 자식으로 <note>는 올 수 없다"},
+		},
+		{
+			name: "닫히지 않은 stack",
+			src:  "<slide>\n  <stack>\n    <text>배지</text>\n</slide>",
+			want: []string{"2:4 <stack> 태그가 </slide>보다 먼저 닫혀야 한다"},
+		},
+		{
+			// <li>는 리스트 컨테이너의 자식이지 flex 항목이 아니다 (childPlacementAttrs) —
+			// at도 웹에서만 뜻을 갖는 선언이 되므로 열리지 않는다.
+			name: "li에는 자식 배치 속성 at이 없다",
+			src:  `<slide><ul><li at="center">항목</li></ul></slide>`,
+			want: []string{"1:16 <li>에는 속성을 쓸 수 없다 (at)"},
 		},
 		{
 			name: "컨테이너 자신에게 role은 없다",
@@ -270,7 +328,7 @@ func TestParseLayoutErrors(t *testing.T) {
 // 종류 카탈로그는 네 층(파서·geom·web·pptx)이 공유하는 한 표다 — 표가 흔들리면 좌표가
 // 엉뚱한 요소에 붙는다. 레이아웃 컨테이너와 <spacer>가 **다른 종류**인 것이 계약이다.
 func TestLayoutKinds(t *testing.T) {
-	for _, name := range []string{RowElement, ColElement, GridElement} {
+	for _, name := range []string{RowElement, ColElement, GridElement, StackElement} {
 		if got := KindOf(name); got != KindLayoutContainer {
 			t.Errorf("KindOf(%q) = %v, want KindLayoutContainer", name, got)
 		}
@@ -300,9 +358,51 @@ func TestLayoutKinds(t *testing.T) {
 			t.Errorf("TagTextRole(%q) = %q — 레이아웃 태그는 역할 표에 없어야 한다", name, role)
 		}
 	}
-	// <stack>은 Iteration 6이다 — 어휘에도 카탈로그에도 없어야 한다.
-	if KindOf("stack") != KindNone {
-		t.Error("<stack>이 카탈로그에 있다 — Iteration 6의 어휘다")
+	// <stack>은 Iteration 6에 열렸다 — 단일 셀 겹침 컨테이너이자 레이아웃 컨테이너 종류다
+	// (새 종류 KindStack을 만들지 않는다). 문법 표에도 있고 흐름은 FlowStack이다.
+	if got := KindOf(StackElement); got != KindLayoutContainer {
+		t.Errorf("KindOf(%q) = %v, want KindLayoutContainer (새 종류가 아니다)", StackElement, got)
+	}
+	if _, known := elementSpecs[StackElement]; !known {
+		t.Errorf("<%s>가 문법 표(elementSpecs)에 없다", StackElement)
+	}
+	if got := FlowOf(StackElement); got != FlowStack {
+		t.Errorf("FlowOf(%q) = %d, want FlowStack", StackElement, got)
+	}
+	// stack의 컨테이너 속성은 gap·wrap·cols·rows가 **없고** align·justify·pad·크기가 **있다**.
+	stackAttrs := strings.Join(ContainerAttrs(StackElement), " ")
+	for _, absent := range []string{"gap", "wrap", "cols", "rows"} {
+		if strings.Contains(" "+stackAttrs+" ", " "+absent+" ") {
+			t.Errorf("ContainerAttrs(stack)에 %q가 있다 — stack에서 뜻이 없다: %s", absent, stackAttrs)
+		}
+	}
+	for _, present := range []string{"align", "justify", "pad", "w", "h", "ratio"} {
+		if !strings.Contains(" "+stackAttrs+" ", " "+present+" ") {
+			t.Errorf("ContainerAttrs(stack)에 %q가 없다: %s", present, stackAttrs)
+		}
+	}
+	// row·grid의 컨테이너 속성은 한 항목도 움직이지 않았다.
+	if got, want := strings.Join(ContainerAttrs(RowElement), " "),
+		"gap align justify wrap pad w h min-w min-h max-w max-h ratio"; got != want {
+		t.Errorf("ContainerAttrs(row) = %q, want %q", got, want)
+	}
+	if got, want := strings.Join(ContainerAttrs(GridElement), " "),
+		"gap align justify wrap pad cols rows w h min-w min-h max-w max-h ratio"; got != want {
+		t.Errorf("ContainerAttrs(grid) = %q, want %q", got, want)
+	}
+	// 자식 배치 속성의 순서 — at·x·y가 order 뒤, style(탈출구) 앞이다.
+	if got, want := strings.Join(ChildPlacementAttrs(), " "),
+		"grow shrink basis span self order at x y style"; got != want {
+		t.Errorf("ChildPlacementAttrs() = %q, want %q", got, want)
+	}
+	// `<arrow>`·`<line>`·`<group>`은 여전히 닫혀 있다 (Iteration 7·9).
+	for _, name := range []string{"arrow", "line", "group"} {
+		if KindOf(name) != KindNone {
+			t.Errorf("<%s>가 카탈로그에 있다 — 뒤 iteration의 어휘다", name)
+		}
+		if _, known := elementSpecs[name]; known {
+			t.Errorf("<%s>가 문법 표에 있다 — 뒤 iteration의 어휘다", name)
+		}
 	}
 }
 
@@ -367,5 +467,34 @@ func TestParseLayoutFixture(t *testing.T) {
 	}
 	if parsed == 0 {
 		t.Fatal("파싱한 슬라이드가 없다 — 픽스처가 비었다")
+	}
+}
+
+// 비활성 픽스처 `_06_stack`은 이 iteration의 시험대다 — 항목 01은 파서만 열었으므로 여기서
+// 검증하는 계약은 하나다: 열린 어휘(`<stack>`·자식 `at`·`x`·`y`)를 쓴 모든 슬라이드가 진단
+// 0건으로 파싱된다. 값 해석·골든은 항목 03~06의 몫이고, `_` 접두라 픽스처 러너는 이 덱을
+// 아직 빌드하지 않는다 (internal/testkit.Fixtures).
+func TestParseStackFixture(t *testing.T) {
+	dir := filepath.Join("..", "testdata", "fixtures", "_06_stack", "slides")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("픽스처 디렉토리를 읽을 수 없다: %v", err)
+	}
+	parsed := 0
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), Ext) {
+			continue
+		}
+		src, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+		if err != nil {
+			t.Fatalf("%s: %v", entry.Name(), err)
+		}
+		if _, diags := Parse(entry.Name(), string(src)); len(diags) != 0 {
+			t.Errorf("%s: 진단이 없어야 한다:\n%s", entry.Name(), diags.Err())
+		}
+		parsed++
+	}
+	if parsed == 0 {
+		t.Fatal("파싱한 슬라이드가 없다 — _06_stack 픽스처가 비었다")
 	}
 }

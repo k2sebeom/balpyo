@@ -1,0 +1,14 @@
+<!-- stack 안 stack — 중첩 겹침의 좌표. 바깥 셀 안에 앵커로 놓인 안쪽 stack이 다시 자기
+     셀 좌표계를 연다. 중첩 레이아웃(<row> 안 <col>)이 흐름에서 그랬듯, 겹침도 중첩이
+     핵심 장면이다. -->
+<slide id="nested">
+  <h2>중첩 겹침</h2>
+  <stack w="fill" h="360">
+    <shape type="rect" fill="surface" w="fill" h="fill"/>
+    <stack w="200" h="200" at="center">
+      <shape type="rounded-rect" fill="accent1" w="fill" h="fill"/>
+      <shape type="ellipse" fill="accent3" w="80" h="80" at="top-right"/>
+      <text size="14" color="on-accent" at="center">중심</text>
+    </stack>
+  </stack>
+</slide>

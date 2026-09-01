@@ -1,0 +1,13 @@
+<!-- z-순서 — 세 도형이 계단식으로 겹친다. 그리고 x/y를 쓴 자식과 쓰지 않은 자식을
+     **섞는다**: 웹의 칠 순서(positioned가 non-positioned보다 위로 올라간다)와 PPTX의 문서
+     순서가 갈라지는 자리다. 픽스처에 없으면 항목 04가 그 갈라짐을 만나지 못한다 — 여기
+     `at="center"`(non-positioned)와 `x`/`y`(positioned)를 한 stack에 함께 둔다. -->
+<slide id="z-order">
+  <h2>z-순서</h2>
+  <stack w="fill" h="320">
+    <shape type="rect" fill="accent1" w="160" h="160" at="center"/>
+    <shape type="rect" fill="accent2" w="160" h="160" x="80" y="40"/>
+    <shape type="rect" fill="accent3" w="160" h="160" x="160" y="80"/>
+    <text size="18" color="on-accent" at="center">가운데</text>
+  </stack>
+</slide>

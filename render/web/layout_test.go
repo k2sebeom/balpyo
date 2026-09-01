@@ -209,8 +209,12 @@ func TestLayoutVocabularyIsFullyMapped(t *testing.T) {
 		}
 	}
 	placement := covered(placementCases())
+	// at·x·y는 Iteration 6 항목 01에서 파서 어휘에만 열렸다 — 겹침 CSS 매핑(place-self의
+	// 9지점, x/y의 절대 배치)은 항목 04의 몫이다. 항목 04가 appendPlacement에 겹침 선언을
+	// 더하면서 placementCases에 행을 넣고 이 면제를 지운다.
+	pendingItem04 := map[string]bool{"at": true, "x": true, "y": true}
 	for _, attr := range soml.ChildPlacementAttrs() {
-		if !placement[attr] {
+		if !placement[attr] && !pendingItem04[attr] {
 			t.Errorf("자식 배치 속성 %q의 CSS 매핑 검증이 없다 (PRD §7.4 자식 표의 행이 빠졌다)", attr)
 		}
 	}

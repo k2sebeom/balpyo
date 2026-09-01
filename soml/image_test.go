@@ -187,7 +187,7 @@ func TestParseImageErrors(t *testing.T) {
 			// 진단이 이미지의 속성 표 전체를 순서대로 싣는다.
 			name: "이미지에 fill은 없다",
 			src:  `<slide><image src="assets/wide.png" fill="surface"/></slide>`,
-			want: []string{`1:37 <image>에 알 수 없는 속성 fill (쓸 수 있는 속성: src, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, style)`},
+			want: []string{`1:37 <image>에 알 수 없는 속성 fill (쓸 수 있는 속성: src, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style)`},
 		},
 		{
 			// PRD §7.5 표의 frame은 뜻이 어디에도 정의되어 있지 않다 — 액자는 variant가
@@ -322,8 +322,9 @@ func TestImageKind(t *testing.T) {
 	if role, ok := TagTextRole(ImageElement); ok {
 		t.Errorf("TagTextRole(%q) = %q — 이미지는 역할 표에 없어야 한다", ImageElement, role)
 	}
-	// Iteration 6·7·9와 P1·P2의 컴포넌트는 카탈로그에도 어휘에도 없어야 한다.
-	for _, name := range []string{"stack", "arrow", "line", "group", "icon", "table", "chart"} {
+	// Iteration 7·9와 P1·P2의 컴포넌트는 카탈로그에도 어휘에도 없어야 한다. `<stack>`은
+	// Iteration 6에 열렸다 (layout.go의 TestLayoutKinds가 그 계약을 본다).
+	for _, name := range []string{"arrow", "line", "group", "icon", "table", "chart"} {
 		if KindOf(name) != KindNone {
 			t.Errorf("<%s>가 카탈로그에 있다 — 뒤 iteration의 어휘다", name)
 		}

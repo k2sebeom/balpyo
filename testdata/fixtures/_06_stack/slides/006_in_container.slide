@@ -1,0 +1,27 @@
+<!-- stack이 컨테이너의 자식 — 겹침이 흐름 배치와 만나는 장면. <grid cols="3"> 안 stack
+     3개(각 칸이 그림 위에 라벨을 얹은 카드), <row> 안 stack 하나. stack은 컨테이너의
+     자식이 될 수 있으므로 배치 속성(grow·span)을 받는다 (withChildPlacement). -->
+<slide id="in-container">
+  <h2>컨테이너 안의 겹침</h2>
+  <grid cols="3" gap="md">
+    <stack ratio="4:3">
+      <image src="assets/dot.png" fit="cover" w="fill" h="fill" alt="카드 1"/>
+      <text size="14" color="on-accent" at="bottom-left">하나</text>
+    </stack>
+    <stack ratio="4:3">
+      <image src="assets/dot.png" fit="cover" w="fill" h="fill" alt="카드 2"/>
+      <text size="14" color="on-accent" at="bottom-left">둘</text>
+    </stack>
+    <stack ratio="4:3">
+      <image src="assets/dot.png" fit="cover" w="fill" h="fill" alt="카드 3"/>
+      <text size="14" color="on-accent" at="bottom-left">셋</text>
+    </stack>
+  </grid>
+  <row gap="lg">
+    <stack grow="1" h="120">
+      <shape type="rect" fill="surface" w="fill" h="fill"/>
+      <text align="center" at="center">가로 열 안의 겹침</text>
+    </stack>
+    <p basis="200">겹침은 흐름 배치의 한 칸이 될 수 있다.</p>
+  </row>
+</slide>

@@ -183,8 +183,12 @@ func TestResolvePlacement(t *testing.T) {
 	for _, tc := range cases {
 		covered[tc.attr] = true
 	}
+	// at·x·y는 Iteration 6 항목 01에서 **이름만** 열렸다 — 값 해석(9지점 앵커 어휘,
+	// x/y 값 문법, `at`은 stack만·`x`/`y`는 stack·canvas만이라는 부모 한정)은 항목 03의
+	// 몫이다. 항목 03이 placementAttr에 분기를 더하면서 이 면제를 지운다.
+	pendingItem03 := map[string]bool{"at": true, "x": true, "y": true}
 	for _, attr := range soml.ChildPlacementAttrs() {
-		if !covered[attr] {
+		if !covered[attr] && !pendingItem03[attr] {
 			t.Errorf("자식 배치 속성 %q의 해석 테스트가 없다", attr)
 		}
 	}

@@ -12,6 +12,7 @@ func TestFlowOfCoversLayoutContainers(t *testing.T) {
 		{RowElement, FlowRow},
 		{ColElement, FlowColumn},
 		{GridElement, FlowGrid},
+		{StackElement, FlowStack},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
