@@ -149,6 +149,8 @@ func TestParseSlideLayout(t *testing.T) {
 		{name: "layout 없음", src: `<slide></slide>`},
 		{name: "content", src: `<slide layout="content"></slide>`, wantLayout: "content"},
 		{name: "canvas", src: `<slide layout="canvas"></slide>`, wantLayout: "canvas"},
+		{name: "two-column", src: `<slide layout="two-column"></slide>`, wantLayout: "two-column"},
+		{name: "section-divider", src: `<slide layout="section-divider"></slide>`, wantLayout: "section-divider"},
 		// 어휘 밖 값도 파서는 원문 그대로 싣는다 — 판정은 core의 몫이다.
 		{name: "어휘 밖 값도 원문 그대로", src: `<slide layout="titel"></slide>`, wantLayout: "titel"},
 		{name: "layout과 id 함께", src: `<slide layout="canvas" id="hero"></slide>`, wantLayout: "canvas"},
@@ -167,6 +169,48 @@ func TestParseSlideLayout(t *testing.T) {
 				t.Errorf("LayoutSpan = %q, want %q", got, tc.wantLayout)
 			}
 		})
+	}
+}
+
+// 슬롯 속성은 슬라이드 직계 자식이 될 수 있는 요소 전부에 열린다 (SlotAttr) — 파서는 이름만
+// 보고, "슬라이드 직계 자식에만·그 레이아웃에 그 슬롯이 있는가"는 core가 검증한다.
+func TestParseSlot(t *testing.T) {
+	doc := parseOK(t, `<slide layout="two-column">`+
+		`<text slot="title">Before / After</text>`+
+		`<col slot="left"><text>왼쪽</text></col>`+
+		`<shape slot="right" type="rect"><text>오른쪽</text></shape>`+
+		`<text>슬롯 없는 자식</text>`+
+		`</slide>`)
+	if got, ok := elementAt(t, doc.Content, 0).Attr(SlotAttr); !ok || got.Value != "title" {
+		t.Errorf("<text> slot = %q (ok=%v), want title", got.Value, ok)
+	}
+	if got, ok := elementAt(t, doc.Content, 1).Attr(SlotAttr); !ok || got.Value != "left" {
+		t.Errorf("<col> slot = %q (ok=%v), want left", got.Value, ok)
+	}
+	if got, ok := elementAt(t, doc.Content, 2).Attr(SlotAttr); !ok || got.Value != "right" {
+		t.Errorf("<shape> slot = %q (ok=%v), want right", got.Value, ok)
+	}
+	// 슬롯 없는 직계 자식은 slot 속성이 없다 — 기본 슬롯(body) 배정은 core의 몫이다.
+	if _, ok := elementAt(t, doc.Content, 3).Attr(SlotAttr); ok {
+		t.Errorf("슬롯 없는 자식에 slot 속성이 있다")
+	}
+}
+
+// 표준 레이아웃 카탈로그는 PRD §7.3의 11종이고 순서가 문서·진단 순서다.
+func TestSlideLayoutsCatalog(t *testing.T) {
+	got := make([]string, len(SlideLayouts()))
+	for i, l := range SlideLayouts() {
+		got[i] = string(l)
+	}
+	want := "title section-divider content two-column image-full image-text quote code stat canvas end"
+	if strings.Join(got, " ") != want {
+		t.Errorf("SlideLayouts() = %q\nwant %q", strings.Join(got, " "), want)
+	}
+	if DefaultSlideLayout != LayoutContent {
+		t.Errorf("DefaultSlideLayout = %q, want content", DefaultSlideLayout)
+	}
+	if DefaultSlot != "body" {
+		t.Errorf("DefaultSlot = %q, want body", DefaultSlot)
 	}
 }
 

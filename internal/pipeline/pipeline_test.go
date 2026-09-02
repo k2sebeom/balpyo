@@ -427,10 +427,11 @@ func TestLoadDeckAppliesSlideLayout(t *testing.T) {
 	}
 }
 
-// 어휘 밖 layout은 파일:행:열을 가진 빌드 에러다 — core가 값 층에서 잡는다.
+// 어휘 밖 layout은 파일:행:열을 가진 빌드 에러다 — core가 값 층에서 잡는다. 표준 카탈로그
+// 11종에도 (활성 테마에도) 없는 이름만 여기 해당한다.
 func TestLoadDeckRejectsUnknownLayout(t *testing.T) {
 	dir := newProject(t, map[string]string{
-		"slides/001_title.slide": "<slide id=\"a\" layout=\"two-column\"></slide>\n",
+		"slides/001_title.slide": "<slide id=\"a\" layout=\"corp-hero\"></slide>\n",
 	})
 	_, diags, err := LoadDeck(Options{ProjectDir: dir})
 	if err == nil {

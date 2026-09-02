@@ -187,7 +187,7 @@ func TestParseImageErrors(t *testing.T) {
 			// 진단이 이미지의 속성 표 전체를 순서대로 싣는다.
 			name: "이미지에 fill은 없다",
 			src:  `<slide><image src="assets/wide.png" fill="surface"/></slide>`,
-			want: []string{`1:37 <image>에 알 수 없는 속성 fill (쓸 수 있는 속성: src, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style)`},
+			want: []string{`1:37 <image>에 알 수 없는 속성 fill (쓸 수 있는 속성: src, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)`},
 		},
 		{
 			// PRD §7.5 표의 frame은 뜻이 어디에도 정의되어 있지 않다 — 액자는 variant가
@@ -370,7 +370,7 @@ func TestImageFits(t *testing.T) {
 // 늘 때 어느 태그가 빠졌는지 사람이 세어야 한다.
 func TestImageAttrs(t *testing.T) {
 	want := strings.Join(append(append([]string{"src", "fit", "alt"}, ImageAppearanceAttrs()...),
-		append(BoxAttrs(), ChildPlacementAttrs()...)...), " ")
+		append(append(BoxAttrs(), ChildPlacementAttrs()...), SlotAttr)...), " ")
 	if got := strings.Join(elementSpecs[ImageElement].attrs, " "); got != want {
 		t.Errorf("<image> 속성 = %q\nwant %q", got, want)
 	}

@@ -39,6 +39,10 @@ func TestResolveSlideLayoutConfirmed(t *testing.T) {
 		{"생략은 content로 채운다", `<slide></slide>`, soml.LayoutContent},
 		{"명시한 content", `<slide layout="content"></slide>`, soml.LayoutContent},
 		{"canvas", `<slide layout="canvas"></slide>`, soml.LayoutCanvas},
+		{"title", `<slide layout="title"></slide>`, soml.LayoutTitle},
+		{"two-column", `<slide layout="two-column"></slide>`, soml.LayoutTwoColumn},
+		{"section-divider", `<slide layout="section-divider"></slide>`, soml.LayoutSectionDivider},
+		{"end", `<slide layout="end"></slide>`, soml.LayoutEnd},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -54,9 +58,11 @@ func TestResolveSlideLayoutConfirmed(t *testing.T) {
 }
 
 // 어휘 밖 값은 **line:col을 가진** 진단이다 — 구간이 값을 가리키고 허용 목록이 어휘
-// 순서(content, canvas)로 실린다. 폴백하지 않는 것이 계약이다: `layout="titel"` 오타가
-// 조용히 기본 레이아웃으로 렌더되면 닫힌 어휘가 막으려던 실패가 된다 (Iteration 10의
-// "미구현 테마 레이아웃 → 폴백"과 다른 규칙 — 엔진이 이름조차 모르는 상태다).
+// 순서(SlideLayouts)로 실린다. 폴백하지 않는 것이 계약이다: `layout="titel"` 오타가
+// 조용히 기본 레이아웃으로 렌더되면 닫힌 어휘가 막으려던 실패가 된다. 표준 11종은 이제
+// 전부 유효하므로 여기서 에러가 되는 것은 표준 카탈로그에도 테마에도 없는 이름뿐이다
+// (테마가 구현하지 않은 표준 레이아웃 → 폴백+경고는 10/03의 다른 규칙이다 — 엔진이 이름은
+// 아는 상태다).
 func TestResolveSlideLayoutUnknown(t *testing.T) {
 	tests := []struct {
 		name string
@@ -65,7 +71,7 @@ func TestResolveSlideLayoutUnknown(t *testing.T) {
 		col int
 	}{
 		{"오타", `<slide layout="titel"></slide>`, 16},
-		{"미구현 표준 레이아웃", `<slide layout="two-column"></slide>`, 16},
+		{"카탈로그에도 테마에도 없는 이름", `<slide layout="corp-hero"></slide>`, 16},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -80,8 +86,8 @@ func TestResolveSlideLayoutUnknown(t *testing.T) {
 			if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "알 수 없는 layout") {
 				t.Errorf("진단 = %q, want '알 수 없는 layout' 에러", diag.String())
 			}
-			// 허용 목록이 어휘 정의(soml.SlideLayouts) 순서로 실린다.
-			if !strings.Contains(diag.Message, "content, canvas") {
+			// 허용 목록이 어휘 정의(soml.SlideLayouts) 순서로 실린다 — 카탈로그의 앞부분.
+			if !strings.Contains(diag.Message, "title, section-divider, content, two-column") {
 				t.Errorf("메시지에 허용 목록이 순서대로 없다: %q", diag.Message)
 			}
 			// 진단 뒤 회복 기본값은 content다 (빌드는 렌더에 닿지 않지만 상태는 결정적이다).
@@ -92,11 +98,15 @@ func TestResolveSlideLayoutUnknown(t *testing.T) {
 	}
 }
 
-// SlideLayouts 어휘는 2종으로 시작하고 기본값은 content다 (PRD §7.3의 나머지 9종은
-// Iteration 10). 순서가 진단 목록의 순서다.
+// SlideLayouts 어휘는 PRD §7.3 카탈로그 11종이고 기본값은 content다. 순서가 진단 목록의
+// 순서다.
 func TestSlideLayoutVocabulary(t *testing.T) {
 	got := soml.SlideLayouts()
-	want := []soml.SlideLayout{soml.LayoutContent, soml.LayoutCanvas}
+	want := []soml.SlideLayout{
+		soml.LayoutTitle, soml.LayoutSectionDivider, soml.LayoutContent, soml.LayoutTwoColumn,
+		soml.LayoutImageFull, soml.LayoutImageText, soml.LayoutQuote, soml.LayoutCode,
+		soml.LayoutStat, soml.LayoutCanvas, soml.LayoutEnd,
+	}
 	if len(got) != len(want) {
 		t.Fatalf("SlideLayouts = %v, want %v", got, want)
 	}

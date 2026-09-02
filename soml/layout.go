@@ -136,15 +136,24 @@ func ChildPlacementAttrs() []string {
 	return attrs
 }
 
-// withChildPlacement는 요소 고유 속성 뒤에 자식 배치 속성을 잇는다.
+// withChildPlacement는 요소 고유 속성 뒤에 자식 배치 속성을 잇고, 마지막으로 슬롯 배정
+// 속성(`slot`)을 붙인다.
 //
 // 태그마다 속성 표를 손으로 적지 않는 이유: 자식 배치 속성은 한 벌이고, 표를 복제하면
 // PRD 표에 속성이 하나 늘 때 어느 태그가 빠졌는지 사람이 세어야 한다. 고유 속성이
 // 앞에 오는 순서는 진단 메시지가 "이 태그다운 속성"부터 나열하게 한다.
+//
+// `slot`이 여기 붙는 이유(SlotAttr): 이 함수의 수신자 집합(`<text>`·`<shape>`·`<image>`·
+// 블록·리스트 컨테이너·레이아웃 컨테이너·`<spacer>`)이 곧 **슬라이드 직계 자식이 될 수 있는
+// 요소 집합**과 일치한다 (`<note>`만 빠지는데 그것은 콘텐츠가 아니라 메타데이터다). 슬롯은
+// 배치 채널이 아니라 슬라이드 수준 배정이므로 childPlacementAttrs에는 넣지 않고
+// (ChildPlacementAttrs를 소비하는 core의 Placement 해석과 섞이지 않게) 탈출구(style)보다도
+// 뒤, 목록의 맨 끝에 둔다 — 진단이 "이 태그다운 속성 → 배치 → 탈출구 → 슬롯" 순으로 읽힌다.
 func withChildPlacement(attrs []string) []string {
-	merged := make([]string, 0, len(attrs)+len(childPlacementAttrs))
+	merged := make([]string, 0, len(attrs)+len(childPlacementAttrs)+1)
 	merged = append(merged, attrs...)
-	return append(merged, childPlacementAttrs...)
+	merged = append(merged, childPlacementAttrs...)
+	return append(merged, SlotAttr)
 }
 
 // layoutChildren은 레이아웃 컨테이너의 자식 어휘다 (순서 = 진단 순서).

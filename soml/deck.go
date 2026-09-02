@@ -43,35 +43,75 @@ func (a Aspect) Stage() (Stage, error) {
 	}
 }
 
-// SlideLayout은 슬라이드의 배치 레이아웃이다 (`<slide layout>`). 어휘는 2종으로 시작한다
-// (PRD §7.3의 카탈로그 11종 중 나머지 9종은 슬롯·테마 레이아웃과 함께 Iteration 10이다).
+// SlideLayout은 슬라이드의 배치 레이아웃이다 (`<slide layout>`). 어휘는 PRD §7.3의 표준
+// 카탈로그 11종이다 (Iteration 6에 content·canvas 2종으로 시작해 Iteration 10에 나머지 9종이
+// 슬롯·테마 레이아웃과 함께 열렸다).
 //
 // Aspect와 나란히 여기 있는 이유: 둘 다 슬라이드의 **구조**를 정하는 닫힌 어휘이고 외관이
 // 아니다. 외관 어휘(role·align)가 테마와 함께 자라 appearance.go에 있는 것과 갈라진다 —
-// 레이아웃 카탈로그는 엔진이 소유하고(렌더러가 배치 코드를 갖는 이름만 열린다), 테마가
-// 더하는 것은 Iteration 10의 표준 레이아웃 위에 얹는 테마 레이아웃이다.
+// 표준 레이아웃 카탈로그의 **이름**은 엔진이 소유하고(이 목록이 닫힌 어휘다), 테마가 더하는
+// 것은 그 위에 얹는 자체 레이아웃(`layout="corp-hero"`)이다. 표준 이름의 **배치 구현**은
+// 테마가 소유하며(layouts/*.css), 테마가 구현하지 않은 표준 레이아웃은 기본 테마(minimal)
+// 구현으로 폴백하고 경고한다 (core.slideLayout) — 어휘 밖 이름(오타·테마에도 없는 이름)은
+// 폴백이 아니라 빌드 에러다.
 type SlideLayout string
 
 const (
-	// LayoutContent는 세로 스택이다 — **현재 스테이지의 이름**이다 (render/web.writeStage).
-	// `layout`을 생략한 슬라이드의 기본값이자, 저자가 명시할 수 있는 정당한 표기다: 구현된
-	// 동작에 이름이 있는데 어휘에서 닫아 두면 `layout="content"`가 에러가 된다.
+	// LayoutTitle은 표지다 — 슬롯 kicker·title·subtitle·author·date.
+	LayoutTitle SlideLayout = "title"
+	// LayoutSectionDivider는 챕터 구분이다 — 슬롯 title·subtitle.
+	LayoutSectionDivider SlideLayout = "section-divider"
+	// LayoutContent는 제목 + 본문 흐름이다 (기본값) — 슬롯 title·body. 세로 스택 스테이지의
+	// 이름이기도 하다 (render/web.writeStage): `layout`을 생략한 슬라이드의 기본값이자,
+	// 저자가 명시할 수 있는 정당한 표기다.
 	LayoutContent SlideLayout = "content"
-	// LayoutCanvas는 자유 배치다 — 스테이지가 자식을 세로로 쌓지 않고 자식이 `x`/`y`·`at`으로
-	// 자기 자리를 정한다. **배치 시맨틱(스테이지 CSS)은 Iteration 6 항목 04다** — 이 이름이
-	// 렌더러에 닿아도 아직 아무도 읽지 않으므로 산출물은 바뀌지 않는다.
+	// LayoutTwoColumn은 2단 비교·병렬이다 — 슬롯 title·left·right.
+	LayoutTwoColumn SlideLayout = "two-column"
+	// LayoutImageFull은 전면 이미지다 — 슬롯 media·caption.
+	LayoutImageFull SlideLayout = "image-full"
+	// LayoutImageText는 이미지+텍스트 조합이다 — 슬롯 title·media·body.
+	LayoutImageText SlideLayout = "image-text"
+	// LayoutQuote는 인용이다 — 슬롯 quote·attribution.
+	LayoutQuote SlideLayout = "quote"
+	// LayoutCode는 코드 중심이다 — 슬롯 title·code·caption.
+	LayoutCode SlideLayout = "code"
+	// LayoutStat은 수치 강조 콜아웃이다 — 슬롯 title·value·label·body.
+	LayoutStat SlideLayout = "stat"
+	// LayoutCanvas는 자유 배치다 — 슬롯이 없고, 스테이지가 자식을 세로로 쌓지 않고 자식이
+	// `x`/`y`·`at`으로 자기 자리를 정한다 (배치 시맨틱은 Iteration 6 항목 04, 테마는
+	// 배경·여백·외관 기본값만 소유한다).
 	LayoutCanvas SlideLayout = "canvas"
+	// LayoutEnd는 마무리다 — 슬롯 title·contact.
+	LayoutEnd SlideLayout = "end"
 )
 
 // DefaultSlideLayout은 `layout`을 생략한 슬라이드의 레이아웃이다 — 속성이 없을 때의 기본값과
 // 저자가 명시한 `layout="content"`가 같은 이름을 갖는다 (그래서 둘의 산출물이 바이트가 같다).
+// **폴백 기준**이기도 하다: 테마가 구현하지 않은 표준 레이아웃은 minimal의 이 레이아웃 구현이
+// 아니라 각 표준 레이아웃의 minimal 구현으로 폴백한다 (minimal이 11종을 전부 구현하므로).
 const DefaultSlideLayout = LayoutContent
 
-// SlideLayouts는 레이아웃 어휘 전체다. 순서가 진단 메시지에 실리는 순서이자 문서 순서다 —
-// 기본값(content)이 먼저, 새로 여는 canvas가 뒤다.
+// SlideLayouts는 표준 레이아웃 어휘 전체다 (PRD §7.3 카탈로그 순서). 순서가 진단 메시지에
+// 실리는 순서이자 문서 순서다 — 표지(title)에서 마무리(end)로 발표의 흐름을 따른다.
 func SlideLayouts() []SlideLayout {
-	return []SlideLayout{LayoutContent, LayoutCanvas}
+	return []SlideLayout{
+		LayoutTitle, LayoutSectionDivider, LayoutContent, LayoutTwoColumn,
+		LayoutImageFull, LayoutImageText, LayoutQuote, LayoutCode, LayoutStat,
+		LayoutCanvas, LayoutEnd,
+	}
 }
+
+// SlotAttr는 슬롯 배정 속성이다 (`slot="title"`) — 레이아웃 슬라이드의 직계 자식이 어느
+// 슬롯에 들어갈지 정한다 (PRD §7.3). 슬롯 없는 직계 자식은 기본 슬롯(DefaultSlot)에 들어간다.
+//
+// 채널을 넓게 열고 좁게 검증하는 것이 계약이다 (ADR 0031의 x/y와 같은 태도): 속성 allowlist는
+// 태그별이라 위치를 모르므로(같은 `<text>` spec이 슬라이드 직속에도 컨테이너 안에도 쓰인다)
+// 슬라이드 직계 자식이 될 수 있는 요소 전부에 `slot`을 열고, "슬롯은 슬라이드 직계 자식에만",
+// "그 레이아웃에 그 슬롯이 있는가"는 부모와 레이아웃을 아는 값 층(core)이 검증한다.
+const SlotAttr = "slot"
+
+// DefaultSlot은 `slot`을 지정하지 않은 직계 자식이 들어가는 슬롯 이름이다 (PRD §7.3).
+const DefaultSlot = "body"
 
 // Deck은 정규화된 덱 모델이다. 렌더러가 보는 유일한 입력이며, 여기 도달한 시점에는
 // 합성 컴포넌트가 전개되고 외관이 해석되어 있다.

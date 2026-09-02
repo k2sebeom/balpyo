@@ -209,7 +209,7 @@ func TestParseLayoutErrors(t *testing.T) {
 			// grid-template-*는 flex 컨테이너의 CSS에서 무효다 — 받아 놓고 버리지 않는다.
 			name: "row에는 cols가 없다",
 			src:  `<slide><row cols="3"></row></slide>`,
-			want: []string{"1:13 <row>에 알 수 없는 속성 cols (쓸 수 있는 속성: gap, align, justify, wrap, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style)"},
+			want: []string{"1:13 <row>에 알 수 없는 속성 cols (쓸 수 있는 속성: gap, align, justify, wrap, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
 		},
 		{
 			name: "col에는 rows가 없다",
@@ -219,14 +219,14 @@ func TestParseLayoutErrors(t *testing.T) {
 		{
 			name: "spacer는 컨테이너가 아니다",
 			src:  `<slide><spacer gap="lg"/></slide>`,
-			want: []string{"1:16 <spacer>에 알 수 없는 속성 gap (쓸 수 있는 속성: grow, shrink, basis, span, self, order, at, x, y, style)"},
+			want: []string{"1:16 <spacer>에 알 수 없는 속성 gap (쓸 수 있는 속성: grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
 		},
 		{
 			// <stack>은 Iteration 6에 열렸다 — 이제 단일 셀 겹침 컨테이너다. cols/rows는
 			// 절대 열지 않는다: 단일 셀이라는 것이 stack의 정의다 (stackFlowAttrs·PRD §13-3).
 			name: "stack에는 cols가 없다 (단일 셀)",
 			src:  `<slide><stack cols="2"><text>a</text></stack></slide>`,
-			want: []string{"1:15 <stack>에 알 수 없는 속성 cols (쓸 수 있는 속성: align, justify, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style)"},
+			want: []string{"1:15 <stack>에 알 수 없는 속성 cols (쓸 수 있는 속성: align, justify, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
 		},
 		{
 			// gap은 셀 사이의 간격인데 자식이 전부 같은 칸에 있어 뜻이 없다 — 받아 놓고
