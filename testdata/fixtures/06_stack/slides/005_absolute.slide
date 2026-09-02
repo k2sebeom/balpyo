@@ -5,8 +5,8 @@
   <stack w="480" h="300">
     <shape type="rounded-rect" fill="surface" w="fill" h="fill"/>
     <shape type="ellipse" fill="accent1" w="48" h="48" x="24" y="24"/>
-    <shape type="star" fill="accent4" w="40" h="40" x="-16" y="-16"/>
-    <shape type="rect" fill="accent2" w="80" h="24" x="50%" y="100%"/>
+    <shape type="star" fill="accent1" w="40" h="40" x="-16" y="-16"/>
+    <shape type="rect" fill="muted" w="80" h="24" x="50%" y="100%"/>
     <text size="14" color="muted" x="12" y="12">좌상단에서 12px</text>
   </stack>
 </slide>

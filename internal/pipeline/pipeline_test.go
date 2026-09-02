@@ -462,9 +462,17 @@ func filesEqual(t *testing.T, a, b render.Files) {
 	}
 }
 
-// 이 항목에서 layout 값은 렌더러에 닿을 뿐 아무도 읽지 않는다 — layout="content"·"canvas"를
-// 쓴 덱의 **웹 산출물**이 layout 없는 덱과 바이트가 같아야 항목 04의 골든 diff가 순수하게
-// 캔버스 배치만 담는다. 웹 렌더는 브라우저가 필요 없어 이 검사는 결정적이다.
+// layout="content"는 기본 스테이지(세로 스택)의 이름이므로 그 **웹 산출물**은 layout 없는
+// 덱과 바이트가 같아야 한다 (DefaultSlideLayout == content — 이름을 명시해도 아무것도 바뀌지
+// 않는다). **canvas는 다르다**: 항목 04가 캔버스를 실제 스테이지(balpyo-stage-canvas = 단일 셀
+// grid 겹침)로 구현했으므로 웹 산출물이 base와 갈라지는 것이 정답이다 — 그 갈라짐의 내용
+// (스테이지 클래스 + 조건부 stack CSS)은 render/web의 TestCanvasStageIsStack·
+// TestContentStageIsNotCanvas·TestStackCSSOnlyWhenStackOrCanvasUsed가 소유한다. 여기서는
+// 파이프라인 수준에서 content가 여전히 무변경이고 canvas만 갈라지는지를 결정적으로 못 박는다
+// (웹 렌더는 브라우저가 필요 없다).
+//
+// (항목 06의 발견: 이 검사는 항목 02가 canvas를 무변경으로 단정한 채 남았고, 항목 04가 캔버스
+// 스테이지를 구현하면서 갱신하지 않아 커밋 시점에 빨간 채였다 — NOTES 06/06 "앞 항목의 버그".)
 func TestBuildLayoutWebOutputInvariant(t *testing.T) {
 	webFiles := func(attr string) render.Files {
 		dir := newProject(t, map[string]string{
@@ -482,8 +490,12 @@ func TestBuildLayoutWebOutputInvariant(t *testing.T) {
 		return files[render.TargetHTML]
 	}
 	base := webFiles("")
+	// content는 기본 스테이지의 이름 — 웹 산출물이 무변경이다.
 	filesEqual(t, base, webFiles(` layout="content"`))
-	filesEqual(t, base, webFiles(` layout="canvas"`))
+	// canvas는 실제 스테이지 — base와 달라야 한다 (갈라짐의 내용 판정은 render/web의 몫).
+	if canvas := webFiles(` layout="canvas"`); bytes.Equal(canvas["index.html"], base["index.html"]) {
+		t.Error(`layout="canvas"의 웹 산출물이 base와 같다 — 항목 04의 캔버스 스테이지가 웹에 닿지 않았다`)
+	}
 }
 
 // canvas는 PPTX 파트를 새로 요구하지 않는다 (모든 슬라이드가 slideLayout1.xml 하나를

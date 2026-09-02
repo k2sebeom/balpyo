@@ -557,22 +557,18 @@ func TestResolveSignedAxisRegression(t *testing.T) {
 	}
 }
 
-// _06_stack 픽스처는 이 iteration 전체의 시험대다 (항목 06이 활성화하고 골든을 붙인다). 이
+// 06_stack 픽스처는 이 iteration 전체의 시험대다 (항목 06이 활성화하고 골든을 붙였다). 이
 // 항목의 몫은 **배치**이므로, 값 층이 픽스처의 at/x/y/stack을 진단 없이 해석하는지 못 박는다.
 //
-// 남은 진단은 전부 색 토큰(accent2~5·on-accent)이 하드코딩 테마(minimalTheme)에 아직 없어서
-// 나는 외관 진단이다 — 그 팔레트를 채우는 것은 픽스처 활성화(항목 06)의 몫이고 배치와 무관하다.
-// 그래서 "진단 0건"이 아니라 "**배치 진단 0건**"을 단정한다: 배치 진단이 하나라도 있으면 색
-// 토큰 진단이 아니므로 여기서 빨갛게 된다.
+// 항목 01이 이 픽스처를 하드코딩 테마(minimalTheme)에 없는 색 토큰(accent2~4·on-accent)으로
+// 썼던 것을 항목 06이 테마 안 토큰으로 고쳤으므로(NOTES 06/06), 픽스처는 이제 **진단 0건**으로
+// 해석된다 — 골든에 diagnostics.txt가 없는 것이 그 증거다. 배치 진단이든 색 진단이든 하나라도
+// 나면 여기서 빨갛게 된다.
 func TestResolveStackFixture(t *testing.T) {
-	deck := readFixtureDeck(t, "_06_stack")
+	deck := readFixtureDeck(t, "06_stack")
 	diags := Resolve(deck)
 	for _, diag := range diags {
-		// 모든 진단은 색 토큰 외관 진단이어야 한다 — 배치(at/x/y/stack/canvas) 진단이 새면
-		// 이 문자열을 담지 않으므로 드러난다.
-		if !strings.Contains(diag.Message, "색 토큰") {
-			t.Errorf("배치 관련 진단이 픽스처에서 났다: %s", diag.String())
-		}
+		t.Errorf("픽스처가 진단 없이 해석되어야 한다 (항목 06이 테마 안 토큰으로 고쳤다): %s", diag.String())
 	}
 	// 9지점 앵커가 전부 확정 배치에 실렸는지 (001_anchors가 9개를 전수로 쓴다 — accent1·surface만
 	// 써서 색 진단 없이 해석된다).

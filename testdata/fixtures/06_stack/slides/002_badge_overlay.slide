@@ -6,8 +6,8 @@
   <h2>배지 오버레이</h2>
   <stack w="360" h="240">
     <image src="assets/dot.png" fit="cover" w="fill" h="fill" alt="배경 그림"/>
-    <shape type="rounded-rect" fill="accent2" pad="sm" at="top-right">
-      <text size="14" color="on-accent">NEW</text>
+    <shape type="rounded-rect" fill="muted" pad="sm" at="top-right">
+      <text size="14" color="bg">NEW</text>
     </shape>
   </stack>
 </slide>

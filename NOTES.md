@@ -2220,3 +2220,111 @@
     `TestRenderUnmappedElementFails`(shape_test.go)가 이미 지키고 있어 살아 있음을 확인만 했다.
   - **열린 질문 — 없음.** 이 항목은 PRD §13-3의 확정 계약(z-순서 = 문서 순서, x/y 음수 허용)을
     테스트로 옮긴 것뿐이라 임의로 고른 것이 없다.
+
+## Iteration 6 · 06-fixtures — 픽스처 활성화 + 골든 + 겹침의 픽셀 판정
+
+<!-- item: 06/06-fixtures -->
+
+- **한 것**:
+  - **`_06_stack` → `06_stack`으로 활성화** (`git mv`). 픽스처 러너(`internal/testkit.Fixtures`)가
+    이제 이 덱을 빌드하고 골든을 붙인다. 골든: 슬라이드 10장 + 웹 에셋 `dot.png` 1장 + PPTX
+    미디어 `image1.png` 1장(002·006이 같은 `dot.png`를 써도 중복 제거로 하나) + theme1.xml.
+    **노트 파트·diagnostics.txt는 없다** (덱에 `<note>`가 없고 경고 없이 빌드된다). **캔버스
+    슬라이드(008·009)가 파트를 늘리지 않았다** — `goldenPartLists`가 그 사실을 못 박는다
+    (항목 02·05의 판단이 실물로 확인됨).
+  - **픽스처를 고쳤다 — 항목 01이 테마 밖 색 토큰을 썼다** (06/03의 열린 질문을 이렇게 닫는다).
+    01이 `accent2`·`accent3`·`accent4`·`on-accent`를 썼는데 유일한 테마 `minimal`에는
+    `fg`·`bg`·`muted`·`surface`·`accent1`뿐이다(`core/theme.go`, `balpyo.json`에 커스텀 팔레트
+    통로 없음). 06/03은 "항목 06이 테마에 색을 더한다"고 남겼지만 **테마 확장은 구현 변경(범위
+    밖)**이고, `on-accent`는 PRD §8.4 어휘에도 없다. 그래서 **테마가 아니라 픽스처를 고쳤다**:
+    전역 일관 매핑 `accent2→muted`·`accent3→fg`·`accent4→accent1`·`on-accent→bg` (겹친 도형이
+    시각적으로 구별되게 고름). 세 필수 슬라이드는 모두 살아 있다 (004 z-order·001 anchors·005
+    absolute + 008의 음수 좌표). 이제 `06_stack`은 **진단 0건**으로 해석되어 `TestResolveStackFixture`
+    를 "배치 진단 0건"에서 "진단 0건"으로 조였다 (골든에 diagnostics.txt가 없는 것이 증거).
+  - **004_z_order를 다시 설계했다 — 이 iteration의 핵심 증거를 실제로 만들기 위해.** 항목 01의
+    원본은 정적 자식(`at=center`)을 **문서상 먼저** 두고 위치 지정 자식(`x`/`y`)을 뒤에 두었으며,
+    무엇보다 **둘이 겹치지 않았다**(중앙 정적 rect vs 좌상단 위치 지정 rect). 그러면 항목 04가
+    막은 divergence(웹은 positioned를 static 위로 칠하고 PPTX는 문서 순서)를 **픽셀로 만날 수
+    없다** — 겹치지 않으면 순서가 보이지 않고, 정적이 먼저면 문서 순서와 웹 기본 칠 순서가
+    오히려 일치한다. 새 순서: `muted`(x/y, 문서 먼저=아래) → `accent1`(at=center, muted를 덮음=위)
+    → `fg`(x/y, 문서 맨 뒤=가장 위) → 가운데 텍스트. 이제 **muted∩accent1**이 정확히 divergence
+    자리다 — 위치 지정 자식 위에 정적 자식이 문서상 뒤로 얹힌다. 리뷰 갤러리에서 웹·PPTX 모두
+    accent1(파랑)이 muted(회색)를 덮는 것을 눈으로 확인했다 (position:relative 복원이 살아 있다).
+  - **픽스처 수준 검증에 편입** (`internal/testkit/fixture_level_test.go`): `stackFixtureName`
+    상수, `fixtureNames`·`goldenPartLists`(파트 33개 전수)·`slideCounts`(10)에 추가. 파트 목록·
+    색 계약(리터럴 `srgbClr` 0건 — 모든 색이 토큰)·좌표 0 오차 대조·도형 수 등식·슬라이드별
+    도형 수를 공짜로 받는다.
+  - **겹침 전용 검사 둘**:
+    - `TestStackFixtureZOrderIsDocumentOrder` (브라우저 없이 골든만 읽음): 슬라이드 10장 전부에서
+      spTree의 도형 이름표(`s<슬라이드>.<자식>…` = web.ElementID 문서 위치 경로)가 등장 순서로
+      **전위 순회 단조 증가**하는지 — 문서 순서 = z-순서를 픽스처 전수로 본다 (항목 05가 단위
+      테스트로 본 것을, `TestLayoutFixtureSameRowBoxesShareY`가 레이아웃에 한 것과 같은 자리).
+    - `TestStackFixtureOverlapRegions` (브라우저+LibreOffice): z-order 슬라이드에서 도형 쌍의
+      **겹친 사각형만 잘라** 웹 vs PPTX를 비교한다 (테두리 4px 물림, 얇은 슬리버는 min-side로
+      건너뜀). 겹친 영역만 보면 순서 뒤집힘이 희석되지 않고 곧바로 수치가 된다.
+  - **잉크 띠 판정**: `06_stack/001~009`를 `inkBandSkipSlides`에 슬라이드 단위 근거와 함께 적었다
+    (겹친 자리에는 띠의 주인이 여럿이라 단색 배경 가정이 깨진다 — 04·05가 8·7장을 뺀 것과 같은
+    종류). **010 content-explicit는 겹침 없는 순수 텍스트라 판정에 남겼다** — 픽스처 전체를 통째로
+    빼지 않는다는 원칙의 실물이다.
+
+- **측정 (수치와 근거를 남긴 조정만 했다)**:
+  - **슬라이드 전체 픽셀 비교** (기본 허용 2.5%, 채널 32): s1 anchors 0.768% · s2 badge-overlay
+    0.793% · s3 watermark 2.196% · s4 z-order 0.507% · s5 absolute 0.347% · **s6 in-container
+    3.128%** · s7 nested 1.001% · s8 canvas-free 0.254% · s9 canvas-stack 0.430% · **s10
+    content-explicit 2.514%**. 여덟 장은 기본 안이고 둘만 넘는다:
+    - `slideDiffOptions["06_stack/in-container"] = 3.7%` (측정 3.128%): 그림 카드 3장(dot.png
+      cover 리샘플링) + 흰 라벨 글자 + 외곽선 도형 + 문단이 한 슬라이드에 모인 잔차의 합. 겹침이
+      새 잔차원을 만들지 않는다 — 세 종류가 한 자리에 겹칠 뿐이다.
+    - `slideDiffOptions["06_stack/content-explicit"] = 3.0%` (측정 2.514%): 겹침 **없는** 순수
+      텍스트. h1 큰 글리프 + LibreOffice 첫 기준선 +2~5px가 경계 픽셀을 이중으로 센다(02의 제목
+      위계 슬라이드 3.04%와 같은 잔차).
+    - 나머지 슬라이드는 **기본 2.5%를 넘기지 않았다** — 겹침 슬라이드(1~9)의 예산을 느슨히 두면
+      순서 갈라짐이 그 그늘에 숨으므로 픽스처 전체 완화 대신 슬라이드 한정으로만 조였다.
+  - **겹친 영역 크롭** (`stackOverlapRegionDiffMaxRatio = 6%`): **muted∩accent1(divergence) =
+    2.627%** (136×156px), accent1∩fg = 1.422% (112×102px). 둘 다 6% 안이고, 순서가 뒤집히면
+    영역 전체가 다른 색이 되어 ~100%로 튄다 → 임계값이 뒤집힘을 여전히 잡는다. **muted∩fg의
+    16×66px 슬리버는 12%**였는데 이는 z-순서 뒤집힘이 아니라 **muted|fg 세로 색 경계 한 줄
+    (≈129px)을 두 래스터라이저가 다르게 리샘플링**한 것이다(그림 리샘플링과 같은 잔차) — 얇은
+    띠에서 큰 비율이 된다. 그 쌍의 순서(fg가 위)는 accent1∩fg가 이미 판정하므로 `stackOverlapMinSide`
+    를 8→24px로 올려 얇은 슬리버를 건너뛴다 (imageRegion이 작은 그림을 픽셀 하한으로 거른 것과
+    같은 자리의 장치). 핵심 divergence(136×156px)는 남는다.
+  - **줄바꿈 폭**: `loLineWidthMaxRatios["06_stack"] = 6%` (측정 최대 +5.5%, 010의 첫 문단
+    `layout="content"는 …`). 겹침이 아니라 한글↔라틴 경계의 스크립트 간격 잔차다(02 5.0%·03
+    5.8%와 같은 원인). 줄 수는 갈라지지 않아(0 오차 검사 통과) 구조 문제가 아니다.
+  - **일치 ≠ 옳음의 구분** (TASKS의 NOTES 요청): `TestFixtureCoordinatesMatchGeometry`는 웹이 잰
+    좌표가 PPTX의 `xfrm` EMU와 **같은지**만 본다 (0 오차). 웹에서 앵커가 엉뚱한 자리에 붙으면
+    PPTX도 같이 틀리므로 이 검사는 통과한다 — **옳음의 판정은 항목 04의 좌표 스냅샷(브라우저)과
+    5번의 사람 확인**이다. 이 자동 검사는 "두 타깃이 일치한다"만 보증한다.
+
+- **앞 항목의 버그를 하나 고쳤다 (골든을 맞추려 계약을 바꾼 것이 아니다)**:
+  - `internal/pipeline` `TestBuildLayoutWebOutputInvariant`가 **커밋 시점에 빨간 채였다** —
+    항목 02가 `layout="canvas"`의 웹 산출물이 base(layout 없음)와 바이트 같다고 단정했는데,
+    항목 04가 캔버스를 **실제 스테이지**(`balpyo-stage-canvas` = 단일 셀 grid 겹침)로 구현하면서
+    그 단정을 갱신하지 않았다. 렌더러가 옳고(캔버스는 갈라져야 한다 — render/web의
+    `TestCanvasStageIsStack`·`TestContentStageIsNotCanvas`·`TestStackCSSOnlyWhenStackOrCanvasUsed`가
+    그 계약을 소유), **테스트가 낡은 것**이다. content는 여전히 무변경(inert)이므로 그 단정은
+    남기고, canvas는 base와 **달라야 한다**로 고쳤다. 렌더러·골든은 건드리지 않았다.
+  - 이 밖에 `TestParseStackFixture`(soml)·`TestResolveStackFixture`(core)의 `_06_stack` 경로를
+    `06_stack`으로 옮겼다 (활성화의 당연한 후속).
+
+- **남긴 것**:
+  - **리뷰 박스는 열어 두었다 (사람 확인 대기).** `make review`가 `review/06_stack/`(웹·PPTX·diff
+    10장 + `stack-deck.pptx`)를 만들었다. macOS에서 `stack-deck.pptx`를 Keynote/PowerPoint로 직접
+    열어 확인할 것: **(a)** 배지(002)가 같은 모서리·같은 크기인지(9지점 앵커가 대각으로 어긋나지
+    않았는지), **(b)** 겹침 순서가 웹과 같은지 — 특히 004 z-order의 x/y·정적 섞인 자리(muted 위
+    accent1 위 fg), **(c)** 겹친 도형들이 **각각 선택·이동 가능한 독립 객체**인지(그림 한 장으로
+    납작해지지 않았다), **(d)** 슬라이드 밖으로 걸친 배지(005·008의 음수 좌표 별)가 편집 화면에선
+    보이고 발표 모드에선 잘리는지, **(e)** 캔버스(008·009) 자유 배치가 웹과 같은 자리인지(여백
+    64px 기준), **(f)** 겹침이 그룹으로 묶여 있지 **않은지**(stack은 배치이고 편집 단위가 아니다 —
+    Iteration 9의 `<group>`과 갈라지는 유일한 사람 확인 자리). 자동 검사는 (a)(b)의 절반(좌표
+    일치·spTree 순서·겹친 영역 색)만 본다.
+  - **잉크 띠를 겹침에서 되살리는 방법은 찾지 못했다** (05가 같은 자리에 같은 메모를 남겼다).
+    겹친 자리에는 잰 줄 하나에 띠 하나가 대응하지 않으므로("주인이 여럿") 방법의 전제가 깨진다 —
+    도형 안쪽에서만 성립한다(04의 `TestShapeFixtureInShapeTextLineCounts`). 06_stack의 겹침
+    슬라이드에는 도형 안 여러 줄 문단이 없어 그 대안도 쓸 자리가 없다. 줄바꿈 계약은 010(겹침
+    없는 텍스트)과 01~03 픽스처가 지킨다.
+  - **문서·ADR·PRD 갱신은 항목 07이다** — 이 항목은 활성화·골든·픽셀 판정까지이고, 문서 박스는
+    열어 두었다.
+  - **`word-break: keep-all`로 스크립트 간격 규칙 자체를 맞추는 것**은 여전히 열린 질문이다(04/06).
+    모든 덱의 타이포그래피가 움직이므로 이 항목의 범위 밖이고, 그래서 폭 잔차를 픽스처 한정
+    비율로 흡수했다.

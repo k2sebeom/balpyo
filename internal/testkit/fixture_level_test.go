@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -48,6 +49,22 @@ const (
 	// (fixtureLiteralColors에 행이 없다), 큰 색면은 도형보다 오히려 넓다 — inkBandSkipSlides가
 	// 그 사실을 슬라이드마다 적는다.
 	imageFixtureName = "05_image"
+	// stackFixtureName은 Iteration 6의 겹침 픽스처다 (`<stack>` + 자식 배치 `at`·`x`·`y` +
+	// `<slide layout="canvas">` — 항목 06이 활성화했다). 이 픽스처가 새로 시험하는 것은
+	// **겹친 것이 두 타깃에서 같은 순서로 겹치는가**다: 문서 순서가 곧 z-순서라는 계약을
+	// (PRD §13-3) spTree 순서 전수(TestStackFixtureZOrderIsDocumentOrder)와 겹친 영역 크롭
+	// 비교(TestStackFixtureOverlapRegions)가 판정한다.
+	//
+	// 도형·그림 픽스처가 깬 두 전제(리터럴 색·잉크 띠의 단색 배경)에서 이 픽스처는 앞쪽을
+	// 되돌린다: 모든 색이 토큰이라 슬라이드 파트에 리터럴 `srgbClr`가 0건이다
+	// (fixtureLiteralColors에 행이 없다). 잉크 띠는 04·05와 같은 이유로 깨지지만 — 겹침
+	// 슬라이드에는 **띠의 주인이 없다** (겹친 자리에 여러 도형이 포개진다) — 이번에는 겹치지
+	// 않은 텍스트 슬라이드(010 content-explicit)가 하나 있어 그 슬라이드는 판정에 남긴다
+	// (inkBandSkipSlides는 001~009만 적는다).
+	//
+	// **캔버스 슬라이드(008·009)가 파트를 늘리지 않았다는 것**이 goldenPartLists로 확인된다
+	// (항목 02·05의 판단): `layout` 속성은 렌더러에 닿을 뿐 파트 구조를 바꾸지 않는다.
+	stackFixtureName = "06_stack"
 )
 
 // fixtureNames는 픽스처 수준 검증(파트 목록·색 계약·좌표 대조·도형 수 등식·잉크 띠)이 도는
@@ -58,7 +75,7 @@ const (
 // 있으면 도형 픽스처를 넣는 것이 표의 뜻을 어기는 일처럼 보이고, 그러면 다음 사람이 같은
 // 계약을 받을 픽스처를 두 번째 표에 적는다.
 var fixtureNames = []string{textFixtureName, textSubsetFixtureName, layoutFixtureName, shapeFixtureName,
-	imageFixtureName}
+	imageFixtureName, stackFixtureName}
 
 // fixtureByName은 픽스처 러너와 같은 수집 경로로 픽스처를 집는다 — 경로를 직접 조립하면
 // 러너가 못 보는 픽스처를 여기만 보는 상태가 생길 수 있다.
@@ -277,6 +294,51 @@ var goldenPartLists = map[string][]string{
 		// diagnostics.txt는 **없다** — 그림 픽스처는 경고 없이 빌드되어야 한다 (모르는
 		// variant를 쓰는 슬라이드가 없다: 007은 테마에 있는 `framed`를 쓴다).
 	},
+	stackFixtureName: {
+		// 그림은 두 슬라이드(002 배지 오버레이·006 카드 그리드)가 같은 `dot.png`를 쓰지만
+		// 웹 에셋은 한 장, PPTX 미디어 파트도 하나다 (중복 제거 — image1.png). 바이너리
+		// 골든이 이 픽스처에서도 한 쌍뿐인 이유가 그것이다.
+		"assets/dot.png",
+		"index.html",
+		"pptx/[Content_Types].xml",
+		"pptx/_rels/.rels",
+		"pptx/docProps/app.xml",
+		"pptx/docProps/core.xml",
+		"pptx/ppt/_rels/presentation.xml.rels",
+		"pptx/ppt/media/image1.png",
+		"pptx/ppt/presentation.xml",
+		"pptx/ppt/slideLayouts/_rels/slideLayout1.xml.rels",
+		"pptx/ppt/slideLayouts/slideLayout1.xml",
+		"pptx/ppt/slideMasters/_rels/slideMaster1.xml.rels",
+		"pptx/ppt/slideMasters/slideMaster1.xml",
+		// **노트 파트가 없다** — 겹침 픽스처의 어느 슬라이드도 `<note>`를 갖지 않는다.
+		// notesMaster는 노트가 있을 때만 생기므로(01~05가 노트 있는 슬라이드에서 그것을
+		// 보였다) 노트 없는 덱은 notesMasters/notesSlides가 통째로 빠진다.
+		"pptx/ppt/slides/_rels/slide1.xml.rels",
+		"pptx/ppt/slides/_rels/slide2.xml.rels",
+		"pptx/ppt/slides/_rels/slide3.xml.rels",
+		"pptx/ppt/slides/_rels/slide4.xml.rels",
+		"pptx/ppt/slides/_rels/slide5.xml.rels",
+		"pptx/ppt/slides/_rels/slide6.xml.rels",
+		"pptx/ppt/slides/_rels/slide7.xml.rels",
+		"pptx/ppt/slides/_rels/slide8.xml.rels",
+		"pptx/ppt/slides/_rels/slide9.xml.rels",
+		"pptx/ppt/slides/_rels/slide10.xml.rels",
+		"pptx/ppt/slides/slide1.xml",
+		"pptx/ppt/slides/slide2.xml",
+		"pptx/ppt/slides/slide3.xml",
+		"pptx/ppt/slides/slide4.xml",
+		"pptx/ppt/slides/slide5.xml",
+		"pptx/ppt/slides/slide6.xml",
+		"pptx/ppt/slides/slide7.xml",
+		"pptx/ppt/slides/slide8.xml",
+		"pptx/ppt/slides/slide9.xml",
+		"pptx/ppt/slides/slide10.xml",
+		"pptx/ppt/theme/theme1.xml",
+		// **캔버스 슬라이드(008·009)가 파트를 늘리지 않았다** — layout 속성은 슬라이드 파트
+		// 하나에 담기고 새 마스터·레이아웃을 만들지 않는다 (slideLayout1 하나뿐이다).
+		// diagnostics.txt도 **없다** — 겹침 픽스처는 경고 없이 빌드되어야 한다.
+	},
 }
 
 // 골든에 들어간 파트 목록을 픽스처별로 통째로 단정한다.
@@ -325,6 +387,7 @@ var slideCounts = map[string]int{
 	layoutFixtureName:     7,
 	shapeFixtureName:      8,
 	imageFixtureName:      7,
+	stackFixtureName:      10,
 }
 
 // fixtureLiteralColors는 슬라이드 파트에 **리터럴 색으로 나와야 하는** 값의 전수 목록이다
@@ -1550,6 +1613,15 @@ var loLineWidthMaxRatios = map[string]float64{
 	// 46%이므로 5.8%의 폭 오차로 줄이 접힐 위험은 없다 (구조 갈라짐은 0 오차의 줄 수 검사가
 	// 따로 잡는다). 6.5%는 측정값에 앞 픽스처들과 같은 폭의 여유를 더한 값이다.
 	layoutFixtureName: 0.065,
+	// 06_stack: 측정 최대 +5.5% (010 content-explicit의 첫 문단 — 항목 06). 겹침이 아니라
+	// **겹치지 않은 텍스트 슬라이드**의 잔차다 (이 픽스처에서 잉크 띠 판정에 남는 유일한
+	// 슬라이드다 — inkBandSkipSlides가 001~009만 뺀다). 원인은 02·03과 같다: LibreOffice의
+	// 스크립트 간격은 한글↔라틴 **경계 수**에 비례하는데 비율은 줄 길이로 나눈 값이라, 짧은
+	// 문단(`layout="content"는 기본 스테이지의 이름이다.` — 라틴 런 `layout="content"` +
+	// 인용부호가 한글 문장에 낀다)에서 비율이 커진다. 줄 수 갈라짐은 0 오차의 줄 수 검사가
+	// 따로 잡고(이 슬라이드는 줄 수가 같다), 6.0%는 측정값에 앞 픽스처들과 같은 폭의 여유를
+	// 더한 값이다 (02 5.0%→5.5%, 03 5.8%→6.5%와 같은 태도).
+	stackFixtureName: 0.06,
 }
 
 // inkBandSkipSlides는 잉크 띠 판정을 **적용할 수 없는** 슬라이드다 (`<픽스처>/<슬라이드 id>`).
@@ -1604,6 +1676,28 @@ var inkBandSkipSlides = map[string]bool{
 	"05_image/image-grid":       true,
 	"05_image/image-full":       true,
 	"05_image/image-variant":    true,
+	// 06_stack의 겹침 슬라이드 001~009: 겹침은 04·05가 깬 전제(칠한 도형·그림이 단색 배경
+	// 가정을 깬다)를 **한 단계 더** 깬다 — 겹친 자리에는 도형이 여러 층 포개져 **띠에 주인이
+	// 하나가 아니다**. 잰 줄 하나 ↔ 잉크 띠 하나의 대응이 성립하지 않으므로(포갠 도형들이
+	// 하나의 큰 띠로 뭉치거나, 위 도형이 아래 도형의 글줄을 덮는다) 값 완화가 아니라 방법의
+	// 전제가 깨진 것이다. 슬라이드 단위로 건너뛴다 (04가 8장, 05가 7장을 같은 이유로 뺐다).
+	//
+	// 대신 잃는 것과 남는 것: 겹침 순서는 spTree 순서 전수와 겹친 영역 크롭 비교가
+	// (TestStackFixtureZOrderIsDocumentOrder·TestStackFixtureOverlapRegions), 좌표는 0 오차
+	// 대조가(TestFixtureCoordinatesMatchGeometry) 판정한다. 무엇보다 **010
+	// content-explicit는 겹침이 없는 순수 텍스트 슬라이드**라 단색 배경 가정이 성립하므로
+	// 잉크 띠 판정에 **남긴다** (아래 표에 없다) — 픽스처 전체를 통째로 빼지 않는다는 것이
+	// 이 슬라이드가 픽스처에 있는 이유다 (제목·본문·리스트의 줄바꿈 계약을 이 픽스처에서도
+	// 지킨다).
+	"06_stack/anchors":       true, // surface 배경 + accent1 배지 9장이 면을 덮는다
+	"06_stack/badge-overlay": true, // 그림 위 배지 — 그림이 큰 색면이다
+	"06_stack/watermark":     true, // 반투명 워터마크 도형이 본문 아래에 깔린다
+	"06_stack/z-order":       true, // 세 도형이 계단식으로 포개진다 (띠에 주인이 여럿)
+	"06_stack/absolute":      true, // surface 배경 + x/y 도형들
+	"06_stack/in-container":  true, // 그림 카드 3장 + 가로 열 안 도형
+	"06_stack/nested":        true, // 중첩 stack — 도형 안 도형이 면을 덮는다
+	"06_stack/canvas-free":   true, // 캔버스 자유 배치 도형들
+	"06_stack/canvas-stack":  true, // 캔버스 위 stack + 도형
 }
 
 // 두 렌더 엔진이 같은 자리에서 줄을 나누는가 — Iteration 1의 리뷰 포인트를 수치로 판정한다
@@ -1791,4 +1885,223 @@ func appendOwner(ids []string, more ...string) []string {
 		}
 	}
 	return ids
+}
+
+// cNvPrPattern은 spTree의 도형 이름표다 (id + name). id=1은 spTree 그룹(nvGrpSpPr)이라 뺀다.
+var cNvPrPattern = regexp.MustCompile(`<p:cNvPr id="(\d+)" name="([^"]*)"`)
+
+// boxIDPath는 도형 이름표의 **문서 위치 경로**를 정수 튜플로 판다 ("shape s3.1.2" → [3 1 2]).
+//
+// 박스 id는 web.ElementID가 문서 순서(전위 순회)로 매기므로(`s<슬라이드>.<자식>.<자식>…`),
+// 이 튜플의 사전식 비교(짧은 접두가 앞)가 곧 문서 순서다 — 즉 겹침 z-순서다.
+func boxIDPath(t *testing.T, name string) []int {
+	t.Helper()
+	fields := strings.Fields(name)
+	if len(fields) == 0 {
+		t.Fatalf("도형 이름 %q가 비었다", name)
+	}
+	id := strings.TrimPrefix(fields[len(fields)-1], "s")
+	var path []int
+	for _, part := range strings.Split(id, ".") {
+		n, err := strconv.Atoi(part)
+		if err != nil {
+			t.Fatalf("도형 이름 %q에서 문서 위치 경로를 읽을 수 없다: %v", name, err)
+		}
+		path = append(path, n)
+	}
+	return path
+}
+
+// lessDocPath는 전위 순회(문서) 순서 비교다 — 사전식이되 짧은 접두가 앞이다 (부모가 자식보다
+// 앞). 두 경로가 같으면 false다 (같은 요소는 두 번 나오지 않아야 한다).
+func lessDocPath(a, b []int) bool {
+	for i := 0; i < len(a) && i < len(b); i++ {
+		if a[i] != b[i] {
+			return a[i] < b[i]
+		}
+	}
+	return len(a) < len(b)
+}
+
+// spTreeShapeNames는 골든 슬라이드 파트의 도형(p:sp·p:pic) 이름표를 **등장 순서**로 돌려준다
+// (spTree 그룹 id=1 제외).
+func spTreeShapeNames(xml string) []string {
+	var names []string
+	for _, m := range cNvPrPattern.FindAllStringSubmatch(xml, -1) {
+		if m[1] == "1" {
+			continue // spTree 그룹(nvGrpSpPr) — 도형이 아니다
+		}
+		names = append(names, m[2])
+	}
+	return names
+}
+
+// 겹침 슬라이드에서 spTree의 도형 등장 순서 = 문서 순서 = z-순서인가 (PRD §13-3).
+//
+// 항목 05의 단위 테스트(render/pptx.TestRenderStackZOrderIsDocumentOrder)가 합성 덱으로 본
+// 것을 **실제 픽스처 전수**로 한 번 더 본다 — TestLayoutFixtureSameRowBoxesShareY가 레이아웃
+// 픽스처에 한 것과 같은 자리·같은 성격의 검사다. OOXML은 나중 도형을 위에 그리므로 저자가 쓴
+// 문서 순서가 곧 겹침 순서가 되어야 하고, 특히 항목 04가 손댄 배합(z-order 슬라이드 — `x`/`y`
+// 좌표 자식과 `at`·정적 자식을 한 stack에 섞은 자리, 웹의 칠 순서와 갈라지는 유일한 슬라이드)
+// 에서 그 순서가 유지되는지 본다. 웹의 칠 순서는 픽셀 비교(TestStackFixtureOverlapRegions)가
+// 보고, 여기서는 산출 XML의 순서를 본다. 브라우저 없이 골든만 읽는다.
+func TestStackFixtureZOrderIsDocumentOrder(t *testing.T) {
+	goldenDir := fixtureByName(t, stackFixtureName).GoldenDir()
+	for i := 1; i <= slideCounts[stackFixtureName]; i++ {
+		slide := fmt.Sprintf("slide%d.xml", i)
+		data, err := os.ReadFile(filepath.Join(goldenDir, "pptx", "ppt", "slides", slide))
+		if err != nil {
+			t.Fatalf("골든이 없다 (`make golden`으로 만든다): %v", err)
+		}
+		xml := string(data)
+		id := goldenSlideID(t, xml)
+		names := spTreeShapeNames(xml)
+		if len(names) == 0 {
+			t.Errorf("%s(%s): spTree에 도형이 없다", slide, id)
+			continue
+		}
+		var prev []int
+		for _, name := range names {
+			path := boxIDPath(t, name)
+			if prev != nil && !lessDocPath(prev, path) {
+				t.Errorf("%s(%s): 도형 %q가 앞 도형보다 문서상 뒤가 아니다 — spTree 순서 ≠ 문서 순서(z-순서)\n  순서: %v",
+					slide, id, name, names)
+			}
+			prev = path
+		}
+		t.Logf("%s(%s): 도형 %d개가 문서 순서로 spTree에 나온다 (%s)",
+			slide, id, len(names), strings.Join(names, ", "))
+	}
+}
+
+// stackOverlapRegionDiffMaxRatio는 겹친 영역 크롭의 픽셀 오차 허용 비율이다.
+//
+// 슬라이드 전체 비율(fixtureDiffOptions·slideDiffOptions)과 갈라 두는 것이 이 항목의 핵심
+// 계약이다: 슬라이드는 대부분 배경이라 위아래가 뒤바뀐 겹침 하나는 전체 비율에서 희석된다
+// (겹친 면적만큼만 튀므로 z-order 슬라이드의 전체 오차는 0.54%다). 겹친 사각형만 잘라 보면
+// 위 도형이 아래 도형으로 바뀐 것이 곧바로 수치가 된다 — 겹친 영역 안쪽은 위 도형의 단색
+// 채움이라 두 타깃이 같으면 오차가 잔차(AA·리샘플링)뿐이고, 순서가 뒤집히면 **영역 전체**가
+// 다른 색이 되어 수십 %로 튄다.
+//
+// 값은 측정값에 여유를 더한 것이다 (항목 06의 측정). z-order 슬라이드의 겹친 쌍 셋 중
+// **핵심은 muted∩accent1** — 위치 지정(x/y) 자식 위에 정적(at=center) 자식이 문서상 뒤로 얹힌
+// 자리다 (항목 04가 position:relative로 문서 순서를 되돌린 그 divergence). 그 영역(136×156px)의
+// 측정 오차는 2.63%이고, accent1∩fg(112×102px)는 1.42%다 — 겹친 영역 안쪽은 위 도형의 단색
+// 채움이라 잔차는 채움 위 AA와 그림 리샘플링뿐이다. 6%는 거기에 여유를 더한 값이고
+// (imageRegionDiffMaxRatio와 같은 값·같은 성질의 잔차다), 순서가 뒤집히면 영역 전체가 다른
+// 색이 되어 100%에 가깝게 튀므로(2.63% → ~100%) 이 임계값은 여전히 뒤집힘을 잡는다.
+const stackOverlapRegionDiffMaxRatio = 0.06
+
+// stackOverlapRegionMinPixels는 겹친 영역 오차의 **절대 하한 허용값**이다 (다른 픽셀 수) —
+// 아주 작은 겹침에서 잔차 몇 픽셀이 큰 비율로 계산되어 방법 문제로 죽는 것을 막는다
+// (imageRegionDiffMinPixels·loLineWidthMinPx와 같은 종류의 장치). 순서가 뒤집힌 겹침은
+// 영역 전체가 바뀌므로 이 하한에 걸리지 않는다.
+const stackOverlapRegionMinPixels = 32
+
+const (
+	// stackOverlapInset은 겹친 사각형을 안으로 물리는 폭이다 (px) — 위 도형의 테두리
+	// (경로 중앙 1px, w=9525 EMU)와 AA가 크롭을 가로지르지 않게 안쪽 채움만 남긴다.
+	stackOverlapInset = 4.0
+	// stackOverlapMinSide는 크롭이 뜻을 갖는 최소 변 길이다 (px). 이보다 얇은 겹침은 두 도형이
+	// 맞닿는 **색 경계**(예: muted|fg 세로 경계)가 영역을 세로로 가로지르고, 그 경계 한 줄을 두
+	// 래스터라이저가 서로 다르게 리샘플링해(그림 리샘플링과 같은 잔차) 얇은 띠에서 큰 비율이 된다
+	// — 측정: muted∩fg의 16×66px 슬리버가 그 경계 한 줄(≈129px)로 12%였다. 그 쌍의 z-순서
+	// (fg가 위)는 accent1∩fg(112×102px)가 이미 같은 관계로 판정하므로 얇은 슬리버는 신호를 더하지
+	// 않는다 — 채움 대비 경계 비중이 작은 굵은 겹침만 남긴다 (핵심 divergence인 muted∩accent1은
+	// 136×156px라 남는다). imageRegion이 잰 rect 그대로 자르되 작은 그림을 픽셀 하한으로 거른
+	// 것과 같은 자리의 장치다.
+	stackOverlapMinSide = 24.0
+)
+
+// intersectRect는 두 사각형의 겹친 사각형이다 (겹치지 않으면 빈 사각형).
+func intersectRect(a, b geom.Rect) geom.Rect {
+	x0, y0 := math.Max(a.X, b.X), math.Max(a.Y, b.Y)
+	x1, y1 := math.Min(a.Right(), b.Right()), math.Min(a.Bottom(), b.Bottom())
+	if x1 <= x0 || y1 <= y0 {
+		return geom.Rect{}
+	}
+	return geom.Rect{X: x0, Y: y0, W: x1 - x0, H: y1 - y0}
+}
+
+// 겹친 도형이 두 타깃에서 **같은 순서로** 겹치는가 — 겹친 사각형만 잘라 잰다.
+//
+// 이 iteration의 핵심 증거다 (TASKS의 리뷰 포인트 "겹침 순서가 웹과 같은지"의 자동 절반).
+// z-order 슬라이드는 `at="center"`인 정적 도형과 `x`/`y`로 놓인 도형을 한 stack에 섞었다 —
+// 웹은 positioned를 non-positioned 위로 올리고(칠 순서 규칙) PPTX는 문서 순서로 그리는데,
+// 항목 04가 그 둘을 **같은 순서**(문서 순서)로 맞췄다. 두 유도가 갈라지면 겹친 자리의 색이
+// 두 타깃에서 달라지고, 슬라이드 전체 비율로는 겹친 면적만큼만 튀어 희석되므로(0.54%) 겹친
+// 사각형만 잘라 본다. 절대 하한 픽셀 수를 함께 둔다.
+func TestStackFixtureOverlapRegions(t *testing.T) {
+	RequireChromium(t)
+	RequireSoffice(t)
+	RequirePdftoppm(t)
+
+	fixture := fixtureByName(t, stackFixtureName)
+	result := fixture.Build(t)
+	if result.Geometry == nil {
+		t.Fatal("빌드에 지오메트리가 없다")
+	}
+	const slideID = "z-order"
+	index := -1
+	for i, slide := range result.Deck.Slides {
+		if slide.ID == slideID {
+			index = i
+		}
+	}
+	if index < 0 {
+		t.Fatalf("슬라이드 %s가 없다", slideID)
+	}
+	stage := result.Deck.Stage
+	shots := RenderPPTX(t, fixture.Output(t, result, ".pptx"), image.Pt(stage.Width, stage.Height))
+	browser := NewBrowser(t)
+	browser.Load(t, filepath.Join(result.OutDir, web.IndexFile))
+	webImg := browser.ScreenshotElement(t, web.SlideIndexSelector(index))
+	loImg := shots[index]
+
+	// 겹침 도형을 문서 순서로 모은다 (z-order 슬라이드의 세 rect — 텍스트는 뺀다).
+	var boxes []geom.Box
+	for _, box := range result.Geometry.Boxes {
+		if box.Slide == index && box.El == soml.ShapeElement {
+			boxes = append(boxes, box)
+		}
+	}
+	if len(boxes) < 2 {
+		t.Fatalf("겹침 도형이 %d개다 — z-order 슬라이드는 겹친 도형이 여럿이어야 한다", len(boxes))
+	}
+
+	worst, worstAt, pairs := 0.0, "", 0
+	for a := 0; a < len(boxes); a++ {
+		for b := a + 1; b < len(boxes); b++ {
+			region := intersectRect(boxes[a].Rect, boxes[b].Rect)
+			if region.W == 0 {
+				continue
+			}
+			region = geom.Rect{
+				X: region.X + stackOverlapInset, Y: region.Y + stackOverlapInset,
+				W: region.W - 2*stackOverlapInset, H: region.H - 2*stackOverlapInset,
+			}
+			if region.W < stackOverlapMinSide || region.H < stackOverlapMinSide {
+				continue
+			}
+			pairs++
+			cmp, err := Diff(cropImage(webImg, region), cropImage(loImg, region), DefaultDiffOptions())
+			if err != nil {
+				t.Fatalf("%s %s∩%s: %v", slideID, boxes[a].ID, boxes[b].ID, err)
+			}
+			t.Logf("%s %s∩%s %s: %s", slideID, boxes[a].ID, boxes[b].ID, region, cmp)
+			if cmp.Ratio > worst {
+				worst, worstAt = cmp.Ratio, fmt.Sprintf("%s∩%s", boxes[a].ID, boxes[b].ID)
+			}
+			if cmp.Ratio > stackOverlapRegionDiffMaxRatio && cmp.Changed > stackOverlapRegionMinPixels {
+				t.Errorf("%s %s∩%s: 겹친 영역 픽셀 오차 %.2f%%가 허용 %.2f%%를 넘는다 — 위아래가 뒤바뀌었다면 "+
+					"고칠 곳은 오차가 아니라 항목 04의 칠 순서 결정(render/web)과 문서 순서 조립(render/pptx)이다",
+					slideID, boxes[a].ID, boxes[b].ID, cmp.Ratio*100, stackOverlapRegionDiffMaxRatio*100)
+			}
+		}
+	}
+	if pairs == 0 {
+		t.Fatal("겹친 영역이 하나도 없다 — z-order 슬라이드가 겹치지 않는다 (픽스처가 바뀌었다)")
+	}
+	t.Logf("가장 큰 겹침 영역 오차: %s %.2f%% (허용 %.2f%%, 겹친 쌍 %d개)",
+		worstAt, worst*100, stackOverlapRegionDiffMaxRatio*100, pairs)
 }

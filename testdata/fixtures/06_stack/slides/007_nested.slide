@@ -7,8 +7,8 @@
     <shape type="rect" fill="surface" w="fill" h="fill"/>
     <stack w="200" h="200" at="center">
       <shape type="rounded-rect" fill="accent1" w="fill" h="fill"/>
-      <shape type="ellipse" fill="accent3" w="80" h="80" at="top-right"/>
-      <text size="14" color="on-accent" at="center">중심</text>
+      <shape type="ellipse" fill="fg" w="80" h="80" at="top-right"/>
+      <text size="14" color="bg" at="center">중심</text>
     </stack>
   </stack>
 </slide>

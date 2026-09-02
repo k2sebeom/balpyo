@@ -6,6 +6,6 @@
   <h2>자유 배치</h2>
   <shape type="rounded-rect" fill="surface" w="240" h="160" x="80" y="120"/>
   <shape type="ellipse" fill="accent1" w="96" h="96" x="50%" y="40%"/>
-  <text size="18" color="on-accent" x="120" y="160">캔버스</text>
-  <shape type="star" fill="accent4" w="64" h="64" x="-24" y="24"/>
+  <text size="18" color="bg" x="120" y="160">캔버스</text>
+  <shape type="star" fill="accent1" w="64" h="64" x="-24" y="24"/>
 </slide>

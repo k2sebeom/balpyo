@@ -470,12 +470,11 @@ func TestParseLayoutFixture(t *testing.T) {
 	}
 }
 
-// 비활성 픽스처 `_06_stack`은 이 iteration의 시험대다 — 항목 01은 파서만 열었으므로 여기서
-// 검증하는 계약은 하나다: 열린 어휘(`<stack>`·자식 `at`·`x`·`y`)를 쓴 모든 슬라이드가 진단
-// 0건으로 파싱된다. 값 해석·골든은 항목 03~06의 몫이고, `_` 접두라 픽스처 러너는 이 덱을
-// 아직 빌드하지 않는다 (internal/testkit.Fixtures).
+// 픽스처 `06_stack`은 이 iteration의 시험대다 (항목 06이 활성화했다). 여기서 검증하는 계약은
+// 하나다: 열린 어휘(`<stack>`·자식 `at`·`x`·`y`)를 쓴 모든 슬라이드가 진단 0건으로 파싱된다.
+// 값 해석·골든은 항목 03~06의 몫이고, 이 검사는 브라우저 없이 파싱만으로 그 절반을 지킨다.
 func TestParseStackFixture(t *testing.T) {
-	dir := filepath.Join("..", "testdata", "fixtures", "_06_stack", "slides")
+	dir := filepath.Join("..", "testdata", "fixtures", "06_stack", "slides")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("픽스처 디렉토리를 읽을 수 없다: %v", err)
@@ -495,6 +494,6 @@ func TestParseStackFixture(t *testing.T) {
 		parsed++
 	}
 	if parsed == 0 {
-		t.Fatal("파싱한 슬라이드가 없다 — _06_stack 픽스처가 비었다")
+		t.Fatal("파싱한 슬라이드가 없다 — 06_stack 픽스처가 비었다")
 	}
 }

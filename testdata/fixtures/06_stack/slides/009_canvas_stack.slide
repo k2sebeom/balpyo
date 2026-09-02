@@ -6,7 +6,7 @@
   <h2>캔버스 위 겹침</h2>
   <stack w="320" h="220" x="100" y="140">
     <shape type="rounded-rect" fill="surface" w="fill" h="fill"/>
-    <shape type="ellipse" fill="accent2" w="72" h="72" at="center"/>
+    <shape type="ellipse" fill="muted" w="72" h="72" at="center"/>
     <text size="14" color="muted" at="bottom-right">배지</text>
   </stack>
   <shape type="rect" fill="accent1" w="48" h="48" x="70%" y="60%"/>

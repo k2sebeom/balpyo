@@ -6,15 +6,15 @@
   <grid cols="3" gap="md">
     <stack ratio="4:3">
       <image src="assets/dot.png" fit="cover" w="fill" h="fill" alt="카드 1"/>
-      <text size="14" color="on-accent" at="bottom-left">하나</text>
+      <text size="14" color="bg" at="bottom-left">하나</text>
     </stack>
     <stack ratio="4:3">
       <image src="assets/dot.png" fit="cover" w="fill" h="fill" alt="카드 2"/>
-      <text size="14" color="on-accent" at="bottom-left">둘</text>
+      <text size="14" color="bg" at="bottom-left">둘</text>
     </stack>
     <stack ratio="4:3">
       <image src="assets/dot.png" fit="cover" w="fill" h="fill" alt="카드 3"/>
-      <text size="14" color="on-accent" at="bottom-left">셋</text>
+      <text size="14" color="bg" at="bottom-left">셋</text>
     </stack>
   </grid>
   <row gap="lg">
