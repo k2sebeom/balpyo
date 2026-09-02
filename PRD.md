@@ -403,17 +403,24 @@ balpyo build --target pptx     # 네이티브 PPTX
 | `span` (grid 자식) | `grid-column: span N` |
 | `self` | `align-self` |
 | `order` | `order` |
-| `at` (stack 자식) | 9지점 앵커(`top-left`…`bottom-right`) → `place-self` 조합 |
-| `x` / `y` (stack·canvas 자식) | **부모 상대** 논리 좌표 절대 배치 (`position:absolute; left/top`) — 정말 필요할 때만 |
+| `at` (stack 자식) | 9지점 앵커 — `top-left` `top-center` `top-right` `center-left` `center` `center-right` `bottom-left` `bottom-center` `bottom-right` (`center-center`는 없다) → `place-self` |
+| `x` / `y` (stack·canvas 자식) | **부모 패딩 박스** 기준 논리 좌표 절대 배치 (`position:absolute; left/top`) — 수치·`%`·**음수**(공간 토큰·`fill`은 받지 않는다). `at`과 함께 쓸 수 없다 |
 | `style` | **배치 전용 CSS 탈출구** (§7.9) |
 
 **`<stack>` 시맨틱 (확정, §13-3)** — 단일 셀 grid로 구현한다: 모든 자식이
 `grid-area: 1/1`에 겹치되 in-flow로 남으므로, stack의 크기가 가장 큰 자식에 맞춰
 자동 결정된다 (absolute 전면 방식은 컨테이너 크기가 소실되어 배제). `at`은 해당 자식의
 `place-self`로 컴파일되고, `x`/`y`는 그 자식만 absolute로 전환하되 좌표 기준은 항상
-**부모 상대**다 — canvas 슬라이드의 직계 자식은 부모가 곧 스테이지이므로 스테이지 절대
-좌표와 자연히 일치한다. z-순서는 **문서 순서**(뒤에 선언된 것이 위)이며 별도 z-index
-속성은 없다. 이 순서가 그대로 PPTX 도형 순서가 된다.
+**부모의 패딩 박스**다 — `<stack pad>`가 있으면 여백 안쪽부터 세고, canvas 슬라이드의 직계
+자식은 스테이지의 패딩 박스(테마의 64px 여백 안쪽)가 기준이라 스테이지 절대 좌표와
+**일치하지 않는다**. 슬라이드 가장자리에 닿으려면 음수 좌표를 쓴다 (여백을 테마가 소유하는
+대가 — §13-3). z-순서는 **문서 순서**(뒤에 선언된 것이 위)이며 별도 z-index 속성은 없다.
+이 순서가 그대로 PPTX 도형 순서가 된다.
+
+`<stack>`의 컨테이너 속성에는 **`gap`·`wrap`·`cols`·`rows`가 없다** (위 컨테이너 표는 "모든
+컨테이너"로 읽히므로 예외다): 단일 셀에는 셀 사이가 없어 `gap`이 뜻이 없고, `wrap`은 flex
+전용(`flex-wrap`)이라 grid 흐름인 stack에서 무효이며, `cols`/`rows`는 `<grid>` 전용이다.
+남는 것은 `align`·`justify`(`at`이 없는 자식의 기본 정렬)와 `pad`·크기·`ratio`다.
 
 ```html
 <slide layout="canvas">
@@ -1062,9 +1069,10 @@ v1.0에서 열어 두었던 질문 12건을 모두 확정했다 (2026-08-16). �
    디렉토리가 결정하고 파서가 검증한다. 에디터·스키마·LSP가 파일 타입 하나만 다루면
    되고, 사용자가 배울 규칙도 하나 준다.
 3. **`<stack>` 시맨틱** → **단일 셀 grid 겹침** (§7.4). `at`은 `place-self`, `x`/`y`는
-   해당 자식만 absolute이며 좌표 기준은 항상 **부모 상대** (canvas 직계 자식은 부모가
-   스테이지라 스테이지 절대와 일치). z-순서는 문서 순서(뒤 = 위), z-index 속성 없음 —
-   그대로 PPTX 도형 순서가 된다.
+   해당 자식만 absolute이며 좌표 기준은 항상 **부모의 패딩 박스** (canvas 직계 자식은
+   스테이지의 패딩 박스 = 테마 여백 안쪽이 기준이라 스테이지 절대와 **일치하지 않는다** —
+   가장자리는 음수 좌표로 닿는다, `docs/decisions/0030-canvas-origin-is-stage-padding-box.md`).
+   z-순서는 문서 순서(뒤 = 위), z-index 속성 없음 — 그대로 PPTX 도형 순서가 된다.
 4. **`<arrow>` 앵커 시맨틱** → **자동 앵커(중심 연결선의 최근접 변 중점)가 기본**,
    `from="db@top"` 명시 앵커(4변 + center)가 오버라이드, `via`는 공백 구분 논리
    좌표점 목록 (§7.5). 앵커는 PPTX `cxnSp` 연결 사이트로 매핑된다.

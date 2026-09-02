@@ -15,6 +15,7 @@
 | `<row>` | `display: flex; flex-direction: row` | 도형 **0개** — 자식만 절대 좌표 도형이 된다 |
 | `<col>` | `display: flex; flex-direction: column` | 도형 **0개** (동일) |
 | `<grid>` | `display: grid` | 도형 **0개** (동일) |
+| [`<stack>`](stack.md) | `display: grid` (**단일 셀** — 자식이 `grid-area: 1/1`에 겹친다) | 도형 **0개** — 자식이 문서 순서(= z-순서) 절대 좌표 도형이 된다 |
 | `<spacer>` | `flex: 1`인 빈 `<div>` | 도형 **0개** — 밀어낸 결과가 이웃 도형의 좌표에 들어 있다 |
 
 - 세 컨테이너의 자식 어휘는 같다: `<text>`, 블록 태그(`h1`~`h3`, `p`, `blockquote`,
@@ -24,8 +25,10 @@
 - 컨테이너 안에 문자 데이터를 직접 쓸 수 없다 — `<text>`나 블록 태그로 감싼다. 배치
   컨테이너에 글을 직접 담으면 PPTX에서 그 글이 실릴 도형이 없다.
 - `<spacer>`는 void 요소다 — `<spacer/>`로만 쓰고 자식도 문자 데이터도 갖지 않는다.
-- `<stack>`은 **아직 어휘에 없다** (Iteration 6). 자식 속성 `at`·`x`/`y`도 같다 — 겹침
-  시맨틱의 렌더 없이 이름을 열면 저자가 쓴 겹침이 조용히 무시된다.
+- **`<stack>`은 겹침 컨테이너다** (Iteration 6) — 단일 셀 grid로, 세 컨테이너와 자식 어휘가
+  같지만 컨테이너 속성에서 `gap`·`wrap`·`cols`·`rows`가 빠진다 (단일 셀에는 셀 사이가 없다).
+  자식 속성 `at`(9지점 앵커)·`x`/`y`(절대 좌표)도 이 iteration에 열렸다. 전용 페이지는
+  [`<stack>`](stack.md)이다.
 
 ## 컨테이너 속성
 
@@ -89,6 +92,8 @@
 | `span` | 1 이상 정수 | `grid-column: span N` |
 | `self` | `start` `center` `end` `stretch` `baseline` | `align-self` |
 | `order` | 정수 (음수 허용) | `order` |
+| `at` | 9지점 앵커 (`top-left`…`bottom-right`) | `place-self` ([`<stack>`](stack.md)) |
+| `x` / `y` | 수치 · `%` · **음수** | `position: absolute; left` / `top` ([`<stack>`](stack.md)) |
 | `style` | 배치 CSS 선언 목록 | 인라인 `style`의 **맨 끝** (아래 절) |
 
 **적용 대상** — 레이아웃 컨테이너의 자식이 될 수 있는 요소 전부다: `<text>`, 블록 태그,
@@ -98,9 +103,20 @@
   컨테이너의 자식이지 flex 항목이 아니고 (PPTX에서 `<ul>` 하나가 도형 하나이므로 항목의
   배치를 좌표로 옮길 자리가 없다), 인라인은 박스가 아니라 런이다. 열어 두면 `<li grow="1">`
   이 웹에서만 뜻을 갖는 선언이 된다.
-- **`span`은 `<grid>`의 자식에서만 쓴다.** flex 컨테이너와 슬라이드 직속에서
-  `grid-column`은 CSS가 조용히 버리는 선언이라 값 층이 에러로 막는다 (진단은 속성
-  **이름**을 가리킨다 — 고칠 것이 값이 아니라 속성의 자리다).
+- **`span`·`at`·`x`/`y`는 부모가 한정한다.** 셋 다 특정 컨테이너에서만 뜻이 있는 배치
+  채널이라, 엉뚱한 부모에서 쓰면 CSS가 조용히 버리는 선언이 된다 — 그 침묵이 닫힌 어휘가
+  막으려는 실패다. 부모를 아는 자리가 값 층(core)의 순회뿐이라 검증도 거기 있고, 진단은
+  속성 **이름**을 가리키며 고칠 방법(태그를 바꾸거나 `<stack>`으로 감싸기)을 담는다:
+
+  | 속성 | 뜻이 있는 부모 | 밖에서 쓰면 |
+  |---|---|---|
+  | `span` | `<grid>`의 자식 | `span은 <grid>의 자식에서만 쓴다 (부모는 <row>다) — flex 컨테이너에서 grid-column은 무효다` |
+  | `at` | [`<stack>`](stack.md)의 자식 | `at은 <stack>의 자식에서만 쓴다 (…) — 겹침이 필요하면 <stack>으로 감싼다` |
+  | `x` / `y` | `<stack>`의 자식 · `layout="canvas"` 슬라이드의 직속 자식 | `x는 <stack>의 자식이나 layout="canvas" 슬라이드의 직속 자식에서만 쓴다 (…) — <stack>으로 감싸거나 슬라이드에 layout="canvas"를 준다` |
+
+  `at`과 `x`/`y`는 같은 자식에 **함께 쓸 수 없다** — 둘 다 자리를 정하는 채널이라 하나만
+  쓴다 ([`<stack>`](stack.md)). 9지점 앵커 어휘·좌표 문법(음수·`%`·기준 박스)의 전모는
+  겹침 페이지에 있다.
 - `basis`는 `fill`을 받지 않는다 — `flex-basis: 100%`는 주축에서만 크기가 되어 교차축에서
   저자의 기대와 갈라진다. 백분율이 필요하면 `basis="100%"`로 적는다.
 - `order`만 음수를 받는다 — CSS `order`의 음수는 유효하고 "먼저 보이게"의 관용 표기다.
@@ -369,8 +385,7 @@ slides/007_style_appearance.slide:8:24: warning: style의 "background" 선언은
 | 인라인 태그에 배치 속성을 썼다 | `<strong>에는 속성을 쓸 수 없다 (order)` |
 | 블록·`<text>`·`<li>` 안에 컨테이너를 썼다 | `<p> 안에는 문자 데이터와 인라인 태그만 올 수 있다 (<row>는 쓸 수 없다)` |
 | `<ul>`/`<ol>`의 자식에 컨테이너를 썼다 | `<ul>의 자식으로 <row>는 올 수 없다 (쓸 수 있는 태그: <li>)` |
-| `<stack>`을 썼다 | `알 수 없는 태그 <stack> (쓸 수 있는 태그: …)` |
-| `at`·`x`/`y`를 썼다 | `<grid>에 알 수 없는 속성 at (쓸 수 있는 속성: …)` |
+| `<stack>`에 `gap`·`wrap`·`cols`·`rows`를 썼다 | `<stack>에 알 수 없는 속성 gap (쓸 수 있는 속성: align, justify, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style)` |
 
 값 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다. 진단은 문제가 된 **조각**을
 가리킨다 (`pad="sm huge"`의 진단은 `huge`를 가리킨다):
@@ -393,6 +408,9 @@ slides/007_style_appearance.slide:8:24: warning: style의 "background" 선언은
 | `grow`/`shrink`가 정수가 아니다 | `grow는 정수다 ("1.5")` / `grow는 0보다 작을 수 없다 ("-1")` |
 | `span`이 1보다 작다 | `span은 1 이상 정수다 ("0")` |
 | `span`을 grid 밖에서 썼다 | `span은 <grid>의 자식에서만 쓴다 (부모는 <row>다) — flex 컨테이너에서 grid-column은 무효다` |
+| `at`을 stack 밖에서 썼다 | `at은 <stack>의 자식에서만 쓴다 (부모는 <row>다) — 겹침이 필요하면 <stack>으로 감싼다` |
+| `x`/`y`를 유효하지 않은 부모에서 썼다 | `x는 <stack>의 자식이나 layout="canvas" 슬라이드의 직속 자식에서만 쓴다 (…) — <stack>으로 감싸거나 슬라이드에 layout="canvas"를 준다` |
+| `at`과 `x`/`y`를 함께 썼다 | `at과 x를 함께 쓸 수 없다 (x는 …에 있다) — 둘 다 자리를 정하는 채널이라 하나만 쓴다 (at은 9지점 앵커, x/y는 절대 오프셋)` |
 | `style` 선언에 콜론이 없다 | `style 선언 "width 100px"에 콜론이 없다 — \`속성: 값\` 형태로 쓴다` |
 | `style` 선언에 값이 없다 | `style 선언 "width:"에 값이 없다` |
 | 배치 속성에 값이 없다 | `w 속성에는 값이 필요하다 (w="fill")` / `gap 속성이 비어 있다 (지우면 기본값을 쓴다)` |

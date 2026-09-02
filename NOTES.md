@@ -2328,3 +2328,79 @@
   - **`word-break: keep-all`로 스크립트 간격 규칙 자체를 맞추는 것**은 여전히 열린 질문이다(04/06).
     모든 덱의 타이포그래피가 움직이므로 이 항목의 범위 밖이고, 그래서 폭 잔차를 픽스처 한정
     비율로 흡수했다.
+
+## Iteration 6 · 07-docs — 문서: 겹침 레퍼런스 + `layout` 속성 + ADR 5건
+
+- **한 것**:
+  - `docs/reference/soml/stack.md` **신규** — 겹침 컨테이너 전용 페이지. 컨테이너 속성 표
+    (`gap`·`wrap`·`cols`·`rows`가 없는 이유 한 줄), `at` 9지점 앵커 표(× `place-self` ×
+    붙는 자리), `x`/`y` 절(패딩 박스 기준·음수·`%`·공간 토큰/`fill` 거부·한 축), z-순서 절
+    (문서 순서 = z-순서, z-index 없음, → `spTree`), `at`⊕`x`/`y` 배타, 픽스처 예제 5종,
+    웹/PPTX 렌더 결과(`place-self`·단일 셀 grid·문서 순서 도형 + `<group>`과 대비 표),
+    빌드 에러 전수.
+  - `docs/reference/soml/slide.md` — `layout` 속성 행·절(`content`/`canvas`, 캔버스에서
+    테마/저자 경계, 좌표 기준 = 패딩 박스, 가장자리는 음수 좌표, 008 예제), 렌더 결과에
+    캔버스 스테이지 한 줄, 에러 표(자식 목록 +`<stack>`, 속성 `layout, id, skip`, `layout`
+    값 없음/빈 값 파서 행, 어휘 밖 값 core 행).
+  - `docs/reference/soml/layout.md` — 태그 표 `<stack>` 행, "stack은 어휘 밖" 낡은 문장 교체,
+    자식 속성 표 `at`·`x`/`y` 행, `span` 산문을 **부모 한정 표**(span/at/x·y)로 바꿈 +
+    `at`⊕`x`/`y` 배타 주석, 파서 에러 행 교체(stack `gap`/`wrap` 미지원 · 낡은 unknown-tag
+    stack/at 행 삭제), core 에러 표에 `at`/`x`/`y`/충돌 행.
+  - `docs/reference/soml/shape.md` — unknown-tag 행에서 `<stack>` 제거(이제 아는 태그다).
+  - `docs/reference/index.md` — "Iteration 6까지", `<slide>` `layout·id·skip`, stack.md 항목,
+    `layout` 레퍼런스가 I10까지 slide.md에 산다는 계획 한 줄.
+  - `docs/internals/geometry-pass.md` — 측정 대상 산문·표에 `<stack>`(재고·미소비), 회전 절
+    옆에 "위치는 변형으로 내지 않는다" 신규 절.
+  - `docs/internals/architecture.md` — 덱 모델 `Slide` 행에 레이아웃(+값 구간), "슬라이드
+    수준 속성이 렌더러에 닿는 경로" 신규 절(경로·타입 소비·값+Span·버린 선택지).
+  - `docs/internals/testing.md` — 겹친 영역 크롭(6%, 측정값)·`stackOverlapMinSide` 24px·
+    겹침 잉크 띠 건너뜀·일치≠옳음·슬라이드별 조정 6건.
+  - `docs/decisions/0028`~`0032` **신규 ADR 5건** (아래).
+  - `PRD.md` §7.4 `<stack>` 시맨틱(패딩 박스 기준·`gap`/`wrap`/`cols`/`rows` 예외), §7.4 자식
+    표(`at` 9종·`x`/`y` 패딩 박스·음수·토큰 금지·배타), §13-3 항목 3(패딩 박스·음수 좌표).
+  - 색인 3곳: `docs/decisions/index.md`(+5행), `mkdocs.yml` nav(+stack.md +ADR 5), TASKS.md
+    설계 결정 로그(+5행). TASKS.md Iteration 6 문서 박스 닫음(리뷰 박스는 열어 둠).
+
+- **설계 결정과 근거**:
+  - **ADR을 5건(0028~0032)으로 쓰고 x/y-좌표 결정을 0031에 합쳤다.** 항목의 후보 6개 중
+    "x/y는 좌표이므로 음수를 받고 공간 토큰을 받지 않는다"를 "한 축의 위치는 한 채널이
+    정한다"(0031)에 합친 이유: 둘 다 **위치 채널의 경계**를 긋는 같은 기준의 앞뒤다 —
+    at⊕x/y 배타·z-index 닫기가 "채널 수"의 경계이고, 좌표 문법(음수 허용·토큰 거부)이 "위치
+    vs 크기"의 경계인데, 셋 다 "위치는 한 채널이 한 어휘로 정한다"의 적용이다. ADR 0027이 두
+    결정을 한 기준으로 묶은 선례를 따랐다. 나눴다면 0031/0032가 되고 slide-layout이 0033이
+    됐을 것이다 — 번호를 아끼려는 것이 아니라 기준이 하나여서 합쳤다.
+  - **`docs/reference/layouts.md`를 만들지 않았다** (항목 지시대로). `layout` 2종만 적는
+    페이지는 I10 카탈로그가 통째로 다시 쓴다 — 레퍼런스를 slide.md가 갖고 index.md에 링크
+    이전 계획을 적었다.
+  - **stack.md의 페이지 내부 앵커 링크(`#_5`)를 평문으로 바꿨다** — mkdocs가 한글 헤딩을
+    `_N`으로 슬러그화하는데 그 번호를 손으로 맞추면 헤딩이 하나 늘 때 깨진다. `--strict`가
+    INFO로 잡았고, 자동 앵커에 의존하지 않는 편이 안전하다.
+
+- **검증**:
+  - `.venv/bin/mkdocs build --strict` (= `make docs`) **통과** (경고 0, 위 앵커 수정 후).
+  - **문서 SOML 예제 8줄을 픽스처와 글자 단위 대조** — 배지/워터마크/절대 배치(별·`%`)/
+    in-container `ratio`/캔버스 free(별·`layout` 태그)/9지점 top-left이 전부 픽스처에 있다.
+  - **진단 문구 7건을 실제 `go run ./cmd/balpyo build` 출력과 바이트 대조** — stack `gap`
+    미지원, at-stack-밖, x/y-content-슬라이드, at+x 충돌, layout 어휘 밖, layout 값 없음,
+    at 오타(`top`→`top-center`). 전부 일치. 임시 프로젝트로 확인 후 지웠다.
+  - **렌더 조각을 골든에서 확인** — slide4 z-순서 cNvPr 순서(h2 s3.0 → shape s3.1.0 →
+    s3.1.1 → s3.1.2 → text s3.1.3 = 문서 순서), 웹 `place-self`·`.balpyo-stack` CSS·캔버스
+    스테이지 div·`left: -16px`·`left: 50% top: 100%`. 음수 `a:off`(-228600)는 골든이 아니라
+    `TestRenderStackChildNegativeCoordinateEmitsSignedOffset` 단정에 근거한다(골든 slide5의
+    좌표는 슬라이드 상대라 양수다) — 문서에 그 출처를 밝혔다.
+  - 구현은 건드리지 않았다 (docs-only). `gofmt -l .`·`go build`·`go vet`·`go test
+    ./soml/... ./core/... ./render/pptx/...` 통과 확인은 아래 커밋 분리 판단 때문에 돌렸다.
+
+- **남긴 것**:
+  - **커밋을 둘로 나눴다 — 항목 06을 먼저 커밋하고 항목 07을 그 위에 얹었다.** 이 항목을
+    시작할 때 작업 트리에 항목 06(픽스처 활성화 + 골든)이 **커밋되지 않은 채** 있었고,
+    NOTES.md·TASKS.md를 항목 07과 공유해 한 파일에 두 항목의 변경이 섞여 있었다. 항목 07
+    지시의 "범위 밖"이 **"문서 커밋에 구현 변경이 섞이면 골든이 왜 움직였는지 기록이
+    흐려진다"**고 못 박으므로, 06(골든 이동)과 07(문서)을 한 커밋에 담는 것은 금지된
+    상태다. 그래서 06을 자기 커밋으로 먼저 남기고(`test: Activate 06_stack fixture…`) 07을
+    분리했다. 06 커밋 전 `go build`·`vet`·`gofmt`·단위 테스트로 컴파일·통과를 확인했다
+    (렌더 픽셀 게이트는 06 NOTES가 이미 초록으로 기록). TASKS.md는 06 커밋용으로 07 편집을
+    잠시 되돌렸다가 06 커밋 후 다시 적용했다. **06의 사람 리뷰 박스는 여전히 열려 있다** —
+    `stack-deck.pptx`를 열어 배지 위치·겹침 순서·독립 객체 여부를 확인하는 일은 그대로 남는다
+    (06 NOTES의 (a)~(f)).
+  - 이 항목은 문서·ADR·PRD만 손댔다. 다음은 Iteration 7(`<arrow>`/`<line>`)이다.

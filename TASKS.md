@@ -249,8 +249,8 @@ PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한�
 - [x] 테스트: 겹침 z-순서 → PPTX 도형 순서, 9지점 앵커 좌표 스냅샷, 배지/워터마크 픽스처
 - [x] 구현: stack 컴파일 + canvas 슬라이드 (테마는 배경/여백만 소유)
 - [ ] 리뷰: 오버레이 배지가 양 타깃에서 같은 위치·같은 겹침 순서인지
-- [ ] 문서:
-  - [ ] `docs/reference/soml/stack.md` — `at` 9지점, `x`/`y` 좌표 기준, z-순서 규칙
+- [x] 문서:
+  - [x] `docs/reference/soml/stack.md` — `at` 9지점, `x`/`y` 좌표 기준, z-순서 규칙
         (PRD §13-3 계약대로)
 
 ## Iteration 7 — `<arrow>` `<line>` (가장 어려운 세트)
@@ -398,3 +398,8 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
 | 이미지 포맷은 PNG·JPEG 2종이고 확장자가 아니라 내용으로 판정한다 | `docs/decisions/0025-image-formats-are-png-and-jpeg.md` | I5 |
 | `fit="contain"`은 박스를 그림에 맞춘다 (`object-fit`을 쓰지 않는다 — 잰 rect가 곧 `xfrm`) | `docs/decisions/0026-contain-fits-the-box-to-the-picture.md` | I5 |
 | `alt`을 열고 `frame`을 닫는다 (PRD §7.5 표 갱신 — 액자는 variant `framed`) | `docs/decisions/0027-open-alt-close-frame.md` | I5 |
+| `<stack>`은 새 종류가 아니라 새 흐름이다 (`KindStack`을 만들지 않는다) | `docs/decisions/0028-stack-is-a-flow-not-a-kind.md` | I6 |
+| 겹침 칠 순서를 지키려고 stack 자식을 전부 위치 지정 요소로 만든다 (`z-index` 없음) | `docs/decisions/0029-paint-order-follows-pptx.md` | I6 |
+| 캔버스 좌표는 스테이지 패딩 박스 기준이다 (PRD §13-3 갱신 — 가장자리는 음수 좌표) | `docs/decisions/0030-canvas-origin-is-stage-padding-box.md` | I6 |
+| 한 축의 위치는 한 채널이 정한다 (`at`⊕`x`/`y`, 저자용 z-index 없음, 좌표는 음수·토큰 금지) | `docs/decisions/0031-position-is-one-channel.md` | I6 |
+| 슬라이드 수준 어휘는 값과 Span으로 core가 검사한다 (`layout`) | `docs/decisions/0032-slide-layout-vocab-is-core-checked.md` | I6 |

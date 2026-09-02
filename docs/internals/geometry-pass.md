@@ -61,7 +61,7 @@ pptx.NewWithGeometry(g).Render  xfrm = TextBoxRect(측정 rect, 정렬) → EMU
 ### 누구를 재는가 — 박스인 것 전부
 
 측정 대상은 **박스인 요소**다: `<text>`·블록·리스트 컨테이너·`<li>`, 레이아웃
-컨테이너(`<row>`/`<col>`/`<grid>`)와 `<spacer>`, `<shape>`와 **도형 안 텍스트**, 그리고
+컨테이너(`<row>`/`<col>`/`<grid>`/`<stack>`)와 `<spacer>`, `<shape>`와 **도형 안 텍스트**, 그리고
 `<image>`. 인라인 요소는 재지 않는다 — 여러 줄에 걸친 런의 합집합 사각형은 PPTX에서 받을 자리가
 없다 ([ADR 0009](../decisions/0009-measured-kinds.md),
 [ADR 0013](../decisions/0013-measured-kinds-include-layout.md)).
@@ -72,6 +72,7 @@ pptx.NewWithGeometry(g).Render  xfrm = TextBoxRect(측정 rect, 정렬) → EMU
 | `<ul>`/`<ol>` | 재고 | 소비된다 (`<ul>` 하나가 도형 하나다) |
 | `<li>` | 재고 | 소비되지 않는다 — 문단이 부모 박스에 산다 |
 | 레이아웃 컨테이너 · `<spacer>` | 재고 | 소비되지 않는다 — 컨테이너는 도형이 아니다 ([ADR 0011](../decisions/0011-layout-containers-are-not-shapes.md)) |
+| `<stack>` | 재고 | 소비되지 않는다 — 겹침 컨테이너도 도형이 아니다 (`<row>`와 같은 칸 — [ADR 0028](../decisions/0028-stack-is-a-flow-not-a-kind.md)) |
 | `<shape>` | 재고 | **소비된다** — `sp`의 `xfrm` (여유 없이 그대로) |
 | 도형 안 텍스트 | 재고 | 소비되지 않는다 — 부모 도형의 `txBody`가 된다 ([ADR 0016](../decisions/0016-shape-text-is-shape-body.md)) |
 | **`<image>`** | **재고** | **소비된다** — `pic`의 `xfrm` (여유도 여백 보정도 없다) |
@@ -130,6 +131,15 @@ pptx.NewWithGeometry(g).Render  xfrm = TextBoxRect(측정 rect, 정렬) → EMU
 그림에서 회전이 사라진다. 산출물 `xfrm@rot`이 회전 전 크기인지는 골든 XML만 읽는 테스트가
 따로 단정한다 (좌표 대조로는 볼 수 없다: 측정이 bbox를 재기 시작하면 두 값이 함께 커지며
 통과한다).
+
+### 위치는 변형으로 내지 않는다
+
+같은 이유가 겹침의 `x`/`y` 좌표에도 걸린다. 자식의 절대 위치는 `left`/`top`으로 내고
+**`transform: translate()`로 내지 않는다** ([`<stack>`](../reference/soml/stack.md),
+`render/web/layout.go`의 `appendPlacement`). 측정 뷰가 변형을 끄므로(위와 같은 장치), 위치를
+`translate`로 내면 지오메트리 패스가 잰 rect에 그 이동이 **남지 않고** PPTX는 겹치지 않은
+좌표를 받아 웹과 갈라진다. `translate`가 더 짧다고 바꾸는 것을 막는 것이 이 문장이다 —
+회전(변형이라 끈다)과 위치(좌표라 남겨야 한다)가 측정 뷰에서 갈라지는 자리다.
 
 ## 좌표계 — 슬라이드 상대
 

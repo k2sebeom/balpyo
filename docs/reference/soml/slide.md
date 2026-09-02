@@ -7,6 +7,7 @@
 
 | 속성 | 값 | 기본값 | 뜻 |
 |---|---|---|---|
+| `layout` | `content` · `canvas` | `content` | 슬라이드의 배치 레이아웃 (아래) |
 | `id` | 문자열 | 파일명에서 유도 | 딥링크 앵커. 덱 전체에서 유일해야 한다 |
 | `skip` | 없음 · `true` · `false` | `false` | 참이면 이 슬라이드를 렌더에서 뺀다 |
 
@@ -15,6 +16,53 @@
   않으므로 슬라이드를 재배치해도 링크가 살아남는다.
 - `skip`은 HTML 불리언 속성 관례를 따른다 — 값 없는 `<slide skip>`은 참이다. 건너뛴
   슬라이드는 덱 모델에 아예 들어가지 않으므로 슬라이드 번호에 구멍이 생기지 않는다.
+
+## `layout` 속성
+
+`layout`은 슬라이드의 **배치 레이아웃**이다 (PRD §7.3). 지금 어휘는 2종이다:
+
+| 값 | 뜻 |
+|---|---|
+| `content` (기본값) | 콘텐츠 자식을 **문서 순서의 세로 스택**으로 쌓는다 — 여백 64px, 간격 24px |
+| `canvas` | 자식을 쌓지 않고 자식이 `x`/`y`·`at`으로 **자기 자리를 정한다** (자유 배치) |
+
+- **`content`는 `layout`을 생략한 슬라이드의 기본값이자 정당한 명시 표기다.** 구현된
+  동작(세로 스택)에 이름이 있으므로 `layout="content"`가 에러가 아니고, 그 산출물은
+  `layout` 없는 같은 슬라이드와 **바이트가 같다** (기본값과 명시가 같은 이름이다).
+- **나머지 9종(`title`·`section`·`image-full` …)은 아직 어휘 밖이다** — 표준 레이아웃
+  카탈로그와 슬롯은 [Iteration 10](../index.md)이다. 그때까지 `layout="title"` 같은 값은
+  진단으로 막힌다 (오타가 조용히 기본 레이아웃으로 렌더되지 않게).
+- **렌더러는 문자열이 아니라 확정된 레이아웃 값을 소비한다** — `"canvas"`가 세 렌더러에
+  흩어지지 않게 core가 어휘를 확정해 덱 모델(`Slide.Layout`)에 싣는다. 값 어휘는 파서가 아니라
+  값 층이 보고, 값과 함께 구간(`LayoutSpan`)을 실어 진단이 `line:col`을 가리킨다
+  ([ADR 0032](../../decisions/0032-slide-layout-vocab-is-core-checked.md),
+  [아키텍처](../../internals/architecture.md)).
+
+### 캔버스에서 테마와 저자의 경계
+
+`layout="canvas"`에서도 **배경·여백은 테마가 소유하고, 배치만 저자가 소유한다** (PRD §13-3).
+스테이지는 여전히 테마의 64px 여백을 갖고, 자식의 `x`/`y`·`at`이 그 안에서 자리를 정한다.
+
+- **캔버스 좌표의 기준은 스테이지의 패딩 박스**(여백 안쪽)다. `x="0" y="0"`은 슬라이드
+  가장자리가 아니라 **여백 안쪽 좌상단**이다 — 캔버스 직속 자식의 좌표는 스테이지 절대
+  좌표와 **일치하지 않는다**([ADR 0030](../../decisions/0030-canvas-origin-is-stage-padding-box.md)).
+- **슬라이드 가장자리에 닿으려면 음수 좌표를 쓴다.** 여백이 64px이므로 `x="-64"`가 왼쪽
+  가장자리이고, 그보다 작은 음수는 슬라이드 밖으로 걸친 전면 블리드다 (자르지 않는다 —
+  PRD §13-1의 오버플로 허용).
+- 캔버스 스테이지는 [`<stack>`](stack.md)과 **같은 겹침 규칙**을 쓴다 (단일 셀 grid, 문서
+  순서 z-순서) — 자식으로 `<stack>`을 두면 그 stack이 자기 셀 좌표계를 다시 연다.
+
+`008_canvas_free.slide` — 캔버스 직속 자식이 `x`/`y`로 자리를 정한다 (음수·`%` 포함):
+
+```html
+<slide id="canvas-free" layout="canvas">
+  <h2>자유 배치</h2>
+  <shape type="rounded-rect" fill="surface" w="240" h="160" x="80" y="120"/>
+  <shape type="ellipse" fill="accent1" w="96" h="96" x="50%" y="40%"/>
+  <text size="18" color="bg" x="120" y="160">캔버스</text>
+  <shape type="star" fill="accent1" w="64" h="64" x="-24" y="24"/>
+</slide>
+```
 
 ## 예제
 
@@ -42,9 +90,14 @@
 `p:cSld@name`으로 나가 PowerPoint의 슬라이드 이름이 된다. 콘텐츠 자식은 `p:spTree`의
 도형이 되고, 문서 순서가 곧 도형 순서(겹침 z-순서)다.
 
+`layout="canvas"` 슬라이드의 웹 스테이지는 `balpyo-stage-canvas` 클래스가 더해져 세로
+스택 대신 [`<stack>`](stack.md)과 같은 단일 셀 grid 겹침이 된다 — PPTX는 어느 레이아웃이든
+자식이 절대 좌표 도형이므로 산출 구조가 같다 (레이아웃은 자식 좌표를 정할 뿐 도형이 되지
+않는다).
+
 지금 어휘에서 `<slide>`의 자식으로 올 수 있는 것은 `<text>`·`<note>`,
 [텍스트 서브셋](text-subset.md)의 블록·리스트 태그(`h1`~`h3`, `p`, `blockquote`, `pre`,
-`ul`/`ol`), [레이아웃 태그](layout.md)(`row`/`col`/`grid`/`spacer`), 그리고
+`ul`/`ol`), [레이아웃 태그](layout.md)(`row`/`col`/`grid`/[`stack`](stack.md)/`spacer`), 그리고
 [`<shape>`](shape.md)·[`<image>`](image.md)다. 인라인 태그는
 슬라이드 직속이 될 수 없다 — 블록 안에 쓴다. 콘텐츠 자식은 [자식 배치 속성](layout.md)
 (`grow`·`self`·`order` …)도 받는다 — 슬라이드의 세로 스택 자신이 flex 컨테이너다.
@@ -58,15 +111,19 @@
 | 루트가 `<slide>`가 아니다 | `루트 요소는 <slide>여야 한다 (<text>는 그 안에 쓴다)` |
 | 파일에 `<slide>`가 없다 | `루트 요소 <slide>가 없다` |
 | 파일에 `<slide>`가 둘 이상 | `루트 요소 <slide>는 파일에 하나여야 한다 (슬라이드 하나가 파일 하나다)` |
-| 어휘 밖의 자식 태그 | `<slide>의 자식으로 <…>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <image>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <spacer>)` |
+| 어휘 밖의 자식 태그 | `<slide>의 자식으로 <…>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <image>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)` |
 | 문자 데이터를 직접 썼다 | `<slide> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)` |
-| 어휘 밖의 속성 | `<slide>에 알 수 없는 속성 … (쓸 수 있는 속성: id, skip)` |
+| 어휘 밖의 속성 | `<slide>에 알 수 없는 속성 … (쓸 수 있는 속성: layout, id, skip)` |
 | `id`에 값이 없다 (`<slide id>`) | `id 속성에는 값이 필요하다 (id="architecture")` |
 | `id=""` | `id 속성이 비어 있다 (지우면 파일명에서 유도한다)` |
 | `skip` 값이 `true`/`false`가 아니다 | `skip 값은 true 또는 false다 (…)` |
+| `layout`에 값이 없다 (`<slide layout>`) | `layout 속성에는 값이 필요하다 (layout="canvas")` |
+| `layout=""` | `layout 속성이 비어 있다 (지우면 content로 계속한다)` |
 
-검증기(`core.Validate`)가 내는 진단 — 파일을 넘어야 알 수 있는 것:
+값 층·검증기(`core`)가 내는 진단 — 어휘와 파일을 넘어야 알 수 있는 것. `layout`의 값
+어휘(테마와 함께 자란다)는 파서가 아니라 이 층이 본다:
 
 | 조건 | 진단 메시지 |
 |---|---|
+| 어휘 밖의 `layout` 값 | `알 수 없는 layout "titel" (쓸 수 있는 layout: content, canvas)` |
 | 두 슬라이드의 ID가 같다 | `슬라이드 ID "…"가 …와 충돌한다 (id 속성으로 구분한다)` |

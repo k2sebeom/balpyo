@@ -27,6 +27,7 @@ nav:
       - SOML — text: reference/soml/text.md
       - SOML — 텍스트 서브셋: reference/soml/text-subset.md
       - SOML — 레이아웃: reference/soml/layout.md
+      - SOML — stack: reference/soml/stack.md
       - SOML — shape: reference/soml/shape.md
       - SOML — image: reference/soml/image.md
       - SOML — note: reference/soml/note.md
@@ -67,6 +68,11 @@ nav:
       - 0025 이미지 포맷은 PNG·JPEG 2종: decisions/0025-image-formats-are-png-and-jpeg.md
       - 0026 contain은 박스를 그림에 맞춘다: decisions/0026-contain-fits-the-box-to-the-picture.md
       - 0027 alt을 열고 frame을 닫는다: decisions/0027-open-alt-close-frame.md
+      - 0028 stack은 새 종류가 아니라 새 흐름이다: decisions/0028-stack-is-a-flow-not-a-kind.md
+      - 0029 겹침 칠 순서는 PPTX를 따른다: decisions/0029-paint-order-follows-pptx.md
+      - 0030 캔버스 좌표는 스테이지 패딩 박스 기준: decisions/0030-canvas-origin-is-stage-padding-box.md
+      - 0031 한 축의 위치는 한 채널이 정한다: decisions/0031-position-is-one-channel.md
+      - 0032 슬라이드 어휘는 값과 Span으로 core가 검사한다: decisions/0032-slide-layout-vocab-is-core-checked.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |
