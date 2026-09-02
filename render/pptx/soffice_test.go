@@ -162,3 +162,67 @@ func TestLibreOfficeOpensTextShapes(t *testing.T) {
 	}
 	testkit.OpenPPTX(t, path)
 }
+
+// LibreOffice가 겹침(stack)과 음수·슬라이드 밖 좌표가 든 덱을 경고·복구 없이 여는지 —
+// 하네스가 stderr의 복구·경고를 실패로 보므로 음수 `a:off`나 스테이지 밖 도형이 뷰어를
+// 거스르면 여기서 드러난다 (골든·단위 테스트는 초록인 채 사용자만 경고를 본다).
+//
+// 항목 05는 이 경로에 새 코드를 더하지 않는다 — 문서 순서 = z-순서는 레이아웃 컨테이너
+// 분기(도형 0개 + 자식 재귀)로 자동으로 맞고, 음수 좌표는 Offset이 그대로 흘려보낸다. 그래서
+// 이 테스트의 일은 "자동으로 맞을 것이 실제 뷰어에서도 맞는지" 확인하는 것이다: 배경 카드
+// 위에 배지가 겹치고(같은 좌표), 한 배지는 슬라이드 왼쪽 위 밖으로 반쯤 걸친다(음수 x/y).
+func TestLibreOfficeOpensStackOverlapAndNegativeCoords(t *testing.T) {
+	testkit.RequireSoffice(t)
+
+	stage, err := soml.Aspect16x9.Stage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := `<slide>
+  <stack align="center" justify="center">
+    <shape type="rect" fill="accent1" w="600" h="360"/>
+    <text color="bg" at="center">가운데 배지</text>
+    <text role="caption" color="bg" x="-40" y="-24">모서리 밖으로 걸친 배지</text>
+  </stack>
+</slide>`
+	doc, diags := soml.Parse("slides/001.slide", src)
+	if err := diags.Err(); err != nil {
+		t.Fatalf("파싱 실패: %v", err)
+	}
+	deck := &soml.Deck{Title: "stack open test", Aspect: soml.Aspect16x9, Stage: stage}
+	deck.Slides = append(deck.Slides, &soml.Slide{
+		Index: 0, ID: "s1", Source: "slides/001.slide",
+		Notes: doc.Notes, Content: doc.Content, Tokens: doc.Tokens,
+	})
+	if err := core.Resolve(deck).Err(); err != nil {
+		t.Fatalf("외관 해석 실패: %v", err)
+	}
+
+	// 겹침·음수 좌표를 실제로 담은 지오메트리 — 합성(모든 요소 같은 rect)은 음수·스테이지
+	// 밖을 만들 수 없다. refs 순서: stack, shape, text, text.
+	refs := geom.Refs(deck)
+	rects := []geom.Rect{
+		{X: 340, Y: 180, W: 600, H: 360}, // stack (컨테이너)
+		{X: 340, Y: 180, W: 600, H: 360}, // shape (배경 카드)
+		{X: 520, Y: 340, W: 240, H: 40},  // text  (가운데 — 카드 위에 겹침)
+		{X: -40, Y: -24, W: 320, H: 40},  // text  (슬라이드 왼쪽 위 밖으로 걸침)
+	}
+	if len(refs) != len(rects) {
+		t.Fatalf("refs %d개, rects %d개 — 측정 대상 목록이 바뀌었다", len(refs), len(rects))
+	}
+	boxes := make([]geom.Box, len(refs))
+	for i, ref := range refs {
+		boxes[i] = geom.Box{ID: ref.ID, El: ref.El, Slide: ref.Slide, Rect: rects[i]}
+	}
+	g := &geom.Geometry{Stage: deck.Stage, Boxes: boxes}
+
+	files, err := pptx.NewWithGeometry(g).Render(deck)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), pptx.FileName(deck))
+	if err := os.WriteFile(path, files[pptx.FileName(deck)], 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testkit.OpenPPTX(t, path)
+}

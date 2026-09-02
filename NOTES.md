@@ -2140,3 +2140,83 @@
     x/y를 토큰 없음으로 gate했으므로(NOTES 06/03) 지금은 도달 불가능한 경로다 — 항목 03의
     그 결정이 바뀌면 `spaceTokens`에 canvas를 더해야 한다. 지금은 더하지 않았다.
   - **`grid-template-*`·명시 트랙을 stack에 여는 유혹**은 계속 닫아 둔다(항목 01의 `cols` 결정).
+
+## Iteration 6 · 05-pptx-order — PPTX: 문서 순서가 z-순서다 + 음수 좌표 (테스트만)
+
+<!-- item: 06/05-pptx-order -->
+
+- **한 것** (코드 변경 0 — 계약을 테스트로 못 박고, 자동으로 맞을 것이 실제로 맞는지 확인했다):
+  - `render/pptx/stack_test.go` (신규) — 넷을 못 박는다:
+    - `TestRenderStackEmitsNoShapesLikeLayoutContainers`: `row`/`col`/`stack` 표 테스트. 자식
+      둘이 같은 좌표로 겹쳐도 컨테이너는 도형 0개, 자식만 도형 2개 — stack이 셋과 다른 산출
+      (예: grpSp)을 내면 빨개진다. `<group>`(Iteration 9)과 갈라진다는 주석을 파일 머리와
+      테스트에 적었다 (stack은 소멸, group은 편집 단위로 남는다).
+    - `TestRenderStackZOrderIsDocumentOrder`: `x`/`y` 자식 + `at`·정적 자식을 섞은 겹침
+      슬라이드에서 spTree의 `p:sp`/`p:pic` 등장 순서 = 문서 순서. 정규식 순서가 아니라
+      `strings.Index`의 **실제 문자열 위치**가 단조 증가하는지로 판정한다. 도형 id가 2·3·4·5로
+      (컨테이너가 번호를 소비하지 않고 `p:pic`도 같은 공간을 쓴다) 이어지는지도 함께 본다.
+    - `TestRenderStackChildNegativeCoordinateEmitsSignedOffset`: 음수 rect가 부호 있는 `a:off`
+      (`x="-228600" y="-152400"`)로 나오는지.
+    - `TestRenderStackOverlapDeckIsByteIdentical`: 겹침 덱을 두 번 빌드하면 바이트 동일
+      (겹침이 순서에 의존하므로 결정성을 한 번 더 본다).
+    - 새 헬퍼 `shapesInDocumentOrder`(cNvPr를 종류 무관하게 훑고 id=1인 그룹만 뺀다) —
+      `shapeNames`(`<p:sp>`만 본다)와 갈라 둔 이유는 z-순서가 도형+그림을 한 순회에서 보아야
+      하기 때문이다.
+  - `render/pptx/units_test.go` — `TestOffsetAndExtent`에 음수 케이스 둘. 핵심은
+    `{X:-0.5,Y:-1.5}` → `-4763,-14288`: **0쪽이 아니라 먼 쪽으로 반올림**(round half away
+    from zero)해야 한다는 회귀 감시선이다 (0쪽으로 치우치는 함수면 -4762가 된다). `math.Round`가
+    이미 대칭이라 통과 — 코드 변경 없음.
+  - `render/pptx/shape_test.go` — `TestTextBoxRect`에 음수 좌표 블록. slack은 폭 W(양수)에서
+    나오고 정렬 방향으로만 x를 움직이므로 X의 부호가 계산에 끼면 안 된다는 것을 start/center/
+    end/justify 전수로 못 박았다.
+  - `internal/testkit/fixture_level_test.go` — `TestShapeRolesLineUpWithGeometryRefs`의 인라인
+    SOML에 `<stack>`(`at` 자식 + `x`/`y` 자식) 케이스를 더했다. stack이 "컨테이너" 분류로
+    도형이 되지 않는지 단정한다. 이 목록을 좌표 대조(`TestFixtureCoordinatesMatchGeometry`)와
+    도형 수 등식(`TestFixtureShapeCountExcludesNonShapeElements`)이 함께 쓰므로, 이 세 줄이
+    stack에서 두 계약을 동시에 지킨다.
+  - `render/pptx/soffice_test.go` — `TestLibreOfficeOpensStackOverlapAndNegativeCoords`. 배경
+    카드 위 겹침 배지 + 슬라이드 왼쪽 위 밖으로 걸친 음수 좌표 배지를 담은 덱을 LibreOffice가
+    경고·복구 없이 여는지. 합성 지오메트리로는 음수·스테이지 밖을 만들 수 없어 `geom.Refs`에
+    직접 rect(음수 포함)를 붙여 지오메트리를 만들었다.
+
+- **설계 결정과 근거**:
+  - **코드를 한 줄도 고치지 않았다.** 항목 지시가 예상한 대로, 확인할 세 자리(음수 반올림·음수
+    rect 통과·안전 여유의 부호 무관)가 전부 이미 맞았다: `Offset`은 `math.Round`(대칭)를 쓰고,
+    `geom.Rect.valid`는 W·H만 음수를 막고 X·Y는 통과시키며, `TextBoxRect`의 slack은 W에서만
+    나온다. "아무 것도 안 해도 될 것 같다"가 틀리는 자리를 찾는 것이 이 항목의 값이었고, 찾은
+    결과는 "정말 맞다"이므로 그 사실과 확인 방법을 테스트로 남겼다.
+  - **z-순서를 정규식 순서가 아니라 등장 위치(`strings.Index`)로 본다.** 정규식의
+    `FindAllStringSubmatch`도 등장 순서를 주지만, 겹침 계약의 본질은 "저자가 먼저 쓴 것이 먼저
+    나온다"이므로 실제 문자열 위치의 단조 증가로 단정하는 것이 계약을 더 곧게 읽힌다.
+  - **`shapesInDocumentOrder`를 `shapeNames`와 합치지 않았다.** z-순서는 `p:sp`와 `p:pic`을
+    한 순회에서 보아야 하는데 `shapeNames`는 `<p:sp>`로 쪼개므로 그림을 놓친다. 종류 무관
+    cNvPr 훑기 + 그룹(id=1) 제외로 새 헬퍼를 뒀다.
+  - **표 테스트에 `grid`를 넣지 않았다** — `grid`는 트랙 속성(cols)이 얽혀 있어 겹침·컨테이너
+    대비의 초점을 흐린다. `row`/`col`/`stack` 셋이 흐름 속성을 공유하는 순수한 대비다.
+
+- **검증**:
+  - `gofmt -l render/pptx/ internal/testkit/` 무출력, `go vet ./render/pptx/ ./internal/testkit/`
+    무출력.
+  - `go test ./render/pptx/ ./soml/ ./core/ ./render/web/` — 전부 ok. 새 stack 테스트 4종,
+    음수 `Offset`/`Extent`·`TextBoxRect` 케이스, `TestShapeRolesLineUpWithGeometryRefs`(stack
+    포함) 전부 통과.
+  - `TestLibreOfficeOpensStackOverlapAndNegativeCoords`는 로컬에 LibreOffice가 없어 SKIP —
+    컨테이너 게이트에서만 실행된다.
+  - **`make test`(컨테이너 게이트)는 이 환경에 Docker가 없어 돌리지 못했다** (NOTES 06/04와
+    같은 제약). 호스트 `go test ./...`은 `internal/testkit`의 `TestFixtures`(03_layout·04_shape·
+    05_image, 실행마다 02_text_subset도)가 PPTX `a:ext cx`(브라우저가 잰 텍스트 폭) 골든과
+    달라 실패하는데, **이 실패는 이 항목의 변경 없이 clean 트리(git stash)에서도 재현**된다 —
+    호스트 macOS Chromium과 컨테이너의 폰트 메트릭 차이이고 이 항목과 무관하다 (변경은 전부
+    `_test.go`이고 픽스처·골든·산출 코드를 건드리지 않았다). 골든은 갱신하지 않았다.
+
+- **남긴 것**:
+  - **픽스처 활성화·골든·픽셀 비교(항목 06)**: `_06_stack`은 여전히 꺼져 있다. 파트 목록
+    전수(`TestFixtureGoldenPartList`)가 캔버스 슬라이드의 파트 불변(항목 02의 6번)을, 픽셀
+    비교가 웹·PPTX 겹침 순서 일치를 항목 06에서 판정한다. 이 항목은 새 픽스처가 꺼져 있는
+    동안 끝난다.
+  - **ADR·PRD(항목 07)**: 문서 순서 = z-순서와 음수 좌표 오버플로 허용은 이미 코드·주석의
+    계약이고, 문서 반영이 항목 07에 남았다.
+  - **매핑 누락 회귀는 새로 더하지 않았다** — `writeShapeNode`의 마지막 에러(`매핑이 없다`)는
+    `TestRenderUnmappedElementFails`(shape_test.go)가 이미 지키고 있어 살아 있음을 확인만 했다.
+  - **열린 질문 — 없음.** 이 항목은 PRD §13-3의 확정 계약(z-순서 = 문서 순서, x/y 음수 허용)을
+    테스트로 옮긴 것뿐이라 임의로 고른 것이 없다.

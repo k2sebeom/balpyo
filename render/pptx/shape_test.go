@@ -368,4 +368,23 @@ func TestTextBoxRect(t *testing.T) {
 	if got := TextBoxRect(zero, soml.AlignCenter); got != zero {
 		t.Errorf("크기 0 박스가 움직였다: %s", got)
 	}
+
+	// 음수 좌표에서도 안전 여유는 **부호와 무관**해야 한다 (항목 05 — 박스 밖으로 걸친
+	// 오버레이 배지는 음수 x를 갖는다). 여유(slack)는 폭 W(양수)에서 나오고 정렬 방향으로만
+	// x를 움직이므로, X의 부호가 계산에 끼면 안 된다: start는 오른쪽으로만, end는 왼쪽으로만,
+	// center는 양쪽 반씩 — 양수 좌표와 같은 규칙이다.
+	neg := geom.Rect{X: -50, Y: -30, W: 1000, H: 40}
+	for _, tc := range []struct {
+		align soml.TextAlign
+		want  geom.Rect
+	}{
+		{soml.AlignStart, geom.Rect{X: -50, Y: -30, W: 1040, H: 40}},
+		{soml.AlignCenter, geom.Rect{X: -70, Y: -30, W: 1040, H: 40}},
+		{soml.AlignEnd, geom.Rect{X: -90, Y: -30, W: 1040, H: 40}},
+		{soml.AlignJustify, neg},
+	} {
+		if got := TextBoxRect(neg, tc.align); got != tc.want {
+			t.Errorf("음수 좌표 TextBoxRect(%s, %s) = %s, want %s", neg, tc.align, got, tc.want)
+		}
+	}
 }

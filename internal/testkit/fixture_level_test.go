@@ -1138,6 +1138,10 @@ func TestShapeRolesLineUpWithGeometryRefs(t *testing.T) {
     </shape>
   </col>
   <shape type="ellipse" fill="accent1" w="120" h="120"/>
+  <stack>
+    <text at="center">겹침 배지</text>
+    <shape type="rect" fill="surface" w="120" h="80" x="-16" y="-8"/>
+  </stack>
 </slide>`
 	doc, diags := soml.Parse("slides/001.slide", src)
 	if err := diags.Err(); err != nil {
@@ -1172,6 +1176,14 @@ func TestShapeRolesLineUpWithGeometryRefs(t *testing.T) {
 		{"shape", ""},
 		{"h3", "도형 안 텍스트"},
 		{"p", "도형 안 텍스트"},
+		{"shape", ""},
+		// `<stack>`은 레이아웃 컨테이너다 — `<col>`과 같은 "컨테이너" 분류로 도형이 되지
+		// 않고 자식만 도형이 된다 (Iteration 6). group(Iteration 9)이 열리면 grpSp로
+		// 남아 이 분류에서 갈라지지만, stack은 배치 후 소멸하므로 여기 남아야 한다. 이
+		// 목록을 좌표 대조와 도형 수 등식이 함께 쓰므로, 이 세 줄이 stack에서 두 계약을
+		// 동시에 지킨다 (자리가 한 칸 밀리면 좌표가 엉뚱한 요소와 만난다).
+		{"stack", "컨테이너"},
+		{"text", ""},
 		{"shape", ""},
 	}
 	if len(want) != len(refs) {
