@@ -1,0 +1,11 @@
+{
+  "$comment": "minimal 테마 매니페스트 (PRD §8.2). name은 theme 필드가 이 이름으로 가리키는 내장 테마다. layouts는 이 테마가 구현하는 표준 레이아웃 이름 목록이다 — 표준 카탈로그(soml.SlideLayouts) 중 여기 없는 이름은 minimal 구현으로 폴백하고 경고한다(core.slideLayout). minimal은 폴백 기준이므로 11종을 전부 구현한다. extends·chrome·web은 v1 minimal에서 비어 있다.",
+
+  "name": "minimal",
+  "extends": "",
+  "layouts": [
+    "title", "section-divider", "content", "two-column",
+    "image-full", "image-text", "quote", "code", "stat", "canvas", "end"
+  ],
+  "chrome": []
+}
