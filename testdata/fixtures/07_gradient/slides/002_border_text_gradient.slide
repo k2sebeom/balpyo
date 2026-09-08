@@ -1,0 +1,13 @@
+<!-- 테두리 그라디언트 (PRD §9.4의 `border=… gradient(…)` 행 — 웹은 SVG stroke가 gradient
+     def를 참조, PPTX는 `a:ln` + `gradFill`)와 텍스트 색 그라디언트 (웹은 `background-clip:
+     text`, PPTX는 rPr + `gradFill`). 그라디언트 테두리는 `<굵기> gradient(…)` 2조각이다 —
+     그라디언트가 스타일(실선)과 색을 함께 정한다. 텍스트 그라디언트는 굵은 제목에서
+     실루엣을 따라 채워지는 것이 보인다. -->
+<slide id="border-text-gradient">
+  <h2>테두리 · 텍스트 그라디언트</h2>
+  <row gap="md" align="center">
+    <shape type="rounded-rect" fill="none" border="4 gradient(accent1 muted)" radius="lg" w="240" h="130" pad="sm"><text align="center" anchor="center">테두리 그라디언트</text></shape>
+    <shape type="rect" fill="surface" border="3 gradient(#0F65F9 #EC4899)" w="240" h="130" pad="sm"><text align="center" anchor="center">파랑→분홍 테두리</text></shape>
+  </row>
+  <text role="title" color="gradient(#0F65F9 #7C3AED #EC4899, 90deg)" align="center">그라디언트 제목</text>
+</slide>

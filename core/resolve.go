@@ -327,12 +327,21 @@ func (r *resolver) color(attr soml.Attr) (soml.Color, bool) {
 // 속성마다 따로 있으면 같은 값이 자리에 따라 다르게 읽히고, 그 차이는 두 산출물을 나란히
 // 볼 때까지 보이지 않는다.
 func (r *resolver) colorValue(name, raw string, span soml.Span) (soml.Color, bool) {
-	if i := strings.IndexByte(raw, '('); i >= 0 {
-		// 색 함수는 외관 값 문법에 있지만(PRD §7.6) Iteration 8에서 열린다. "알 수 없는 토큰"
-		// 으로 뭉개면 저자가 오타를 찾다가 시간을 쓴다 — 문법은 맞고 아직 없다고 말한다.
-		r.errorf(span, "색 함수 %s(…)는 아직 쓸 수 없다 (gradient·shade·tint·alpha는 Iteration 8) — 토큰 이름이나 #RRGGBB 리터럴을 쓴다", raw[:i])
-		return soml.Color{}, false
+	if strings.IndexByte(raw, '(') >= 0 {
+		// 색 함수(gradient·shade·tint·alpha — PRD §7.6, Iteration 8)는 여기서 갈린다.
+		// 단색과 코드가 갈라져도 진단은 같은 함수(colorValue)를 지난다 — 그래야 `fill`·
+		// `border` 색·텍스트 `color`가 같은 함수 어휘를 쓴다.
+		return r.colorFunc(name, raw, span)
 	}
+	return r.simpleColor(name, raw, span)
+}
+
+// simpleColor는 단색 하나를 해석한다 — 토큰명 또는 #리터럴이다 (함수·그라디언트 아님).
+//
+// colorValue와 나눈 이유: 그라디언트 스톱과 변형 함수의 밑색은 **단색만** 받는다 (중첩
+// 불허, PRD §13-5). 그 자리에서 다시 함수를 허용하면 `gradient(shade(a,10%) b)` 같은
+// 표기가 문법으로 새어 들어오고, 그 표기의 타깃 매핑은 v1에 없다.
+func (r *resolver) simpleColor(name, raw string, span soml.Span) (soml.Color, bool) {
 	if strings.HasPrefix(raw, "#") {
 		rgb, ok := hexRGB(raw[1:])
 		if !ok {
@@ -347,6 +356,151 @@ func (r *resolver) colorValue(name, raw string, span soml.Span) (soml.Color, boo
 		return soml.Color{}, false
 	}
 	return soml.TokenColor(raw), true
+}
+
+// colorFunc는 색 함수 하나를 해석한다 (`gradient`/`shade`/`tint`/`alpha`).
+//
+// 닫는 괄호·함수 이름 어휘·중첩 금지를 여기서 한 번에 검사한 뒤 종류별 파서로 넘긴다 —
+// 중첩 금지(인자 안에 다시 `(`가 없음)를 위에서 막으므로 종류별 파서는 인자에 단색만 온다고
+// 믿을 수 있다.
+func (r *resolver) colorFunc(name, raw string, span soml.Span) (soml.Color, bool) {
+	open := strings.IndexByte(raw, '(')
+	fn := raw[:open]
+	if !strings.HasSuffix(raw, ")") {
+		r.errorf(span, "색 함수 %s(…)에 닫는 괄호 %q가 없다 (%q)", fn, ")", raw)
+		return soml.Color{}, false
+	}
+	inner := strings.TrimSpace(raw[open+1 : len(raw)-1])
+	if strings.IndexByte(inner, '(') >= 0 {
+		// 중첩은 v1에서 불허한다 (PRD §13-5) — `shade(gradient(…),…)`·`gradient(shade(…) …)`
+		// 둘 다 여기서 걸린다. 매핑을 1:1로 유지하려는 결정의 관문이다.
+		r.errorf(span, "색 함수는 중첩할 수 없다 (%q) — 인자는 토큰명이나 #리터럴 단색이다 (v1)", raw)
+		return soml.Color{}, false
+	}
+	switch fn {
+	case "gradient":
+		return r.gradientFunc(name, inner, span, raw)
+	case string(soml.ModShade), string(soml.ModTint):
+		return r.variantFunc(soml.ColorModKind(fn), name, inner, span, raw)
+	case string(soml.ModAlpha):
+		return r.alphaFunc(name, inner, span, raw)
+	}
+	r.errorf(span, "알 수 없는 색 함수 %q (쓸 수 있는 함수: gradient, shade, tint, alpha) — %q", fn, raw)
+	return soml.Color{}, false
+}
+
+// gradientFunc는 `gradient(색… [, 각도deg])`를 해석한다 — 색은 공백 구분·균등 스톱이고
+// 각도는 생략 시 180(위→아래)이다 (PRD §13-5).
+func (r *resolver) gradientFunc(name, inner string, span soml.Span, raw string) (soml.Color, bool) {
+	colorPart := inner
+	anglePart := ""
+	if c := strings.IndexByte(inner, ','); c >= 0 {
+		colorPart = inner[:c]
+		anglePart = strings.TrimSpace(inner[c+1:])
+	}
+	fields := strings.Fields(colorPart)
+	if len(fields) < 2 {
+		r.errorf(span, "gradient는 색이 둘 이상이어야 한다 (%q) — 예: gradient(accent1 surface), 각도는 gradient(accent1 surface, 45deg)", raw)
+		return soml.Color{}, false
+	}
+	ok := true
+	stops := make([]soml.Color, 0, len(fields))
+	for _, f := range fields {
+		c, cok := r.simpleColor(name, f, span)
+		if !cok {
+			ok = false
+			continue
+		}
+		stops = append(stops, c)
+	}
+	angle := gradientDefaultAngle
+	if anglePart != "" {
+		a, aok := r.gradientAngle(anglePart, span, raw)
+		if !aok {
+			ok = false
+		} else {
+			angle = a
+		}
+	}
+	if !ok {
+		return soml.Color{}, false
+	}
+	return soml.GradientColor(stops, angle), true
+}
+
+// gradientDefaultAngle은 각도를 생략한 그라디언트의 CSS 각도다 (위→아래).
+const gradientDefaultAngle = 180.0
+
+// gradientAngle은 그라디언트의 각도 인자를 해석한다 — `<수치>deg` 형태다.
+func (r *resolver) gradientAngle(part string, span soml.Span, raw string) (float64, bool) {
+	if !strings.HasSuffix(part, "deg") {
+		r.errorf(span, "gradient 각도는 `<수치>deg` 형태다 (%q의 %q) — 예: 45deg", raw, part)
+		return 0, false
+	}
+	deg, err := strconv.ParseFloat(strings.TrimSpace(strings.TrimSuffix(part, "deg")), 64)
+	if err != nil {
+		r.errorf(span, "gradient 각도가 수치가 아니다 (%q의 %q)", raw, part)
+		return 0, false
+	}
+	return deg, true
+}
+
+// variantFunc는 `shade(색, %)`·`tint(색, %)`를 해석한다 — 밑색 단색에 백분율 세기를 얹는다.
+func (r *resolver) variantFunc(kind soml.ColorModKind, name, inner string, span soml.Span, raw string) (soml.Color, bool) {
+	comma := strings.IndexByte(inner, ',')
+	if comma < 0 {
+		r.errorf(span, "%s는 `%s(색, %%)` 두 인자다 (%q) — 예: %s(accent1, 40%%)", kind, kind, raw, kind)
+		return soml.Color{}, false
+	}
+	base, bok := r.simpleColor(name, strings.TrimSpace(inner[:comma]), span)
+	pctStr := strings.TrimSpace(inner[comma+1:])
+	pct, pok := r.variantPercent(kind, pctStr, span, raw)
+	if !bok || !pok {
+		return soml.Color{}, false
+	}
+	return soml.VariantColor(base, kind, pct), true
+}
+
+// variantPercent는 shade/tint의 백분율 인자를 해석한다 (0~100, `%` 필수).
+func (r *resolver) variantPercent(kind soml.ColorModKind, part string, span soml.Span, raw string) (float64, bool) {
+	if !strings.HasSuffix(part, "%") {
+		r.errorf(span, "%s의 두 번째 인자는 백분율(`%%`)이다 (%q의 %q) — 예: %s(accent1, 40%%)", kind, raw, part, kind)
+		return 0, false
+	}
+	pct, err := strconv.ParseFloat(strings.TrimSpace(strings.TrimSuffix(part, "%")), 64)
+	if err != nil {
+		r.errorf(span, "%s의 백분율이 수치가 아니다 (%q의 %q)", kind, raw, part)
+		return 0, false
+	}
+	if pct <= 0 || pct > 100 {
+		r.errorf(span, "%s의 백분율은 0 초과 100 이하다 (%q) — 0%%는 밑색 그대로라 변형이 없다", kind, part)
+		return 0, false
+	}
+	return pct, true
+}
+
+// alphaFunc는 `alpha(색, 0~1)`를 해석한다 — 밑색 단색에 불투명도를 얹는다.
+func (r *resolver) alphaFunc(name, inner string, span soml.Span, raw string) (soml.Color, bool) {
+	comma := strings.IndexByte(inner, ',')
+	if comma < 0 {
+		r.errorf(span, "alpha는 `alpha(색, 0~1)` 두 인자다 (%q) — 예: alpha(fg, 0.6)", raw)
+		return soml.Color{}, false
+	}
+	base, bok := r.simpleColor(name, strings.TrimSpace(inner[:comma]), span)
+	aStr := strings.TrimSpace(inner[comma+1:])
+	a, err := strconv.ParseFloat(aStr, 64)
+	if err != nil {
+		r.errorf(span, "alpha의 불투명도가 수치가 아니다 (%q의 %q) — 0~1 실수다", raw, aStr)
+		return soml.Color{}, false
+	}
+	if a < 0 || a > 1 {
+		r.errorf(span, "alpha의 불투명도는 0~1이다 (%q) — 백분율이 아니라 실수다 (예: 0.6)", aStr)
+		return soml.Color{}, false
+	}
+	if !bok {
+		return soml.Color{}, false
+	}
+	return soml.VariantColor(base, soml.ModAlpha, a), true
 }
 
 // align은 문단 정렬을 해석한다. 어휘는 논리 이름 4종이다 (soml.TextAlign의 주석).

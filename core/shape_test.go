@@ -241,19 +241,18 @@ func TestResolveShapeColorErrors(t *testing.T) {
 	}{
 		{"fill 모르는 토큰", `type="rect" fill="brand"`, "brand",
 			[]string{"fill의 색 토큰", "테마에 없다", "surface", "#RRGGBB"}},
-		{"fill 그라디언트", `type="rect" fill="gradient(accent1 muted)"`, "gradient",
-			[]string{"색 함수 gradient(…)는 아직 쓸 수 없다", "Iteration 8"}},
+		{"fill 그라디언트 색 하나", `type="rect" fill="gradient(accent1)"`, "gradient",
+			[]string{"gradient는 색이 둘 이상"}},
 		{"fill 잘못된 리터럴", `type="rect" fill="#12345"`, "#12345",
 			[]string{"#RRGGBB 또는 #RGB"}},
 		{"border 모르는 토큰", `type="rect" border="1 solid brand"`, "brand",
 			[]string{"border의 색 토큰", "테마에 없다"}},
-		{"border 색 함수", `type="rect" border="3 solid shade(accent1, 20)"`, "shade",
-			[]string{"색 함수 shade(…)는 아직 쓸 수 없다"}},
-		// PRD §7.6의 예제 표기다 (`border="3 gradient(accent1 accent4 accent5)"`) — 괄호 안
-		// 공백을 조각 경계로 세면 조각 수 에러가 나고, 저자는 "아직 없는 기능"이라는 사실에
-		// 도달하지 못한다 (splitValues의 괄호 계산이 그것을 막는다).
-		{"border 그라디언트", `type="rect" border="3 gradient(accent1 accent4 accent5)"`, "gradient",
-			[]string{"색 함수 gradient(…)는 아직 쓸 수 없다", "Iteration 8"}},
+		{"border shade 백분율 없음", `type="rect" border="3 solid shade(accent1, 20)"`, "shade",
+			[]string{"shade의 두 번째 인자는 백분율"}},
+		// 그라디언트가 스타일을 함께 대신하므로 축약은 2조각이다 (`<굵기> gradient(…)`). 스타일
+		// 조각을 끼우면 3조각이 되어 그 갈래의 조각 수 에러가 난다 (gradientBorder).
+		{"border 그라디언트 스타일 끼움", `type="rect" border="3 dashed gradient(accent1 muted)"`, "3 dashed",
+			[]string{"2조각", "스타일과 색을 함께 대신"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -263,6 +262,65 @@ func TestResolveShapeColorErrors(t *testing.T) {
 			}
 			assertShapeDiag(t, diags[0], shapeCol(tc.attrs, tc.needle), tc.contains...)
 		})
+	}
+}
+
+// TestResolveColorFunctions는 그라디언트·색 변형 문법이 확정 색 모델로 해석되는지 못 박는다
+// (Iteration 8, PRD §7.6·§13-5). 토큰은 이름으로 남는다 (schemeClr 보존) — showColor가
+// 토큰/리터럴/변형/그라디언트를 구별해 표기한다.
+func TestResolveColorFunctions(t *testing.T) {
+	cases := []struct {
+		name string
+		fill string
+		want string
+	}{
+		{"그라디언트 토큰 3색 기본각", `gradient(accent1 surface muted)`,
+			"gradient(token(accent1) token(surface) token(muted) @180)"},
+		{"그라디언트 토큰+리터럴 각도", `gradient(accent1 #FF0000, 45deg)`,
+			"gradient(token(accent1) #FF0000 @45)"},
+		{"그라디언트 두 색 세로", `gradient(accent1 bg, 0deg)`,
+			"gradient(token(accent1) token(bg) @0)"},
+		{"shade 토큰", `shade(accent1, 40%)`, "shade(token(accent1),40)"},
+		{"tint 토큰", `tint(muted, 25%)`, "tint(token(muted),25)"},
+		{"alpha 토큰", `alpha(fg, 0.6)`, "alpha(token(fg),0.6)"},
+		{"shade 리터럴", `shade(#0F65F9, 30%)`, "shade(#0F65F9,30)"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			deck, diags := resolveSlide(t, shapeSlide(`type="rect" fill="`+tc.fill+`"`))
+			if len(diags) != 0 {
+				t.Fatalf("진단이 났다: %v", diags)
+			}
+			style := findElement(t, deck, soml.ShapeElement).ShapeStyle()
+			if style == nil || style.Fill == nil {
+				t.Fatal("채움이 해석되지 않았다")
+			}
+			if got := showFill(*style.Fill); got != tc.want {
+				t.Errorf("fill = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestResolveGradientBorder는 그라디언트 테두리(`<굵기> gradient(…)`)가 굵기·실선·색으로
+// 확정되는지 못 박는다 — 그라디언트가 스타일을 실선으로 함께 정한다.
+func TestResolveGradientBorder(t *testing.T) {
+	deck, diags := resolveSlide(t, shapeSlide(`type="rect" border="3 gradient(accent1 muted)"`))
+	if len(diags) != 0 {
+		t.Fatalf("진단이 났다: %v", diags)
+	}
+	style := findElement(t, deck, soml.ShapeElement).ShapeStyle()
+	if style == nil || style.Border == nil {
+		t.Fatal("테두리가 해석되지 않았다")
+	}
+	if style.Border.Width != 3 {
+		t.Errorf("굵기 = %g, want 3", style.Border.Width)
+	}
+	if style.Border.Style != soml.BorderSolid {
+		t.Errorf("스타일 = %q, want solid (그라디언트는 실선 고정)", style.Border.Style)
+	}
+	if got := showColor(style.Border.Color); got != "gradient(token(accent1) token(muted) @180)" {
+		t.Errorf("색 = %q, want 그라디언트 2색", got)
 	}
 }
 
@@ -772,10 +830,21 @@ func showFill(fill soml.Fill) string {
 }
 
 func showColor(color soml.Color) string {
-	if color.IsToken() {
-		return "token(" + color.Token + ")"
+	if color.IsGradient() {
+		stops := make([]string, len(color.Gradient.Stops))
+		for i, s := range color.Gradient.Stops {
+			stops[i] = showColor(s)
+		}
+		return fmt.Sprintf("gradient(%s @%g)", strings.Join(stops, " "), color.Gradient.Angle)
 	}
-	return "#" + color.RGB
+	base := "#" + color.RGB
+	if color.IsToken() {
+		base = "token(" + color.Token + ")"
+	}
+	if color.Mod != nil {
+		return fmt.Sprintf("%s(%s,%g)", color.Mod.Kind, base, color.Mod.Amount)
+	}
+	return base
 }
 
 func showRadius(radius soml.Radius) string {

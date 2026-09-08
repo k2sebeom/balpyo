@@ -111,6 +111,34 @@ func Alpha(v float64) int64 {
 	return int64(math.Round(v * PercentScale))
 }
 
+// LumPct는 백분율(0~100)을 OOXML 광도 변조 값(100000분율)으로 바꾼다 — `a:lumMod`/`a:lumOff`의
+// `val`이다.
+//
+// **색 변형(shade/tint)이 여기로 온다** (PRD §9.4의 색 변형 행 — PPTX는 `lumMod`/`lumOff`):
+// `shade(색, p%)`는 어둡게이므로 광도를 (100-p)%로 조절한다(`lumMod val`), `tint`은 밝게이므로
+// 같은 lumMod에 `lumOff val=p%`를 더한다. 이 표기가 PowerPoint의 테마 색 변형 UI가 쓰는
+// 것과 같아, 변형된 토큰 색도 `schemeClr` 참조를 유지한 채 테마 색 편집을 따라간다
+// (soml.ColorMod). 웹은 같은 값을 `color-mix()`로 낸다 (render/web) — 두 엔진의 광도 공간이
+// 정확히 같지는 않아 미세한 색 차가 남지만, 스키마 참조 보존이 이 매핑의 목적이다.
+func LumPct(pct float64) int64 {
+	return int64(math.Round(pct / 100 * PercentScale))
+}
+
+// GradientAngle은 CSS 그라디언트 각도를 OOXML `gradFill`의 `a:lin@ang`으로 바꾼다.
+//
+// CSS `linear-gradient`는 0deg = 아래→위, 시계방향이고(soml.Gradient), OOXML `a:lin@ang`은
+// 0 = 왼→오, 시계방향(60000분의 1도)이다 — 기준축이 90도 어긋나 있다. 그래서 변환은
+// `ooxml = (css - 90) mod 360`이다: CSS 180deg(위→아래)는 OOXML 90도(위→아래)가 되고,
+// CSS 90deg(왼→오)는 OOXML 0도가 된다. y축이 두 좌표계에서 모두 아래로 향하므로 부호를
+// 뒤집지 않는다 (회전·그림자 방향과 같은 규약, Rotation의 주석).
+func GradientAngle(cssDeg float64) int64 {
+	d := math.Mod(cssDeg-90, 360)
+	if d < 0 {
+		d += 360
+	}
+	return int64(math.Round(d * UnitsPerDegree))
+}
+
 // AdjustValue는 프리셋 조정값 명세를 잰 박스로 평가한다 — `prstGeom/avLst`의 `val N`이다.
 //
 // 공식은 `val = Base × 값 ÷ ss`이고 `ss = min(w, h)`다 (web.ShapeAdjust). 이 계산이 PPTX

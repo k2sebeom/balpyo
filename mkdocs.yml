@@ -73,6 +73,8 @@ nav:
       - 0030 캔버스 좌표는 스테이지 패딩 박스 기준: decisions/0030-canvas-origin-is-stage-padding-box.md
       - 0031 한 축의 위치는 한 채널이 정한다: decisions/0031-position-is-one-channel.md
       - 0032 슬라이드 어휘는 값과 Span으로 core가 검사한다: decisions/0032-slide-layout-vocab-is-core-checked.md
+      - 0033 색 변형은 참조를 보존한다: decisions/0033-color-variants-preserve-scheme-ref.md
+      - 0034 그라디언트는 SVG def로 내고 objectBoundingBox로 늘린다: decisions/0034-gradient-svg-def-and-objectboundingbox.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |

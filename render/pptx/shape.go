@@ -2,6 +2,7 @@ package pptx
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/k2sebeom/balpyo/render/geom"
@@ -594,6 +595,11 @@ func writeFill(w func(depth int, line string), depth int, fill soml.Fill, alpha 
 		w(depth, "<a:noFill/>")
 		return nil
 	}
+	if fill.Color.IsGradient() {
+		// 그라디언트 채움은 solidFill이 아니라 gradFill이다 (PRD §9.4). 도형 불투명도는
+		// 스톱 색마다 알파로 실린다 (writeGradFill).
+		return writeGradFill(w, depth, *fill.Color.Gradient, alpha, theme)
+	}
 	w(depth, "<a:solidFill>")
 	if err := writeColor(w, depth+1, fill.Color, alpha, theme); err != nil {
 		return err
@@ -625,11 +631,19 @@ func writeLine(w func(depth int, line string), depth int, border soml.Border, al
 		return err
 	}
 	w(depth, fmt.Sprintf(`<a:ln w="%d">`, EMU(border.Width)))
-	w(depth+1, "<a:solidFill>")
-	if err := writeColor(w, depth+2, border.Color, alpha, theme); err != nil {
-		return err
+	if border.Color.IsGradient() {
+		// 그라디언트 테두리는 `ln` 안의 `gradFill`이다 (PRD §9.4의 `border=… gradient(…)` 행 —
+		// PPTX는 `ln` + `gradFill`). 웹은 SVG stroke가 gradient def를 참조한다 (render/web).
+		if err := writeGradFill(w, depth+1, *border.Color.Gradient, alpha, theme); err != nil {
+			return err
+		}
+	} else {
+		w(depth+1, "<a:solidFill>")
+		if err := writeColor(w, depth+2, border.Color, alpha, theme); err != nil {
+			return err
+		}
+		w(depth+1, "</a:solidFill>")
 	}
-	w(depth+1, "</a:solidFill>")
 	// 스키마 순서(CT_LineProperties): 채움 → prstDash → 조인·화살촉.
 	w(depth+1, fmt.Sprintf(`<a:prstDash val="%s"/>`, dash))
 	w(depth, "</a:ln>")
@@ -886,7 +900,7 @@ func bodyInsets(pad *soml.Pad) (string, error) {
 // textStyleCSS와 같은 검사다. 해석되지 않은 0 값이 sz="0"으로 흘러가면 파일은 열리지만
 // 글자가 보이지 않는다.
 func checkTextStyle(style soml.TextStyle, theme soml.Theme) error {
-	if _, err := colorXML(style.Color, theme); err != nil {
+	if err := validateColor(style.Color, theme); err != nil {
 		return err
 	}
 	if _, _, err := typefaces(style.Font, theme); err != nil {
@@ -1099,8 +1113,7 @@ func writeRuns(w func(depth int, line string), parent *soml.Element, style soml.
 // 버렸다: 문단 사이 간격이 줄간격과 달라질 수 있고, pre는 한 문단의 여러 줄이다. 빈 줄은
 // a:br만 남는다 — 빈 a:t는 유효하지만 정보가 없다.
 func writeTextRuns(w func(depth int, line string), text string, style soml.TextStyle, theme soml.Theme, rels *slideRels, ctx runContext) error {
-	fill, err := colorXML(style.Color, theme)
-	if err != nil {
+	if err := validateColor(style.Color, theme); err != nil {
 		return err
 	}
 	latin, ea, err := typefaces(style.Font, theme)
@@ -1125,9 +1138,12 @@ func writeTextRuns(w func(depth int, line string), text string, style soml.TextS
 		}
 		w(3, "<a:r>")
 		w(4, fmt.Sprintf(`<a:rPr %s>`, attrs))
-		w(5, "<a:solidFill>")
-		w(6, fill)
-		w(5, "</a:solidFill>")
+		// 텍스트 색은 rPr의 채움이다 — 그라디언트는 `gradFill`, 단색·변형은 `solidFill`이다
+		// (PRD §9.4의 텍스트 `color=gradient` 행 — PPTX는 rPr + gradFill). 웹은
+		// background-clip:text로 같은 결과를 낸다 (render/web).
+		if err := writeTextFill(w, 5, style.Color, theme); err != nil {
+			return err
+		}
 		w(5, latin)
 		w(5, ea)
 		if ctx.link != "" {
@@ -1185,27 +1201,31 @@ func underlineValue(underline bool) string {
 	return "none"
 }
 
-// colorXML은 해석된 색을 채움 자식 요소로 만든다 (알파 없는 한 줄 표기).
+// writeTextFill은 텍스트 색을 rPr의 채움 요소로 쓴다 — 그라디언트는 `gradFill`, 단색·변형은
+// `solidFill`이다 (PRD §9.4의 텍스트 `color=gradient` 행).
 //
 // 토큰은 **schemeClr 참조로 남는다** — 여기서 RGB로 눕히면 내보낸 파일이 PowerPoint의
-// 테마 색 편집을 따라가지 못한다 (soml.Color의 주석, 제품 핵심 계약). 참조 이름은 토큰
-// 표의 Ref다 (clrMap을 거친 이름 — 파생 규칙을 여기 두지 않는다).
-//
-// **도형의 채움·선·그림자도 이 함수를 지난다** (colorElem을 거쳐 writeColor로) — 색 컴파일
-// 경로가 둘이 되면 한쪽만 토큰을 눕히고, 그 어긋남은 "이 도형만 테마 색을 따라가지 않는다"로만
-// 드러난다.
-func colorXML(color soml.Color, theme soml.Theme) (string, error) {
-	name, attrs, err := colorElem(color, theme)
-	if err != nil {
-		return "", err
+// 테마 색 편집을 따라가지 못한다 (soml.Color의 주석, 제품 핵심 계약). 텍스트에는 도형
+// 불투명도가 없어 외부 알파는 nil이다 (변형 `alpha()`는 색 자신이 싣는다).
+func writeTextFill(w func(depth int, line string), depth int, color soml.Color, theme soml.Theme) error {
+	if color.IsGradient() {
+		return writeGradFill(w, depth, *color.Gradient, nil, theme)
 	}
-	return fmt.Sprintf("<%s %s/>", name, attrs), nil
+	w(depth, "<a:solidFill>")
+	if err := writeColor(w, depth+1, color, nil, theme); err != nil {
+		return err
+	}
+	w(depth, "</a:solidFill>")
+	return nil
 }
 
 // colorElem은 색 요소의 태그 이름과 속성이다 — 알파를 자식으로 갖는 표기(writeColor)와 한 줄
-// 표기(colorXML)가 같은 판정을 쓰도록 나눠 둔 자리다.
+// 표기(colorXML)가 같은 판정을 쓰도록 나눠 둔 자리다. **단색만** 받는다: 그라디언트는 색
+// 요소가 아니라 `gradFill`이므로 여기서 걸러 낸다 (writeGradFill이 소유한다).
 func colorElem(color soml.Color, theme soml.Theme) (name, attrs string, err error) {
 	switch {
+	case color.IsGradient():
+		return "", "", fmt.Errorf("그라디언트는 단일 색 요소가 아니다 — gradFill로 낸다")
 	case color.IsZero():
 		return "", "", fmt.Errorf("색이 해석되지 않았다")
 	case color.IsToken():
@@ -1224,24 +1244,124 @@ func colorElem(color soml.Color, theme soml.Theme) (name, attrs string, err erro
 	}
 }
 
-// writeColor는 색을 채움 요소의 자식으로 쓴다 — 알파가 있으면 색 요소가 `a:alpha` 자식을 갖는다.
+// colorTransforms는 색 요소의 변환 자식(lumMod/lumOff/alpha)을 만든다 — **색 변형 함수와
+// 외부 불투명도(opacity)를 한 자리에서 합친다** (PRD §9.4의 색 변형 행).
+//
+// 순서는 lumMod → lumOff → alpha로 고정한다 (스키마는 순서를 강제하지 않지만 골든이 한 가지
+// 표기로 남는다). 알파는 하나만 낸다: 색 자신의 `alpha()`(mod)와 도형 불투명도(extraAlpha)가
+// 함께 있으면 곱한다 — 웹의 합성 순서(색 알파 × svg opacity)와 같다. **schemeClr 참조는
+// 눕지 않는다**: 변환은 색 요소의 자식이므로 토큰 색이 여전히 테마 편집을 따라간다.
+func colorTransforms(mod *soml.ColorMod, extraAlpha *float64) []string {
+	var lines []string
+	effAlpha := 1.0
+	alphaSet := false
+	if extraAlpha != nil {
+		effAlpha *= *extraAlpha
+		alphaSet = true
+	}
+	if mod != nil {
+		switch mod.Kind {
+		case soml.ModShade:
+			lines = append(lines, fmt.Sprintf(`<a:lumMod val="%d"/>`, LumPct(100-mod.Amount)))
+		case soml.ModTint:
+			lines = append(lines,
+				fmt.Sprintf(`<a:lumMod val="%d"/>`, LumPct(100-mod.Amount)),
+				fmt.Sprintf(`<a:lumOff val="%d"/>`, LumPct(mod.Amount)))
+		case soml.ModAlpha:
+			effAlpha *= mod.Amount
+			alphaSet = true
+		}
+	}
+	if alphaSet {
+		lines = append(lines, fmt.Sprintf(`<a:alpha val="%d"/>`, Alpha(effAlpha)))
+	}
+	return lines
+}
+
+// writeColor는 색을 채움 요소의 자식으로 쓴다 — 변형(lumMod/lumOff/alpha)과 외부 불투명도가
+// 있으면 색 요소가 그 자식을 갖는다.
 //
 // **알파가 색 안에 사는 것이 OOXML의 구조다** (도형 단위 불투명도가 없다 — spSpec.alpha).
 // 그래서 채움·선·그림자가 각자 자기 색에 같은 알파를 싣고, 웹은 그림 svg 하나에 `opacity`를
-// 걸어 같은 결과를 낸다 (render/web.shapeInkCSS).
+// 걸어 같은 결과를 낸다 (render/web.shapeInkCSS). 변형이 없고 알파도 없으면 자식 없는 한 줄
+// 표기라 기존 산출물과 바이트가 같다.
 func writeColor(w func(depth int, line string), depth int, color soml.Color, alpha *float64, theme soml.Theme) error {
 	name, attrs, err := colorElem(color, theme)
 	if err != nil {
 		return err
 	}
-	if alpha == nil {
+	children := colorTransforms(color.Mod, alpha)
+	if len(children) == 0 {
 		w(depth, fmt.Sprintf("<%s %s/>", name, attrs))
 		return nil
 	}
 	w(depth, fmt.Sprintf("<%s %s>", name, attrs))
-	w(depth+1, fmt.Sprintf(`<a:alpha val="%d"/>`, Alpha(*alpha)))
+	for _, child := range children {
+		w(depth+1, child)
+	}
 	w(depth, fmt.Sprintf("</%s>", name))
 	return nil
+}
+
+// writeGradFill은 그라디언트 색을 `a:gradFill`로 쓴다 (PRD §9.4의 `fill=gradient` 행 —
+// PPTX는 `gradFill`).
+//
+// 스톱은 균등 배치다 (soml.Gradient): n개 스톱이 0, 1/(n-1), …, 1(100000분율)에 놓인다.
+// 각 스톱 색은 `schemeClr`/`srgbClr`를 유지하므로(colorElem) 토큰 스톱이 테마 편집을
+// 따라간다. 각도는 GradientAngle이 OOXML `a:lin@ang`으로 바꾸고, `scaled="1"`은 그라디언트가
+// 도형 크기에 맞춰 늘어난다는 뜻이다 (웹의 objectBoundingBox와 같은 결정).
+//
+// 외부 불투명도(도형 opacity)는 스톱마다 `a:alpha`로 실린다 — 도형 전체 알파를 gradFill이
+// 통째로 받는 표기가 없어(alpha는 색의 성질이다) 스톱 색에 나눠 싣는다.
+func writeGradFill(w func(depth int, line string), depth int, grad soml.Gradient, alpha *float64, theme soml.Theme) error {
+	if len(grad.Stops) < 2 {
+		return fmt.Errorf("그라디언트 스톱이 둘 미만이다 (%d)", len(grad.Stops))
+	}
+	w(depth, "<a:gradFill>")
+	w(depth+1, "<a:gsLst>")
+	last := len(grad.Stops) - 1
+	for i, stop := range grad.Stops {
+		pos := int64(math.Round(float64(i) / float64(last) * PercentScale))
+		name, attrs, err := colorElem(stop, theme)
+		if err != nil {
+			return err
+		}
+		w(depth+2, fmt.Sprintf(`<a:gs pos="%d">`, pos))
+		children := colorTransforms(stop.Mod, alpha)
+		if len(children) == 0 {
+			w(depth+3, fmt.Sprintf("<%s %s/>", name, attrs))
+		} else {
+			w(depth+3, fmt.Sprintf("<%s %s>", name, attrs))
+			for _, child := range children {
+				w(depth+4, child)
+			}
+			w(depth+3, fmt.Sprintf("</%s>", name))
+		}
+		w(depth+2, "</a:gs>")
+	}
+	w(depth+1, "</a:gsLst>")
+	w(depth+1, fmt.Sprintf(`<a:lin ang="%d" scaled="1"/>`, GradientAngle(grad.Angle)))
+	w(depth, "</a:gradFill>")
+	return nil
+}
+
+// validateColor는 색(단색·변형·그라디언트)이 OOXML로 컴파일될 수 있는지 검증한다 —
+// checkTextStyle이 텍스트 색을 미리 검사하는 데 쓴다 (해석되지 않은 색이 산출물로 새는 것을
+// 막는다).
+func validateColor(color soml.Color, theme soml.Theme) error {
+	if color.IsGradient() {
+		if len(color.Gradient.Stops) < 2 {
+			return fmt.Errorf("그라디언트 스톱이 둘 미만이다 (%d)", len(color.Gradient.Stops))
+		}
+		for _, stop := range color.Gradient.Stops {
+			if _, _, err := colorElem(stop, theme); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	_, _, err := colorElem(color, theme)
+	return err
 }
 
 // typefaces는 폰트 토큰을 rPr의 latin/ea 요소로 만든다 (값은 typefaceValues).

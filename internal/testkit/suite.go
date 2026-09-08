@@ -114,6 +114,20 @@ var slideDiffOptions = map[string]DiffOptions{
 	// (inkBandSkipSlides에 없다) 줄 수·위치는 0 오차로 따로 못 박힌다 — 이 픽셀 여유가 배치
 	// 갈라짐을 감추지 않는다.
 	"06_stack/content-explicit": {Channel: 32, MaxRatio: 0.030},
+	// 07_gradient/fill-gradient: 그라디언트 채움 슬라이드다 (Iteration 8). 잔차의 대부분은
+	// **3색 스톱 카드**에서 온다 — 산출 OOXML은 스펙대로 3개 `a:gs`(accent1 pos0 → tx2
+	// pos50000 → bg2 pos100000, 위 골든 slide1.xml에서 확인)이지만, 테스트 래스터라이저인
+	// LibreOffice는 다중 스톱 gradFill을 근사해 그려 중간·끝 스톱이 웹(SVG linearGradient)과
+	// 갈라진다. PowerPoint/Keynote는 세 스톱을 그대로 그리므로 이 갈라짐은 산출물 결함이
+	// 아니라 **뷰어 소관**이다 (04_shape의 "알려진 줄바꿈 규칙 갈라짐"과 같은 성질). 나머지는
+	// 그라디언트 경계의 색 보간·안티앨리어싱 잔차다. 측정 3.265%(대각 그라디언트는 정사각형
+	// 도형으로 두어 objectBoundingBox↔OOXML 각도 왜곡을 이미 제거했다)이고 3.8%는 거기에
+	// 앞 픽스처들과 같은 폭의 여유를 더한 값이다. **사람 확인 필수**: deck.pptx를 PowerPoint/
+	// Keynote로 열어 3색 스톱과 각도가 웹과 같은지 본다 (LibreOffice 렌더로는 판정할 수 없는
+	// 유일한 자리다). 채움 색·스톱 참조 자체는 구조 테스트(render/pptx.TestRenderShapeFillGradient,
+	// render/web.TestShapeFillGradientEmitsSVGDef)가 0 오차로 못 박으므로 이 픽셀 여유가
+	// 스톱 갈라짐을 덮어 감추지 않는다.
+	"07_gradient/fill-gradient": {Channel: 32, MaxRatio: 0.038},
 }
 
 // CompareRenders는 픽스처의 웹 스크린샷과 PPTX 렌더를 슬라이드별로 비교한다.

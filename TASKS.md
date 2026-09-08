@@ -278,14 +278,15 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
 - 문법: `gradient(accent1 accent4 accent5, 45deg)`, `shade(accent5, 50%)`, `alpha(fg, 0.6)`
 - [x] **선결정 확정 완료 (PRD §13-5, §7.6)** — `gradient(색… [, 각도deg])` 균등 스톱·
       기본 180deg, `shade`/`tint`/`alpha` 3종·중첩 불허
-- [ ] 테스트: `fill=gradient` → `linear-gradient` / `gradFill`, **`border=gradient`** →
+- [x] 테스트: `fill=gradient` → `linear-gradient` / `gradFill`, **`border=gradient`** →
       SVG 오버레이(엔진 소유 구현) / `ln`+`gradFill`, **텍스트 `color=gradient`** →
       `background-clip:text` / `rPr`+`gradFill`, 색 변형 → `color-mix` /
       `lumMod`/`lumOff`/`alpha` (schemeClr 유지 확인)
-- [ ] 리뷰: `workspace/AI_FCD.pptx`(역분석 원본)의 그라디언트 카드를 SOML로 재현 →
-      원본과 나란히 비교
-- [ ] 문서:
-  - [ ] `docs/reference/appearance.md` — 그라디언트 표기·색 변형 함수 문법 섹션 +
+- [x] 리뷰: `workspace/AI_FCD.pptx`(역분석 원본)의 그라디언트 카드를 SOML로 재현 →
+      원본과 나란히 비교 (자동 픽셀 게이트 통과 + 갤러리 생성; 3색 스톱은 LibreOffice
+      다중 스톱 근사라 PowerPoint 열람 확인이 남는다 — ADR 0034)
+- [x] 문서:
+  - [x] `docs/reference/appearance.md` — 그라디언트 표기·색 변형 함수 문법 섹션 +
         매핑 표 완성 (§9.4 전체가 문서에 반영된 상태가 이 iteration의 완료 기준)
 
 ## Iteration 9 — `<group>`
@@ -403,3 +404,5 @@ PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역�
 | 캔버스 좌표는 스테이지 패딩 박스 기준이다 (PRD §13-3 갱신 — 가장자리는 음수 좌표) | `docs/decisions/0030-canvas-origin-is-stage-padding-box.md` | I6 |
 | 한 축의 위치는 한 채널이 정한다 (`at`⊕`x`/`y`, 저자용 z-index 없음, 좌표는 음수·토큰 금지) | `docs/decisions/0031-position-is-one-channel.md` | I6 |
 | 슬라이드 수준 어휘는 값과 Span으로 core가 검사한다 (`layout`) | `docs/decisions/0032-slide-layout-vocab-is-core-checked.md` | I6 |
+| 색 변형은 참조를 보존한다 (lumMod/lumOff/alpha vs color-mix) | `docs/decisions/0033-color-variants-preserve-scheme-ref.md` | I8 |
+| 그라디언트는 SVG def로 내고 objectBoundingBox로 늘린다 (대각·비정사각형 한계) | `docs/decisions/0034-gradient-svg-def-and-objectboundingbox.md` | I8 |

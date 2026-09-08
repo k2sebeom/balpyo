@@ -1,0 +1,18 @@
+<!-- 채움 그라디언트 (PRD §9.4의 `fill=gradient` 행) — 웹은 svg `<linearGradient>` +
+     `fill: url(#…)`, PPTX는 `a:gradFill`. 토큰 스톱(accent1·surface·muted)은 두 타깃 모두
+     참조를 유지하고(웹 var()·PPTX schemeClr), 리터럴 스톱은 그 자리에 리터럴로 남는다.
+     각도는 CSS 시맨틱(0deg=아래→위)이고 생략 시 180deg다 — 마지막 두 도형이 90·45deg로
+     각도 변환(OOXML ang = (css-90) mod 360)을 그림으로 보인다. 도형 안 이름표는
+     rect·rounded-rect의 텍스트 사각형이 외곽선과 거의 같아 기하를 흔들지 않는다 (04의 판단). -->
+<slide id="fill-gradient">
+  <h2>채움 그라디언트</h2>
+  <row gap="md" align="center">
+    <shape type="rounded-rect" fill="gradient(accent1 surface)" radius="lg" w="200" h="120" pad="sm"><text color="fg" align="center" anchor="center">accent1 → surface</text></shape>
+    <shape type="rounded-rect" fill="gradient(#0F65F9 #7C3AED)" radius="lg" w="200" h="120" pad="sm"><text color="bg" align="center" anchor="center">파랑 → 보라</text></shape>
+    <shape type="rounded-rect" fill="gradient(accent1 muted surface)" radius="lg" w="200" h="120" pad="sm"><text color="bg" align="center" anchor="center">3색 스톱</text></shape>
+  </row>
+  <row gap="md" align="center">
+    <shape type="rect" fill="gradient(accent1 bg, 90deg)" w="220" h="120" pad="sm"><text color="fg" align="center" anchor="center">90deg 가로</text></shape>
+    <shape type="rect" fill="gradient(accent1 bg, 45deg)" w="140" h="140" pad="sm"><text color="fg" align="center" anchor="center">45deg</text></shape>
+  </row>
+</slide>

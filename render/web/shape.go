@@ -454,7 +454,7 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	}
 	fmt.Fprintf(b, "<div class=%q %s=%q %s=%q%s>\n",
 		class, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, styleAttr(decls))
-	if err := writeShapeInk(b, geom, *style, deck.Theme); err != nil {
+	if err := writeShapeInk(b, geom, *style, deck.Theme, ElementID(slide.Index, path)); err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
 	for i, child := range elem.Children {
@@ -470,13 +470,14 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 //
 // `aria-hidden`인 이유: 그림은 장식이고 내용은 안의 텍스트다. 스크린 리더가 읽을 것이 없는
 // 요소를 접근성 트리에 남기면 도형마다 빈 그래픽이 읽힌다.
-func writeShapeInk(b *strings.Builder, geom shapeGeometry, style soml.ShapeStyle, theme soml.Theme) error {
-	decls, err := shapeInkCSS(style, theme)
+func writeShapeInk(b *strings.Builder, geom shapeGeometry, style soml.ShapeStyle, theme soml.Theme, id string) error {
+	decls, defs, err := shapeInkCSS(style, theme, id)
 	if err != nil {
 		return err
 	}
 	if geom.Space == spacePixel {
 		fmt.Fprintf(b, "<svg class=%q aria-hidden=\"true\"%s>", shapeInkClass, styleAttr(decls))
+		b.WriteString(defs)
 		attrs := geom.Attrs
 		if geom.Rounded {
 			// 반경은 이 프리셋의 기하다 — `rx`만 낸다 (SVG는 `ry`를 `rx`로 채우고, OOXML
@@ -504,6 +505,7 @@ func writeShapeInk(b *strings.Builder, geom shapeGeometry, style soml.ShapeStyle
 	}
 	fmt.Fprintf(b, "<svg class=%q viewBox=\"0 0 100 100\" preserveAspectRatio=\"none\" aria-hidden=\"true\"%s>",
 		shapeInkClass, styleAttr(decls))
+	b.WriteString(defs)
 	for _, p := range geom.Paths {
 		b.WriteString("<path")
 		if p.Overlay {
@@ -578,41 +580,67 @@ func anchorValue(anchor soml.TextAnchor) (string, error) {
 //
 // 정하지 않은 속성은 선언을 **하나도** 내지 않는다 — `shadow`·`opacity`·`flip`의 nil은
 // "선언 없음"이고 두 타깃의 암묵 기본값이 같다 (soml.ShapeStyle의 계약).
-func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme) ([]string, error) {
+func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, string, error) {
 	var decls []string
+	var defs []string
 	// fill: 토큰은 변수 참조, 리터럴은 #RRGGBB, `none`은 SVG의 `none`이다 (투명한 채움을
 	// `transparent`로 내지 않는 이유: SVG에서 `fill: none`은 그리지 않는다는 뜻이라
-	// OOXML `a:noFill`과 정확히 짝이 된다).
+	// OOXML `a:noFill`과 정확히 짝이 된다). 그라디언트는 svg `<defs>`의 `linearGradient`를
+	// 만들고 `fill: url(#…)`로 가리킨다 (PRD §9.4 — CSS `border-image`가 radius와 조합되지
+	// 않아 엔진이 SVG def를 소유한다).
 	if style.Fill == nil {
-		return nil, fmt.Errorf("채움이 해석되지 않았다")
+		return nil, "", fmt.Errorf("채움이 해석되지 않았다")
 	}
 	if style.Fill.None {
 		decls = append(decls, "fill: none")
+	} else if style.Fill.Color.IsGradient() {
+		gradID := id + "-fill-grad"
+		def, err := linearGradientDef(gradID, *style.Fill.Color.Gradient, theme)
+		if err != nil {
+			return nil, "", err
+		}
+		defs = append(defs, def)
+		decls = append(decls, fmt.Sprintf("fill: url(#%s)", gradID))
 	} else {
 		fill, err := colorValue(style.Fill.Color, theme)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		decls = append(decls, "fill: "+fill)
 	}
 	// border: 굵기·스타일·색이 각자의 선언으로 갈라진다 (축약을 다시 만들지 않는 이유는
 	// soml.Border의 주석 — 렌더러가 축약을 해석하면 규칙이 두 곳에 생긴다).
 	if style.Border == nil {
-		return nil, fmt.Errorf("테두리가 해석되지 않았다")
+		return nil, "", fmt.Errorf("테두리가 해석되지 않았다")
 	}
 	if style.Border.None {
 		decls = append(decls, "stroke: none")
 	} else {
-		stroke, err := colorValue(style.Border.Color, theme)
-		if err != nil {
-			return nil, err
-		}
 		if style.Border.Width <= 0 {
-			return nil, fmt.Errorf("테두리 굵기가 해석되지 않았다 (%s)", formatNumber(style.Border.Width))
+			return nil, "", fmt.Errorf("테두리 굵기가 해석되지 않았다 (%s)", formatNumber(style.Border.Width))
 		}
 		dash, err := dashArray(style.Border.Style, style.Border.Width)
 		if err != nil {
-			return nil, err
+			return nil, "", err
+		}
+		// 그라디언트 테두리는 stroke가 gradient def를 가리킨다 (fill과 같은 수단 — SVG
+		// stroke는 `url(#…)`를 받는다). PRD §9.4가 "엔진 구현(SVG 오버레이)"으로 못 박은
+		// 자리이고, 채움 def가 이미 있으니 테두리는 def를 하나 더 만들 뿐이다.
+		var stroke string
+		if style.Border.Color.IsGradient() {
+			gradID := id + "-stroke-grad"
+			def, err := linearGradientDef(gradID, *style.Border.Color.Gradient, theme)
+			if err != nil {
+				return nil, "", err
+			}
+			defs = append(defs, def)
+			stroke = fmt.Sprintf("url(#%s)", gradID)
+		} else {
+			s, err := colorValue(style.Border.Color, theme)
+			if err != nil {
+				return nil, "", err
+			}
+			stroke = s
 		}
 		decls = append(decls, "stroke: "+stroke,
 			"stroke-width: "+formatNumber(style.Border.Width)+"px")
@@ -629,7 +657,7 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme) ([]string, error) {
 		if _, ok := theme.Shadow(style.Shadow.Name); !ok {
 			// var()는 정의되지 않은 변수를 조용히 무시한다 — 검사하지 않으면 그림자가
 			// 사라지고 아무 에러도 나지 않는다 (colorValue와 같은 근거).
-			return nil, fmt.Errorf("그림자 토큰 %q가 테마에 없다", style.Shadow.Name)
+			return nil, "", fmt.Errorf("그림자 토큰 %q가 테마에 없다", style.Shadow.Name)
 		}
 		decls = append(decls, fmt.Sprintf("filter: drop-shadow(var(%s%s))", shadowVarPrefix, style.Shadow.Name))
 	}
@@ -639,21 +667,82 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme) ([]string, error) {
 		// `a:alphaModFix` 효과이고 두 타깃이 그 지점에서 갈라지면 같은 덱이 다르게 보인다
 		// (NOTES 04/02의 열린 질문 (b)를 여기서 닫는다).
 		if *style.Opacity < 0 || *style.Opacity > 1 {
-			return nil, fmt.Errorf("불투명도 %s가 0~1 밖이다", formatNumber(*style.Opacity))
+			return nil, "", fmt.Errorf("불투명도 %s가 0~1 밖이다", formatNumber(*style.Opacity))
 		}
 		decls = append(decls, "opacity: "+formatNumber(*style.Opacity))
 	}
 	if style.Flip != "" {
 		flip, err := flipValue(style.Flip)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		// 대칭은 **그림에만** 걸린다: PowerPoint의 flipH/flipV는 기하를 뒤집지만 글자는
 		// 읽히는 방향으로 남는다. 박스에 걸면 CSS가 글자까지 거울로 만들어 두 타깃이
 		// 갈라진다. 그림에만 걸리므로 잰 rect도 움직이지 않는다 (회전과 다른 점이다).
 		decls = append(decls, "transform: "+flip)
 	}
-	return decls, nil
+	return decls, defsBlock(defs), nil
+}
+
+// defsBlock은 그라디언트 정의들을 svg `<defs>` 블록 하나로 감싼다 (없으면 빈 문자열 —
+// def가 없는 도형의 산출물은 이 iteration 전과 바이트가 같다).
+func defsBlock(defs []string) string {
+	if len(defs) == 0 {
+		return ""
+	}
+	return "<defs>" + strings.Join(defs, "") + "</defs>"
+}
+
+// linearGradientDef는 그라디언트를 svg `<linearGradient>` 정의로 만든다 — 도형 채움·테두리가
+// `url(#id)`로 가리킨다.
+//
+// 좌표는 `objectBoundingBox`(기본 gradientUnits)라 도형 박스에 상대적이다 — PPTX `a:lin`의
+// `scaled="1"`과 같은 결정이다 (그라디언트가 도형 크기에 맞춰 늘어난다). 각도 벡터는
+// CSS 시맨틱(0deg=아래→위, 시계방향)을 박스 대각선으로 옮긴 것이다 (gradientVector). 스톱
+// 색은 `style="stop-color: …"`로 낸다: 프리젠테이션 속성 `stop-color`는 `var()`를 풀지
+// 못하지만 CSS 프로퍼티는 풀어서 토큰 참조가 살아남는다.
+func linearGradientDef(id string, grad soml.Gradient, theme soml.Theme) (string, error) {
+	if len(grad.Stops) < 2 {
+		return "", fmt.Errorf("그라디언트 스톱이 둘 미만이다 (%d)", len(grad.Stops))
+	}
+	x1, y1, x2, y2 := gradientVector(grad.Angle)
+	var b strings.Builder
+	fmt.Fprintf(&b, `<linearGradient id=%q x1=%q y1=%q x2=%q y2=%q>`,
+		id, formatNumber(x1), formatNumber(y1), formatNumber(x2), formatNumber(y2))
+	last := len(grad.Stops) - 1
+	for i, stop := range grad.Stops {
+		offset := formatNumber(round4(float64(i) / float64(last)))
+		color, err := baseColorValue(stop, theme)
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&b, `<stop offset=%q style="stop-color: %s"/>`, offset, color)
+	}
+	b.WriteString("</linearGradient>")
+	return b.String(), nil
+}
+
+// gradientVector는 CSS 그라디언트 각도를 objectBoundingBox의 시작·끝 점으로 옮긴다.
+//
+// CSS는 0deg가 위(아래→위)이고 시계방향이다 (soml.Gradient). 방향 벡터는 (sinθ, -cosθ)이고
+// (y축이 아래로 향하므로 위는 -cos), 박스 중심(0.5, 0.5)에서 ±0.5만큼 벌려 시작·끝을 잡는다.
+// 180deg면 시작 (0.5,0)·끝 (0.5,1) = 위→아래로, CSS `linear-gradient(180deg)`와 같은
+// 방향이다. 정사각형이 아닌 박스에서는 objectBoundingBox가 각을 기울여 CSS의 "magic corner"
+// 보정과 미세하게 갈라지지만, 세로·가로(0/90/180/270deg)는 종횡비와 무관해 일치한다.
+func gradientVector(cssDeg float64) (x1, y1, x2, y2 float64) {
+	rad := cssDeg * math.Pi / 180
+	sin, cos := math.Sin(rad), math.Cos(rad)
+	x1 = round4(0.5 - 0.5*sin)
+	y1 = round4(0.5 + 0.5*cos)
+	x2 = round4(0.5 + 0.5*sin)
+	y2 = round4(0.5 - 0.5*cos)
+	return x1, y1, x2, y2
+}
+
+// round4는 소수 넷째 자리에서 반올림한다 — svg 좌표에 부동소수 잡음(0.49999999)이 실리지
+// 않게 한다 (골든 안정성).
+func round4(v float64) float64 {
+	return math.Round(v*1e4) / 1e4
 }
 
 // dashArray는 테두리 스타일을 SVG `stroke-dasharray` 값으로 만든다 (실선은 빈 문자열).

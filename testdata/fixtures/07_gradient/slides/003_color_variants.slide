@@ -1,0 +1,18 @@
+<!-- 색 변형 (PRD §9.4의 색 변형 행) — `shade`/`tint`/`alpha`. 웹은 `color-mix()`(또는
+     transparent 섞기), PPTX는 색 요소의 `lumMod`/`lumOff`/`alpha` 자식이다. 토큰에 얹어도
+     `schemeClr`(PPTX)·`var()`(웹) 참조가 살아 테마 색 편집을 따라간다. 첫 행은 같은 accent1을
+     base·shade·tint·alpha로 나란히 놓아 변형의 방향(어둡게·밝게·투명)을 한눈에 보인다.
+     alpha 도형은 흰 스테이지 위에서 옅어진 파랑으로 보인다. -->
+<slide id="color-variants">
+  <h2>색 변형: shade · tint · alpha</h2>
+  <row gap="md" align="center">
+    <shape type="rect" fill="accent1" w="160" h="110" pad="sm"><text color="bg" align="center" anchor="center">base</text></shape>
+    <shape type="rect" fill="shade(accent1, 40%)" w="160" h="110" pad="sm"><text color="bg" align="center" anchor="center">shade 40%</text></shape>
+    <shape type="rect" fill="tint(accent1, 40%)" w="160" h="110" pad="sm"><text color="fg" align="center" anchor="center">tint 40%</text></shape>
+    <shape type="rect" fill="alpha(accent1, 0.5)" w="160" h="110" pad="sm"><text color="fg" align="center" anchor="center">alpha 0.5</text></shape>
+  </row>
+  <row gap="lg" align="center">
+    <text color="shade(accent1, 30%)">텍스트 shade 30%</text>
+    <text color="alpha(fg, 0.5)">텍스트 alpha 0.5</text>
+  </row>
+</slide>

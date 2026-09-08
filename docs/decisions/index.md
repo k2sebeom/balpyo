@@ -38,6 +38,8 @@
 | [0030](0030-canvas-origin-is-stage-padding-box.md) | 캔버스 좌표는 스테이지 패딩 박스 기준이다 (PRD §13-3 갱신) | 6 | 확정 |
 | [0031](0031-position-is-one-channel.md) | 한 축의 위치는 한 채널이 정한다 (`at`⊕`x`/`y`, z-index 없음, 좌표는 음수) | 6 | 확정 |
 | [0032](0032-slide-layout-vocab-is-core-checked.md) | 슬라이드 수준 어휘는 값과 Span으로 core가 검사한다 (`layout`) | 6 | 확정 |
+| [0033](0033-color-variants-preserve-scheme-ref.md) | 색 변형은 참조를 보존한다 (lumMod/lumOff/alpha vs color-mix) | 8 | 확정 |
+| [0034](0034-gradient-svg-def-and-objectboundingbox.md) | 그라디언트는 SVG def로 내고 objectBoundingBox로 늘린다 (대각·비정사각형 한계) | 8 | 확정 |
 
 PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다. 그 결정들의
 색인은 PRD에 있고, 이 표는 **그 이후 구현 중에 새로 확정한 것**만 담는다.

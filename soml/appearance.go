@@ -158,19 +158,91 @@ type Color struct {
 	// RGB는 리터럴 색이다 — 대문자 6자리 16진수이고 `#`는 붙지 않는다. 웹은 `#`를,
 	// OOXML은 맨몸 16진수를 요구하므로 접두는 각 렌더러가 붙인다.
 	RGB string
+	// Mod는 색 변형 함수다 (`shade`/`tint`/`alpha` — PRD §7.6, Iteration 8). nil이면
+	// 변형 없는 색이다. **변형은 토큰 참조를 눕히지 않는다**: 변형된 토큰 색은 Token을
+	// 그대로 두고 Mod만 얹으므로, PPTX가 `schemeClr` + `lumMod`/`lumOff`/`alpha`로 내어
+	// 테마 색 편집을 여전히 따라간다 (§9.4). 그래서 Mod는 Gradient와 달리 Token/RGB와
+	// **함께** 산다 — 변형의 밑색이 곧 이 Color의 Token/RGB다.
+	Mod *ColorMod
+	// Gradient는 그라디언트다 (`gradient(…)` — PRD §7.6, Iteration 8). nil이면 단색이다.
+	// 단색과 달리 Token/RGB를 쓰지 않는다: 그라디언트는 **여러 스톱**이라 한 색 참조에
+	// 담을 수 없다. 스톱 각각이 토큰·리터럴을 유지하므로 PPTX `gradFill`의 `gs`가 스톱마다
+	// `schemeClr`/`srgbClr`를 낸다.
+	Gradient *Gradient
 }
 
-// IsToken은 이 색이 토큰 참조인지 보고한다.
+// ColorMod는 단색에 얹는 색 변형이다 (PRD §7.6·§13-5의 `shade`/`tint`/`alpha`).
+//
+// **중첩은 없다** (v1): 변형의 밑색은 토큰·리터럴 단색뿐이고, 변형된 색을 다시 변형하거나
+// 그라디언트 스톱으로 쓰지 못한다. 이 제약이 매핑을 1:1로 유지한다 — 웹은 `color-mix()`
+// (또는 알파) 한 겹, PPTX는 색 요소의 자식(`lumMod`/`lumOff`/`alpha`) 한 벌이다.
+type ColorMod struct {
+	// Kind는 변형 종류다 (ColorMods의 3종).
+	Kind ColorModKind
+	// Amount는 변형 세기다. `shade`/`tint`는 백분율(0~100), `alpha`는 0~1이다 — 단위가
+	// 종류마다 다른 이유는 각 함수의 자연 단위이기 때문이고, 타깃 환산(웹 `%`, PPTX
+	// 1000분율·100000분율)은 렌더러가 Kind를 보고 한다.
+	Amount float64
+}
+
+// ColorModKind는 색 변형 종류다 — 닫힌 어휘 3종.
+type ColorModKind string
+
+const (
+	// ModShade는 색을 어둡게 한다 (검정과 섞음). 웹 `color-mix(… black P%)`, PPTX `lumMod`.
+	ModShade ColorModKind = "shade"
+	// ModTint는 색을 밝게 한다 (흰색과 섞음). 웹 `color-mix(… white P%)`, PPTX `lumMod`+`lumOff`.
+	ModTint ColorModKind = "tint"
+	// ModAlpha는 색을 투명하게 한다. 웹 `color-mix(transparent …)`, PPTX `a:alpha`.
+	ModAlpha ColorModKind = "alpha"
+)
+
+// ColorMods는 변형 어휘 전체다 (순서 = 진단 메시지 순서).
+func ColorMods() []ColorModKind { return []ColorModKind{ModShade, ModTint, ModAlpha} }
+
+// Gradient는 확정된 그라디언트다 (PRD §7.6·§13-5).
+//
+// 스톱은 **균등 배치**다 (스톱 위치 지정은 v2) — n개 스톱은 0, 1/(n-1), …, 1에 놓인다.
+// 각도는 CSS `linear-gradient` 시맨틱(0deg = 아래→위, 시계방향)이고, OOXML `gradFill@ang`
+// 변환은 렌더러의 몫이다 (render/pptx.GradientAngle). 스톱은 단색(Token/RGB)만 담으며
+// 변형·중첩 그라디언트를 담지 않는다 — 그 제약은 core가 파싱 때 건다.
+type Gradient struct {
+	// Stops는 그라디언트 색 목록이다 (문서 순서 = 스톱 0→1). 둘 이상이어야 한다.
+	Stops []Color
+	// Angle은 CSS 각도(도)다 — 생략 시 180(위→아래).
+	Angle float64
+}
+
+// IsToken은 이 색이 토큰 참조인지 보고한다 (변형된 토큰 색도 참조로 센다 — Mod는 밑색을
+// 눕히지 않는다).
 func (c Color) IsToken() bool { return c.Token != "" }
 
+// IsGradient는 이 색이 그라디언트인지 보고한다.
+func (c Color) IsGradient() bool { return c.Gradient != nil }
+
+// IsVariant는 이 색에 변형이 얹혀 있는지 보고한다 (`shade`/`tint`/`alpha`).
+func (c Color) IsVariant() bool { return c.Mod != nil }
+
 // IsZero는 색이 정해지지 않았는지 보고한다 (해석 후에는 있을 수 없다 — 역할 기본값이 채운다).
-func (c Color) IsZero() bool { return c.Token == "" && c.RGB == "" }
+func (c Color) IsZero() bool { return c.Token == "" && c.RGB == "" && c.Gradient == nil }
 
 // TokenColor는 토큰 참조 색이다.
 func TokenColor(name string) Color { return Color{Token: name} }
 
 // LiteralColor는 리터럴 색이다. rgb는 대문자 6자리 16진수여야 한다 (정규화는 core가 한다).
 func LiteralColor(rgb string) Color { return Color{RGB: rgb} }
+
+// GradientColor는 그라디언트 색이다 (스톱 목록 + CSS 각도).
+func GradientColor(stops []Color, angle float64) Color {
+	return Color{Gradient: &Gradient{Stops: stops, Angle: angle}}
+}
+
+// VariantColor는 단색 base에 변형을 얹은 색이다 — base의 Token/RGB를 유지한다
+// (schemeClr 보존). base가 이미 변형·그라디언트면 안 된다 (그 검증은 core).
+func VariantColor(base Color, kind ColorModKind, amount float64) Color {
+	base.Mod = &ColorMod{Kind: kind, Amount: amount}
+	return base
+}
 
 // FontRole은 폰트 토큰 이름이다 (PRD §8.4의 `font` 토큰 3종).
 type FontRole string

@@ -410,7 +410,7 @@ func TestResolveValueDiagnostics(t *testing.T) {
 		{"size 0", `size="0"`, 2, 15, "0보다 커야"},
 		{"size 비수치", `size="큼"`, 2, 15, "수치가 아니다"},
 		{"알 수 없는 색 토큰", `color="brand"`, 2, 16, "테마에 없다"},
-		{"색 함수", `color="gradient(fg accent1)"`, 2, 16, "아직 쓸 수 없다"},
+		{"알 수 없는 색 함수", `color="glow(fg accent1)"`, 2, 16, "알 수 없는 색 함수"},
 		{"짧은 색 리터럴", `color="#12"`, 2, 16, "#RRGGBB"},
 		{"값 없는 속성", `role`, 2, 9, "값이 필요하다"},
 		{"빈 값", `role=""`, 2, 15, "비어 있다"},

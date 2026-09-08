@@ -127,13 +127,29 @@ func textStyleCSS(style soml.TextStyle, theme soml.Theme) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	color, err := colorValue(style.Color, theme)
-	if err != nil {
-		return "", err
-	}
 	align, err := alignValue(style.Align)
 	if err != nil {
 		return "", err
+	}
+	// 텍스트 색은 단색이면 `color`, 그라디언트면 `background-clip: text`다 (PRD §9.4 —
+	// 텍스트 `color=gradient`는 웹에서 background-clip). 그라디언트는 단일 색 값이 아니라
+	// colorValue를 지나지 못하므로 여기서 갈린다.
+	var colorDecl string
+	if style.Color.IsGradient() {
+		grad, err := gradientCSS(*style.Color.Gradient, theme)
+		if err != nil {
+			return "", err
+		}
+		// 글자 실루엣으로 그라디언트를 자른다: 배경 그라디언트 → 글자 모양 클립 → 채움 투명.
+		// -webkit- 접두를 함께 내는 이유는 background-clip:text가 표준화 전부터 접두로만
+		// 동작하는 엔진이 있기 때문이다 (측정 브라우저·뷰어 모두 커버).
+		colorDecl = fmt.Sprintf("background-image: %s; -webkit-background-clip: text; background-clip: text; color: transparent", grad)
+	} else {
+		color, err := colorValue(style.Color, theme)
+		if err != nil {
+			return "", err
+		}
+		colorDecl = "color: " + color
 	}
 	if style.Size <= 0 {
 		return "", fmt.Errorf("폰트 크기가 해석되지 않았다 (%s)", formatNumber(style.Size))
@@ -155,7 +171,7 @@ func textStyleCSS(style soml.TextStyle, theme soml.Theme) (string, error) {
 	// (lnSpc@spcPts)으로 환산해 낸다 (render/pptx.LineSpacing). spcPct(배수)는 엔진마다
 	// 기준이 달라 같은 150%가 글줄을 밀었다 — docs/decisions/0005-line-spacing-and-slack.md.
 	fmt.Fprintf(&b, "line-height: %s; ", formatNumber(style.LineHeight))
-	fmt.Fprintf(&b, "color: %s; ", color)
+	fmt.Fprintf(&b, "%s; ", colorDecl)
 	fmt.Fprintf(&b, "text-align: %s", align)
 	return b.String(), nil
 }
@@ -207,8 +223,38 @@ func fontVar(role soml.FontRole, theme soml.Theme) (string, error) {
 
 // colorValue는 색을 CSS 값으로 만든다. 토큰은 **변수 참조로 남는다** — 여기서 RGB로 눕히면
 // 테마 색을 바꿨을 때 이 요소만 옛 색으로 남고, 그것이 PPTX의 schemeClr 보존과 짝을 이루는
-// 웹 쪽 절반이다 (soml.Color의 주석).
+// 웹 쪽 절반이다 (soml.Color의 주석). 변형(shade/tint/alpha)은 `color-mix()`로 감싸 변수
+// 참조를 살린다 (PRD §9.4의 색 변형 행 — 웹은 `color-mix()`). 그라디언트는 단일 색 값이
+// 아니므로(background-image·gradient def) 여기서 받지 않는다 — 호출자가 갈린다.
 func colorValue(color soml.Color, theme soml.Theme) (string, error) {
+	if color.IsGradient() {
+		return "", fmt.Errorf("그라디언트는 단일 색 값이 아니다 — linear-gradient나 gradient def로 낸다")
+	}
+	base, err := baseColorValue(color, theme)
+	if err != nil {
+		return "", err
+	}
+	if color.Mod == nil {
+		return base, nil
+	}
+	// 변형은 base(var()·#hex 무엇이든)를 감싸므로 변수 참조가 살아남는다 — 테마 색을 바꾸면
+	// 변형된 색도 따라 움직인다. `color-mix(in srgb, …)`는 sRGB 공간에서 섞는다 (PPTX
+	// lumMod는 광도 공간이라 미세한 색 차가 남지만, 참조 보존이 매핑의 목적이다).
+	switch color.Mod.Kind {
+	case soml.ModShade:
+		return fmt.Sprintf("color-mix(in srgb, %s, black %s%%)", base, formatNumber(color.Mod.Amount)), nil
+	case soml.ModTint:
+		return fmt.Sprintf("color-mix(in srgb, %s, white %s%%)", base, formatNumber(color.Mod.Amount)), nil
+	case soml.ModAlpha:
+		// transparent와 base를 섞으면 base가 (a×100)%만큼 남아 그 알파가 된다.
+		return fmt.Sprintf("color-mix(in srgb, transparent, %s %s%%)", base, formatNumber(color.Mod.Amount*100)), nil
+	}
+	return "", fmt.Errorf("색 변형 %q는 어휘 밖이다", string(color.Mod.Kind))
+}
+
+// baseColorValue는 변형·그라디언트를 벗긴 단색의 CSS 값이다 (var() 참조 또는 #리터럴) —
+// colorValue와 그라디언트 스톱(gradientCSS)이 공유한다.
+func baseColorValue(color soml.Color, theme soml.Theme) (string, error) {
 	switch {
 	case color.IsZero():
 		return "", fmt.Errorf("색이 해석되지 않았다")
@@ -222,6 +268,27 @@ func colorValue(color soml.Color, theme soml.Theme) (string, error) {
 	default:
 		return "#" + color.RGB, nil
 	}
+}
+
+// gradientCSS는 그라디언트를 CSS `linear-gradient()` 값으로 만든다 (PRD §9.4의
+// `fill=gradient`·텍스트 `color=gradient` 행 — 웹은 `linear-gradient`/`background-clip`).
+//
+// 각도는 CSS 시맨틱 그대로다 (soml.Gradient가 CSS 각도를 담는다 — 변환은 PPTX 몫). 스톱은
+// 균등 배치라 위치를 적지 않는다 (CSS가 균등 분배한다). 스톱 색은 baseColorValue를 지나
+// 토큰이 var() 참조로 남는다.
+func gradientCSS(grad soml.Gradient, theme soml.Theme) (string, error) {
+	if len(grad.Stops) < 2 {
+		return "", fmt.Errorf("그라디언트 스톱이 둘 미만이다 (%d)", len(grad.Stops))
+	}
+	stops := make([]string, len(grad.Stops))
+	for i, stop := range grad.Stops {
+		v, err := baseColorValue(stop, theme)
+		if err != nil {
+			return "", err
+		}
+		stops[i] = v
+	}
+	return fmt.Sprintf("linear-gradient(%sdeg, %s)", formatNumber(grad.Angle), strings.Join(stops, ", ")), nil
 }
 
 // alignValue는 논리 정렬 이름을 CSS text-align 값으로 만든다.

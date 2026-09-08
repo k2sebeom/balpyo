@@ -188,6 +188,8 @@ PowerPoint에서 확인한다** — 각 iteration의 리뷰 단계가 그 자리
 | (역할에서) 폰트 | 폰트 토큰 이름 | `font-family: var(--balpyo-font-<토큰>)` | `a:latin`/`a:ea` 테마 참조 (`+mj-lt`·`+mj-ea` / `+mn-lt`·`+mn-ea`), mono는 리터럴 typeface |
 | `color` (토큰) | 토큰 이름 | `color: var(--balpyo-color-<토큰>)` | `a:solidFill/a:schemeClr@val` = 토큰의 Ref |
 | `color` (리터럴) | 대문자 6자리 hex | `color: #RRGGBB` | `a:solidFill/a:srgbClr@val="RRGGBB"` |
+| `color` (변형) | 밑색 + shade/tint/alpha | `color: color-mix(…)` (밑색 var()/#hex 유지) | `a:solidFill/…Clr` + `a:lumMod`/`a:lumOff`/`a:alpha` |
+| `color` (그라디언트) | 스톱 목록 + 각도 | `background-image: linear-gradient(…)` + `background-clip: text` + `color: transparent` | `a:rPr/a:gradFill` (스톱마다 `a:gs`) |
 | `align` | 논리 이름 | `text-align: start\|center\|end\|justify` | `a:pPr@algn` = `l`\|`ctr`\|`r`\|`just` |
 | `anchor` | `top` `center` `bottom` | (부모 도형의) `justify-content: start\|center\|end` | (부모 도형의) `a:bodyPr@anchor` = `t`\|`ctr`\|`b` |
 
@@ -212,10 +214,13 @@ PowerPoint에서 확인한다** — 각 iteration의 리뷰 단계가 그 자리
 |---|---|---|---|
 | `fill` (토큰) | 토큰 이름 | 그림 svg의 `fill: var(--balpyo-color-<토큰>)` | `a:solidFill/a:schemeClr@val` |
 | `fill` (리터럴) | hex | `fill: #RRGGBB` | `a:solidFill/a:srgbClr@val` |
+| `fill` (변형) | 밑색 + shade/tint/alpha | `fill: color-mix(…)` | `a:solidFill/…Clr` + `a:lumMod`/`a:lumOff`/`a:alpha` |
+| `fill` (그라디언트) | 스톱 목록 + 각도 | 그림 svg의 `<defs><linearGradient>` + `fill: url(#…)` | `a:gradFill/a:gsLst` (스톱마다 `a:gs pos`) + `a:lin@ang` |
 | `fill="none"` | `none` 상태 | `fill: none` | `a:noFill` |
 | `border` (굵기) | 논리 px | `stroke-width: <px>px` | `a:ln@w` = px × 9525 (EMU) |
 | `border` (색) | 색 | `stroke: var(…)` 또는 `#RRGGBB` | `a:ln/a:solidFill/…Clr` |
 | `border` (스타일) | `solid` `dashed` `dotted` | `stroke-dasharray` — 4:3 / 1:3 (굵기 배수) | `a:prstDash@val` = `solid`·**`dash`**·**`dot`** |
+| `border` (그라디언트) | `<굵기> gradient(…)` 2조각 | 그림 svg의 `<linearGradient>` + `stroke: url(#…)` | `a:ln/a:gradFill` (+ `a:prstDash="solid"`) |
 | `border="none"` | `none` 상태 | `stroke: none` | `a:ln/a:noFill` |
 | `radius` | 토큰 이름 + px | SVG `<rect rx="<px>">` (기하 속성) | `prstGeom/avLst`의 `adj` = 100000 × radius ÷ min(w,h) |
 | `shadow` | 토큰 항목 그대로 | `filter: drop-shadow(var(--balpyo-shadow-<토큰>))` | `a:effectLst/a:outerShdw` (dist·dir·blurRad + 색 + `rotWithShape="1"`) |
@@ -242,6 +247,48 @@ PowerPoint에서 확인한다** — 각 iteration의 리뷰 단계가 그 자리
   svg에 걸려 자식 텍스트를 건드리지 않고, PPTX는 알파를 색 안에만 싣는다
   ([ADR 0018](../decisions/0018-opacity-compiles-to-color-alpha.md)). 그림자 알파는 도형
   불투명도와 **곱한다** (웹에서 그림자가 그 svg의 필터 결과이므로 함께 흐려진다).
+
+### 그라디언트와 색 변형
+
+굵은 글씨 매핑(그라디언트 3종, 토큰 색 변형)은 실물 덱의 "디자인된 느낌"의 정체다
+(PRD §9.4). 문법은 아래 "값 문법" 절에 있고, 여기서는 두 타깃의 매핑과 그 경계를 적는다.
+
+**그라디언트** — 채움·테두리·텍스트 색이 같은 `gradient(색… [, 각도deg])`를 받는다.
+
+- **각도**: CSS(0deg = 아래→위, 시계방향)를 각 타깃으로 옮긴다. PPTX는
+  `a:lin@ang = (css − 90) mod 360 × 60000` (0=왼→오)이라 기본 180deg는 `5400000`(위→아래)이
+  된다. 웹 SVG는 `objectBoundingBox`의 시작·끝 점 벡터로 옮긴다 (`scaled="1"`과 같은 상대
+  좌표). **세로·가로(0/90/180/270deg)는 종횡비와 무관해 두 타깃이 일치하지만, 대각 각도는
+  정사각형이 아닌 박스에서 `objectBoundingBox`가 각을 기울여 미세하게 갈라진다** — 대각
+  그라디언트는 정사각형 도형에 두는 것을 권한다 (v1 한계, [ADR 0034](../decisions/0034-gradient-svg-def-and-objectboundingbox.md)).
+- **스톱**: 균등 배치다 (n개 → 0, 1/(n−1), …, 1). 토큰 스톱은 PPTX `a:gs/a:schemeClr`,
+  웹 `stop-color: var(…)`로 참조를 유지한다.
+- **텍스트 색 그라디언트**는 웹에서 `background-clip: text`(배경 그라디언트를 글자 실루엣으로
+  자르고 채움을 투명하게), PPTX에서 `a:rPr/a:gradFill`이다.
+- **테두리 그라디언트**는 웹에서 SVG `stroke`가 gradient def를 가리키고(CSS `border-image`는
+  `border-radius`와 조합되지 않아 엔진이 SVG를 소유한다), PPTX에서 `a:ln` 안의 `a:gradFill`이다.
+  축약은 `<굵기> gradient(…)` **2조각**이다 — 그라디언트가 스타일(실선)과 색을 함께 대신한다.
+- **다중 스톱의 뷰어 소관**: 3색 이상 그라디언트의 OOXML은 스펙대로 `a:gs`를 스톱 수만큼
+  내지만, 테스트 래스터라이저인 LibreOffice는 다중 스톱 `gradFill`을 근사해 그려 웹과
+  갈라진다. PowerPoint/Keynote는 모든 스톱을 그대로 그린다 — 이 갈라짐은 산출물 결함이
+  아니라 뷰어 소관이라 픽셀 게이트에서 픽스처 한정 여유로 흡수하고 사람이 PowerPoint로 확인한다
+  ([testing.md](../internals/testing.md)).
+
+**색 변형** — `shade`/`tint`/`alpha`는 밑색 하나에 얹혀 참조를 보존한다.
+
+| 변형 | 웹 (CSS) | PPTX (색 요소 자식) |
+|---|---|---|
+| `shade(색, p%)` 어둡게 | `color-mix(in srgb, <밑색>, black p%)` | `a:lumMod val="(100−p)×1000"` |
+| `tint(색, p%)` 밝게 | `color-mix(in srgb, <밑색>, white p%)` | `a:lumMod val="(100−p)×1000"` + `a:lumOff val="p×1000"` |
+| `alpha(색, a)` 투명 | `color-mix(in srgb, transparent, <밑색> (a×100)%)` | `a:alpha val="a×100000"` |
+
+- 웹은 `color-mix()`가 sRGB 공간에서 섞고 PPTX는 광도 공간(`lumMod`/`lumOff`)에서 조절하므로
+  **미세한 색 차가 남는다** — 두 표기가 픽셀 단위로 같지 않은 것을 알고 고른 매핑이다: 목적은
+  색을 눕히지 않고 **`schemeClr` 참조를 살려 테마 색 편집을 따라가게** 하는 것이다
+  ([ADR 0033](../decisions/0033-color-variants-preserve-scheme-ref.md)). 실측상 shade/tint/alpha의
+  색 차는 텍스트 안티앨리어싱 잔차 수준이다 (07_gradient 슬라이드 3, 2.0%).
+- **도형 불투명도(`opacity`)와 변형 `alpha()`가 함께 있으면 곱한다** — 웹은 svg `opacity` ×
+  색 알파, PPTX는 그 곱을 색 안의 `a:alpha` 하나로 낸다.
 
 ### 이미지 외관
 
@@ -421,9 +468,20 @@ PRD §8.4의 `slidePadding` 토큰이 들어오는 Iteration 10이 합칠 자리
   없다. 배치 길이(`gap`·`pad`·`w`/`h`·`basis` …)는 `%`를 받는다: CSS 백분율이 그대로
   브라우저에서 풀리고 그 결과를 지오메트리 패스가 픽셀로 잰다
   ([레이아웃 태그](soml/layout.md)).
-- 색은 토큰 이름 또는 `#RRGGBB`/`#RGB` 리터럴이다. `#RGB`는 CSS 규칙대로 자리를 두 배로
-  늘려 정규화한다. `gradient(…)`·`shade(…)` 같은 색 함수는 문법에 있지만(PRD §7.6)
-  Iteration 8에서 열린다 — 지금 쓰면 "아직 쓸 수 없다"는 진단이 나온다.
+- 색은 토큰 이름 또는 `#RRGGBB`/`#RGB` 리터럴이거나, **색 함수** 넷 중 하나다 (PRD §7.6·§13-5).
+  `#RGB`는 CSS 규칙대로 자리를 두 배로 늘려 정규화한다.
+  - `gradient(색1 색2 [색3 …] [, <각도>deg])` — 색은 공백 구분·**균등 스톱**이고 인자는
+    토큰명/리터럴 단색만 받는다. 각도는 CSS `linear-gradient` 시맨틱(0deg = 아래→위,
+    시계방향)이며 생략 시 `180deg`(위→아래)다. 색이 둘 미만이거나 각도가 `<수치>deg`가
+    아니면 에러다.
+  - `shade(색, <백분율>%)` 어둡게 · `tint(색, <백분율>%)` 밝게 — 백분율은 0 초과 100 이하다.
+  - `alpha(색, <0~1>)` 투명도 — 백분율이 아니라 0~1 실수다 (`alpha(fg, 0.6)`).
+  - **중첩은 없다** (v1): 함수 인자는 토큰명·리터럴 단색뿐이라 `shade(gradient(…), …)`나
+    `gradient(shade(…) …)`는 "색 함수는 중첩할 수 없다" 에러다. 알 수 없는 함수 이름은
+    "알 수 없는 색 함수"다.
+- **색 함수도 토큰 참조를 보존한다**: 변형된 토큰 색은 PPTX에서 `schemeClr` + `lumMod`/
+  `lumOff`/`alpha`로, 웹에서 `color-mix()`로 나가 밑색의 참조가 살아남는다. 그라디언트
+  스톱도 토큰이면 스톱마다 `schemeClr`/`var()`를 유지한다 (아래 매핑 표).
 
 속성별 에러 조건과 진단 메시지는 [`<text>`](soml/text.md)와
 [텍스트 서브셋](soml/text-subset.md), 배치 속성은

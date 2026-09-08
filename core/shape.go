@@ -235,15 +235,14 @@ func (r *resolver) border(attr soml.Attr) (soml.Border, bool) {
 		return soml.NoBorder(), true
 	}
 	parts := splitValues(attr.Value)
-	// 색 함수가 낀 축약은 **조각 수와 무관하게** 아직 쓸 수 없다 (Iteration 8). 조각 수를
-	// 먼저 세면 PRD §7.6의 표기(`<굵기> <스타일|gradient(…)> <색>` — 그라디언트가 스타일과
-	// 색을 함께 대신하므로 조각이 둘이다)에서 "2조각"이라는 엉뚱한 진단이 나오고, 저자는
-	// 문법을 고치려 들다가 아직 없는 기능이라는 사실에 도달하지 못한다. 진단은 색 문법이
-	// 소유한다 (colorValue — "문법은 맞고 아직 없다").
+	// `gradient(…)`가 낀 축약은 **스타일과 색을 함께 대신한다** — 조각이 둘이다
+	// (`<굵기> gradient(…)`, PRD §7.6 표의 `<굵기> <스타일|gradient(…)> <색>`). 그래서
+	// 그라디언트가 있으면 3조각 규칙 대신 이 갈래로 간다. `shade`/`tint`/`alpha`는 색
+	// 함수지만 **색 자리 하나**를 채우므로 여기 걸리지 않는다 (3조각 그대로, 색 조각이
+	// colorValue를 지난다) — 그라디언트만 축약의 모양을 바꾼다.
 	for _, part := range parts {
-		if strings.ContainsRune(part.text, '(') {
-			r.colorValue(attr.Name, part.text, part.span(attr))
-			return soml.Border{}, false
+		if strings.HasPrefix(part.text, "gradient(") {
+			return r.gradientBorder(attr, parts)
 		}
 	}
 	if len(parts) != borderParts {
@@ -263,6 +262,30 @@ func (r *resolver) border(attr soml.Attr) (soml.Border, bool) {
 	border.Width, border.Style, border.Color = width, style, color
 	return border, true
 }
+
+// gradientBorder는 그라디언트 테두리를 해석한다 — `<굵기> gradient(…)` 2조각이다.
+//
+// 그라디언트는 스타일을 함께 대신하므로 스타일 조각이 없다: 스타일은 **실선으로 고정**한다
+// (파선 그라디언트 테두리는 v1에 없다 — OOXML `ln`의 `prstDash`는 색과 독립이지만 웹의 SVG
+// 오버레이 구현이 복잡해진다, PRD §9.4). 저자가 `border="1 dashed gradient(…)"`처럼 스타일을
+// 끼우면 3조각이 되어 gradient가 색 자리가 아닌 곳에 오고, colorValue가 그 조각의 자리를
+// 짚는다.
+func (r *resolver) gradientBorder(attr soml.Attr, parts []valuePart) (soml.Border, bool) {
+	if len(parts) != gradientBorderParts {
+		r.errorf(attr.ValueSpan, "gradient 테두리는 `<굵기> gradient(…)` 2조각이다 (%q는 %d조각) — 그라디언트가 스타일과 색을 함께 대신한다",
+			attr.Value, len(parts))
+		return soml.Border{}, false
+	}
+	width, okW := r.borderWidth(parts[0], attr)
+	color, okC := r.colorValue(attr.Name, parts[1].text, parts[1].span(attr))
+	if !okW || !okC {
+		return soml.Border{}, false
+	}
+	return soml.Border{Width: width, Style: soml.BorderSolid, Color: color}, true
+}
+
+// gradientBorderParts는 그라디언트 테두리 축약의 조각 수다 — `<굵기> gradient(…)`.
+const gradientBorderParts = 2
 
 // borderWidth는 축약의 첫 조각이다 — 논리 px 수치이고 0·음수는 에러다.
 //
