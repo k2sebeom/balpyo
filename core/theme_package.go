@@ -1,11 +1,14 @@
 package core
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"path"
+	"strconv"
+	"strings"
 
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -57,6 +60,9 @@ type chromeDecl struct {
 type themePackage struct {
 	manifest themeManifest
 	tokens   soml.Theme
+	// components는 로드·변환된 컴포넌트 외관 표다 (components.json). tokens와 달리 값 문법을
+	// 캐스케이드 내부 타입으로 이미 눕혀 담는다 — resolveText/Shape/Image가 재변환 없이 읽는다.
+	components components
 }
 
 // ── tokens.json 스키마 ──────────────────────────────────────────────────────
@@ -104,6 +110,95 @@ type shadowTok struct {
 	Alpha float64 `json:"alpha"`
 }
 
+// ── components.json 스키마 (원본 JSON) ──────────────────────────────────────
+// 배열이라 순서가 파일 그대로 유지된다 (tokens.json과 같은 이유). optional 필드는 포인터라
+// "정하지 않음"(nil)과 0값을 구별한다 — 부분 패치가 아래 단을 지우지 않게 한다.
+
+type componentsFile struct {
+	// Comment는 문서용 $comment 키를 허용하기 위한 자리다 — DisallowUnknownFields가 그 외
+	// 모든 미지원 키(예: extends·오타)를 진단하되 문서 주석은 통과시킨다 (닫힌 어휘).
+	Comment string              `json:"$comment"`
+	Text    textComponentsFile  `json:"text"`
+	Shape   shapeComponentsFile `json:"shape"`
+	Image   imageComponentsFile `json:"image"`
+}
+
+type textComponentsFile struct {
+	Roles             []textRoleFile             `json:"roles"`
+	ComponentDefaults []textComponentDefaultFile `json:"componentDefaults"`
+	Variants          []textVariantFile          `json:"variants"`
+}
+
+type textRoleFile struct {
+	Name       string  `json:"name"`
+	Font       string  `json:"font"`
+	Size       float64 `json:"size"`
+	Weight     int     `json:"weight"`
+	LineHeight float64 `json:"lineHeight"`
+	Color      string  `json:"color"`
+	Align      string  `json:"align"`
+}
+
+type textComponentDefaultFile struct {
+	Tag   string   `json:"tag"`
+	Size  *float64 `json:"size"`
+	Color *string  `json:"color"`
+}
+
+type textVariantFile struct {
+	Name   string   `json:"name"`
+	Size   *float64 `json:"size"`
+	Weight *int     `json:"weight"`
+	Color  *string  `json:"color"`
+}
+
+type shapeComponentsFile struct {
+	Default  shapeStyleFile     `json:"default"`
+	Variants []shapeVariantFile `json:"variants"`
+}
+
+type shapeStyleFile struct {
+	Fill   string `json:"fill"`
+	Border string `json:"border"`
+	Radius string `json:"radius"`
+}
+
+type shapeVariantFile struct {
+	Name   string  `json:"name"`
+	Fill   *string `json:"fill"`
+	Border *string `json:"border"`
+	Radius *string `json:"radius"`
+	Shadow *string `json:"shadow"`
+}
+
+type imageComponentsFile struct {
+	Default  imageStyleFile     `json:"default"`
+	Variants []imageVariantFile `json:"variants"`
+}
+
+type imageStyleFile struct{}
+
+type imageVariantFile struct {
+	Name   string  `json:"name"`
+	Border *string `json:"border"`
+	Radius *string `json:"radius"`
+	Shadow *string `json:"shadow"`
+}
+
+// ── 변환된 컴포넌트 표 (캐스케이드 내부 타입) ───────────────────────────────
+// 캐스케이드가 이미 쓰는 타입 그대로 담는다 (theme.go의 옛 함수 반환형과 같다) — 그래야
+// resolveText/Shape/Image가 재변환 없이 읽고, byte 동일성 테스트가 옛 함수와 직접 비교한다.
+
+type components struct {
+	textRoles             map[soml.TextRole]soml.TextStyle
+	textComponentDefaults map[string]textPatch
+	textVariants          []textVariant
+	shapeDefault          shapePatch
+	shapeVariants         []shapeVariant
+	imageDefault          imagePatch
+	imageVariants         []imageVariant
+}
+
 // loadTheme는 fsys의 dir/ 아래 테마 패키지를 읽는다. dir은 fs 경로다 (내장은
 // "themes/minimal", 로컬은 프로젝트 상대 경로). 이름은 매니페스트가 소유한다.
 func loadTheme(fsys fs.FS, dir string) (themePackage, error) {
@@ -130,6 +225,12 @@ func loadTheme(fsys fs.FS, dir string) (themePackage, error) {
 		return pkg, err
 	}
 	pkg.tokens = tokens
+
+	comps, err := loadComponents(fsys, dir, tokens)
+	if err != nil {
+		return pkg, err
+	}
+	pkg.components = comps
 	return pkg, nil
 }
 
@@ -170,6 +271,183 @@ func loadTokens(fsys fs.FS, dir, name string) (soml.Theme, error) {
 		})
 	}
 	return theme, nil
+}
+
+// loadComponents는 components.json을 캐스케이드 내부 표로 읽는다. theme는 radius·shadow 토큰을
+// 해석하려고 받는다 (loadTokens가 먼저 채운 표). 미지원 키는 DisallowUnknownFields가 진단한다
+// — 조용히 무시하면 저자가 오버라이드가 먹었다고 착각한다 (닫힌 어휘, manifest.Extends와 같은 태도).
+func loadComponents(fsys fs.FS, dir string, theme soml.Theme) (components, error) {
+	var comps components
+	raw, err := fs.ReadFile(fsys, path.Join(dir, "components.json"))
+	if err != nil {
+		return comps, fmt.Errorf("components.json을 읽을 수 없다: %w", err)
+	}
+	var file componentsFile
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&file); err != nil {
+		return comps, fmt.Errorf("components.json 파싱 실패: %w", err)
+	}
+
+	comps.textRoles = map[soml.TextRole]soml.TextStyle{}
+	for _, r := range file.Text.Roles {
+		comps.textRoles[soml.TextRole(r.Name)] = soml.TextStyle{
+			Role: soml.TextRole(r.Name), Font: soml.FontRole(r.Font), Size: r.Size,
+			Weight: r.Weight, LineHeight: r.LineHeight,
+			Color: soml.TokenColor(r.Color), Align: soml.TextAlign(r.Align),
+		}
+	}
+
+	comps.textComponentDefaults = map[string]textPatch{}
+	for _, d := range file.Text.ComponentDefaults {
+		var patch textPatch
+		if d.Size != nil {
+			patch.size = d.Size
+		}
+		if d.Color != nil {
+			c := soml.TokenColor(*d.Color)
+			patch.color = &c
+		}
+		comps.textComponentDefaults[d.Tag] = patch
+	}
+
+	for _, v := range file.Text.Variants {
+		var patch textPatch
+		if v.Size != nil {
+			patch.size = v.Size
+		}
+		if v.Weight != nil {
+			patch.weight = v.Weight
+		}
+		if v.Color != nil {
+			c := soml.TokenColor(*v.Color)
+			patch.color = &c
+		}
+		comps.textVariants = append(comps.textVariants, textVariant{name: v.Name, patch: patch})
+	}
+
+	shapeDefault, err := shapePatchFromFile(theme, file.Shape.Default.Fill,
+		file.Shape.Default.Border, file.Shape.Default.Radius, "")
+	if err != nil {
+		return comps, fmt.Errorf("shape.default: %w", err)
+	}
+	comps.shapeDefault = shapeDefault
+	for _, v := range file.Shape.Variants {
+		patch, err := shapeVariantPatchFromFile(theme, v)
+		if err != nil {
+			return comps, fmt.Errorf("shape variant %q: %w", v.Name, err)
+		}
+		comps.shapeVariants = append(comps.shapeVariants, shapeVariant{name: v.Name, patch: patch})
+	}
+
+	for _, v := range file.Image.Variants {
+		patch, err := imageVariantPatchFromFile(theme, v)
+		if err != nil {
+			return comps, fmt.Errorf("image variant %q: %w", v.Name, err)
+		}
+		comps.imageVariants = append(comps.imageVariants, imageVariant{name: v.Name, patch: patch})
+	}
+
+	return comps, nil
+}
+
+// shapePatchFromFile은 shape default의 문자열 필드를 shapePatch로 눕힌다. 빈 문자열은 "정하지
+// 않음"이다. fill/border 색·radius/shadow 토큰 해석은 theme.go의 헬퍼(colorFill·solidBorder·
+// radiusToken·shadowToken)를 그대로 지나 byte 동일성을 지킨다.
+func shapePatchFromFile(theme soml.Theme, fill, border, radius, shadow string) (shapePatch, error) {
+	var patch shapePatch
+	if fill != "" {
+		f, err := fillFromString(fill)
+		if err != nil {
+			return patch, err
+		}
+		patch.fill = f
+	}
+	if border != "" {
+		b, err := borderFromString(border)
+		if err != nil {
+			return patch, err
+		}
+		patch.border = b
+	}
+	if radius != "" {
+		patch.radius = radiusToken(theme, radius)
+	}
+	if shadow != "" {
+		patch.shadow = shadowToken(theme, shadow)
+	}
+	return patch, nil
+}
+
+func shapeVariantPatchFromFile(theme soml.Theme, v shapeVariantFile) (shapePatch, error) {
+	fill, border, radius, shadow := "", "", "", ""
+	if v.Fill != nil {
+		fill = *v.Fill
+	}
+	if v.Border != nil {
+		border = *v.Border
+	}
+	if v.Radius != nil {
+		radius = *v.Radius
+	}
+	if v.Shadow != nil {
+		shadow = *v.Shadow
+	}
+	return shapePatchFromFile(theme, fill, border, radius, shadow)
+}
+
+func imageVariantPatchFromFile(theme soml.Theme, v imageVariantFile) (imagePatch, error) {
+	var patch imagePatch
+	if v.Border != nil {
+		b, err := borderFromString(*v.Border)
+		if err != nil {
+			return patch, err
+		}
+		patch.border = b
+	}
+	if v.Radius != nil {
+		patch.radius = radiusToken(theme, *v.Radius)
+	}
+	if v.Shadow != nil {
+		patch.shadow = shadowToken(theme, *v.Shadow)
+	}
+	return patch, nil
+}
+
+// fillFromString은 `none` 또는 색 토큰명을 *soml.Fill로 눕힌다 (theme.go의 colorFill/NoFill과
+// 같은 결과). 테마 데이터는 토큰만 쓴다 (리터럴 금지 — theme.go의 근거).
+func fillFromString(s string) (*soml.Fill, error) {
+	if s == noneValue {
+		return ptr(soml.NoFill()), nil
+	}
+	return colorFill(s), nil
+}
+
+// borderFromString은 `none` 또는 `<굵기> <스타일> <색>` 축약을 *soml.Border로 눕힌다 —
+// resolver.border의 값 문법과 같고, `1 solid muted`는 theme.go의 solidBorder(1,"muted")와 같다.
+func borderFromString(s string) (*soml.Border, error) {
+	if s == noneValue {
+		return ptr(soml.NoBorder()), nil
+	}
+	fields := strings.Fields(s)
+	if len(fields) != borderParts {
+		return nil, fmt.Errorf("border는 %q 또는 `<굵기> <스타일> <색>` 3조각이다 (%q)", noneValue, s)
+	}
+	width, err := strconv.ParseFloat(fields[0], 64)
+	if err != nil {
+		return nil, fmt.Errorf("border 굵기가 수치가 아니다 (%q)", fields[0])
+	}
+	style := soml.BorderStyle(fields[1])
+	ok := false
+	for _, s := range soml.BorderStyles() {
+		if s == style {
+			ok = true
+		}
+	}
+	if !ok {
+		return nil, fmt.Errorf("알 수 없는 border 스타일 %q", fields[1])
+	}
+	return &soml.Border{Width: width, Style: style, Color: soml.TokenColor(fields[2])}, nil
 }
 
 // loadBuiltinTheme는 내장 테마를 이름으로 읽는다. 내장 파일은 빌드 시점에 고정되므로 로드

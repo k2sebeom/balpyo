@@ -3,6 +3,7 @@ package core
 import (
 	"reflect"
 	"testing"
+	"testing/fstest"
 
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -63,3 +64,89 @@ func TestLoadBuiltinMinimal(t *testing.T) {
 // 이 헬퍼가 그 표를 다시 적지 않고 파생해, 헬퍼와 파일이 어긋날 수 없다.
 func minimalFonts() []soml.FontToken     { return minimalTheme().Fonts }
 func minimalShadows() []soml.ShadowToken { return minimalTheme().Shadows }
+
+// TestLoadBuiltinComponents는 내장 minimal의 components.json이 로드되고, 그 표가 옛 하드코딩
+// (theme.go)과 값·순서까지 같음을 못 박는다 — byte 동일성 계약의 컴포넌트 앵커다.
+func TestLoadBuiltinComponents(t *testing.T) {
+	pkg := loadBuiltinTheme("minimal")
+	theme := pkg.tokens
+	comps := pkg.components
+
+	// 텍스트 역할 5종 — 각 역할이 옛 textRoleDefaults와 같다.
+	for _, role := range soml.TextRoles() {
+		got, ok := comps.textRoles[role]
+		if !ok {
+			t.Fatalf("역할 %q가 로드된 표에 없다", role)
+		}
+		if !reflect.DeepEqual(got, textRoleDefaults(role)) {
+			t.Errorf("역할 %q: got %+v\nwant %+v", role, got, textRoleDefaults(role))
+		}
+	}
+	if len(comps.textRoles) != 5 {
+		t.Errorf("텍스트 역할 수 = %d, want 5", len(comps.textRoles))
+	}
+
+	// 컴포넌트 기본값 — h3·blockquote만 정하고, 나머지 태그는 표에 없어 빈 패치로 폴백한다.
+	if !reflect.DeepEqual(comps.textComponentDefaults["h3"], textComponentDefault("h3")) {
+		t.Errorf("h3 기본값이 다르다")
+	}
+	if !reflect.DeepEqual(comps.textComponentDefaults["blockquote"], textComponentDefault("blockquote")) {
+		t.Errorf("blockquote 기본값이 다르다")
+	}
+	if len(comps.textComponentDefaults) != 2 {
+		t.Errorf("컴포넌트 기본값 수 = %d, want 2", len(comps.textComponentDefaults))
+	}
+
+	// 텍스트 variant — 값과 **순서**가 옛 표와 같다.
+	if !reflect.DeepEqual(comps.textVariants, textVariants()) {
+		t.Errorf("텍스트 variant 표가 다르다:\ngot  %+v\nwant %+v", comps.textVariants, textVariants())
+	}
+
+	// 도형 기본값·variant — 값과 순서가 옛 표와 같다 (radius·shadow 토큰 해석 포함).
+	if !reflect.DeepEqual(comps.shapeDefault, shapeComponentDefault(theme)) {
+		t.Errorf("도형 기본값이 다르다:\ngot  %+v\nwant %+v", comps.shapeDefault, shapeComponentDefault(theme))
+	}
+	if !reflect.DeepEqual(comps.shapeVariants, shapeVariants(theme)) {
+		t.Errorf("도형 variant 표가 다르다:\ngot  %+v\nwant %+v", comps.shapeVariants, shapeVariants(theme))
+	}
+
+	// 이미지 기본값(비어 있음)·variant.
+	if !reflect.DeepEqual(comps.imageDefault, imageComponentDefault()) {
+		t.Errorf("이미지 기본값이 다르다:\ngot  %+v\nwant %+v", comps.imageDefault, imageComponentDefault())
+	}
+	if !reflect.DeepEqual(comps.imageVariants, imageVariants(theme)) {
+		t.Errorf("이미지 variant 표가 다르다:\ngot  %+v\nwant %+v", comps.imageVariants, imageVariants(theme))
+	}
+}
+
+// TestLoadBuiltinComponentsPreservesVariantOrder는 variant 배열이 파일 순서 그대로임을 못 박는다
+// — 모르는 variant 경고가 나열하는 목록이 결정적이어야 하므로 (JSON 객체 키 순서에 기대지 않는다).
+func TestLoadBuiltinComponentsPreservesVariantOrder(t *testing.T) {
+	comps := loadBuiltinTheme("minimal").components
+	wantText := []string{"kicker", "lead"}
+	for i, v := range comps.textVariants {
+		if v.name != wantText[i] {
+			t.Errorf("텍스트 variant[%d] = %q, want %q", i, v.name, wantText[i])
+		}
+	}
+	wantShape := []string{"card", "card-header", "card-body", "card-backdrop", "stat-card", "badge"}
+	if len(comps.shapeVariants) != len(wantShape) {
+		t.Fatalf("도형 variant 수 = %d, want %d", len(comps.shapeVariants), len(wantShape))
+	}
+	for i, v := range comps.shapeVariants {
+		if v.name != wantShape[i] {
+			t.Errorf("도형 variant[%d] = %q, want %q", i, v.name, wantShape[i])
+		}
+	}
+}
+
+// TestLoadComponentsRejectsUnknownField는 미지원/오타 키를 조용히 무시하지 않고 진단함을 못 박는다
+// (닫힌 어휘). extends는 아직 구현하지 않은 상속 키의 예다.
+func TestLoadComponentsRejectsUnknownField(t *testing.T) {
+	fsys := fstest.MapFS{
+		"t/components.json": {Data: []byte(`{"extends":"base","text":{"roles":[]}}`)},
+	}
+	if _, err := loadComponents(fsys, "t", soml.Theme{}); err == nil {
+		t.Fatal("미지원 필드 extends가 진단되지 않았다 (조용히 무시됨)")
+	}
+}

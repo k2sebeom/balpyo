@@ -1,0 +1,40 @@
+{
+  "$comment": "minimal 테마의 컴포넌트 외관 (PRD §8.3). 각 범주의 variants는 순서 있는 배열이다 — JSON 객체 키 순서에 기대지 않는다 (tokens.json과 같은 계약). 값의 근거는 core/theme.go의 옛 하드코딩 주석에 있다.",
+
+  "text": {
+    "roles": [
+      { "name": "title",   "font": "heading", "size": 56, "weight": 700, "lineHeight": 1.2, "color": "fg",    "align": "start" },
+      { "name": "heading", "font": "heading", "size": 36, "weight": 700, "lineHeight": 1.3, "color": "fg",    "align": "start" },
+      { "name": "body",    "font": "body",    "size": 24, "weight": 400, "lineHeight": 1.5, "color": "fg",    "align": "start" },
+      { "name": "caption", "font": "body",    "size": 18, "weight": 400, "lineHeight": 1.4, "color": "muted", "align": "start" },
+      { "name": "code",    "font": "mono",    "size": 20, "weight": 400, "lineHeight": 1.5, "color": "fg",    "align": "start" }
+    ],
+    "componentDefaults": [
+      { "tag": "h3",         "size": 28 },
+      { "tag": "blockquote", "color": "muted" }
+    ],
+    "variants": [
+      { "name": "kicker", "size": 18, "weight": 700, "color": "accent1" },
+      { "name": "lead",   "size": 32 }
+    ]
+  },
+
+  "shape": {
+    "default": { "fill": "surface", "border": "1 solid muted", "radius": "md" },
+    "variants": [
+      { "name": "card",          "fill": "bg",   "radius": "lg" },
+      { "name": "card-header",   "border": "none", "radius": "sm" },
+      { "name": "card-body",     "fill": "bg" },
+      { "name": "card-backdrop", "fill": "none", "border": "3 solid accent1", "radius": "lg" },
+      { "name": "stat-card",     "border": "none", "radius": "lg", "shadow": "soft" },
+      { "name": "badge",         "border": "1 solid accent1", "radius": "lg" }
+    ]
+  },
+
+  "image": {
+    "default": {},
+    "variants": [
+      { "name": "framed", "border": "1 solid muted", "radius": "md", "shadow": "soft" }
+    ]
+  }
+}
