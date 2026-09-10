@@ -30,13 +30,14 @@ func Resolve(deck *soml.Deck) soml.Diagnostics {
 	if deck == nil {
 		return nil
 	}
-	// 테마는 지금 하드코딩이다 (theme.go). Iteration 10에서 프로젝트 설정의 theme 필드를
-	// 읽어 온 테마 패키지가 이 대입을 대체한다.
-	deck.Theme = minimalTheme()
+	// 테마는 지금 내장 minimal 하나다. Iteration 10에서 프로젝트 설정의 theme 필드가 이
+	// 선택을 대체한다. 토큰과 컴포넌트 외관 표를 한 번에 로드해 slide 루프에 나른다.
+	pkg := loadBuiltinTheme("minimal")
+	deck.Theme = pkg.tokens
 
 	var diags soml.Diagnostics
 	for _, slide := range deck.Slides {
-		r := resolver{theme: deck.Theme, file: slide.Source}
+		r := resolver{theme: deck.Theme, comps: pkg.components, file: slide.Source}
 		// 레이아웃 어휘는 슬라이드마다 도는 이 루프 머리에서 확정한다 — 파일 하나로
 		// 판정되므로 Validate(파일을 넘어야 아는 것 — 슬라이드 ID 충돌)가 아니라 여기다.
 		r.slideLayout(slide)
@@ -61,6 +62,9 @@ func Resolve(deck *soml.Deck) soml.Diagnostics {
 // resolver는 슬라이드 하나의 해석 상태다.
 type resolver struct {
 	theme soml.Theme
+	// comps는 로드된 컴포넌트 외관 표다 (components.json) — 캐스케이드의 컴포넌트 기본값·
+	// variant 단이 여기서 나온다. 옛 theme.go 함수는 폴백으로 남는다 (10/06이 지운다).
+	comps components
 	file  string
 	// layout은 이 슬라이드의 확정 레이아웃이다 (slideLayout이 채운다). 배치 검증이 슬라이드를
 	// 알아야 하는 유일한 자리가 canvas다: `x`/`y`는 <stack>의 자식이거나 canvas 슬라이드의
@@ -167,8 +171,8 @@ func (r *resolver) textRole(elem *soml.Element) (soml.TextRole, bool) {
 // 병합은 mergeText(cascade.go) 한 곳에서만 일어난다 — 우선순위는 아래 세 줄의 순서가
 // 전부이고, 다른 어디에도 없다.
 func (r *resolver) resolveText(elem *soml.Element, role soml.TextRole) {
-	style := textRoleDefaults(role)
-	mergeText(&style, textComponentDefault(elem.Name))
+	style := r.textRoleDefaults(role)
+	mergeText(&style, r.textComponentDefault(elem.Name))
 	mergeText(&style, r.variantPatch(elem))
 	mergeText(&style, r.inlinePatch(elem))
 	elemAppearance(elem).Text = &style
@@ -196,9 +200,9 @@ func (r *resolver) variantPatch(elem *soml.Element) textPatch {
 	if !ok {
 		return textPatch{}
 	}
-	patch, known := textVariantPatch(attr.Value)
+	patch, known := r.textVariantPatch(attr.Value)
 	if !known {
-		r.warnUnknownVariant(attr, textVariantNames())
+		r.warnUnknownVariant(attr, r.textVariantNames())
 		return textPatch{}
 	}
 	return patch
@@ -228,6 +232,39 @@ func (r *resolver) variantAttr(elem *soml.Element) (soml.Attr, bool) {
 func (r *resolver) warnUnknownVariant(attr soml.Attr, names []string) {
 	r.warnf(attr.ValueSpan, "variant %q가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: %s)",
 		attr.Value, strings.Join(names, ", "))
+}
+
+// 아래 넷은 텍스트 캐스케이드의 컴포넌트 기본값·variant 단을 로드된 표(r.comps)에서 읽는다.
+// 옛 theme.go 함수는 폴백으로 남는다 (10/06이 지운다) — 로드 실패한 테마가 덱을 멈추지 않는다.
+func (r *resolver) textRoleDefaults(role soml.TextRole) soml.TextStyle {
+	if style, ok := r.comps.textRoles[role]; ok {
+		return style
+	}
+	return textRoleDefaults(role)
+}
+
+func (r *resolver) textComponentDefault(tag string) textPatch {
+	if patch, ok := r.comps.textComponentDefaults[tag]; ok {
+		return patch
+	}
+	return textPatch{}
+}
+
+func (r *resolver) textVariantPatch(name string) (textPatch, bool) {
+	for _, v := range r.comps.textVariants {
+		if v.name == name {
+			return v.patch, true
+		}
+	}
+	return textPatch{}, false
+}
+
+func (r *resolver) textVariantNames() []string {
+	names := make([]string, len(r.comps.textVariants))
+	for i, v := range r.comps.textVariants {
+		names[i] = v.name
+	}
+	return names
 }
 
 // inlinePatch는 인라인 속성을 캐스케이드의 마지막 단으로 만든다. 값 어휘 검사와 진단은

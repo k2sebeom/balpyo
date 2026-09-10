@@ -40,7 +40,7 @@ import (
 func (r *resolver) resolveShape(elem *soml.Element) {
 	style := soml.ShapeStyle{Type: r.shapeType(elem)}
 	inline := r.shapeAttrs(elem, &style)
-	mergeShape(&style, themeShapePatch(shapeComponentDefault(r.theme), style.Type))
+	mergeShape(&style, themeShapePatch(r.comps.shapeDefault, style.Type))
 	mergeShape(&style, themeShapePatch(r.shapeVariant(elem), style.Type))
 	mergeShape(&style, inline)
 	elemAppearance(elem).Shape = &style
@@ -70,12 +70,31 @@ func (r *resolver) shapeVariant(elem *soml.Element) shapePatch {
 	if !ok {
 		return shapePatch{}
 	}
-	patch, known := shapeVariantPatch(r.theme, attr.Value)
+	patch, known := r.shapeVariantPatch(attr.Value)
 	if !known {
-		r.warnUnknownVariant(attr, shapeVariantNames(r.theme))
+		r.warnUnknownVariant(attr, r.shapeVariantNames())
 		return shapePatch{}
 	}
 	return patch
+}
+
+// shapeVariantPatch·shapeVariantNames는 도형 variant 단을 로드된 표(r.comps)에서 읽는다 —
+// 텍스트 판(resolve.go)과 나란한 자리이고, 요소 종류가 어느 표를 볼지 정하는 계약은 그대로다.
+func (r *resolver) shapeVariantPatch(name string) (shapePatch, bool) {
+	for _, v := range r.comps.shapeVariants {
+		if v.name == name {
+			return v.patch, true
+		}
+	}
+	return shapePatch{}, false
+}
+
+func (r *resolver) shapeVariantNames() []string {
+	names := make([]string, len(r.comps.shapeVariants))
+	for i, v := range r.comps.shapeVariants {
+		names[i] = v.name
+	}
+	return names
 }
 
 // shapeAttrs는 속성 한 벌을 훑어 **인라인 외관 패치**를 만든다 (inlinePatch의 도형 판).

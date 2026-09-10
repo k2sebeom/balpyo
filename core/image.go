@@ -39,7 +39,7 @@ import (
 func (r *resolver) resolveImage(elem *soml.Element) {
 	style := soml.ImageStyle{Src: r.imageSrc(elem), Fit: soml.DefaultImageFit}
 	inline := r.imageAttrs(elem, &style)
-	mergeImage(&style, imageComponentDefault())
+	mergeImage(&style, r.comps.imageDefault)
 	mergeImage(&style, r.imageVariant(elem))
 	mergeImage(&style, inline)
 	elemAppearance(elem).Image = &style
@@ -53,12 +53,31 @@ func (r *resolver) imageVariant(elem *soml.Element) imagePatch {
 	if !ok {
 		return imagePatch{}
 	}
-	patch, known := imageVariantPatch(r.theme, attr.Value)
+	patch, known := r.imageVariantPatch(attr.Value)
 	if !known {
-		r.warnUnknownVariant(attr, imageVariantNames(r.theme))
+		r.warnUnknownVariant(attr, r.imageVariantNames())
 		return imagePatch{}
 	}
 	return patch
+}
+
+// imageVariantPatch·imageVariantNames는 이미지 variant 단을 로드된 표(r.comps)에서 읽는다 —
+// 표가 셋(텍스트·도형·이미지)이라는 계약은 그대로다.
+func (r *resolver) imageVariantPatch(name string) (imagePatch, bool) {
+	for _, v := range r.comps.imageVariants {
+		if v.name == name {
+			return v.patch, true
+		}
+	}
+	return imagePatch{}, false
+}
+
+func (r *resolver) imageVariantNames() []string {
+	names := make([]string, len(r.comps.imageVariants))
+	for i, v := range r.comps.imageVariants {
+		names[i] = v.name
+	}
+	return names
 }
 
 // imageAttrs는 속성 한 벌을 훑어 **인라인 외관 패치**를 만든다 (shapeAttrs의 이미지 판).
