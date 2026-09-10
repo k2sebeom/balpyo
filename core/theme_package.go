@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -63,6 +64,10 @@ type themePackage struct {
 	// components는 로드·변환된 컴포넌트 외관 표다 (components.json). tokens와 달리 값 문법을
 	// 캐스케이드 내부 타입으로 이미 눕혀 담는다 — resolveText/Shape/Image가 재변환 없이 읽는다.
 	components components
+	// layouts는 레이아웃 이름→배치 CSS 원문 맵이다 (layouts/*.css). 값은 아직 컴파일하지 않은
+	// 원문이다 — 슬롯 배치 컴파일은 10/03, 실체 CSS는 10/06이 채운다. 로더는 이 맵의 키 집합이
+	// theme.json의 layouts 선언과 정확히 일치함을 대조한다.
+	layouts map[string]string
 }
 
 // ── tokens.json 스키마 ──────────────────────────────────────────────────────
@@ -231,6 +236,12 @@ func loadTheme(fsys fs.FS, dir string) (themePackage, error) {
 		return pkg, err
 	}
 	pkg.components = comps
+
+	layouts, err := loadLayouts(fsys, dir, pkg.manifest)
+	if err != nil {
+		return pkg, err
+	}
+	pkg.layouts = layouts
 	return pkg, nil
 }
 
@@ -448,6 +459,50 @@ func borderFromString(s string) (*soml.Border, error) {
 		return nil, fmt.Errorf("알 수 없는 border 스타일 %q", fields[1])
 	}
 	return &soml.Border{Width: width, Style: style, Color: soml.TokenColor(fields[2])}, nil
+}
+
+// loadLayouts는 dir/layouts/ 아래 *.css를 레이아웃 이름→CSS 원문 맵으로 읽고, 그 키 집합이
+// manifest.Layouts 선언과 정확히 일치하는지 **양방향으로** 대조한다. 선언과 파일이 어긋나면
+// 저자가 오버라이드/구현이 먹었다고 착각하므로 조용히 넘기지 않고 에러다 (닫힌 어휘,
+// manifest.Extends·components.json과 같은 태도). CSS 내용은 여기서 보지 않는다 — 배치·외관
+// 경계 검사는 theme_lint.go의 몫이다. 빈(주석만) CSS는 허용한다 (스텁, 실체는 10/06).
+func loadLayouts(fsys fs.FS, dir string, manifest themeManifest) (map[string]string, error) {
+	entries, err := fs.ReadDir(fsys, path.Join(dir, "layouts"))
+	if err != nil {
+		return nil, fmt.Errorf("layouts/를 읽을 수 없다: %w", err)
+	}
+	files := map[string]string{}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".css") {
+			continue
+		}
+		raw, err := fs.ReadFile(fsys, path.Join(dir, "layouts", e.Name()))
+		if err != nil {
+			return nil, fmt.Errorf("layouts/%s를 읽을 수 없다: %w", e.Name(), err)
+		}
+		files[strings.TrimSuffix(e.Name(), ".css")] = string(raw)
+	}
+
+	// 선언 → 파일: manifest.Layouts는 순서 있는 슬라이스라 순회가 이미 결정적이다.
+	declared := map[string]bool{}
+	for _, name := range manifest.Layouts {
+		declared[name] = true
+		if _, ok := files[name]; !ok {
+			return nil, fmt.Errorf("theme.json의 layouts에 %q가 있지만 layouts/%s.css가 없다", name, name)
+		}
+	}
+	// 파일 → 선언: files는 맵이라 순서가 없으므로 정렬해 진단이 결정적이게 한다.
+	var undeclared []string
+	for name := range files {
+		if !declared[name] {
+			undeclared = append(undeclared, name)
+		}
+	}
+	sort.Strings(undeclared)
+	if len(undeclared) > 0 {
+		return nil, fmt.Errorf("layouts/%s.css가 있지만 theme.json의 layouts 선언에 없다", undeclared[0])
+	}
+	return files, nil
 }
 
 // loadBuiltinTheme는 내장 테마를 이름으로 읽는다. 내장 파일은 빌드 시점에 고정되므로 로드
