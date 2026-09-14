@@ -5,6 +5,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/k2sebeom/balpyo/internal/pipeline"
 	"github.com/k2sebeom/balpyo/render"
+	"github.com/k2sebeom/balpyo/soml"
 )
 
 func main() {
@@ -87,6 +89,12 @@ func runBuild(args []string, stdout, stderr io.Writer) error {
 	// 경고는 빌드가 실패해도 사람에게 보여야 한다.
 	printDiagnostics(stderr, result)
 	if err != nil {
+		// 진단 에러의 상세는 printDiagnostics가 이미 냈다 — 다시 통째로 찍지 않고
+		// 개수만 요약한다. 진단이 아닌 에러(설정·파일 등)는 그대로 올린다.
+		var de *soml.DiagnosticsError
+		if errors.As(err, &de) {
+			return fmt.Errorf("빌드 실패: 에러 %d건", de.Count())
+		}
 		return err
 	}
 	fmt.Fprintf(stdout, "슬라이드 %d장 → %s\n", len(result.Deck.Slides), result.OutDir)

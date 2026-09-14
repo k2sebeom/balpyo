@@ -120,6 +120,48 @@ func (r *resolver) placementStyle(attr soml.Attr) (string, bool) {
 	return strings.Join(decls, "; "), true
 }
 
+// stripCSSComments는 `/* … */` 블록 주석을 공백 하나로 지운다. 레이아웃 CSS 파일은 프로젝트
+// 관례대로 주석을 다는데(빈 스텁조차 주석 하나다), 선언 분해는 주석을 모르므로 주석이 선언으로
+// 새면 "콜론이 없다" 같은 거짓 진단이 난다. 여기서 먼저 벗겨 배치 린터와 정규화가 선언만 본다.
+// 짝이 맞지 않는 `/*`는 문자열 끝까지를 주석으로 본다 (CSS 파서와 같은 관용).
+func stripCSSComments(raw string) string {
+	var b strings.Builder
+	b.Grow(len(raw))
+	for {
+		open := strings.Index(raw, "/*")
+		if open < 0 {
+			b.WriteString(raw)
+			break
+		}
+		b.WriteString(raw[:open])
+		b.WriteByte(' ') // 주석은 토큰 경계다 — `a/* */b`가 `ab`로 붙지 않게 공백으로 바꾼다.
+		rest := raw[open+2:]
+		if shut := strings.Index(rest, "*/"); shut >= 0 {
+			raw = rest[shut+2:]
+			continue
+		}
+		break // 닫히지 않은 주석: 나머지 전부가 주석이다.
+	}
+	return b.String()
+}
+
+// normalizeDeclarations는 CSS 선언 원문을 `프로퍼티: 값`을 `; `로 이은 결정적 문자열로 눕힌다.
+// 주석을 벗기고, 문법이 온전한 선언(콜론·이름·값이 다 있음)만 싣는다 — 문법 위반은 lintLayoutCSS가
+// 에러로 잡으므로 여기서는 조용히 건너뛴다 (린트와 정규화가 같은 분해기를 공유해 갈라지지 않는다).
+func normalizeDeclarations(raw string) string {
+	var decls []string
+	for _, part := range splitDeclarations(stripCSSComments(raw)) {
+		name, value, found := strings.Cut(part.text, ":")
+		property := strings.ToLower(strings.TrimSpace(name))
+		declaration := strings.TrimSpace(value)
+		if !found || property == "" || declaration == "" {
+			continue
+		}
+		decls = append(decls, property+": "+declaration)
+	}
+	return strings.Join(decls, "; ")
+}
+
 // splitDeclarations는 `;`로 선언을 나눈다. 빈 조각(`a: 1;;`, 마지막 `;`)은 버린다 — CSS도
 // 그렇게 읽고, 마지막 `;`는 저자의 관용 표기라 그것 때문에 진단이 나면 안 된다.
 func splitDeclarations(raw string) []valuePart {

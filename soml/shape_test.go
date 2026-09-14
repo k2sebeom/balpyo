@@ -364,8 +364,9 @@ func TestShapeKind(t *testing.T) {
 		t.Errorf("TagTextRole(%q) = %q — 도형은 역할 표에 없어야 한다", ShapeElement, role)
 	}
 	// Iteration 7·9의 컴포넌트는 카탈로그에도 어휘에도 없어야 한다. `<image>`는 Iteration
-	// 5에, `<stack>`은 Iteration 6에 열렸다 (image.go·layout.go의 계약 테스트가 본다).
-	for _, name := range []string{"arrow", "line", "group", "icon", "table", "chart"} {
+	// 5에, `<stack>`은 Iteration 6에, `<table>`은 M2.1(ADR 0036)에 열렸다 (table.go의
+	// TestTableKinds가 그 계약을 본다). `<chart>`는 M2.2다 — 아직 없어야 한다.
+	for _, name := range []string{"arrow", "line", "group", "icon", "chart"} {
 		if KindOf(name) != KindNone {
 			t.Errorf("<%s>가 카탈로그에 있다 — 뒤 iteration의 어휘다", name)
 		}

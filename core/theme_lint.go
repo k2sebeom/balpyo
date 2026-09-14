@@ -26,7 +26,9 @@ import (
 func lintLayoutCSS(css, layoutName string) soml.Diagnostics {
 	file := "layouts/" + layoutName + ".css"
 	var diags soml.Diagnostics
-	for _, part := range splitDeclarations(css) {
+	// 주석을 먼저 벗긴다 — 레이아웃 CSS 파일은 관례대로 주석을 다는데(빈 스텁조차 주석이다),
+	// 선언 분해는 주석을 모르므로 주석이 선언으로 새면 거짓 "콜론 없음" 에러가 난다.
+	for _, part := range splitDeclarations(stripCSSComments(css)) {
 		name, value, found := strings.Cut(part.text, ":")
 		if !found {
 			diags = append(diags, soml.Errorf(file, soml.Span{},

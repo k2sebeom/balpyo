@@ -1,0 +1,9 @@
+<!-- 흐름/슬롯 공존 (추가형 슬롯 모드): 슬롯을 쓰지 않은 같은 content 레이아웃 슬라이드는
+     M1.1의 문서 순서 흐름 배치를 그대로 쓴다. 웹에서는 `.balpyo-slots`가 붙지 않아 흐름
+     규칙(`:not(.balpyo-slots)`)이 적용되고, PPTX에서는 blank 레이아웃(slideLayout1)을
+     그대로 가리킨다 — 한 레이아웃을 두 슬라이드가 슬롯·흐름으로 나눠 써도 각자 맞는 파트에
+     연결된다. 슬롯 필드가 비면 산출물이 예전과 같다는 골든 불변의 시험대다. -->
+<slide id="content-flow">
+  <text role="title">흐름 모드</text>
+  <text>슬롯을 쓰지 않은 슬라이드는 blank 레이아웃을 그대로 가리킨다.</text>
+</slide>

@@ -683,6 +683,109 @@ func canvasDeck(t *testing.T, body string) *soml.Deck {
 	return deck
 }
 
+// layoutDeck은 지정한 layout을 실은 슬라이드 하나의 덱을 파이프라인처럼 만든다 — canvasDeck과
+// 같은 경로다 (subsetDeck은 layout을 실을 수 없다). core.Resolve가 테마의 배치 CSS를
+// deck.Theme.Layouts로 나른다.
+func layoutDeck(t *testing.T, layout, body string) *soml.Deck {
+	t.Helper()
+	const source = "slides/001_layout.slide"
+	doc, diags := soml.Parse(source, `<slide id="l" layout="`+layout+`">`+"\n"+body+"\n</slide>\n")
+	if err := diags.Err(); err != nil {
+		t.Fatalf("파싱 실패: %v", err)
+	}
+	stage, err := soml.Aspect16x9.Stage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	deck := &soml.Deck{
+		Title: "레이아웃", Lang: "ko", Aspect: soml.Aspect16x9, Stage: stage,
+		Slides: []*soml.Slide{{
+			Index: 0, ID: "l", Source: source,
+			Layout: soml.SlideLayout(doc.Layout), LayoutSpan: doc.LayoutSpan,
+			Notes: doc.Notes, Content: doc.Content,
+		}},
+	}
+	if err := core.Resolve(deck).Err(); err != nil {
+		t.Fatalf("외관 해석 실패: %v", err)
+	}
+	return deck
+}
+
+// TestLayoutPlacementCSS는 배치 CSS가 있는 레이아웃(title)이 스테이지에 레이아웃 클래스를
+// 붙이고 그 배치 CSS를 내는지 본다 (M1.1). 이전엔 layout=이 출력을 전혀 바꾸지 않았다 —
+// title.css가 빈 스텁이었다. 지오메트리 패스가 이 배치를 재므로 PPTX 좌표도 따라온다.
+func TestLayoutPlacementCSS(t *testing.T) {
+	out := renderString(t, layoutDeck(t, "title", `<h1>제목</h1>`))
+	if !strings.Contains(out, `<div class="balpyo-stage balpyo-layout-title">`) {
+		t.Errorf("title 스테이지에 balpyo-layout-title 클래스가 없다:\n%s", stageOf(t, out))
+	}
+	css := between(t, out, "<style>", "</style>")
+	// 흐름 규칙은 `:not(.balpyo-slots)`로 나간다 — 슬롯 모드 슬라이드에 흐름 배치가 새지 않도록
+	// 슬롯 규칙(`.balpyo-slots`)과 배타적으로 겨눈다 (ADR 0035, layoutStagesCSS).
+	want := ".balpyo-stage.balpyo-layout-title:not(.balpyo-slots) { justify-content: center; }"
+	if !strings.Contains(css, want) {
+		t.Errorf("title 배치 CSS %q가 없다:\n%s", want, css)
+	}
+}
+
+// TestLayoutTwoColumnGrid는 two-column이 스테이지를 2열 그리드로 바꾸는지 본다 — content
+// (세로 스택)와 실제로 다른 배치가 나와야 한다.
+func TestLayoutTwoColumnGrid(t *testing.T) {
+	out := renderString(t, layoutDeck(t, "two-column", `<p>왼쪽</p><p>오른쪽</p>`))
+	css := between(t, out, "<style>", "</style>")
+	if !strings.Contains(css, ".balpyo-stage.balpyo-layout-two-column:not(.balpyo-slots) {") ||
+		!strings.Contains(css, "grid-template-columns: 1fr 1fr") {
+		t.Errorf("two-column 그리드 CSS가 없다:\n%s", css)
+	}
+}
+
+// TestSlotGridArea는 슬롯을 쓴 슬라이드가 (1) 스테이지에 `balpyo-slots` 모디파이어를 얻고,
+// (2) 슬롯 자식마다 `grid-area: <슬롯>`을 내고, (3) 테마의 슬롯 영역 규칙을 `.balpyo-slots`
+// 선택자로 내는지 본다 (ADR 0035, 추가형 슬롯 모드). content는 흐름 배치 CSS가 없지만(빈 스텁)
+// 슬롯 영역 CSS는 있으므로 슬롯 모드에서만 레이아웃 클래스가 붙는다.
+func TestSlotGridArea(t *testing.T) {
+	out := renderString(t, layoutDeck(t, "content", `<h1 slot="title">제목</h1><p slot="body">본문</p>`))
+	if !strings.Contains(out, `<div class="balpyo-stage balpyo-layout-content balpyo-slots">`) {
+		t.Errorf("슬롯 슬라이드 스테이지에 balpyo-slots 클래스가 없다:\n%s", stageOf(t, out))
+	}
+	title := openTagOf(t, out, "s0.0")
+	if !strings.Contains(title, "grid-area: title") {
+		t.Errorf("slot=\"title\" 자식에 grid-area: title이 없다:\n%s", title)
+	}
+	body := openTagOf(t, out, "s0.1")
+	if !strings.Contains(body, "grid-area: body") {
+		t.Errorf("slot=\"body\" 자식에 grid-area: body가 없다:\n%s", body)
+	}
+	css := between(t, out, "<style>", "</style>")
+	if !strings.Contains(css, ".balpyo-stage.balpyo-layout-content.balpyo-slots {") ||
+		!strings.Contains(css, `grid-template-areas: "title" "body"`) {
+		t.Errorf("content 슬롯 영역 CSS가 없다:\n%s", css)
+	}
+}
+
+// TestSlotModeOffWithoutSlots는 슬롯을 안 쓴 슬라이드가 슬롯 모드로 켜지지 않음을 못 박는다
+// — content 레이아웃이라도 slot= 없이 쓰면 흐름 그대로여서 산출물이 이 기능 때문에 움직이지
+// 않는다 (골든 불변).
+func TestSlotModeOffWithoutSlots(t *testing.T) {
+	out := renderString(t, layoutDeck(t, "content", `<h1>제목</h1><p>본문</p>`))
+	if strings.Contains(out, "balpyo-slots") {
+		t.Errorf("슬롯을 안 쓴 content 슬라이드에 balpyo-slots가 붙었다:\n%s", stageOf(t, out))
+	}
+	if strings.Contains(out, "grid-area:") {
+		t.Errorf("슬롯을 안 쓴 슬라이드에 grid-area가 나왔다:\n%s", out)
+	}
+}
+
+// TestLayoutClassOnlyWhenPlacement는 배치 CSS가 없는 레이아웃(content 기본)에는 레이아웃
+// 클래스가 붙지 않음을 못 박는다 — content는 세로 스택 그대로이고, 배치 CSS가 없는 레이아웃의
+// 산출물이 이 iteration 때문에 움직이면 골든 diff가 무엇이 변했는지 말해 주지 못한다.
+func TestLayoutClassOnlyWhenPlacement(t *testing.T) {
+	out := renderString(t, subsetDeck(t, `<p>본문</p>`))
+	if strings.Contains(out, "balpyo-layout-") {
+		t.Errorf("배치 CSS가 없는 content 슬라이드에 레이아웃 클래스가 붙었다:\n%s", stageOf(t, out))
+	}
+}
+
 // containerBody는 컨테이너 속성 한 행의 슬라이드 본문이다 — 컨테이너는 슬라이드 직속(s0.0)이다.
 func containerBody(tc layoutCase) string {
 	if tc.tag == soml.GridElement && tc.attr != "cols" {

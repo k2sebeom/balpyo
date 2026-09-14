@@ -1,408 +1,288 @@
-# TASKS — 태그 세트 반복(iteration) 구현 플랜
+# TASKS — production-grade 로드맵 (체크포인트 재계획)
 
 > [PRD.md](PRD.md) 기준. **PDF 렌더는 out of scope.** 타깃은 웹(HTML)과 네이티브 PPTX 두 개.
 >
-> 진행 방식: 태그 세트를 하나씩 골라 **테스트 작성 → 구현 → 결과 확인·시각 리뷰**를
-> 반복한다. 모든 반복은 같은 절차를 따르고, 테스트는 LibreOffice가 설치된 Docker
-> 컨테이너 안에서 돌아 로컬과 CI가 같은 결과를 낸다.
+> **2026-09-14 재계획.** 이전 계획은 "태그 세트 iteration" 순서로 어휘를 쌓는 것이었고,
+> 그 대부분(I0–I6, I8)이 끝났다. 이 문서는 그 지점에서 **전체 체크포인트를 찍고**,
+> 남은 일을 iteration 번호가 아니라 **"production-grade 덱을 만들 수 있는가"라는 목표에
+> 대한 우선순위**로 다시 세운 것이다. 근거는 [`assessment.html`](assessment.html)의
+> 실측 평가(`examples/quarterly-review/`를 직접 빌드해 얻은 마찰)다.
 
 ---
 
-## 문서 구조 (`docs/`)
+## 체크포인트 — 지금 동작하는 것 (baseline)
 
-문서는 코드와 같은 저장소에서 iteration을 따라 자란다. 배치 기준:
+아래는 재계획 시점에 **구현·검증되어 있는** 능력이다. 새 작업은 이 위에 얹는다.
 
-```
-docs/
-├── reference/              # "무엇이 있고 어떻게 쓰는가" — 태그가 추가될 때마다 갱신
-│   ├── soml/               # 태그별 레퍼런스. 태그 1개(또는 밀접한 세트) = 파일 1개
-│   │   ├── slide.md        #   속성 표 · 예제 · 웹/PPTX 렌더 결과 · 에러 조건
-│   │   ├── text.md
-│   │   └── …
-│   ├── appearance.md       # 외관 속성 전체 + 타깃별 컴파일 매핑 표 (PRD §9.4의 살아있는 판)
-│   ├── layouts.md          # 표준 레이아웃 카탈로그 11종 + 슬롯 목록
-│   ├── theme.md            # 테마 패키지 포맷 (theme/tokens/components.json, layouts css)
-│   └── cli.md              # 서브커맨드 레퍼런스
-├── guides/                 # "어떻게 하는가" — 사용자 시나리오 단위
-│   ├── getting-started.md
-│   ├── theming.md
-│   └── components.md       # 합성 컴포넌트 만들기
-├── internals/              # 기여자용 — 아키텍처·파이프라인·테스트 환경
-│   ├── architecture.md     # 파이프라인, 덱 모델, 패키지 경계
-│   ├── geometry-pass.md    # CDP 지오메트리 패스, EMU 변환, 텍스트 메트릭 전략
-│   └── testing.md          # Docker 이미지, make test/review/golden, 골든 갱신 규칙
-└── decisions/              # ADR — 구현 중 확정하는 설계 결정 (번호 순, 불변)
-    └── 0001-parser-trivia.md
-```
+- **파이프라인**: `balpyo build`(웹+PPTX), 헤드리스 Chromium 지오메트리 패스 → EMU 변환,
+  Docker 테스트 환경, 골든/리뷰 갤러리(`make test/review/golden`).
+- **편집 가능한 네이티브 PPTX**: `<text>`→`p:sp`, `<shape>`→`p:sp`, `<image>`→`p:pic`+미디어
+  파트, 슬라이드 마스터·레이아웃·테마·발표자 노트 포함. 이미지 기반 아님.
+- **테마 색 보존**: 토큰 색 → `schemeClr` 참조(PowerPoint 테마 편집을 따라감). 검증됨.
+- **어휘 (구현 완료)**: `<slide>` `<text>` `<note>`, 텍스트 서브셋(`h1–h3` `p` `ul/ol/li`
+  `blockquote` `pre` `strong/em/code/a/br/span`), 레이아웃 `<row>` `<col>` `<grid>`
+  `<stack>` `<spacer>` + 자식 배치(`grow/shrink/basis/span/self/order/at/x/y`),
+  `<shape>` 12종 + 외관(`fill/border/radius/shadow/opacity/rotate/flip`), `<image>`,
+  그라디언트 + 색 변형(`gradient()`/`shade/tint/alpha`), `layout="canvas"` 자유 배치.
+- **테마 패키지 로딩(부분)**: `theme.json`/`tokens.json`/`components.json`을 `//go:embed`로
+  읽어 토큰·컴포넌트를 캐스케이드에 연결. variant·역할·컴포넌트 기본값 동작.
+- **발표 런타임(부분)**: 인라인 JS 발표자 뷰(한 장씩·스케일링·키보드·해시 딥링크·노트).
+- **CLI**: `build`, `version`, `help`.
 
-**규칙**:
-- 문서 갱신은 iteration **완료 조건**이다 — 구현 커밋과 같은 PR/커밋 흐름에 포함한다.
-- **구현된 동작만 쓴다.** 미래 계획·미구현 속성은 레퍼런스에 넣지 않는다 (그건 PRD와
-  이 파일의 몫).
-- 태그 레퍼런스 페이지의 형식 통일: 속성 표 → SOML 예제 → 웹/PPTX 각각의 렌더 결과
-  설명 → 빌드 에러가 나는 조건.
-- **PRD §13의 열린 질문 12건은 전부 확정되어 PRD 본문에 반영되었다 (2026-08-16).**
-  구현 중 새로 확정하는 설계 결정은 `docs/decisions/NNNN-*.md` ADR로 남긴다 (맥락 →
-  선택지 → 결정 → 근거). PRD §13의 기존 결정을 뒤집는 경우 PRD도 함께 갱신한다.
-  하단 결정 로그 표는 ADR의 색인이다.
+### 체크포인트에서 확인된 격차 (이 문서가 닫으려는 것)
+
+| # | 격차 | 심각도 | 담는 마일스톤 |
+|---|---|---|---|
+| G1 | 슬라이드 레이아웃 CSS 11종이 **전부 빈 스텁** → `layout=`이 출력을 안 바꿈 | 높음 | M1 |
+| G2 | 빌드 에러 진단이 **두 번 출력**됨 (`main.go` + `diags.Err()` 이중) | 낮음(쉬움) | M1 |
+| G3 | **표(`<table>`)** 없음 — 실무 덱 최대 장벽 | 높음 | M2 |
+| G4 | **차트(`<chart>`)** 없음 — 요소 자체가 없음 | 높음 | M2 |
+| G5 | 테마 **1개 고정**(`minimal`), `theme` 필드 미사용, **accent 색 1개**뿐 | 높음 | M3 |
+| G6 | `<shape>` 안에 레이아웃 컨테이너(`<col>` 등)를 못 넣음 → 카드 배치 우회 필요 | 중간 | M3 |
+| G7 | **합성 컴포넌트(`<define>`/`<slot>`)** 없음 → 반복 카드 손복사 | 중간 | M4 |
+| G8 | **아이콘(`<icon>`)** 없음 | 중간 | M4 |
+| G9 | **커넥터/화살표(`<arrow>`/`<line>`)**, **`<group>`** 없음 | 중간 | M5 |
+| G10 | 작성 워크플로 부재: `init`/`server`/`check`/`format`, 완성된 웹 런타임 | 중간 | M6 |
+| G11 | `<raw>` 탈출구 + 래스터화 폴백 없음 | 낮음 | M5 |
 
 ---
 
-## 반복 절차 (모든 Iteration 공통)
+## 반복 절차 (모든 action item 공통)
 
-각 iteration은 아래 4단계를 순서대로 밟는다.
+이전 계획의 작업 방식을 그대로 유지한다. 각 item은 아래 4단계를 밟고, 네 체크박스가
+곧 완료 조건이다.
 
-### ① 테스트 작성 (RED)
+- **① RED — 테스트**: `testdata/fixtures/`에 정상 + **에러** 케이스 픽스처. 파서/외관해석/
+  웹 골든/PPTX 구조(XML 어서션)/PPTX 열림(LibreOffice)/픽셀 비교 중 해당하는 것.
+- **② GREEN — 구현**: `soml/` 어휘 → 덱 모델 → `render/web/` → `render/pptx/`. 컨테이너
+  안에서 `make test` 전부 통과.
+- **③ REVIEW — 시각 확인**: `make review` 갤러리 + PowerPoint/Keynote로 직접 열어
+  편집 가능성·테마 추종 확인. 새 설계 결정은 ADR + 하단 로그.
+- **④ DOC — 문서**: `docs/reference/…` 갱신(구현된 동작만). 예제는 실제 픽스처에서 인용.
 
-- `testdata/fixtures/<NN>_<이름>/` 에 이번 태그 세트를 사용하는 `.slide` 픽스처 작성
-  - 정상 케이스 + **에러 케이스** (닫힌 어휘 위반, 잘못된 속성 — 위치 정보 포함 에러 검증)
-- 테스트 종류:
-  | 테스트 | 검증 대상 |
-  |---|---|
-  | 파서 테스트 | `.slide` → 덱 모델 (구조·속성·트리비아 보존·에러 위치) |
-  | 외관 해석 테스트 | 캐스케이드 결과 (인라인 > variant > 기본값 > 역할/토큰) |
-  | 웹 골든 테스트 | 생성 HTML/CSS 스냅샷 (`.golden` 파일 비교) |
-  | PPTX 구조 테스트 | 산출 OOXML 파트의 XML 어서션 (도형 종류, `schemeClr` 참조, `xfrm` 존재) |
-  | PPTX 열림 테스트 | LibreOffice headless가 에러/복구 없이 열고 렌더링하는지 |
-  | 픽셀 비교 테스트 | 웹 스크린샷 vs LibreOffice 렌더 PNG — 허용 오차 내 일치 |
-
-### ② 구현 (GREEN)
-
-- `soml/` 파서에 태그·속성 추가 (닫힌 어휘 카탈로그 갱신)
-- 덱 모델 노드 + 외관 해석기 규칙 추가
-- `render/web/` 매핑 추가 (태그 → HTML/CSS)
-- `render/pptx/` 매핑 추가 (태그 → OOXML)
-- 컨테이너 안에서 `make test` 전부 통과
-
-### ③ 결과 확인 · 시각 리뷰 (REVIEW)
-
-- `make review` → `review/<fixture>/` 에 산출물 생성:
-  - `web.png` (헤드리스 브라우저 스크린샷)
-  - `pptx.png` (LibreOffice 렌더)
-  - `diff.png` (픽셀 diff)
-  - `index.html` (전체 픽스처 나란히 보기 갤러리)
-- 사람이 갤러리를 눈으로 확인. macOS에서 `deck.pptx`를 **Keynote/PowerPoint로 직접
-  열어** 편집 가능성(텍스트 박스가 진짜 텍스트 박스인지, 테마 색 편집을 따라가는지) 확인
-- 이번 iteration에서 새로 확정한 설계 결정을 ADR + 하단 로그에 기록
-
-### ④ 문서화 (DOC)
-
-- 각 iteration에 명시된 `docs/` 파일을 작성·갱신한다 (아래 iteration별 "문서" 항목).
-- 새 태그 → `docs/reference/soml/<태그>.md` 신규. 새 외관 속성 → `docs/reference/appearance.md`
-  의 매핑 표에 행 추가. 새로 확정한 설계 결정 → `docs/decisions/` ADR.
-- 문서의 예제는 실제 픽스처(`testdata/fixtures/`)에서 가져온다 — 문서 예제가 곧
-  테스트된 코드가 되도록.
-- 문서까지 커밋한 뒤 다음 iteration으로
+> 문서 배치 규칙과 `docs/` 트리는 이전과 동일하다 (`docs/reference|guides|internals|decisions`).
 
 ---
 
-## Iteration 0 — 기반: 프로젝트 골격 + Docker 테스트 환경
+## M1 — 지금 덱을 "제대로 보이게" 만들기 (기반 마감)
 
-태그 없음. 이후 모든 반복이 올라탈 기반을 만든다.
+이미 있는 어휘로도 쓸만한 덱이 나오게 하는, 비용 대비 효과가 가장 큰 마일스톤.
+새 태그가 거의 없어 빠르게 끝난다.
 
-- [x] **Go 패키지 골격** (PRD §12.2): `soml/`(파서+덱 모델), `core/`(외관 해석·검증),
-      `render/web/`, `render/pptx/`, `cmd/balpyo/` (+ 조립은 `internal/pipeline/`)
-- [x] **선결정 확정** (코드 첫 줄 전에):
-  - [x] 수치 단위: **확정 완료 (PRD §13-5)** — 논리 스테이지 px 단일 단위 (16:9 =
-        1280×720). PPTX 변환 계수(`1px = 9525 EMU`, 폰트 `pt = px × 0.75`)는 상수로 구현
-  - [x] 파서 자료구조: **트리비아(공백·주석·인용부호) 보존 토크나이저** — build/check만
-        쓰더라도 처음부터. 나중에 format/lsp에 재사용 (PRD §12.2 "나중에 붙일 수 없는 결정")
-- [x] **Docker 테스트 이미지** (`docker/test.Dockerfile`):
-  - [x] `golang` + **LibreOffice** (headless impress) + **Chromium** (지오메트리 패스·스크린샷)
-        + `poppler-utils` (pdf → png)
-  - [x] **폰트 고정**: Noto Sans / Noto Sans CJK KR 등을 이미지에 설치·핀 — 텍스트 메트릭
-        테스트가 재현 가능하려면 폰트가 결정적이어야 함
-  - [x] 브라우저·LibreOffice 버전 핀 (골든 좌표/픽셀 스냅샷 안정성) — `docker/versions.env`
-        대조 테스트가 버전 이동을 골든보다 먼저 잡는다
-- [x] **테스트 하네스** (`internal/testkit/`):
-  - [x] 픽스처 러너: `testdata/fixtures/**` 순회 → 빌드 → 골든 비교 (남은 골든도 잡는다)
-  - [x] LibreOffice 헬퍼: `soffice --headless --convert-to pdf` → `pdftoppm` → PNG,
-        stderr에 복구/경고 감지 시 실패
-  - [x] Chromium 헬퍼: HTML 로드 → 스크린샷 / `getBoundingClientRect` 수집
-  - [x] 픽셀 diff 헬퍼 (허용 오차 파라미터화 — 텍스트 안티앨리어싱 감안)
-- [x] **Make 타깃**: `make test` (컨테이너 안에서 go test), `make review` (갤러리 생성),
-      `make golden` (골든 갱신)
-- [x] CI 워크플로우: 같은 이미지로 `make test` (+ `make docs --strict`)
-- [x] **문서**:
-  - [x] `docs/` 골격 생성 — `reference/`, `guides/`, `internals/`, `decisions/` 섹션 인덱스와
-        mkdocs nav. 태그 페이지(`reference/soml/*`)는 태그가 생기는 iteration에서 만든다
-        (구현되지 않은 것을 레퍼런스에 넣지 않는 규칙)
-  - [x] `docs/internals/testing.md` — Docker 이미지 구성, make 타깃, 골든 갱신 규칙
-  - [x] `docs/internals/architecture.md` — 파이프라인·패키지 경계 초안 (덱 모델 섹션은 I1에서)
-  - [x] `docs/decisions/0001-parser-trivia.md` — 트리비아 보존 파서 ADR
+### M1.1 레이아웃 배치 CSS 실체 채우기 (G1) — **완료 (컨테이너 검증 끝)**
+- 대상: `core/themes/minimal/layouts/*.css` 11종(현재 전부 주석 스텁).
+- 플럼빙: `soml.Theme.Layouts`(정규화 배치 선언) 추가 → `core.Resolve`가 테마에서 실음 →
+  `render/web`이 배치 CSS 있는 레이아웃에 `balpyo-layout-<이름>` 클래스 + 규칙(테마 층)을 냄.
+  지오메트리 패스가 새 배치를 재므로 **PPTX 좌표는 자동으로 따라온다**.
+- [x] RED: 웹 스테이지 클래스·배치 CSS 방출 테스트(`render/web/layout_test.go`), 배치 없는
+      레이아웃엔 클래스 미부착 회귀, 테마 배치 정규화·경계 린트 통과(`core/theme_package_test.go`).
+- [x] GREEN: `title`/`section-divider`/`quote`/`stat`/`end`(세로 가운데), `two-column`/
+      `image-text`(2열 그리드), `image-full`(여백 0)을 배치 전용 속성으로 작성. `content`/
+      `canvas`/`code`는 렌더러 기본(스택/자유 배치)을 쓰므로 의도적으로 빈 스텁 유지.
+      린터는 이제 CSS 주석을 벗긴다(`stripCSSComments`). 호스트 테스트 전부 통과, 웹 골든 불변.
+- [x] REVIEW: `examples/quarterly-review`를 재빌드 → 표지가 세로 가운데, 아젠다가 2열로
+      나옴을 HTML에서 확인. **Finch 컨테이너에서 `make test` 전 패키지 통과(exit 0)** —
+      `internal/testkit`(PPTX 지오메트리 + 픽셀 골든)·`render/geom` 포함. 호스트에서 어긋나던
+      6개 픽스처(02–07)는 컨테이너에서 전부 초록 → 로컬 Chromium 폰트 메트릭 차이일 뿐이고
+      M1.1 변경은 어떤 PPTX 골든도 깨지 않음을 확인. 웹 골든 불변.
+- [x] DOC: `docs/reference/layouts.md` — 11종 카탈로그 + 배치/외관 경계 + 폴백 규칙.
 
-**완료 기준**: 빈 픽스처로 파이프라인이 끝에서 끝까지 돌고(내용은 더미), 컨테이너
-안에서 LibreOffice·Chromium 헬퍼가 동작한다. → **달성.** `00_empty` 픽스처가 빌드 →
-골든 → 웹/PPTX 렌더 비교까지 통과하고, 빈 슬라이드의 웹 스크린샷과 LibreOffice 렌더가
-픽셀 단위로 일치한다.
+### M1.2 슬롯 → PPTX 플레이스홀더 컴파일 (G1 후속)
+- **설계 결정 (ADR 0035)**: 슬롯은 실제 OOXML `<p:ph>` 플레이스홀더가 되되 명시 xfrm/rPr을
+  유지한다(선택지 3). 어휘·phType/idx 매핑은 soml이 소유(닫힌 카탈로그, layout ADR 0032와
+  같은 태도), 시각 영역(grid-area)은 테마가 소유.
+- **웹 쪽 결정 (추가형 슬롯 모드, 골든 안전)**: M1.1 문서 순서 흐름 배치는 그대로 두고, 슬롯
+  배치는 슬라이드마다 켜지는 opt-in grid 모드로 얹는다. 스테이지가 `.balpyo-slots` 모디파이어를
+  얻고, 테마는 `layouts/*.slots.css`에 `grid-template-areas`로 영역을 정의한다. 흐름 규칙은
+  `:not(.balpyo-slots)`, 슬롯 규칙은 `.balpyo-slots`로 배타적으로 겨눈다.
+- [x] RED/GREEN (soml 어휘 + core 검증): `soml/slot.go` 닫힌 카탈로그(레이아웃별 슬롯→phType/idx),
+  `core/resolve.go` `resolveSlot`(직계 자식만·없는 슬롯·슬롯 없는 레이아웃 에러), `core/slot_test.go`.
+- [x] RED/GREEN (웹 grid-area, 추가형 모드): `soml.Theme.SlotLayouts`, 테마 패키지 `loadSlotLayouts`
+  (`*.slots.css`, 단방향 매니페스트 대조), 5개 writer의 `appendSlot`, `writeStage` 슬롯 모드 판정 +
+  `balpyo-slots` 클래스, `features.slotLayouts` + `layoutStagesCSS` 영역 규칙 방출,
+  `themes/minimal/layouts/{content,two-column,title}.slots.css`, `render/web/layout_test.go`의
+  `TestSlotGridArea`/`TestSlotModeOffWithoutSlots`. **컨테이너 `make test` 전부 초록·골든 불변.**
+- [x] RED/GREEN (PPTX 플레이스홀더): `render/pptx/shape.go`·`image.go`의 `slotPlaceholder`/`writeNvPr`로
+  슬롯 단일 프레임 도형의 `<p:nvPr>`에 `<p:ph type/idx>` 주입(잰 xfrm·확정 rPr 유지), `layout_parts.go`의
+  `deckSlotLayouts`가 슬롯 모드 레이아웃마다 `p:sldLayout` 파트 생성, 마스터 title/body 프로토타입 +
+  `p:txStyles`, 슬라이드→레이아웃 관계 재배선. 전부 슬롯 사용 시에만 방출(골든 불변). `placeholder_test.go`
+  4개 통과. 픽스처 `08_slots`(슬롯 content·two-column + 흐름 content 공존) + `make golden`.
+- [x] REVIEW: **컨테이너 `make test` 전부 초록** — LibreOffice가 슬롯 덱을 열고 픽셀·골든 일치.
+  슬라이드1(content)→slideLayout2, 2(two-column)→slideLayout3, 3(흐름)→slideLayout1, 마스터 3개
+  sldLayoutId + txStyles 확인. **남은 것: PowerPoint에서 진짜 플레이스홀더로 잡히는지 수동 확인(사용자).**
+- [x] DOC: `docs/reference/layouts.md`에 슬롯 표 추가(레이아웃별 슬롯→phType/idx + 추가형 모드 + 선택지 3 요지).
 
-리뷰에서 잡힌 것 (기록):
-
-- 요소 스크린샷이 뷰포트를 스크롤한 뒤 찍혀 **잘라낸 영역이 요소 박스와 어긋났다** —
-  빈 슬라이드가 22% 다르다고 보고되었다. 문서 좌표 clip + `captureBeyondViewport`로
-  바꿨고, 페이지 배경이 섞여 들어오는지 전수로 보는 하네스 테스트를 남겼다.
-  (렌더 비교가 렌더 차이만 보고한다는 계약을 처음 검증한 사례)
-
----
-
-## Iteration 1 — 수직 절단: `<slide>` `<text>` `<note>` (지오메트리 패스 포함)
-
-가장 작은 어휘로 **파싱 → 덱 모델 → 외관 해석 → 웹 + 네이티브 PPTX** 전 구간을 뚫는다.
-PRD의 M0.5 스파이크(최대 리스크 검증)를 이 iteration이 흡수한다.
-
-- 태그: `<slide>` (`layout` 제외한 속성: `id`, `skip`), `<text>` (일부 외관: `role`,
-  `size`, `color`, `align`), `<note>`
-- [x] 테스트: 파서(정상/오타 태그 에러/위치), 슬라이드 수집·파일명 정렬, 웹 골든,
-      PPTX 구조(`sp`+`txBody`, `xfrm`), LibreOffice 열림, 픽셀 비교
-- [x] 구현:
-  - [x] 엄격 파서 + 닫힌 어휘 + line/col 에러
-  - [x] 최소 테마 하드코딩 (토큰 몇 개 — 테마 패키지 포맷은 Iteration 10)
-  - [x] SOML → HTML 변환 + 생성 CSS
-  - [x] **지오메트리 패스**: chromedp로 렌더 → 요소별 rect → EMU. 텍스트 박스 크기
-        명시 고정 + autofit off (PRD §9.3)
-  - [x] OOXML 조립기 최소판: presentation/master/layout/theme 파트 + 텍스트 박스,
-        `archive/zip` 직조립
-  - [x] `<note>` → PPTX 노트 슬라이드
-  - [x] 얇은 CLI: `balpyo build --target html,pptx` (init/server는 Phase 2)
-- [ ] 리뷰 포인트: **텍스트 메트릭** — 브라우저가 잰 박스가 LibreOffice/Keynote에서
-      같은 줄바꿈을 유지하는가. 기본 정책은 확정 완료(PRD §13-1: 박스 고정 + autofit
-      off + 오버플로 허용) — 여기서는 **수치 임계값**을 측정해 정의한다
-- [x] 문서:
-  - [x] `docs/reference/soml/slide.md`, `text.md`, `note.md`
-  - [x] `docs/reference/appearance.md` 생성 — `role`/`size`/`color`/`align`만 있는 초판 매핑 표
-  - [x] `docs/reference/cli.md` 생성 — `build` 항목만
-  - [x] `docs/internals/geometry-pass.md` — CDP 패스, EMU 변환, 텍스트 박스 고정 전략
-  - [x] `docs/internals/architecture.md` 덱 모델 섹션 완성
-  - [x] PRD §13-1 — 측정한 줄바꿈 허용 오차의 수치 임계값 기입
-
-**이 iteration이 실패하면(텍스트 메트릭 오차가 수용 불가) 아키텍처를 재검토한다 —
-그래서 가장 먼저 한다.**
+### M1.3 중복 진단 출력 버그 수정 (G2) — **완료**
+- 원인: `cmd/balpyo/main.go`가 `result.Diagnostics`를 찍은 뒤, `pipeline.Build`가 돌려준
+  `diags.Err()`(같은 진단을 합친 error)도 다시 찍는다.
+- [x] RED: `cmd/balpyo/main_test.go`에 "각 진단이 정확히 1회" 어서션.
+- [x] GREEN: 타입 있는 `soml.DiagnosticsError` + `errors.As`로 에러 경로에서 진단은 한 번만,
+      돌려주는 에러는 개수 요약("빌드 실패: 에러 N건")으로 분리. `go test ./cmd/... ./soml/` 통과.
+- [x] DOC: `docs/reference/cli.md`에 종료 코드·진단 출력 규약 명시(각 진단 1회 + `빌드 실패: 에러 N건` 요약).
 
 ---
 
-## Iteration 2 — 텍스트 서브셋 + 역할/캐스케이드 완성
+## M2 — 데이터를 담는 어휘: 표 · 차트 (production 최대 장벽)
 
-- 태그: `h1`~`h3`, `p`, `ul`/`ol`/`li`, `blockquote`, `pre`, `code`, `strong`, `em`,
-  `a`, `br`, `span`
-- [x] 테스트: 블록 태그 ≡ 텍스트 역할 등가성 (`<p>` ≡ `<text role="body">`),
-      인라인 서식 → PPTX 텍스트 런(`rPr`, `hlinkClick`), 리스트 → `buChar`/들여쓰기
-- [x] 구현:
-  - [x] 텍스트 역할 계약 (`title`/`heading`/`body`/`caption`/`code`)
-  - [x] **외관 해석기 4단 캐스케이드 완성**: 인라인 > `variant` > 컴포넌트 기본값 >
-        역할/토큰 (variant 정의는 아직 하드코딩 테마 안)
-  - [x] 인라인 태그 → 웹 그대로 / PPTX 런 분할
-- [ ] 리뷰: 불릿 리스트 슬라이드가 양 타깃에서 동일한 들여쓰기·마커로 보이는지
-- [x] 문서:
-  - [x] `docs/reference/soml/text-subset.md` — HTML 서브셋 태그 표 + 역할 등가 표
-        (`<p>` ≡ `<text role="body">`)
-  - [x] `docs/reference/appearance.md` — **캐스케이드 규칙 섹션** (4단 해석 순서) +
-        텍스트 역할 5종, 인라인 서식 매핑 행 추가
+실무 덱의 필수. `examples/quarterly-review/`에서 표를 `grid`+`shape`로 손으로 그려야 했던
+바로 그 문제. 둘 다 새 태그이므로 반복 절차를 정식으로 밟는다.
 
-## Iteration 3 — 레이아웃 태그: `<row>` `<col>` `<grid>` `<spacer>`
+### M2.1 `<table>` (G3)
+- 태그(안): `<table>` + `<tr>`/`<th>`/`<td>`(또는 `columns` 속성 스키마), 셀 병합
+  (`colspan`/`rowspan`), 헤더 행, 셀 정렬·패딩, 테마 표 스타일(줄무늬/테두리 토큰).
+- [x] **선결정 ADR (0036)**: 문법=HTML식 `<tr>/<th>/<td>`, 셀 콘텐츠=텍스트+인라인 전용(→`a:tc`
+      1:1), PPTX=명시 `tcPr`+"스타일 없음" GUID(테마 표 스타일 상속 안 함, `tableStyles.xml` 불필요),
+      프레임=도형·셀=잰 기하(열 너비/행 높이), 새 kind 3개(Table/Row/Cell), 셀 외관은 새 `table`
+      컴포넌트 카테고리 캐스케이드. 병합 `colspan`→`gridSpan`/`rowspan`→`rowSpan`+`hMerge`/`vMerge`.
+- [x] RED/GREEN (soml 어휘): `soml/table.go` 닫힌 카탈로그(`table`/`tr`/`th`/`td` 요소·kind 3개,
+      프레임 `variant`, 셀 병합 `colspan`/`rowspan` + 외관 `fill`/`border`/`color`/`align`/`anchor`,
+      배치 규칙 `tr∈table`·`th|td∈tr`), `soml/tablestyle.go` 확정 외관(`TableStyle`/`CellStyle`),
+      `soml/table_test.go`(파스 트리·kind·속성 순서·배치 에러). 호스트 `go test ./soml/` 통과.
+- [x] RED/GREEN (core 값 해석): 셀 캐스케이드(`core/cascade.go`의 `cellPatch`/`mergeCell`),
+      테마 `table` 컴포넌트(`components.json` cell/header/stripe + `theme_package.go` 로더),
+      `core/table.go` `resolveTable`/`resolveCell`(body 역할 바닥 → 테마 셀/헤더/줄무늬 → 인라인,
+      프레임 `variant="striped"`가 홀수 본문 행 비헤더 셀에 줄무늬, 헤더/줄무늬 배타), 셀 안 인라인
+      런 상속, `colspan`/`rowspan` ≥1 검증. `core/table_test.go`. 호스트 `go test ./core/` 통과.
+- [ ] RED/GREEN (렌더): 웹 `writeTable`(진짜 `<table>`/CSS) + PPTX `writeGraphicFrameTbl`
+      (`a:graphicFrame`+`a:tbl`, 명시 `tcPr`, 병합 → `gridSpan`/`rowSpan`+`hMerge`/`vMerge`) +
+      지오메트리 패스 셀 박스 수집. 픽스처 `004_table` + 컨테이너 `make test`/`make golden`.
+- [ ] REVIEW: PowerPoint에서 표 셀을 클릭해 편집·행 추가가 되는 진짜 표인지.
+- [ ] DOC: `docs/reference/soml/table.md`.
 
-- 태그·속성: 컨테이너(`gap` `align` `justify` `wrap` `pad` `cols`/`rows` `w`/`h`/`min-*`/
-  `max-*` `ratio`) + 자식(`grow` `shrink` `basis` `span` `self` `order`) + `style` 탈출구
-- [x] 테스트: 속성 → CSS 매핑 단위 테스트 (PRD §7.4 표 그대로 — "CSS 이름 바꾸기 층"
-      원칙의 회귀 테스트), 공간 토큰(`gap="xl"`) 해석, 중첩 레이아웃 지오메트리 패스
-      좌표 스냅샷, `<grid cols="4">` 카드 배치 픽셀 비교
-- [x] 구현: 태그 → flex/grid CSS 컴파일. **레이아웃 태그는 PPTX 도형이 아니다** —
-      지오메트리 패스에서 자식 좌표만 소비되고 컨테이너 자체는 사라짐
-- [x] 구현: `style` 탈출구 — 배치 속성 allowlist 검사, 외관 CSS 사용 시 경고 (§7.9)
-- [ ] 리뷰: 좌표 계산 0회로 그리드 배치가 PPTX에 정확히 이식되는지
-- [x] 문서:
-  - [x] `docs/reference/soml/layout.md` — `row`/`col`/`grid`/`spacer` + 컨테이너/자식
-        속성 전체와 **CSS 대응 표** (PRD §7.4 — "이름 바꾸기 층" 계약의 공식 문서)
-  - [x] `docs/reference/soml/layout.md` 안에 `style` 탈출구 규칙 (배치 전용, 경고 조건)
-
-## Iteration 4 — `<shape>` 12종 + 외관 속성(단색)
-
-- 태그: `<shape>` (`type` 12종: `rect` `rounded-rect` `ellipse` `diamond` `cylinder`
-  `chevron` `arrow-right` `hexagon` `parallelogram` `callout` `star` `cloud`)
-- 외관: `fill`(토큰/리터럴/`none`), `border`(단색), `radius`, `shadow`, `opacity`,
-  `rotate`/`flip` — **그라디언트는 Iteration 8**
-- [x] 테스트: type → `prstGeom` 매핑 12종 전수, **토큰 색 → `schemeClr` 보존** (산출
-      XML에 리터럴 RGB가 아닌 테마 참조가 있는지 — 제품 핵심 계약), `radius` →
-      `prstGeom` 조정값, 도형 내 `<text>` 앵커링
-- [x] 구현: shape → 웹 div / PPTX `sp`, 외관 속성 → CSS / OOXML 양방향 컴파일 (§9.4 표)
-- [ ] 리뷰: PowerPoint/Keynote에서 도형 선택 → 진짜 프리셋 도형인지, **테마 색을 바꾸면
-      도형 색이 따라가는지** 직접 확인
-- [x] 문서:
-  - [x] `docs/reference/soml/shape.md` — `type` 12종 표 (각각 웹/PPTX `prstGeom` 대응)
-  - [x] `docs/reference/appearance.md` — `fill`/`border`/`radius`/`shadow`/`opacity`/
-        `rotate`/`flip` 행 추가 + **토큰 색 → `schemeClr` 보존** 계약 명문화
-
-## Iteration 5 — `<image>`
-
-- 태그: `<image>` (`src`, `fit=cover/contain`, `alt`, `border`, `radius`) — `frame`은 열지
-  않고 액자를 테마 variant `framed`로 옮겼다 (ADR 0027, PRD §7.5 갱신)
-- [x] 테스트: 에셋 수집·PPTX 미디어 파트/관계 파일, `fit` → `object-fit` / `srcRect`
-      크롭 등가성, 없는 `src` 빌드 에러
-- [x] 구현: 이미지 파이프라인 (assets/ 해석, PPTX `pic` + rels)
-- [ ] 리뷰: cover 크롭이 양 타깃에서 같은 영역을 보여주는지
-- [x] 문서: `docs/reference/soml/image.md` (`src` 해석 규칙 — assets/ 상대 경로 포함)
-
-## Iteration 6 — `<stack>` + `layout="canvas"` + 절대 배치
-
-- 태그·속성: `<stack>`, 자식 `at`(9지점 앵커), `x`/`y`
-- [x] **선결정 확정 완료 (PRD §13-3)** — 단일 셀 grid 겹침, `at` → `place-self`,
-      `x`/`y`는 부모 상대 absolute, z-순서 = 문서 순서. 테스트는 이 계약대로 작성
-- [x] 테스트: 겹침 z-순서 → PPTX 도형 순서, 9지점 앵커 좌표 스냅샷, 배지/워터마크 픽스처
-- [x] 구현: stack 컴파일 + canvas 슬라이드 (테마는 배경/여백만 소유)
-- [ ] 리뷰: 오버레이 배지가 양 타깃에서 같은 위치·같은 겹침 순서인지
-- [x] 문서:
-  - [x] `docs/reference/soml/stack.md` — `at` 9지점, `x`/`y` 좌표 기준, z-순서 규칙
-        (PRD §13-3 계약대로)
-
-## Iteration 7 — `<arrow>` `<line>` (가장 어려운 세트)
-
-- 태그: `<arrow>` (`from`/`to` id 참조, `label`, `heads`, `dash`, `via`),
-  `<line>` (`cap`, `dash`, `dir`, `stroke`)
-- [x] **선결정 확정 완료 (PRD §13-4)** — 자동 앵커(최근접 변 중점)가 기본,
-      `from="db@top"` 명시 오버라이드(4변+center), `via`는 공백 구분 논리 좌표점 목록
-- [ ] 테스트: `id` 참조 해석(없는 id는 빌드 에러), 앵커 계산 단위 테스트, 배치 변경 시
-      연결 유지, PPTX `cxnSp` 구조, 다이어그램 픽스처(PRD §7.4 예제) 픽셀 비교
-- [ ] 구현:
-  - [ ] **앵커 계산은 JS로 한 번만 작성** — 웹 런타임(SVG 패스)과 지오메트리 패스(CDP로
-        같은 스니펫 평가) 양쪽에서 동일 코드 사용. 로직 이중 구현 금지
-  - [ ] `label` → 선 중앙 텍스트 (웹/PPTX)
-- [ ] 리뷰: 아키텍처 다이어그램 픽스처 — PowerPoint에서 커넥터를 잡아 끌면 도형에
-      붙어 있는지(진짜 `cxnSp`인지)
-- [ ] 문서:
-  - [ ] `docs/reference/soml/arrow.md` — `from`/`to`/`via`/앵커 시맨틱 (PRD §13-4
-        계약대로), `docs/reference/soml/line.md`
-
-## Iteration 8 — 외관 스키마 v1 완성: 그라디언트 + 색 변형
-
-PRD §9.4의 굵은 글씨 — "디자인된 느낌"의 정체. 실물 덱 역분석의 핵심 산출.
-
-- 문법: `gradient(accent1 accent4 accent5, 45deg)`, `shade(accent5, 50%)`, `alpha(fg, 0.6)`
-- [x] **선결정 확정 완료 (PRD §13-5, §7.6)** — `gradient(색… [, 각도deg])` 균등 스톱·
-      기본 180deg, `shade`/`tint`/`alpha` 3종·중첩 불허
-- [x] 테스트: `fill=gradient` → `linear-gradient` / `gradFill`, **`border=gradient`** →
-      SVG 오버레이(엔진 소유 구현) / `ln`+`gradFill`, **텍스트 `color=gradient`** →
-      `background-clip:text` / `rPr`+`gradFill`, 색 변형 → `color-mix` /
-      `lumMod`/`lumOff`/`alpha` (schemeClr 유지 확인)
-- [x] 리뷰: `workspace/AI_FCD.pptx`(역분석 원본)의 그라디언트 카드를 SOML로 재현 →
-      원본과 나란히 비교 (자동 픽셀 게이트 통과 + 갤러리 생성; 3색 스톱은 LibreOffice
-      다중 스톱 근사라 PowerPoint 열람 확인이 남는다 — ADR 0034)
-- [x] 문서:
-  - [x] `docs/reference/appearance.md` — 그라디언트 표기·색 변형 함수 문법 섹션 +
-        매핑 표 완성 (§9.4 전체가 문서에 반영된 상태가 이 iteration의 완료 기준)
-
-## Iteration 9 — `<group>`
-
-- [ ] 테스트: `<group>` → PPTX `grpSp` (자식 좌표가 그룹 상대 좌표로 변환되는지),
-      `<row>`와의 차이(그룹은 편집 단위, row는 배치 후 소멸)
-- [ ] 구현: 그룹 좌표 변환 + 웹 div 매핑
-- [ ] 리뷰: PowerPoint에서 그룹 선택·이동이 한 단위로 되는지
-- [ ] 문서: `docs/reference/soml/group.md` — `<row>`/`<col>`과의 사용 구분 기준 포함
-
-## Iteration 10 — 1층: 표준 레이아웃 카탈로그 + 슬롯 + 테마 패키지 포맷
-
-- 태그·속성: `<slide layout="…">`, `slot="…"`, 기본 슬롯(body) 규칙
-- [ ] 테스트: 존재하지 않는 슬롯 빌드 에러, 레이아웃 11종(`title` `section-divider`
-      `content` `two-column` `image-full` `image-text` `quote` `code` `stat` `canvas`
-      `end`) 각각 픽스처 + 픽셀 비교, 미구현 레이아웃 → 기본 테마 폴백 + 경고
-- [ ] 구현:
-  - [ ] **테마 패키지 포맷** (하드코딩 테마 해체): `theme.json` + `tokens.json` +
-        `components.json` + `layouts/*.css` (배치 전용)
-  - [ ] 토큰 → CSS 변수 / PPTX 테마 파트(clrScheme/fontScheme) 컴파일
-  - [ ] 텍스트 역할 → 마스터 텍스트 스타일, 슬롯 → **PPTX 플레이스홀더**, 크롬 →
-        슬라이드 마스터 고정 요소
-  - [ ] 내장 테마 `minimal` v1 (`//go:embed`)
-- [ ] 리뷰: 같은 덱에 테마 토큰만 바꿔 재빌드 → 웹·PPTX 양쪽에서 룩이 따라가는지
-- [ ] 문서:
-  - [ ] `docs/reference/layouts.md` — 표준 레이아웃 11종 카탈로그 (레이아웃별 슬롯 표 +
-        스크린샷), 폴백 규칙
-  - [ ] `docs/reference/theme.md` — 테마 패키지 포맷 (`theme.json`/`tokens.json`/
-        `components.json`/`layouts/*.css`), 토큰 표준 어휘, 배치·외관 경계 규칙
-  - [ ] `docs/guides/theming.md` — 테마 만들기 가이드 (minimal을 예제로)
-
-## Iteration 11 — 합성 컴포넌트: `<define>` `<slot>`
-
-- [x] **선결정 확정 완료 (PRD §13-7)** — 파라미터는 속성 + `<slot>`까지만
-      (조건·반복·표현식 없음, "SOML에는 제어 흐름이 없다")
-- [ ] 테스트: 파싱 시 코어 컴포넌트로 전개(덱 모델에 합성 흔적 없음 — 렌더러 불변),
-      이름 하이픈 강제, `components/*.slide` 로딩(루트 `<define>` 검증), 카드 그리드
-      픽스처(PRD §7.8 예제)
-- [ ] 구현: define/slot 전개기
-- [ ] 리뷰: **8-카드 그리드 슬라이드를 `<grid>` + 합성 컴포넌트로 재현 → AI_FCD 원본과
-      비교** (PRD M0.5의 최종 목표 장면. 수동 좌표 계산 128회 → 0회 증명)
-- [ ] 문서:
-  - [ ] `docs/reference/soml/composite.md` — `<define>`/`<slot>` 문법, 전개 규칙,
-        네이밍(하이픈) 규칙
-  - [ ] `docs/guides/components.md` — 합성 컴포넌트 만들기 가이드 (dim-card 예제)
+### M2.2 `<chart>` (G4)
+- 태그(안): `<chart type="bar|line|pie|…">` + 데이터(인라인 `<series>`/`<point>` 또는
+  간단 데이터 속성), 축·범례·색(테마 accent 팔레트 참조).
+- [ ] **선결정 ADR**: 지원 차트 종류 1차 집합, 데이터 표현 문법, **PPTX 네이티브 차트
+      (`c:chart`+임베드 xlsx) vs 도형 합성** 중 택. 네이티브면 편집 가능성 최대(권장),
+      대신 `xl/embeddings` 파트·`c:` 네임스페이스 구현 비용. 웹은 SVG/인라인.
+- [ ] RED: 선택한 경로의 구조 어서션(네이티브면 `c:barChart` + 임베드 워크북, 합성이면
+      도형 좌표), 데이터→기하 단위 테스트, 픽셀 비교.
+- [ ] GREEN: 파서 + 웹 렌더 + PPTX. (데이터→좌표 계산은 웹/지오메트리 공유 스니펫.)
+- [ ] REVIEW: PowerPoint에서 차트 데이터 편집이 되는지(네이티브 경로).
+- [ ] DOC: `docs/reference/soml/chart.md` — 지원 종류·데이터 문법·편집 가능성 범위.
 
 ---
 
-## Phase 2 — 어휘 밖 작업 (iteration 사이 또는 이후에 배치)
+## M3 — 테마를 진짜 디자인 시스템으로 (브랜딩)
 
-태그 세트 반복이 아닌 것들. 필요해지는 시점에 끼워 넣는다. **CLI 서브커맨드를 추가할
-때마다 `docs/reference/cli.md`를 갱신**하고, 그 밖의 문서 대상은 각 항목에 표기했다.
+"테마는 CSS가 아니라 디자인 시스템"이라는 제품 약속을 실무 수준으로 끌어올린다.
 
-- [ ] `balpyo init` / `new` (스캐폴딩) — Iteration 10 이후가 자연스러움 (테마 필요)
-      → 문서: `docs/guides/getting-started.md` 작성 (init → server → build 흐름)
+### M3.1 테마 선택 + 다중 내장 테마 (G5)
+- [ ] RED: `balpyo.json`의 `theme` 필드가 로더 선택을 바꾸는 테스트, 없는 테마 빌드 에러,
+      내장 테마 2개 이상에서 같은 덱이 다르게 렌더되는 픽스처.
+- [ ] GREEN: `core/resolve.go`의 하드코딩 `loadBuiltinTheme("minimal")` 제거 → `Config.Theme`
+      로 선택. 내장 테마 최소 2~3종(예: `minimal` + 대비 강한 다크/코퍼릿) 추가.
+- [ ] GREEN: 레거시 `core/theme.go`의 하드코딩 `minimalTheme()` 폴백 삭제.
+- [ ] DOC: `docs/reference/theme.md`, `docs/guides/theming.md`(테마 만들기).
+
+### M3.2 색 팔레트 확장 + 토큰 → PPTX 테마 파트 (G5 후속)
+- 현재 색 토큰은 `fg/bg/muted/surface/accent1` 5개 — accent가 하나뿐.
+- [ ] RED: 다색 accent(`accent1..6`) 픽스처, 토큰 → PPTX `clrScheme`/`fontScheme` 12슬롯
+      매핑 XML 어서션, 웹 CSS 변수 대응.
+- [ ] GREEN: `tokens.json` 팔레트 확장 + 토큰 → PPTX 테마 파트를 **패키지에서** 컴파일
+      (지금은 부분). 색 변형/그라디언트가 새 accent에서도 참조 보존하는지 확인.
+- [ ] DOC: `docs/reference/theme.md`의 표준 토큰 어휘 갱신.
+
+### M3.3 외부 테마 패키지 + 상속 (`extends`)
+- [ ] RED: 프로젝트 로컬 테마 디렉토리 로딩, `theme.json`의 `extends` 병합, `chrome`
+      (마스터 고정 요소) 픽스처.
+- [ ] GREEN: 외부 경로 테마 로더 + `extends` 병합 + `chrome` → 마스터 고정 요소.
+- [ ] DOC: `docs/reference/theme.md`에 `extends`/`chrome` 절 추가.
+
+### M3.4 `<shape>` 콘텐츠 모델에 레이아웃 컨테이너 허용 (G6)
+- 지금 도형 안에는 텍스트류만 가능 → 카드 내부 정교한 배치가 어렵다.
+- [ ] **선결정 ADR**: 도형이 레이아웃 컨테이너를 자식으로 받을 때의 좌표·측정·PPTX
+      매핑(도형은 배경, 내부 배치는 좌표만) 확정.
+- [ ] RED: `<shape><col>…</col></shape>` 픽스처, 도형 내부 그리드 좌표 스냅샷.
+- [ ] GREEN: 콘텐츠 모델 확장 + 측정/렌더.
+- [ ] DOC: `docs/reference/soml/shape.md` 갱신.
+
+---
+
+## M4 — 재사용과 밀도: 합성 컴포넌트 · 아이콘
+
+### M4.1 `<define>` / `<slot>` 합성 컴포넌트 (G7)
+- [x] **선결정 확정 (PRD §13-7)** — 파라미터는 속성 + `<slot>`까지, 제어 흐름 없음.
+- [ ] RED: 파싱 시 코어 컴포넌트로 전개(덱 모델에 합성 흔적 없음), 이름 하이픈 강제,
+      `components/*.slide` 로딩, 카드 그리드 픽스처(PRD §7.8).
+- [ ] GREEN: define/slot 전개기.
+- [ ] REVIEW: **8-카드 그리드를 `<grid>`+합성 컴포넌트로 재현 → `workspace/AI_FCD.pptx`
+      원본과 비교** (수동 좌표 128회 → 0회 증명, PRD M0.5 목표 장면).
+- [ ] DOC: `docs/reference/soml/composite.md`, `docs/guides/components.md`.
+
+### M4.2 `<icon>` (G8)
+- 태그(안): `<icon name="…">` — 아이콘 세트(SVG) → 웹 인라인 SVG / PPTX `custGeom`.
+- [ ] **선결정 ADR**: 아이콘 소스(내장 세트 vs 사용자 SVG), 색 토큰 적용, PPTX 경로.
+- [ ] RED: SVG → `custGeom` 어서션, 색 토큰 적용, 없는 아이콘 빌드 에러, 픽셀 비교.
+- [ ] GREEN: 파서 + 웹 + PPTX.
+- [ ] DOC: `docs/reference/soml/icon.md`.
+
+---
+
+## M5 — 다이어그램 어휘: 커넥터 · 그룹 · 탈출구
+
+### M5.1 `<arrow>` / `<line>` (G9)
+- [x] **선결정 확정 (PRD §13-4)** — 자동 앵커(최근접 변 중점) 기본, `from="db@top"`
+      오버라이드, `via`는 논리 좌표점 목록.
+- [ ] RED: `id` 참조 해석(없는 id 빌드 에러), 앵커 계산 단위 테스트, 배치 변경 시 연결
+      유지, PPTX `cxnSp` 구조, 다이어그램 픽셀 비교.
+- [ ] GREEN: **앵커 계산은 JS 한 벌** — 웹 런타임(SVG)과 지오메트리 패스(CDP)가 같은
+      스니펫 공유. `label` → 선 중앙 텍스트.
+- [ ] REVIEW: PowerPoint에서 커넥터를 끌면 도형에 붙어 있는지(진짜 `cxnSp`).
+- [ ] DOC: `docs/reference/soml/arrow.md`, `docs/reference/soml/line.md`.
+
+### M5.2 `<group>` (G9)
+- [ ] RED: 그룹 → PPTX `grpSp`(자식 좌표계·오프셋), 그룹 단위 변형.
+- [ ] GREEN: 파서 + 웹(래핑 div) + PPTX `grpSp`.
+- [ ] DOC: `docs/reference/soml/group.md`.
+
+### M5.3 `<raw>` 탈출구 + 래스터화 폴백 (G11)
+- [ ] RED: `<raw>`가 웹은 그대로, PPTX는 CDP `captureScreenshot`으로 그림 파트가 되는지.
+- [ ] GREEN: 래스터화 폴백(`captureScreenshot` 재사용). `targets.pptx.mode="image"`도 여기서.
+- [ ] DOC: `docs/reference/soml/raw.md` — "raw는 PPTX에서 그림이 된다" 원칙.
+
+---
+
+## M6 — 작성 워크플로 (도구) (G10)
+
+덱을 실무에서 반복 제작하려면 필요한, 어휘 밖 작업.
+
 - [ ] `balpyo server` — 핫 리로드 + 검증 오버레이 + 웜 브라우저 세션. 시각 리뷰 루프를
-      크게 가속하므로 **이르면 Iteration 3~4쯤 최소판** 투입 권장
-- [ ] 웹 런타임 (vanilla TS ~10KB): 네비게이션, `reveal`, 스케일링, 딥링크 →
-      빌드 산출물 `go:embed`
-      — **P0 절반은 인라인 JS로 선반영** (Iteration 1 직후, ADR 0006): 발표자 뷰(한 장씩
-      + 화면 맞춤 스케일링), 하단 컨트롤 바, 키보드 네비게이션, 해시 딥링크, 노트 패널
-      (`render/web/runtime.go`). 남은 것: `reveal`, 오버뷰, TS 분리 + `go:embed`
-- [ ] `balpyo check` (CI 검증) — 파서·검증기가 이미 있으므로 표면만
-- [ ] `balpyo format` — 트리비아 보존 파서 위의 정규화 층 (Iteration 0의 결정이 여기서 회수됨)
-- [ ] 릴리스 파이프라인: 크로스 컴파일, GitHub Releases, Homebrew tap
-- [ ] 웹 런타임 문서 → `docs/reference/cli.md`의 build 옵션 + 발표 조작(키보드·딥링크)은
-      `docs/guides/getting-started.md`에 통합
-- [ ] `<table>` / `<icon>`(SVG→`custGeom`) / 코드 하이라이팅(Chroma) — P1 어휘,
-      같은 반복 절차로 추가 → 문서: `docs/reference/soml/<태그>.md` 동일 규칙
-- [ ] `<raw>` 탈출구 + 래스터화 폴백 (CDP `captureScreenshot` 재사용)
-      → 문서: `docs/reference/soml/raw.md` — "raw는 PPTX에서 그림이 된다" 원칙 명시
+      크게 가속하므로 **가장 먼저** 넣을 가치가 큼. → `docs/guides/getting-started.md`.
+- [ ] `balpyo init` / `new` — 스캐폴딩(테마 선택 포함, M3 이후 자연스러움).
+- [ ] 웹 런타임 완성 — 현재 인라인 JS(발표자 뷰·네비·딥링크·노트)에서 `reveal`·오버뷰
+      추가 + vanilla TS(~10KB) 분리 → `go:embed`.
+- [ ] `balpyo check` (CI 검증, 표면만) / `balpyo format` (트리비아 보존 파서 위 정규화).
+- [ ] 릴리스 파이프라인: 크로스 컴파일 · GitHub Releases · Homebrew tap.
+- [ ] CLI 서브커맨드를 추가할 때마다 `docs/reference/cli.md` 갱신.
+
+---
+
+## 우선순위 요약
+
+1. **M1** (레이아웃 CSS·슬롯·진단 버그) — 있는 어휘로도 제대로 보이는 덱. 빠름, 최고 ROI.
+2. **M2** (표·차트) — production 덱의 최대 장벽. 여기까지 오면 "실무 덱 가능" 판정이 바뀐다.
+3. **M3** (테마 선택·팔레트·상속·도형 콘텐츠) — 브랜딩과 디자인 시스템 약속의 실현.
+4. **M4** (합성 컴포넌트·아이콘) → **M5** (커넥터·그룹·raw) → **M6** (워크플로 도구).
+
+> **production-grade 판정선**: M1 + M2 완료 시 "일반 비즈니스 덱 제작 가능", M3까지면
+> "브랜드 덱 제작 가능", M4~M5까지면 "PRD 어휘 완성".
 
 ---
 
 ## 설계 결정 로그
 
-**PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다**
-(확장자 §7.1, stack §7.4, arrow 앵커 §7.5, 외관 값 문법·단위 §7.6, 합성 파라미터
-§7.8, 테마 JS 금지 §8.2, variant 비표준화 §8.3, 텍스트 메트릭·폰트 §9.3, 종횡비
-§6.2, 아이콘·인프로세스 백엔드 §11 — 색인은 PRD §13).
+**PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다.**
+아래 표는 구현 중 확정한 ADR(`docs/decisions/NNNN-*.md`)의 색인이다. 이번 재계획에서
+새로 열리는 결정(표 문법·차트 경로·테마 선택·도형 콘텐츠 모델·아이콘 소스 등)은 해당
+마일스톤 착수 시 ADR로 추가한다.
 
-이 표는 구현 중 새로 확정하는 설계 결정(ADR)의 색인이다.
+기존 ADR: 0001–0033 (I0–I8에서 확정). 전체 목록은 `docs/decisions/` 참조.
 
-| 결정 | ADR | Iteration |
-|---|---|---|
-| 트리비아 보존 파서 | `docs/decisions/0001-parser-trivia.md` | I0 |
-| 4:3 논리 스테이지는 960×720 (PRD §6.2·§13-9 갱신) | `docs/decisions/0002-logical-stage-size.md` | I0 |
-| 요소 외관은 인라인 `style` 속성으로 낸다 | `docs/decisions/0003-inline-style-appearance.md` | I1 |
-| 지오메트리는 덱이 아니라 곁 표로 주입한다 | `docs/decisions/0004-geometry-side-table.md` | I1 |
-| 줄간격 spcPts + 박스 폭 안전 여유 4% — 줄바꿈 허용 오차의 수치 임계값 (PRD §13-1에 기입) | `docs/decisions/0005-line-spacing-and-slack.md` | I1 |
-| 발표자 뷰는 `<html>` 속성으로 켜고 측정은 문서 뷰에서 한다 | `docs/decisions/0006-presenter-view-attribute.md` | I1.5 |
-| 블록 태그의 역할은 언어(soml)가, 태그별 기본값은 테마가 소유 (h1 → title) | `docs/decisions/0007-block-tag-role-ownership.md` | I2 |
-| 인라인 런 스타일은 확정 스타일의 상속-복사 | `docs/decisions/0008-run-style-inherit-copy.md` | I2 |
-| 측정 대상은 블록 종류뿐 (요소 종류 카탈로그 공유) | `docs/decisions/0009-measured-kinds.md` | I2 |
-| 링크 색은 hlink 전용 토큰이 아니라 accent1 재사용 (I10 재검토) | `docs/decisions/0010-link-color-accent1.md` | I2 |
-| 레이아웃 컨테이너는 PPTX 도형이 아니다 (자식 좌표만 남는다) | `docs/decisions/0011-layout-containers-are-not-shapes.md` | I3 |
-| 공간 토큰에는 PPTX 테마 슬롯이 없다 (모든 토큰이 슬롯을 갖는 계약의 유일한 예외) | `docs/decisions/0012-space-tokens-have-no-theme-slot.md` | I3 |
-| 측정 대상에 레이아웃 컨테이너와 `<spacer>`를 넣는다 (0009의 후속) | `docs/decisions/0013-measured-kinds-include-layout.md` | I3 |
-| `style` 탈출구는 문법만 에러, allowlist 밖은 경고, 값은 보지 않는다 | `docs/decisions/0014-style-escape-hatch-boundary.md` | I3 |
-| `fill`은 해당 축의 100%다 (`grow`와 겹치지 않게) | `docs/decisions/0015-fill-is-hundred-percent.md` | I3 |
-| 도형 안 텍스트는 같은 도형의 본문이다 (편집 단위 + 안전 여유 미적용) | `docs/decisions/0016-shape-text-is-shape-body.md` | I4 |
-| 도형 기하는 OOXML 프리셋 정의에서 유도한다 (정규 공간 늘림 + 조정값 보정) | `docs/decisions/0017-shape-geometry-from-ooxml-presets.md` | I4 |
-| `opacity`는 합성 불투명도가 아니라 색 알파다 (글자는 흐려지지 않는다) | `docs/decisions/0018-opacity-compiles-to-color-alpha.md` | I4 |
-| `radius`는 `rounded-rect` 전용, 테마 기본값만 조용히 버린다 (PRD §7.6 적용 대상 갱신, I10 재검토) | `docs/decisions/0019-radius-is-rounded-rect-only.md` | I4 |
-| `shadow`는 토큰만 받는다 (PRD §9.4의 `box-shadow` 칸을 `drop-shadow`로 갱신) | `docs/decisions/0020-shadow-tokens-only.md` | I4 |
-| 측정 뷰에서 변형을 끈다 — 회전은 잰 뒤에 얹힌다 (0006의 후속) | `docs/decisions/0021-measure-view-disables-transforms.md` | I4 |
-| 도형 variant는 자식 텍스트의 외관을 담지 않는다 (PRD §8.3 예제 갱신) | `docs/decisions/0022-shape-variants-do-not-inherit.md` | I4 |
-| 에셋 표는 덱 모델이 소유한다 (0004의 경계를 다시 그린다 — 에셋은 파생이 아니라 입력이다) | `docs/decisions/0023-assets-live-in-the-deck.md` | I5 |
-| `src`는 프로젝트 루트 기준이고 프로젝트 밖·URL·`data:`는 막는다 (재현 가능한 빌드 + 오프라인 발표) | `docs/decisions/0024-src-is-project-relative.md` | I5 |
-| 이미지 포맷은 PNG·JPEG 2종이고 확장자가 아니라 내용으로 판정한다 | `docs/decisions/0025-image-formats-are-png-and-jpeg.md` | I5 |
-| `fit="contain"`은 박스를 그림에 맞춘다 (`object-fit`을 쓰지 않는다 — 잰 rect가 곧 `xfrm`) | `docs/decisions/0026-contain-fits-the-box-to-the-picture.md` | I5 |
-| `alt`을 열고 `frame`을 닫는다 (PRD §7.5 표 갱신 — 액자는 variant `framed`) | `docs/decisions/0027-open-alt-close-frame.md` | I5 |
-| `<stack>`은 새 종류가 아니라 새 흐름이다 (`KindStack`을 만들지 않는다) | `docs/decisions/0028-stack-is-a-flow-not-a-kind.md` | I6 |
-| 겹침 칠 순서를 지키려고 stack 자식을 전부 위치 지정 요소로 만든다 (`z-index` 없음) | `docs/decisions/0029-paint-order-follows-pptx.md` | I6 |
-| 캔버스 좌표는 스테이지 패딩 박스 기준이다 (PRD §13-3 갱신 — 가장자리는 음수 좌표) | `docs/decisions/0030-canvas-origin-is-stage-padding-box.md` | I6 |
-| 한 축의 위치는 한 채널이 정한다 (`at`⊕`x`/`y`, 저자용 z-index 없음, 좌표는 음수·토큰 금지) | `docs/decisions/0031-position-is-one-channel.md` | I6 |
-| 슬라이드 수준 어휘는 값과 Span으로 core가 검사한다 (`layout`) | `docs/decisions/0032-slide-layout-vocab-is-core-checked.md` | I6 |
-| 색 변형은 참조를 보존한다 (lumMod/lumOff/alpha vs color-mix) | `docs/decisions/0033-color-variants-preserve-scheme-ref.md` | I8 |
-| 그라디언트는 SVG def로 내고 objectBoundingBox로 늘린다 (대각·비정사각형 한계) | `docs/decisions/0034-gradient-svg-def-and-objectboundingbox.md` | I8 |
+| 새로 열릴 결정 | 담는 마일스톤 |
+|---|---|
+| 표 문법 · 셀 캐스케이드 · `a:tbl` 매핑 | M2.1 |
+| 차트: 네이티브 `c:chart`+임베드 xlsx vs 도형 합성 | M2.2 |
+| 테마 선택 규약 · 다색 팔레트 표준 토큰 | M3.1 / M3.2 |
+| 도형이 레이아웃 컨테이너를 자식으로 받을 때의 좌표·매핑 | M3.4 |
+| 아이콘 소스(내장 세트 vs 사용자 SVG) · PPTX `custGeom` | M4.2 |

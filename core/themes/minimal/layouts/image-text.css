@@ -1,1 +1,4 @@
-/* image-text 레이아웃 배치 CSS — 실체는 10/06에서 채운다. */
+/* image-text — 2열 그리드(그림·글)에 콘텐츠를 세로 가운데로. 좌우 배치는 자식 순서가 정한다. */
+display: grid;
+grid-template-columns: 1fr 1fr;
+align-content: center;

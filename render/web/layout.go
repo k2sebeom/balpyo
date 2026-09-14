@@ -99,6 +99,7 @@ func writeContainer(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
+	decls = appendSlot(decls, elem)
 	decls, err = appendPlacement(decls, elem.Placement())
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
@@ -283,6 +284,22 @@ func appendPlacement(decls []string, placement *soml.Placement) ([]string, error
 		decls = append(decls, placement.Style)
 	}
 	return decls, nil
+}
+
+// appendSlot은 슬롯 배정을 `grid-area: <슬롯>` 선언으로 잇는다 (PRD §7.3·ADR 0035).
+//
+// 슬롯은 core가 **슬라이드 직계 자식에만** 싣는다 (resolveSlot) — 그래서 이 선언도 그때만
+// 나가고, 슬롯을 쓰지 않은 흐름 배치 요소의 산출물은 달라지지 않는다 (골든 불변). 뜻이 서는
+// 곳은 스테이지가 `.balpyo-slots` 모디파이어로 grid-template-areas를 정의할 때뿐이고(테마의
+// `layouts/*.slots.css`), 정의가 없으면 이름 붙은 grid-area는 자동 배치로 조용히 떨어진다.
+//
+// appendPlacement보다 **먼저** 부르는 이유: 배치 속성(flex·span·x/y)과 저자 `style` 탈출구가
+// 뒤에 와야 같은 프로퍼티일 때 그것들이 슬롯 영역 배정을 이긴다 (탈출구가 맨 끝이라는 계약).
+func appendSlot(decls []string, elem *soml.Element) []string {
+	if elem.Appearance == nil || elem.Appearance.Slot == "" {
+		return decls
+	}
+	return append(decls, "grid-area: "+elem.Appearance.Slot)
 }
 
 // styleAttr는 선언 목록을 인라인 style 속성으로 만든다 (선언이 없으면 속성 자체가 없다).

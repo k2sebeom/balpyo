@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>balpyo — Production-Grade PPT 적합성 평가</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --fg:#e7e9ee; --muted:#9aa3b2; --accent:#5b8cff; --good:#3fb950;
+    --warn:#d29922; --bad:#f85149; --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",Segoe UI,sans-serif;
+    line-height:1.65;font-size:16px}
+  .wrap{max-width:920px;margin:0 auto;padding:48px 24px 96px}
+  header .kicker{color:var(--accent);font-weight:700;letter-spacing:.08em;font-size:13px;text-transform:uppercase}
+  h1{font-size:34px;line-height:1.2;margin:.2em 0 .1em}
+  h2{font-size:24px;margin:2.2em 0 .6em;padding-top:.4em;border-top:1px solid var(--line)}
+  h3{font-size:18px;margin:1.6em 0 .4em}
+  .sub{color:var(--muted);font-size:15px}
+  p{margin:.7em 0}
+  code{font-family:var(--mono);background:var(--panel2);padding:.12em .4em;border-radius:5px;font-size:.88em}
+  pre{background:#0b0d11;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;font-family:var(--mono);font-size:13px;color:#cdd3de}
+  .verdict{background:linear-gradient(135deg,#1a2230,#171a21);border:1px solid var(--line);border-left:4px solid var(--warn);border-radius:12px;padding:22px 24px;margin:24px 0}
+  .verdict .big{font-size:20px;font-weight:700}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:680px){.grid2{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .card h3{margin-top:0}
+  ul{margin:.5em 0;padding-left:1.3em}
+  li{margin:.3em 0}
+  table{width:100%;border-collapse:collapse;margin:1em 0;font-size:14.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.03em}
+  .pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap}
+  .p-good{background:rgba(63,185,80,.15);color:#5ed36e}
+  .p-warn{background:rgba(210,153,34,.15);color:#e3b341}
+  .p-bad{background:rgba(248,81,73,.15);color:#ff7b72}
+  .score{font-variant-numeric:tabular-nums;font-weight:700}
+  .barwrap{background:var(--panel2);border-radius:6px;height:8px;overflow:hidden;margin-top:6px}
+  .bar{height:100%;border-radius:6px}
+  figure{margin:1.4em 0}
+  iframe{width:100%;height:520px;border:1px solid var(--line);border-radius:12px;background:#111}
+  figcaption{color:var(--muted);font-size:13px;margin-top:8px}
+  .foot{color:var(--muted);font-size:13px;margin-top:48px;border-top:1px solid var(--line);padding-top:16px}
+  a{color:var(--accent)}
+  .tag{font-family:var(--mono);font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">balpyo · Dogfooding Assessment</div>
+  <h1>Production-grade PPT를 만들기에 적합한가?</h1>
+  <p class="sub">실제로 <code>examples/quarterly-review/</code> 덱을 작성해 <code>balpyo build</code>로 웹·PPTX를 뽑아보고 산출물을 검증한 보고서 · 2026-09-14</p>
+</header>
+
+<div class="verdict">
+  <div class="big">결론: <span style="color:var(--warn)">아직 아니다 — "엔진의 심장"은 진짜지만, production 덱의 필수 요소가 빠져 있다.</span></div>
+  <p style="margin-bottom:0">핵심 기술(브라우저로 계산한 좌표를 <b>편집 가능한 네이티브 OOXML</b>로 굽고, 테마 색을 <code>schemeClr</code> 참조로 보존)은 실제로 동작하며 이 부분은 인상적이다. 그러나 <b>표·차트·아이콘·커넥터가 전부 미구현</b>이고, <b>슬라이드 레이아웃 CSS가 전부 빈 스텁</b>이며, 테마는 <b>내장 <code>minimal</code> 하나</b>뿐이다. 지금 상태는 잘 설계된 <b>Iteration 10 진행 중 개발 스냅샷</b>이지 실무 덱 제작 도구는 아니다.</p>
+</div>
+
+<h2>1. 무엇을 했나 (방법)</h2>
+<p>PRD의 비전이 아니라 <b>지금 코드가 실제로 하는 일</b>을 보려고, 사용자 입장에서 직접 써봤다.</p>
+<ul>
+  <li><code>go build ./cmd/balpyo</code> — 바이너리 정상 빌드 (Go 1.26). <span class="tag">balpyo v0.0.0-…+dirty</span></li>
+  <li>실무 시나리오인 "분기 비즈니스 리뷰" 6장 덱을 <code>examples/quarterly-review/</code>에 새로 작성 — 표지·아젠다·KPI 카드·표·강조·마무리.</li>
+  <li><code>balpyo build --target html,pptx</code> 로 두 타깃 산출.</li>
+  <li>PPTX를 <code>python-pptx</code>로 열어 도형 종류·좌표(EMU)·색 참조를 검증하고, HTML을 헤드리스 브라우저로 렌더해 확인.</li>
+</ul>
+<p>작성하면서 만난 마찰(아래 3절)이 그대로 피드백이다.</p>
+
+<h2>2. 실제로 동작하는 것 — 그리고 잘 만든 부분</h2>
+<div class="grid2">
+  <div class="card">
+    <h3>✅ 진짜 편집 가능한 PPTX</h3>
+    <p>이미지로 찍은 슬라이드가 아니다. <code>&lt;text&gt;</code>→<code>p:sp</code> 텍스트박스, <code>&lt;shape&gt;</code>→<code>p:sp</code> AUTO_SHAPE로 나오고, 슬라이드 마스터·레이아웃·테마 파트·발표자 노트까지 갖춘 정상 OPC 패키지다. PowerPoint에서 열어 편집 가능.</p>
+  </div>
+  <div class="card">
+    <h3>✅ 테마 색이 참조로 보존</h3>
+    <p>내 6장 덱 슬라이드 XML에서 <b>schemeClr 61회 vs srgbClr 4회</b>. 토큰 색은 테마 참조로 남아 PowerPoint에서 테마 색만 바꿔도 덱 전체가 따라온다. 리터럴 hex(그라디언트 스톱)만 <code>srgbClr</code>로 남는다 — 설계 의도대로.</p>
+  </div>
+  <div class="card">
+    <h3>✅ 좌표는 브라우저가 계산</h3>
+    <p>저자는 EMU를 만지지 않는다. <code>&lt;grid cols="3"&gt;</code> 한 줄이 카드 3장을 <code>(0.67", 1.40") 3.75×2.08"</code>로 정확히 배치했다. 웹·PPTX가 같은 좌표계를 공유.</p>
+  </div>
+  <div class="card">
+    <h3>✅ 좋은 진단 메시지</h3>
+    <p>모르는 태그·빠진 <code>type</code>·잘못된 variant를 <b>줄·열 번호와 대안 목록</b>까지 붙여 알려준다. 알 수 없는 variant는 에러가 아니라 폴백+경고 — 테마 교체가 덱을 멈추지 않게 한 판단이 좋다.</p>
+  </div>
+</div>
+
+<h3>PPTX 지오메트리 검증 (내 덱, python-pptx)</h3>
+<pre>slide size: 13.33 x 7.5 in   (16:9, EMU 12192000×6858000)
+slide 3 (KPI):  AUTO_SHAPE (0.67,1.40) 3.75×2.08  '+38% 월간 활성 사용자'
+                AUTO_SHAPE (4.79,1.40) 3.75×2.08  '1.2B 분기 매출(원)'
+                AUTO_SHAPE (8.92,1.40) 3.75×2.08  '4.6 앱스토어 평점'
+slide 5 (stack): AUTO_SHAPE (0.67,1.40) 12.00×3.33  ''            ← 배경
+                 TEXT_BOX   (4.40,2.83) 4.71×0.49  '추천 채널이…'   ← 가운데 앵커
+                 AUTO_SHAPE (11.42,1.40) 1.25×0.46 'NEW'            ← top-right 배지
+schemeClr: 61 · srgbClr: 4 · gradFill: 4 · notesSlides: 2</pre>
+<p><code>&lt;stack&gt;</code>의 9지점 앵커(<code>at="top-right"</code> 등)와 그라디언트·발표자 노트가 PPTX에 정확히 반영됐다.</p>
+
+<h2>3. Production 덱을 만들며 부딪힌 마찰 (실측)</h2>
+
+<h3>🚫 표(table)가 없다 — 실무 최대 장벽</h3>
+<p>비즈니스 덱에 표는 필수다. <code>&lt;table&gt;</code>은 어휘에 아예 없다:</p>
+<pre>slides/004_table.slide:4:4: error: 알 수 없는 태그 &lt;table&gt;
+  (쓸 수 있는 태그: a, blockquote, br, code, col, em, grid, h1, h2, h3,
+   image, li, note, ol, p, pre, row, shape, slide, spacer, span, stack,
+   strong, text, ul)</pre>
+<p>어쩔 수 없이 <code>&lt;grid cols="3"&gt;</code> + <code>&lt;shape&gt;</code> 9개로 표를 <b>손으로 그렸다</b>. 셀 병합·테두리 공유·헤더 반복이 없어 실무 표에는 부족하다.</p>
+
+<h3>🚫 <code>&lt;shape&gt;</code> 안에 레이아웃 컨테이너를 못 넣는다</h3>
+<p>KPI 카드에 숫자+라벨을 <code>&lt;col&gt;</code>로 세로 정렬하려 했더니:</p>
+<pre>slides/003_kpis.slide:6:8: error: &lt;shape&gt;의 자식으로 &lt;col&gt;는 올 수 없다
+  (쓸 수 있는 태그: text, h1, h2, h3, p, blockquote, pre)</pre>
+<p>도형 안에는 텍스트류만 가능. 카드 안에서 정교한 배치를 하려면 도형을 겹쳐 쌓는 우회가 필요하다. <code>&lt;shape&gt;</code>는 variant로 외관을 지정해도 <b><code>type</code>이 필수</b>라 <code>&lt;shape variant="stat-card"&gt;</code>만으로는 안 되고 <code>type="rounded-rect"</code>를 매번 붙여야 한다.</p>
+
+<h3>⚠️ 슬라이드 레이아웃이 사실상 동작하지 않는다</h3>
+<p><code>layout="title"</code>, <code>layout="two-column"</code>, <code>layout="stat"</code>, <code>layout="end"</code>를 다 써봤지만 <b>출력이 달라지지 않았다</b>. 표지의 제목이 세로 가운데로 오지 않고 여느 슬라이드처럼 좌상단부터 쌓인다. 원인: 테마의 <code>layouts/*.css</code> 11개가 <b>전부 빈 스텁</b>이다.</p>
+<pre>$ cat core/themes/minimal/layouts/title.css
+/* title 레이아웃 배치 CSS — 실체는 10/06에서 채운다. */</pre>
+<p>즉 지금은 실질적으로 <code>content</code>(세로 스택)와 <code>canvas</code>(자유 배치) 두 가지만 의미가 있다.</p>
+
+<h3>⚠️ 테마가 하나뿐 · 색이 5개뿐</h3>
+<p>내장 <code>minimal</code> 하나로 고정(<code>resolve.go</code>에서 하드코딩). <code>balpyo.json</code>의 <code>theme</code> 필드는 아직 선택에 쓰이지 않는다. 색 토큰은 <code>fg·bg·muted·surface·accent1</code> 5개 — <b>accent가 하나뿐</b>이라 다색 브랜드 팔레트를 표현하기 어렵다.</p>
+
+<h3>🐞 에러 메시지가 두 번 찍힌다</h3>
+<p>빌드 실패 시 모든 진단이 <b>정확히 두 번</b> 출력된다. <code>main.go</code>가 <code>result.Diagnostics</code>를 찍고, 그 뒤 <code>diags.Err()</code>가 같은 진단을 합쳐 만든 <code>error</code>를 또 찍기 때문(<code>pipeline.go</code>). 사소하지만 눈에 띄는 UX 버그.</p>
+
+<h2>4. Production 요구 체크리스트</h2>
+<table>
+  <thead><tr><th>역량</th><th>상태</th><th>비고</th></tr></thead>
+  <tbody>
+    <tr><td>편집 가능한 네이티브 PPTX</td><td><span class="pill p-good">있음</span></td><td>실제 OOXML, PowerPoint 편집 가능</td></tr>
+    <tr><td>테마 색 참조 보존 (schemeClr)</td><td><span class="pill p-good">있음</span></td><td>제품의 킬러 기능, 검증됨</td></tr>
+    <tr><td>흐름 레이아웃 (row/col/grid/stack)</td><td><span class="pill p-good">있음</span></td><td>좌표 자동 계산, 잘 동작</td></tr>
+    <tr><td>도형 12종 · 그라디언트 · 그림</td><td><span class="pill p-good">있음</span></td><td>프리셋·appearance·이미지 fit</td></tr>
+    <tr><td>발표자 노트</td><td><span class="pill p-good">있음</span></td><td>notesSlides 생성</td></tr>
+    <tr><td>표 (table)</td><td><span class="pill p-bad">없음</span></td><td>Phase 2. 실무 최대 장벽</td></tr>
+    <tr><td>차트 (chart)</td><td><span class="pill p-bad">없음</span></td><td>Phase 2. 요소 자체가 없음</td></tr>
+    <tr><td>아이콘 · 커넥터/화살표 · 그룹</td><td><span class="pill p-bad">없음</span></td><td>Iteration 7·9, Phase 2 미착수</td></tr>
+    <tr><td>슬라이드 레이아웃(title/2단/…)</td><td><span class="pill p-warn">스텁</span></td><td>CSS 전부 비어 있음 (10/06 예정)</td></tr>
+    <tr><td>컴포넌트 재사용 (define/slot)</td><td><span class="pill p-bad">없음</span></td><td>Iteration 11 미착수</td></tr>
+    <tr><td>테마 선택 · 다중/다색 테마</td><td><span class="pill p-warn">부분</span></td><td>minimal 고정, accent 1개</td></tr>
+    <tr><td>PDF 출력</td><td><span class="pill p-bad">없음</span></td><td>범위 밖</td></tr>
+    <tr><td>init/server/check/format CLI</td><td><span class="pill p-bad">없음</span></td><td>build/version만 존재</td></tr>
+  </tbody>
+</table>
+
+<h3>Production 성숙도 점수</h3>
+<table>
+  <tbody>
+    <tr><td style="width:30%">렌더 엔진 기반 기술</td><td class="score" style="width:12%">9 / 10</td>
+      <td><div class="barwrap"><div class="bar" style="width:90%;background:var(--good)"></div></div></td></tr>
+    <tr><td>콘텐츠 어휘 완성도</td><td class="score">4 / 10</td>
+      <td><div class="barwrap"><div class="bar" style="width:40%;background:var(--warn)"></div></div></td></tr>
+    <tr><td>테마 · 레이아웃 시스템</td><td class="score">3 / 10</td>
+      <td><div class="barwrap"><div class="bar" style="width:30%;background:var(--bad)"></div></div></td></tr>
+    <tr><td>작성자 경험(오류·CLI·도구)</td><td class="score">5 / 10</td>
+      <td><div class="barwrap"><div class="bar" style="width:50%;background:var(--warn)"></div></div></td></tr>
+    <tr><td><b>Production 덱 즉시 사용성</b></td><td class="score"><b>3 / 10</b></td>
+      <td><div class="barwrap"><div class="bar" style="width:30%;background:var(--bad)"></div></div></td></tr>
+  </tbody>
+</table>
+
+<h2>5. 지금 위치 (개발 단계)</h2>
+<p>TASKS.md 기준 <b>Iteration 10(레이아웃 카탈로그 + 테마 패키지 포맷) 진행 중</b>이다. Iteration 0–6, 8은 완료(7은 건너뜀), 7·9·11과 Phase 2(표/차트/아이콘, init/server 등)는 미착수. 테마 패키지 로딩(tokens/components)은 최근 커밋으로 들어왔고, 레이아웃 CSS 실체와 테마 선택이 아직 남았다. <b>순조롭게 잘 진행 중인 프로젝트지만, 로드맵상 production 필수 기능들이 아직 앞에 있다.</b></p>
+
+<h2>6. 실제 산출물</h2>
+<figure>
+  <iframe src="examples/quarterly-review/dist/index.html" title="생성된 웹 덱"></iframe>
+  <figcaption>내가 작성해 <code>balpyo build</code>로 생성한 웹 덱(6장). 소스: <code>examples/quarterly-review/slides/*.slide</code> · PPTX: <code>examples/quarterly-review/dist/q3-비즈니스-리뷰.pptx</code>. (표지 제목이 세로 가운데 정렬되지 않는 것이 레이아웃 스텁의 증상이다.)</figcaption>
+</figure>
+
+<h2>7. 권고</h2>
+<div class="grid2">
+  <div class="card">
+    <h3>지금 적합한 쓰임</h3>
+    <ul>
+      <li>텍스트·불릿·카드·도형 중심의 <b>단순한 내부 덱</b></li>
+      <li>테마 참조 PPTX가 필요한 <b>기술 검증(PoC)</b></li>
+      <li>엔진·테마 시스템 <b>기여/개발</b></li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Production 전 필요한 것</h3>
+    <ul>
+      <li><b>표·차트</b> 구현 (최우선)</li>
+      <li>레이아웃 CSS 채우기 (title/2단/stat…)</li>
+      <li>다색·다중 테마 + <code>theme</code> 선택</li>
+      <li>도형 안 레이아웃 컨테이너 허용</li>
+      <li>중복 진단 출력 버그 수정</li>
+    </ul>
+  </div>
+</div>
+<p style="margin-top:1.2em">한 줄 요약: <b>기반 기술은 이미 production 급이지만, 그 위에 얹을 콘텐츠·레이아웃 어휘가 아직 production 급이 아니다.</b> 방향과 설계는 탄탄하니, 표·차트·레이아웃이 채워지면 판단이 크게 달라질 것이다.</p>
+
+<div class="foot">
+  검증 환경: macOS · Go 1.26 · python-pptx · 헤드리스 Chromium.
+  근거는 실제 빌드 출력·PPTX XML·테마 소스 파일에서 인용. 이 보고서와 예제(<code>examples/quarterly-review/</code>)는 저장소에 함께 남긴다.
+</div>
+
+</div>
+</body>
+</html>

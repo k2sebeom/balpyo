@@ -264,7 +264,9 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	return writeSp(b, textBoxSp(shapeID, elem.Name+" "+id, TextBoxRect(box.Rect, style.Align), body), deck.Theme)
+	spec := textBoxSp(shapeID, elem.Name+" "+id, TextBoxRect(box.Rect, style.Align), body)
+	spec.ph = slotPlaceholder(slide, elem)
+	return writeSp(b, spec, deck.Theme)
 }
 
 // writeListShape는 리스트 컨테이너 하나(`<ul>`/`<ol>`)를 p:sp(텍스트 박스) **하나**로 쓴다 —
@@ -287,7 +289,9 @@ func writeListShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	return writeSp(b, textBoxSp(shapeID, elem.Name+" "+id, TextBoxRect(box.Rect, soml.AlignStart), body), deck.Theme)
+	spec := textBoxSp(shapeID, elem.Name+" "+id, TextBoxRect(box.Rect, soml.AlignStart), body)
+	spec.ph = slotPlaceholder(slide, elem)
+	return writeSp(b, spec, deck.Theme)
 }
 
 // writeShapeSp는 `<shape>` 하나를 p:sp(프리셋 도형)로 쓴다 — **자식 텍스트를 자기 txBody로
@@ -321,6 +325,7 @@ func writeShapeSp(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
 	spec.body = body
+	spec.ph = slotPlaceholder(slide, elem)
 	if err := writeSp(b, spec, deck.Theme); err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
@@ -365,12 +370,66 @@ type spSpec struct {
 	alpha *float64
 	// body는 조립된 p:txBody다 (빈 문자열이면 본문 없음).
 	body string
+	// ph는 이 도형이 채우는 슬롯 플레이스홀더다 (nil이면 `<p:nvPr/>` — 슬롯 아님).
+	ph *placeholder
 }
 
 // spAdjust는 `avLst`의 조정값 하나다 — 잰 박스로 평가가 끝난 값이다 (AdjustValue).
 type spAdjust struct {
 	name string
 	val  int64
+}
+
+// placeholder는 이 도형이 채우는 슬롯 플레이스홀더다 (`<p:nvPr>`의 `<p:ph>`, ADR 0035).
+//
+// 슬롯을 쓴 슬라이드 직계 자식만 갖는다 (soml.Appearance.Slot이 거기에만 실린다 — core.resolveSlot).
+// **명시 xfrm/rPr은 그대로 둔다** (ADR 0035 선택지 3): `<p:ph>`는 PowerPoint가 이 도형을 진짜
+// 플레이스홀더로 잡아 개요 보기·서식 초기화·"클릭해 입력"에서 특별 취급하게 하는 표식일 뿐이고,
+// 좌표·서식은 잰 박스와 확정 rPr이 소유한다 (웹·PPTX 픽셀 일치 계약). 그래서 슬라이드 도형은
+// 플레이스홀더이면서도 자기 xfrm을 갖는다 — 레이아웃 플레이스홀더의 위치를 상속만 받으면 잰
+// 박스와 갈라진다.
+type placeholder struct {
+	// typ는 `p:ph@type`이다 (soml.Slot.PhType — ctrTitle·title·subTitle·body·pic).
+	typ string
+	// idx는 `p:ph@idx`다 — **0이면 속성을 생략한다** (제목류의 관례, soml.Slot.PhIndex).
+	idx int
+}
+
+// xml은 `<p:ph>` 요소다. idx 0은 속성을 생략한다 (제목 플레이스홀더의 관례 — soml.Slot.PhIndex).
+func (p placeholder) xml() string {
+	if p.idx == 0 {
+		return fmt.Sprintf(`<p:ph type="%s"/>`, p.typ)
+	}
+	return fmt.Sprintf(`<p:ph type="%s" idx="%d"/>`, p.typ, p.idx)
+}
+
+// slotPlaceholder는 요소가 채우는 슬롯의 플레이스홀더 매핑이다 — 슬롯이 없으면 nil.
+//
+// 매핑(슬롯 이름 → phType/idx)은 soml이 소유한다 (LayoutSlot — 닫힌 카탈로그, 렌더러가
+// 재구현하지 않는다). 어휘 밖 슬롯은 core가 이미 빌드 에러로 막았으므로(resolveSlot) 여기서
+// 조회가 실패하면 조용히 nil을 준다 — 이 자리는 해석된 덱만 지난다.
+func slotPlaceholder(slide *soml.Slide, elem *soml.Element) *placeholder {
+	if elem.Appearance == nil || elem.Appearance.Slot == "" {
+		return nil
+	}
+	slot, ok := soml.LayoutSlot(slide.Layout, elem.Appearance.Slot)
+	if !ok {
+		return nil
+	}
+	return &placeholder{typ: slot.PhType, idx: slot.PhIndex}
+}
+
+// writeNvPr는 `<p:nvPr>`를 쓴다 — 슬롯 플레이스홀더가 있으면 `<p:ph>`를 자식으로 담고, 없으면
+// self-closing이다 (`<p:nvPr/>`). `p:sp`(도형)와 `p:pic`(그림)이 같은 함수를 지나 두 곳의
+// 플레이스홀더 방출이 갈라지지 않는다.
+func writeNvPr(w func(depth int, line string), depth int, ph *placeholder) {
+	if ph == nil {
+		w(depth, "<p:nvPr/>")
+		return
+	}
+	w(depth, "<p:nvPr>")
+	w(depth+1, ph.xml())
+	w(depth, "</p:nvPr>")
 }
 
 // rectPreset은 텍스트 박스의 프리셋 이름이다 — 도형 어휘의 `rect`와 같은 값이지만
@@ -493,7 +552,7 @@ func writeSp(b *strings.Builder, spec spSpec, theme soml.Theme) error {
 	} else {
 		w(2, "<p:cNvSpPr/>")
 	}
-	w(2, "<p:nvPr/>")
+	writeNvPr(w, 2, spec.ph)
 	w(1, "</p:nvSpPr>")
 	w(1, "<p:spPr>")
 	// 회전·대칭은 xfrm의 **속성**이고 좌표를 건드리지 않는다: 회전 중심이 `ext`의 중심이고

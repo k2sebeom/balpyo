@@ -24,6 +24,15 @@ type Appearance struct {
 	// `type`·`fill`·`id`를, 그림은 `src`·`fit`·`alt`를 갖는다. 값 문법이 겹치는 부분은
 	// 구조가 아니라 **함수**로 공유한다 (core의 border·radius·shadow 해석).
 	Image *ImageStyle
+	// Table은 표 프레임 외관이다 (tablestyle.go) — `<table>`에만 채워진다. Shape·Image와
+	// 형제로 두고 합치지 않는 이유는 담을 것이 다르다는 것이다: 표 프레임은 변형 이름을 갖고,
+	// 셀 외관(채움·테두리·텍스트)은 Cell이 따로 갖는다. 값 어휘(변형 폴백)는 core가 한 번만
+	// 본다 — 렌더러는 이 표시자로 "해석 끝난 표"를 확인하고 웹 변형 훅의 근거를 여기서 읽는다.
+	Table *TableStyle
+	// Cell은 셀 외관이다 (tablestyle.go) — `<th>`/`<td>`에만 채워진다. 표 프레임과 별개로 두는
+	// 이유는 소비 단위가 다르다는 것이다: 프레임은 도형 하나, 셀은 격자 안 `a:tc`/`<td>` 하나다.
+	// 헤더/본문/줄무늬 기본값 위에 인라인 셀 속성이 얹힌 확정 값이 여기 담긴다.
+	Cell *CellStyle
 	// Link는 하이퍼링크 목적지다 (<a href>의 값, 원문 그대로). 외관이 아니라 **행동**이라
 	// TextStyle 밖에 둔다 — 밑줄·색은 스타일이고, 목적지는 렌더러가 웹의 href와 PPTX의
 	// hlinkClick으로 잇는다. 여기 두는 것은 "렌더러가 Attrs를 다시 읽지 않는다"는 계약의
@@ -37,6 +46,13 @@ type Appearance struct {
 	// Placement는 부모 안에서 자기 자리를 정하는 확정 배치다 — 배치 속성이 하나도 없으면
 	// nil로 남는다 (그 nil이 배치 없는 요소의 산출물을 이전과 같게 유지한다).
 	Placement *Placement
+	// Slot은 이 요소가 배정된 레이아웃 슬롯 이름이다 (`slot="title"`, PRD §7.3·ADR 0035).
+	// **슬라이드 직계 자식에만** 채워지고, 그 자식이 `slot` 속성을 쓴 경우에만 채워진다 —
+	// 슬롯 없는 직계 자식과 중첩 요소는 빈 문자열이다 (core.Resolve가 어휘를 검증하고 채운다).
+	// 빈 값이 곧 "슬롯 배치 없음"이라, 슬롯을 쓰지 않은 덱의 산출물이 이 필드 때문에 달라지지
+	// 않는다 (Placement의 nil과 같은 태도). 렌더러는 이 이름으로 웹 grid-area와 PPTX `p:ph`를
+	// 낸다 — 이름→(phType·idx)·영역 매핑은 soml.LayoutSlot·테마가 소유한다.
+	Slot string
 }
 
 // TextStyle은 해석된 텍스트 외관이다. 해석 전(파싱 직후)이거나 텍스트 요소가 아니면 nil이다 —
@@ -275,6 +291,20 @@ type Theme struct {
 	// Shadows는 그림자 토큰이다 (PRD §8.4의 `shape.shadow-soft`) — `shadow="soft"`의 값
 	// 어휘이자 **유일한** 어휘다 (도형 외관은 그림자 수치를 받지 않는다 — ShadowToken).
 	Shadows []ShadowToken
+	// Layouts는 레이아웃 이름 → 스테이지에 얹는 **정규화된 배치 선언**이다 (`layouts/*.css`의
+	// 실체, PRD §7.3·§8.2). 색·폰트처럼 이 표에 있는 이유: 배치도 테마가 소유하고, 웹의 스테이지
+	// CSS와 지오메트리 패스가 재는 박스가 **같은 한 표**에서 나와야 두 타깃의 배치가 갈라지지
+	// 않는다. 값은 주석을 벗긴 `프로퍼티: 값; …` 문자열이고, 배치 CSS가 없는 레이아웃
+	// (content 세로 스택·canvas 자유 배치는 렌더러가 소유)은 **맵에 없다** — 없다는 것이 곧
+	// "스테이지에 레이아웃 클래스를 붙이지 않는다"는 신호다 (render/web writeStage).
+	Layouts map[string]string
+	// SlotLayouts는 레이아웃 이름 → **슬롯 영역 배치 선언**이다 (`layouts/*.slots.css`의 실체,
+	// PRD §7.3·ADR 0035). Layouts와 형제이지만 겨누는 선택자가 다르다: Layouts는 흐름 배치
+	// (문서 순서, M1.1)를 `.balpyo-layout-<이름>`에 얹고, 이 표는 **슬롯 영역**(grid-template-areas)을
+	// `.balpyo-layout-<이름>.balpyo-slots`에 얹는다 — 슬롯을 실제로 쓴 슬라이드에만 붙는
+	// 모디파이어라(render/web writeStage), 슬롯을 쓰지 않은 덱의 흐름 배치는 이 표 때문에
+	// 달라지지 않는다 (골든 불변). 슬롯 영역이 없는 레이아웃(canvas·content)은 맵에 없다.
+	SlotLayouts map[string]string
 }
 
 // Color는 이름으로 색 토큰을 찾는다.

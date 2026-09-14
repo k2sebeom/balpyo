@@ -1,0 +1,9 @@
+/* content 슬롯 영역 (ADR 0035) — 제목이 위, 본문이 그 아래를 채운다.
+   슬롯 영역 CSS는 자족적이다: 흐름 규칙은 `:not(.balpyo-slots)`로 나가 슬롯 모드에 얹히지
+   않으므로, display:grid부터 여기서 스스로 갖춘다 (layoutStagesCSS). 저자의 직계 자식은
+   slot="title"·slot="body"로 이 영역에 앉는다 (soml.layoutSlots). */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: auto 1fr;
+grid-template-areas: "title" "body";
+align-content: start;

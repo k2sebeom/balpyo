@@ -1,1 +1,5 @@
-/* two-column 레이아웃 배치 CSS — 실체는 10/06에서 채운다. */
+/* two-column — 스테이지를 2열 그리드로 바꾼다. 자식이 문서 순서대로 좌→우로 채운다.
+   열 간격은 스테이지 기본 gap이 준다. align-content: start는 세로로 위에서 쌓는다. */
+display: grid;
+grid-template-columns: 1fr 1fr;
+align-content: start;

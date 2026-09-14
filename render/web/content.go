@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"html"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -109,6 +110,24 @@ func writeStage(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 	if slide.Layout == soml.LayoutCanvas {
 		stageClass += " balpyo-stage-canvas"
 	}
+	// 배치 CSS를 가진 레이아웃(title·two-column 등)은 스테이지에 레이아웃 클래스를 얻어 테마가
+	// 얹은 배치 규칙(themeCSS)의 표적이 된다. 배치 CSS가 없는 레이아웃(content 세로 스택·canvas
+	// 자유 배치는 렌더러가 소유)은 맵에 없으므로 클래스가 붙지 않는다 — 그래야 그 레이아웃의
+	// 산출물이 이 기능 때문에 움직이지 않는다 (soml.Theme.Layouts의 근거).
+	// 슬롯 모드는 **슬라이드마다** 판정한다: 이 레이아웃에 슬롯 영역 CSS가 있고(테마) 이
+	// 슬라이드의 직계 자식이 실제로 슬롯을 쓸 때만 켠다 (ADR 0035, 추가형 슬롯 결정). 슬롯을
+	// 쓰지 않은 슬라이드는 흐름 배치 그대로다 — 그래야 슬롯을 안 쓴 덱의 산출물이 이 기능
+	// 때문에 움직이지 않는다 (골든 불변). 슬롯 모드에서도 레이아웃 클래스를 붙여 슬롯 영역
+	// 선택자(`.balpyo-layout-<이름>.balpyo-slots`)가 맞도록 한다.
+	_, hasFlow := deck.Theme.Layouts[string(slide.Layout)]
+	_, hasSlotCSS := deck.Theme.SlotLayouts[string(slide.Layout)]
+	slotMode := hasSlotCSS && slideUsesSlots(slide)
+	if hasFlow || slotMode {
+		stageClass += " balpyo-layout-" + string(slide.Layout)
+	}
+	if slotMode {
+		stageClass += " balpyo-slots"
+	}
 	if len(slide.Content) == 0 {
 		// 빈 스테이지는 빈 요소 하나다 — 콘텐츠가 없는 슬라이드의 산출물이 콘텐츠 렌더가
 		// 붙었다는 이유로 달라지면 골든 diff가 무엇이 움직였는지 말해 주지 못한다.
@@ -123,6 +142,21 @@ func writeStage(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 	}
 	b.WriteString("</div>\n")
 	return nil
+}
+
+// slideUsesSlots는 이 슬라이드의 **직계 자식** 중 슬롯 배정을 받은 요소가 있는지다.
+//
+// 직계 자식만 보는 이유는 core가 슬롯을 거기에만 싣기 때문이다 (resolveSlot — 중첩된 요소의
+// slot은 에러). 그래서 이 판정과 `grid-area` 방출(appendSlot)이 같은 요소 집합을 겨눈다:
+// 스테이지에 `.balpyo-slots`가 켜지면 그 자식들의 grid-area가 뜻을 얻는다. 슬롯을 안 쓴
+// 슬라이드는 이 함수가 거짓을 주어 흐름 배치 그대로다 (골든 불변).
+func slideUsesSlots(slide *soml.Slide) bool {
+	for _, node := range slide.Content {
+		if elem, ok := node.(*soml.Element); ok && elem.Appearance != nil && elem.Appearance.Slot != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // writeNode는 콘텐츠 노드 하나를 쓴다. path는 슬라이드 콘텐츠부터 이 노드까지의 자식
@@ -203,6 +237,7 @@ func writeBlock(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	// 배치 선언은 **한 곳에서** 나온다 (appendPlacement) — 블록도 컨테이너의 자식이 될 수
 	// 있으므로 컨테이너·spacer·리스트와 같은 코드를 쓴다. 요소 종류마다 따로 쓰면 자식
 	// 배치 속성이 하나 늘 때 어느 종류가 빠졌는지 사람이 세어야 한다.
+	decls = appendSlot(decls, elem)
 	decls, err = appendPlacement(decls, elem.Placement())
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
@@ -247,7 +282,7 @@ func firstText(elem *soml.Element) (string, bool) {
 // 식별자는 언제나 갖는다: 리스트는 PPTX에서 박스 하나가 되므로(항목 07) 이 rect가 곧
 // PPTX 텍스트 박스다. 마커·들여쓰기는 엔진 CSS가 상수로 명시한다 (contentCSS의 리스트 절).
 func writeList(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, path []int) error {
-	decls, err := appendPlacement(nil, elem.Placement())
+	decls, err := appendPlacement(appendSlot(nil, elem), elem.Placement())
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
@@ -495,6 +530,16 @@ type features struct {
 	// `filter: drop-shadow(var(--balpyo-shadow-soft))`가 정의되지 않은 변수를 가리켜
 	// **그림자가 조용히 사라진다** (var()는 모르는 변수에 아무 소리도 내지 않는다).
 	images bool
+	// layouts는 이 덱이 실제로 쓴, **배치 CSS를 가진** 레이아웃 이름들이다 (정렬·중복 제거).
+	// themeCSS가 이 목록만 규칙으로 낸다 — 다른 어휘 조건과 같은 근거다 (골든 불변): 쓰지 않은
+	// 레이아웃의 배치 규칙이 산출물에 들어가면 diff가 무엇이 변했는지 말해 주지 못한다.
+	layouts []string
+	// slotLayouts는 이 덱이 **슬롯 모드로** 쓴, 슬롯 영역 CSS를 가진 레이아웃 이름들이다
+	// (정렬·중복 제거, ADR 0035). layouts와 따로 두는 이유는 골든 불변이자 두 모드의 분리다:
+	// 슬롯 영역 규칙은 `.balpyo-slots` 모디파이어가 붙은 선택자로 나가고 흐름 규칙은
+	// `:not(.balpyo-slots)`로 나가, 한 레이아웃을 두 슬라이드가 각각 흐름·슬롯으로 써도
+	// 규칙이 서로 새지 않는다 (layoutStagesCSS).
+	slotLayouts []string
 }
 
 // spaceTokens는 덱이 공간 토큰을 **참조하는지**다 (themeCSS의 선언 조건).
@@ -539,13 +584,35 @@ func contentFeatures(deck *soml.Deck) features {
 			walk(elem.Children)
 		}
 	}
+	seenFlow := map[string]bool{}
+	seenSlot := map[string]bool{}
 	for _, slide := range deck.Slides {
 		if slide.Layout == soml.LayoutCanvas {
 			// 캔버스 스테이지는 stack이다 (PRD §13-3) — 스테이지 CSS(stackCSS)가 이때만
 			// 나간다. 슬라이드 수준 어휘라 콘텐츠 순회가 아니라 여기서 켠다.
 			feat.canvas = true
 		}
+		// 레이아웃 규칙은 이 슬라이드가 **슬롯 모드인가 흐름 모드인가**로 갈린다 (writeStage와
+		// 같은 판정): 슬롯 모드면 슬롯 영역 CSS를, 아니면 흐름 배치 CSS를 모은다. 한 슬라이드는
+		// 둘 중 하나뿐이므로 순수 흐름 덱은 슬롯 규칙을, 순수 슬롯 덱은 흐름 규칙을 내지 않아
+		// 양쪽 골든이 모두 이 기능 때문에 움직이지 않는다.
+		name := string(slide.Layout)
+		_, hasSlotCSS := deck.Theme.SlotLayouts[name]
+		if hasSlotCSS && slideUsesSlots(slide) {
+			if !seenSlot[name] {
+				seenSlot[name] = true
+				feat.slotLayouts = append(feat.slotLayouts, name)
+			}
+		} else if _, ok := deck.Theme.Layouts[name]; ok && !seenFlow[name] {
+			// 배치 CSS를 가진 레이아웃만 모은다 — 없는 레이아웃(content·canvas)은 맵에 없다.
+			seenFlow[name] = true
+			feat.layouts = append(feat.layouts, name)
+		}
 		walk(slide.Content)
 	}
+	// 순서를 고정한다 — 규칙 출력 순서가 슬라이드 순서에 따라 흔들리면 골든이 무엇이 변했는지
+	// 말해 주지 못한다 (테마 토큰 표를 순서 있게 둔 것과 같은 근거).
+	sort.Strings(feat.layouts)
+	sort.Strings(feat.slotLayouts)
 	return feat
 }

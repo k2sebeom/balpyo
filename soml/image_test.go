@@ -323,8 +323,9 @@ func TestImageKind(t *testing.T) {
 		t.Errorf("TagTextRole(%q) = %q — 이미지는 역할 표에 없어야 한다", ImageElement, role)
 	}
 	// Iteration 7·9와 P1·P2의 컴포넌트는 카탈로그에도 어휘에도 없어야 한다. `<stack>`은
-	// Iteration 6에 열렸다 (layout.go의 TestLayoutKinds가 그 계약을 본다).
-	for _, name := range []string{"arrow", "line", "group", "icon", "table", "chart"} {
+	// Iteration 6에, `<table>`은 M2.1(ADR 0036)에 열렸다 (table.go의 TestTableKinds가 그
+	// 계약을 본다). `<chart>`는 M2.2다 — 아직 없어야 한다.
+	for _, name := range []string{"arrow", "line", "group", "icon", "chart"} {
 		if KindOf(name) != KindNone {
 			t.Errorf("<%s>가 카탈로그에 있다 — 뒤 iteration의 어휘다", name)
 		}

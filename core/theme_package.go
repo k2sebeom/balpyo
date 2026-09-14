@@ -68,6 +68,39 @@ type themePackage struct {
 	// 원문이다 — 슬롯 배치 컴파일은 10/03, 실체 CSS는 10/06이 채운다. 로더는 이 맵의 키 집합이
 	// theme.json의 layouts 선언과 정확히 일치함을 대조한다.
 	layouts map[string]string
+	// slotLayouts는 레이아웃 이름→**슬롯 영역** CSS 원문 맵이다 (layouts/*.slots.css, ADR 0035).
+	// layouts와 나란히 두지만 파일이 다르다 (`title.slots.css`): 흐름 배치(layouts)와 슬롯 영역은
+	// 겨누는 선택자가 달라 한 선언 블록에 섞을 수 없다. 슬롯 영역 파일은 **선택**이라(슬롯이
+	// 없는 canvas는 파일이 없다) 로더는 키가 선언된 레이아웃의 부분집합임만 확인한다.
+	slotLayouts map[string]string
+}
+
+// layoutStyles는 레이아웃 이름 → **정규화된 배치 선언**이다 (soml.Theme.Layouts로 실린다).
+// 원문(주석·공백)을 눕히고, 배치 CSS가 없는 레이아웃(주석만 있는 content·canvas 스텁)은
+// 제외한다 — 맵에 없다는 것이 곧 "스테이지에 레이아웃 클래스를 붙이지 않는다"는 신호다
+// (render/web writeStage). 배치·외관 경계 검사는 lintLayouts의 몫이고, 여기서는 문법이
+// 온전한 선언만 정규화해 싣는다 (normalizeDeclarations).
+func (p themePackage) layoutStyles() map[string]string {
+	out := make(map[string]string, len(p.layouts))
+	for name, raw := range p.layouts {
+		if decls := normalizeDeclarations(raw); decls != "" {
+			out[name] = decls
+		}
+	}
+	return out
+}
+
+// slotLayoutStyles는 레이아웃 이름 → **정규화된 슬롯 영역 선언**이다 (soml.Theme.SlotLayouts로
+// 실린다). layoutStyles와 같은 태도다 — 원문을 눕히고, 영역이 없는(주석만 있는) 파일은
+// 제외한다. 맵에 없다는 것이 곧 "슬롯 모디파이어 CSS를 내지 않는다"는 신호다 (render/web).
+func (p themePackage) slotLayoutStyles() map[string]string {
+	out := make(map[string]string, len(p.slotLayouts))
+	for name, raw := range p.slotLayouts {
+		if decls := normalizeDeclarations(raw); decls != "" {
+			out[name] = decls
+		}
+	}
+	return out
 }
 
 // ── tokens.json 스키마 ──────────────────────────────────────────────────────
@@ -126,6 +159,7 @@ type componentsFile struct {
 	Text    textComponentsFile  `json:"text"`
 	Shape   shapeComponentsFile `json:"shape"`
 	Image   imageComponentsFile `json:"image"`
+	Table   tableComponentsFile `json:"table"`
 }
 
 type textComponentsFile struct {
@@ -190,6 +224,31 @@ type imageVariantFile struct {
 	Shadow *string `json:"shadow"`
 }
 
+// tableComponentsFile은 표 셀 외관 원본 스키마다 (ADR 0036). shape/image와 달리 `variants`
+// 배열이 없다: 표의 유일한 변형(줄무늬)은 프레임 `<table variant="striped">`가 켜는 셀
+// 채움이고(stripe), 셀 단위 variant는 v1에 없다 (soml/table.go의 근거). 그래서 표는 세 자리만
+// 갖는다 — 모든 셀의 기본값(cell), `<th>`에 얹는 델타(header), 줄무늬 채움(stripe).
+type tableComponentsFile struct {
+	Comment string        `json:"$comment"`
+	Cell    cellStyleFile `json:"cell"`
+	Header  cellStyleFile `json:"header"`
+	// Stripe는 줄무늬 행의 셀 채움 토큰이다 (`none` 또는 색 토큰). 빈 문자열이면 줄무늬가
+	// 없는 테마다 — variant="striped"가 아무 채움도 얹지 않는다 (모르는 variant가 폴백하는
+	// 것과 같은 태도).
+	Stripe string `json:"stripe"`
+}
+
+// cellStyleFile은 셀 외관 한 벌의 원본이다 — 박스(fill·border)와 텍스트(color·weight)를 함께
+// 담는다 (soml.CellStyle과 같은 모양). 빈 문자열/nil이 "정하지 않음"이다 (shapeStyleFile과
+// 같은 계약). align·anchor를 열지 않는 이유: 테마가 정하는 것은 헤더/본문의 **성질**(강조색·
+// 굵기)이고, 정렬은 저자가 셀마다 `<td align>`으로 말하는 배치 결정이다.
+type cellStyleFile struct {
+	Fill   string `json:"fill"`
+	Border string `json:"border"`
+	Color  string `json:"color"`
+	Weight *int   `json:"weight"`
+}
+
 // ── 변환된 컴포넌트 표 (캐스케이드 내부 타입) ───────────────────────────────
 // 캐스케이드가 이미 쓰는 타입 그대로 담는다 (theme.go의 옛 함수 반환형과 같다) — 그래야
 // resolveText/Shape/Image가 재변환 없이 읽고, byte 동일성 테스트가 옛 함수와 직접 비교한다.
@@ -202,6 +261,20 @@ type components struct {
 	shapeVariants         []shapeVariant
 	imageDefault          imagePatch
 	imageVariants         []imageVariant
+	table                 tableComponents
+}
+
+// tableComponents는 변환된 표 셀 외관 표다 (캐스케이드 내부 타입). shape/image의 default·
+// variant와 나란한 자리이고, 담는 것이 cellPatch인 이유는 셀 캐스케이드가 그 패치를 병합하기
+// 때문이다 (resolveCell → mergeCell). variant 목록이 없는 이유는 tableComponentsFile과 같다:
+// 표의 변형은 프레임이 켜는 stripe 하나뿐이다.
+type tableComponents struct {
+	// cell은 모든 셀의 기본 외관 패치다 (테두리 등). header는 `<th>`에 얹는 델타(강조색·굵기).
+	cell   cellPatch
+	header cellPatch
+	// stripe는 줄무늬 행 셀의 채움이다 — variant="striped"의 홀수 본문 행에만 얹힌다. 테마가
+	// 줄무늬를 정하지 않으면 nil이다 (resolveTable이 nil을 건너뛴다).
+	stripe *soml.Fill
 }
 
 // loadTheme는 fsys의 dir/ 아래 테마 패키지를 읽는다. dir은 fs 경로다 (내장은
@@ -242,6 +315,12 @@ func loadTheme(fsys fs.FS, dir string) (themePackage, error) {
 		return pkg, err
 	}
 	pkg.layouts = layouts
+
+	slotLayouts, err := loadSlotLayouts(fsys, dir, pkg.manifest)
+	if err != nil {
+		return pkg, err
+	}
+	pkg.slotLayouts = slotLayouts
 	return pkg, nil
 }
 
@@ -359,7 +438,68 @@ func loadComponents(fsys fs.FS, dir string, theme soml.Theme) (components, error
 		comps.imageVariants = append(comps.imageVariants, imageVariant{name: v.Name, patch: patch})
 	}
 
+	table, err := tableComponentsFromFile(file.Table)
+	if err != nil {
+		return comps, fmt.Errorf("table: %w", err)
+	}
+	comps.table = table
+
 	return comps, nil
+}
+
+// tableComponentsFromFile은 표 셀 외관 원본을 캐스케이드 내부 표로 눕힌다. cell·header는
+// cellPatch로(셀 캐스케이드가 병합할 형태), stripe는 *soml.Fill로 변환한다. 색·테두리 문법은
+// shape default과 같은 헬퍼(fillFromString·borderFromString)를 지나 자리마다 다르게 읽히지
+// 않는다.
+func tableComponentsFromFile(file tableComponentsFile) (tableComponents, error) {
+	var table tableComponents
+	cell, err := cellPatchFromFile(file.Cell)
+	if err != nil {
+		return table, fmt.Errorf("cell: %w", err)
+	}
+	table.cell = cell
+	header, err := cellPatchFromFile(file.Header)
+	if err != nil {
+		return table, fmt.Errorf("header: %w", err)
+	}
+	table.header = header
+	if file.Stripe != "" {
+		fill, err := fillFromString(file.Stripe)
+		if err != nil {
+			return table, fmt.Errorf("stripe: %w", err)
+		}
+		table.stripe = fill
+	}
+	return table, nil
+}
+
+// cellPatchFromFile은 셀 외관 원본 한 벌을 cellPatch로 눕힌다 — shapePatchFromFile의 셀 판이고
+// 규약이 같다: 빈 문자열/nil은 "정하지 않음". color는 토큰 참조로 남긴다 (RGB로 눕히면
+// schemeClr 참조가 끊긴다 — soml.Color의 계약). align·anchor는 원본이 열지 않으므로 여기 없다.
+func cellPatchFromFile(file cellStyleFile) (cellPatch, error) {
+	var patch cellPatch
+	if file.Fill != "" {
+		fill, err := fillFromString(file.Fill)
+		if err != nil {
+			return patch, err
+		}
+		patch.fill = fill
+	}
+	if file.Border != "" {
+		border, err := borderFromString(file.Border)
+		if err != nil {
+			return patch, err
+		}
+		patch.border = border
+	}
+	if file.Color != "" {
+		c := soml.TokenColor(file.Color)
+		patch.color = &c
+	}
+	if file.Weight != nil {
+		patch.weight = file.Weight
+	}
+	return patch, nil
 }
 
 // shapePatchFromFile은 shape default의 문자열 필드를 shapePatch로 눕힌다. 빈 문자열은 "정하지
@@ -476,6 +616,12 @@ func loadLayouts(fsys fs.FS, dir string, manifest themeManifest) (map[string]str
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".css") {
 			continue
 		}
+		// 슬롯 영역 파일(`<이름>.slots.css`)은 loadSlotLayouts의 몫이다 — 여기서 걸러내지
+		// 않으면 `title.slots`라는 존재하지 않는 흐름 레이아웃으로 오인해 "선언에 없다"
+		// 에러가 난다 (양방향 대조가 슬롯 파일을 미선언 흐름 파일로 읽는다).
+		if strings.HasSuffix(e.Name(), ".slots.css") {
+			continue
+		}
 		raw, err := fs.ReadFile(fsys, path.Join(dir, "layouts", e.Name()))
 		if err != nil {
 			return nil, fmt.Errorf("layouts/%s를 읽을 수 없다: %w", e.Name(), err)
@@ -501,6 +647,48 @@ func loadLayouts(fsys fs.FS, dir string, manifest themeManifest) (map[string]str
 	sort.Strings(undeclared)
 	if len(undeclared) > 0 {
 		return nil, fmt.Errorf("layouts/%s.css가 있지만 theme.json의 layouts 선언에 없다", undeclared[0])
+	}
+	return files, nil
+}
+
+// loadSlotLayouts는 dir/layouts/ 아래 `*.slots.css`를 레이아웃 이름→슬롯 영역 CSS 원문 맵으로
+// 읽는다 (ADR 0035). 키는 `.slots.css` 앞부분이다 (`title.slots.css` → `title`).
+//
+// loadLayouts와 달리 대조는 **단방향**이다 — 슬롯 영역 파일은 선택이므로(슬롯이 없는 canvas는
+// 파일이 없어도 된다) "선언됐는데 파일이 없다"는 에러가 아니다. 반대로 선언되지 않은
+// 레이아웃의 슬롯 파일(`corp-hero.slots.css`인데 layouts에 corp-hero가 없음)은 저자가 오타를
+// 냈거나 흐름 레이아웃 선언을 빠뜨린 것이므로 에러다 (loadLayouts의 미선언 파일과 같은 태도).
+// CSS 내용은 여기서 보지 않는다 — 배치·외관 경계 검사는 theme_lint.go의 몫이다.
+func loadSlotLayouts(fsys fs.FS, dir string, manifest themeManifest) (map[string]string, error) {
+	entries, err := fs.ReadDir(fsys, path.Join(dir, "layouts"))
+	if err != nil {
+		return nil, fmt.Errorf("layouts/를 읽을 수 없다: %w", err)
+	}
+	declared := map[string]bool{}
+	for _, name := range manifest.Layouts {
+		declared[name] = true
+	}
+	files := map[string]string{}
+	var undeclared []string
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".slots.css") {
+			continue
+		}
+		name := strings.TrimSuffix(e.Name(), ".slots.css")
+		if !declared[name] {
+			undeclared = append(undeclared, name)
+			continue
+		}
+		raw, err := fs.ReadFile(fsys, path.Join(dir, "layouts", e.Name()))
+		if err != nil {
+			return nil, fmt.Errorf("layouts/%s를 읽을 수 없다: %w", e.Name(), err)
+		}
+		files[name] = string(raw)
+	}
+	// files는 맵이라 순서가 없으므로 정렬해 진단이 결정적이게 한다 (loadLayouts와 같은 태도).
+	sort.Strings(undeclared)
+	if len(undeclared) > 0 {
+		return nil, fmt.Errorf("layouts/%s.slots.css가 있지만 theme.json의 layouts 선언에 %q가 없다", undeclared[0], undeclared[0])
 	}
 	return files, nil
 }

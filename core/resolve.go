@@ -34,6 +34,13 @@ func Resolve(deck *soml.Deck) soml.Diagnostics {
 	// 선택을 대체한다. 토큰과 컴포넌트 외관 표를 한 번에 로드해 slide 루프에 나른다.
 	pkg := loadBuiltinTheme("minimal")
 	deck.Theme = pkg.tokens
+	// 레이아웃 배치 CSS도 토큰 표에 싣는다 — 웹 스테이지 CSS와 지오메트리 패스가 재는 박스가
+	// 같은 한 표에서 나와야 두 타깃의 배치가 갈라지지 않는다 (soml.Theme.Layouts).
+	deck.Theme.Layouts = pkg.layoutStyles()
+	// 슬롯 영역 배치도 같은 표에 싣는다 (ADR 0035) — 슬롯을 쓴 슬라이드의 스테이지가
+	// `.balpyo-slots` 모디파이어로 이 영역 규칙을 받는다 (render/web). 흐름 배치(Layouts)와
+	// 겨누는 선택자만 다르고 계약은 같다: 한 표에서 웹 CSS와 지오메트리 패스가 나온다.
+	deck.Theme.SlotLayouts = pkg.slotLayoutStyles()
 
 	var diags soml.Diagnostics
 	for _, slide := range deck.Slides {
@@ -126,6 +133,7 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 		return
 	}
 	r.resolveLayout(elem, parent)
+	r.resolveSlot(elem, parent)
 	if elem.Name == soml.ShapeElement {
 		// 도형은 세 번째 갈래다 (외관·배치에 이어) — 자식은 텍스트 요소이므로 아래 순회가
 		// 기존 텍스트 경로로 데려간다. 부모가 도형이라는 사실이 텍스트 해석을 바꾸지 않는다:
@@ -138,6 +146,15 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 		// 아래 순회가 데려갈 자식이 없다.
 		r.resolveImage(elem)
 	}
+	if elem.Name == soml.TableElement {
+		// 다섯 번째 갈래다. 프레임의 배치·슬롯은 위에서(resolveLayout·resolveSlot) 이미 지났고,
+		// resolveTable이 프레임 아래 행·셀·셀 안 인라인 런까지 **자기 서브트리를 통째로** 해석한다.
+		// return하는 이유는 텍스트 역할 갈래와 같다: <tr>/<th>/<td>는 텍스트 역할이 없어 아래
+		// 순회가 셀 안 인라인 런을 해석하지 못하므로(resolveInlines는 resolveText·resolveCell에서만
+		// 불린다), 여기서 끝내고 표 해석에 순회를 넘긴다.
+		r.resolveTable(elem)
+		return
+	}
 	if role, ok := r.textRole(elem); ok {
 		r.resolveText(elem, role)
 		// 텍스트 역할 요소의 자식은 문자 데이터와 인라인 태그뿐이다 (파서의 modelInline) —
@@ -148,6 +165,38 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 	for _, child := range elem.Children {
 		r.node(child, elem)
 	}
+}
+
+// resolveSlot은 요소의 슬롯 배정을 검증하고 확정한다 (PRD §7.3·ADR 0035).
+//
+// 슬롯은 **슬라이드 직계 자식에만** 유효하다 (parent == nil). 파서는 slot 속성을 슬라이드
+// 직계 자식이 될 수 있는 요소 전부에 열어 두지만(SlotAttr — 태그별 allowlist는 요소가 어디에
+// 놓였는지 모른다), "직계 자식인가"와 "그 레이아웃에 그 슬롯이 있는가"는 부모와 슬라이드
+// 레이아웃을 아는 이 값 층이 판정한다. 중첩 요소의 slot은 뜻이 없으므로 진단이다 — 조용히
+// 무시하면 저자는 콘텐츠가 왜 그 영역에 안 놓이는지 알 수 없다.
+//
+// 어휘 밖 슬롯 이름은 **line:col을 가진** 빌드 에러다 (layout과 같은 태도 — slideLayout,
+// ADR 0032). 폴백하지 않는 것이 계약이다: `slot="titel"` 오타가 조용히 기본 슬롯으로 떨어지면
+// 콘텐츠가 엉뚱한 자리에 놓이고 그 실패는 렌더를 볼 때까지 안 보인다. 슬롯이 없는 레이아웃
+// (canvas)의 slot도 같은 경로로 잡힌다 (LayoutSlot이 false).
+//
+// slot을 쓰지 않은 직계 자식은 손대지 않는다 — 빈 Slot이 곧 "슬롯 배치 없음"이라(기본 슬롯은
+// 렌더 매핑의 몫), 슬롯을 쓰지 않은 덱의 산출물이 이 검증 때문에 달라지지 않는다.
+func (r *resolver) resolveSlot(elem *soml.Element, parent *soml.Element) {
+	attr, ok := elem.Attr(soml.SlotAttr)
+	if !ok {
+		return
+	}
+	if parent != nil {
+		r.errorf(attr.ValueSpan, "slot은 슬라이드 직계 자식에만 쓸 수 있다 (<%s>는 중첩되어 있다)", elem.Name)
+		return
+	}
+	if _, ok := soml.LayoutSlot(r.layout, attr.Value); !ok {
+		r.errorf(attr.ValueSpan, "레이아웃 %q에 없는 슬롯 %q (쓸 수 있는 슬롯: %s)",
+			string(r.layout), attr.Value, slotList(r.layout))
+		return
+	}
+	elemAppearance(elem).Slot = attr.Value
 }
 
 // textRole은 요소의 텍스트 역할이다. `<text>`는 role 속성(생략하면 body)이, 블록·<li>는
@@ -729,4 +778,10 @@ func layoutList() string {
 		names = append(names, string(layout))
 	}
 	return strings.Join(names, ", ")
+}
+
+// slotList는 레이아웃의 허용 슬롯 이름을 어휘 순서로 잇는다 — 없는 슬롯 진단이 허용 어휘를
+// 나열하는 근거다 (layoutList와 같은 태도). 슬롯이 없는 레이아웃(canvas)은 빈 문자열이다.
+func slotList(layout soml.SlideLayout) string {
+	return strings.Join(soml.SlotNames(layout), ", ")
 }

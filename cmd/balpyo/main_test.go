@@ -76,6 +76,33 @@ func TestBuildCommandRejectsBadInput(t *testing.T) {
 	}
 }
 
+// TestBuildErrorDiagnosticsPrintedOnce는 빌드가 진단 에러로 실패할 때 각 진단이 stderr에
+// 정확히 한 번만 나오는지 본다 — 예전에는 printDiagnostics와 err 출력이 겹쳐 두 번 찍혔다.
+func TestBuildErrorDiagnosticsPrintedOnce(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "slides"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// 알 수 없는 태그 <table> 하나 — 정확히 진단 하나를 낸다.
+	if err := os.WriteFile(filepath.Join(dir, "slides", "001.slide"),
+		[]byte("<slide><table></table></slide>\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	err := run([]string{"build", "--project", dir, "--target", "html"}, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("에러여야 한다")
+	}
+	// 상세 진단은 stderr에 한 번만.
+	if n := strings.Count(stderr.String(), "알 수 없는 태그 <table>"); n != 1 {
+		t.Errorf("진단이 stderr에 %d번 찍혔다 (1번이어야 한다):\n%s", n, stderr.String())
+	}
+	// 돌려준 에러는 요약이어야 한다 — main이 이걸 다시 출력해도 진단이 겹치지 않게.
+	if strings.Contains(err.Error(), "알 수 없는 태그 <table>") {
+		t.Errorf("반환 에러가 상세 진단을 되풀이한다 (요약이어야 한다): %v", err)
+	}
+}
+
 func TestVersionAndHelp(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	if err := run([]string{"version"}, &stdout, &stderr); err != nil {

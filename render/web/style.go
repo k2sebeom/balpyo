@@ -69,7 +69,39 @@ func themeCSS(theme soml.Theme, feat features) string {
 		b.WriteString("\n")
 		fmt.Fprintf(&b, "  .balpyo-slide { background: var(%s%s); }\n", colorVarPrefix, bgToken)
 	}
+	b.WriteString(layoutStagesCSS(theme, feat))
 	b.WriteString("}\n")
+	return b.String()
+}
+
+// layoutStagesCSS는 덱이 쓴 레이아웃의 배치 규칙을 테마 층에 낸다 (M1.1). 스테이지에 얹으므로
+// 기본 스택 규칙(`.balpyo-stage`, base 층)을 이긴다 — 테마 층이 base 층 뒤라 특정도와 무관하게
+// 이긴다 (PRD §12.2의 cascade layer). 배치 원문은 core가 이미 정규화·검증했다 (soml.Theme.Layouts).
+//
+// feat.layouts/slotLayouts만 도는 이유는 골든 불변이다 — 쓰지 않은 레이아웃의 규칙이 산출물에
+// 들어가면 diff가 무엇이 변했는지 말해 주지 못한다 (themeCSS의 다른 조건과 같은 근거).
+//
+// # 흐름 규칙과 슬롯 규칙은 서로 배타적이다 (ADR 0035)
+//
+// 한 레이아웃은 슬라이드마다 흐름 모드이거나 슬롯 모드다 (writeStage). 그래서 흐름 규칙은
+// `:not(.balpyo-slots)`로, 슬롯 영역 규칙은 `.balpyo-slots`로 겨눠 **한 레이아웃을 두 슬라이드가
+// 각각 흐름·슬롯으로 써도** 규칙이 서로 새지 않는다. `:not`이 없으면 슬롯 슬라이드에도 흐름
+// 규칙이 얹혀(두 클래스가 다 있으므로) 흐름의 정렬·트랙이 슬롯 영역과 뒤섞인다 — 그 갈라짐은
+// 픽셀 비교에서만 드러난다. 그래서 슬롯 영역 CSS는 `display:grid`부터 스스로 갖춘다 (자족적).
+func layoutStagesCSS(theme soml.Theme, feat features) string {
+	if len(feat.layouts) == 0 && len(feat.slotLayouts) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("\n")
+	for _, name := range feat.layouts {
+		// feat.layouts는 배치 CSS가 있는 레이아웃만 담으므로 조회는 언제나 성공한다.
+		fmt.Fprintf(&b, "  .balpyo-stage.balpyo-layout-%s:not(.balpyo-slots) { %s; }\n", name, theme.Layouts[name])
+	}
+	for _, name := range feat.slotLayouts {
+		// feat.slotLayouts는 슬롯 영역 CSS가 있는 레이아웃만 담으므로 조회는 언제나 성공한다.
+		fmt.Fprintf(&b, "  .balpyo-stage.balpyo-layout-%s.balpyo-slots { %s; }\n", name, theme.SlotLayouts[name])
+	}
 	return b.String()
 }
 

@@ -121,6 +121,54 @@ func mergeShape(style *soml.ShapeStyle, patch shapePatch) {
 	}
 }
 
+// cellPatch는 표 셀 외관의 부분 지정이다 — textPatch·shapePatch의 셀 판이고 규약이 같다:
+// 포인터로 "정하지 않음"(nil)과 0값을 구별한다. 한 셀이 박스(fill·border)와 텍스트(color·
+// align·anchor·weight)를 함께 지므로 두 채널의 필드를 한 패치에 담는다 — 셀은 `a:tc`가
+// `tcPr`와 `txBody`를 함께 갖듯 두 채널이 한 요소에 산다 (soml.CellStyle의 근거).
+//
+// **ColSpan·RowSpan은 패치에 없다.** 병합 칸 수는 외관 값이 아니라 격자 구조이고 테마가
+// 정할 수 없으므로(식별자·배치가 shapePatch에 없는 것과 같은 자리의 결정), 캐스케이드가
+// 아니라 확정 CellStyle에 직접 채운다 (cellAttrs). "패치의 필드 = 캐스케이드가 다루는 필드"라는
+// 읽는 근거를 지킨다.
+type cellPatch struct {
+	fill   *soml.Fill
+	border *soml.Border
+	color  *soml.Color
+	align  *soml.TextAlign
+	anchor *soml.TextAnchor
+	weight *int
+}
+
+// mergeCell은 patch가 정한 필드만 style에 얹는다 — mergeText·mergeShape와 **같은 계약**이다.
+//
+// 네 번째 복제다 (텍스트·도형·이미지에 이어). 두 채널을 한 패치가 담으므로 대입도 두 갈래다:
+// 박스 필드(fill·border)는 CellStyle에, 텍스트 필드(color·align·anchor·weight)는 CellStyle.Text에
+// 얹는다. style.Text는 호출자가 역할 기본값으로 이미 채워 둔다(resolveCell) — 그래서 여기서
+// nil 검사 없이 필드에 바로 대입한다 (셀은 텍스트 전용 콘텐츠 모델이라 언제나 Text를 갖는다).
+//
+// 박스 포인터는 값을 복사한다 (mergeShape와 같은 근거 — 테마 표가 캐시되는 날 한 셀을 고치는
+// 코드가 테마를 고친다).
+func mergeCell(style *soml.CellStyle, patch cellPatch) {
+	if patch.fill != nil {
+		style.Fill = ptr(*patch.fill)
+	}
+	if patch.border != nil {
+		style.Border = ptr(*patch.border)
+	}
+	if patch.color != nil {
+		style.Text.Color = *patch.color
+	}
+	if patch.align != nil {
+		style.Text.Align = *patch.align
+	}
+	if patch.anchor != nil {
+		style.Text.Anchor = *patch.anchor
+	}
+	if patch.weight != nil {
+		style.Text.Weight = *patch.weight
+	}
+}
+
 // imagePatch는 이미지 외관의 부분 지정이다 — shapePatch의 이미지 판이고 규약이 같다.
 //
 // **fill이 없다**: PRD §7.6 표의 `fill` 적용 대상에 image가 없고, 그림 뒤의 칠이 보이는

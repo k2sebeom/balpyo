@@ -145,6 +145,7 @@ func writePicShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem 
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
+	spec.ph = slotPlaceholder(slide, elem)
 	if err := writePic(b, spec, deck.Theme); err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
@@ -171,6 +172,8 @@ type picInfo struct {
 	adjust []spAdjust
 	border soml.Border
 	shadow *soml.ShadowToken
+	// ph는 이 그림이 채우는 슬롯 플레이스홀더다 (nil이면 `<p:nvPr/>` — spSpec.ph와 같은 뜻).
+	ph *placeholder
 }
 
 // srcRect는 `a:srcRect`의 크롭이다 — 원본에서 **잘라내는** 비율이다 (100000 = 100%,
@@ -333,7 +336,7 @@ func writePic(b *strings.Builder, spec picInfo, theme soml.Theme) error {
 	// 엔진이 잠근 제약은 파일을 열어 본 사람이 이유를 알 수 없다 (종횡비를 지키며 늘리는 것은
 	// PowerPoint에서 코너 핸들 + Shift로 이미 되고, 잠그면 그것 말고는 아예 되지 않는다).
 	w(2, "<p:cNvPicPr/>")
-	w(2, "<p:nvPr/>")
+	writeNvPr(w, 2, spec.ph)
 	w(1, "</p:nvPicPr>")
 	if spec.embed == "" {
 		return fmt.Errorf("미디어 관계 id가 비었다")

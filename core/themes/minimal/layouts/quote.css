@@ -1,1 +1,2 @@
-/* quote 레이아웃 배치 CSS — 실체는 10/06에서 채운다. */
+/* quote — 인용: 인용문을 세로 가운데에 둔다. */
+justify-content: center;

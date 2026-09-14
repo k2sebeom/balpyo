@@ -64,7 +64,29 @@ func buildElementSpecs() map[string]elementSpec {
 			attrs: withChildPlacement(ImageAttrs()),
 			model: modelVoid,
 		},
+		TableElement: {
+			// 고유(variant) → 자식 배치 → 슬롯 순이다 (TableAttrs + withChildPlacement).
+			// 표는 슬라이드 직속이자 레이아웃 컨테이너의 자식이 될 수 있고(`<col><table>`),
+			// 슬롯도 채울 수 있다. 자식은 행뿐이다 (`<ul>`의 자식이 `<li>`뿐인 것과 같다).
+			attrs:    withChildPlacement(TableAttrs()),
+			model:    modelElements,
+			children: tableChildren(),
+		},
+		TableRowElement: {
+			// 행은 셀만 담는다 (modelElements, children=[th,td]). 속성을 갖지 않는다 —
+			// 행 단위 외관은 v1에 없고, 줄무늬는 셀 `fill`을 우리가 명시로 칠한다 (ADR 0036).
+			// 자식 배치·슬롯도 없다: `<tr>`은 <table>의 자식으로만 오지 flex 항목이 아니다.
+			model:    modelElements,
+			children: tableRowChildren(),
+		},
 		noteElement: {model: modelText},
+	}
+	for _, name := range tableCellElements {
+		// 셀은 텍스트+인라인을 담는다 (modelInline — `<li>`와 같은 콘텐츠 모델, ADR 0036의
+		// "셀은 텍스트 전용": OOXML `a:tc`가 하나의 `a:txBody`에 1:1로 맞는다). 속성은 병합
+		// (colspan/rowspan)과 외관(fill/border/color/align/anchor/variant)이다 —
+		// 자식 배치·슬롯은 없다 (`<li>`가 childPlacement를 받지 않는 것과 같은 근거).
+		specs[name] = elementSpec{attrs: TableCellAttrs(), model: modelInline}
 	}
 	for _, name := range blockElements {
 		model := modelInline
@@ -141,7 +163,7 @@ func buildElementSpecs() map[string]elementSpec {
 // 레이아웃 컨테이너와 `<spacer>`가 들어 있다: 슬라이드 직속 `<spacer>`는 세로 스택에서
 // 밀어내기가 되므로 뜻이 있다 (머리글 아래 여백을 늘려 꼬리글을 바닥에 붙이는 배치).
 func slideChildren() []string {
-	children := []string{TextElement, ShapeElement, ImageElement, noteElement}
+	children := []string{TextElement, ShapeElement, ImageElement, TableElement, noteElement}
 	children = append(children, blockElements...)
 	children = append(children, listContainerElements...)
 	children = append(children, layoutContainerElements...)
@@ -551,6 +573,17 @@ func (p *parser) checkPlacement(elem *Element, stack []*Element, root *Element) 
 	if KindOf(elem.Name) == KindListItem && KindOf(parent.Name) != KindListContainer {
 		p.errorf(elem.NameSpan, "<%s>는 <%s>/<%s>의 자식으로만 쓸 수 있다",
 			ListItemElement, listContainerElements[0], listContainerElements[1])
+		return
+	}
+	// <tr>/<th>/<td>도 <li>와 같다 — 어디에 있든 각자의 부모(표·행)의 자식이어야 하고,
+	// 자리별 일반 메시지보다 "표/행 안에 쓴다"가 고칠 방법을 곧장 말한다.
+	if KindOf(elem.Name) == KindTableRow && KindOf(parent.Name) != KindTable {
+		p.errorf(elem.NameSpan, "<%s>는 <%s>의 자식으로만 쓸 수 있다", TableRowElement, TableElement)
+		return
+	}
+	if KindOf(elem.Name) == KindTableCell && KindOf(parent.Name) != KindTableRow {
+		p.errorf(elem.NameSpan, "<%s>/<%s>는 <%s>의 자식으로만 쓸 수 있다",
+			TableHeaderCellElement, TableDataCellElement, TableRowElement)
 		return
 	}
 	if spec.model == modelInline {

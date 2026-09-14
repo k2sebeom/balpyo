@@ -444,6 +444,7 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
+	decls = appendSlot(decls, elem)
 	decls, err = appendPlacement(decls, elem.Placement())
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)

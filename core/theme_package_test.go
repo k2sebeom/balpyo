@@ -3,6 +3,7 @@ package core
 import (
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -210,5 +211,36 @@ func TestLoadLayoutsMismatch(t *testing.T) {
 	}
 	if len(got) != 2 {
 		t.Errorf("맵 크기 = %d, want 2", len(got))
+	}
+}
+
+// TestMinimalLayoutStyles는 minimal 테마의 배치 CSS가 실체를 담고(빈 스텁이 아니고),
+// 그 원문이 배치·외관 경계 린터를 에러·경고 없이 통과함을 못 박는다 (M1.1). layoutStyles는
+// 주석을 벗기고 빈 레이아웃(content/canvas)을 제외한 정규화 선언만 돌려준다 — 이 맵이
+// soml.Theme.Layouts로 실려 웹·지오메트리 패스가 배치를 얻는다.
+func TestMinimalLayoutStyles(t *testing.T) {
+	pkg := loadBuiltinTheme("minimal")
+
+	// 배치·외관 경계: minimal의 모든 레이아웃 CSS는 배치 전용이어야 한다 (주석 포함해도
+	// 린터가 주석을 벗기므로 조용해야 한다). 에러도 경고도 없다.
+	if diags := lintLayouts(pkg.layouts); len(diags) != 0 {
+		t.Errorf("minimal 레이아웃 CSS가 진단을 냈다:\n%v", diags)
+	}
+
+	styles := pkg.layoutStyles()
+	// 실체가 채워진 레이아웃은 정규화 선언을 갖는다.
+	if got := styles["title"]; got != "justify-content: center" {
+		t.Errorf("title 배치 = %q, want %q", got, "justify-content: center")
+	}
+	if got := styles["two-column"]; !strings.Contains(got, "grid-template-columns: 1fr 1fr") {
+		t.Errorf("two-column 배치에 2열 그리드가 없다: %q", got)
+	}
+	// content/canvas는 배치 CSS가 없다 (세로 스택·자유 배치는 렌더러가 소유) — 맵에 없어야
+	// 스테이지에 레이아웃 클래스가 붙지 않는다.
+	if _, ok := styles["content"]; ok {
+		t.Error("content가 배치 맵에 있다 — 빈 레이아웃은 제외되어야 한다")
+	}
+	if _, ok := styles["canvas"]; ok {
+		t.Error("canvas가 배치 맵에 있다 — 빈 레이아웃은 제외되어야 한다")
 	}
 }

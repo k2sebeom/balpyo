@@ -36,5 +36,12 @@
     "variants": [
       { "name": "framed", "border": "1 solid muted", "radius": "md", "shadow": "soft" }
     ]
+  },
+
+  "table": {
+    "$comment": "표 셀 외관 (ADR 0036). cell은 모든 셀의 기본값, header는 <th>에 얹는 델타, stripe는 variant=\"striped\"일 때 홀수 본문 행의 채움이다. 프레임 좌표·셀 기하는 잰 박스에서 오므로 여기에 없다 — 셀의 채움·테두리·글자만 테마가 소유한다 (명시 tcPr).",
+    "cell":   { "border": "1 solid muted" },
+    "header": { "fill": "accent1", "color": "bg", "weight": 700 },
+    "stripe": "surface"
   }
 }

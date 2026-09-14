@@ -93,6 +93,8 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		FontScheme       string
 		NotesLayout      notesLayout
 		MediaDefaults    []mediaDefault
+		SlotLayouts      []slotLayoutPart
+		MasterPh         masterPlaceholders
 	}{
 		Deck:       deck,
 		SlideCX:    cx,
@@ -125,6 +127,13 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		return nil, err
 	}
 	data.MediaDefaults = mediaDefs
+	// 슬롯을 쓴 슬라이드가 있으면 그 레이아웃마다 플레이스홀더 파트를 낸다 (ADR 0035) —
+	// 없으면 nil이라 마스터·Content_Types·슬라이드 관계가 예전과 바이트 동일하다 (골든 불변).
+	data.SlotLayouts = deckSlotLayouts(deck)
+	if len(data.SlotLayouts) > 0 {
+		// 슬롯 레이아웃 플레이스홀더가 상속받을 마스터 title/body 프로토타입 좌표.
+		data.MasterPh = masterPlaceholderLayout(cx, cy)
+	}
 	templates := []struct {
 		name string
 		text string
@@ -155,6 +164,23 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		}
 		parts = append(parts, part{name: tpl.name, data: rendered})
 	}
+	// 슬롯 레이아웃 파트와 그 관계 파일을 덧붙인다 (blank 레이아웃 뒤). 관계 파일은 blank와
+	// 같은 내용이다 (마스터를 가리킬 뿐) — layoutRelsTemplate을 그대로 재사용한다. 슬롯을 쓴
+	// 슬라이드가 없으면 SlotLayouts가 nil이라 이 루프가 돌지 않는다 (골든 불변).
+	for _, sl := range data.SlotLayouts {
+		layoutXML, err := renderTemplate(sl.File, slotLayoutTemplate, sl)
+		if err != nil {
+			return nil, err
+		}
+		relsXML, err := renderTemplate(sl.File+".rels", layoutRelsTemplate, nil)
+		if err != nil {
+			return nil, err
+		}
+		parts = append(parts,
+			part{name: "ppt/slideLayouts/" + sl.File, data: layoutXML},
+			part{name: "ppt/slideLayouts/_rels/" + sl.File + ".rels", data: relsXML},
+		)
+	}
 	// 미디어는 **덱의 것**이다 (테마와 같은 층) — 슬라이드마다 다시 세지 않는다. 파트를
 	// 슬라이드보다 앞에 두는 이유는 패키지를 풀어 본 사람이 그림을 슬라이드보다 먼저 만나는
 	// 것이 자연스럽기 때문이고, 순서는 결정적이면 어디든 유효하다 (zipParts는 이 순서를
@@ -183,9 +209,10 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		// 조용하다 (링크가 죽거나 그림 자리가 빈다).
 		relsPart, err := renderTemplate(slideRelsPart(n), slideRelsTemplate, struct {
 			*soml.Slide
-			N    int
-			Rels []slideRel
-		}{slide, n, rels.items})
+			N          int
+			LayoutFile string
+			Rels       []slideRel
+		}{slide, n, slideLayoutFile(slide, data.SlotLayouts), rels.items})
 		if err != nil {
 			return nil, err
 		}
@@ -298,6 +325,9 @@ const contentTypesTemplate = xmlDecl + `<Types xmlns="http://schemas.openxmlform
   <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
   <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
   <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+{{- range .SlotLayouts}}
+  <Override PartName="/ppt/slideLayouts/{{.File}}" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+{{- end}}
   <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
 {{- if .NotesMasterRelID}}
   <Override PartName="/ppt/notesMasters/notesMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml"/>
@@ -401,18 +431,93 @@ const masterTemplate = xmlDecl + `<p:sldMaster xmlns:a="http://schemas.openxmlfo
           <a:chExt cx="0" cy="0"/>
         </a:xfrm>
       </p:grpSpPr>
+{{- if .SlotLayouts}}
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="Title Placeholder 1"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="title"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="{{.MasterPh.TitleX}}" y="{{.MasterPh.TitleY}}"/>
+            <a:ext cx="{{.MasterPh.TitleCX}}" cy="{{.MasterPh.TitleCY}}"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:endParaRPr/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="Body Placeholder 2"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="body" idx="1"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="{{.MasterPh.BodyX}}" y="{{.MasterPh.BodyY}}"/>
+            <a:ext cx="{{.MasterPh.BodyCX}}" cy="{{.MasterPh.BodyCY}}"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:endParaRPr/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+{{- end}}
     </p:spTree>
   </p:cSld>
   <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
   <p:sldLayoutIdLst>
     <p:sldLayoutId id="2147483649" r:id="rId1"/>
+{{- range .SlotLayouts}}
+    <p:sldLayoutId id="{{.SldLayoutID}}" r:id="{{.MasterRelID}}"/>
+{{- end}}
   </p:sldLayoutIdLst>
+{{- if .SlotLayouts}}
+  <p:txStyles>
+    <p:titleStyle>
+      <a:lvl1pPr algn="l"><a:defRPr sz="4400"/></a:lvl1pPr>
+    </p:titleStyle>
+    <p:bodyStyle>
+      <a:lvl1pPr><a:defRPr sz="2400"/></a:lvl1pPr>
+    </p:bodyStyle>
+    <p:otherStyle/>
+  </p:txStyles>
+{{- end}}
 </p:sldMaster>
 `
 
+// rId1 = blank 레이아웃, rId2 = theme (예전 그대로), 그다음부터 슬롯 레이아웃 파트들이다
+// (MasterRelID = rId3..). 슬롯을 쓴 슬라이드가 없으면 range가 비어 예전과 바이트 동일하다.
 const masterRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
+{{- range .SlotLayouts}}
+  <Relationship Id="{{.MasterRelID}}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/{{.File}}"/>
+{{- end}}
 </Relationships>
 `
 
@@ -445,6 +550,58 @@ const layoutTemplate = xmlDecl + `<p:sldLayout xmlns:a="http://schemas.openxmlfo
 const layoutRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
 </Relationships>
+`
+
+// slotLayoutTemplate은 슬롯 레이아웃 파트 하나다 (ADR 0035). 이 레이아웃이 선언하는 슬롯마다
+// 플레이스홀더 `<p:sp>`를 낸다 — 슬라이드 도형의 `<p:ph type/idx>`가 이것에 연결되어야
+// PowerPoint가 진짜 플레이스홀더로 인식한다 (buildParts의 슬롯 파트 주석).
+//
+// **플레이스홀더에 xfrm을 내지 않는다**: 좌표는 마스터 title/body 프로토타입에서 상속받고
+// 슬라이드가 잰 rect로 덮어쓴다 (layoutPlaceholder의 근거 — 레이아웃 위치는 산출물 픽셀에
+// 닿지 않는다). type="cust"는 사용자 정의 레이아웃의 표준 종류값이다 (ST_SlideLayoutType).
+const slotLayoutTemplate = xmlDecl + `<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="cust" preserve="1">
+  <p:cSld name="{{.Layout}}">
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+{{- range .Placeholders}}
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="{{.ID}}" name="{{xml .Name}}"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="{{.Type}}"{{if .HasIdx}} idx="{{.Idx}}"{{end}}/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr/>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:endParaRPr/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+{{- end}}
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sldLayout>
 `
 
 // 슬라이드의 spTree는 shapesXML이 컴파일한 도형 목록을 담는다 (문서 순서 = z-순서).
@@ -482,7 +639,7 @@ const slideTemplate = xmlDecl + `<p:sld xmlns:a="http://schemas.openxmlformats.o
 // `TargetMode="External"`이 빠지면 소비자가 URL을 패키지 내부 파트 경로로 읽어 링크가 조용히
 // 죽고, 반대로 미디어에 그것이 붙으면 그림 자리가 빈다.
 const slideRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/{{.LayoutFile}}"/>
 {{- if .Notes}}
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide{{.N}}.xml"/>
 {{- end}}

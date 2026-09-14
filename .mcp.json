@@ -1,14 +1,3 @@
 {
-  "mcpServers": {
-    "chilpan": {
-      "type": "stdio",
-      "command": "chilpan-cli",
-      "args": [
-        "server",
-        "--project",
-        "balpyo"
-      ],
-      "env": {}
-    }
-  }
+  "mcpServers": {}
 }

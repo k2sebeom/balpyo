@@ -1,0 +1,15 @@
+<!-- 표 대체: <table>가 어휘에 없어 grid+shape로 손수 짠다 (production 관점의 마찰점). -->
+<slide id="table">
+  <h2>채널별 성과</h2>
+  <grid cols="3" gap="0">
+    <shape type="rect" fill="accent1" w="fill" pad="sm"><text color="bg">채널</text></shape>
+    <shape type="rect" fill="accent1" w="fill" pad="sm"><text color="bg">전환율</text></shape>
+    <shape type="rect" fill="accent1" w="fill" pad="sm"><text color="bg">CAC</text></shape>
+    <shape type="rect" fill="surface" border="1 solid muted" w="fill" pad="sm"><p>검색</p></shape>
+    <shape type="rect" fill="surface" border="1 solid muted" w="fill" pad="sm"><p>4.2%</p></shape>
+    <shape type="rect" fill="surface" border="1 solid muted" w="fill" pad="sm"><p>12,000</p></shape>
+    <shape type="rect" fill="bg" border="1 solid muted" w="fill" pad="sm"><p>추천</p></shape>
+    <shape type="rect" fill="bg" border="1 solid muted" w="fill" pad="sm"><p>7.8%</p></shape>
+    <shape type="rect" fill="bg" border="1 solid muted" w="fill" pad="sm"><p>3,200</p></shape>
+  </grid>
+</slide>

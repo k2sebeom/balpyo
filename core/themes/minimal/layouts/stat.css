@@ -1,1 +1,2 @@
-/* stat 레이아웃 배치 CSS — 실체는 10/06에서 채운다. */
+/* stat — 큰 수치 강조: 콘텐츠를 세로 가운데에 둔다. */
+justify-content: center;

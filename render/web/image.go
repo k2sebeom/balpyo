@@ -180,7 +180,7 @@ func imageBoxCSS(style soml.ImageStyle, elem *soml.Element) ([]string, error) {
 	// 자식 배치는 **박스**에 걸린다: 그림은 컨테이너의 자식이 될 수 있고(`<grid>`의 칸,
 	// `<row basis>`), flex/grid의 항목은 이 박스다 — 배치 선언을 `<img>`에 걸면 부모가 아는
 	// 항목과 선언이 붙은 요소가 어긋난다.
-	return appendPlacement(decls, elem.Placement())
+	return appendPlacement(appendSlot(decls, elem), elem.Placement())
 }
 
 // imageInkCSS는 `<img>`의 CSS 선언이다 — `fit` 다음에 외관이 온다.

@@ -1,0 +1,9 @@
+<!-- 두 번째 슬롯 레이아웃: two-column. 슬롯 어휘는 title·left·right이고 left/right는 둘 다
+     body 계열이되 idx가 다르다 (idx 1·2) — 한 phType이 idx로 갈라져 서로 다른 플레이스홀더가
+     되는지의 시험대다. 두 슬라이드가 서로 다른 슬롯 레이아웃을 쓰므로 마스터 sldLayoutIdLst와
+     Content_Types에 레이아웃 파트가 둘 붙는다 (slideLayout2=content, slideLayout3=two-column). -->
+<slide id="two-column-slots" layout="two-column">
+  <h1 slot="title">계획 대 실제</h1>
+  <p slot="left">계획: 세 개 팀을 하나로 통합한다.</p>
+  <p slot="right">실제: 두 개 팀을 통합하고 하나는 다음 분기로 이월했다.</p>
+</slide>

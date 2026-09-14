@@ -55,6 +55,23 @@ const (
 	// 담고(자식 텍스트를 흡수한다) 그림은 담을 것이 없으며, PPTX에서 `sp`와 `pic`은 다른
 	// 요소다 — 합쳐 두면 두 렌더러가 다시 이름으로 갈라야 한다.
 	KindImage
+	// KindTable은 `<table>`이다 (table.go). 별도 종류인 근거는 네 층의 산출이 전부 다르다는
+	// 것이다: PPTX에서 처음으로 `p:sp`도 `p:pic`도 아닌 `p:graphicFrame`+`a:tbl`이 되고,
+	// 잰 프레임 rect가 그래픽 프레임 `xfrm`이 되며(도형·그림처럼 재는 것과 도형이 일치),
+	// 웹은 진짜 `<table>`을 그린다. 리스트·레이아웃 컨테이너의 교차다 — 프레임은 도형이되
+	// 내부 격자는 잰 셀 박스에서 유도한다 (ADR 0036).
+	KindTable
+	// KindTableRow는 `<tr>`이다 (table.go). 도형이 되지 않는다 — `a:tr`로 프레임 안에
+	// 접힌다. 별도 종류인 근거는 KindListItem과 같다: 콘텐츠 모델(셀만 담는다)과 배치
+	// 규칙(<table>의 자식으로만)이 다르고, 리스트 컨테이너·레이아웃 컨테이너 어느 것과도
+	// 산출이 다르다 (자식 좌표도 남기지 않는다 — 행 높이만 프레임에 실린다).
+	KindTableRow
+	// KindTableCell은 `<th>`/`<td>`다 (table.go). 도형이 되지 않는다 — `a:tc`로 프레임 안에
+	// 접힌다. 텍스트를 담는 단일 프레임이라(`a:txBody` 하나) 콘텐츠 모델은 `<li>`와 같은
+	// modelInline이지만, 잰 셀 박스가 **좌표가 아니라 열 너비·행 높이로** 소비되는 것이
+	// `<li>`(측정만 되고 버려진다)와도 다르다 — 그래서 별도 종류다. 헤더·데이터 셀은 종류가
+	// 같고 외관 기본값만 갈라진다 (IsHeaderCell).
+	KindTableCell
 )
 
 // 종류별 이름 목록. **순서가 곧 진단 메시지와 문서의 순서다** — 맵이 아니라 슬라이스인
@@ -94,6 +111,11 @@ func buildElementKinds() map[string]ElementKind {
 	kinds[SpacerElement] = KindSpacer
 	kinds[ShapeElement] = KindShape
 	kinds[ImageElement] = KindImage
+	kinds[TableElement] = KindTable
+	kinds[TableRowElement] = KindTableRow
+	for _, name := range tableCellElements {
+		kinds[name] = KindTableCell
+	}
 	return kinds
 }
 

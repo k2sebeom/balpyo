@@ -1,7 +1,6 @@
 package soml
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -75,18 +74,37 @@ func (ds Diagnostics) HasErrors() bool {
 	return false
 }
 
-// Err은 에러가 있으면 전부를 줄바꿈으로 합친 error를, 없으면 nil을 돌려준다.
+// DiagnosticsError는 에러 심각도의 진단이 빌드를 멈췄음을 나타내는 error다. 상세 진단은
+// 이미 Diagnostics 목록에 있으므로, 이 목록을 따로 출력하는 호출자(예: CLI)는 이 에러를
+// 다시 통째로 찍는 대신 Count()로 요약만 낼 수 있다 — 그래야 진단이 두 번 나오지 않는다.
+type DiagnosticsError struct {
+	Errors Diagnostics // 에러 심각도의 진단만.
+}
+
+// Error는 에러 진단을 줄바꿈으로 합친다 — 목록을 따로 출력하지 않는 호출자를 위한 기본 형태다.
+func (e *DiagnosticsError) Error() string {
+	lines := make([]string, len(e.Errors))
+	for i, d := range e.Errors {
+		lines[i] = d.String()
+	}
+	return strings.Join(lines, "\n")
+}
+
+// Count는 빌드를 멈춘 에러 진단의 개수다.
+func (e *DiagnosticsError) Count() int { return len(e.Errors) }
+
+// Err은 에러가 있으면 *DiagnosticsError를, 없으면 nil을 돌려준다.
 func (ds Diagnostics) Err() error {
 	if !ds.HasErrors() {
 		return nil
 	}
-	lines := make([]string, 0, len(ds))
+	errs := make(Diagnostics, 0, len(ds))
 	for _, d := range ds {
 		if d.Severity == SeverityError {
-			lines = append(lines, d.String())
+			errs = append(errs, d)
 		}
 	}
-	return errors.New(strings.Join(lines, "\n"))
+	return &DiagnosticsError{Errors: errs}
 }
 
 // Strict는 경고를 에러로 승격한 새 목록을 돌려준다 (`--strict`).

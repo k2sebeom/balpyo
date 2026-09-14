@@ -1,0 +1,11 @@
+<!-- 겹침: stack으로 배경 위 배지 오버레이 -->
+<slide id="callout">
+  <h2>가장 큰 학습</h2>
+  <stack w="fill" h="320">
+    <shape type="rounded-rect" fill="gradient(#0F65F9 #7C3AED, 45deg)" radius="lg" w="fill" h="fill"/>
+    <text role="heading" color="bg" at="center">추천 채널이 CAC를 4배 낮췄다</text>
+    <shape variant="badge" type="rounded-rect" fill="bg" w="120" h="44" at="top-right" pad="xs">
+      <text color="accent1" align="center">NEW</text>
+    </shape>
+  </stack>
+</slide>
