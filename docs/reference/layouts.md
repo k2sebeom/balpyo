@@ -69,7 +69,16 @@
 
 슬롯 어휘와 phType/idx 매핑은 **soml이 소유하는 닫힌 카탈로그**다(`soml.LayoutSlots` — layout
 어휘와 같은 태도, 어휘 밖 슬롯은 `line:col`을 가진 빌드 에러). 시각 영역(`grid-area`)은 테마가
-소유한다. `minimal`은 `content`·`two-column`·`title`에 `*.slots.css`를 둔다.
+소유한다. `minimal`은 슬롯을 가진 **10종 전부**에 `layouts/<이름>.slots.css`를 둔다.
+
+**테마가 받아야 슬롯에 뜻이 있다.** 어휘에 있는 이름이라도 테마에 그 레이아웃의 슬롯
+영역(`layouts/<이름>.slots.css`)이 없으면 콘텐츠가 앉을 자리가 없다. 그때는 **경고 한 줄과
+함께 슬롯을 버리고** 그 슬라이드를 흐름 배치로 렌더한다 — 두 타깃 모두에서다
+([ADR 0044](../decisions/0044-slots-need-a-theme-and-vertical-rhythm-needs-an-owner.md)).
+판정이 값 층에 한 번만 있는 것이 계약이다: 렌더러가 각자 조건을 들었을 때 웹은 조용히 무효,
+PPTX는 `<p:ph>` 발행이 되어 같은 소스가 두 산출물에서 다른 그림이 됐다. 에러가 아니라 경고인 이유는 오타가 아니라
+**테마가 부족한 것**이고, 테마를 바꾸면 같은 소스가 그대로 뜻을 얻기 때문이다 (`--strict`가
+승격한다).
 
 | `layout` | 슬롯 (이름 → `p:ph` type[/idx]) |
 |---|---|
@@ -87,6 +96,25 @@
 
 `idx`가 없는 행(`title`·`ctrTitle`)은 `p:ph`에 `idx` 속성을 내지 않는다 (제목류의 관례).
 `layout="canvas"`처럼 슬롯이 없는 레이아웃에 `slot=`을 쓰면 빌드 에러다.
+
+## 세로 리듬은 누가 소유하는가
+
+가로 정렬처럼 세로 분배에도 소유자가 둘 있고, **모드가 그것을 가른다**
+([ADR 0044](../decisions/0044-slots-need-a-theme-and-vertical-rhythm-needs-an-owner.md)):
+
+| 모드 | 세로 리듬의 소유자 |
+|---|---|
+| 흐름 모드 | 저자 — [`<slide justify="between">`](soml/slide.md) 한 선언이 스테이지의 세로 분배다 |
+| 슬롯 모드 | 테마 — `layouts/<이름>.slots.css`의 `grid-template-rows`·`align-content` |
+
+흐름 스테이지는 세로 flex이므로 `justify`가 곧 세로축 분배이고, 값 어휘는 컨테이너
+(`<row>`·`<col>`)의 `justify`와 **같은 6종**이다: `start` · `center` · `end` · `between` ·
+`around` · `evenly`. 슬롯 모드 슬라이드에 `justify`를 쓰면 빌드 에러다 — 그 세로 리듬은
+테마의 몫이고, 두 소유자가 같은 축을 움직이면 어느 쪽이 이기는지 저자가 외워야 한다.
+
+이 채널이 없던 동안 저자는 슬라이드마다 `<col h="fill" justify="between">` 랩퍼를 손으로
+만들었고, **그 랩퍼 안의 자식은 슬라이드 직계 자식이 아니게 되어 `slot=`을 쓸 수 없었다** —
+세로 리듬과 슬롯이 서로를 배제한 것이 D17의 증상이다.
 
 ## 정렬은 누가 소유하는가
 

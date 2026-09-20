@@ -10,6 +10,7 @@
 | `layout` | 표준 카탈로그 11종 | `content` | 슬라이드의 배치 레이아웃 (아래) |
 | `id` | 문자열 | 파일명에서 유도 | 딥링크 앵커. 덱 전체에서 유일해야 한다 |
 | `skip` | 없음 · `true` · `false` | `false` | 참이면 이 슬라이드를 렌더에서 뺀다 |
+| `justify` | `start` · `center` · `end` · `between` · `around` · `evenly` | 없음 (위에서부터 쌓는다) | 흐름 모드 슬라이드의 **세로 분배** (아래) |
 
 - `id`를 생략하면 파일명에서 유도한다: 순서용 숫자 접두(`001_`, `010-`)를 떼고 확장자를
   뗀 나머지가 앵커가 된다 — `001_title.slide`는 `title`. 순서 접두가 앵커에 들어가지
@@ -71,6 +72,34 @@
 </slide>
 ```
 
+## `justify` 속성 — 세로 리듬
+
+흐름 모드 스테이지는 **세로 flex 컨테이너**이므로 `justify` 한 선언이 곧 세로 분배다. 값
+어휘는 컨테이너([`<row>`·`<col>`](layout.md))의 `justify`와 **같은 6종**이고, `flex-start`·
+`space-between` 같은 CSS 접두형은 받지 않는다 (진단이 접두 없는 이름을 알려 준다).
+
+```xml
+<slide id="summary" justify="between">
+  <h2>요약</h2>
+  <p>가운데 블록은 남은 공간이 나눠 준 자리에 앉는다.</p>
+  <p role="caption">아래 끝에 닿는다</p>
+</slide>
+```
+
+- **랩퍼를 지우는 것이 이 속성의 목적이다.** 이전에는 세로 리듬을 저자가 슬라이드마다
+  `<col h="fill" justify="between">`으로 만들었고, 그 랩퍼 안의 자식은 슬라이드 직계 자식이
+  아니게 되어 **`slot=`을 쓸 수 없었다** (슬롯은 직계 자식에만 실린다). 스테이지가 직접
+  분배하면 세로 리듬과 슬롯이 서로를 배제하지 않는다
+  ([ADR 0044](../../decisions/0044-slots-need-a-theme-and-vertical-rhythm-needs-an-owner.md)).
+- **슬롯 모드 슬라이드에서는 빌드 에러다** — 그 세로 리듬은 테마의 `*.slots.css`가 소유하고,
+  한 축에 소유자가 둘이면 어느 쪽이 이기는지 저자가 외워야 한다. 슬롯을 하나도 쓰지 않은
+  슬라이드에서 쓴다 ([`layout=` 페이지](../layouts.md)의 "세로 리듬은 누가 소유하는가").
+- `gap`·`align`은 `<slide>`에 열려 있지 않다. 스테이지의 간격(24px)과 가로 정렬은 각각 테마의
+  리듬과 [두 채널의 규칙](../layouts.md)이 소유한다 — 세로 분배만 저자에게 열린 이유는 그것이
+  랩퍼로 흉낼 수밖에 없던 유일한 채널이었다는 것이다.
+- **판정은 잰 좌표다**: `between`이면 첫 박스의 y가 콘텐츠 박스 위(64), 마지막 박스의 아래가
+  콘텐츠 박스 아래(656)에 닿고, 그 좌표가 그대로 PPTX `a:off`로 실린다.
+
 ## 예제
 
 `testdata/fixtures/01_text/slides/001_title.slide`:
@@ -120,12 +149,14 @@
 | 파일에 `<slide>`가 둘 이상 | `루트 요소 <slide>는 파일에 하나여야 한다 (슬라이드 하나가 파일 하나다)` |
 | 어휘 밖의 자식 태그 | `<slide>의 자식으로 <…>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <image>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)` |
 | 문자 데이터를 직접 썼다 | `<slide> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)` |
-| 어휘 밖의 속성 | `<slide>에 알 수 없는 속성 … (쓸 수 있는 속성: layout, id, skip)` |
+| 어휘 밖의 속성 | `<slide>에 알 수 없는 속성 … (쓸 수 있는 속성: layout, id, skip, justify)` |
 | `id`에 값이 없다 (`<slide id>`) | `id 속성에는 값이 필요하다 (id="architecture")` |
 | `id=""` | `id 속성이 비어 있다 (지우면 파일명에서 유도한다)` |
 | `skip` 값이 `true`/`false`가 아니다 | `skip 값은 true 또는 false다 (…)` |
 | `layout`에 값이 없다 (`<slide layout>`) | `layout 속성에는 값이 필요하다 (layout="canvas")` |
 | `layout=""` | `layout 속성이 비어 있다 (지우면 content로 계속한다)` |
+| `justify`에 값이 없다 (`<slide justify>`) | `justify 속성에는 값이 필요하다 (justify="between")` |
+| `justify=""` | `justify 속성이 비어 있다 (지우면 위에서부터 쌓는다)` |
 
 값 층·검증기(`core`)가 내는 진단 — 어휘와 파일을 넘어야 알 수 있는 것. `layout`의 값
 어휘(테마와 함께 자란다)는 파서가 아니라 이 층이 본다:
@@ -134,4 +165,7 @@
 |---|---|
 | 어휘 밖의 `layout` 값 | `알 수 없는 layout "titel" (쓸 수 있는 layout: title, section-divider, content, two-column, image-full, image-text, quote, code, stat, canvas, end)` |
 | 레이아웃에 없는 `slot` 이름 | 레이아웃마다 허용 슬롯이 다르다 — [`layout=` 페이지](../layouts.md)의 슬롯 표 |
+| 어휘 밖의 `justify` 값 | `알 수 없는 justify "middle" (쓸 수 있는 값: start, center, end, between, around, evenly)` |
+| CSS 접두형 `justify` 값 | `justify는 접두 없는 이름을 쓴다 — "space-between" 대신 "between"` |
+| 슬롯 모드 슬라이드의 `justify` | `슬롯 모드 슬라이드에는 justify를 쓸 수 없다 (세로 리듬은 테마의 content.slots.css가 소유한다) — 슬롯을 쓰지 않는 슬라이드에서 쓴다` |
 | 두 슬라이드의 ID가 같다 | `슬라이드 ID "…"가 …와 충돌한다 (id 속성으로 구분한다)` |

@@ -17,7 +17,7 @@
 
 지금 구현된 어휘와 표면:
 
-- 태그: [`<slide>`](soml/slide.md) (`layout`·`id`·`skip`), [`<text>`](soml/text.md)
+- 태그: [`<slide>`](soml/slide.md) (`layout`·`id`·`skip`·`justify`), [`<text>`](soml/text.md)
   (`role`·`variant`·`size`·`color`·`align`·`anchor` + 가로 크기 `w`·`min-w`·`max-w` +
   배치 속성), [`<note>`](soml/note.md),
   [텍스트 서브셋](soml/text-subset.md) (`h1`~`h3`, `p`, `ul`/`ol`/`li`, `blockquote`,
