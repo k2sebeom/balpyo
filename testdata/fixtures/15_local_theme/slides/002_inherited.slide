@@ -1,0 +1,28 @@
+<!-- 물려받은 것이 여기 다 있다. 이 슬라이드의 배치는 corp가 손대지 않은 content.slots.css고
+     (제목 위, 본문 아래), `heading`·`body`·`caption` 역할과 `lead` variant도 minimal의 표에서
+     온다 — corp는 `title` 하나만 다시 적었기 때문이다.
+
+     `tagline`은 반대쪽 증인이다: 부모에 없던 이름이라 부모 순서 뒤에 붙었고(kicker · lead ·
+     tagline) 그래서 저자가 쓸 수 있는 variant가 되었다 — variant 어휘는 테마의 사유물이다
+     (ADR 0044).
+
+     도형 하나가 **필드 단위 병합**을 보인다: corp의 components.json에는 `shape.default`의
+     fill(연보라 surface)과 반경(corp가 더한 `xl` = 36px)만 있고, 테두리는 적히지 않아 minimal의
+     `1 solid muted`가 남았다. 이름 붙은 표가 통째로 갈리는 것과 이름 없는 절이 필드로 갈리는
+     것의 차이가 한 도형에 보인다 (ADR 0054의 결정 8). 반경이 새 토큰인 것도 증인이다 —
+     색과 달리 반경·공간·그림자는 PPTX 슬롯에 묶이지 않아 자유롭게 더할 수 있다 (ADR 0055). -->
+<slide id="local-theme-inherited" layout="content">
+  <text slot="title" role="heading">물려받은 값과 더한 값</text>
+  <col slot="body" gap="md">
+    <text variant="tagline">tagline은 corp가 더한 variant다.</text>
+    <text variant="lead">lead는 minimal의 것이고 그대로 쓴다.</text>
+    <shape type="rounded-rect" w="fill" h="150" pad="md">
+      <col gap="xs">
+        <text role="body">채움과 반경은 corp가 정했다.</text>
+        <text role="caption">테두리는 minimal의 기본값이 남았다.</text>
+      </col>
+    </shape>
+    <text role="caption">푸터는 가운데다 — corp가 자리만 갈아 끼웠다.</text>
+  </col>
+  <note>부분 선언은 부모를 지우지 않는다: 적지 않은 필드는 물려받는다.</note>
+</slide>

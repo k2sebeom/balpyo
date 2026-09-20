@@ -1,0 +1,655 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld name="local-theme-code">
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="text s2.0"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr>
+            <p:ph type="title"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="609600"/>
+            <a:ext cx="11411712" cy="445740"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="3510"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="2700" b="1">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="+mj-lt"/>
+                <a:ea typeface="+mj-ea"/>
+              </a:rPr>
+              <a:t>이름이 같은 것만 갈린다</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="pre s2.1"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr>
+            <p:ph type="body" idx="1"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="1283940"/>
+            <a:ext cx="11411712" cy="4495949"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="2250"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>// 테마 이름은 프로젝트의 어휘에서 풀린다: 내장 ∪ themes/이름/.</a:t>
+            </a:r>
+            <a:br/>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>func</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t> </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>loadThemeNamed</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>(fsys fs.FS, name </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>string</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>) (themePackage, </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>error</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>) {</a:t>
+            </a:r>
+            <a:br/>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>  chain, err := </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>readThemeChain</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>(fsys, name)</a:t>
+            </a:r>
+            <a:br/>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>  </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>if</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t> err != </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>nil</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t> {</a:t>
+            </a:r>
+            <a:br/>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>    </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>return</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t> themePackage{}, err</a:t>
+            </a:r>
+            <a:br/>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>  }</a:t>
+            </a:r>
+            <a:br/>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>  merged := chain[</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent4"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>0</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>]</a:t>
+            </a:r>
+            <a:br/>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>  </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>for</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t> _, child := </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>range</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t> chain[</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent4"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>1</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>:] {</a:t>
+            </a:r>
+            <a:br/>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>    merged = </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>mergeRawTheme</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>(merged, child)</a:t>
+            </a:r>
+            <a:br/>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>  }</a:t>
+            </a:r>
+            <a:br/>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>  </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>return</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t> </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0" i="0" u="none">
+                <a:solidFill>
+                  <a:schemeClr val="accent1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>buildThemePackage</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>(merged)</a:t>
+            </a:r>
+            <a:br/>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="Noto Sans Mono"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
+              </a:rPr>
+              <a:t>}</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="4" name="text s2.2"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr>
+            <p:ph type="body" idx="2"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="6008489"/>
+            <a:ext cx="11411712" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>병합은 원문 층에서 끝나고 검사는 그 결과에 한 번 돈다.</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="5" name="chrome footer"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="5494511" y="6248400"/>
+            <a:ext cx="1202978" cy="609600"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" anchor="ctr">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>2026 · 사내 발표</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="6" name="chrome pageNumber"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="11484322" y="6248400"/>
+            <a:ext cx="98078" cy="609600"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" anchor="ctr">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="r">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:fld id="{B9A1C0E4-6F3D-4A5B-8C7E-2D1F0A9B8C7D}" type="slidenum">
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>3</a:t>
+            </a:fld>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sld>

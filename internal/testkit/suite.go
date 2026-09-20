@@ -121,6 +121,21 @@ var fixtureDiffOptions = map[string]DiffOptions{
 	// inkBandSkipSlides에 행이 없다). 3.4%는 측정값에 앞 픽스처들과 같은 폭의 여유를 더한
 	// 값이다 (13_code의 2.85%→3.4%와 같은 태도).
 	"14_theme": {Channel: 32, MaxRatio: 0.034},
+	// 측정 최대 3.94% (슬라이드 3 003_code — P4.3). 이 픽스처는 앞의 두 잔차를 **한 덱에
+	// 겹쳐** 담는다: 13_code의 빽빽한 고정폭 코드 블록(줄마다 획 경계가 이중으로 세어진다)과
+	// 02_text_subset·14_theme의 스크립트 간격(한글 문장에 라틴 낱말이 박혀 있으면 LibreOffice가
+	// 그 경계마다 넣는 간격이 줄 오른쪽 전체를 밀고, 밀린 글자의 획이 양쪽에서 세어진다) —
+	// 이 덱의 글줄은 `tagline은 corp가 더한 variant다`처럼 거의 전부 그 모양이다. 테마 이름과
+	// 토큰 이름을 한글 문장에서 빼는 대신 그대로 두는 이유는 ADR 0053의 결정 5다 (픽스처는
+	// 회피하지 않는다 — 그 잔차가 known-differences의 증인이다). 세리프 제목도 같은 면적에
+	// 획을 더 세운다. 슬라이드 1은 1.27%, 2는 2.85%다.
+	//
+	// 구조는 이 비율이 아니라 0 오차 검사들이 판정한다: 좌표는 좌표 대조가
+	// (TestFixtureCoordinatesMatchGeometry — corp의 표지가 minimal과 다른 자리라는 사실이 거기서
+	// 확인된다), 줄 수와 폭은 잉크 띠 검사가 (세 장 모두 판정에 남아 있다 — inkBandSkipSlides에
+	// 행이 없다), 물려받은 값은 골든의 `clrScheme`·`fontScheme`·CSS 변수가 본다. 4.4%는 측정값에
+	// 앞 픽스처들과 같은 폭의 여유를 더한 값이다 (2.85%→3.4%, 3.53%→4.0%와 같은 태도).
+	"15_local_theme": {Channel: 32, MaxRatio: 0.044},
 }
 
 // slideDiffOptions는 **슬라이드 한 장**의 픽셀 비교 허용 오차다 (`<픽스처>/<슬라이드 id>`).

@@ -31,6 +31,19 @@ import (
 // 비교와 픽셀 비교는 일반 러너(TestFixtures)가 이미 돈다.
 const chromeFixtureName = "10_chrome"
 
+// chromeEnabledFixtures는 크롬을 **켜는** 픽스처 전부다 — 아래 골든 불변 검사
+// (TestChromeIsAbsentFromOtherFixtureGoldens)가 건너뛸 목록이고, 그래서 이 표에 이름을 더하는
+// 것이 "이 덱의 골든에 크롬이 있어도 된다"는 선언이다 (목록을 손으로 적어 두면 크롬이 엉뚱한
+// 픽스처에 새어 나간 것을 그 검사가 계속 잡는다).
+//
+//   - 10_chrome: 크롬 그 자체를 보는 픽스처 (ADR 0045) — 위 표들이 전수로 판정한다.
+//   - 15_local_theme: 프로젝트 로컬 테마가 부모의 크롬 선언을 **병합**하는 증인 (ADR 0054) —
+//     corp가 footer의 skipLayouts를 줄이고 pageNumber는 minimal의 선언을 물려받는다.
+var chromeEnabledFixtures = map[string]bool{
+	chromeFixtureName: true,
+	"15_local_theme":  true,
+}
+
 // chromeFixtureFooter는 픽스처 `balpyo.json`의 `footer` 값이다 — 모든 장이 같은 값을 받는다.
 const chromeFixtureFooter = "2026 Q3 · 내부용"
 
@@ -342,7 +355,7 @@ func chromeDivs(html, kind string) []string {
 // 골든에서만 확인할 수 있다.
 func TestChromeIsAbsentFromOtherFixtureGoldens(t *testing.T) {
 	for _, fixture := range Fixtures(t) {
-		if fixture.Name == chromeFixtureName {
+		if chromeEnabledFixtures[fixture.Name] {
 			continue
 		}
 		err := filepath.Walk(fixture.GoldenDir(), func(path string, info os.FileInfo, err error) error {
