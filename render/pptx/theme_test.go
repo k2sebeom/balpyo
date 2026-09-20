@@ -1,6 +1,7 @@
 package pptx
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -48,6 +49,44 @@ func TestClrSchemeFallbacks(t *testing.T) {
 		want := "<a:" + tc.slot + `><a:srgbClr val="` + tc.rgb + `"/></a:` + tc.slot + ">"
 		if !strings.Contains(xml, want) {
 			t.Errorf("clrScheme에 %q가 없다\n%s", want, xml)
+		}
+	}
+}
+
+// 내장 minimal 팔레트는 accent 여섯 자리를 **자기 색으로** 채운다 (P4.1 — D12). 위의 폴백
+// 기계는 그대로 남아 있지만(다른 테마는 강조색이 하나일 수 있다), 기본 테마에서 그 경로를
+// 타는 자리는 hlink/folHlink 둘뿐이다.
+//
+// 이 테스트가 합성 테마가 아니라 **로드된 테마**를 쓰는 이유: 여섯 자리가 같은 파랑이면
+// PowerPoint의 테마 색 편집 UI에 파랑 여섯 칸이 보이고, 저자가 accent3을 골라도 파랑이
+// 나온다 — 색의 위계를 만들 수 없다는 것이 D12의 내용 그 자체다. 값은 core의 팔레트
+// 테스트(TestMinimalAccentPalette)가 대비·색상·밝기로 지키고, 여기서는 그 표가 슬롯에
+// 그대로 앉는지를 본다.
+func TestClrSchemeMinimalFillsSixAccents(t *testing.T) {
+	deck := resolvedDeck(t, `<slide id="palette"><p>팔레트</p></slide>`)
+	xml, err := clrSchemeXML(deck.Theme)
+	if err != nil {
+		t.Fatal(err)
+	}
+	accents := []string{"0F65F9", "0E8174", "15803D", "B45309", "DC2626", "9333EA"}
+	seen := map[string]bool{}
+	for i, rgb := range accents {
+		slot := fmt.Sprintf("accent%d", i+1)
+		want := "<a:" + slot + `><a:srgbClr val="` + rgb + `"/></a:` + slot + ">"
+		if !strings.Contains(xml, want) {
+			t.Errorf("clrScheme에 %q가 없다\n%s", want, xml)
+		}
+		if seen[rgb] {
+			t.Errorf("%s의 색 %s가 앞 자리와 같다 — 여섯 자리가 같은 색이면 위계를 만들 수 없다", slot, rgb)
+		}
+		seen[rgb] = true
+	}
+	// 링크 두 자리만 빌린다 (표에 hlink/folHlink 토큰이 없다 — 어휘에 링크 색이 없으므로
+	// 강조색에서 빌리는 것이 가장 가까운 선택이다).
+	for _, slot := range []string{"hlink", "folHlink"} {
+		want := "<a:" + slot + `><a:srgbClr val="0F65F9"/></a:` + slot + ">"
+		if !strings.Contains(xml, want) {
+			t.Errorf("clrScheme의 %s가 accent1에서 빌리지 않았다\n%s", slot, xml)
 		}
 	}
 }
