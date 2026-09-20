@@ -3,7 +3,7 @@
   <h1 slot="title">지금 되는 것과 다음</h1>
   <col slot="left" gap="md">
     <text variant="kicker">동작한다</text>
-    <ul>
+    <ul size="20">
       <li>파싱에서 두 타깃까지 전 구간 — 웹 + 편집 가능한 네이티브 PPTX</li>
       <li>텍스트 서브셋 · 레이아웃 컨테이너 · 도형 12종 · 그림 · 겹침 · 그라디언트</li>
       <li>슬라이드 레이아웃 11종과 슬롯 — 슬롯은 PPTX에서 진짜 플레이스홀더가 된다</li>
@@ -12,7 +12,7 @@
   </col>
   <col slot="right" gap="md">
     <text variant="kicker">다음</text>
-    <ul>
+    <ul size="20">
       <li>표 렌더러와 차트 — 데이터를 담는 어휘 (표는 아직 문법까지만 있다)</li>
       <li>테마 여러 개와 색 팔레트 확장, 외부 테마 패키지</li>
       <li>합성 컴포넌트와 아이콘 — 반복 카드를 복사하지 않는다</li>
