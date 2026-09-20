@@ -40,6 +40,7 @@ nav:
       - guides/index.md
       - 시작하기: guides/getting-started.md
       - 배치 경고 읽기: guides/layout-warnings.md
+      - 테마 고르기·만들기: guides/theming.md
       - 알려진 차이: guides/known-differences.md
   - 내부 구조:
       - 아키텍처: internals/architecture.md
@@ -99,6 +100,7 @@ nav:
       - 0050 강조색 여섯은 재서 고른 팔레트다: decisions/0050-six-accents-are-a-measured-palette-not-a-ranking.md
       - 0051 하이라이팅은 토큰 스트림이다: decisions/0051-highlighting-is-a-token-stream-compiled-to-runs.md
       - 0052 테마 선택은 덱의 요청이다: decisions/0052-theme-selection-is-a-deck-request-and-there-is-no-fallback-theme.md
+      - 0053 가운데 정렬만 가로를 가져간다: decisions/0053-a-theme-takes-the-horizontal-channel-only-to-center.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |
