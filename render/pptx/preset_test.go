@@ -430,7 +430,8 @@ func TestRenderShapeWithLayoutBecomesBackdrop(t *testing.T) {
 	if got := strings.Count(xml, "<p:sp>"); got != 4 {
 		t.Fatalf("p:sp %d개, want 4개 (배경 1 + 자식 3)\n%s", got, xml)
 	}
-	if strings.Contains(xml, "p:grpSp") {
+	// `<p:grpSp>`로 좁혀 본다 — spTree 자신이 `p:grpSpPr`를 갖는다 (그룹 도형이 아니다).
+	if strings.Contains(xml, "<p:grpSp>") {
 		t.Errorf("배경 모드가 그룹이 되었다 — 자식 좌표 공간이 생긴다 (ADR 0049)\n%s", xml)
 	}
 	for _, want := range []string{

@@ -268,6 +268,16 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 		// `<row>` 하나를 더한 커밋의 diff에 도형 번호 전부가 잡음으로 실린다 — 노트가
 		// 없어도 rId2를 예약한 것과 같은 태도다 (slideRelBase).
 		*shapeID++
+		if soml.ShapeHoldsLayout(elem) {
+			// 배경 모드: 도형을 낸 **뒤에** 자식으로 내려간다 (ADR 0049). 위에서 낸 `p:sp`가
+			// 배경이고 — shapeBodyXML이 빈 문단만 냈다 — 자식은 자기 잰 좌표를 가진 **형제**
+			// 도형이 된다. `p:grpSp`가 아닌 근거는 좌표 공간이다: 그룹은 `chOff`/`chExt`로
+			// 둘째 좌표계를 만들어 "잰 rect가 곧 xfrm"을 깬다 (PRD §9.3).
+			//
+			// 순서가 이 방향인 것이 z-순서다 — 배경이 먼저 나가야 글자 아래에 칠해진다
+			// (웹의 문서 순서 규칙과 같은 결과: 그림이 흐름 뒤에 있다).
+			return writeChildShapes(b, deck, slide, elem, path, shapeID, g, rels)
+		}
 		return nil
 	}
 	switch kind {
@@ -276,13 +286,8 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 		// 자식이 없으니 도형 0개다 — 대비되는 선례는 빈 `<text>`가 도형을 내는 것이고
 		// (writeTextShape), 차이는 `<text>`가 저자의 콘텐츠라는 것이다.
 		//
-		// 깊이 우선 순회이므로 **문서 순서 = spTree 순서 = z-순서**가 중첩에서도 이어진다
-		// (shapesXML의 계약, 웹의 문서 순서 스택과 같은 규칙 — Iteration 6의 겹침이 이
-		// 순서 위에 선다).
-		for i, child := range elem.Children {
-			if err := writeShapeNode(b, deck, slide, child, web.ChildPath(path, i), shapeID, g, rels); err != nil {
-				return err
-			}
+		if err := writeChildShapes(b, deck, slide, elem, path, shapeID, g, rels); err != nil {
+			return err
 		}
 	case soml.KindSpacer:
 		// `<spacer/>`는 도형을 내지 않는다. 빈 박스이고 뜻은 "여기에 공간이 있다"이며, 그
@@ -293,6 +298,25 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 		// 웹 렌더러와 같은 이유로 멈춘다 (render/web.writeNode): 어휘에 태그를 추가하고 렌더
 		// 매핑을 잊으면 "파싱은 되는데 그려지지 않는" 조용한 실패가 된다.
 		return fmt.Errorf("%s:%s <%s>를 PPTX로 렌더하는 매핑이 없다", slide.Source, elem.Span, elem.Name)
+	}
+	return nil
+}
+
+// writeChildShapes는 자식들을 차례로 도형으로 쓴다 — **자식이 형제 도형이 되는 두 자리**가
+// 공유한다: 사라지는 레이아웃 컨테이너와, 남아서 배경이 되는 도형(ADR 0049).
+//
+// 깊이 우선 순회이므로 **문서 순서 = spTree 순서 = z-순서**가 중첩에서도 이어진다
+// (shapesXML의 계약, 웹의 문서 순서 스택과 같은 규칙 — Iteration 6의 겹침이 이 순서 위에
+// 선다). 좌표를 더하는 코드가 여기 없는 것이 "좌표 계산 0회"의 절반이다: 부모가 컨테이너든
+// 배경 도형이든 자식의 잰 rect는 이미 슬라이드 상대다.
+//
+// 빈 부모는 도형 0개다 (`<row></row>`·`<shape><col/></shape>`) — 배경 도형은 자기 `p:sp`를
+// 이미 냈으므로 그 경우에도 슬라이드에서 사라지지 않는다.
+func writeChildShapes(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, path []int, shapeID *int, g *geom.Geometry, rels *slideRels) error {
+	for i, child := range elem.Children {
+		if err := writeShapeNode(b, deck, slide, child, web.ChildPath(path, i), shapeID, g, rels); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -949,34 +973,41 @@ func shapeBodyXML(elem *soml.Element, style soml.ShapeStyle, rect geom.Rect, the
 	w(3, "<a:noAutofit/>")
 	w(2, "</a:bodyPr>")
 	w(2, "<a:lstStyle/>")
-	if len(elem.Children) == 0 {
+	if len(elem.Children) == 0 || soml.ShapeHoldsLayout(elem) {
 		// 자식 없는 도형(`<shape/>`)도 txBody를 갖는다 — CT_TextBody가 문단 하나 이상을
 		// 요구하므로(p+) 서식 없는 빈 문단이 스키마를 채운다 (li 없는 리스트와 같은 처리).
 		// 본문을 아예 내지 않는 길도 있었지만(txBody는 sp의 선택 자식이다) 그러면 저자가
 		// PowerPoint에서 그 도형에 글자를 넣을 때 서식이 뷰어 기본값에서 온다.
+		//
+		// **배경 모드가 같은 길을 지난다** (ADR 0049 결정 5): 자식이 형제 도형을 가졌으므로
+		// 이 본문에 실을 글자가 없고, 남은 것은 자식 없는 도형과 정확히 같은 상황이다 —
+		// 빈 문단 + `pad` 인셋 + 앵커. 인셋을 함께 남기는 것이 뜻이 있다: 저자가 PowerPoint에서
+		// 배경 도형에 글자를 더하면 카드의 패딩 안쪽에서 시작한다.
 		w(2, "<a:p/>")
-	}
-	for _, child := range elem.Children {
-		text, ok := child.(*soml.Element)
-		if !ok {
-			// 도형 직속 문자 데이터는 파서가 막는다 (modelElements) — 여기 도달했다면
-			// 파서를 거치지 않은 덱이므로 조용히 건너뛰지 않고 멈춘다.
-			return "", fmt.Errorf("<%s> 안에 요소가 아닌 노드 %T가 있다", elem.Name, child)
-		}
-		if text.Name != soml.TextElement && soml.KindOf(text.Name) != soml.KindBlock {
-			// 콘텐츠 모델상 도형의 자식은 텍스트 요소뿐이다 (파서의 children allowlist —
-			// soml.shapeChildren). 리스트·중첩 도형은 어휘가 닫혀 있고, 열리는 날 이
-			// 함수가 불릿 문단 조립과 만나야 한다.
-			return "", fmt.Errorf("%s <%s> 안의 <%s>를 PPTX로 렌더하는 매핑이 없다",
-				text.Span, elem.Name, text.Name)
-		}
-		textStyle := text.TextStyle()
-		if textStyle == nil {
-			return "", fmt.Errorf("%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
-				text.Span, text.Name)
-		}
-		if err := writeTextParagraph(w, text, *textStyle, theme, rels); err != nil {
-			return "", err
+	} else {
+		for _, child := range elem.Children {
+			text, ok := child.(*soml.Element)
+			if !ok {
+				// 도형 직속 문자 데이터는 파서가 막는다 (modelElements) — 여기 도달했다면
+				// 파서를 거치지 않은 덱이므로 조용히 건너뛰지 않고 멈춘다.
+				return "", fmt.Errorf("<%s> 안에 요소가 아닌 노드 %T가 있다", elem.Name, child)
+			}
+			if text.Name != soml.TextElement && soml.KindOf(text.Name) != soml.KindBlock {
+				// 흡수 모드에 남은 자식은 텍스트 요소뿐이다 (파서의 children allowlist —
+				// soml.shapeChildren이 여는 나머지는 컨테이너 넷이고, 그것이 하나라도 있으면
+				// 위 분기가 이 도형을 배경으로 돌린다). 여기 도달한 태그는 어휘와 렌더 매핑이
+				// 어긋난 것이다.
+				return "", fmt.Errorf("%s <%s> 안의 <%s>를 PPTX로 렌더하는 매핑이 없다",
+					text.Span, elem.Name, text.Name)
+			}
+			textStyle := text.TextStyle()
+			if textStyle == nil {
+				return "", fmt.Errorf("%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+					text.Span, text.Name)
+			}
+			if err := writeTextParagraph(w, text, *textStyle, theme, rels); err != nil {
+				return "", err
+			}
 		}
 	}
 	w(1, "</p:txBody>")
