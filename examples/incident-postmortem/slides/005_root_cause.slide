@@ -1,18 +1,18 @@
 <!-- 근본 원인: code 레이아웃의 슬롯 셋 (title·code·caption).
-     <pre lang="go">를 쓰려고 했는데 lang이 어휘에 없다 — 강조도, 언어 표시도 못 한다.
-     에러 메시지는 오타와 구별을 안 해 준다(마찰점). 그래서 주석으로 언어를 적는다.
-     들여쓰기도 손으로 고쳤다 — 원본은 gofmt 출력(탭)인데 탭 폭을 줄일 수단이 없어
-     세 번째 중첩이 x=350까지 밀렸다. 탭을 스페이스 두 칸으로 바꿔 붙였다 (마찰점). -->
+     `lang="go"`가 어휘에 있으므로 코드는 **gofmt 출력을 그대로** 붙인다 — 들여쓰기는 탭이고
+     (테마의 `code.tabSize`가 2칸으로 편다), 강조는 값 층이 토큰 스트림에서 만든다 (ADR 0051).
+     P2.4 전에는 이 슬라이드가 두 마찰점의 기록이었다: 언어를 어휘가 받지 않아 주석으로 적고,
+     탭 폭을 줄일 수단이 없어 스페이스 두 칸으로 손수 바꿔 붙였다. -->
 <slide id="root-cause" layout="code">
   <text slot="title" role="heading">근본 원인 — 만료가 한 시각에 몰렸다</text>
-  <pre slot="code">// 배포 때 캐시를 한 번에 채운다 — TTL이 전부 같은 시각이 된다.
+  <pre slot="code" lang="go">// 배포 때 캐시를 한 번에 채운다 — TTL이 전부 같은 시각이 된다.
 func warm(ctx context.Context, ids []string) error {
-  for _, id := range ids {
-    if err := cache.Set(ctx, key(id), load(id), 30*time.Minute); err != nil {
-      return err
-    }
-  }
-  return nil
+	for _, id := range ids {
+		if err := cache.Set(ctx, key(id), load(id), 30*time.Minute); err != nil {
+			return err
+		}
+	}
+	return nil
 }</pre>
   <text slot="caption" role="caption" color="muted">TTL에 지터가 없다. 30분 뒤 같은 초에 12만 키가 만료됐다.</text>
   <note>고정 TTL + 일괄 예열 = 스탬피드. 지터와 단일 비행(single-flight) 둘 다 없었다.</note>
