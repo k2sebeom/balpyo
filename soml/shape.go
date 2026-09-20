@@ -161,27 +161,62 @@ func ShapeAppearanceAttrs() []string {
 // 그래서 도형 어휘와 같은 항목에서 열린다.
 const AnchorAttr = "anchor"
 
-// shapeChildren은 `<shape>`의 자식 어휘다 (순서 = 진단 순서) — **텍스트 요소**다.
+// shapeChildren은 `<shape>`의 자식 어휘다 (순서 = 진단 순서) — **텍스트 요소와 레이아웃
+// 컨테이너 넷**이다. 둘이 섞이는 것도 유효하고, 어느 쪽이 왔는지가 도형의 **모드**를
+// 정한다 (ShapeHoldsLayout, ADR 0049): 텍스트뿐이면 글자가 도형의 `txBody`로 흡수되고,
+// 컨테이너가 하나라도 있으면 도형은 **배경**이 되고 자식은 잰 좌표의 형제 도형이 된다.
 //
-// 개수는 제한하지 않는다: 문법으로 개수를 세는 새 규칙을 만들지 않고, 자식 여럿은 PPTX에서
-// `txBody`의 **문단 여럿**으로 뜻을 갖는다 (render/pptx.writeListShape가 이미 여러 문단을
-// 한 도형에 담는 선례다).
+// 개수는 제한하지 않는다: 문법으로 개수를 세는 새 규칙을 만들지 않고, 자식 여럿은 흡수
+// 모드에서 `txBody`의 **문단 여럿**으로 뜻을 갖는다 (render/pptx.writeListShape가 이미 여러
+// 문단을 한 도형에 담는 선례다).
+//
+// 컨테이너만 열고 나머지 어휘는 **컨테이너를 거쳐** 오게 한 것이 ADR 0049 결정 4다. 리스트·
+// `<image>`·`<table>`·중첩 `<shape>`는 layoutChildren에 이미 있으므로 `<shape><col><ul>…`이
+// 새 매핑 없이 성립하고, 도형의 직속 자식 목록은 "흡수냐 배경이냐"만 가르는 좁은 판정으로
+// 남는다. 직속으로도 열면 같은 뜻을 두 갈래로 쓸 수 있게 되는데, 그 둘은 배치 규칙이 다르다
+// (컨테이너는 `gap`·`align`을 갖고 직속 자식은 갖지 않는다).
 //
 // 넣지 않은 것과 근거:
-//   - 리스트 컨테이너 — 도형 안 리스트는 불릿 문단 조립(listBodyXML)과 도형 `txBody` 조립을
-//     합치는 일이고, 그 합침은 어휘를 여는 것과 다른 크기의 작업이다.
-//   - 레이아웃 컨테이너·`<shape>` 중첩 — 도형 안에 배치를 넣는 것은 겹침(Iteration 6의
-//     `<stack>`)과 편집 단위(Iteration 9의 `<group>`)의 자리이고, "도형은 `txBody` 하나를
-//     갖는다"는 이번 매핑과 정면으로 부딪힌다.
-//   - `<image>` — 같은 근거다 (Iteration 5). 도형 안 그림은 PPTX에서 `sp` 안의 `pic`이
-//     아니라 도형의 `blipFill`이거나 그룹이고, 둘 다 이 매핑과 다른 것이다 — 그림 위에
-//     도형을 얹는 것은 `<stack>`의 자리다.
+//   - `<spacer/>` — 밀어내기는 flex 흐름 안에서만 뜻이 있다. 도형의 직속 자식에는 흐름이
+//     없다 (흡수 모드는 문단이고, 배경 모드에서 흐름을 만드는 것은 컨테이너다).
+//   - `<li>` — 리스트 컨테이너의 자식으로만 온다 (layoutChildren의 근거와 같다).
 //   - `<note>` — 콘텐츠가 아니라 슬라이드 메타데이터다 (layoutChildren의 근거와 같다).
 //
 // `<shape/>` 자기 닫힘은 그대로 유효하다 — void가 아니어도 자식 없는 태그로 닫힌다 (파서의
 // 기존 동작). PRD §7.6의 예제가 그 표기다.
 func shapeChildren() []string {
-	children := make([]string, 0, 1+len(blockElements))
+	children := make([]string, 0, 1+len(blockElements)+len(layoutContainerElements))
 	children = append(children, TextElement)
-	return append(children, blockElements...)
+	children = append(children, blockElements...)
+	return append(children, layoutContainerElements...)
+}
+
+// ShapeHoldsLayout은 도형이 **배경 모드**인지 말한다 — 직속 자식에 레이아웃 컨테이너가
+// 하나라도 있으면 참이다 (ADR 0049 결정 2·3).
+//
+// 모드 판정의 **단일 소유자**다: core의 측정 소비, render/web의 층 규칙, render/pptx의
+// 형제 순회가 모두 이 함수를 읽는다. 세 층이 각자 자식을 훑어 판정하면 "도형 하나가 한
+// 모드"라는 계약이 층마다 조금씩 갈라질 수 있고, 그 갈라짐은 두 타깃이 달라 보이는 것으로만
+// 드러난다 — 가장 늦게 보이는 실패다.
+//
+// **직속 자식만** 본다. 손자 컨테이너(`<shape><p>…</p></shape>` 안의 무엇)는 모드를 바꾸지
+// 않는다: 문단 안에 컨테이너가 올 수 없으므로 손자 컨테이너는 이미 다른 도형·컨테이너의
+// 자식이고, 그 조상의 모드가 그것을 소유한다. 빈 컨테이너(`<shape><col/></shape>`)도 참이다 —
+// 자식이 없는 것은 배치가 없는 것이 아니라 빈 배치이고, 도형은 빈 문단을 갖는 배경이 된다.
+//
+// nil은 거짓이다 (도형이 아닌 것을 묻는 호출자에게 분기를 강요하지 않는다).
+func ShapeHoldsLayout(elem *Element) bool {
+	if elem == nil || elem.Name != ShapeElement {
+		return false
+	}
+	for _, child := range elem.Children {
+		childElem, ok := child.(*Element)
+		if !ok {
+			continue
+		}
+		if KindOf(childElem.Name) == KindLayoutContainer {
+			return true
+		}
+	}
+	return false
 }
