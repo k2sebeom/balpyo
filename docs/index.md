@@ -6,16 +6,16 @@
 Hugo가 Markdown 콘텐츠를 테마로 렌더링하는 정적 사이트 생성기라면,
 balpyo는 SOML 슬라이드를 테마로 렌더링하는 **프레젠테이션 생성기**다.
 
-!!! note "현재 상태"
-    Iteration 5까지 구현되었다 — `<slide>`/`<text>`/`<note>`와 텍스트 서브셋,
-    레이아웃 태그(`<row>`/`<col>`/`<grid>`/`<spacer>`), `<shape>` 12종 + 외관 속성(단색),
-    그리고 `<image>`(프로젝트 안의 PNG·JPEG → 웹 `<img>` + 산출 에셋 / PPTX `pic` + 미디어
-    파트)까지 파싱 → 외관·배치 해석 → 웹 + 네이티브 PPTX 전 구간이 뚫려 있다.
-    최대 리스크였던 텍스트 메트릭은 측정으로 허용 오차가 확정되었고 (PRD §13-1), 도형
-    프리셋의 기하와 그림의 `fit` 크롭은 두 렌더의 요소별 픽셀 비교가 전수로 판정한다.
-    **지금 동작하는 것**은 [레퍼런스](reference/index.md)에
-    있다 — 이 문서의 나머지는 목표 명세이며 아직 전부 동작하지 않는다. 최신 진행 상황은
-    [TASKS.md](https://github.com/k2sebeom/balpyo/blob/main/TASKS.md)를 참고한다.
+!!! note "이 문서는 목표 명세다"
+    이 페이지는 제품 정의(PRD)이고 **아직 없는 어휘와 명령까지 함께** 적는다 — 아래 로드맵의
+    남은 iteration(`<arrow>`/`<line>`, `<group>`, 그라디언트, 합성 컴포넌트)과
+    `balpyo server`·`format`·`lsp`, PDF 타깃, 테마 워크플로우 명령이 그렇다.
+
+    **지금 동작하는 것의 목록은 한 곳에만 있다**: [레퍼런스](reference/index.md)의 "현재 상태".
+    여기에 같은 목록을 한 벌 더 두었더니 낡았으므로 이 문서는 세지 않고 가리킨다
+    ([ADR 0057](decisions/0057-docs-are-hand-written-but-closed-lists-are-read-from-them-by-a-test.md)).
+    실물로 보고 싶으면 아래 **예제 덱** 절의 명령을 그대로 돌린다. 진행 중인 항목은
+    [TASKS.md](https://github.com/k2sebeom/balpyo/blob/main/TASKS.md)에 있다.
 
 ---
 
@@ -350,8 +350,13 @@ my-theme/
 └── preview.html        # (자동 생성) 갤러리 프리뷰
 ```
 
-**공식 테마 3종은 바이너리에 내장된다** (`minimal`·`dark`·`paper`). `balpyo init` 직후
-아무 설치 없이 예쁜 결과가 나오도록 기본 경로에서 네트워크를 제거한다.
+**공식 테마는 바이너리에 내장된다** — 내장 셋(`minimal`·`editorial`·`ink`)이다. `balpyo init`
+직후 아무 설치 없이 예쁜 결과가 나오도록 기본 경로에서 네트워크를 제거한다. 자기 테마는
+프로젝트의 `themes/<이름>/`에 두고 `extends`로 내장 테마를 물려받는다
+([테마 패키지](reference/theme.md) · [테마 고르기·만들기](guides/theming.md)).
+
+아래 테마 워크플로우 명령은 **아직 없다** (지금 있는 것은 `balpyo.json`과 `themes/` 디렉토리
+둘이다).
 
 ```bash
 balpyo theme new my-theme      # 기본 테마 베이스로 스캐폴딩
@@ -439,6 +444,10 @@ balpyo build [--target html|pptx|pdf] [--out dist] [--theme …] [--mode native|
 balpyo theme new|dev|lint|pack|get …   # 테마 워크플로우
 balpyo version                         # 버전 + 감지된 브라우저 경로
 ```
+
+지금 있는 표면은 그중 일부다 — `init`·`build`·`check`·`watch`·`preview`·`version`이고,
+`build`의 타깃은 **웹과 PPTX 둘**이다 (`--mode`는 없다: 산출물은 언제나 네이티브 객체다).
+서브커맨드별 플래그와 종료 코드는 [CLI 레퍼런스](reference/cli.md)가 갖는다.
 
 ### 저작 품질 명령군
 
@@ -552,12 +561,38 @@ Docker 컨테이너 안에서 돌아 로컬과 CI가 같은 결과를 낸다.
 
 ---
 
+## 예제 덱
+
+주장을 읽는 것보다 덱을 보는 것이 빠르다. 저장소의 `examples/` 아래에 **사람이 쓴 덱 셋**이
+있고, 셋 다 게이트가 지킨다 — 두 타깃으로 빌드되고 **경고가 0건**이며 장수가 선언한 숫자와
+같아야 테스트가 초록이다 ([ADR 0056](decisions/0056-examples-are-gated-by-a-strict-build-not-by-goldens.md)).
+
+| 덱 | 장수 | 무엇을 보여 주는가 |
+|---|---|---|
+| [`examples/balpyo-intro`](https://github.com/k2sebeom/balpyo/tree/main/examples/balpyo-intro) | 12 | 이 도구 자체의 소개 덱 — 파이프라인 도형, `<table>`, 인용 레이아웃, 장마다 `<note>` |
+| [`examples/incident-postmortem`](https://github.com/k2sebeom/balpyo/tree/main/examples/incident-postmortem) | 10 | 장애 회고 — 타임라인, 영향 표, `lang="go"` 코드 블록, `layout="canvas"`의 손그림 막대 |
+| [`examples/quarterly-review`](https://github.com/k2sebeom/balpyo/tree/main/examples/quarterly-review) | 6 | 분기 리뷰 — KPI 카드 그리드, `<table>`, `<stack>` 콜아웃 |
+
+```bash
+git clone https://github.com/k2sebeom/balpyo && cd balpyo
+go run ./cmd/balpyo build --project examples/quarterly-review --target html,pptx --strict
+ls examples/quarterly-review/dist/     # index.html + <덱 제목>.pptx
+```
+
+산출물은 웹 `index.html` 하나와 PPTX 하나다 (PPTX 파일 이름은 덱 제목에서 온다). 같은 덱을
+다른 테마로 보려면 `--theme editorial`을 더한다 — **슬라이드는 한 줄도 고치지 않는다.**
+예제는 어휘의 마찰점을 일부러 밟기도 하므로(그래서 게이트의 값이 있다) 처음 쓰는 출발점으로는
+`balpyo init`이 낫다 ([시작하기](guides/getting-started.md)).
+
+---
+
 ## 더 읽을 것
 
 | 문서 | 내용 |
 |---|---|
 | [레퍼런스](reference/index.md) | 태그·외관·CLI 레퍼런스 — 구현된 것만 담는다 |
 | [가이드](guides/index.md) | 사용자 시나리오별 안내 |
+| [`examples/`](https://github.com/k2sebeom/balpyo/tree/main/examples) | 덱 셋(12·10·6장) — 위의 **예제 덱** 절이 빌드하는 방법을 적는다 |
 | [아키텍처](internals/architecture.md) | 파이프라인, 패키지 경계, 덱 모델, 두 렌더러 |
 | [테스트 환경](internals/testing.md) | Docker 이미지, make 타깃, 골든·픽셀 비교 규칙 |
 | [설계 결정](decisions/index.md) | 구현 중 확정한 ADR 색인 |
