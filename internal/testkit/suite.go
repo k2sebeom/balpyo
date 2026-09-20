@@ -37,10 +37,12 @@ func (s *Suite) Run(t *testing.T) {
 	t.Helper()
 	for _, fixture := range Fixtures(t) {
 		t.Run(fixture.Name, func(t *testing.T) {
+			// 브라우저가 없는 호스트에서는 Build가 먼저 건너뛴다 (지오메트리 패스 없이는
+			// 골든도 나오지 않는다 — Fixture.Build).
 			result := fixture.Build(t)
 			fixture.AssertGolden(t, result)
-			// 렌더 비교는 외부 도구가 필요하다. 별도 서브테스트로 두면 도구가 없는 로컬에서
-			// 이 부분만 건너뛰고 골든 비교는 그대로 돈다.
+			// 렌더 비교는 LibreOffice까지 필요하다. 별도 서브테스트로 두면 브라우저는 있고
+			// LibreOffice만 없는 로컬에서 이 부분만 건너뛰고 골든 비교는 그대로 돈다.
 			t.Run("render", func(t *testing.T) { s.CompareRenders(t, fixture, result) })
 		})
 	}

@@ -65,8 +65,15 @@ func Fixtures(t testing.TB) []Fixture {
 
 // Build는 픽스처를 두 타깃 모두로 빌드한다. 산출물은 임시 디렉토리에 쓰므로 픽스처
 // 디렉토리는 입력 전용으로 남는다 (골든만 사람이 커밋한다).
+//
+// 빌드 자체가 브라우저를 필요로 한다 — 지오메트리 패스가 박스를 재지 못하면 골든도 나오지
+// 않는다. 그래서 도구 정책을 여기서 먼저 적용한다: 브라우저가 없으면 이미지 안에서는
+// 실패하고(Strict), 도구 없는 호스트에서는 건너뛴다. 이 줄이 없으면 호스트의
+// `make test-host`가 픽스처마다 "브라우저를 찾을 수 없다"로 **죽는다** — 건너뛰기로
+// 약속된 자리에서 빨간불이 나므로 호스트의 빠른 되풀이가 쓸 수 없게 된다.
 func (f Fixture) Build(t testing.TB) *pipeline.Result {
 	t.Helper()
+	RequireChromium(t)
 	result, err := pipeline.Build(pipeline.Options{
 		ProjectDir: f.Dir,
 		Targets:    []render.Target{render.TargetHTML, render.TargetPPTX},
