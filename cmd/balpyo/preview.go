@@ -30,6 +30,7 @@ func runPreview(args []string, stdout, stderr io.Writer) error {
 	targetList := fs.String("target", defaultPreviewTargets, "검수할 렌더 (html, pptx — 쉼표로 여러 개)")
 	outDir := fs.String("out", "", "빌드 출력 디렉토리 (기본: balpyo.json의 outDir)")
 	projectDir := fs.String("project", ".", "프로젝트 루트")
+	theme := fs.String("theme", "", "테마 (기본: balpyo.json의 theme — 내장 테마만 받는다)")
 	strict := fs.Bool("strict", false, "경고를 에러로 승격한다")
 	galleryDir := fs.String("gallery", "", "검수 갤러리 디렉토리 (기본: <프로젝트>/"+preview.DefaultDirName+")")
 	if err := fs.Parse(args); err != nil {
@@ -47,6 +48,7 @@ func runPreview(args []string, stdout, stderr io.Writer) error {
 		Build: pipeline.Options{
 			ProjectDir: *projectDir,
 			OutDir:     *outDir,
+			Theme:      *theme,
 			Strict:     *strict,
 			// 검수는 배치를 **항상** 본다: 눈으로 볼 자리를 찾으러 온 사람에게 이미 숫자로 아는
 			// 넘침·이탈을 말하지 않을 이유가 없다 (브라우저는 어차피 떠 있다).

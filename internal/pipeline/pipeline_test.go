@@ -210,6 +210,44 @@ func TestLoadDeckRejectsUnknownTheme(t *testing.T) {
 	}
 }
 
+// TestLoadDeckThemeOptionOverridesConfig는 Options.Theme가 설정을 덮음을 못 박는다 (ADR 0052의
+// 결정 9 — `balpyo build --theme`의 값 경로). OutDir과 같은 태도다: 플래그는 설정의 한 값을
+// 이 실행에 한해 갈아 끼우고, 파일은 그대로 남는다.
+func TestLoadDeckThemeOptionOverridesConfig(t *testing.T) {
+	dir := newProject(t, map[string]string{
+		"balpyo.json":            `{"theme": "ink"}`,
+		"slides/001_title.slide": "<slide><h1>제목</h1></slide>",
+	})
+	deck, _, err := LoadDeck(Options{ProjectDir: dir, Theme: "editorial"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if deck.Theme.Name != "editorial" {
+		t.Errorf("deck.Theme.Name = %q, want editorial (옵션이 설정을 덮는다)", deck.Theme.Name)
+	}
+}
+
+// 옵션의 어휘 밖 이름은 **옵션을 가리키며** 멈춘다: 고칠 자리가 `balpyo.json`이 아니라 방금
+// 친 명령이므로, 진단이 설정 파일을 가리키면 사람이 없는 오타를 찾는다.
+func TestLoadDeckRejectsUnknownThemeOption(t *testing.T) {
+	dir := newProject(t, map[string]string{
+		"balpyo.json":            `{"theme": "ink"}`,
+		"slides/001_title.slide": "<slide><h1>제목</h1></slide>",
+	})
+	_, _, err := LoadDeck(Options{ProjectDir: dir, Theme: "corp"})
+	if err == nil {
+		t.Fatal("없는 테마인데 덱이 로드됐다")
+	}
+	if strings.Contains(err.Error(), "balpyo.json") {
+		t.Errorf("옵션의 오타를 설정 파일 탓으로 돌린다: %v", err)
+	}
+	for _, want := range []string{"theme", "corp", "minimal"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("에러가 %q를 말하지 않는다: %v", want, err)
+		}
+	}
+}
+
 func TestLoadDeckErrors(t *testing.T) {
 	tests := []struct {
 		name    string

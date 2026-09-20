@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/k2sebeom/balpyo/core"
 	"github.com/k2sebeom/balpyo/render"
@@ -29,6 +30,12 @@ type Options struct {
 	Targets []render.Target
 	// OutDir이 비면 설정의 outDir을 쓴다. 상대 경로는 ProjectDir 기준이다.
 	OutDir string
+	// Theme가 비지 않으면 설정의 theme를 덮는다 (ADR 0052의 결정 9 — `--theme`).
+	//
+	// 플래그가 있는 이유는 **한 덱을 두 테마로 보는 일**이 테마를 고르는 방법이라는 것이다:
+	// 설정을 고쳐 빌드하고 되돌리는 절차는 되돌리기를 잊는 순간 잘못된 테마를 커밋한다.
+	// 어휘 검사는 설정과 같은 목록을 보되 진단이 **플래그를 가리킨다** (LoadDeck).
+	Theme string
 	// Strict는 경고를 에러로 승격한다.
 	Strict bool
 	// CheckLayout은 배치 진단(geom.Diagnose)을 위해 **지오메트리 패스를 강제**한다.
@@ -95,6 +102,17 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 	stage, err := cfg.Aspect.Stage()
 	if err != nil {
 		return nil, nil, err
+	}
+	// 테마 옵션은 설정을 **읽은 뒤** 갈아 끼운다 (OutDir과 같은 자리): 아래 흐름은 cfg 하나만
+	// 보므로 덮어쓰기가 여기서 끝나야 값 층·렌더러가 두 출처를 알 필요가 없다. 어휘 검사를
+	// 여기서 다시 하는 이유는 진단이 가리킬 자리가 다르다는 것이다 — 설정의 오타는
+	// `balpyo.json`이고 이 오타는 방금 친 명령이다 (core.Config.Validate와 같은 목록·문구).
+	if opts.Theme != "" {
+		if !core.IsBuiltinTheme(opts.Theme) {
+			return nil, nil, fmt.Errorf("--theme: 알 수 없는 테마 %q (쓸 수 있는 테마: %s)",
+				opts.Theme, strings.Join(core.BuiltinThemes(), ", "))
+		}
+		cfg.Theme = opts.Theme
 	}
 
 	// 프로젝트 루트를 **한 fs.FS로** 본다: 슬라이드 수집과 에셋 해석의 경로 기준이 하나라는

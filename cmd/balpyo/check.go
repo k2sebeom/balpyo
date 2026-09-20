@@ -20,6 +20,9 @@ func runCheck(args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	projectDir := fs.String("project", ".", "프로젝트 루트")
+	// build와 같은 플래그다 (ADR 0052): 테마가 배치를 바꾸므로(editorial의 표지는 아래에 앉는다)
+	// 검사도 빌드가 볼 테마를 봐야 한다 — 두 명령이 다른 테마를 보면 CI의 판정이 거짓이 된다.
+	theme := fs.String("theme", "", "테마 (기본: balpyo.json의 theme — 내장 테마만 받는다)")
 	strict := fs.Bool("strict", false, "경고를 에러로 승격한다")
 	checkLayout := fs.Bool("check-layout", false, "배치도 검사한다 (넘침·스테이지 이탈·겹침 — 브라우저를 띄운다)")
 	if err := fs.Parse(args); err != nil {
@@ -32,6 +35,7 @@ func runCheck(args []string, stdout, stderr io.Writer) error {
 	// 나온다). 렌더 단계에서만 나는 실패는 `build`의 판정이다.
 	result, err := pipeline.Check(pipeline.Options{
 		ProjectDir:  *projectDir,
+		Theme:       *theme,
 		Strict:      *strict,
 		CheckLayout: *checkLayout,
 	})

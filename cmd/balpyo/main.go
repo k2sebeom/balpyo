@@ -84,11 +84,13 @@ build 옵션:
   --target html,pptx    렌더 타깃 (기본 html)
   --out dist            출력 디렉토리 (기본 balpyo.json의 outDir)
   --project .           프로젝트 루트
+  --theme ink           테마 (기본 balpyo.json의 theme — 내장 테마만 받는다)
   --strict              경고를 에러로 승격한다
   --check-layout        배치를 검사한다 (넘침·스테이지 이탈·겹침 — 브라우저를 띄운다)
 
 check 옵션:
   --project .           프로젝트 루트
+  --theme ink           테마 (build와 같다 — 테마가 배치를 바꾸므로 판정도 바뀐다)
   --strict              경고를 에러로 승격한다
   --check-layout        배치도 검사한다 (브라우저를 띄운다)
 
@@ -102,6 +104,7 @@ preview 옵션:
   --target html,pptx    검수할 렌더 (기본 html,pptx)
   --out dist            빌드 출력 디렉토리 (기본 balpyo.json의 outDir)
   --project .           프로젝트 루트
+  --theme ink           테마 (build와 같다 — 한 덱을 두 테마로 검수하는 방법이다)
   --gallery preview     검수 갤러리 디렉토리
   --strict              경고를 에러로 승격한다
 
@@ -116,6 +119,9 @@ func runBuild(args []string, stdout, stderr io.Writer) error {
 	targetList := fs.String("target", "", "렌더 타깃 (html, pptx — 쉼표로 여러 개)")
 	outDir := fs.String("out", "", "출력 디렉토리 (기본: balpyo.json의 outDir)")
 	projectDir := fs.String("project", ".", "프로젝트 루트")
+	// 테마 플래그가 설정을 덮는다 (ADR 0052) — 한 덱을 두 테마로 빌드해 견주는 것이 테마를
+	// 고르는 방법이고, 그때 `balpyo.json`을 고쳐 되돌리는 절차는 되돌리기를 잊게 만든다.
+	theme := fs.String("theme", "", "테마 (기본: balpyo.json의 theme — 내장 테마만 받는다)")
 	strict := fs.Bool("strict", false, "경고를 에러로 승격한다")
 	// pptx 타깃은 이미 재므로 배치 검사를 공짜로 받는다 — 이 플래그가 뜻을 갖는 자리는 html만
 	// 쓰는 저작 루프다. 기본을 끈 이유는 브라우저 기동이 빌드의 가장 큰 고정 비용이라는 것이다
@@ -131,6 +137,7 @@ func runBuild(args []string, stdout, stderr io.Writer) error {
 	opts := pipeline.Options{
 		ProjectDir:  *projectDir,
 		OutDir:      *outDir,
+		Theme:       *theme,
 		Strict:      *strict,
 		CheckLayout: *checkLayout,
 	}
