@@ -31,7 +31,7 @@
 | D9 | **오버플로 진단이 없다.** 글이 박스를 넘쳐도 빌드는 조용하고 열어봐야 안다 | **높음** | P1.1 | 닫힘 |
 | D10 | 페이지 번호·푸터·러닝 헤더가 없다 (`a:fld`/`slidenum` 미구현) | 중간 | P2.2 | **닫힘** (P2.2 — 번호·푸터. 러닝 헤더는 같은 `chrome` 어휘에 `kind`를 더하면 열린다) |
 | D11 | LibreOffice 렌더에서 문장부호 앞뒤에 **간격이 벌어져 보인다** (`선언으로 , 색과`). 웹에는 없다 | 중간 | P1.5 | **닫힘** (알려진 차이 — 뷰어의 CJK↔서양 자동 간격, 경계당 1/4 em. DrawingML로 끌 수 없다) |
-| D12 | accent 색이 **하나**라서 덱 전체가 한 가지 파랑이다. 강조의 위계를 만들 수 없다 | 중간 | P4.1 | 열림 |
+| D12 | accent 색이 **하나**라서 덱 전체가 한 가지 파랑이다. 강조의 위계를 만들 수 없다 | 중간 | P4.1 | **닫힘** (ADR 0050 — 강조색 여섯, 번호는 위계가 아니다) |
 | D13 | 예제·문서가 썩는다. **예제는 CI에서 빌드되지 않는다** | 중간 | P5.1 · P5.2 | 열림 |
 | D14 | **`<text>`에 `w`/`h`가 없다.** canvas 라벨은 자기 내용만큼만 넓어서 `align="center"`가 기댈 폭이 없다 — 라벨마다 보이지 않는 도형(`fill="none" border="none" w="140"`)으로 감쌌다. 라벨 10개가 태그 20개가 됐다 | **높음** | P1.3 · P2.5 | P1.3 닫힘 (ADR 0043) · `<chart>`는 P2.5 |
 | D15 | `<pre>`에 **`lang`도 탭 폭도 없다.** gofmt 출력(탭)이 중첩 세 번에 x=350까지 밀려서 탭을 스페이스 두 칸으로 손으로 바꿨다 | 중간 | P2.4 | 열림 |
@@ -65,6 +65,7 @@
 | P3.1 `balpyo watch` — 핫 리로드 (D8) | 폴링(250ms) + "스캔이 같아진 뒤 빌드"로 저장 한 번 = 빌드 한 번. `build`와 **같은 파이프라인·같은 출력 디렉토리**를 쓰고 리로드 클라이언트는 **응답 바이트에만** 주입한다(디스크는 배포본 그대로). 실패한 빌드는 산출물을 건드리지 않아 마지막 성공본 위에 진단 오버레이가 뜨고, 터미널에는 `build`와 같은 규칙으로 요약 한 줄이 간다. 측정이 필요한 감시는 브라우저 **하나**를 계속 쓴다 | [ADR 0046](docs/decisions/0046-watch-polls-the-project-and-injects-its-reload-client.md), `internal/watch`(스캐너·서버·루프) · `cmd/balpyo/watch_test.go`(응답에 있고 디스크에 없다) · `TestRunnerReusesOneWarmBrowser`(세션 동일성 · 0.61초), `docs/reference/cli.md#balpyo-watch` · `docs/guides/getting-started.md` |
 | P3.2 `balpyo preview` — 검수 갤러리 (D8) | 래스터화(PPTX → PDF → PNG)·픽셀 diff·갤러리 문서를 `internal/preview`가 소유하고 `make review`와 사용자 명령이 **그것을 함께 쓴다** (테스트가 보는 그림과 사람이 보는 그림이 달라지지 않는다). 하네스에 남는 것은 **테스트 정책**뿐이다 — 건너뛰기/실패, 픽스처별 오차 조정표("이 슬라이드는 달라야 정답이다"까지 든 표). 그 표가 사용자 덱에는 없으므로 `preview`는 **게이트가 아니다**: 오차를 넘어도 코드 0이고, 1은 검수할 것이 안 만들어졌을 때만이다. 도구가 없으면 빌드 전에 멈춘다 | [ADR 0047](docs/decisions/0047-review-gallery-lives-in-internal-preview.md), `internal/preview`(`Run`·래스터라이저·갤러리) · `raster_pptx_test.go`(장수 · 스테이지 크기 · 재실행 0 픽셀 차) · `cmd/balpyo/preview_test.go`(경로를 찍는다 · 한 열 갤러리 · 도구 없음은 빌드 전에), `04_shape` 실물 확인(슬라이드 4장이 기본 2.5% 초과, 종료 코드 0), `docs/reference/cli.md#balpyo-preview` |
 | P3.3 `balpyo init` · `balpyo check` — 첫 덱과 CI 입구 | `init`은 자기 덱을 **소유한다**(`internal/scaffold`의 임베드 템플릿 3장) — `examples/`는 마찰점을 일부러 밟는 회귀 테스트라 출발점이 못 된다. 계약은 파일 목록이 아니라 **다음 명령의 성공**이다: 스캐폴딩 덱이 `build --target html,pptx --check-layout --strict`를 경고 0으로 통과한다. `--force`는 없고(덮어쓸 대상이 저자의 원고다) 내장 아닌 `--theme`은 거부한다(`balpyo.json`의 `theme`을 아직 아무도 읽지 않는다 — P4.2). `check`는 **쓰지 않는 `build`**다: 같은 코드로 판정하고, 종료 코드도 같고(경고는 0을 타고 나간다), 출력 디렉토리를 만들지도 않는다 | [ADR 0048](docs/decisions/0048-init-owns-its-deck-and-check-is-build-without-writing.md), `core.BuiltinThemes`(어휘 단일 출처) · `internal/scaffold` · `pipeline.Check` · `cmd/balpyo/init_test.go`(`init`→`--strict` 빌드) · `check_test.go`(디렉토리 목록이 그대로 · `dist/`가 생기지도 않는다), 스캐폴딩 덱 `preview` 실물 확인(3장 0.625%/1.772%/0.581%), `docs/reference/cli.md#balpyo-init` · `#balpyo-check` · `docs/guides/getting-started.md` |
+| P4.1 accent 팔레트 확장 (D12) | 강조색이 **여섯**이고, 눈이 아니라 **세 수치**가 고른 값이다 — `bg` 대비 4.5:1↑(대비율이 대칭이라 글자색과 면색을 한 수치로 보장한다) · 서로 색상 25°↑ · 휘도 한 띠(≤1.25). 실측 4.76~5.38 · 26° · 1.18이고, 그 규칙을 주석이 아니라 **테스트가 소유한다**. `clrScheme`에서 accent1을 빌려 가던 다섯 자리가 자기 색을 갖고(빌리는 자리는 링크 둘뿐) 폴백은 강조색 하나짜리 **다른** 테마를 위해 남는다. 번호는 위계가 아니라 색상환의 이웃 순서이고, **위계는 덱이 만든다** | [ADR 0050](docs/decisions/0050-six-accents-are-a-measured-palette-not-a-ranking.md), `core/palette_test.go`(WCAG 상대 휘도 · 대비 · 색상 간격 전수) · `core/theme_package_test.go`(값 드리프트) · `render/pptx.TestClrSchemeMinimalFillsSixAccents`(로드된 테마의 여섯 슬롯이 서로 다르다) · `12_palette`(2장 — 견본 여섯 + 변형/그라디언트, `TestPaletteFixtureBindsSixAccentSlots`, 슬라이드 파트에 리터럴 `srgbClr` 0건), `examples/incident-postmortem`을 **세 색**으로 다시 칠했다(피해=`accent5` · 우리가 늦은 곳=`accent4` · 대응=`accent3`, 파랑 0건 · 두 래스터 실물 확인), `docs/reference/theme.md`(표준 토큰 어휘 + 팔레트 규칙) · `appearance.md` |
 | D19 문서가 어휘를 숨긴다 | `slide.md`(11종 표 + 실제 진단 문구) · `reference/index.md`(`layouts.md`는 구현됨) · `text.md`(속성 목록 + `<text>`에 `w`/`h`가 없다는 것) | `make docs --strict`, 커밋 `cc8239f` |
 
 ---
@@ -322,7 +323,8 @@
 ### P2.4 코드 블록: `lang`과 탭 (D15 · D16) ← **지금 여기**
 소프트웨어를 설명하는 덱은 코드를 띄운다. P0.1이 끝나 이제 의미가 있다.
 - [ ] **선결정 ADR**: 토크나이저를 어디에 둘지(Go 라이브러리 vs 내장 최소 문법), 색은 **테마
-      토큰**으로만(P4.1과 물린다), 지원 언어 1차 집합.
+      토큰**으로만(P4.1이 닫혀 강조색 여섯이 있다 — 번호는 위계가 아니므로 토큰 번호와 코드
+      토큰 종류의 대응을 이 ADR이 정한다), 지원 언어 1차 집합.
 - [ ] RED: 토큰 → 웹 `span` + PPTX **런 분할**(`a:r` 여러 개, 색은 `schemeClr` 참조) 어서션.
 - [ ] GREEN: `pre lang="…"` 속성 + 렌더.
 - [ ] **D15**: 탭 처리도 같이 정한다 — 저자가 손으로 스페이스로 바꾸지 않아도 되게 `tab-size`
@@ -332,12 +334,26 @@
       "알 수 없는 속성"이다. (`lang`을 구현하면 이 목록의 첫 줄이 지워진다.)
 - [ ] DOC: `docs/reference/soml/text-subset.md`의 `pre` 절.
 
-### P4.1 accent 팔레트 확장 (D12)
-- [ ] RED: `accent1..6` 픽스처 + 토큰 → PPTX `clrScheme` 12슬롯 매핑 + 색 변형·그라디언트가 새
-      accent에서도 **참조를 보존**하는지.
-- [ ] GREEN: `tokens.json` 팔레트 확장 + 테마 파트 컴파일.
-- [ ] REVIEW: 예제 덱을 2~3색 위계로 다시 칠해 본다.
-- [ ] DOC: `docs/reference/theme.md` 표준 토큰 어휘.
+### P4.1 accent 팔레트 확장 (D12) — **닫힘** (ADR 0050)
+**순서를 바꿔 P2.4보다 먼저 했다.** P2.4의 선결정이 "코드 색은 **테마 토큰**으로만"이고 그
+토큰이 강조색이다 — 팔레트가 하나인 동안 하이라이팅을 정하면 키워드·문자열·주석이 같은 파랑의
+농담이 되고, 그 결정을 팔레트가 여섯이 된 뒤 다시 해야 한다. 되돌리기 비싼 쪽을 먼저 둔다.
+- [x] RED: `12_palette` 픽스처 2장(견본 여섯 + `shade`/`tint`/`alpha`·두 강조색 그라디언트·
+      강조색 글자) + `core/palette_test.go`(팔레트 규칙의 소유자 — 대비·색상·휘도 전수) +
+      `render/pptx`의 로드된 테마 `clrScheme` 여섯 슬롯. 새 accent에서도 참조가 보존되는지는
+      기존 판정이 그대로 받는다(`TestFixtureGoldenSlideColorsKeepTokenReferences` — 슬라이드
+      파트의 리터럴 `srgbClr` 전수 표).
+- [x] GREEN: `tokens.json`에 `accent2..6`(각자 자기 `slot`/`ref`) + 고른 규칙을 파일에 적는
+      `$comment-accent`. 테마 파트 컴파일은 **손대지 않았다** — 표가 여섯을 주면 여섯이 실린다
+      (폴백은 강조색 하나짜리 다른 테마를 위해 남는다).
+- [x] REVIEW: `examples/incident-postmortem`을 **세 색 위계**로 다시 칠했다 — `accent5`=장애가
+      낸 값 · `accent4`=우리가 늦은 곳(탐지) · `accent3`=우리가 한 것과 할 것. 색마다 뜻이
+      하나이고 덱의 규칙을 표지 주석이 적는다. 파랑은 이 덱에서 0건이 된다(강조색이 하나였을 때
+      "중요함"을 뜻했던 흔적이다). `build -target html,pptx -check-layout -strict` 경고 0이고,
+      네 슬라이드를 웹/PPTX 두 래스터로 견줘 위계가 같게 읽히는 것을 확인했다.
+- [x] DOC: `docs/reference/theme.md`에 **`tokens.json` — 표준 토큰 어휘** 절(다섯 범주가 채워야
+      하는 이름 · 색 토큰 네 필드와 슬롯 규칙 · **강조색 여섯의 규칙** 표) + `appearance.md`의
+      색 표에 여섯과 대비 수치, `shape.md`·`text.md`의 진단 토큰 목록. `make docs --strict` 초록.
 
 ### P4.2 테마 선택 · 다중 내장 테마
 - [ ] RED: `balpyo.json`의 `theme` 필드가 로더 선택을 바꾸는 테스트, 없는 테마 에러, 같은 덱이
@@ -402,8 +418,9 @@
 - [x] **한 명령으로 검수한다**: `balpyo watch`가 저장마다 탭을 새로고침하고(P3.1),
       `balpyo preview`가 웹·PPTX·diff를 나란히 놓은 갤러리를 한 줄로 만든다(P3.2). PPTX 렌더에는
       도구 둘(`soffice`·`pdftoppm`)이 필요하고 없으면 빌드 전에 그렇게 말한다
-- [ ] **덱이 덱처럼 생겼다**: 페이지 번호·푸터는 켤 수 있다 (P2.2 닫힘 — 번호는 뷰어가 다시
-      세는 `a:fld`다). 색 위계는 아직 accent 하나다 (P4.1)
+- [x] **덱이 덱처럼 생겼다**: 페이지 번호·푸터는 켤 수 있다 (P2.2 — 번호는 뷰어가 다시 세는
+      `a:fld`다). 강조색은 재서 고른 여섯이고 번호가 위계를 만들지 않아, 덱이 색 둘~셋에 뜻을
+      하나씩 주는 위계를 세울 수 있다 (P4.1 — 회고 덱이 그 예다)
 - [ ] **예제가 썩지 않는다**: CI가 모든 예제를 경고 0으로 빌드한다 (P5.1)
 
 ---
@@ -424,5 +441,6 @@
 | 검수 갤러리의 소유자 · `preview`가 게이트가 아닌 이유 | P3.2 | ADR 0047 (엔진은 `internal/preview`, 오차 표는 테스트 정책 — 그래서 코드 0) |
 | `init`이 쓰는 덱의 소유자 · `check`가 얼마나 `build`여야 하는가 | P3.3 | ADR 0048 (덱은 `internal/scaffold`가 소유하고 3장, 덮어쓰지 않는다 · `check`는 쓰지 않는 `build`이고 종료 코드가 같다) |
 | 도형이 컨테이너를 자식으로 받을 때의 좌표·매핑 | P2.3 | ADR 0049 (도형은 배경 `p:sp` 하나, 자식은 절대 좌표 **형제** — 그룹이 아니다 · 모드는 도형마다) |
+| 강조색을 몇 개 · 어떻게 고르는가 · 번호가 위계인가 | P4.1 | ADR 0050 (여섯 · 세 수치가 고른다(테스트가 규칙을 소유) · 번호는 색상환의 이웃 순서이고 위계는 덱이 만든다) |
 | 코드 하이라이팅 토크나이저와 색 토큰 · 탭 처리 · "예정된 속성" 진단 | P2.4 | 대기 |
 | 차트: 네이티브 `c:chart` vs 도형 합성 | P2.5 | 대기 |
