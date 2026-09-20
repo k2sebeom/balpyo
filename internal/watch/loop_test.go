@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/k2sebeom/balpyo/internal/pipeline"
+	"github.com/k2sebeom/balpyo/internal/testkit"
 	"github.com/k2sebeom/balpyo/render"
 	"github.com/k2sebeom/balpyo/render/geom"
 	"github.com/k2sebeom/balpyo/render/web"
@@ -154,6 +155,43 @@ func TestRunnerDoesNotRebuildOnItsOwnOutput(t *testing.T) {
 	time.Sleep(20 * DefaultTestInterval)
 	if got := runner.Server().Status().Generation; got != 1 {
 		t.Errorf("가만히 둔 프로젝트가 %d세대까지 빌드했다 — 루프가 스스로를 먹는다", got)
+	}
+}
+
+// 재는 루프는 브라우저 **하나**를 계속 쓴다 (ADR 0046).
+//
+// 기동이 지오메트리 패스 비용의 대부분이므로(~0.6초) 빌드마다 다시 띄우면 `--check-layout`을 켠
+// 감시는 저장마다 그 값을 내고, 그러면 저자는 검사를 끈다 — 이 테스트가 그 회귀를 잡는다.
+func TestRunnerReusesOneWarmBrowser(t *testing.T) {
+	testkit.RequireChromium(t)
+	root := t.TempDir()
+	writeFile(t, root, "slides/001_a.slide", watchSlide)
+	runner, err := New(Options{
+		Build: pipeline.Options{
+			ProjectDir:  root,
+			Targets:     []render.Target{render.TargetHTML},
+			CheckLayout: true,
+		},
+		Interval: DefaultTestInterval,
+		Log:      io.Discard,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(runner.Close)
+
+	if status := runner.Build(); !status.OK {
+		t.Fatalf("첫 빌드가 실패했다: %+v", status)
+	}
+	live := runner.session.live
+	if live == nil {
+		t.Fatal("--check-layout 빌드가 브라우저를 띄우지 않았다")
+	}
+	if status := runner.Build(); !status.OK {
+		t.Fatalf("두 번째 빌드가 실패했다: %+v", status)
+	}
+	if runner.session.live != live {
+		t.Error("두 번째 빌드가 브라우저를 다시 띄웠다 — 웜 세션이 아니다")
 	}
 }
 
