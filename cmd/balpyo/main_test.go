@@ -83,9 +83,10 @@ func TestBuildErrorDiagnosticsPrintedOnce(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, "slides"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// 알 수 없는 태그 <table> 하나 — 정확히 진단 하나를 낸다.
+	// 알 수 없는 태그 하나 — 정확히 진단 하나를 낸다. 이름은 어휘에 **없는** 것이어야 한다:
+	// 예전에는 <table>이었는데 그 태그가 구현되면서 이 테스트가 다른 실패 경로를 봤다.
 	if err := os.WriteFile(filepath.Join(dir, "slides", "001.slide"),
-		[]byte("<slide><table></table></slide>\n"), 0o644); err != nil {
+		[]byte("<slide><marquee></marquee></slide>\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
@@ -94,11 +95,11 @@ func TestBuildErrorDiagnosticsPrintedOnce(t *testing.T) {
 		t.Fatal("에러여야 한다")
 	}
 	// 상세 진단은 stderr에 한 번만.
-	if n := strings.Count(stderr.String(), "알 수 없는 태그 <table>"); n != 1 {
+	if n := strings.Count(stderr.String(), "알 수 없는 태그 <marquee>"); n != 1 {
 		t.Errorf("진단이 stderr에 %d번 찍혔다 (1번이어야 한다):\n%s", n, stderr.String())
 	}
 	// 돌려준 에러는 요약이어야 한다 — main이 이걸 다시 출력해도 진단이 겹치지 않게.
-	if strings.Contains(err.Error(), "알 수 없는 태그 <table>") {
+	if strings.Contains(err.Error(), "알 수 없는 태그 <marquee>") {
 		t.Errorf("반환 에러가 상세 진단을 되풀이한다 (요약이어야 한다): %v", err)
 	}
 }
