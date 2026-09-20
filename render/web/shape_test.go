@@ -33,7 +33,7 @@ type shapeCase struct {
 func shapeCases() []shapeCase {
 	return []shapeCase{
 		// variant는 CSS 선언을 스스로 만들지 않는다 — 캐스케이드의 한 단이므로 **그 결과**가
-		// CSS에 나오는지로 확인한다 (card variant의 fill은 bg다 — core/theme.go).
+		// CSS에 나오는지로 확인한다 (card variant의 fill은 bg다 — 테마의 shape.variants).
 		{"variant", "테마 번들이 CSS까지 온다", `variant="card" type="rounded-rect"`,
 			"fill: var(--balpyo-color-bg)", false},
 

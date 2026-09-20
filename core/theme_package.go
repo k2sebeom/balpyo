@@ -15,27 +15,30 @@ import (
 )
 
 // 이 파일은 **테마 패키지 포맷**(PRD §8.2)의 로더다 — Iteration 10이 core/theme.go의 하드코딩
-// 표를 데이터로 해체한 자리다. 순서를 이렇게 잡은 이유는 theme.go의 패키지 주석에 있다:
-// 하드코딩 표가 두 렌더러의 실제 요구를 드러낸 다음에야 스키마를 파일로 고정한다.
+// 표를 데이터로 해체하고, P4.2가 그 파일을 지웠다 (ADR 0052). 순서를 그렇게 잡은 이유는 지워진
+// 그 파일이 남긴 근거다: 하드코딩 표가 두 렌더러의 실제 요구를 드러낸 다음에야 스키마를 파일로
+// 고정한다. **이제 엔진에는 어떤 외관 값도 없다** — 값의 유일한 출처는 테마 패키지이고, 그
+// 대가로 로더가 완전성을 요구한다 (theme_require.go).
 //
 // 포맷은 **데이터 전용**이다 (JSON + CSS + 에셋, JS 없음 — PRD §8.2·§13-11): `theme get`으로
 // 받은 원격 테마가 임의 코드 실행 경로가 되어서는 안 된다. 로더는 fs.FS 위에서 도므로 내장
 // 테마(go:embed)와 프로젝트 로컬 테마(os.DirFS)가 같은 코드를 지난다.
 //
-// **byte 동일성 계약**: 내장 minimal을 이 로더로 읽은 soml.Theme는 옛 하드코딩
-// minimalTheme()과 값·순서가 정확히 같아야 한다. 그래야 기존 골든(themeCSS·clrScheme·픽스처)이
-// 움직이지 않고, 해체가 동작을 바꾸지 않았음이 증명된다. 순서를 지키려고 tokens.json은 객체가
-// 아니라 **순서 있는 배열**을 쓴다 (JSON 객체 키 순서에 기대지 않는다 — PRD §8.4의 객체
-// 스케치와 갈라지는 자리이고 ADR이 근거를 남긴다).
+// tokens.json·components.json이 객체가 아니라 **순서 있는 배열**을 쓰는 이유는 결정성이다
+// (JSON 객체 키 순서에 기대지 않는다): 모르는 variant 경고가 나열하는 목록과 PPTX clrScheme의
+// 슬롯 순서가 실행마다 같아야 한다 — PRD §8.4의 객체 스케치와 갈라지는 자리이고 ADR이 근거를
+// 남긴다. 값·순서를 파일에 못 박는 앵커는 TestLoadBuiltinMinimal·TestLoadBuiltinComponents다
+// (기대값이 테스트에 리터럴로 적혀 있어 tokens.json이 실수로 움직이면 골든보다 먼저 잡힌다).
 
-// builtinThemes는 바이너리에 내장된 공식 테마다 (PRD §8.6). v1은 minimal 하나이며 기본값이자
-// 폴백 기준이다 — `balpyo init` 직후 네트워크·설치 없이 예쁜 결과가 나오는 것이 첫인상을
-// 지배하므로 기본 경로에서 네트워크를 제거한다.
+// builtinThemes는 바이너리에 내장된 공식 테마다 (PRD §8.6) — `balpyo init` 직후 네트워크·설치
+// 없이 예쁜 결과가 나오는 것이 첫인상을 지배하므로 기본 경로에서 네트워크를 제거한다.
+// 셋 다 같은 계약을 받고(11 레이아웃·모든 슬롯·팔레트 규칙·권장 variant 어휘) 그중 minimal이
+// 기본값이다 — **폴백 기준은 아니다** (ADR 0052: 테마를 섞지 않는다).
 //
 //go:embed themes
 var builtinThemes embed.FS
 
-// BuiltinThemes는 내장 테마 이름 목록이다 (정렬, 지금은 `minimal` 하나).
+// BuiltinThemes는 내장 테마 이름 목록이다 (알파벳 정렬: editorial·ink·minimal).
 //
 // 공개하는 이유는 **어휘의 단일 출처**다 (ADR 0048): `balpyo init --theme`이 받을 수 있는
 // 이름이 곧 이 목록이어야 하고, 목록을 CLI에 적어 두면 내장 테마를 늘릴 때(P4.2) 두 곳이
@@ -73,8 +76,9 @@ type themeManifest struct {
 	// Extends는 상속할 테마 이름이다 (PRD §8.5) — v1 minimal에서는 비어 있다. 상속 병합은
 	// 아직 구현하지 않으므로 비지 않은 값은 로더가 진단한다 (미구현을 조용히 무시하지 않는다).
 	Extends string `json:"extends"`
-	// Layouts는 이 테마가 구현하는 표준 레이아웃 이름 목록이다. 표준 카탈로그 중 여기 없는
-	// 이름은 minimal 구현으로 폴백하고 경고한다 (core.slideLayout, 10/03). 테마 자체
+	// Layouts는 이 테마가 구현하는 표준 레이아웃 이름 목록이다. 테마는 표준 카탈로그 11종을
+	// **전부** 선언해야 한다 — 빠뜨린 레이아웃을 다른 테마로 폴백하지 않는 근거는 ADR 0052에
+	// 있고, 그 계약은 TestBuiltinThemesImplementEveryStandardLayout이 지킨다. 테마 자체
 	// 레이아웃(`corp-hero`)도 여기 실려 어휘가 된다.
 	Layouts []string `json:"layouts"`
 	// Chrome은 덱 크롬(페이지 번호·푸터) 선언이다 (PRD §8.1·§8.4 · ADR 0045).
@@ -335,8 +339,26 @@ type cellStyleFile struct {
 }
 
 // ── 변환된 컴포넌트 표 (캐스케이드 내부 타입) ───────────────────────────────
-// 캐스케이드가 이미 쓰는 타입 그대로 담는다 (theme.go의 옛 함수 반환형과 같다) — 그래야
-// resolveText/Shape/Image가 재변환 없이 읽고, byte 동일성 테스트가 옛 함수와 직접 비교한다.
+// 캐스케이드가 이미 쓰는 타입 그대로 담는다 — 그래야 resolveText/Shape/Image가 재변환 없이
+// 읽는다 (값 문법을 렌더 때마다 다시 읽는 자리가 생기지 않는다).
+
+// textVariant·shapeVariant·imageVariant는 테마가 이름 붙인 외관 번들 하나다 (요소 종류별로
+// 표가 셋이다 — 같은 이름이 세 표에 있어도 무관하고, 요소가 어느 표를 볼지 정한다:
+// resolver.textVariantPatch · shapeVariantPatch · imageVariantPatch).
+type textVariant struct {
+	name  string
+	patch textPatch
+}
+
+type shapeVariant struct {
+	name  string
+	patch shapePatch
+}
+
+type imageVariant struct {
+	name  string
+	patch imagePatch
+}
 
 type components struct {
 	textRoles             map[soml.TextRole]soml.TextStyle
@@ -554,7 +576,7 @@ func loadTokens(fsys fs.FS, dir, name string) (soml.Theme, error) {
 	}
 	for _, s := range file.Shadow {
 		// color는 토큰 참조다 (표가 리터럴을 쓰면 PPTX에서 schemeClr 참조가 끊긴다 —
-		// theme.go의 옛 minimalShadows 근거). soml.TokenColor로 감싼다.
+		// 제품 핵심 계약). soml.TokenColor로 감싼다.
 		theme.Shadows = append(theme.Shadows, soml.ShadowToken{
 			Name: s.Name, Dist: s.Dist, Dir: s.Dir, Blur: s.Blur,
 			Color: soml.TokenColor(s.Color), Alpha: s.Alpha,
@@ -708,9 +730,41 @@ func cellPatchFromFile(file cellStyleFile) (cellPatch, error) {
 	return patch, nil
 }
 
+// ── 값 헬퍼 (토큰 참조를 한 줄로 적는 도구) ─────────────────────────────────
+//
+// 토큰 이름을 받는 이유는 테마의 색·반경·그림자가 전부 토큰 참조여야 하기 때문이다 — 테마가
+// 리터럴을 쓰면 PPTX에서 `schemeClr` 참조가 끊겨 그 도형만 테마 색 편집을 따라가지 못한다
+// (제품 핵심 계약). 하드코딩 표(옛 theme.go)가 쓰던 도구였고, 그 표가 데이터로 나간 뒤에는
+// **파일의 문자열을 패치로 눕히는** 아래 변환기들이 쓴다.
+func colorFill(token string) *soml.Fill { return ptr(soml.ColorFill(soml.TokenColor(token))) }
+
+func solidBorder(width float64, token string) *soml.Border {
+	return &soml.Border{Width: width, Style: soml.BorderSolid, Color: soml.TokenColor(token)}
+}
+
+// radiusToken·shadowToken은 표에 없는 이름이면 nil을 준다 — 그 단이 그 필드를 정하지 않은
+// 것이 된다. 필수 토큰(sm·md·lg · soft)은 로더가 요구하므로(theme_require.go) 내장 테마에서는
+// nil이 나오지 않지만, 테마가 **자기 이름**을 쓴 variant는 그 이름이 자기 tokens.json에 있어야
+// 한다 — 없으면 빌드를 멈추는 대신 그 필드가 빈다 (모르는 variant를 경고로 두는 것과 같은 태도).
+func radiusToken(theme soml.Theme, name string) *soml.Radius {
+	token, ok := theme.Radius(name)
+	if !ok {
+		return nil
+	}
+	return ptr(soml.TokenRadius(name, token.Px))
+}
+
+func shadowToken(theme soml.Theme, name string) *soml.ShadowToken {
+	token, ok := theme.Shadow(name)
+	if !ok {
+		return nil
+	}
+	return &token
+}
+
 // shapePatchFromFile은 shape default의 문자열 필드를 shapePatch로 눕힌다. 빈 문자열은 "정하지
-// 않음"이다. fill/border 색·radius/shadow 토큰 해석은 theme.go의 헬퍼(colorFill·solidBorder·
-// radiusToken·shadowToken)를 그대로 지나 byte 동일성을 지킨다.
+// 않음"이다. fill/border 색·radius/shadow 토큰 해석은 위 헬퍼(colorFill·solidBorder·
+// radiusToken·shadowToken)를 지난다.
 func shapePatchFromFile(theme soml.Theme, fill, border, radius, shadow string) (shapePatch, error) {
 	var patch shapePatch
 	if fill != "" {
@@ -771,8 +825,8 @@ func imageVariantPatchFromFile(theme soml.Theme, v imageVariantFile) (imagePatch
 	return patch, nil
 }
 
-// fillFromString은 `none` 또는 색 토큰명을 *soml.Fill로 눕힌다 (theme.go의 colorFill/NoFill과
-// 같은 결과). 테마 데이터는 토큰만 쓴다 (리터럴 금지 — theme.go의 근거).
+// fillFromString은 `none` 또는 색 토큰명을 *soml.Fill로 눕힌다 (colorFill/soml.NoFill과 같은
+// 결과). 테마 데이터는 색 **토큰만** 쓴다 (리터럴 금지 — colorFill의 근거).
 func fillFromString(s string) (*soml.Fill, error) {
 	if s == noneValue {
 		return ptr(soml.NoFill()), nil
@@ -781,7 +835,7 @@ func fillFromString(s string) (*soml.Fill, error) {
 }
 
 // borderFromString은 `none` 또는 `<굵기> <스타일> <색>` 축약을 *soml.Border로 눕힌다 —
-// resolver.border의 값 문법과 같고, `1 solid muted`는 theme.go의 solidBorder(1,"muted")와 같다.
+// resolver.border의 값 문법과 같고, `1 solid muted`는 solidBorder(1, "muted")와 같다.
 func borderFromString(s string) (*soml.Border, error) {
 	if s == noneValue {
 		return ptr(soml.NoBorder()), nil
@@ -900,8 +954,10 @@ func loadSlotLayouts(fsys fs.FS, dir string, manifest themeManifest) (map[string
 }
 
 // loadBuiltinTheme는 내장 테마를 이름으로 읽는다. 내장 파일은 빌드 시점에 고정되므로 로드
-// 실패는 프로그래머 오류다 (regexp.MustCompile과 같은 자리) — 호출자(minimalTheme)가 에러를
-// 다룰 자리가 없고, TestLoadBuiltinMinimal이 이 불변을 못 박는다.
+// 실패는 프로그래머 오류다 (regexp.MustCompile과 같은 자리) — 호출자(core.Resolve)가 에러를
+// 다룰 자리가 없고, TestBuiltinThemesAreLoadable이 이 불변을 전 테마에서 못 박는다. **이름이
+// 어휘 안인지는 호출자가 먼저 본다** (IsBuiltinTheme): 저자가 쓴 이름은 진단이 되어야 하고
+// panic이 되면 안 된다.
 func loadBuiltinTheme(name string) themePackage {
 	pkg, err := loadTheme(builtinThemes, path.Join("themes", name))
 	if err != nil {

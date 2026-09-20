@@ -81,7 +81,7 @@ type imageCase struct {
 func imageCases() []imageCase {
 	return []imageCase{
 		// variant는 CSS 선언을 스스로 만들지 않는다 — 캐스케이드의 한 단이므로 **그 결과**가
-		// CSS에 나오는지로 확인한다 (framed = 테두리+반경+그림자 — core/theme.go).
+		// CSS에 나오는지로 확인한다 (framed = 테두리+반경+그림자 — 테마의 image.variants).
 		{"variant", "테마 번들이 CSS까지 온다", `variant="framed"`,
 			"border-color: var(--balpyo-color-muted)", false},
 

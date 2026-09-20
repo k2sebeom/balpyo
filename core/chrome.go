@@ -93,14 +93,10 @@ func chromeRequest(req soml.DeckChrome, kind soml.ChromeKind) (string, bool) {
 	return "", false
 }
 
-// chromeStyle은 역할에서 확정된 텍스트 외관이다. 로드된 컴포넌트 표를 먼저 보고, 없으면
-// 하드코딩 폴백으로 물러선다 — resolver.textRoleDefaults와 같은 규칙이다 (로드 실패한 테마가
-// 덱을 멈추지 않는다).
+// chromeStyle은 역할에서 확정된 텍스트 외관이다 — 로드된 컴포넌트 표에서 읽는다
+// (resolver.textRoleDefaults와 같은 규칙이고, 폴백이 없는 근거도 같다: ADR 0052).
 func chromeStyle(pkg themePackage, role soml.TextRole) soml.TextStyle {
-	if style, ok := pkg.components.textRoles[role]; ok {
-		return style
-	}
-	return textRoleDefaults(role)
+	return pkg.components.textRoles[role]
 }
 
 // chromeNoun은 경고 문구에서 쓰는 우리말 이름이다 — 저자가 읽는 문장에 `pageNumber`가 두 번

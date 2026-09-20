@@ -11,10 +11,11 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// TestLoadBuiltinMinimal은 내장 minimal 패키지가 로드되고, 그 토큰 표가 옛 하드코딩
-// minimalTheme()과 **값·순서까지** 같음을 못 박는다 — byte 동일성 계약(theme_package.go)의
-// 앵커다. 값이 여기 그대로 적혀 있는 이유: tokens.json이 실수로 바뀌면(순서·수치) 이 테스트가
-// 잡고, 기존 골든이 조용히 움직이는 것을 막는다.
+// TestLoadBuiltinMinimal은 내장 minimal 패키지가 로드되고, 그 토큰 표가 **값·순서까지** 기대와
+// 같음을 못 박는다 — 테마 패키지 포맷의 앵커다 (theme_package.go). 값이 여기 그대로 적혀 있는
+// 이유: tokens.json이 실수로 바뀌면(순서·수치) 이 테스트가 잡고, 기존 골든이 조용히 움직이는
+// 것을 막는다. 엔진에 하드코딩 표가 있던 동안에는 그 표와 견주는 것이 앵커였지만(byte 동일성
+// 계약), 표가 사라진 지금은 **리터럴 기대값**이 그 자리다 (ADR 0052).
 func TestLoadBuiltinMinimal(t *testing.T) {
 	pkg := loadBuiltinTheme("minimal")
 	if pkg.manifest.Name != "minimal" {
@@ -61,69 +62,103 @@ func TestLoadBuiltinMinimal(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("로드된 minimal 토큰이 기대와 다르다:\ngot  %+v\nwant %+v", got, want)
 	}
-	// minimalTheme()도 같은 표를 준다 (resolve.go가 쓰는 경로).
-	if !reflect.DeepEqual(minimalTheme(), want) {
-		t.Errorf("minimalTheme()가 로드 결과와 다르다")
-	}
 }
 
-// minimalFonts·minimalShadows는 옛 하드코딩 표를 대체한 **테스트 헬퍼**다 — 로드된 테마에서
-// 뽑아 기대값을 만든다. 프로덕션 코드는 loadBuiltinTheme를 지나므로(theme.go의 minimalTheme)
-// 이 헬퍼가 그 표를 다시 적지 않고 파생해, 헬퍼와 파일이 어긋날 수 없다.
-func minimalFonts() []soml.FontToken     { return minimalTheme().Fonts }
-func minimalShadows() []soml.ShadowToken { return minimalTheme().Shadows }
-
-// TestLoadBuiltinComponents는 내장 minimal의 components.json이 로드되고, 그 표가 옛 하드코딩
-// (theme.go)과 값·순서까지 같음을 못 박는다 — byte 동일성 계약의 컴포넌트 앵커다.
+// TestLoadBuiltinComponents는 내장 minimal의 components.json이 로드되고, 그 표가 **값·순서까지**
+// 기대와 같음을 못 박는다 — 포맷의 컴포넌트 앵커다 (TestLoadBuiltinMinimal의 짝).
+//
+// 기대값이 리터럴인 이유도 같다: 캐스케이드 테스트들은 이 표에서 **파생한** 값을 쓰므로
+// (theme_tables_test.go) 그 테스트들은 파일이 움직여도 함께 움직인다. 값을 못 박는 일은 여기
+// 한 곳의 책임이고, 수치의 근거(수직 리듬·단마다 구별되는 값)는 components.json의 `$comment`가
+// 소유한다 — 값과 근거가 같은 파일에 있다.
 func TestLoadBuiltinComponents(t *testing.T) {
-	pkg := loadBuiltinTheme("minimal")
-	theme := pkg.tokens
-	comps := pkg.components
+	comps := loadBuiltinTheme("minimal").components
 
-	// 텍스트 역할 5종 — 각 역할이 옛 textRoleDefaults와 같다.
+	// 텍스트 역할 5종 — 본문 24px × 줄높이 1.5 = 36px이고 스테이지 720px이 정확히 20줄이다
+	// (ADR 0002). 나머지 크기는 본문에서 약 1.5배씩 벌린 단계이고, 정렬은 전부 start다.
+	wantRoles := map[soml.TextRole]soml.TextStyle{
+		soml.RoleTitle: {Role: soml.RoleTitle, Font: soml.FontHeading, Size: 56, Weight: 700,
+			LineHeight: 1.2, Color: soml.TokenColor("fg"), Align: soml.AlignStart},
+		soml.RoleHeading: {Role: soml.RoleHeading, Font: soml.FontHeading, Size: 36, Weight: 700,
+			LineHeight: 1.3, Color: soml.TokenColor("fg"), Align: soml.AlignStart},
+		soml.RoleBody: {Role: soml.RoleBody, Font: soml.FontBody, Size: 24, Weight: 400,
+			LineHeight: 1.5, Color: soml.TokenColor("fg"), Align: soml.AlignStart},
+		soml.RoleCaption: {Role: soml.RoleCaption, Font: soml.FontBody, Size: 18, Weight: 400,
+			LineHeight: 1.4, Color: soml.TokenColor("muted"), Align: soml.AlignStart},
+		soml.RoleCode: {Role: soml.RoleCode, Font: soml.FontMono, Size: 20, Weight: 400,
+			LineHeight: 1.5, Color: soml.TokenColor("fg"), Align: soml.AlignStart},
+	}
+	if len(comps.textRoles) != len(wantRoles) {
+		t.Errorf("텍스트 역할 수 = %d, want %d", len(comps.textRoles), len(wantRoles))
+	}
 	for _, role := range soml.TextRoles() {
 		got, ok := comps.textRoles[role]
 		if !ok {
 			t.Fatalf("역할 %q가 로드된 표에 없다", role)
 		}
-		if !reflect.DeepEqual(got, textRoleDefaults(role)) {
-			t.Errorf("역할 %q: got %+v\nwant %+v", role, got, textRoleDefaults(role))
+		if !reflect.DeepEqual(got, wantRoles[role]) {
+			t.Errorf("역할 %q: got %+v\nwant %+v", role, got, wantRoles[role])
 		}
 	}
-	if len(comps.textRoles) != 5 {
-		t.Errorf("텍스트 역할 수 = %d, want 5", len(comps.textRoles))
+
+	// 컴포넌트 기본값 — h3(크기 한 단 아래)·blockquote(색만 muted) 둘만 정하고, 나머지 태그는
+	// 표에 없어 빈 패치다. 그래서 `<p>` ≡ `<text role="body">`가 깊은 비교로 성립한다.
+	wantDefaults := map[string]textPatch{
+		"h3":         {size: ptr(28.0)},
+		"blockquote": {color: ptr(soml.TokenColor("muted"))},
+	}
+	if !reflect.DeepEqual(comps.textComponentDefaults, wantDefaults) {
+		t.Errorf("컴포넌트 기본값 표가 다르다:\ngot  %+v\nwant %+v", comps.textComponentDefaults, wantDefaults)
 	}
 
-	// 컴포넌트 기본값 — h3·blockquote만 정하고, 나머지 태그는 표에 없어 빈 패치로 폴백한다.
-	if !reflect.DeepEqual(comps.textComponentDefaults["h3"], textComponentDefault("h3")) {
-		t.Errorf("h3 기본값이 다르다")
+	// 텍스트 variant — 값과 **순서**가 파일 그대로다 (모르는 variant 경고의 목록이 결정적이어야
+	// 한다). 값은 역할 기본값과 구별되도록 골랐다 — 같은 값을 정하는 variant는 우선순위
+	// 테스트가 아무것도 증명하지 못한다.
+	wantTextVariants := []textVariant{
+		{name: "kicker", patch: textPatch{size: ptr(18.0), weight: ptr(700),
+			color: ptr(soml.TokenColor("accent1"))}},
+		{name: "lead", patch: textPatch{size: ptr(32.0)}},
 	}
-	if !reflect.DeepEqual(comps.textComponentDefaults["blockquote"], textComponentDefault("blockquote")) {
-		t.Errorf("blockquote 기본값이 다르다")
-	}
-	if len(comps.textComponentDefaults) != 2 {
-		t.Errorf("컴포넌트 기본값 수 = %d, want 2", len(comps.textComponentDefaults))
-	}
-
-	// 텍스트 variant — 값과 **순서**가 옛 표와 같다.
-	if !reflect.DeepEqual(comps.textVariants, textVariants()) {
-		t.Errorf("텍스트 variant 표가 다르다:\ngot  %+v\nwant %+v", comps.textVariants, textVariants())
+	if !reflect.DeepEqual(comps.textVariants, wantTextVariants) {
+		t.Errorf("텍스트 variant 표가 다르다:\ngot  %+v\nwant %+v", comps.textVariants, wantTextVariants)
 	}
 
-	// 도형 기본값·variant — 값과 순서가 옛 표와 같다 (radius·shadow 토큰 해석 포함).
-	if !reflect.DeepEqual(comps.shapeDefault, shapeComponentDefault(theme)) {
-		t.Errorf("도형 기본값이 다르다:\ngot  %+v\nwant %+v", comps.shapeDefault, shapeComponentDefault(theme))
-	}
-	if !reflect.DeepEqual(comps.shapeVariants, shapeVariants(theme)) {
-		t.Errorf("도형 variant 표가 다르다:\ngot  %+v\nwant %+v", comps.shapeVariants, shapeVariants(theme))
+	// 도형 기본값 — 도형에는 역할이 없으므로 이 표가 캐스케이드의 **가장 아래 단**이고, 그래서
+	// `<shape type="rect"/>` 하나로도 그려지는 완전한 외관이다 (radius가 여기 있는 이유는 두
+	// 타깃의 암묵 기본값이 다르다는 것이다 — CSS는 0, OOXML roundRect는 16.67%).
+	wantShapeDefault := shapePatch{fill: colorFill("surface"), border: solidBorder(1, "muted"),
+		radius: ptr(soml.TokenRadius("md", 12))}
+	if !reflect.DeepEqual(comps.shapeDefault, wantShapeDefault) {
+		t.Errorf("도형 기본값이 다르다:\ngot  %+v\nwant %+v", comps.shapeDefault, wantShapeDefault)
 	}
 
-	// 이미지 기본값(비어 있음)·variant.
-	if !reflect.DeepEqual(comps.imageDefault, imageComponentDefault()) {
-		t.Errorf("이미지 기본값이 다르다:\ngot  %+v\nwant %+v", comps.imageDefault, imageComponentDefault())
+	// 도형 variant — PRD §13-6의 권장 어휘 6종 (값은 기본값과 구별된다).
+	soft := minimalShadows()[0]
+	wantShapeVariants := []shapeVariant{
+		{name: "card", patch: shapePatch{fill: colorFill("bg"), radius: ptr(soml.TokenRadius("lg", 24))}},
+		{name: "card-header", patch: shapePatch{border: ptr(soml.NoBorder()),
+			radius: ptr(soml.TokenRadius("sm", 6))}},
+		{name: "card-body", patch: shapePatch{fill: colorFill("bg")}},
+		{name: "card-backdrop", patch: shapePatch{fill: ptr(soml.NoFill()),
+			border: solidBorder(3, "accent1"), radius: ptr(soml.TokenRadius("lg", 24))}},
+		{name: "stat-card", patch: shapePatch{border: ptr(soml.NoBorder()),
+			radius: ptr(soml.TokenRadius("lg", 24)), shadow: &soft}},
+		{name: "badge", patch: shapePatch{border: solidBorder(1, "accent1"),
+			radius: ptr(soml.TokenRadius("lg", 24))}},
 	}
-	if !reflect.DeepEqual(comps.imageVariants, imageVariants(theme)) {
-		t.Errorf("이미지 variant 표가 다르다:\ngot  %+v\nwant %+v", comps.imageVariants, imageVariants(theme))
+	if !reflect.DeepEqual(comps.shapeVariants, wantShapeVariants) {
+		t.Errorf("도형 variant 표가 다르다:\ngot  %+v\nwant %+v", comps.shapeVariants, wantShapeVariants)
+	}
+
+	// 이미지 기본값은 **비어 있다** — 그림은 자기 픽셀을 갖고 있어 장식이 없어도 완전하다.
+	// 액자는 저자가 variant로 말한다 (`framed` — 세 조각을 함께 정하는 것이 번들의 뜻이다).
+	if !reflect.DeepEqual(comps.imageDefault, imagePatch{}) {
+		t.Errorf("이미지 기본값 = %+v, want 빈 패치", comps.imageDefault)
+	}
+	wantImageVariants := []imageVariant{{name: "framed", patch: imagePatch{
+		border: solidBorder(1, "muted"), radius: ptr(soml.TokenRadius("md", 12)), shadow: &soft}}}
+	if !reflect.DeepEqual(comps.imageVariants, wantImageVariants) {
+		t.Errorf("이미지 variant 표가 다르다:\ngot  %+v\nwant %+v", comps.imageVariants, wantImageVariants)
 	}
 }
 

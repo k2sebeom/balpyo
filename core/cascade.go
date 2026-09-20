@@ -6,7 +6,7 @@ import "github.com/k2sebeom/balpyo/soml"
 //
 //	인라인 속성 > variant > 컴포넌트 기본값 > 역할/토큰
 //
-// 역할 기본값(완전한 외관, theme.go)을 바닥에 깔고, 위 세 단은 **부분 패치**로 얹는다.
+// 역할 기본값(완전한 외관, 테마의 components.json)을 바닥에 깔고, 위 세 단은 **부분 패치**로 얹는다.
 // variant와 컴포넌트 기본값은 일부 필드만 정하기 때문이다 (PRD §8.3의 components.json —
 // `"card-header": { "font": "heading", "size": 24 }`는 color를 건드리지 않는다).
 //
@@ -21,7 +21,7 @@ import "github.com/k2sebeom/balpyo/soml"
 // 아래 단의 값을 지운다.
 //
 // Role은 패치에 없다: 역할은 외관 값이 아니라 캐스케이드의 바닥을 **고르는** 축이다
-// (textRoleDefaults). variant가 역할을 바꿀 수 있으면 "무엇의 기본값 위에 얹는가"가
+// (테마의 text.roles). variant가 역할을 바꿀 수 있으면 "무엇의 기본값 위에 얹는가"가
 // 병합 도중에 바뀌어 순서가 정의되지 않는다.
 type textPatch struct {
 	font       *soml.FontRole
@@ -62,8 +62,8 @@ func mergeText(style *soml.TextStyle, patch textPatch) {
 	}
 }
 
-// ptr는 패치 필드용 포인터 리터럴이다 — 하드코딩 테마 표(theme.go)가 값을 한 줄로 적기 위한
-// 최소 도구이고, Iteration 10의 테마 패키지 로더가 이 표를 대체하면 함께 사라질 수 있다.
+// ptr는 패치 필드용 포인터 리터럴이다 — 테마 파일의 값을 패치로 눕히는 변환기
+// (theme_package.go)와 부분 패치를 적는 테스트가 값을 한 줄로 적기 위한 최소 도구다.
 func ptr[T any](v T) *T { return &v }
 
 // shapePatch는 도형 외관의 부분 지정이다 — textPatch의 도형 판이고 규약이 같다: 포인터로

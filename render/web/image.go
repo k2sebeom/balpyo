@@ -189,7 +189,7 @@ func imageBoxCSS(style soml.ImageStyle, elem *soml.Element) ([]string, error) {
 // 표와 코드를 나란히 읽을 수 있어야 "표에 있고 코드에 없는 행"이 눈에 띈다. 정하지 않은
 // 속성은 선언을 **하나도** 내지 않는다 (soml.ImageStyle의 nil 계약): 그림은 자기 픽셀을
 // 가지므로 두 타깃의 암묵 기본값이 갈라지지 않는다 — 그래서 테마의 이미지 컴포넌트 기본값도
-// 비어 있다 (core/theme.go).
+// 비어 있다 (테마의 image.default).
 func imageInkCSS(style soml.ImageStyle, theme soml.Theme) ([]string, error) {
 	decls, err := imageFitCSS(style)
 	if err != nil {

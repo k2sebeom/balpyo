@@ -227,7 +227,7 @@ func picSpec(id int, name string, rect geom.Rect, style soml.ImageStyle, asset s
 		return picInfo{}, fmt.Errorf("fit %q는 맞춤 어휘 밖이다", string(style.Fit))
 	}
 	// 테두리를 정하지 않은 그림(nil)은 **선 없음**이다 — 도형과 갈라지는 자리다: 도형의
-	// 확정 외관에는 테마 컴포넌트 기본값이 언제나 채워져 있지만(core/theme.go의 도형 기본값)
+	// 확정 외관에는 테마 컴포넌트 기본값이 언제나 채워져 있지만(테마의 shape.default)
 	// 이미지 컴포넌트 기본값은 비어 있다 (그림은 자기 픽셀을 갖고, 기본으로 테두리를 두르면
 	// 스크린샷마다 이중 경계가 생긴다 — 05/02의 결정). 그래도 `a:ln`을 **명시한다**:
 	// 비워 두면 테마 fmtScheme의 기본 선이 상속되어 웹에 없는 외곽선이 그려질 수 있고,

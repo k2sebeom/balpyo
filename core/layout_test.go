@@ -659,7 +659,7 @@ func TestThemeSpaceTokens(t *testing.T) {
 		prev = token.Px
 	}
 	// 값이 리듬에 얹혀 있는지: 본문 줄박스 36px과 본문 크기 24px의 약수·배수여야 여백이
-	// 글줄 격자에서 미끄러지지 않는다 (core/theme.go의 근거).
+	// 글줄 격자에서 미끄러지지 않는다 (테마의 역할 기본값 근거).
 	for _, token := range theme.Spaces {
 		if token.Px != float64(int(token.Px)) || int(token.Px)%6 != 0 {
 			t.Errorf("%s = %gpx — 사다리는 6px(리듬의 최소 눈금) 배수여야 한다", token.Name, token.Px)

@@ -330,7 +330,7 @@ func TestRenderPicAppearance(t *testing.T) {
 }
 
 // 정하지 않은 외관은 아무 요소도 내지 않는다 (soml.ImageStyle의 nil 계약) — 테마의 이미지
-// 컴포넌트 기본값이 비어 있는 것(core/theme.go)이 산출물에서 지켜지는지의 확인이다.
+// 컴포넌트 기본값이 비어 있는 것(테마의 image.default)이 산출물에서 지켜지는지의 확인이다.
 func TestRenderPicOmitsUnsetAppearance(t *testing.T) {
 	deck := imageDeck(t, fmt.Sprintf("<slide>\n  <image %s w=\"320\" h=\"160\"/>\n</slide>", wideSrc))
 	pic := picOf(t, slideXML(t, deck, measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 320, H: 160})))

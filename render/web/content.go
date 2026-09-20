@@ -55,7 +55,7 @@ func ElementSelector() string { return "[" + IDAttr + "]" }
 func StageSelector() string { return "." + StageClass }
 
 // 스테이지 여백과 스택 간격이다 (논리 px). 간격 24px은 본문 크기와 같아 한 글자 높이만큼
-// 벌어진 리듬이 된다 — 역할 기본값의 수직 리듬(core/theme.go)과 같은 근거다.
+// 벌어진 리듬이 된다 — 역할 기본값의 수직 리듬(테마의 text.roles)과 같은 근거다.
 //
 // StagePadding을 export하는 이유는 ListTextIndent와 같다: 콘텐츠 박스(스테이지에서 이 여백을
 // 뺀 사각형)를 배치 진단이 판정 기준으로 쓴다 (render/geom의 ContentBox — ADR 0039). 값이 두
@@ -519,7 +519,7 @@ func ChildPath(path []int, i int) []int {
 //
 // 여백(64px)과 간격(24px)은 지금 엔진 상수다. 테마의 space 토큰(`slidePadding`/`gap`,
 // PRD §8.4)이 Iteration 10에서 이 값을 대체한다 — 지금 스테이지 여백을 변수 참조로 바꾸면
-// 골든 세 개가 이 iteration과 무관한 이유로 움직인다 (core/theme.go의 minimalSpaces 주석에
+// 골든 세 개가 이 iteration과 무관한 이유로 움직인다 (core/themes/minimal/tokens.json의 공간 토큰 주석에
 // 같은 판단이 있다).
 func contentCSS(feat features) string {
 	css := fmt.Sprintf(`

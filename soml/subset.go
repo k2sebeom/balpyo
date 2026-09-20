@@ -265,7 +265,7 @@ func IsVoidElement(name string) bool {
 // TagTextRole은 블록·리스트 항목 태그의 텍스트 역할이다 — PRD §7.7의 등가 표
 // (`<p>` ≡ `<text role="body">`, `<h2>` ≡ `<text role="heading">`).
 //
-// 이 표가 테마(core/theme.go)가 아니라 **언어**(soml)에 있는 이유: 등가는 PRD가 명세한
+// 이 표가 테마(core/themes/*/components.json)가 아니라 **언어**(soml)에 있는 이유: 등가는 PRD가 명세한
 // 계약이지 테마의 선택이 아니다. 테마가 `<p>`를 caption으로 바꿀 수 있으면 같은 문서가
 // 테마마다 다른 역할로 해석되어 "같은 계약의 두 표기"가 성립하지 않는다. 태그별
 // **기본값**(h3의 크기, blockquote의 색)은 외관이므로 테마가 소유한다 — 역할과 기본값의

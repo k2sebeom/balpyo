@@ -140,7 +140,7 @@ func TestResolveBlockRoleEquivalence(t *testing.T) {
 
 // 태그별 컴포넌트 기본값 — 역할만으로 부족한 자리는 테마의 태그 기본값이 채운다 (부분 패치).
 func TestResolveTagComponentDefaults(t *testing.T) {
-	// h3: 역할은 heading이되 크기 한 단 아래 (28 — 근거는 core/theme.go).
+	// h3: 역할은 heading이되 크기 한 단 아래 (28 — 근거는 minimal의 components.json).
 	h3 := tagStyle(t, "<slide>\n  <h3>소제</h3>\n</slide>\n", "h3")
 	heading := textRoleDefaults(soml.RoleHeading)
 	if h3.Role != soml.RoleHeading || h3.Size != 28 {

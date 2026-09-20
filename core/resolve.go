@@ -94,7 +94,7 @@ func Resolve(deck *soml.Deck) soml.Diagnostics {
 type resolver struct {
 	theme soml.Theme
 	// comps는 로드된 컴포넌트 외관 표다 (components.json) — 캐스케이드의 컴포넌트 기본값·
-	// variant 단이 여기서 나온다. 옛 theme.go 함수는 폴백으로 남는다 (10/06이 지운다).
+	// variant 단이 여기서 나온다 — 폴백은 없다 (ADR 0052: 엔진에 외관 값이 없다).
 	comps components
 	file  string
 	// layout은 이 슬라이드의 확정 레이아웃이다 (slideLayout이 채운다). 배치 검증이 슬라이드를
@@ -419,13 +419,13 @@ func (r *resolver) warnUnknownVariant(attr soml.Attr, names []string) {
 		attr.Value, strings.Join(names, ", "))
 }
 
-// 아래 넷은 텍스트 캐스케이드의 컴포넌트 기본값·variant 단을 로드된 표(r.comps)에서 읽는다.
-// 옛 theme.go 함수는 폴백으로 남는다 (10/06이 지운다) — 로드 실패한 테마가 덱을 멈추지 않는다.
+// 아래 넷은 텍스트 캐스케이드의 컴포넌트 기본값·variant 단을 **로드된 표**(r.comps)에서 읽는다.
+//
+// 폴백이 없다 (ADR 0052): 역할 5종은 로더가 요구하므로(theme_require.go) 표에 없을 수 없고,
+// 하드코딩 표를 폴백으로 남겨 두면 그것이 곧 엔진이 외관 값을 아는 자리가 된다 — 테마의 누락이
+// 조용히 minimal의 값으로 메워지고, 저자는 자기 테마가 반만 먹는 것을 슬라이드에서 본다.
 func (r *resolver) textRoleDefaults(role soml.TextRole) soml.TextStyle {
-	if style, ok := r.comps.textRoles[role]; ok {
-		return style
-	}
-	return textRoleDefaults(role)
+	return r.comps.textRoles[role]
 }
 
 func (r *resolver) textComponentDefault(tag string) textPatch {
