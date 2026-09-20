@@ -1,0 +1,6 @@
+/* image-text — 그림과 글을 2열로 두고 **위에서** 쌓는다 (minimal은 세로 가운데). 지면의
+   도판은 글의 첫 줄과 같은 높이에서 시작한다: 캡션이 붙은 도판이 가운데로 떠오르면 글과
+   도판의 기준선이 어긋난다. 그림 단이 조금 넓은 것은 도판이 지면의 주인이라는 뜻이다. */
+display: grid;
+grid-template-columns: 1.2fr 1fr;
+align-content: start;

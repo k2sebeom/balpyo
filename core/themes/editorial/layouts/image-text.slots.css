@@ -1,0 +1,8 @@
+/* image-text 슬롯 영역 — 제목이 두 단에 걸쳐 위, 그 아래 media·body가 나란히. align-items를
+   쓰지 않는 이유는 흐름 배치와 같다: 도판과 글이 같은 위 기준선에서 시작한다 (minimal은 둘의
+   가운데를 맞춘다). 이름으로 자리를 고정하므로 저자가 글을 먼저 써도 도판이 왼쪽에 앉는다. */
+display: grid;
+grid-template-columns: 1.2fr 1fr;
+grid-template-rows: auto 1fr;
+grid-template-areas: "title title" "media body";
+align-content: start;

@@ -1,0 +1,5 @@
+/* two-column — 두 단을 **같지 않게** 나눈다 (minimal은 1fr 1fr): 지면의 두 단은 본문 단과
+   방주 단이고, 왼쪽이 넓어야 글이 단마다 끊기지 않는다. 자식이 문서 순서대로 좌→우로 채운다. */
+display: grid;
+grid-template-columns: 1.4fr 1fr;
+align-content: start;

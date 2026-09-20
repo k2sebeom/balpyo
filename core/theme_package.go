@@ -252,6 +252,10 @@ type codeTokenFile struct {
 }
 
 type textComponentsFile struct {
+	// Comment는 문서용 $comment 자리다 (componentsFile.Comment와 같은 이유) — 범주마다 여는
+	// 이유는 값의 근거가 값 옆에 있어야 한다는 것이다: 역할 표의 수치를 고른 근거를 파일 맨
+	// 위 한 덩어리에 몰아 두면 테마를 고치는 사람이 그 문장을 다시 찾지 않는다.
+	Comment           string                     `json:"$comment"`
 	Roles             []textRoleFile             `json:"roles"`
 	ComponentDefaults []textComponentDefaultFile `json:"componentDefaults"`
 	Variants          []textVariantFile          `json:"variants"`
@@ -281,6 +285,7 @@ type textVariantFile struct {
 }
 
 type shapeComponentsFile struct {
+	Comment  string             `json:"$comment"`
 	Default  shapeStyleFile     `json:"default"`
 	Variants []shapeVariantFile `json:"variants"`
 }
@@ -300,6 +305,7 @@ type shapeVariantFile struct {
 }
 
 type imageComponentsFile struct {
+	Comment  string             `json:"$comment"`
 	Default  imageStyleFile     `json:"default"`
 	Variants []imageVariantFile `json:"variants"`
 }

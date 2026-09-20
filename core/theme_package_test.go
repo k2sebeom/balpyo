@@ -194,6 +194,25 @@ func TestLoadComponentsRejectsUnknownField(t *testing.T) {
 	}
 }
 
+// TestLoadComponentsAllowsCommentPerCategory는 `$comment`가 **범주마다** 허용됨을 못 박는다 —
+// 닫힌 어휘(DisallowUnknownFields)의 예외가 문서 주석 하나뿐이라는 계약의 짝이다. 범주마다
+// 여는 이유는 값의 근거가 값 옆에 있어야 한다는 것이다 (editorial·ink의 components.json이
+// 역할 수치·반경 선택의 근거를 그 자리에 적는다).
+func TestLoadComponentsAllowsCommentPerCategory(t *testing.T) {
+	fsys := fstest.MapFS{
+		"t/components.json": {Data: []byte(`{
+		  "$comment": "테마 주석",
+		  "text":  {"$comment": "역할 주석", "roles": []},
+		  "shape": {"$comment": "도형 주석", "default": {}},
+		  "image": {"$comment": "그림 주석", "default": {}},
+		  "code":  {"$comment": "코드 주석", "tabSize": 2}
+		}`)},
+	}
+	if _, err := loadComponents(fsys, "t", soml.Theme{}); err != nil {
+		t.Fatalf("범주 주석이 진단됐다: %v", err)
+	}
+}
+
 // TestLoadLayoutsCoverage는 내장 minimal의 layouts/*.css가 매니페스트가 선언한 11종과 정확히
 // 대응함을 못 박고, 선언/파일이 어긋나면 조용히 넘기지 않고 진단함을 검증한다 (닫힌 어휘).
 func TestLoadLayoutsCoverage(t *testing.T) {

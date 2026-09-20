@@ -1,0 +1,24 @@
+{
+  "$comment": "editorial 테마 매니페스트 (P4.2 · ADR 0052). 인쇄 지면의 목소리다 — 종이색 바탕, 세리프 제목, 표지의 글이 아래 왼쪽에 앉는다. layouts는 이 테마가 구현하는 표준 레이아웃 목록이고 표준 카탈로그 11종을 **전부** 담아야 한다: 빠뜨린 레이아웃을 다른 테마 구현으로 폴백하지 않는다 (ADR 0052의 결정 7 — 폴백이 섞인 테마는 디자인 시스템이 아니다). chrome은 크롬의 자리·정렬·역할·제외 규칙이고 내용과 켜짐은 balpyo.json이 소유한다 (ADR 0045).",
+
+  "name": "editorial",
+  "extends": "",
+  "layouts": [
+    "title", "section-divider", "content", "two-column",
+    "image-full", "image-text", "quote", "code", "stat", "canvas", "end"
+  ],
+  "chrome": [
+    {
+      "kind": "footer",
+      "align": "start",
+      "role": "caption",
+      "skipLayouts": ["title", "section-divider", "end"]
+    },
+    {
+      "kind": "pageNumber",
+      "align": "end",
+      "role": "caption",
+      "skipLayouts": ["title", "section-divider", "end"]
+    }
+  ]
+}

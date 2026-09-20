@@ -1,0 +1,9 @@
+/* title 슬롯 영역 — 흐름 title과 같은 뜻을 슬롯으로 적는다: 위쪽 1fr을 비우고 kicker·title·
+   subtitle·author·date를 아래에 쌓는다 (minimal은 가운데 빈 행으로 제목·저자를 벌리고 둘 다
+   가운데 정렬한다). justify-items: start가 자식을 왼쪽에 세운다 — 자식이 영역 폭까지 늘어나지
+   않으므로 저자의 `align`이 아니라 테마가 가로 자리를 소유하는 자리다 (ADR 0043의 두 채널). */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: 1fr auto auto auto auto auto;
+grid-template-areas: "." "kicker" "title" "subtitle" "author" "date";
+justify-items: start;
