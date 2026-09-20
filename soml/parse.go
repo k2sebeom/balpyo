@@ -89,7 +89,7 @@ func buildElementSpecs() map[string]elementSpec {
 	for _, name := range tableCellElements {
 		// 셀은 텍스트+인라인을 담는다 (modelInline — `<li>`와 같은 콘텐츠 모델, ADR 0036의
 		// "셀은 텍스트 전용": OOXML `a:tc`가 하나의 `a:txBody`에 1:1로 맞는다). 속성은 병합
-		// (colspan/rowspan)과 외관(fill/border/color/align/anchor/variant)이다 —
+		// (colspan/rowspan)과 외관(fill/border/color/align/anchor)이다 —
 		// 자식 배치·슬롯은 없다 (`<li>`가 childPlacement를 받지 않는 것과 같은 근거).
 		specs[name] = elementSpec{attrs: TableCellAttrs(), model: modelInline}
 	}
