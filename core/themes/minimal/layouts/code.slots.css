@@ -1,0 +1,8 @@
+/* code 슬롯 영역 (ADR 0035·0044) — 제목이 위, 코드 블록이 남은 높이를 전부 갖고, 캡션이
+   맨 아래. 코드 영역이 1fr인 이유는 content.slots.css의 body와 같다: 코드 블록의 배경이
+   슬라이드마다 줄 수에 따라 들쑥날쑥하면 연달아 보는 코드 슬라이드의 리듬이 깨진다. */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: auto 1fr auto;
+grid-template-areas: "title" "code" "caption";
+align-content: start;

@@ -1,0 +1,9 @@
+/* end 슬롯 영역 (ADR 0035·0044) — 마무리 슬라이드: 인사와 연락처를 화면 가운데에 둔다.
+   표지(title)와 같은 가운데 계열이다 — 덱의 첫 장과 마지막 장이 같은 자리에 글을 세우면
+   연달아 보는 사람에게 덱이 닫힌 느낌을 준다. */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: auto auto;
+grid-template-areas: "title" "contact";
+align-content: center;
+justify-items: center;

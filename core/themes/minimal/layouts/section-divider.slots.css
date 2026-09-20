@@ -1,0 +1,9 @@
+/* section-divider 슬롯 영역 (ADR 0035·0044) — 섹션 제목 묶음을 스테이지 세로 가운데에 둔다
+   (흐름 section-divider와 같은 뜻). 가로는 저자의 몫으로 남긴다: justify-items를 쓰지 않으면
+   자식이 영역 폭까지 늘어나므로(기본값 stretch) 저자의 `align`이 그 폭 안에서 문단을 움직인다
+   (ADR 0043의 두 채널). 표지 계열(title·stat·end)만 테마가 가운데를 소유한다. */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: auto auto;
+grid-template-areas: "title" "subtitle";
+align-content: center;

@@ -1,0 +1,10 @@
+/* stat 슬롯 영역 (ADR 0035·0044) — 큰 수치 한 개를 화면 가운데에 세운다: 제목 위, 수치와
+   그 라벨이 가운데, 설명이 아래. 세로·가로 모두 테마가 가운데를 소유한다 (title.slots.css와
+   같은 계열) — 수치 슬라이드는 가운데가 아니면 뜻이 없고, 저자가 네 자식마다 `align="center"`를
+   손으로 다는 것이 ADR 0043이 없애려던 것이다. */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: auto auto auto auto;
+grid-template-areas: "title" "value" "label" "body";
+align-content: center;
+justify-items: center;
