@@ -130,5 +130,3 @@ rounded-rect 하나만 `radius` 비례 px이다. 웹은 백분율이 있는 프�
   이 표의 회귀 테스트다. `001_shape_types.slide`의 "라벨은 도형 밖" 주석이 사라진다.
 - `examples/balpyo-intro/004`: chevron 라벨이 도형 안으로 돌아온다 (이 항목의 검수 증거).
 - `docs/reference/soml/shape.md`: 프리셋별 텍스트 영역 표와 높이 요구.
-</content>
-</invoke>

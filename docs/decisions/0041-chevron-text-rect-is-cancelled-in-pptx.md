@@ -72,5 +72,3 @@ ADR 0040의 "PPTX는 아무것도 하지 않는다"는 **프리셋 하나에서*
   표에 없는 `type`은 에러다 (프리셋을 더하고 보정을 잊으면 그 도형의 글자만 조용히 갇힌다).
 - 골든: chevron이 있는 슬라이드의 `bodyPr`에 음수 `lIns`/`rIns`가 실린다.
 - `docs/reference/soml/shape.md`: chevron 행에 "텍스트 영역 = 박스 전체 (PPTX가 되돌린다)".
-</content>
-</invoke>
