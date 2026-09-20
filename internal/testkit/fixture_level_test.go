@@ -333,6 +333,7 @@ var goldenPartLists = map[string][]string{
 		"pptx/ppt/slides/_rels/slide8.xml.rels",
 		"pptx/ppt/slides/_rels/slide9.xml.rels",
 		"pptx/ppt/slides/_rels/slide10.xml.rels",
+		"pptx/ppt/slides/_rels/slide11.xml.rels",
 		"pptx/ppt/slides/slide1.xml",
 		"pptx/ppt/slides/slide2.xml",
 		"pptx/ppt/slides/slide3.xml",
@@ -343,8 +344,9 @@ var goldenPartLists = map[string][]string{
 		"pptx/ppt/slides/slide8.xml",
 		"pptx/ppt/slides/slide9.xml",
 		"pptx/ppt/slides/slide10.xml",
+		"pptx/ppt/slides/slide11.xml",
 		"pptx/ppt/theme/theme1.xml",
-		// **캔버스 슬라이드(008·009)가 파트를 늘리지 않았다** — layout 속성은 슬라이드 파트
+		// **캔버스 슬라이드(008·009·011)가 파트를 늘리지 않았다** — layout 속성은 슬라이드 파트
 		// 하나에 담기고 새 마스터·레이아웃을 만들지 않는다 (slideLayout1 하나뿐이다).
 		// diagnostics.txt도 **없다** — 겹침 픽스처는 경고 없이 빌드되어야 한다.
 	},
@@ -396,7 +398,7 @@ var slideCounts = map[string]int{
 	layoutFixtureName:     7,
 	shapeFixtureName:      8,
 	imageFixtureName:      7,
-	stackFixtureName:      10,
+	stackFixtureName:      11,
 }
 
 // fixtureLiteralColors는 슬라이드 파트에 **리터럴 색으로 나와야 하는** 값의 전수 목록이다

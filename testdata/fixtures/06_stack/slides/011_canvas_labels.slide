@@ -1,0 +1,17 @@
+<!-- 캔버스 라벨: `<text>`가 자기 **가로 크기**를 갖는다 (ADR 0043). 특정 폭 안에서 글을
+     가운데 두려면 그 폭을 가진 박스가 필요한데, 텍스트에 크기 어휘가 없던 동안 저자는
+     보이지 않는 도형(`<shape fill="none" border="none" w="140">`)으로 라벨마다 감쌌다 —
+     라벨 다섯 개가 태그 열 개가 됐다 (도그푸딩 D14).
+     판정은 잰 박스다: 라벨의 rect가 140px이고 글리프가 그 안에서 가운데여야 하며, 그 폭이
+     PPTX `a:ext`로 그대로 간다 (안전 여유는 `center`에서 양쪽으로 반씩 늘어난다).
+     막대 위 숫자는 `max-w`로 줄바꿈 자리를 정하는 쪽을 함께 본다. -->
+<slide id="canvas-labels" layout="canvas">
+  <h2>주 단위 배포</h2>
+  <shape type="rect" fill="accent1" w="72" h="120" x="120" y="200"/>
+  <shape type="rect" fill="accent1" w="72" h="180" x="280" y="140"/>
+  <shape type="rect" fill="accent1" w="72" h="96" x="440" y="224"/>
+  <text size="14" color="muted" w="140" align="center" x="86" y="332">9월 1주</text>
+  <text size="14" color="muted" w="140" align="center" x="246" y="332">9월 2주</text>
+  <text size="14" color="muted" w="140" align="center" x="406" y="332">9월 3주</text>
+  <p max-w="240" align="end" x="640" y="200">폭을 정하면 줄바꿈 자리도 저자가 정한다.</p>
+</slide>

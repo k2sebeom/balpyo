@@ -1,0 +1,13 @@
+<!-- 테마가 슬롯 영역의 정렬을 소유한다 (ADR 0035·0043의 시험대). title.slots.css는 표지
+     영역에 `justify-items: center`를 쓰는데, base 층의 `.balpyo-text { width: 100% }`가
+     자식에게 영역 폭 전체를 주고 있으면 그 선언이 움직일 여지가 없다 — 슬롯 모드에서 폭이
+     auto로 돌아가야 자식이 실제로 가운데 온다. **자식에 `align`이 하나도 없는 것이 이
+     픽스처의 요점이다**: 저자가 손으로 정렬을 달지 않고도 테마가 표지를 가운데 둔다.
+     잰 박스의 좌우 여백이 대칭인지가 판정이고, 그 좌표가 PPTX `p:ph`에 그대로 실린다. -->
+<slide id="title-slots" layout="title">
+  <p slot="kicker">2026 H1</p>
+  <h1 slot="title">플랫폼 재설계</h1>
+  <p slot="subtitle">모놀리스에서 서비스 경계로</p>
+  <p slot="author">김서봄</p>
+  <p slot="date">2026-09-20</p>
+</slide>
