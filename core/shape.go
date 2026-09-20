@@ -40,8 +40,9 @@ import (
 func (r *resolver) resolveShape(elem *soml.Element) {
 	style := soml.ShapeStyle{Type: r.shapeType(elem)}
 	inline := r.shapeAttrs(elem, &style)
-	mergeShape(&style, themeShapePatch(r.comps.shapeDefault, style.Type))
-	mergeShape(&style, themeShapePatch(r.shapeVariant(elem), style.Type))
+	backdrop := soml.ShapeHoldsLayout(elem)
+	mergeShape(&style, themeShapePatch(r.comps.shapeDefault, style.Type, backdrop))
+	mergeShape(&style, themeShapePatch(r.shapeVariant(elem), style.Type, backdrop))
 	mergeShape(&style, inline)
 	elemAppearance(elem).Shape = &style
 	r.shapeInsetTextHeight(elem, &style)
@@ -76,17 +77,21 @@ func (r *resolver) shapeInsetTextHeight(elem *soml.Element, style *soml.ShapeSty
 }
 
 // themeShapePatch는 테마 단(컴포넌트 기본값·variant)의 패치를 이 도형에 맞게 다듬는다 —
-// `rounded-rect`가 아닌 프리셋에서는 `radius`를 **조용히 버린다**.
+// `rounded-rect`가 아닌 프리셋에서는 `radius`를, 배경 모드에서는 `rotate`를 **조용히 버린다**.
 //
-// 같은 값이 인라인 단에서는 에러인데(radius의 주석) 여기서는 침묵인 근거는 **저자가 고칠 수
-// 있는가**다: 테마 기본값은 저자가 손댈 수 없으므로 진단이 고칠 방법을 말할 수 없고, 진단을
-// 내면 `<shape type="rect"/>`가 무조건 에러가 된다. 버리는 것이 안전한 이유는 다른
-// 프리셋에는 반경 조정값을 실을 곳이 아예 없어(`prstGeom/avLst`) 값을 남겨 두면 웹만
-// 둥글어지기 때문이다 — 버리는 쪽이 두 타깃을 같게 만든다. 자세한 근거는
-// shapeComponentDefault에 있다.
-func themeShapePatch(patch shapePatch, shapeType string) shapePatch {
+// 같은 값이 인라인 단에서는 에러인데(radius·rotate의 주석) 여기서는 침묵인 근거는 **저자가
+// 고칠 수 있는가**다: 테마 기본값은 저자가 손댈 수 없으므로 진단이 고칠 방법을 말할 수 없고,
+// 진단을 내면 `<shape type="rect"/>`나 배치를 담은 도형이 무조건 에러가 된다. 버리는 것이
+// 안전한 이유는 두 경우 모두 값을 남겨 두면 **웹만** 달라지기 때문이다 — 다른 프리셋에는
+// 반경 조정값을 실을 곳이 아예 없고(`prstGeom/avLst`), 배경 도형의 회전은 형제가 된 자식이
+// 물려받지 않는다. 버리는 쪽이 두 타깃을 같게 만든다. 자세한 근거는 shapeComponentDefault에
+// 있다.
+func themeShapePatch(patch shapePatch, shapeType string, backdrop bool) shapePatch {
 	if shapeType != roundedRectType {
 		patch.radius = nil
+	}
+	if backdrop {
+		patch.rotate = nil
 	}
 	return patch
 }
@@ -168,6 +173,13 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 				patch.opacity = &opacity
 			}
 		case "rotate":
+			// 배경 모드에서는 값 문법을 보기 전에 막는다 (ADR 0049 결정 6) — 값이 아니라
+			// 속성과 내용의 **조합**이 문제이므로 진단은 속성 이름을 가리키고, 실린 각도는
+			// 남기지 않는다 (아래 themeShapePatch가 테마 단의 각도도 버린다).
+			if soml.ShapeHoldsLayout(elem) {
+				r.errorf(attr.NameSpan, "배치를 담은 도형은 rotate를 쓸 수 없다 — PPTX에서 자식은 형제 도형이 되어 도형의 회전을 물려받지 않는데 웹은 박스를 돌려 자식까지 돌리므로, 같은 SOML이 두 타깃에서 다른 그림이 된다 (회전을 지우거나 컨테이너를 빼고 텍스트만 담는다)")
+				continue
+			}
 			if rotate, ok := r.rotate(attr); ok {
 				patch.rotate = &rotate
 			}

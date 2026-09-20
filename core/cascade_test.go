@@ -148,9 +148,12 @@ func TestTextVariantLookup(t *testing.T) {
 
 // componentShapeStyle는 컴포넌트 기본값만 얹은 확정 외관이다 — 캐스케이드의 **바닥**이고,
 // 모르는 variant의 폴백 기대값이자 표 기반 테스트(shape_test.go)의 기대값 바닥이다.
+//
+// 흡수 모드(backdrop=false)를 기대값으로 삼는다: 이 바닥을 쓰는 표들이 전부 텍스트 자식이나
+// 빈 도형이고, 배경 모드에서만 달라지는 필드(`rotate`)는 그쪽 테스트가 따로 못 박는다.
 func componentShapeStyle(shapeType string) soml.ShapeStyle {
 	style := soml.ShapeStyle{Type: shapeType}
-	mergeShape(&style, themeShapePatch(shapeComponentDefault(minimalTheme()), shapeType))
+	mergeShape(&style, themeShapePatch(shapeComponentDefault(minimalTheme()), shapeType, false))
 	return style
 }
 
