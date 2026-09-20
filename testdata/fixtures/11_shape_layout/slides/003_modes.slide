@@ -28,7 +28,11 @@
         </col>
       </shape>
       <shape type="rounded-rect" fill="none" border="2 solid accent1" radius="md" w="fill" h="140" pad="md">
-        <text role="heading">섞임</text>
+        <!-- 두 음절짜리 제목(`섞임`)에서 출발했는데, 굵은 글꼴의 받침이 두 글자에서 같은
+             행에 시작해 잉크가 한 줄인데 띠 둘로 읽혔다 (줄 세기의 전제는 "한 줄 = 띠 하나"
+             다). 글자를 늘리면 그 빈 행이 다른 글자의 잉크로 메워진다 — 검사를 무디게 하지
+             않고 픽스처를 고친 자리다. -->
+        <text role="heading">섞인 도형</text>
         <row gap="sm">
           <p>왼쪽 칸</p>
           <p>오른쪽 칸</p>

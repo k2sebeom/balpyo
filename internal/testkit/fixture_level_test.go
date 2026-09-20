@@ -998,11 +998,34 @@ var inShapeLineDivergences = map[string][2]int{
 // 없고, 여유가 0에 가까운 문단은 LibreOffice에서 줄이 하나 늘어난다. 늘어난 줄은 도형 밖으로
 // 흐르므로 픽셀 비율로는 잔차와 구별되지 않는다 — 그것이 이 검사가 따로 있는 이유다.
 func TestShapeFixtureInShapeTextLineCounts(t *testing.T) {
+	assertInShapeLineCounts(t, shapeFixtureName)
+}
+
+// **배경 모드**에서도 같은 계약이다 (11_shape_layout — ADR 0049).
+//
+// 같은 방법이 그대로 성립한다: 카드의 채움이 영역의 최빈색이고 잉크는 글자다. 갈라지는 것은
+// 위험의 크기다 — 배경 모드의 자식은 텍스트 박스가 되어 정렬 방향으로 4% 여유를 받으므로
+// (pptx.TextBoxRect) 줄이 늘 위험이 흡수 모드보다 구조적으로 작다.
+//
+// 그래도 이 검사를 따로 두는 이유는 **이 픽스처에서 줄바꿈을 보는 검사가 사라지기 때문**이다:
+// 칠한 카드가 슬라이드 단위 잉크 띠의 전제를 깨 세 슬라이드가 전부 빠져 있고
+// (inkBandSkipSlides), 픽셀 비율 완화(fixtureDiffOptions)를 정당하게 만드는 구조 검사가
+// 좌표 대조와 이 검사 둘이다.
+func TestShapeLayoutFixtureInShapeTextLineCounts(t *testing.T) {
+	assertInShapeLineCounts(t, shapeLayoutFixtureName)
+}
+
+// assertInShapeLineCounts는 픽스처 하나의 도형 안 줄 수를 두 엔진에서 견준다 — 위 두 검사가
+// 공유한다. 모드로 갈라지지 않는 이유: 방법이 보는 것은 "도형의 텍스트 영역 안에서 띠가 몇
+// 개인가"이고, 그 물음은 글자가 도형의 문단이든 형제 텍스트 박스든 같다 (inShapeTexts도 도형의
+// 자손을 전부 훑으므로 컨테이너를 거친 글자가 그대로 세어진다).
+func assertInShapeLineCounts(t *testing.T, fixtureName string) {
+	t.Helper()
 	RequireChromium(t)
 	RequireSoffice(t)
 	RequirePdftoppm(t)
 
-	fixture := fixtureByName(t, shapeFixtureName)
+	fixture := fixtureByName(t, fixtureName)
 	result := fixture.Build(t)
 	if result.Geometry == nil {
 		t.Fatal("빌드에 지오메트리가 없다")
@@ -1035,16 +1058,17 @@ func TestShapeFixtureInShapeTextLineCounts(t *testing.T) {
 		if entry.slack < worst {
 			worst = entry.slack
 		}
-		t.Logf("%s %s %s: 웹 잰 줄 %d / 웹 잉크 띠 %d / LibreOffice 잉크 띠 %d, 여유 %.1f%%",
-			entry.id, entry.preset, entry.rect, entry.lines, len(webBands), len(loBands), entry.slack*100)
-		if len(webBands) != entry.lines {
+		rows := bandRows(entry.lineRects)
+		t.Logf("%s %s %s: 웹 잰 줄 %d(띠 %d) / 웹 잉크 띠 %d / LibreOffice 잉크 띠 %d, 여유 %.1f%%",
+			entry.id, entry.preset, entry.rect, len(entry.lineRects), rows, len(webBands), len(loBands), entry.slack*100)
+		if len(webBands) != rows {
 			// 웹 그림과 잰 줄이 어긋나면 측정 방법이 틀린 것이다 (LibreOffice 판정보다 먼저
 			// 본다 — bandLineOwners와 같은 태도).
-			t.Errorf("%s: 웹 잉크 띠 %d개가 잰 줄 %d개와 다르다 — 도형 안 줄 세기 방법이 틀렸다\n  띠 %v",
-				entry.id, len(webBands), entry.lines, webBands)
+			t.Errorf("%s: 웹 잉크 띠 %d개가 잰 줄 묶음 %d개와 다르다 — 도형 안 줄 세기 방법이 틀렸다\n  띠 %v\n  잰 줄 %v",
+				entry.id, len(webBands), rows, webBands, entry.lineRects)
 			continue
 		}
-		if want, known := inShapeLineDivergences[shapeFixtureName+"/"+entry.id]; known {
+		if want, known := inShapeLineDivergences[fixtureName+"/"+entry.id]; known {
 			seen[entry.id] = true
 			if len(webBands) != want[0] || len(loBands) != want[1] {
 				t.Errorf("%s: 알려진 갈라짐이 %d/%d줄인데 %d/%d줄이다 (브라우저/LibreOffice) — "+
@@ -1062,10 +1086,13 @@ func TestShapeFixtureInShapeTextLineCounts(t *testing.T) {
 	t.Logf("도형 안 문단의 최소 여유 비율 = %.1f%% — 이 값이 0에 가까울수록 LibreOffice에서 줄이 늘 위험이 크다", worst*100)
 	// 표에 있는데 픽스처에서 사라진 자리는 지운다 — 남아 있으면 갈라짐이 고쳐졌는지
 	// 없어졌는지 구별되지 않는다.
+	// **이 픽스처의 행만** 본다 (다른 픽스처의 행은 그쪽 검사가 소유한다).
 	for key := range inShapeLineDivergences {
-		if id := strings.TrimPrefix(key, shapeFixtureName+"/"); !seen[id] {
-			t.Errorf("inShapeLineDivergences의 %s가 픽스처에 없다 — 표에서 지운다", key)
+		id, mine := strings.CutPrefix(key, fixtureName+"/")
+		if !mine || seen[id] {
+			continue
 		}
+		t.Errorf("inShapeLineDivergences의 %s가 픽스처에 없다 — 표에서 지운다", key)
 	}
 }
 
@@ -1254,10 +1281,37 @@ type inShapeText struct {
 	// radius는 모서리 반경 px다 (rounded-rect가 아니면 0) — 줄 세기 영역이 둥근 모서리를
 	// 피해야 한다.
 	radius float64
-	// lines는 브라우저가 이 도형 안에서 나눈 줄 수다 (자식 문단 전부의 합).
-	lines int
+	// lineRects는 브라우저가 이 도형 안에서 나눈 줄의 rect 전부다 (자식 문단을 이어 붙인
+	// 것). 개수가 아니라 rect를 드는 이유는 **나란히 앉은 글자**다: 도형 안에 `<row>`가
+	// 있으면 서로 다른 문단의 줄이 같은 y에 앉아 잉크 띠 **하나**가 되므로, 기대값은 줄
+	// 개수가 아니라 y로 겹치는 묶음의 수다 (bandRows).
+	lineRects []geom.Rect
 	// slack은 자식 문단 중 **가장 좁은** 여유 비율이다 (Slack/MaxLineWidth).
 	slack float64
+}
+
+// bandRows는 잰 줄 rect들을 **y로 겹치는 묶음**의 수로 센다 — 잉크 띠 하나가 몇 개의 잰 줄에
+// 대응하는지의 답이고, 줄 세기의 기대값이다.
+//
+// 세로 스택에서는 줄 개수와 같다 (줄이 y로 겹치지 않는다). 갈라지는 자리는 도형 안 `<row>`다:
+// 배지와 소제목이 나란히 앉으면 두 문단의 줄이 같은 y에 있어 잉크는 띠 **하나**가 된다 —
+// 개수로 기대하면 그 배치에서 "방법이 틀렸다"가 나오는데, 틀린 것은 배치가 아니라 기대값이다.
+func bandRows(lines []geom.Rect) int {
+	if len(lines) == 0 {
+		return 0
+	}
+	sorted := append([]geom.Rect(nil), lines...)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Y < sorted[j].Y })
+	rows, bottom := 1, sorted[0].Bottom()
+	for _, line := range sorted[1:] {
+		// 위 묶음의 아래 변보다 아래에서 시작하면 새 띠다. bottom을 누적 최대로 두는 이유는
+		// 키가 다른 글자가 나란히 앉는 경우다 (배지 36px + 소제목 24px).
+		if line.Y >= bottom {
+			rows++
+		}
+		bottom = math.Max(bottom, line.Bottom())
+	}
+	return rows
 }
 
 // inShapeTexts는 텍스트를 담은 도형을 지오메트리와 같은 순서로 훑어 모은다.
@@ -1295,13 +1349,13 @@ func inShapeTexts(t *testing.T, deck *soml.Deck, g *geom.Geometry) []inShapeText
 			for _, child := range elem.Children {
 				walk(child, &entry)
 			}
-			if entry.lines > 0 {
+			if len(entry.lineRects) > 0 {
 				out = append(out, entry)
 			}
 			return
 		}
 		if shape != nil {
-			shape.lines += box.LineCount()
+			shape.lineRects = append(shape.lineRects, box.Lines...)
 			if width := box.MaxLineWidth(); width > 0 {
 				if ratio := box.Slack() / width; ratio < shape.slack {
 					shape.slack = ratio
@@ -1637,10 +1691,16 @@ func shapeRoles(t *testing.T, deck *soml.Deck) []shapeRole {
 			}
 			roles = append(roles, shapeRole{rect: textBox(style.Align)})
 		}
+		// 흡수 모드 도형의 자식만 "도형 안"이다 — 배경 모드 도형의 자식은 형제 도형이 되므로
+		// 슬라이드 직속과 같은 처지다 (ADR 0049). 모드 판정은 soml.ShapeHoldsLayout 하나가
+		// 소유하고, 이 표는 그것을 **읽기만** 한다: 여기서 자식을 다시 훑어 판정하면 계약이
+		// 층마다 갈라질 수 있고 그 갈라짐은 좌표가 엉뚱한 요소와 만나는 것으로만 드러난다.
+		//
+		// `inShape`가 한 번 켜지면 꺼지지 않는 것도 의도다: 흡수 모드 도형 안에는 컨테이너가
+		// 올 수 없으므로(그것이 있으면 배경 모드다) 그 아래에는 텍스트의 자손뿐이다.
+		absorbs := kind == soml.KindShape && !soml.ShapeHoldsLayout(elem)
 		for _, child := range elem.Children {
-			// 도형의 자식은 도형 안이다 — 도형이 자식을 흡수하는 것과 컨테이너가 사라지는
-			// 것이 여기서 정반대로 갈린다 (pptx.writeShapeNode의 네 분기).
-			walk(slide, child, inShape || kind == soml.KindShape)
+			walk(slide, child, inShape || absorbs)
 		}
 	}
 	for _, slide := range deck.Slides {
