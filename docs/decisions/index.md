@@ -51,6 +51,7 @@
 | [0043](0043-explicit-width-belongs-to-the-placement-context.md) | 확정 폭은 배치 문맥의 것이다 (슬롯 영역은 테마가, `<text>`의 가로 크기는 저자가) | P1.3 | 확정 |
 | [0044](0044-slots-need-a-theme-and-vertical-rhythm-needs-an-owner.md) | 슬롯은 테마가 받아야 뜻이 있고, 흐름 모드의 세로 리듬은 저자의 `justify`다 | P1.4 | 확정 |
 | [0045](0045-deck-chrome-is-config-text-in-a-theme-declared-band.md) | 덱 크롬은 설정이 내용을, 테마가 자리를, `a:fld`가 번호를 소유한다 | P2.2 | 확정 |
+| [0046](0046-watch-polls-the-project-and-injects-its-reload-client.md) | `balpyo watch`는 프로젝트를 폴링하고 리로드 클라이언트를 응답에 주입한다 | P3.1 | 확정 |
 
 PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다. 그 결정들의
 색인은 PRD에 있고, 이 표는 **그 이후 구현 중에 새로 확정한 것**만 담는다.

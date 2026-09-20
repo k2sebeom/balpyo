@@ -91,6 +91,7 @@ nav:
       - 0043 확정 폭은 배치 문맥의 것이다: decisions/0043-explicit-width-belongs-to-the-placement-context.md
       - 0044 슬롯은 테마가 받아야 뜻이 있다: decisions/0044-slots-need-a-theme-and-vertical-rhythm-needs-an-owner.md
       - 0045 덱 크롬은 설정·테마·a:fld가 나눠 소유한다: decisions/0045-deck-chrome-is-config-text-in-a-theme-declared-band.md
+      - 0046 watch는 폴링하고 리로드 클라이언트를 주입한다: decisions/0046-watch-polls-the-project-and-injects-its-reload-client.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |
