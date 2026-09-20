@@ -760,6 +760,11 @@ func attrExample(name string) string {
 		return "center"
 	case soml.AnchorAttr:
 		return "center"
+	// `<pre>` 고유 속성 (ADR 0051). 예시가 어휘의 첫 이름인 이유: 값 없음 진단은 "쓸 수 있는
+	// 값"을 나열하지 않으므로(그 목록은 어휘 밖 이름을 받은 자리의 것이다) 예시가 저자가 적을
+	// 것을 보여 주는 유일한 자리다.
+	case soml.LangAttr:
+		return "go"
 	// 도형 외관 속성 (PRD §7.6 표의 shape 행 순서).
 	case "type":
 		return "rect"

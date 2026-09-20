@@ -173,9 +173,11 @@ func TestHighlightLangVocabulary(t *testing.T) {
 			want: `알 수 없는 lang "typescript" (쓸 수 있는 값: go, xml, soml, json, bash)`,
 		},
 		{
+			// 예시 값까지 단정한다 — 값이 필요하다는 말만으로는 저자가 **무엇을** 적을지 모르고,
+			// 그 목록은 이 어휘를 닫은 표에만 있다 (예시가 비면 진단이 `lang=""`로 끝난다).
 			name: "값 없는 lang",
 			src:  `<slide><pre lang>x</pre></slide>`,
-			want: "lang 속성에는 값이 필요하다",
+			want: `lang 속성에는 값이 필요하다 (lang="go")`,
 		},
 		{
 			// 값 없음·빈 값의 문구는 hasValue가 소유한다 — 외관 속성과 같은 자리에서 같은
