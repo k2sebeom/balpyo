@@ -101,6 +101,7 @@ nav:
       - 0051 하이라이팅은 토큰 스트림이다: decisions/0051-highlighting-is-a-token-stream-compiled-to-runs.md
       - 0052 테마 선택은 덱의 요청이다: decisions/0052-theme-selection-is-a-deck-request-and-there-is-no-fallback-theme.md
       - 0053 가운데 정렬만 가로를 가져간다: decisions/0053-a-theme-takes-the-horizontal-channel-only-to-center.md
+      - 0054 외부 테마는 이름이고 extends는 이름 단위다: decisions/0054-an-external-theme-is-a-name-inside-the-project-and-extends-overrides-by-name.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |
