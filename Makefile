@@ -28,7 +28,7 @@ DOCKER_RUN = $(DOCKER) run --rm \
 	-e GOFLAGS="$(GOFLAGS)" \
 	-w /src $(IMAGE)
 
-.PHONY: help image deps test test-host review golden shell versions docs docs-serve docs-clean clean
+.PHONY: help image deps test test-host examples review golden shell versions docs docs-serve docs-clean clean
 
 help: ## 사용 가능한 타깃 목록
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -44,6 +44,11 @@ test: image deps ## 컨테이너 안에서 전체 테스트
 
 test-host: ## 호스트에서 테스트 (LibreOffice·Chromium 테스트는 건너뛴다)
 	go test ./...
+
+# 예제 게이트는 `make test`에도 들어 있다 (같은 테스트다). 이 타깃은 예제를 고치는 사람이
+# 130초짜리 픽스처 스위트를 기다리지 않게 하는 입구다 — 새 CI 잡은 없다 (ADR 0056).
+examples: image deps ## 예제 덱을 경고 0으로 빌드하는지 확인 (make test에도 포함)
+	$(DOCKER_RUN) go test ./internal/testkit -run TestExamplesBuildClean -v -count=1
 
 review: image deps ## 리뷰 갤러리 생성 → review/index.html
 	$(DOCKER_RUN) env BALPYO_REVIEW=1 go test ./internal/testkit -run TestFixtures -v -count=1
