@@ -424,11 +424,15 @@ ADR 0042의 관용(라벨을 도형 밖)으로 막히지 않았다. 남은 차�
 - [ ] `examples/quarterly-review/slides/004_table.slide`의 "표는 어휘에 없다" 주석 (P2.1 완료 시 함께).
 - [ ] `docs/index.md`의 "Iteration 5까지" 상태 문구 → 현재 상태 또는 상태 문구 제거.
 - [ ] `docs/index.md`에 도그푸딩 덱을 소개 링크로 넣는다(빌드해서 보는 방법 포함).
-- [ ] **D19 — 가장 급하다**: `docs/reference/soml/slide.md`의 `layout` 절이 아직 "어휘는 2종이고
+- [x] **D19 — 가장 급하다**: `docs/reference/soml/slide.md`의 `layout` 절이 아직 "어휘는 2종이고
       나머지 9종은 어휘 밖"이라고 말한다(11종이 다 산다). `docs/reference/index.md`는
       `layouts.md`가 "Iteration 10에서 생긴다"고 하는데 그 페이지는 이미 있다.
       `docs/reference/soml/text.md`의 진단 표에는 실제 메시지에 있는 `at`·`x`·`y`·`slot`이 빠졌다.
       **저자가 처음 읽는 세 페이지라 여기가 틀리면 어휘가 있어도 못 쓴다.**
+      → 세 페이지를 고쳤다: `slide.md`는 11종 표 + 실제 진단 문구 + 슬롯을 `layouts.md`로
+      넘기고, `index.md`는 `layouts.md`를 구현된 표면으로 옮기고 `theme.md`만 "아직 없다"로
+      남겼고, `text.md`는 속성 목록을 실제 메시지와 맞추고 **`<text>`에 `w`/`h`가 없다는 것과
+      우회(D14)**를 적었다. `make docs`(`--strict`) 통과.
 - [ ] **D18**: 컨테이너의 `justify`/`align`과 도형의 `anchor`가 같은 뜻의 다른 이름이라는 것을
       `layout.md`·`shape.md`가 서로 가리키게 한다 (어휘를 바꾸는 항목이 아니다 — 이름이 갈린
       이유가 CSS flex와 OOXML `bodyPr@anchor`라는 것을 한 줄로 밝힌다).
