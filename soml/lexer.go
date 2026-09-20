@@ -62,15 +62,41 @@ func (lx *lexer) takeRune(kind TokenKind) Token {
 	return lx.take(kind, size)
 }
 
+// cdataOpen·cdataClose는 CDATA 섹션의 구분자다 (ADR 0037). 섹션 안의 내용은 마크업이
+// 아니라 문자 그대로이고, 그것이 XML 예제를 원문대로 슬라이드에 띄우는 유일한 길이다.
+const (
+	cdataOpen  = "<![CDATA["
+	cdataClose = "]]>"
+)
+
+// startsMarkup은 `<`로 시작하는 이 자리가 마크업인지 보고한다 (ADR 0037).
+//
+// 마크업은 네 가지뿐이다 — 여는 태그(`<` + 글자), 닫는 태그(`</`), 주석(`<!--`),
+// CDATA(`<![CDATA[`). **나머지 `<`는 내용이다**: `a < b`·`x <= y`·`1<2`가 그냥 쓰인다.
+// 이 규칙이 오탈자를 잃지 않는 근거는 태그 이름이 항상 글자로 시작한다는 것이다
+// (isNameStart) — 리터럴로 읽히는 `<`는 태그일 수 없는 `<`뿐이므로 `<txt>`의 오타는
+// 여전히 "알 수 없는 태그"로 잡힌다.
+func startsMarkup(rest string) bool {
+	if len(rest) < 2 || rest[0] != '<' {
+		return false
+	}
+	switch {
+	case isNameStart(rest[1]), rest[1] == '/':
+		return true
+	case rest[1] == '!':
+		return strings.HasPrefix(rest, "<!--") || strings.HasPrefix(rest, cdataOpen)
+	}
+	return false
+}
+
 // lexContent는 태그 밖(문자 데이터) 위치에서 토큰 하나를 읽는다.
 func (lx *lexer) lexContent() Token {
 	rest := lx.rest()
-	if rest[0] != '<' {
-		// 다음 `<`까지가 텍스트다. 없으면 소스 끝까지.
-		if i := strings.IndexByte(rest, '<'); i > 0 {
-			return lx.take(TokenText, i)
-		}
-		return lx.take(TokenText, len(rest))
+	if !startsMarkup(rest) {
+		// 다음 **마크업** `<`까지가 텍스트다. 마크업이 아닌 `<`는 내용이므로 텍스트 토큰을
+		// 끊지 않는다 — 끊으면 같은 문장이 토큰 여러 개로 갈라져 접기·참조 해석이 조각마다
+		// 따로 일어난다.
+		return lx.take(TokenText, textLen(rest))
 	}
 	switch {
 	case strings.HasPrefix(rest, "<!--"):
@@ -78,11 +104,28 @@ func (lx *lexer) lexContent() Token {
 			return lx.take(TokenComment, len("<!--")+i+len("-->"))
 		}
 		return lx.take(TokenCommentUnterminated, len(rest))
+	case strings.HasPrefix(rest, cdataOpen):
+		if i := strings.Index(rest[len(cdataOpen):], cdataClose); i >= 0 {
+			return lx.take(TokenCData, len(cdataOpen)+i+len(cdataClose))
+		}
+		return lx.take(TokenCDataUnterminated, len(rest))
 	case strings.HasPrefix(rest, "</"):
 		return lx.take(TokenTagStartClose, 2)
 	default:
 		return lx.take(TokenTagStart, 1)
 	}
+}
+
+// textLen은 rest의 앞에서 문자 데이터가 차지하는 바이트 수다 — 다음 마크업 `<`까지다.
+// 0바이트를 돌려주지 않는다 (렉서는 항상 전진한다): 첫 바이트가 마크업 아닌 `<`면 그것을
+// 지나서 센다.
+func textLen(rest string) int {
+	for i := 1; i < len(rest); i++ {
+		if rest[i] == '<' && startsMarkup(rest[i:]) {
+			return i
+		}
+	}
+	return len(rest)
 }
 
 // lexInTag는 태그 안(`<`와 `>` 사이) 위치에서 토큰 하나를 읽는다.
@@ -103,6 +146,13 @@ func (lx *lexer) lexInTag() Token {
 	case c == '"' || c == '\'':
 		return lx.lexString(c)
 	case c == '<':
+		if !startsMarkup(rest) {
+			// 태그 **안**에서 마크업이 아닌 `<`는 쓸 수 없는 문자다 (속성 이름도 값도
+			// 아니다). lexContent로 넘기면 텍스트 토큰이 뒤따르는 태그까지 삼켜 진단이
+			// 엉뚱한 곳을 가리킨다 — 태그 밖의 리터럴 `<` 규칙(startsMarkup)과 갈라지는
+			// 유일한 자리다.
+			return lx.takeRune(TokenInvalid)
+		}
 		// 태그 안의 `<`는 앞 태그가 닫히지 않았다는 뜻이다. `<`를 새 태그의 시작으로
 		// 넘겨 파서가 "닫히지 않은 태그" 하나만 진단하고 계속 읽게 한다 — 이 문자를
 		// Invalid로 삼키면 뒤따르는 문서 전체가 속성 자리로 오해된다.

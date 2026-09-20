@@ -400,9 +400,17 @@ func TestParseErrors(t *testing.T) {
 			want: []string{"1:9 <slide>의 자식으로 <slide>는 올 수 없다"},
 		},
 		{
-			name: "태그 이름이 없다",
+			// `<` + 공백은 마크업이 아니므로 문자 데이터다 (ADR 0037). 요소만 담는 <slide>
+			// 안에서는 그 문자 데이터가 진단이 된다 — 진단의 종류가 바뀐 것이지 사라진 것이
+			// 아니다.
+			name: "마크업이 아닌 <는 문자 데이터다",
 			src:  `<slide>< ></slide>`,
-			want: []string{"1:8 `<` 뒤에 태그 이름이 없다"},
+			want: []string{"1:8 <slide> 안에 문자 데이터를 직접 쓸 수 없다"},
+		},
+		{
+			name: "닫는 태그에 이름이 없다",
+			src:  `<slide></ ></slide>`,
+			want: []string{"1:8 `</` 뒤에 태그 이름이 없다"},
 		},
 		{
 			name: "닫히지 않은 주석",

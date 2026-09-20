@@ -22,6 +22,10 @@ func TestTokenizeIsLossless(t *testing.T) {
 		"<!-- 닫히지 않은 주석",
 		"<slide @#$>",
 		"a < b",
+		// 마크업이 아닌 `<`·`&`와 CDATA — 무손실은 이 셋에서도 성립한다 (ADR 0037).
+		"<p>a < b && c &lt; d</p>",
+		"<pre><![CDATA[<slide id=\"x\">]]></pre>",
+		"<pre><![CDATA[닫히지 않은",
 	}
 	for _, src := range inputs {
 		if got := Tokenize(src).Source(); got != src {
@@ -129,6 +133,34 @@ func TestTokenizeKinds(t *testing.T) {
 			src:   `<slide 한>`,
 			want:  []TokenKind{TokenTagStart, TokenName, TokenWhitespace, TokenInvalid, TokenTagEnd, TokenEOF},
 			texts: []string{"<", "slide", " ", "한", ">"},
+		},
+		{
+			// 마크업이 아닌 `<`는 텍스트에 남고 텍스트 토큰을 끊지 않는다 (ADR 0037).
+			name:  "마크업이 아닌 <는 텍스트다",
+			src:   `a < b <p>`,
+			want:  []TokenKind{TokenText, TokenTagStart, TokenName, TokenTagEnd, TokenEOF},
+			texts: []string{"a < b ", "<", "p", ">"},
+		},
+		{
+			name:  "태그 안의 마크업 아닌 <는 Invalid 하나다",
+			src:   `<slide <>`,
+			want:  []TokenKind{TokenTagStart, TokenName, TokenWhitespace, TokenInvalid, TokenTagEnd, TokenEOF},
+			texts: []string{"<", "slide", " ", "<", ">"},
+		},
+		{
+			name: "CDATA는 토큰 하나다",
+			src:  `<pre><![CDATA[<slide>]]></pre>`,
+			want: []TokenKind{
+				TokenTagStart, TokenName, TokenTagEnd, TokenCData,
+				TokenTagStartClose, TokenName, TokenTagEnd, TokenEOF,
+			},
+			texts: []string{"<", "pre", ">", `<![CDATA[<slide>]]>`, "</", "pre", ">"},
+		},
+		{
+			name:  "닫히지 않은 CDATA는 끝까지 삼킨다",
+			src:   "<![CDATA[열린 채\n계속",
+			want:  []TokenKind{TokenCDataUnterminated, TokenEOF},
+			texts: []string{"<![CDATA[열린 채\n계속"},
 		},
 	}
 

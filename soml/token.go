@@ -16,6 +16,12 @@ const (
 	// TokenCommentUnterminated는 `-->`로 닫히지 않고 소스가 끝난 주석이다.
 	TokenCommentUnterminated
 
+	// TokenCData는 `<![CDATA[ ... ]]>` 섹션 전체다 (구분자 포함). 트리비아가 **아니다** —
+	// 내용은 문자 데이터이고, 그 안에서는 마크업도 문자 참조도 해석되지 않는다 (ADR 0037).
+	TokenCData
+	// TokenCDataUnterminated는 `]]>`로 닫히지 않고 소스가 끝난 CDATA다.
+	TokenCDataUnterminated
+
 	// TokenTagStart는 여는 태그의 `<`다.
 	TokenTagStart
 	// TokenTagStartClose는 닫는 태그의 `</`다.
@@ -49,6 +55,8 @@ var tokenKindNames = map[TokenKind]string{
 	TokenText:                "Text",
 	TokenComment:             "Comment",
 	TokenCommentUnterminated: "CommentUnterminated",
+	TokenCData:               "CData",
+	TokenCDataUnterminated:   "CDataUnterminated",
 	TokenTagStart:            "TagStart",
 	TokenTagStartClose:       "TagStartClose",
 	TokenTagEnd:              "TagEnd",

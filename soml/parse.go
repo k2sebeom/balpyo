@@ -308,8 +308,11 @@ func (p *parser) parseDocument() *Element {
 			}
 			return root
 
-		case TokenText:
+		case TokenText, TokenCData, TokenCDataUnterminated:
 			p.i++
+			if tok.Kind == TokenCDataUnterminated {
+				p.errorf(tok.Span, "CDATA 섹션이 `%s`로 닫히지 않았다", cdataClose)
+			}
 			p.charData(tok, parentOf(stack))
 
 		case TokenTagStart:
@@ -380,12 +383,12 @@ func (p *parser) charData(tok Token, parent *Element) {
 		}
 		switch spec.model {
 		case modelText, modelInline:
-			parent.Children = append(parent.Children, &Text{Value: collapseSpace(tok.Text), Span: tok.Span})
+			parent.Children = append(parent.Children, &Text{Value: p.charDataValue(tok, true), Span: tok.Span})
 			return
 		case modelPre:
 			// pre 안에서는 접지 않는다 — 개행·연속 공백이 곧 내용이다. 양 끝 개행 규칙은
 			// 닫힐 때 적용된다 (trimPreEdges).
-			parent.Children = append(parent.Children, &Text{Value: tok.Text, Span: tok.Span})
+			parent.Children = append(parent.Children, &Text{Value: p.charDataValue(tok, false), Span: tok.Span})
 			return
 		case modelVoid:
 			// void 위반은 여는 태그에서 이미 진단됐다 (parseDocument). 내용까지 진단해
@@ -408,12 +411,37 @@ func (p *parser) charData(tok Token, parent *Element) {
 	p.errorf(dataSpan(tok), "<%s> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)", parent.Name)
 }
 
+// charDataValue는 문자 데이터 토큰이 모델에 싣는 값이다 (ADR 0037).
+//
+// CDATA는 **원문 그대로**다 — 그 안에서 참조를 풀지 않는 것이 CDATA의 뜻이다. 공백 접기만
+// 부모의 콘텐츠 모델을 따른다: `<pre>` 안에서는 보존되고 `<p>` 안에서는 접힌다. 같은 자리에
+// 쓴 두 표기(참조와 CDATA)가 접기에서 갈라지면 저자가 표기마다 다른 규칙을 외워야 한다.
+func (p *parser) charDataValue(tok Token, collapse bool) string {
+	if tok.Kind == TokenText {
+		return decodeCharData(tok.Text, tok.Span, collapse, p.reportCharRef)
+	}
+	body := cdataBody(tok.Text)
+	if collapse {
+		return collapseSpace(body)
+	}
+	return body
+}
+
+// reportCharRef는 참조 모양인데 어휘 밖인 조각을 진단한다. 구간은 그 조각을 가리킨다.
+func (p *parser) reportCharRef(span Span, ref string) {
+	p.errorf(span, "쓸 수 없는 문자 참조 %s (쓸 수 있는 것: %s, `&#10진수;`, `&#x16진수;`)",
+		ref, charRefList())
+}
+
 // parseStartTag는 여는 태그를 읽는다. stillOpen은 요소가 열린 채로 남는지다 —
 // 자기 닫는 태그와 이미 진단된 깨진 태그는 스택에 올리지 않는다.
 func (p *parser) parseStartTag() (elem *Element, stillOpen bool) {
 	open := p.take() // `<`
 	nameTok := p.peek()
 	if nameTok.Kind != TokenName {
+		// 렉서가 `<`를 여는 태그로 내는 것은 글자가 뒤따를 때뿐이므로(startsMarkup) 이
+		// 자리는 지금 닿지 않는다 — 두 층이 어긋나는 날을 위한 방어막으로 남긴다.
+		// 마크업이 아닌 `<`는 여기까지 오지 않고 문자 데이터가 된다 (ADR 0037).
 		p.errorf(open.Span, "`<` 뒤에 태그 이름이 없다")
 		p.skipToTagEnd()
 		return nil, false
@@ -488,6 +516,12 @@ func (p *parser) parseAttr(elem *Element) {
 		}
 	}
 
+	if attr.HasValue {
+		// 속성 값도 문자 데이터와 같은 참조 규칙을 따른다 (ADR 0037) — `alt="a &lt; b"`가
+		// 동작하고 `href="?a=1&b=2"`는 그대로 남는다. 접지는 않는다: 값 안의 공백은 저자가
+		// 쓴 그대로가 뜻이고(`pad="sm md"`), 렉서가 줄 끝에서 멈추므로 접을 개행도 없다.
+		attr.Value = decodeCharData(attr.Value, attr.ValueSpan, false, p.reportCharRef)
+	}
 	if _, dup := elem.Attr(attr.Name); dup {
 		p.errorf(attr.NameSpan, "속성 %s가 중복됐다 (앞의 것만 쓴다)", attr.Name)
 		return
