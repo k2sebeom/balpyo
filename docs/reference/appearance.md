@@ -379,6 +379,45 @@ PowerPoint에서 확인한다** — 각 iteration의 리뷰 단계가 그 자리
 [ADR 0010](../decisions/0010-link-color-accent1.md)이다 — 런의 `schemeClr` 참조와 테마
 파트의 `hlink` 슬롯이 같은 토큰 표의 같은 값에서 나온다.
 
+### 코드 하이라이팅 (합성 런)
+
+`<pre lang="…">`의 강조는 저자가 쓴 서식이 아니라 **값 층이 만든 합성 인라인 런**이다
+([ADR 0051](../decisions/0051-highlighting-is-a-token-stream-compiled-to-runs.md), 어휘와
+동작은 [텍스트 서브셋](soml/text-subset.md)의 코드 블록 절). 그래서 매핑에 새 줄이 없다 —
+위 인라인 서식 표의 `span` 행과 **같은 경로**로 나간다: 웹은 `<span style="color: var(…)">`,
+PPTX는 `a:r` + `a:rPr/a:solidFill/a:schemeClr`다.
+
+코드 토큰 종류는 **닫힌 7종**이고, 종류 → 색 토큰 표는 테마의 `components.json` `code` 절이
+소유한다. 표는 **부분 패치**다 — 적지 않은 종류는 색이 없어 `<pre>`의 확정 색(역할 `code` →
+`fg`)을 그대로 물려받는다.
+
+| 종류 | 무엇 | `minimal`의 색 |
+|---|---|---|
+| `keyword` | 키워드 (`func`·`return`·`if`) | `accent6` |
+| `name` | 이름 — 함수·타입·태그 | `accent1` |
+| `attr` | 속성 이름 (XML·JSON의 키) | `accent2` |
+| `string` | 문자열 리터럴 | `accent3` |
+| `number` | 수치 리터럴 | `accent4` |
+| `comment` | 주석 | `muted` |
+| `punct` | 구두점 (`{`·`,`·`;`) | **적지 않았다** — `fg`를 물려받는다 |
+
+- 종류가 일곱인 것은 **우리 쪽 경계**다. 토크나이저(Chroma)의 종류는 수백 가지인데 그대로
+  열면 테마마다 적을 표가 그만큼 늘고, 적지 않은 테마의 코드가 종류마다 다르게 죽는다.
+- 대응은 번호 순서가 아니라 눈으로 고른 것이다 (accent 번호는 위계가 아니다 —
+  [ADR 0050](../decisions/0050-six-accents-are-a-measured-palette-not-a-ranking.md)): 주석은
+  `muted`로 물러나고, 이름·속성·문자열·숫자가 색상환에서 서로 떨어진 넷을 갖는다.
+- **색은 색 토큰 이름만 받는다.** 리터럴 hex나 색 함수를 적으면 테마 로딩이 멈춘다 — 리터럴은
+  `schemeClr` 참조를 끊어 PowerPoint의 테마 색 편집이 **코드 블록만 두고 가게** 만든다
+  (위 "토큰 색은 참조로 남는다" 절이 코드에도 걸린다는 뜻이다).
+- `plain`은 표에 적을 수 **없는** 이름이다 — 색이 없는 자리이므로 테마가 정할 것이 없다
+  (공백·연산자·평범한 식별자).
+- 같은 절의 `tabSize`(`minimal`은 2)는 값 층이 탭을 펼 때의 칼럼 간격이다. 색이 아니라
+  **글자**의 값이므로 `lang`이 없는 `<pre>`에도 걸린다.
+
+**`mono` 토큰의 `ea`는 고정폭 CJK 면이어야 한다.** 고정폭 라틴에 비례폭 CJK를 짝지으면 코드
+블록의 한글 주석이 두 엔진에서 다른 폭으로 그려진다 — 측정과 원인은
+[알려진 차이](../guides/known-differences.md)의 코드 블록 절에 있다.
+
 ### 리스트
 
 들여쓰기·마커 값은 **웹 리스트 CSS 상수(`render/web`)와 한 곳에서 나온다** — PPTX의

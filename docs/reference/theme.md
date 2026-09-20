@@ -29,7 +29,7 @@ minimal/
 |---|---|---|
 | `theme.json` | 이 테마의 정체 — 이름, 구현하는 레이아웃 목록, 덱 크롬 선언 | 아래 |
 | `tokens.json` | **값의 이름표** — `accent1`·`md`·`heading`이 무슨 값인가 | 아래 (값은 [외관 속성](appearance.md)) |
-| `components.json` | **역할과 variant의 외관** — `role="body"`가 몇 px인가 | [외관 속성](appearance.md) |
+| `components.json` | **역할과 variant의 외관** — `role="body"`가 몇 px인가, 코드 토큰이 무슨 색인가 | [외관 속성](appearance.md) |
 | `layouts/*.css` | **자리** — 레이아웃 하나가 자식을 어떻게 놓는가 | [레이아웃과 슬롯](layouts.md) |
 
 로더는 파일 사이의 **교차 대조**를 빌드 시점에 한다: `layouts/`의 `*.css` 이름 집합이
@@ -97,7 +97,7 @@ accent1, …)`). 그래서 **토큰 이름은 테마가 소유하는 어휘**다
 | 범주 | 채워야 하는 이름 | 쓰이는 자리 | PPTX 테마 슬롯 |
 |---|---|---|---|
 | `color` | `fg` · `bg` · `muted` · `surface` · `accent1`~`accent6` | `color` · `fill` · `border` · 그라디언트 스톱 · 색 변형의 밑색 | `clrScheme` 12자리 (`slot`) |
-| `font` | `heading` · `body` · `mono` | `font` | `fontScheme` major/minor (`scheme`) |
+| `font` | `heading` · `body` · `mono` | `font` · 코드 블록 | `fontScheme` major/minor (`scheme`) |
 | `space` | `xs` · `sm` · `md` · `lg` · `xl` · `2xl` | `gap` · `pad` | **없음** ([ADR 0012](../decisions/0012-space-tokens-have-no-theme-slot.md)) |
 | `radius` | `sm` · `md` · `lg` | `radius` | **없음** (OOXML에 반경 개념이 없다) |
 | `shadow` | `soft` | `shadow` | 없음 (도형마다 `outerShdw`를 굽고 **색만** 참조로 남는다) |
@@ -114,6 +114,13 @@ accent1, …)`). 그래서 **토큰 이름은 테마가 소유하는 어휘**다
 값을 **빌린다** (`accent2`~`accent6` → `accent1`, `hlink`/`folHlink` → `accent1`) — 자리를 비울
 수 없고, Office 기본 색으로 채우면 사용자가 편집 UI에서 그 자리를 골랐을 때 테마와 무관한
 색이 나온다. `minimal`은 강조색 여섯을 다 가지므로 빌리는 자리가 링크 둘뿐이다.
+
+**폰트 토큰의 두 슬롯은 같은 가족을 가리켜야 한다.** `latin`과 `ea`는 글리프가 없을 때 엔진이
+고르는 면인데, 그 선택을 하는 주체가 타깃마다 다르다 — 브라우저는 fontconfig에 물어보고
+LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`에서 이 규칙이 눈에 보인다:
+**고정폭 라틴에는 고정폭 CJK `ea`가 필요하다**(`minimal`은 `Noto Sans Mono CJK KR`이다).
+비례폭 면을 적어 두면 코드 블록의 한글 주석 한 줄이 두 엔진에서 다른 폭으로 그려진다 (측정
+−7.9% → 짝을 맞춘 뒤 +0.6% — [알려진 차이](../guides/known-differences.md)).
 
 ### 강조색 여섯의 규칙
 
@@ -234,6 +241,11 @@ PPTX에서 **플레이스홀더(`p:ph type="sldNum"`)를 쓰지 않는다.** 제
 | `layouts`에 선언했는데 `layouts/<이름>.css`가 없다 | **에러** | `layouts에 …가 있지만 layouts/….css가 없다` |
 | `layouts/<이름>.css`가 있는데 선언에 없다 | **에러** | `…css가 있지만 theme.json의 layouts 선언에 없다` |
 | `components.json`에 모르는 키가 있다 | **에러** | 미지원 키를 가리킨다 (오타·미구현 키) |
+| `code.tabSize`가 1 미만이다 | **에러** | `tabSize는 1 이상이어야 한다` |
+| `code.tokens`에 모르는 종류가 있다 | **에러** | `알 수 없는 코드 토큰 종류 "kw" (쓸 수 있는 종류: keyword, name, attr, string, number, comment, punct)` |
+| `code.tokens`에 같은 종류가 두 번 | **에러** | `코드 토큰 종류 "keyword"가 두 번 적혀 있다` |
+| 코드 토큰 색이 리터럴·색 함수다 | **에러** | `…의 색은 색 토큰 이름이어야 한다 … 리터럴 색은 참조를 끊는다` |
+| 코드 토큰 색이 이 테마에 없는 토큰이다 | **에러** | 쓸 수 있는 색 토큰 이름을 함께 나열한다 |
 | 레이아웃 CSS에 배치 아닌 프로퍼티(색·글꼴 등)가 있다 | **경고** | 외관은 `components.json`의 몫이다 — 그 프로퍼티는 PPTX에 도달하지 않는다 |
 | 설정이 켠 크롬을 테마가 선언하지 않았다 | **경고** + 미탑재 | `balpyo.json`을 가리킨다 — 고칠 자리가 거기다 |
 | 표준 레이아웃을 테마가 구현하지 않았다 | **경고** + `minimal` 폴백 | 덱은 계속 렌더된다 |
