@@ -69,12 +69,21 @@ type boxMeasurement struct {
 // 검증 방법이다 (measure_browser_test.go). Iteration 0에서 스크린샷이 스크롤량만큼 어긋난
 // 것과 같은 종류의 실패를 좌표 쪽에서 미리 막는다.
 //
-// # 줄 박스를 요소의 **직계 문자 노드**에서만 읽는 이유
+// # 줄 박스를 **식별자를 갖지 않는 자손까지** 읽는 이유
 //
 // Range.getClientRects()는 선택 영역이 실제로 차지한 줄마다 사각형 하나를 준다 — 브라우저가
-// 어디서 줄을 나눴는지 알 수 있는 유일한 값이다. 요소 전체를 선택하면 자손 요소의 줄까지
-// 함께 들어오는데, 자손은 자기 식별자로 따로 측정되므로 그러면 같은 줄이 두 요소에 실린다.
-// 직계 문자 노드만 재면 각 요소의 Lines가 그 요소가 직접 그린 글자에 대응한다.
+// 어디서 줄을 나눴는지 알 수 있는 유일한 값이다. 요소 **전체**를 선택하면 자기 식별자로 따로
+// 측정되는 자손의 줄까지 들어와 같은 줄이 두 요소에 실리므로, 순회는 `data-balpyo-id`를 가진
+// 자손에서 멈춘다. 그 밖의 자손 — 인라인 런(`<strong>`·`<em>`·`<a>`·`<span>`)과 코드
+// 하이라이팅의 합성 런(ADR 0051) — 은 **이 요소가 직접 그린 글자**다: 측정 대상은 블록
+// 종류뿐이고(render/web의 측정 대상 계약) 인라인은 박스가 아니라 런이므로, 그 글자를 빼고
+// 재면 잰 줄이 그림보다 좁아진다. 한 줄이 통째로 런인 경우(주석 한 줄짜리 코드) 그 줄은
+// 아예 사라져 "잰 줄이 없는 자리에 그림이 있다"가 된다.
+//
+// 그래서 **같은 줄에 앉은 조각은 합친다**: 줄 수는 그림의 성질이고 런은 서식의 성질이라,
+// `배포 <strong>자동화</strong>`가 두 줄로 세어지면 줄바꿈 판정의 좌변이 틀린다. 세로로 겹친
+// 조각을 이어 붙이는 것으로 판정하는 이유는 줄 안에서 글자 크기가 다를 수 있다는 것이다
+// (`<code>`가 낀 줄) — 같은 y를 요구하면 그 줄이 쪼개진다.
 //
 // 폭·높이가 0인 사각형은 버린다 — 태그 사이 줄바꿈에서 생긴 접힌 공백 노드가 빈 사각형을
 // 만들고, 그것이 줄 수에 섞이면 줄바꿈 판정의 좌변이 틀린다.
@@ -95,14 +104,40 @@ const measureScript = `(() => {
     const lineRects = (el) => {
       const range = document.createRange();
       const rects = [];
-      for (const node of el.childNodes) {
-        if (node.nodeType !== Node.TEXT_NODE) continue;
-        range.selectNodeContents(node);
-        for (const r of range.getClientRects()) {
-          if (r.width > 0 && r.height > 0) rects.push(r);
+      // 순회는 식별자를 가진 자손에서 멈춘다 — 그 자손은 자기 박스로 따로 측정된다 (위 주석).
+      const walk = (node) => {
+        for (const child of node.childNodes) {
+          if (child.nodeType === Node.TEXT_NODE) {
+            range.selectNodeContents(child);
+            for (const r of range.getClientRects()) {
+              if (r.width > 0 && r.height > 0) rects.push(r);
+            }
+            continue;
+          }
+          if (child.nodeType !== Node.ELEMENT_NODE) continue;
+          if (child.hasAttribute(%q)) continue;
+          walk(child);
         }
+      };
+      walk(el);
+      // 같은 줄의 조각을 합친다 — 줄 수는 그림의 성질이므로 인라인 런이 줄을 늘리면 안 된다.
+      // 판정은 세로 겹침이 작은 쪽 높이의 절반을 넘는가다: 줄 안의 작은 글자(code 조각)는
+      // 큰 줄 상자 안에 들어앉아 거의 전부 겹치고, 이웃한 두 줄은 겹쳐도 그만큼은 아니다.
+      rects.sort((a, b) => (a.top - b.top) || (a.left - b.left));
+      const lines = [];
+      for (const r of rects) {
+        const last = lines[lines.length - 1];
+        const overlap = last ? Math.min(last.bottom, r.bottom) - Math.max(last.top, r.top) : 0;
+        if (last && overlap > Math.min(last.bottom - last.top, r.bottom - r.top) / 2) {
+          last.top = Math.min(last.top, r.top);
+          last.bottom = Math.max(last.bottom, r.bottom);
+          last.left = Math.min(last.left, r.left);
+          last.right = Math.max(last.right, r.right);
+          continue;
+        }
+        lines.push({top: r.top, bottom: r.bottom, left: r.left, right: r.right});
       }
-      return rects;
+      return lines.map((l) => ({x: l.left, y: l.top, width: l.right - l.left, height: l.bottom - l.top}));
     };
     // 콘텐츠 박스는 스테이지의 **패딩 안쪽**이다 — 여백을 레이아웃마다 테마가 정하므로
     // (slideMeasurement.Content의 주석) 상수가 아니라 계산된 스타일에서 읽는다. 테두리를
@@ -162,7 +197,7 @@ const measureScript = `(() => {
 // "좌표가 하나도 없다"로 나타난다.
 func measureExpr() string {
 	return fmt.Sprintf(measureScript,
-		web.MeasureViewExpr(),
+		web.MeasureViewExpr(), web.IDAttr,
 		web.SlideSelector(), web.SlideIndexAttr, web.StageSelector(),
 		web.ElementSelector(), web.IDAttr, web.ElAttr,
 		web.ChromeSelector(), web.ChromeKindAttr,

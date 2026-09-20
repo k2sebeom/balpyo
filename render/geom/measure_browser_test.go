@@ -177,6 +177,45 @@ func TestMeasureCollectsLineBoxes(t *testing.T) {
 	}
 }
 
+// 인라인 런의 글자도 **그 블록이 그린 줄**이다 — 순회는 `data-balpyo-id`를 가진 자손에서만
+// 멈춘다 (measure.go의 줄 박스 절).
+//
+// 두 실패를 동시에 막는다. 줄이 통째로 런이면(코드 하이라이팅의 주석 한 줄 — ADR 0051) 잰
+// 줄이 0개가 되어 "그림이 있는데 잰 줄이 없다"가 되고, 줄 안에 런이 섞이면 조각마다 줄을
+// 세어 한 줄이 셋이 된다 — 줄 수는 줄바꿈 판정의 좌변이므로 둘 다 판정을 조용히 무너뜨린다.
+func TestMeasureLinesIncludeInlineRuns(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := layoutDeck(t,
+		`<p><strong>줄 전체가 런이다</strong></p>`,
+		`<p>배포 <strong>자동화</strong>와 <code>관측성</code> 스택</p>`)
+	g := measureLayout(t, deck)
+
+	for _, tc := range []struct {
+		id   string
+		what string
+	}{
+		{id: "s0.0", what: "줄 전체가 런인 단락"},
+		{id: "s1.0", what: "런이 섞인 단락"},
+	} {
+		box := boxOf(t, g, tc.id)
+		if box.LineCount() != 1 {
+			t.Fatalf("%s의 줄 수 = %d, want 1 (%+v)", tc.what, box.LineCount(), box.Lines)
+		}
+		line := box.Lines[0]
+		// 잰 줄이 그림을 덮는지: 글자는 박스 왼쪽에서 시작하고, 폭이 있고, 박스 안에 있다.
+		if math.Abs(line.X-box.Rect.X) > 0.5 {
+			t.Errorf("%s의 줄 x = %v, want %v (박스 왼쪽)", tc.what, line.X, box.Rect.X)
+		}
+		if line.W <= 0 || line.Right() > box.Rect.Right()+0.5 {
+			t.Errorf("%s의 줄 = %s, 박스 = %s", tc.what, line, box.Rect)
+		}
+		// 줄 높이는 글자 상자다 — 합치기가 박스 높이를 그대로 베끼면 줄 슬롯을 잰 것이 된다.
+		if line.H <= 0 || line.H > box.Rect.H {
+			t.Errorf("%s의 줄 높이 = %v, 박스 높이 = %v", tc.what, line.H, box.Rect.H)
+		}
+	}
+}
+
 // 스테이지가 1:1이라는 전제는 확인해야 하는 사실이다 — 페이지가 조용히 스케일되면 모든
 // 좌표가 틀린 채로 산출물까지 간다.
 func TestMeasureRejectsScaledPage(t *testing.T) {
