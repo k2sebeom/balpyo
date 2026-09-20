@@ -26,7 +26,7 @@
 | D4 | `title.slots.css`의 `justify-items: center`가 base 층 `.balpyo-text { width: 100% }`에 무력화된다. 표지가 왼쪽에 붙어서 슬롯 자식마다 `align="center"`를 손으로 달았다 | **높음** | P1.3 | **닫힘** (ADR 0043) |
 | D5 | `chevron` 중앙 텍스트가 노치에 **잘린다**. `pad`를 키워도 해결 불가 → 라벨을 도형 밖으로 내렸다 | 중간 | P1.2 | 닫힘 |
 | D6 | `<ul>`/`<ol>`에 외관 속성이 없다. 목록 글자 크기를 바꾸려면 레이아웃을 바꿔야 한다 | 중간 | P0.3 | 닫힘 |
-| D7 | 도형 안에 레이아웃 컨테이너를 넣을 수 없어, 카드 헤더/본문을 **도형 2개 + `gap="0"` `col`**로 흉냈다 | 중간 | P2.3 | 열림 |
+| D7 | 도형 안에 레이아웃 컨테이너를 넣을 수 없어, 카드 헤더/본문을 **도형 2개 + `gap="0"` `col`**로 흉냈다 | 중간 | P2.3 | **닫힘** (ADR 0049) |
 | D8 | 검수 루프가 전부 수동이다: 웹은 호스트, PPTX는 컨테이너, 그림 확인은 `soffice` + `pdftoppm`을 직접 조립했다 | 중간 | P3.1 · P3.2 | **닫힘** (P3.1 `balpyo watch` — 저장하면 탭이 새로고침된다 · P3.2 `balpyo preview` — 웹/PPTX/diff 갤러리가 한 명령이다) |
 | D9 | **오버플로 진단이 없다.** 글이 박스를 넘쳐도 빌드는 조용하고 열어봐야 안다 | **높음** | P1.1 | 닫힘 |
 | D10 | 페이지 번호·푸터·러닝 헤더가 없다 (`a:fld`/`slidenum` 미구현) | 중간 | P2.2 | **닫힘** (P2.2 — 번호·푸터. 러닝 헤더는 같은 `chrome` 어휘에 `kind`를 더하면 열린다) |
@@ -61,6 +61,7 @@
 | P1.4 슬롯의 테마 구멍과 세로 리듬 (D3 · D17) | minimal이 슬롯 10종 전부에 `*.slots.css`를 갖고, 테마가 못 받는 슬롯은 **값 층에서 경고 + 미탑재**(두 렌더러가 한 입력을 읽는다). 세로 리듬은 `<slide justify>`가 소유한다 | [ADR 0044](docs/decisions/0044-slots-need-a-theme-and-vertical-rhythm-needs-an-owner.md), `render/pptx/placeholder_test.go`(두 타깃 모드 합의) · `core/theme_package_test.go`(카탈로그 ↔ 테마 대조), `03_layout/008` · `08_slots/005` |
 | P2.1 `<table>` 렌더러 (D2 · D20) | 웹은 진짜 `<table>`, PPTX는 `p:graphicFrame`+`a:tbl`(표 스타일 없음 + 명시 `tcPr`). 격자 수치는 전부 **잰 값**이고 그 합이 프레임 크기와 같다. 예제 덱 셋의 손으로 짠 표가 표로 돌아왔다 | [ADR 0036](docs/decisions/0036-table-is-html-ish-tr-td-with-explicit-a-tbl.md), `09_table`(5장) · `internal/testkit/table_fixture_test.go`(병합 격자 전수), LibreOffice flat ODF 왕복(`table:table-cell` 78개 · 덮인 셀 4개), `docs/reference/soml/table.md` |
 | P2.2 덱 크롬: 페이지 번호 · 푸터 (D10) | 어휘를 **나눠 갖는다**: 내용·켜짐은 `balpyo.json`(`footer`·`pageNumber`, 둘 다 기본 꺼짐), 자리·정렬·역할·제외는 테마 `chrome` 선언. 제외 규칙은 값 층이 적용해 두 렌더러가 확정 모델 하나를 읽는다. 번호는 `a:fld type="slidenum"`(캐시 숫자 동봉)이라 뷰어가 다시 센다 — `p:ph`도 `p:hf`도 쓰지 않았다 | [ADR 0045](docs/decisions/0045-deck-chrome-is-config-text-in-a-theme-declared-band.md), `10_chrome`(4장) · `internal/testkit/chrome_fixture_test.go`(잰 rect ↔ 골든 EMU 0 오차 · 다른 픽스처 골든에 크롬 0조각), LibreOffice flat ODF 왕복(`<text:page-number>`가 포함된 두 장에만 · 장을 끼우면 1/3/5로 따라온다), `docs/reference/theme.md` |
+| P2.3 `<shape>` 안에 레이아웃 컨테이너 (D7) | 카드 한 장이 **도형 하나**다: 도형이 컨테이너를 담으면 **배경**이 되고(빈 `<a:p/>` + 인셋·앵커는 그대로) 자식은 잰 좌표를 가진 **형제** 도형이 된다 — `p:grpSp`를 쓰지 않아 "잰 rect가 곧 xfrm"이 그대로다. 모드는 **도형마다** 정해져 배경 카드 안의 배지가 흡수 모드로 남고, 판정의 단일 소유자는 `soml.ShapeHoldsLayout`이다. 배경 + `rotate`는 에러다(두 타깃이 다른 그림이 된다). 흡수 모드로는 불가능했던 것이 열렸다: 푸터를 `justify="between"`으로 아래에 붙이는 것, 카드 전체의 둥근 모서리, 테두리를 한 번만 그리는 것 | [ADR 0049](docs/decisions/0049-a-shape-that-holds-layout-becomes-a-backdrop.md), `11_shape_layout`(3장) · `render/pptx/preset_test.go`(배경은 `<a:p/>` 하나 · 자식이 형제 · `<p:grpSp>`가 없다) · `internal/testkit`(좌표 대조로 자식의 xfrm 전수 · 도형 안 줄 세기를 두 픽스처가 공유) · `core`의 `rotate` 거부, `balpyo-intro` 06이 카드 하나로 돌아왔다, `docs/reference/soml/shape.md` |
 | P3.1 `balpyo watch` — 핫 리로드 (D8) | 폴링(250ms) + "스캔이 같아진 뒤 빌드"로 저장 한 번 = 빌드 한 번. `build`와 **같은 파이프라인·같은 출력 디렉토리**를 쓰고 리로드 클라이언트는 **응답 바이트에만** 주입한다(디스크는 배포본 그대로). 실패한 빌드는 산출물을 건드리지 않아 마지막 성공본 위에 진단 오버레이가 뜨고, 터미널에는 `build`와 같은 규칙으로 요약 한 줄이 간다. 측정이 필요한 감시는 브라우저 **하나**를 계속 쓴다 | [ADR 0046](docs/decisions/0046-watch-polls-the-project-and-injects-its-reload-client.md), `internal/watch`(스캐너·서버·루프) · `cmd/balpyo/watch_test.go`(응답에 있고 디스크에 없다) · `TestRunnerReusesOneWarmBrowser`(세션 동일성 · 0.61초), `docs/reference/cli.md#balpyo-watch` · `docs/guides/getting-started.md` |
 | P3.2 `balpyo preview` — 검수 갤러리 (D8) | 래스터화(PPTX → PDF → PNG)·픽셀 diff·갤러리 문서를 `internal/preview`가 소유하고 `make review`와 사용자 명령이 **그것을 함께 쓴다** (테스트가 보는 그림과 사람이 보는 그림이 달라지지 않는다). 하네스에 남는 것은 **테스트 정책**뿐이다 — 건너뛰기/실패, 픽스처별 오차 조정표("이 슬라이드는 달라야 정답이다"까지 든 표). 그 표가 사용자 덱에는 없으므로 `preview`는 **게이트가 아니다**: 오차를 넘어도 코드 0이고, 1은 검수할 것이 안 만들어졌을 때만이다. 도구가 없으면 빌드 전에 멈춘다 | [ADR 0047](docs/decisions/0047-review-gallery-lives-in-internal-preview.md), `internal/preview`(`Run`·래스터라이저·갤러리) · `raster_pptx_test.go`(장수 · 스테이지 크기 · 재실행 0 픽셀 차) · `cmd/balpyo/preview_test.go`(경로를 찍는다 · 한 열 갤러리 · 도구 없음은 빌드 전에), `04_shape` 실물 확인(슬라이드 4장이 기본 2.5% 초과, 종료 코드 0), `docs/reference/cli.md#balpyo-preview` |
 | P3.3 `balpyo init` · `balpyo check` — 첫 덱과 CI 입구 | `init`은 자기 덱을 **소유한다**(`internal/scaffold`의 임베드 템플릿 3장) — `examples/`는 마찰점을 일부러 밟는 회귀 테스트라 출발점이 못 된다. 계약은 파일 목록이 아니라 **다음 명령의 성공**이다: 스캐폴딩 덱이 `build --target html,pptx --check-layout --strict`를 경고 0으로 통과한다. `--force`는 없고(덮어쓸 대상이 저자의 원고다) 내장 아닌 `--theme`은 거부한다(`balpyo.json`의 `theme`을 아직 아무도 읽지 않는다 — P4.2). `check`는 **쓰지 않는 `build`**다: 같은 코드로 판정하고, 종료 코드도 같고(경고는 0을 타고 나간다), 출력 디렉토리를 만들지도 않는다 | [ADR 0048](docs/decisions/0048-init-owns-its-deck-and-check-is-build-without-writing.md), `core.BuiltinThemes`(어휘 단일 출처) · `internal/scaffold` · `pipeline.Check` · `cmd/balpyo/init_test.go`(`init`→`--strict` 빌드) · `check_test.go`(디렉토리 목록이 그대로 · `dist/`가 생기지도 않는다), 스캐폴딩 덱 `preview` 실물 확인(3장 0.625%/1.772%/0.581%), `docs/reference/cli.md#balpyo-init` · `#balpyo-check` · `docs/guides/getting-started.md` |
@@ -294,15 +295,31 @@
       가르치는 것을 눈으로 확인했다: 표지는 테마 슬롯이 자리를 정하고(자식에 `align`이 없다),
       2장은 `row`/`col`/`shape`로 칸을 나누고, 3장은 `layout`이 정렬을 바꾼다.
 
-### P2.3 `<shape>` 안에 레이아웃 컨테이너 (D7) ← **지금 여기**
-- [ ] **선결정 ADR**: 도형은 배경, 내부 배치는 자식 좌표 — 도형이 `row`/`col`/`grid`/`stack`을
-      자식으로 받을 때의 측정·PPTX 매핑(도형 `p:sp` 1개 + 자식은 절대 좌표 형제)을 확정.
-- [ ] RED: `<shape><col>…</col></shape>` 픽스처(카드 헤더/본문/푸터), 내부 좌표 스냅샷, 픽셀 비교.
-- [ ] GREEN: 콘텐츠 모델 확장 + 측정 + 두 렌더러.
-- [ ] REVIEW: `balpyo-intro` 06을 도형 2개 흉내에서 카드 하나로 되돌린다.
-- [ ] DOC: `docs/reference/soml/shape.md` 콘텐츠 모델.
+### P2.3 `<shape>` 안에 레이아웃 컨테이너 (D7) — **닫힘** (ADR 0049)
+- [x] **선결정 ADR** [0049](docs/decisions/0049-a-shape-that-holds-layout-becomes-a-backdrop.md):
+      도형은 **배경**, 내부 배치는 자식 좌표다 — 도형 `p:sp` 1개(빈 문단) + 자식은 **절대 좌표
+      형제**이고 `p:grpSp`는 쓰지 않는다(그룹의 `chOff`/`chExt`가 둘째 좌표 공간을 만들어 "잰
+      rect가 곧 xfrm"을 깬다 — PRD §9.3). 모드는 **도형마다** 정해지고, 판정의 단일 소유자는
+      `soml.ShapeHoldsLayout`이다. 직속 자식으로 여는 것은 컨테이너 넷뿐이고(리스트·그림·표·
+      중첩 도형은 컨테이너를 **거쳐** 들어온다), 배경 + `rotate`는 에러다(웹은 자식까지 돌리고
+      PPTX는 형제라 돌지 않는다).
+- [x] RED: `11_shape_layout` 픽스처 3장 — 카드 헤더/본문/푸터(`justify="between"`), 컨테이너를
+      거쳐 들어오는 리스트 + 중첩 배지, 두 모드를 나란히 둔 슬라이드. 더해서 pptx 단위 테스트
+      (배경은 `<a:p/>` 하나 + 자식이 형제 `p:sp` · `<p:grpSp>`가 없다)와 core의 `rotate` 거부.
+- [x] GREEN: `soml`(자식 어휘 + `ShapeHoldsLayout`) → `core`(`rotate` 거부 · 배경에서 패치가
+      회전을 버린다) → `render/web`(컨테이너 넷도 `position: relative`로 그림 위에) →
+      `render/pptx`(도형을 낸 **뒤에** 자식으로 내려간다 · 배경의 `txBody`는 자식 없는 도형과
+      같은 경로) → `internal/testkit`(줄 세기를 두 픽스처가 공유하고, 잉크 띠는 y로 묶는다).
+      측정은 손대지 않았다 — 배경 모드의 자식은 이미 자기 rect를 갖는다.
+- [x] REVIEW: `balpyo-intro` 06을 도형 2개 흉내에서 **카드 하나**로 되돌렸다 — 카드가
+      `rounded-rect` 하나이고 헤더 띠는 컨테이너를 거쳐 들어온 중첩 도형(흡수 모드)이다.
+      `build -target html,pptx -check-layout -strict`가 경고 0이고, 슬라이드 6을 웹/PPTX 두
+      래스터로 견줘 카드 3장·띠·본문이 같은 자리에 떨어지는 것을 확인했다 (남은 차이는 D11).
+- [x] DOC: `docs/reference/soml/shape.md`에 **콘텐츠 모델 — 두 가지 모드** 절(모드 표 · 예제
+      둘 · 배경 모드의 PPTX 산출 · 도형 수 표에 배경 행) + `layout.md`(컨테이너가 올 수 있는
+      자리) · `image.md`(도형 안 그림은 컨테이너를 거친다). `make docs --strict` 초록.
 
-### P2.4 코드 블록: `lang`과 탭 (D15 · D16)
+### P2.4 코드 블록: `lang`과 탭 (D15 · D16) ← **지금 여기**
 소프트웨어를 설명하는 덱은 코드를 띄운다. P0.1이 끝나 이제 의미가 있다.
 - [ ] **선결정 ADR**: 토크나이저를 어디에 둘지(Go 라이브러리 vs 내장 최소 문법), 색은 **테마
       토큰**으로만(P4.1과 물린다), 지원 언어 1차 집합.
@@ -406,6 +423,6 @@
 | 감시가 변경을 보는 법 · 리로드 클라이언트가 사는 곳 | P3.1 | ADR 0046 (폴링 + 스캔 안정화, 주입은 응답에만) |
 | 검수 갤러리의 소유자 · `preview`가 게이트가 아닌 이유 | P3.2 | ADR 0047 (엔진은 `internal/preview`, 오차 표는 테스트 정책 — 그래서 코드 0) |
 | `init`이 쓰는 덱의 소유자 · `check`가 얼마나 `build`여야 하는가 | P3.3 | ADR 0048 (덱은 `internal/scaffold`가 소유하고 3장, 덮어쓰지 않는다 · `check`는 쓰지 않는 `build`이고 종료 코드가 같다) |
-| 도형이 컨테이너를 자식으로 받을 때의 좌표·매핑 | P2.3 | 대기 |
+| 도형이 컨테이너를 자식으로 받을 때의 좌표·매핑 | P2.3 | ADR 0049 (도형은 배경 `p:sp` 하나, 자식은 절대 좌표 **형제** — 그룹이 아니다 · 모드는 도형마다) |
 | 코드 하이라이팅 토크나이저와 색 토큰 · 탭 처리 · "예정된 속성" 진단 | P2.4 | 대기 |
 | 차트: 네이티브 `c:chart` vs 도형 합성 | P2.5 | 대기 |
