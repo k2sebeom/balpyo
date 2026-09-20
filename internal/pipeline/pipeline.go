@@ -38,6 +38,19 @@ type Options struct {
 	// 이유는 브라우저 기동이 빌드의 가장 큰 고정 비용이고, 브라우저가 없는 환경에서도
 	// 웹 빌드는 돌아가야 하기 때문이다.
 	CheckLayout bool
+	// Measurer는 지오메트리 패스를 도는 것이다. nil이면 이 빌드가 브라우저를 직접 띄우고
+	// 닫는다 (`balpyo build`의 동작).
+	//
+	// 이 구멍이 있는 이유는 `balpyo watch`다 (ADR 0046): 기동이 빌드 고정 비용의 대부분이라
+	// 저작 루프는 브라우저 하나를 웜으로 재사용해야 하는데, 그 수명은 루프의 것이지 빌드
+	// 하나의 것이 아니다. 그래서 파이프라인은 **재는 일**만 받고 **띄우고 닫는 일**은 소유하지
+	// 않는다.
+	Measurer Measurer
+}
+
+// Measurer는 웹 산출물을 재서 좌표를 내는 것이다. *geom.Session이 이 인터페이스를 만족한다.
+type Measurer interface {
+	Measure(deck *soml.Deck, htmlPath string) (*geom.Geometry, error)
 }
 
 // Result는 빌드 산출이다.
@@ -187,7 +200,7 @@ func Render(deck *soml.Deck, opts Options) (map[render.Target]render.Files, *geo
 	var geometry *geom.Geometry
 	var diags soml.Diagnostics
 	if needsGeometry(deck, targets, opts.CheckLayout) {
-		measured, err := measure(deck)
+		measured, err := measure(deck, opts.Measurer)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -264,7 +277,8 @@ func deckHasChrome(deck *soml.Deck) bool {
 // pipeline_test가 못 박는다) 비용이 브라우저 기동의 수천분의 일이므로, 렌더 결과를 두 단계에
 // 걸쳐 들고 다니는 대신 재렌더한다 — 재는 바이트와 사용자가 받는 바이트가 같다는 사실이
 // 흐름을 읽는 것만으로 드러나는 쪽이 낫다.
-func measure(deck *soml.Deck) (*geom.Geometry, error) {
+// measurer가 nil이면 geom.Measure다 — 브라우저를 한 번 띄우고 닫는다.
+func measure(deck *soml.Deck, measurer Measurer) (*geom.Geometry, error) {
 	files, err := web.New().Render(deck)
 	if err != nil {
 		return nil, fmt.Errorf("지오메트리 패스의 입력을 만들 수 없다: %w", err)
@@ -279,7 +293,13 @@ func measure(deck *soml.Deck) (*geom.Geometry, error) {
 			return nil, err
 		}
 	}
-	g, err := geom.Measure(deck, filepath.Join(dir, web.IndexFile))
+	htmlPath := filepath.Join(dir, web.IndexFile)
+	var g *geom.Geometry
+	if measurer != nil {
+		g, err = measurer.Measure(deck, htmlPath)
+	} else {
+		g, err = geom.Measure(deck, htmlPath)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("지오메트리 패스 실패: %w", err)
 	}
