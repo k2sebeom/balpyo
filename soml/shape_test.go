@@ -444,12 +444,19 @@ func TestBoxAttrsSharedWithContainers(t *testing.T) {
 			}
 		}
 	}
-	// 크기 속성은 텍스트 요소·블록에 열리지 않는다 (이번 범위 밖 — 블록의 폭은 엔진 CSS가
-	// 100%로 정하고 있다).
-	for _, name := range append([]string{TextElement}, blockElements...) {
+	// 텍스트 요소·블록·리스트 컨테이너는 **가로 축만** 받는다 (ADR 0043) — 세로 축과
+	// `pad`·`ratio`는 닫혀 있다 (textSizeAttrs의 주석에 근거가 있다).
+	textual := append([]string{TextElement}, blockElements...)
+	textual = append(textual, listContainerElements...)
+	for _, name := range textual {
 		for _, attr := range BoxAttrs() {
-			if hasAttr(elementSpecs[name].attrs, attr) {
-				t.Errorf("<%s>에 박스 속성 %s가 열려 있다 — 이번 iteration의 범위가 아니다", name, attr)
+			open := hasAttr(elementSpecs[name].attrs, attr)
+			if want := hasAttr(TextSizeAttrs(), attr); open != want {
+				if want {
+					t.Errorf("<%s>에 가로 크기 속성 %s가 없다", name, attr)
+				} else {
+					t.Errorf("<%s>에 박스 속성 %s가 열려 있다 — 텍스트에 닫힌 속성이다", name, attr)
+				}
 			}
 		}
 	}

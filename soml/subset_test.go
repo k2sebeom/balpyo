@@ -219,7 +219,7 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			// 속성이다 (블록이 레이아웃 컨테이너의 자식이 될 수 있다 — soml/layout.go).
 			name: "블록에는 role이 없다",
 			src:  `<slide><h1 role="body">제목</h1></slide>`,
-			want: []string{"1:12 <h1>에 알 수 없는 속성 role (쓸 수 있는 속성: variant, size, color, align, anchor, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
+			want: []string{"1:12 <h1>에 알 수 없는 속성 role (쓸 수 있는 속성: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
 		},
 		{
 			name: "인라인에는 variant가 없다",
@@ -233,7 +233,7 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			// 된다.
 			name: "리스트 컨테이너에는 variant가 없다",
 			src:  `<slide><ul variant="lead"><li>x</li></ul></slide>`,
-			want: []string{"1:12 <ul>에 알 수 없는 속성 variant (쓸 수 있는 속성: size, color, align, anchor, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
+			want: []string{"1:12 <ul>에 알 수 없는 속성 variant (쓸 수 있는 속성: size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
 		},
 		{
 			name: "li에는 variant가 없다",

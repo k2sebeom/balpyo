@@ -42,9 +42,11 @@ func buildElementSpecs() map[string]elementSpec {
 			children: slideChildren(),
 		},
 		TextElement: {
-			// 외관 어휘 뒤에 자식 배치 속성이 붙는다 — `<text>`는 레이아웃 컨테이너의
-			// 자식이 될 수 있으므로 `<row><text grow="1">`이 문법상 유효해야 한다.
-			attrs: withChildPlacement([]string{"role", "variant", "size", "color", "align", AnchorAttr}),
+			// 외관 → 박스(가로 크기) → 자식 배치 → 슬롯 순이다 (withTextSize +
+			// withChildPlacement). `<text>`는 레이아웃 컨테이너의 자식이 될 수 있으므로
+			// `<row><text grow="1">`이 문법상 유효해야 하고, 가로 크기는 ADR 0043이 열었다 —
+			// 특정 폭 안에 라벨을 가운데 두려면 그 폭을 가진 박스가 필요하다.
+			attrs: withChildPlacement(withTextSize([]string{"role", "variant", "size", "color", "align", AnchorAttr})),
 			model: modelInline,
 		},
 		ShapeElement: {
@@ -106,8 +108,9 @@ func buildElementSpecs() map[string]elementSpec {
 		// 곳의 근거: 인라인 태그의 외관은 런 규칙(Iteration 2 항목 04)이 소유하고, 리스트
 		// 컨테이너와 <li>의 위계는 역할이 소유한다 — 항목마다 다른 외관 번들이 붙으면
 		// 리스트의 타이포그래피가 리스트이기를 멈춘다.
+		// 가로 크기 속성도 같은 대칭으로 받는다 (withTextSize — ADR 0043).
 		specs[name] = elementSpec{
-			attrs: withChildPlacement([]string{"variant", "size", "color", "align", AnchorAttr}),
+			attrs: withChildPlacement(withTextSize([]string{"variant", "size", "color", "align", AnchorAttr})),
 			model: model,
 		}
 	}
@@ -121,8 +124,10 @@ func buildElementSpecs() map[string]elementSpec {
 		// 상속의 뜻이 "글자 하나"가 아니라 "역할 바꾸기"가 된다.
 		//
 		// 배치의 대상도 된다 — `<row><ul basis="360">`은 두 열에 리스트를 놓는 흔한 배치다.
+		// 가로 크기도 컨테이너의 것이다 (withTextSize — ADR 0043): `<ul w="480">`은 목록
+		// 전체의 폭이고, `<li>`는 여기서도 상속만 받는다.
 		specs[name] = elementSpec{
-			attrs:    withChildPlacement([]string{"size", "color", "align", AnchorAttr}),
+			attrs:    withChildPlacement(withTextSize([]string{"size", "color", "align", AnchorAttr})),
 			model:    modelElements,
 			children: []string{ListItemElement},
 		}

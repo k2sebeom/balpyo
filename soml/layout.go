@@ -71,9 +71,22 @@ var (
 	// 이름을 다시 붙인 이유: 크기는 컨테이너의 성질이 아니라 박스의 성질이므로 컨테이너와
 	// 도형이 **같은 목록**을 소비해야 한다. 목록이 두 벌이 되면 PRD 표에 크기 속성이 하나
 	// 늘 때 어느 태그가 빠졌는지 사람이 세어야 한다 — withChildPlacement를 만든 것과 같은
-	// 근거다. 크기 속성을 `<text>`·블록에도 여는 것은 이번 범위가 아니다: 블록의 폭은 엔진
-	// CSS가 100%로 정하고 있어(`.balpyo-text`) 여기서 열면 골든이 무관한 이유로 움직인다.
+	// 근거다.
 	boxSizeAttrs = []string{"w", "h", "min-w", "min-h", "max-w", "max-h", "ratio"}
+	// textSizeAttrs는 텍스트 박스가 받는 크기 속성이다 — **가로 축만** (ADR 0043).
+	//
+	// boxSizeAttrs의 **부분집합이고 순서도 같다** (TestTextSizeAttrsAreBoxSubset이 지킨다):
+	// 값 문법을 컨테이너·도형과 공유하므로(`core.boxAttr`) `fill`·`%`·공간 토큰이 같은 뜻이고,
+	// 목록이 두 벌이면 같은 표기가 두 뜻을 갖게 된다.
+	//
+	// 세로 축(`h`·`min-h`·`max-h`)과 `pad`·`ratio`를 닫아 두는 이유 (ADR 0043):
+	//   - 박스 안 세로 정렬 채널은 `anchor`이고 그 채널은 **도형 안에서만** 뜻을 가지므로
+	//     (웹은 도형 본문의 flex, PPTX는 `bodyPr@anchor`), 높이만 열면 저자가 만든 여백 안에서
+	//     글을 움직일 방법이 없다 — 닿을 수 없는 공간이 생긴다.
+	//   - `pad`는 PPTX 텍스트 박스의 인셋 0 계약(`.balpyo-text`의 padding·border가 0이므로 잰
+	//     rect가 곧 글이 흐르는 사각형)을 두 타깃에서 동시에 다시 정하게 만든다.
+	//   - `ratio`는 텍스트 박스의 높이를 글줄 수가 정하므로 대응이 없다.
+	textSizeAttrs = []string{"w", "min-w", "max-w"}
 )
 
 // BoxAttrs는 박스의 안쪽 여백과 크기다 (`pad` + 크기·비율 7종). `<shape>`가 그대로 받고
@@ -86,6 +99,27 @@ func BoxAttrs() []string {
 	attrs := make([]string, 0, len(boxPadAttrs)+len(boxSizeAttrs))
 	attrs = append(attrs, boxPadAttrs...)
 	return append(attrs, boxSizeAttrs...)
+}
+
+// TextSizeAttrs는 텍스트 박스의 가로 크기 속성이다 (`w`·`min-w`·`max-w` — ADR 0043).
+// `<text>`·블록·리스트 컨테이너가 받고, 값 층(core)이 BoxAttrs와 **같은 헬퍼**로 해석한다.
+//
+// BoxAttrs와 같은 이유로 내보낸다: 파서가 연 속성과 값 층이 해석하는 속성이 갈라지면
+// 갈라진 쪽은 조용히 무시된다.
+func TextSizeAttrs() []string {
+	attrs := make([]string, len(textSizeAttrs))
+	copy(attrs, textSizeAttrs)
+	return attrs
+}
+
+// withTextSize는 텍스트 요소의 외관 속성 뒤에 가로 크기 속성을 잇는다 — 속성 표가
+// **외관 → 박스(가로) → 자식 배치 → 슬롯** 순이 된다 (`<shape>`의 ShapeAttrs와 같은 순서:
+// 고유·외관이 먼저, 박스가 다음, 배치가 끝이다). withChildPlacement와 같은 이유로 함수다:
+// 목록을 태그마다 손으로 적으면 크기 속성이 하나 늘 때 어느 태그가 빠졌는지 사람이 센다.
+func withTextSize(attrs []string) []string {
+	merged := make([]string, 0, len(attrs)+len(textSizeAttrs))
+	merged = append(merged, attrs...)
+	return append(merged, textSizeAttrs...)
 }
 
 // childPlacementAttrs는 **자식 배치 속성**이다 (PRD §7.4 자식 표) — 부모 컨테이너 안에서
