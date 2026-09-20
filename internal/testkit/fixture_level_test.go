@@ -876,14 +876,41 @@ func cropImage(img image.Image, r geom.Rect) image.Image {
 // 4px은 가장 굵은 테두리(3px)에 안티앨리어싱 1px을 더한 값이다.
 const inShapeBandInset = 4.0
 
-// inShapeBandPresets는 도형 안 줄 세기가 **성립하는** 프리셋이다.
+// inShapeBandRegion은 도형 안 줄 세기를 판정할 영역이다 — 잰 rect가 아니라 **프리셋의 텍스트
+// 영역**(ADR 0040)을 테두리·모서리만큼 더 줄인 사각형이고, 그 영역이 성립하지 않으면 false다.
 //
-// InkBands는 "영역에서 가장 흔한 색이 배경"에 기대는데, 채움이 잰 rect를 덮지 않는 프리셋
-// (diamond·chevron·star…)에서는 배경 추정이 도형 밖 흰색을 고르고 그러면 **도형 자체가 하나의
-// 거대한 띠**가 되어 글줄이 보이지 않는다 — 값을 완화할 문제가 아니라 방법의 전제가 깨지는
-// 문제다 (inkBandSkipSlides와 같은 종류의 판단). 도형 안 텍스트는 rect·rounded-rect에서만
-// 쓰이므로(픽스처 005·006·007) 그 둘로 닫아 둔다.
-var inShapeBandPresets = map[string]bool{"rect": true, "rounded-rect": true}
+// 텍스트 영역에서 재는 이유는 InkBands의 전제다: "영역에서 가장 흔한 색이 배경"인데, 채움이
+// 잰 rect를 덮지 않는 프리셋(diamond·star·cloud…)에서는 배경 추정이 도형 밖 흰색을 골라
+// **도형 자체가 하나의 거대한 띠**가 된다. 프리셋의 텍스트 영역은 실루엣 안이라(그래서 글이
+// 거기 흐른다) 그 영역에서는 채움이 다시 최빈색이다 — 전에는 이 검사를 rect·rounded-rect로
+// 닫아 두었는데, 영역을 옮기면 12종 전수로 열린다.
+//
+// 성립하지 않는 자리는 chevron 하나다: 그 프리셋의 rect는 폭 0으로 붕괴해 우리가 **박스
+// 전체**를 쓰므로(PPTX가 되돌린다 — ADR 0041) 영역 안에 도형 밖 흰색이 크게 남는다. 판정을
+// 이름이 아니라 `ShapeTextCancel`로 하는 이유는 목록이 두 벌이 되지 않게 하는 것이다.
+func inShapeBandRegion(entry inShapeText) (geom.Rect, bool) {
+	if cancel, ok := web.ShapeTextCancel(entry.preset); ok && cancel.HasPercent() {
+		return geom.Rect{}, false
+	}
+	// 위아래는 **모서리 반경만큼 더** 줄인다: 둥근 모서리에서는 잰 rect의 위·아래 몇 줄에
+	// 도형 밖 흰색이 남아, 그 줄이 배경(채움)과 달라 하나의 띠로 세어진다 (측정: radius=32
+	// 도형이 글줄 하나인데 띠 셋으로 읽혔다 — 위 모서리·글자·아래 모서리). 반경만큼
+	// 내려가면 그 행부터는 폭 전체가 채움이다 — 텍스트 영역의 px 인셋(0.29·radius)은 원호에
+	// **닿는** 사각형이라 그만큼으로는 모자란다.
+	insetY := inShapeBandInset
+	if entry.radius+2 > insetY {
+		insetY = entry.radius + 2
+	}
+	text := presetTextRect(entry)
+	x0 := math.Max(text.X, entry.rect.X+inShapeBandInset)
+	y0 := math.Max(text.Y, entry.rect.Y+insetY)
+	x1 := math.Min(text.Right(), entry.rect.Right()-inShapeBandInset)
+	y1 := math.Min(text.Bottom(), entry.rect.Bottom()-insetY)
+	if x1-x0 <= 0 || y1-y0 <= 0 {
+		return geom.Rect{}, false
+	}
+	return geom.Rect{X: x0, Y: y0, W: x1 - x0, H: y1 - y0}, true
+}
 
 // inShapeLineDivergences는 도형 안 문단의 줄 수가 **실제로 갈라지는** 자리다
 // (`<픽스처>/<요소 id>` → 브라우저 줄 수 / LibreOffice 줄 수).
@@ -948,24 +975,11 @@ func TestShapeFixtureInShapeTextLineCounts(t *testing.T) {
 	worst := 1.0
 	seen := map[string]bool{}
 	for _, entry := range entries {
-		if !inShapeBandPresets[entry.preset] {
-			t.Logf("%s %s: 줄 세기를 건너뛴다 — 채움이 잰 rect를 덮지 않는 프리셋이다 (inShapeBandPresets)",
+		inner, ok := inShapeBandRegion(entry)
+		if !ok {
+			t.Logf("%s %s: 줄 세기를 건너뛴다 — 프리셋의 텍스트 영역이 실루엣 안이 아니다 (inShapeBandRegion)",
 				entry.id, entry.preset)
 			continue
-		}
-		// 위아래는 **모서리 반경만큼 더** 줄인다: 둥근 모서리에서는 잰 rect의 위·아래
-		// 몇 줄에 도형 밖 흰색이 남아, 그 줄이 배경(채움)과 달라 하나의 띠로 세어진다
-		// (측정: radius=32 도형이 글줄 하나인데 띠 셋으로 읽혔다 — 위 모서리·글자·아래
-		// 모서리). 반경만큼 내려가면 그 행부터는 폭 전체가 채움이다.
-		insetY := inShapeBandInset
-		if entry.radius+2 > insetY {
-			insetY = entry.radius + 2
-		}
-		inner := geom.Rect{
-			X: entry.rect.X + inShapeBandInset,
-			Y: entry.rect.Y + insetY,
-			W: entry.rect.W - 2*inShapeBandInset,
-			H: entry.rect.H - 2*insetY,
 		}
 		webBands := InkBands(webShots[entry.slide], inner)
 		loBands := InkBands(shots[entry.slide], inner)
