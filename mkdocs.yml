@@ -105,6 +105,7 @@ nav:
       - 0055 자식 테마는 색을 갈아 끼운다: decisions/0055-a-child-theme-recolors-by-name-because-color-tokens-are-bounded-by-the-clrscheme.md
       - 0056 예제는 경고 0의 빌드로 게이트한다: decisions/0056-examples-are-gated-by-a-strict-build-not-by-goldens.md
       - 0057 문서의 닫힌 목록은 테스트가 읽는다: decisions/0057-docs-are-hand-written-but-closed-lists-are-read-from-them-by-a-test.md
+      - 0058 alt은 그림에 이름을 더하고 읽기 순서는 문서 순서다: decisions/0058-alt-names-the-drawing-and-reading-order-is-document-order.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |

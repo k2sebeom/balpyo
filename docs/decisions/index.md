@@ -63,6 +63,7 @@
 | [0055](0055-a-child-theme-recolors-by-name-because-color-tokens-are-bounded-by-the-clrscheme.md) | 자식 테마는 색을 갈아 끼운다 — 색 토큰 표는 `clrScheme` 자리에 묶여 있다 | P4.3 | 확정 |
 | [0056](0056-examples-are-gated-by-a-strict-build-not-by-goldens.md) | 예제는 경고 0의 빌드로 게이트하고 골든은 걸지 않는다 | P5.1 | 확정 |
 | [0057](0057-docs-are-hand-written-but-closed-lists-are-read-from-them-by-a-test.md) | 문서는 손으로 쓰고, 닫힌 목록은 테스트가 문서에서 읽는다 | P5.2 | 확정 |
+| [0058](0058-alt-names-the-drawing-and-reading-order-is-document-order.md) | `alt`은 그림에 이름을 더하고, 읽기 순서는 문서 순서다 | P5.3 | 확정 |
 
 PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다. 그 결정들의
 색인은 PRD에 있고, 이 표는 **그 이후 구현 중에 새로 확정한 것**만 담는다.
