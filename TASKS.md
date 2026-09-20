@@ -29,7 +29,7 @@
 | D7 | 도형 안에 레이아웃 컨테이너를 넣을 수 없어, 카드 헤더/본문을 **도형 2개 + `gap="0"` `col`**로 흉냈다 | 중간 | P2.3 | 열림 |
 | D8 | 검수 루프가 전부 수동이다: 웹은 호스트, PPTX는 컨테이너, 그림 확인은 `soffice` + `pdftoppm`을 직접 조립했다 | 중간 | P3.1 · P3.2 | 열림 |
 | D9 | **오버플로 진단이 없다.** 글이 박스를 넘쳐도 빌드는 조용하고 열어봐야 안다 | **높음** | P1.1 | 닫힘 |
-| D10 | 페이지 번호·푸터·러닝 헤더가 없다 (`a:fld`/`slidenum` 미구현) | 중간 | P2.2 | 열림 |
+| D10 | 페이지 번호·푸터·러닝 헤더가 없다 (`a:fld`/`slidenum` 미구현) | 중간 | P2.2 | **닫힘** (P2.2 — 번호·푸터. 러닝 헤더는 같은 `chrome` 어휘에 `kind`를 더하면 열린다) |
 | D11 | LibreOffice 렌더에서 문장부호 앞뒤에 **간격이 벌어져 보인다** (`선언으로 , 색과`). 웹에는 없다 | 중간 | P1.5 | **닫힘** (알려진 차이 — 뷰어의 CJK↔서양 자동 간격, 경계당 1/4 em. DrawingML로 끌 수 없다) |
 | D12 | accent 색이 **하나**라서 덱 전체가 한 가지 파랑이다. 강조의 위계를 만들 수 없다 | 중간 | P4.1 | 열림 |
 | D13 | 예제·문서가 썩는다. **예제는 CI에서 빌드되지 않는다** | 중간 | P5.1 · P5.2 | 열림 |
@@ -60,6 +60,7 @@
 | P1.3 정렬과 텍스트 박스의 소유권 (D4 · D14) | 슬롯 모드가 세 번째 폭 리셋 문맥 + `<text>`에 가로 크기 3종. PPTX 렌더러는 손대지 않았다 | [ADR 0043](docs/decisions/0043-explicit-width-belongs-to-the-placement-context.md), `08_slots/004`(자식에 `align`이 없다), `06_stack/011` |
 | P1.4 슬롯의 테마 구멍과 세로 리듬 (D3 · D17) | minimal이 슬롯 10종 전부에 `*.slots.css`를 갖고, 테마가 못 받는 슬롯은 **값 층에서 경고 + 미탑재**(두 렌더러가 한 입력을 읽는다). 세로 리듬은 `<slide justify>`가 소유한다 | [ADR 0044](docs/decisions/0044-slots-need-a-theme-and-vertical-rhythm-needs-an-owner.md), `render/pptx/placeholder_test.go`(두 타깃 모드 합의) · `core/theme_package_test.go`(카탈로그 ↔ 테마 대조), `03_layout/008` · `08_slots/005` |
 | P2.1 `<table>` 렌더러 (D2 · D20) | 웹은 진짜 `<table>`, PPTX는 `p:graphicFrame`+`a:tbl`(표 스타일 없음 + 명시 `tcPr`). 격자 수치는 전부 **잰 값**이고 그 합이 프레임 크기와 같다. 예제 덱 셋의 손으로 짠 표가 표로 돌아왔다 | [ADR 0036](docs/decisions/0036-table-is-html-ish-tr-td-with-explicit-a-tbl.md), `09_table`(5장) · `internal/testkit/table_fixture_test.go`(병합 격자 전수), LibreOffice flat ODF 왕복(`table:table-cell` 78개 · 덮인 셀 4개), `docs/reference/soml/table.md` |
+| P2.2 덱 크롬: 페이지 번호 · 푸터 (D10) | 어휘를 **나눠 갖는다**: 내용·켜짐은 `balpyo.json`(`footer`·`pageNumber`, 둘 다 기본 꺼짐), 자리·정렬·역할·제외는 테마 `chrome` 선언. 제외 규칙은 값 층이 적용해 두 렌더러가 확정 모델 하나를 읽는다. 번호는 `a:fld type="slidenum"`(캐시 숫자 동봉)이라 뷰어가 다시 센다 — `p:ph`도 `p:hf`도 쓰지 않았다 | [ADR 0045](docs/decisions/0045-deck-chrome-is-config-text-in-a-theme-declared-band.md), `10_chrome`(4장) · `internal/testkit/chrome_fixture_test.go`(잰 rect ↔ 골든 EMU 0 오차 · 다른 픽스처 골든에 크롬 0조각), LibreOffice flat ODF 왕복(`<text:page-number>`가 포함된 두 장에만 · 장을 끼우면 1/3/5로 따라온다), `docs/reference/theme.md` |
 | D19 문서가 어휘를 숨긴다 | `slide.md`(11종 표 + 실제 진단 문구) · `reference/index.md`(`layouts.md`는 구현됨) · `text.md`(속성 목록 + `<text>`에 `w`/`h`가 없다는 것) | `make docs --strict`, 커밋 `cc8239f` |
 
 ---
@@ -192,7 +193,7 @@
       머리행 선 없음·2px 겹침은 `border-collapse`와 공유 격자선으로 사라졌고, 세 덱 모두
       `--check-layout`이 조용하다.
 
-### P2.2 덱 크롬: 페이지 번호 · 푸터 (D10) ← **지금 여기**
+### P2.2 덱 크롬: 페이지 번호 · 푸터 (D10)
 - [x] **선결정 ADR** 0045: 어휘는 **나눠 갖는다** — 내용·켜짐은 `balpyo.json`(`footer` 문자열 ·
       `pageNumber` 불리언, 둘 다 기본 꺼짐), 자리·정렬·역할·제외는 테마 `chrome` 선언
       (`kind` 2종 · `align` 3종 · `role` · `skipLayouts`). `<footer>` 태그는 열지 않는다
@@ -201,13 +202,31 @@
       — 제외가 슬라이드 단위인데 흐름 모드는 `slideLayout1` 하나를 공유하고, 자동 갱신을 주는
       것은 `p:ph`가 아니라 `a:fld`다. 제외 규칙은 **값 층**이 적용해 확정 모델 하나를 만든다
       (ADR 0044의 "테마가 못 받으면 경고 + 미탑재"를 그대로 쓴다).
-- [ ] RED: `a:fld type="slidenum"`(+ 캐시된 숫자) 구조 어서션, 웹 골든, 제외 규칙 픽스처,
-      테마가 `kind`를 선언하지 않았을 때의 경고 + 미탑재.
-- [ ] GREEN: 마스터/레이아웃 파트 + 웹 렌더 + 테마 토큰(캡션 역할 재사용).
-- [ ] REVIEW: 장을 추가하면 번호가 **자동으로** 따라오는지(정적 텍스트면 실패다).
-- [ ] DOC: `docs/reference/theme.md`(신설).
+- [x] RED: 네 층에 각각 냈다 — `core/chrome_test.go`(설정 기본값 꺼짐 · 테마 선언 어휘 8종 ·
+      슬라이드별 확정 목록과 번호 2·4 · 테마 침묵 시 경고 + 미탑재), `render/web/chrome_test.go`
+      (스테이지의 **형제** div · 정렬 클래스 3종 · 외관 인라인), `render/geom`(띠 측정이
+      `Geometry.Chrome` 사이드 테이블로 — `Boxes`는 `Refs`와 1:1을 유지한다),
+      `render/pptx/chrome_test.go`(`p:ph` 없는 `p:sp` + `a:fld type="slidenum"` + 캐시된 숫자).
+- [x] GREEN: 값 층이 제외 규칙을 적용해 **확정 모델 하나**(`Slide.Chrome`)를 만들고 두 렌더러가
+      그것만 읽는다. 마스터에 `p:hf`를 내지 않았다 — 크롬을 켜지 않은 덱의 바이트가 움직이지
+      않는다(`TestChromeIsAbsentFromOtherFixtureGoldens`가 골든 전수로 지킨다). 외관은 테마의
+      `caption` 역할 재사용이고, **정렬만 선언이 덮는다**: 확정 모델에 정렬이 둘이면
+      웹(`text-align`)과 PPTX(`algn`)가 다른 쪽을 읽어 같은 입력에서 갈라진다(D3의 모양 —
+      커밋 `dc5b5ad`가 그 잠복을 골든에서 찾아 고쳤다).
+- [x] REVIEW: 번호가 **정적 텍스트가 아니라는 것**을 두 가지로 확인했다. (1) LibreOffice flat
+      ODF 왕복에서 포함된 두 장에만 `<text:page-number>`가 있고 그 안에 `<number>` 자리표시자가
+      들어 있다 — 뷰어가 다시 센다. (2) 첫 장을 끼워 넣고 다시 빌드하면 캐시 숫자가
+      1/3/5로 따라오고 제외된 장은 여전히 크롬이 없다.
+- [x] DOC: `docs/reference/theme.md`(신설 — 패키지 네 파일의 소유 경계 + `chrome` 선언 표 +
+      로더가 멈추거나 경고하는 조건 11줄) · nav · `reference/index.md` · `docs/index.md`의
+      `balpyo.json` 예제에 `footer`·`pageNumber`.
+- [x] 픽스처 `10_chrome`(4장: 표지 · 흐름 본문 · 구역 표지 · canvas): 픽셀 허용 오차를
+      3.6%로 둔 근거를 **측정과 함께** 남겼다 — 띠 안(y≥656)의 차이는 1381px(슬라이드의
+      0.15%)이고 나머지는 본문 글리프 잔차다(D11). 크롬의 자리는 그 비율이 아니라 **0 오차**로
+      따로 못 박힌다: `TestChromeFixtureShapesMatchGeometry`가 잰 rect의 EMU와 골든
+      `a:off`/`a:ext`를 전수 비교한다.
 
-### P3.1 `balpyo watch` — 핫 리로드 (D8)
+### P3.1 `balpyo watch` — 핫 리로드 (D8) ← **지금 여기**
 - [ ] RED: 파일 변경 → 재빌드 → 브라우저 갱신의 단위 테스트(감시기·디바운스·진단 오버레이).
 - [ ] GREEN: 웜 브라우저 세션 재사용(지오메트리 패스 시작 비용이 루프의 대부분이다) + 진단
       오버레이.
@@ -314,7 +333,8 @@
 - [x] **세로 공간을 저자가 손으로 만들지 않는다**: 슬롯 모드는 테마가, 흐름 모드는
       `<slide justify>` 한 선언이 세로 리듬을 소유한다 (P1.4)
 - [ ] **한 명령으로 검수한다**: `balpyo watch` + `balpyo preview --target pptx` (P3.1, P3.2)
-- [ ] **덱이 덱처럼 생겼다**: 페이지 번호·푸터·색 위계 (P2.2, P4.1)
+- [ ] **덱이 덱처럼 생겼다**: 페이지 번호·푸터는 켤 수 있다 (P2.2 닫힘 — 번호는 뷰어가 다시
+      세는 `a:fld`다). 색 위계는 아직 accent 하나다 (P4.1)
 - [ ] **예제가 썩지 않는다**: CI가 모든 예제를 경고 0으로 빌드한다 (P5.1)
 
 ---
