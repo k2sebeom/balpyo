@@ -306,6 +306,49 @@ func measure(deck *soml.Deck, measurer Measurer) (*geom.Geometry, error) {
 	return g, nil
 }
 
+// CheckResult는 판정만 한 결과다 (Check).
+type CheckResult struct {
+	Deck *soml.Deck
+	// Diagnostics는 에러가 없어도 남는 경고를 담는다 (Build와 같은 규칙).
+	Diagnostics soml.Diagnostics
+	// Measured는 이 판정이 지오메트리 패스를 돌았는지다 — 배치 경고가 판정에 포함됐는지를
+	// 호출자가 사용자에게 말할 수 있어야 한다 ("배치는 보지 않았다"와 "배치도 봤고 깨끗하다"는
+	// 다른 문장이다).
+	Measured bool
+}
+
+// Check는 산출물을 쓰지 않고 판정만 한다 — `balpyo check`다 (ADR 0048).
+//
+// 판정은 Build와 **같은 코드**다: 설정 → 수집 → 파싱 → 값 해석 → 에셋 → 검증, 그리고
+// CheckLayout이면 측정 + 배치 진단. 빠른 길(파싱까지만)로 가지 않는 이유는 "check는 통과했는데
+// build가 실패한다"가 가능해지는 순간 이 명령의 가치가 사라진다는 것이다.
+//
+// 디스크에는 아무것도 남지 않는다 — 출력 디렉토리를 만들지도 않는다 (Build는 resolveOutDir이
+// 만든다). 측정에 필요한 웹 문서는 measure가 임시 디렉토리에 쓰고 지운다.
+func Check(opts Options) (*CheckResult, error) {
+	deck, diags, err := LoadDeck(opts)
+	if err != nil {
+		return &CheckResult{Diagnostics: diags}, err
+	}
+	result := &CheckResult{Deck: deck, Diagnostics: diags}
+	// 타깃을 보지 않는다: 진단은 타깃에 의존하지 않고(배치 경고까지 잰 박스에서 나온다),
+	// 렌더 단계에서만 나는 실패는 Build의 판정이다.
+	if !needsGeometry(deck, nil, opts.CheckLayout) {
+		return result, nil
+	}
+	geometry, err := measure(deck, opts.Measurer)
+	if err != nil {
+		return result, err
+	}
+	result.Measured = true
+	layoutDiags := geom.Diagnose(deck, geometry)
+	if opts.Strict {
+		layoutDiags = layoutDiags.Strict()
+	}
+	result.Diagnostics = append(result.Diagnostics, layoutDiags...)
+	return result, layoutDiags.Err()
+}
+
 // Build는 프로젝트를 읽어 산출물을 디스크에 쓴다.
 func Build(opts Options) (*Result, error) {
 	deck, diags, err := LoadDeck(opts)
