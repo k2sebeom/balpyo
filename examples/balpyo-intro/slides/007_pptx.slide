@@ -1,5 +1,6 @@
-<!-- 매핑 표 — 표는 어휘에 있지만 아직 렌더러가 없어(TASKS M2.1의 남은 항목) grid+shape로
-     손으로 짠다. 이 슬라이드 자체가 표가 필요한 이유의 증거다. -->
+<!-- 매핑 표 — 표는 어휘에 있지만 아직 렌더러가 없어(TASKS P2.1) grid+shape로 손으로 짠다.
+     이 슬라이드 자체가 표가 필요한 이유의 증거다. 왼쪽 칸은 CDATA로 태그를 원문 그대로
+     싣는다 — 마크업을 설명하는 덱이 자기 문법을 띄울 수 있다는 증거다 (ADR 0037). -->
 <slide id="pptx">
   <h1>태그가 무엇이 되는가</h1>
   <grid cols="2" gap="0">
@@ -11,42 +12,42 @@
     </shape>
 
     <shape type="rect" fill="bg" w="fill" pad="sm">
-      <text size="18">text · h1 · p · blockquote · pre</text>
+      <text size="18"><![CDATA[<text> · <h1> · <p> · <blockquote> · <pre>]]></text>
     </shape>
     <shape type="rect" fill="bg" w="fill" pad="sm">
       <text size="18">p:sp 텍스트 박스 하나 — 확정된 rPr을 싣는다</text>
     </shape>
 
     <shape type="rect" fill="surface" w="fill" pad="sm">
-      <text size="18">shape (프리셋 12종)</text>
+      <text size="18"><![CDATA[<shape> (프리셋 12종)]]></text>
     </shape>
     <shape type="rect" fill="surface" w="fill" pad="sm">
       <text size="18">p:sp + prstGeom — 자식 텍스트를 흡수한다</text>
     </shape>
 
     <shape type="rect" fill="bg" w="fill" pad="sm">
-      <text size="18">image</text>
+      <text size="18"><![CDATA[<image>]]></text>
     </shape>
     <shape type="rect" fill="bg" w="fill" pad="sm">
       <text size="18">p:pic + ppt/media 파트 (바이트 그대로)</text>
     </shape>
 
     <shape type="rect" fill="surface" w="fill" pad="sm">
-      <text size="18">ul · ol</text>
+      <text size="18"><![CDATA[<ul> · <ol>]]></text>
     </shape>
     <shape type="rect" fill="surface" w="fill" pad="sm">
       <text size="18">도형 하나 — 불릿 문단이 한 텍스트 박스에 산다</text>
     </shape>
 
     <shape type="rect" fill="bg" w="fill" pad="sm">
-      <text size="18">row · col · grid · stack · spacer</text>
+      <text size="18"><![CDATA[<row> · <col> · <grid> · <stack> · <spacer>]]></text>
     </shape>
     <shape type="rect" fill="bg" w="fill" pad="sm">
       <text size="18">도형 0개 — 자식의 절대 좌표에 녹아 사라진다</text>
     </shape>
 
     <shape type="rect" fill="surface" w="fill" pad="sm">
-      <text size="18">slot 배정</text>
+      <text size="18"><![CDATA[slot="…" 배정]]></text>
     </shape>
     <shape type="rect" fill="surface" w="fill" pad="sm">
       <text size="18">진짜 p:ph 플레이스홀더 + 전용 slideLayout 파트</text>
