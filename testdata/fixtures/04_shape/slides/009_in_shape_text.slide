@@ -1,0 +1,34 @@
+<!-- **프리셋의 텍스트 영역** — 가운데 정렬 (P1.2, ADR 0040).
+     001이 기하를 보는 장이라면 이 장은 **글자가 어디에 앉는가**를 본다 — PowerPoint·
+     LibreOffice는 `prstGeom`마다 본문 영역(프리셋 정의의 `<rect>`)을 갖고 있고 우리가 끄거나
+     바꿀 수단이 없다. 그래서 웹이 그 사각형을 읽어 맞춰야 하고, 맞지 않으면 같은 SOML에서
+     글자가 다른 자리에 앉고 줄 수까지 갈라진다 (`diamond`의 본문 영역은 박스의 절반이다).
+     가운데 정렬이 판정하는 것은 텍스트 영역의 **중심**이다: 인셋이 비대칭인 프리셋
+     (cylinder·arrow-right·star·cloud)에서 중심이 박스 중심에서 벗어나므로 잉크가 움직인다.
+     네 변 자체는 010이 본다 (왼쪽·위 인셋 + 이 장의 중심 = 오른쪽·아래 인셋).
+     크기를 `w="fill" h="120"`으로 고정하는 이유가 둘이다 — 백분율 인셋은 자기 박스를
+     기준으로 하므로 **확정 크기가 필요하고**(값 층이 요구한다), 잰 박스가 프리셋마다 같아야
+     인셋을 백분율로 견줄 수 있다. 글자는 가장 좁은 영역(star = 박스의 38%×38%)에도 한 줄로
+     들어가는 짧은 이름 하나이고 `size="18"`이다: 줄바꿈이 끼면 이 장의 판정이 줄 수 갈라짐에
+     묻힌다 (001의 주석과 같은 이유).
+     `fill="surface" border="none"`인 이유는 **측정의 전제**다: 잉크 판정(testkit.InkBands)의
+     채널 임계값(64)보다 surface와 슬라이드 배경의 차(12)가 작아 도형 면 전체가 배경으로
+     읽히고, 그러면 박스 안의 잉크는 글자뿐이다 — 칠이 진하면 실루엣이 하나의 거대한 띠가
+     되어(inShapeBandPresets의 그 문제) 프리셋 12종을 한 방법으로 잴 수 없다. -->
+<slide id="shape-text-rect">
+  <h2>프리셋의 텍스트 영역 — 가운데</h2>
+  <grid cols="4" gap="md">
+    <shape type="rect" fill="surface" border="none" w="fill" h="120"><p align="center" anchor="center" size="18">rect</p></shape>
+    <shape type="rounded-rect" fill="surface" border="none" w="fill" h="120"><p align="center" anchor="center" size="18">rounded-rect</p></shape>
+    <shape type="ellipse" fill="surface" border="none" w="fill" h="120"><p align="center" anchor="center" size="18">ellipse</p></shape>
+    <shape type="diamond" fill="surface" border="none" w="fill" h="120"><p align="center" anchor="center" size="18">diamond</p></shape>
+    <shape type="cylinder" fill="surface" border="none" w="fill" h="120"><p align="center" anchor="center" size="18">cylinder</p></shape>
+    <shape type="chevron" fill="surface" border="none" w="fill" h="120"><p align="center" anchor="center" size="18">chevron</p></shape>
+    <shape type="arrow-right" fill="surface" border="none" w="fill" h="120"><p align="center" anchor="center" size="18">arrow</p></shape>
+    <shape type="hexagon" fill="surface" border="none" w="fill" h="120"><p align="center" anchor="center" size="18">hexagon</p></shape>
+    <shape type="parallelogram" fill="surface" border="none" w="fill" h="120"><p align="center" anchor="center" size="18">para</p></shape>
+    <shape type="callout" fill="surface" border="none" w="fill" h="120"><p align="center" anchor="center" size="18">callout</p></shape>
+    <shape type="star" fill="surface" border="none" w="fill" h="120"><p align="center" anchor="center" size="18">star</p></shape>
+    <shape type="cloud" fill="surface" border="none" w="fill" h="120"><p align="center" anchor="center" size="18">cloud</p></shape>
+  </grid>
+</slide>

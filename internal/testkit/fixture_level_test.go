@@ -230,6 +230,10 @@ var goldenPartLists = map[string][]string{
 		"pptx/ppt/slides/_rels/slide6.xml.rels",
 		"pptx/ppt/slides/_rels/slide7.xml.rels",
 		"pptx/ppt/slides/_rels/slide8.xml.rels",
+		// 009·010은 프리셋 12종의 **도형 안 텍스트**다 (텍스트 영역 — ADR 0040): 슬라이드
+		// 파트 둘을 더하고 다른 파트는 늘리지 않는다.
+		"pptx/ppt/slides/_rels/slide9.xml.rels",
+		"pptx/ppt/slides/_rels/slide10.xml.rels",
 		"pptx/ppt/slides/slide1.xml",
 		"pptx/ppt/slides/slide2.xml",
 		"pptx/ppt/slides/slide3.xml",
@@ -238,6 +242,8 @@ var goldenPartLists = map[string][]string{
 		"pptx/ppt/slides/slide6.xml",
 		"pptx/ppt/slides/slide7.xml",
 		"pptx/ppt/slides/slide8.xml",
+		"pptx/ppt/slides/slide9.xml",
+		"pptx/ppt/slides/slide10.xml",
 		"pptx/ppt/theme/theme1.xml",
 	},
 	imageFixtureName: {
@@ -998,6 +1004,182 @@ func TestShapeFixtureInShapeTextLineCounts(t *testing.T) {
 			t.Errorf("inShapeLineDivergences의 %s가 픽스처에 없다 — 표에서 지운다", key)
 		}
 	}
+}
+
+// inShapeTextRectSlides는 프리셋별 텍스트 영역을 시험하는 슬라이드다 (id → 가운데 정렬인가).
+//
+// 두 장인 이유는 판정이 둘이기 때문이다: 가운데 정렬은 영역의 **중심**을, 왼쪽·위 정렬은
+// **왼쪽·위 변**을 드러낸다 (대칭 인셋 프리셋은 가운데 정렬로는 어긋남이 상쇄된다 — 픽스처
+// 009·010의 주석).
+var inShapeTextRectSlides = map[string]bool{
+	"shape-text-rect":        true,
+	"shape-text-rect-corner": false,
+}
+
+// inShapeTextRectSlack은 도형 안 글자 자리를 두 타깃에서 견줄 때의 허용 오차다 (px).
+//
+// 두 엔진의 글리프 래스터라이즈가 다르므로 잉크의 바깥 경계는 완전히 같을 수 없다 (좌우
+// 사이드 베어링, 첫 기준선의 반올림 — 실측 4px). 그 상수는 `rect` 행이 대조군으로
+// **빼 주므로**(inShapeTextRectControl) 여기 남는 것은 프리셋마다 다른 몫뿐이고, 그래서 이
+// 값이 표에서 가장 작은 인셋(rounded-rect의 `0.29289 × radius` = 반경 12에서 3.5px)보다
+// 작을 수 있다 — 어긋남의 정체를 가리지 않는다는 뜻이다.
+const inShapeTextRectSlack = 2.0
+
+// inShapeTextRectControl은 대조군 프리셋이다 — 텍스트 영역이 박스 전체인 `rect`다.
+//
+// 왜 필요한가: 두 엔진의 첫 줄 기준선이 같은 자리가 아니어서 같은 텍스트 영역에서도 잉크의
+// 위 경계가 상수만큼 (실측 4px) 어긋난다. 그 상수를 허용 오차에 흡수시키면 오차가 표의 가장
+// 작은 인셋만큼 커져 시험이 무뎌지므로, **영역이 박스와 같은 프리셋**에서 그 상수를 재고
+// 나머지 프리셋의 어긋남에서 뺀다 — 남는 것이 순수하게 텍스트 영역의 몫이다.
+const inShapeTextRectControl = "rect"
+
+// inShapeTextRectDelta는 도형 하나에서 잰 두 타깃의 어긋남이다 — 대조군을 빼려면 한 슬라이드의
+// 잰 값이 다 모인 뒤에 판정해야 하므로 잰 것과 판정하는 것이 두 단계로 나뉜다.
+type inShapeTextRectDelta struct {
+	entry inShapeText
+	// dx·dy는 웹 잉크 − LibreOffice 잉크다 (what이 무엇을 견줬는지 말한다: 중심 또는 왼쪽 위).
+	dx, dy float64
+	what   string
+	// text는 표가 뜻하는 텍스트 영역, loInk는 LibreOffice가 실제로 글자를 놓은 자리다 —
+	// 진단 로그와 "영역 안에 있는가" 단정이 쓴다.
+	text  geom.Rect
+	loInk geom.Rect
+}
+
+// 프리셋의 텍스트 영역이 두 타깃에서 **같은 자리**인가 (ADR 0040의 회귀 테스트).
+//
+// 표(render/web.ShapeTextRect)가 맞는지를 우리 코드 두 벌을 견주는 것으로는 알 수 없다 —
+// 수치의 출처가 PowerPoint·LibreOffice가 들고 있는 프리셋 정의이고, PPTX 쪽은 그 값을 **쓰지
+// 않는다**(ADR 0040: `bodyPr` 인셋은 저자의 `pad`다). 그래서 보장을 픽셀로 옮긴다: 같은
+// SOML에서 웹 잉크와 LibreOffice 잉크가 같은 자리에 오면 웹이 읽은 표가 프리셋과 같다는
+// 뜻이다. 표가 틀리면 이 검사가 깨지고, 표를 두 벌로 공유하는 것보다 강하다.
+//
+// 잉크를 **박스 전체**에서 재는 이유: 고치기 전의 웹 글자는 텍스트 영역 밖(박스 모서리)에
+// 있으므로 영역으로 크롭하면 증거가 잘려 나간다. 박스 안에서 글자만 잉크가 되는 것은 픽스처의
+// `fill="surface"` 덕이다 (009의 주석 — 잉크 임계값보다 칠과 배경의 차가 작다).
+func TestShapeFixtureInShapeTextRect(t *testing.T) {
+	RequireChromium(t)
+	RequireSoffice(t)
+	RequirePdftoppm(t)
+
+	fixture := fixtureByName(t, shapeFixtureName)
+	result := fixture.Build(t)
+	if result.Geometry == nil {
+		t.Fatal("빌드에 지오메트리가 없다")
+	}
+	centered := map[int]bool{}
+	for i, slide := range result.Deck.Slides {
+		if mode, ok := inShapeTextRectSlides[slide.ID]; ok {
+			centered[i] = mode
+		}
+	}
+	if len(centered) != len(inShapeTextRectSlides) {
+		t.Fatalf("텍스트 영역 슬라이드를 %d장만 찾았다 — %v", len(centered), inShapeTextRectSlides)
+	}
+
+	stage := result.Deck.Stage
+	shots := RenderPPTX(t, fixture.Output(t, result, ".pptx"), image.Pt(stage.Width, stage.Height))
+	browser := NewBrowser(t)
+	browser.Load(t, filepath.Join(result.OutDir, web.IndexFile))
+	webShots := map[int]image.Image{}
+	for index := range centered {
+		webShots[index] = browser.ScreenshotElement(t, web.SlideIndexSelector(index))
+	}
+
+	seen := map[string]int{}
+	var measured []inShapeTextRectDelta
+	control := map[int]inShapeTextRectDelta{}
+	for _, entry := range inShapeTexts(t, result.Deck, result.Geometry) {
+		mode, ok := centered[entry.slide]
+		if !ok {
+			continue
+		}
+		seen[entry.preset]++
+		text := presetTextRect(entry)
+		webInk, webOK := inkBounds(webShots[entry.slide], entry.rect)
+		loInk, loOK := inkBounds(shots[entry.slide], entry.rect)
+		if !webOK || !loOK {
+			t.Errorf("%s %s: 박스 안에 잉크가 없다 (웹 %t, LibreOffice %t) — 글자가 박스를 "+
+				"벗어났거나 칠이 잉크로 읽혔다", entry.id, entry.preset, webOK, loOK)
+			continue
+		}
+		delta := inShapeTextRectDelta{entry: entry, text: text, loInk: loInk, what: "왼쪽 위"}
+		if mode {
+			delta.dx = (webInk.X + webInk.W/2) - (loInk.X + loInk.W/2)
+			delta.dy = (webInk.Y + webInk.H/2) - (loInk.Y + loInk.H/2)
+			delta.what = "중심"
+		} else {
+			delta.dx, delta.dy = webInk.X-loInk.X, webInk.Y-loInk.Y
+		}
+		measured = append(measured, delta)
+		if entry.preset == inShapeTextRectControl {
+			control[entry.slide] = delta
+		}
+	}
+	if len(control) != len(centered) {
+		t.Fatalf("대조군 %q를 %d장에서만 찾았다, want %d장 — 두 엔진의 기준선 차를 뺄 수 없다",
+			inShapeTextRectControl, len(control), len(centered))
+	}
+	for _, d := range measured {
+		base := control[d.entry.slide]
+		dx, dy := d.dx-base.dx, d.dy-base.dy
+		// 표가 뜻하는 인셋과 LibreOffice가 실제로 준 인셋을 나란히 남긴다 — 깨졌을 때
+		// 고칠 곳이 웹인지 표인지 이 줄이 가른다.
+		t.Logf("%-14s %s: 잉크 %s Δ = (%+5.1f, %+5.1f)px (대조군 보정 전 %+.1f, %+.1f) | "+
+			"표 l %.1f t %.1f r %.1f b %.1f | LibreOffice 잉크 − 박스 l %+.1f t %+.1f",
+			d.entry.preset, d.entry.rect, d.what, dx, dy, d.dx, d.dy,
+			d.text.X-d.entry.rect.X, d.text.Y-d.entry.rect.Y,
+			d.entry.rect.Right()-d.text.Right(), d.entry.rect.Bottom()-d.text.Bottom(),
+			d.loInk.X-d.entry.rect.X, d.loInk.Y-d.entry.rect.Y)
+		if math.Abs(dx) > inShapeTextRectSlack || math.Abs(dy) > inShapeTextRectSlack {
+			t.Errorf("%s %s: 도형 안 글자의 %s가 두 타깃에서 (%+.1f, %+.1f)px 어긋난다 (허용 %.1fpx) — "+
+				"웹이 프리셋의 텍스트 영역을 읽지 않으면 이 값은 표의 인셋과 같다 (ADR 0040)",
+				d.entry.id, d.entry.preset, d.what, dx, dy, inShapeTextRectSlack)
+		}
+		// LibreOffice의 글자는 프리셋의 텍스트 영역 안에 있어야 한다 — 표가 프리셋과 같다는
+		// 직접 단정이다 (`pad`는 영역 안쪽에 더 들어가므로 한 방향으로만 본다).
+		if d.loInk.X < d.text.X-inShapeTextRectSlack || d.loInk.Y < d.text.Y-inShapeTextRectSlack ||
+			d.loInk.Right() > d.text.Right()+inShapeTextRectSlack || d.loInk.Bottom() > d.text.Bottom()+inShapeTextRectSlack {
+			t.Errorf("%s %s: LibreOffice 잉크 %s가 표의 텍스트 영역 %s을 벗어난다 — 표의 행이 "+
+				"프리셋 정의와 다르다 (render/web.ShapeTextRect)", d.entry.id, d.entry.preset, d.loInk, d.text)
+		}
+	}
+	for _, preset := range soml.ShapeTypes() {
+		if seen[preset] != len(inShapeTextRectSlides) {
+			t.Errorf("%s: 텍스트 영역 슬라이드에서 %d번 잡혔다, want %d번 — 프리셋 전수여야 한다",
+				preset, seen[preset], len(inShapeTextRectSlides))
+		}
+	}
+}
+
+// presetTextRect는 프리셋의 텍스트 영역을 잰 박스 위에 얹는다 (ADR 0040의 표).
+func presetTextRect(entry inShapeText) geom.Rect {
+	insets, ok := web.ShapeTextRect(entry.preset)
+	if !ok {
+		return entry.rect
+	}
+	l, t, r, b := insets.Px(entry.rect.W, entry.rect.H, entry.radius)
+	return geom.Rect{X: entry.rect.X + l, Y: entry.rect.Y + t, W: entry.rect.W - l - r, H: entry.rect.H - t - b}
+}
+
+// inkBounds는 영역 안 잉크 전체를 감싸는 사각형이다 (띠의 합집합).
+func inkBounds(img image.Image, r geom.Rect) (geom.Rect, bool) {
+	bands := InkBands(img, r)
+	if len(bands) == 0 {
+		return geom.Rect{}, false
+	}
+	out := bands[0]
+	for _, band := range bands[1:] {
+		if band.X < out.X {
+			out.W += out.X - band.X
+			out.X = band.X
+		}
+		if band.Right() > out.Right() {
+			out.W = band.Right() - out.X
+		}
+		out.H = band.Bottom() - out.Y
+	}
+	return out, true
 }
 
 // inShapeText는 텍스트를 담은 도형 하나다 (도형 안 줄 수 대조의 단위).

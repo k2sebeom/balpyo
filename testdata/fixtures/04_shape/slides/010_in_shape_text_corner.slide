@@ -1,0 +1,28 @@
+<!-- **프리셋의 텍스트 영역** — 왼쪽·위 모서리 (P1.2, ADR 0040).
+     009가 영역의 중심을 보는 장이고 이 장은 **왼쪽·위 변 자체**를 본다: `align="start"`
+     `anchor="top"`이면 첫 글자가 텍스트 영역의 왼쪽 위에 붙으므로, 잉크의 왼쪽 위 좌표가 곧
+     그 프리셋의 `l`·`t` 인셋이다 (프리셋 수치를 잰 방법이 바로 이것이다 — ADR 0040의 근거).
+     두 장을 합치면 네 변이 다 덮인다: `l`·`t`를 이 장이 단정하고, 중심 = `(l−r)/2`·`(t−b)/2`를
+     009가 단정하므로 `r`·`b`가 따라 나온다. 대칭 인셋 프리셋(ellipse·diamond·hexagon·
+     parallelogram)은 가운데 정렬로는 어긋남이 상쇄되어 **보이지 않으므로** 이 장이 없으면
+     표의 절반이 시험되지 않는다.
+     `fill`·`border`·크기·글자 크기의 근거는 009와 같다. 라벨이 도형 왼쪽 위에 붙어 실루엣을
+     벗어나 보이는 것이 이 장의 **고치기 전 모습**이다 (웹이 박스 전체를 텍스트 영역으로
+     쓴다) — 고친 뒤에는 프리셋 안으로 들어온다. -->
+<slide id="shape-text-rect-corner">
+  <h2>프리셋의 텍스트 영역 — 왼쪽 위</h2>
+  <grid cols="4" gap="md">
+    <shape type="rect" fill="surface" border="none" w="fill" h="120"><p align="start" anchor="top" size="18">rect</p></shape>
+    <shape type="rounded-rect" fill="surface" border="none" w="fill" h="120"><p align="start" anchor="top" size="18">round</p></shape>
+    <shape type="ellipse" fill="surface" border="none" w="fill" h="120"><p align="start" anchor="top" size="18">ellipse</p></shape>
+    <shape type="diamond" fill="surface" border="none" w="fill" h="120"><p align="start" anchor="top" size="18">diamond</p></shape>
+    <shape type="cylinder" fill="surface" border="none" w="fill" h="120"><p align="start" anchor="top" size="18">cylinder</p></shape>
+    <shape type="chevron" fill="surface" border="none" w="fill" h="120"><p align="start" anchor="top" size="18">chevron</p></shape>
+    <shape type="arrow-right" fill="surface" border="none" w="fill" h="120"><p align="start" anchor="top" size="18">arrow</p></shape>
+    <shape type="hexagon" fill="surface" border="none" w="fill" h="120"><p align="start" anchor="top" size="18">hexagon</p></shape>
+    <shape type="parallelogram" fill="surface" border="none" w="fill" h="120"><p align="start" anchor="top" size="18">para</p></shape>
+    <shape type="callout" fill="surface" border="none" w="fill" h="120"><p align="start" anchor="top" size="18">callout</p></shape>
+    <shape type="star" fill="surface" border="none" w="fill" h="120"><p align="start" anchor="top" size="18">star</p></shape>
+    <shape type="cloud" fill="surface" border="none" w="fill" h="120"><p align="start" anchor="top" size="18">cloud</p></shape>
+  </grid>
+</slide>
