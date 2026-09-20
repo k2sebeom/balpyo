@@ -30,7 +30,7 @@
 | D8 | 검수 루프가 전부 수동이다: 웹은 호스트, PPTX는 컨테이너, 그림 확인은 `soffice` + `pdftoppm`을 직접 조립했다 | 중간 | P3.1 · P3.2 | 열림 |
 | D9 | **오버플로 진단이 없다.** 글이 박스를 넘쳐도 빌드는 조용하고 열어봐야 안다 | **높음** | P1.1 | 닫힘 |
 | D10 | 페이지 번호·푸터·러닝 헤더가 없다 (`a:fld`/`slidenum` 미구현) | 중간 | P2.2 | 열림 |
-| D11 | LibreOffice 렌더에서 문장부호 앞뒤에 **간격이 벌어져 보인다** (`선언으로 , 색과`). 웹에는 없다 | 중간 | P1.5 | 열림 |
+| D11 | LibreOffice 렌더에서 문장부호 앞뒤에 **간격이 벌어져 보인다** (`선언으로 , 색과`). 웹에는 없다 | 중간 | P1.5 | **닫힘** (알려진 차이 — 뷰어의 CJK↔서양 자동 간격, 경계당 1/4 em. DrawingML로 끌 수 없다) |
 | D12 | accent 색이 **하나**라서 덱 전체가 한 가지 파랑이다. 강조의 위계를 만들 수 없다 | 중간 | P4.1 | 열림 |
 | D13 | 예제·문서가 썩는다. **예제는 CI에서 빌드되지 않는다** | 중간 | P5.1 · P5.2 | 열림 |
 | D14 | **`<text>`에 `w`/`h`가 없다.** canvas 라벨은 자기 내용만큼만 넓어서 `align="center"`가 기댈 폭이 없다 — 라벨마다 보이지 않는 도형(`fill="none" border="none" w="140"`)으로 감쌌다. 라벨 10개가 태그 20개가 됐다 | **높음** | P1.3 · P2.5 | P1.3 닫힘 (ADR 0043) · `<chart>`는 P2.5 |
@@ -145,15 +145,27 @@
       minimal이 10종 전부를 갖는다) · `soml/slide.md`(`justify` 속성 절·진단 문자열 6줄) ·
       `reference/index.md` · `guides/layout-warnings.md`(콘텐츠 박스는 잰 값이다).
 
-### P1.5 LibreOffice 문장부호 간격 조사 (D11) ← **지금 여기**
+### P1.5 LibreOffice 문장부호 간격 조사 (D11) — **닫힘** (알려진 차이)
 20장을 견줘 남은 **유일한** 두 타깃 차이다. 원인을 모르면 "두 타깃이 같다"를 말할 수 없다.
-- [ ] 조사: 같은 문장을 (1) 런 하나, (2) 지금처럼 분할된 런으로 내보내 LibreOffice 렌더를 비교.
-      원인이 런 분할이면 **인접 런 병합**(같은 `rPr`이면 하나로), CJK 텍스트 레이아웃이면
-      `a:pPr`의 동아시아 속성(`eaLnBrk`/`hangingPunct`)을 명시.
-- [ ] RED/GREEN: 원인에 맞는 테스트 + 수정. 골든 이동은 커밋에서 눈으로 검토.
-- [ ] DOC: 원인이 렌더러 쪽이면 `docs/internals/`에, 뷰어 쪽이면 "알려진 차이"로 문서화.
+- [x] 조사: 런 분할이 아니다 — 같은 문장을 런 하나로 낸 덱과 지금처럼 분할한 덱의 간격이
+      **같다**. 원인은 뷰어의 CJK↔서양 자동 간격이다(ODF `style:text-autospace`, editeng의
+      `SvxScriptSpaceItem`, 기본 켜짐): ODP로 바꿔 `none`을 넣으면 간격이 정확히 사라지고
+      `ideograph-alpha`로 되돌리면 다시 나타난다. **DrawingML에는 끌 속성이 없다** —
+      `eaLnBrk`·`hangingPunct`·`latinLnBrk`, `kern`·`spc`, 폰트 교체·폰트 요소 없음,
+      `lang`/`altLang` 네 조합까지 열 가지를 재봤고 하나도 움직이지 못했다.
+- [x] RED/GREEN: `internal/testkit/script_spacing_test.go`가 뷰어를 잰다 — 경계 0곳인 줄과
+      11곳인 줄을 한 슬라이드에 두어 폰트 메트릭 잔차(−1.2%)와 스크립트 간격을 분리한다.
+      모델: **경계당 +0.245 em**(경계 11곳·372px 줄에서 +14.5%) — 오차는 줄 길이가 아니라
+      경계 수에 비례하고, 그래서 여유 4%로는 덮을 수 없다 (키우면 반대 방향으로 줄이 줄어든다
+      — ADR 0005 선택지 3). 뷰어 쪽 원인이라 렌더러는 그대로 두고, **잰 폭을 지키는** 수정만
+      했다: 스테이지가 `text-autospace: no-autospace`를 못 박는다 (CSS Text 4는 그 간격을
+      초기값에 둔다 — 브라우저가 켜는 날 잰 폭이 움직이고 잰 폭이 곧 PPTX 좌표다). 골든
+      9개의 이동은 CSS 주석과 그 한 선언뿐이고, 픽셀은 움직이지 않았다.
+- [x] DOC: `docs/guides/known-differences.md`(신설 — 증상·원인·측정표·다른 뷰어·저자가 할 일) ·
+      `guides/index.md` · `mkdocs.yml` 내비. ADR 0005의 "+3.3%"가 상한이 아니었음을 그 ADR의
+      결과 절과 `pptx.textBoxSlackRatio`·`loLineWidthMaxRatio` 주석에 되먹였다.
 
-### P2.1 `<table>` 렌더러 (D2 · D20) — 어휘는 있고 렌더러만 없다
+### P2.1 `<table>` 렌더러 (D2 · D20) — 어휘는 있고 렌더러만 없다 ← **지금 여기**
 문법·값 층·테마 `table` 컴포넌트·ADR 0036까지 끝나 있다. 남은 것은 두 렌더러와 측정이다.
 - [ ] RED: 웹 골든(진짜 `<table>`) + PPTX 구조(`a:graphicFrame`+`a:tbl`, 명시 `tcPr`,
       `colspan`→`gridSpan` / `rowspan`→`rowSpan`+`vMerge`) + 픽셀 비교. 픽스처 `09_table`.
