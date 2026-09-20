@@ -292,3 +292,26 @@ func TestRenderListDeckIsByteIdentical(t *testing.T) {
 		t.Error("같은 덱이 다른 바이트를 냈다")
 	}
 }
+
+// 컨테이너의 외관 속성은 **항목의 문단·런 서식**으로 나간다 (ADR 0038) — PPTX에서 리스트는
+// 텍스트 박스 하나이고 항목은 그 안의 문단이므로, 컨테이너에 대응하는 XML 자리가 없다:
+// 크기는 런의 sz, 정렬은 문단의 algn이다. 웹이 항목마다 확정 스타일을 싣는 것과 같은 그림이
+// 되어야 두 타깃이 갈라지지 않는다.
+func TestRenderListContainerAppearance(t *testing.T) {
+	deck := resolvedDeck(t, `<slide>
+  <ul size="20" align="center">
+    <li>첫째</li>
+    <li>둘째</li>
+  </ul>
+</slide>`)
+	g := measuredGeometry(t, deck, listRect, itemRect, itemRect)
+	sp := spSection(t, slideXML(t, deck, g), "ul s0.0")
+
+	// 20px = 15pt = sz 1500 (units.go의 경계 환산).
+	if got := strings.Count(sp, `sz="1500"`); got != 2 {
+		t.Errorf(`sz="1500"이 %d개, want 2개 (항목마다 런 서식)`+"\n%s", got, sp)
+	}
+	if got := strings.Count(sp, `algn="ctr"`); got != 2 {
+		t.Errorf(`algn="ctr"이 %d개, want 2개 (항목마다 문단 서식)`+"\n%s", got, sp)
+	}
+}

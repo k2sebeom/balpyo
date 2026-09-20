@@ -318,3 +318,23 @@ func TestRenderRejectsAnchorWithoutLink(t *testing.T) {
 		t.Error("Link가 없는 <a>는 에러여야 한다")
 	}
 }
+
+// 컨테이너의 외관 속성은 항목의 확정 스타일로 내려온다 (ADR 0038) — 웹은 항목마다 완전
+// 명시 인라인 style을 내므로 컨테이너에 텍스트 선언이 붙을 자리가 없다. 그래서 `<ul>`
+// 태그의 산출은 외관 속성을 쓴 덱에서도 **그대로**다 (골든 불변의 근거).
+func TestRenderListInheritsContainerAppearance(t *testing.T) {
+	out := renderString(t, subsetDeck(t, `
+  <ul size="20" color="muted" align="center">
+    <li>첫째</li>
+    <li>둘째</li>
+  </ul>`))
+	if got := strings.Count(out, "font-size: 20px"); got != 2 {
+		t.Errorf("font-size: 20px가 %d개, want 2개 (항목마다 확정 스타일)\n%s", got, out)
+	}
+	if got := strings.Count(out, "text-align: center"); got != 2 {
+		t.Errorf("text-align: center가 %d개, want 2개\n%s", got, out)
+	}
+	if !strings.Contains(out, `<ul class="balpyo-list" data-balpyo-id="s0.0" data-balpyo-el="ul">`) {
+		t.Errorf("컨테이너 태그에 선언이 붙었다 — 외관은 항목이 싣는다\n%s", out)
+	}
+}
