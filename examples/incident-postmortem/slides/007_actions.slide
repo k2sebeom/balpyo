@@ -1,8 +1,12 @@
-<!-- 액션: two-column 레이아웃의 슬롯 둘에 "이번 주 / 다음 스프린트"를 나눈다. -->
+<!-- 액션: two-column 레이아웃의 슬롯 둘에 "이번 주 / 다음 스프린트"를 나눈다.
+
+     두 소제목은 `accent3`다 — 이 장은 전부 "우리가 할 것"이므로 덱의 색 규칙에서 초록
+     하나만 쓴다 (001_cover). 급한 쪽을 빨강으로 칠하는 선택지도 있었지만, 빨강은 이 덱에서
+     장애가 낸 값을 뜻하므로 계획에 쓰면 뜻이 둘이 된다. -->
 <slide id="actions" layout="two-column">
   <text slot="title" role="heading">재발 방지 액션</text>
   <col slot="left" gap="sm">
-    <text role="heading" size="24" color="accent1">이번 주</text>
+    <text role="heading" size="24" color="accent3">이번 주</text>
     <ol size="18">
       <li>TTL에 ±10% 지터 (결제 캐시 전부)</li>
       <li>5xx 경보를 1분 p99로 교체</li>
@@ -10,7 +14,7 @@
     </ol>
   </col>
   <col slot="right" gap="sm">
-    <text role="heading" size="24" color="accent1">다음 스프린트</text>
+    <text role="heading" size="24" color="accent3">다음 스프린트</text>
     <ol size="18">
       <li>캐시 미스에 단일 비행 잠금</li>
       <li>부하 차단을 수동 → 자동 (오류율 2%)</li>

@@ -4,7 +4,11 @@
      막대 위/아래 라벨은 막대와 같은 폭을 가진 텍스트 박스다 (`<text w="140" align="center">`
      — ADR 0043). 그 폭이 없던 동안에는 라벨마다 보이지 않는 도형
      (`<shape fill="none" border="none" w="140">`)으로 감싸야 했고, 라벨 열 개가 태그
-     스무 개였다. -->
+     스무 개였다.
+
+     마지막 막대만 `accent4`다 — 이 장의 값은 전부 탐지 시간이고, 탐지는 덱의 색 규칙에서
+     호박이다 (001_cover). 지난 넉 달은 `surface`로 두어 추세가 배경이 되고 이번 장애가
+     앞으로 나온다. -->
 <slide id="detection" layout="canvas">
   <text role="heading" size="32" x="0" y="0">평균 탐지 시간이 줄고 있다 — 아직 느리다</text>
 
@@ -26,9 +30,9 @@
   <shape type="rect" fill="surface" w="140" h="104" x="706" y="316"/>
   <text size="16" color="muted" w="140" align="center" x="706" y="430">8월</text>
 
-  <text size="16" color="accent1" w="140" align="center" x="906" y="296">12분</text>
-  <shape type="rect" fill="accent1" w="140" h="96" x="906" y="324"/>
-  <text size="16" color="accent1" w="140" align="center" x="906" y="430">이번 장애</text>
+  <text size="16" color="accent4" w="140" align="center" x="906" y="296">12분</text>
+  <shape type="rect" fill="accent4" w="140" h="96" x="906" y="324"/>
+  <text size="16" color="accent4" w="140" align="center" x="906" y="430">이번 장애</text>
 
   <text role="caption" color="muted" x="0" y="480">목표는 3분(1분 p99 경보 + 2분 확인)이다. 액션 2번이 이 막대를 반으로 줄인다.</text>
   <note>추세는 좋지만 목표선이 없다. 다음 회고에 목표선을 그린다.</note>
