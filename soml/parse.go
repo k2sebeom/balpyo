@@ -95,11 +95,16 @@ func buildElementSpecs() map[string]elementSpec {
 	}
 	for _, name := range blockElements {
 		model := modelInline
+		var own []string
 		if name == "pre" {
-			// v1의 pre는 문자 데이터만 담는다 — <pre><code> 관용은 코드 하이라이팅(P1)이
-			// 인라인 서식과 어떻게 만나는지 정해질 때 연다. 지금 열면 그 결정 전에
-			// "code가 pre 안에서 무엇을 뜻하는가"가 렌더러마다 임의로 정해진다.
+			// v1의 pre는 문자 데이터만 담는다 — <pre><code> 관용은 열지 않는다: 런은 저자가
+			// 아니라 토크나이저가 만든다 (ADR 0051의 결정 8). 하이라이팅이 인라인 서식과
+			// 만나는 문제를 여는 대신 **지우는** 쪽으로 풀었다.
 			model = modelPre
+			// lang은 `<pre>` 고유 속성이다 (ADR 0051) — 다른 블록에는 뜻이 없다. 어휘의
+			// 순서가 진단의 순서이므로 고유 속성이 외관·박스보다 앞이다. 값 어휘(닫힌
+			// 네 이름 + 별칭 하나)와 진단은 core가 소유한다 — 언어 이름은 값이다.
+			own = []string{LangAttr}
 		}
 		// 블록의 속성은 `<text>`의 외관 어휘에서 role만 뺀 것이다. 블록은 역할의 축약이라
 		// (`<p>` ≡ `<text role="body">`, TagTextRole) 역할은 등가 표에서만 오고, role
@@ -113,7 +118,8 @@ func buildElementSpecs() map[string]elementSpec {
 		// 리스트의 타이포그래피가 리스트이기를 멈춘다.
 		// 가로 크기 속성도 같은 대칭으로 받는다 (withTextSize — ADR 0043).
 		specs[name] = elementSpec{
-			attrs: withChildPlacement(withTextSize([]string{"variant", "size", "color", "align", AnchorAttr})),
+			attrs: withChildPlacement(withTextSize(append(own,
+				"variant", "size", "color", "align", AnchorAttr))),
 			model: model,
 		}
 	}
@@ -734,6 +740,15 @@ func (p *parser) checkAttrName(elem *Element, attr Attr) {
 	}
 	for _, allowed := range spec.attrs {
 		if allowed == attr.Name {
+			return
+		}
+	}
+	// 예정된 속성은 오타와 **다른 문장으로** 말한다 (D16 — ADR 0051): 이름은 맞는데 구현이
+	// 아직인 자리를 "알 수 없는 속성"으로 말하면 저자가 이름을 의심하며 헤맨다 (plannedAttrs).
+	for _, planned := range plannedAttrs {
+		if planned.Tag == elem.Name && planned.Name == attr.Name {
+			p.errorf(attr.NameSpan, "<%s>의 %s는 %s — %s이 그 속성을 연다",
+				elem.Name, attr.Name, PlannedAttrMessage, planned.Opens)
 			return
 		}
 	}

@@ -152,6 +152,37 @@ func allElementNames() []string {
 // 목록이 빈 동안 관문 자체는 목록을 잠시 세워 보는 테스트가 지킨다 (withUnrenderedKinds).
 var unrenderedKinds []ElementKind
 
+// PlannedAttrMessage는 "이름은 맞는데 아직 구현되지 않은 속성" 진단의 핵 문구다.
+// UnrenderedVocabMessage와 같은 이유로 상수다 — 진단을 내는 곳과 걸러 보는 곳이 같은
+// 문자열을 써야 한다.
+const PlannedAttrMessage = "아직 구현되지 않은 속성이다"
+
+// plannedAttr는 어휘 표에 **아직 없지만 이름이 이미 정해진** 속성 하나다. `Opens`는 어느
+// 항목이 그 속성을 여는지다 — 저자가 기다릴 곳을 알아야 진단이 끝난 문장이 된다.
+type plannedAttr struct {
+	Tag   string
+	Name  string
+	Opens string
+}
+
+// plannedAttrs는 계획된 속성의 **닫힌** 목록이다 (D16 — ADR 0051).
+//
+// 이 목록이 생긴 이유는 2회차 피드백의 마찰점이다: `<pre lang="go">`가 "알 수 없는 속성
+// lang"으로 죽어서 저자가 **이름을 의심하며** 여러 번 바꿔 봤다 — 없는 것은 이름이 아니라
+// 구현이었다. 목록 밖 이름은 지금처럼 "알 수 없는 속성"으로 말한다: 오타와 예정을 한 문장으로
+// 뭉치면 둘 다 흐려진다.
+//
+// 목록은 **썩을 수 있다** — 속성을 구현하는 커밋이 여기서 줄을 지우지 않으면 저자는 이미
+// 되는 것을 "아직 안 된다"고 듣는다. 그래서 어휘 표와 양방향으로 대조한다 (planned_test.go —
+// unrenderedKinds ↔ 렌더러 디스패치와 같은 장치). `lang`이 그 규칙의 첫 증인이다: ADR 0051이
+// 이 줄을 적고 같은 항목이 지웠다.
+//
+// 목록이 비는 날에도 관문은 목록을 잠시 세워 보는 테스트가 지킨다 (withPlannedAttrs).
+var plannedAttrs = []plannedAttr{
+	{Tag: ShapeElement, Name: "alt", Opens: "P5.3 접근성"},
+	{Tag: TableElement, Name: "alt", Opens: "P5.3 접근성"},
+}
+
 // KindRendered는 두 렌더러가 이 종류를 그릴 수 있는지 보고한다. KindNone(카탈로그 밖 —
 // `<slide>`·`<text>`·`<note>`)은 각자의 규칙을 따르므로 참이다.
 func KindRendered(kind ElementKind) bool {
@@ -177,6 +208,11 @@ const ListItemElement = "li"
 // BreakElement는 줄바꿈 태그 이름이다. 서브셋의 유일한 void 요소다 — 내용을 갖지 않고
 // `<br/>`(자기 닫힘)로만 쓴다. 렌더러가 런 분할에서 이 이름을 특별 취급한다.
 const BreakElement = "br"
+
+// LangAttr는 `<pre>`의 코드 언어다 (ADR 0051) — 하이라이팅을 켜는 **유일한** 어휘이고,
+// 값은 엔진이 닫은 목록(go·xml·soml·json·bash)이다. 색·줄 번호·테마 이름 같은 손잡이는
+// 열지 않는다: 종류 → 색은 테마의 것이고, 저자가 코드마다 색을 고르면 덱이 팔레트를 잃는다.
+const LangAttr = "lang"
 
 // elementKinds는 이름 → 종류 색인이다. 위의 순서 있는 목록과 레이아웃·도형·이미지 카탈로그
 // (layout.go·shape.go·image.go)에서 파생된다 — 종류를 갖는 이름은 전부 여기를 지난다.

@@ -5,6 +5,14 @@ import (
 	"testing"
 )
 
+// withPlannedAttrs는 예정 목록을 잠시 세운다 — 목록이 비는 날에도 관문이 사는지 보려면
+// 목록 자체를 갈아 봐야 한다 (unrendered_test.go의 withUnrenderedKinds와 같은 장치).
+func withPlannedAttrs(list []plannedAttr) func() {
+	saved := plannedAttrs
+	plannedAttrs = list
+	return func() { plannedAttrs = saved }
+}
+
 // 계획된 속성은 오타와 **다른 문장으로** 말한다 (D16 · ADR 0051). 2회차 피드백의 마찰점이
 // 그것이었다: `<pre lang="go">`가 "알 수 없는 속성"으로 죽어서 저자가 이름을 의심하며
 // 여러 번 바꿔 봤다 — 없는 것은 이름이 아니라 구현이었다.
