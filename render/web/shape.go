@@ -1098,8 +1098,17 @@ func shapeCSS() string {
 
   /* 그림이 절대 배치라 흐름 콘텐츠보다 위에 칠해진다 — 자식을 position: relative로 올려
      글자가 그림 위에 오게 한다. z-index로 그림을 내리는 길은 스택 문맥에 따라 슬라이드
-     바탕 아래로 사라질 수 있어 쓰지 않는다. */
-  .balpyo-shape > .balpyo-text {
+     바탕 아래로 사라질 수 있어 쓰지 않는다.
+
+     목록이 다섯 줄인 이유는 **배경 모드**다 (ADR 0049): 도형이 컨테이너를 담으면 올릴 것이
+     글자가 아니라 컨테이너다. 자식 전부를 한 줄로 집는 길(> :not(.balpyo-shape-ink))은 쓰지
+     않는다 — 특정도 (0,2,0)이 아래 .balpyo-shape-body (0,1,0)를 이겨 프리셋 텍스트 영역의
+     절대 배치가 풀린다 (ADR 0040이 만든 래퍼가 흐름으로 돌아간다). */
+  .balpyo-shape > .balpyo-text,
+  .balpyo-shape > .balpyo-row,
+  .balpyo-shape > .balpyo-col,
+  .balpyo-shape > .balpyo-grid,
+  .balpyo-shape > .balpyo-stack {
     position: relative;
   }
 
