@@ -399,7 +399,7 @@
 |---|---|
 | 레이아웃 컨테이너 (`<row>` `<col>` `<grid>`) · `<spacer/>` | **0개** |
 | 리스트 컨테이너 (`<ul>` `<ol>`) | 1개 — 불릿 문단이 한 텍스트 박스에 산다 |
-| `<shape>` | 1개 (`p:sp`) — 자식 텍스트를 흡수한다 |
+| `<shape>` | 1개 (`p:sp`) — 자식 텍스트를 흡수한다 (컨테이너를 담으면 1개 + 자식들) |
 | **`<image>`** | **1개 (`p:pic`)** — 담을 것이 없다 |
 | `<text>`·블록 태그 | 1개씩 |
 
@@ -414,7 +414,7 @@
 |---|---|
 | 내용을 담았다 | `void 태그 <image>은 내용을 가질 수 없다 (<image/>로 쓴다)` |
 | 문단·리스트 항목 안에 썼다 | `<p> 안에는 문자 데이터와 인라인 태그만 올 수 있다 (<image>는 쓸 수 없다)` |
-| 도형 안에 썼다 | `<shape>의 자식으로 <image>는 올 수 없다 (쓸 수 있는 태그: <text>, <h1>, …)` |
+| 도형의 **직속** 자식으로 썼다 | `<shape>의 자식으로 <image>는 올 수 없다 (쓸 수 있는 태그: <text>, <h1>, …, <row>, <col>, <grid>, <stack>)` — 도형 안 그림은 컨테이너를 거쳐 들어온다 (`<shape><col><image/></col></shape>`) |
 | 어휘 밖의 속성 (`fill`·`frame`·`type`·`anchor` …) | `<image>에 알 수 없는 속성 fill (쓸 수 있는 속성: src, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, style)` |
 
 값 해석(`core.Resolve`) — 경로 **문법**과 값 어휘. 디스크를 보지 않으므로 에디터가 프로젝트를
