@@ -27,7 +27,7 @@
 | D5 | `chevron` 중앙 텍스트가 노치에 **잘린다**. `pad`를 키워도 해결 불가 → 라벨을 도형 밖으로 내렸다 | 중간 | P1.2 | 닫힘 |
 | D6 | `<ul>`/`<ol>`에 외관 속성이 없다. 목록 글자 크기를 바꾸려면 레이아웃을 바꿔야 한다 | 중간 | P0.3 | 닫힘 |
 | D7 | 도형 안에 레이아웃 컨테이너를 넣을 수 없어, 카드 헤더/본문을 **도형 2개 + `gap="0"` `col`**로 흉냈다 | 중간 | P2.3 | 열림 |
-| D8 | 검수 루프가 전부 수동이다: 웹은 호스트, PPTX는 컨테이너, 그림 확인은 `soffice` + `pdftoppm`을 직접 조립했다 | 중간 | P3.1 · P3.2 | 열림 (웹 절반은 P3.1이 닫았다 — `balpyo watch`가 고치면 다시 빌드하고 탭을 새로고침한다. PPTX 검수는 P3.2) |
+| D8 | 검수 루프가 전부 수동이다: 웹은 호스트, PPTX는 컨테이너, 그림 확인은 `soffice` + `pdftoppm`을 직접 조립했다 | 중간 | P3.1 · P3.2 | **닫힘** (P3.1 `balpyo watch` — 저장하면 탭이 새로고침된다 · P3.2 `balpyo preview` — 웹/PPTX/diff 갤러리가 한 명령이다) |
 | D9 | **오버플로 진단이 없다.** 글이 박스를 넘쳐도 빌드는 조용하고 열어봐야 안다 | **높음** | P1.1 | 닫힘 |
 | D10 | 페이지 번호·푸터·러닝 헤더가 없다 (`a:fld`/`slidenum` 미구현) | 중간 | P2.2 | **닫힘** (P2.2 — 번호·푸터. 러닝 헤더는 같은 `chrome` 어휘에 `kind`를 더하면 열린다) |
 | D11 | LibreOffice 렌더에서 문장부호 앞뒤에 **간격이 벌어져 보인다** (`선언으로 , 색과`). 웹에는 없다 | 중간 | P1.5 | **닫힘** (알려진 차이 — 뷰어의 CJK↔서양 자동 간격, 경계당 1/4 em. DrawingML로 끌 수 없다) |
@@ -62,6 +62,7 @@
 | P2.1 `<table>` 렌더러 (D2 · D20) | 웹은 진짜 `<table>`, PPTX는 `p:graphicFrame`+`a:tbl`(표 스타일 없음 + 명시 `tcPr`). 격자 수치는 전부 **잰 값**이고 그 합이 프레임 크기와 같다. 예제 덱 셋의 손으로 짠 표가 표로 돌아왔다 | [ADR 0036](docs/decisions/0036-table-is-html-ish-tr-td-with-explicit-a-tbl.md), `09_table`(5장) · `internal/testkit/table_fixture_test.go`(병합 격자 전수), LibreOffice flat ODF 왕복(`table:table-cell` 78개 · 덮인 셀 4개), `docs/reference/soml/table.md` |
 | P2.2 덱 크롬: 페이지 번호 · 푸터 (D10) | 어휘를 **나눠 갖는다**: 내용·켜짐은 `balpyo.json`(`footer`·`pageNumber`, 둘 다 기본 꺼짐), 자리·정렬·역할·제외는 테마 `chrome` 선언. 제외 규칙은 값 층이 적용해 두 렌더러가 확정 모델 하나를 읽는다. 번호는 `a:fld type="slidenum"`(캐시 숫자 동봉)이라 뷰어가 다시 센다 — `p:ph`도 `p:hf`도 쓰지 않았다 | [ADR 0045](docs/decisions/0045-deck-chrome-is-config-text-in-a-theme-declared-band.md), `10_chrome`(4장) · `internal/testkit/chrome_fixture_test.go`(잰 rect ↔ 골든 EMU 0 오차 · 다른 픽스처 골든에 크롬 0조각), LibreOffice flat ODF 왕복(`<text:page-number>`가 포함된 두 장에만 · 장을 끼우면 1/3/5로 따라온다), `docs/reference/theme.md` |
 | P3.1 `balpyo watch` — 핫 리로드 (D8) | 폴링(250ms) + "스캔이 같아진 뒤 빌드"로 저장 한 번 = 빌드 한 번. `build`와 **같은 파이프라인·같은 출력 디렉토리**를 쓰고 리로드 클라이언트는 **응답 바이트에만** 주입한다(디스크는 배포본 그대로). 실패한 빌드는 산출물을 건드리지 않아 마지막 성공본 위에 진단 오버레이가 뜨고, 터미널에는 `build`와 같은 규칙으로 요약 한 줄이 간다. 측정이 필요한 감시는 브라우저 **하나**를 계속 쓴다 | [ADR 0046](docs/decisions/0046-watch-polls-the-project-and-injects-its-reload-client.md), `internal/watch`(스캐너·서버·루프) · `cmd/balpyo/watch_test.go`(응답에 있고 디스크에 없다) · `TestRunnerReusesOneWarmBrowser`(세션 동일성 · 0.61초), `docs/reference/cli.md#balpyo-watch` · `docs/guides/getting-started.md` |
+| P3.2 `balpyo preview` — 검수 갤러리 (D8) | 래스터화(PPTX → PDF → PNG)·픽셀 diff·갤러리 문서를 `internal/preview`가 소유하고 `make review`와 사용자 명령이 **그것을 함께 쓴다** (테스트가 보는 그림과 사람이 보는 그림이 달라지지 않는다). 하네스에 남는 것은 **테스트 정책**뿐이다 — 건너뛰기/실패, 픽스처별 오차 조정표("이 슬라이드는 달라야 정답이다"까지 든 표). 그 표가 사용자 덱에는 없으므로 `preview`는 **게이트가 아니다**: 오차를 넘어도 코드 0이고, 1은 검수할 것이 안 만들어졌을 때만이다. 도구가 없으면 빌드 전에 멈춘다 | [ADR 0047](docs/decisions/0047-review-gallery-lives-in-internal-preview.md), `internal/preview`(`Run`·래스터라이저·갤러리) · `raster_pptx_test.go`(장수 · 스테이지 크기 · 재실행 0 픽셀 차) · `cmd/balpyo/preview_test.go`(경로를 찍는다 · 한 열 갤러리 · 도구 없음은 빌드 전에), `04_shape` 실물 확인(슬라이드 4장이 기본 2.5% 초과, 종료 코드 0), `docs/reference/cli.md#balpyo-preview` |
 | D19 문서가 어휘를 숨긴다 | `slide.md`(11종 표 + 실제 진단 문구) · `reference/index.md`(`layouts.md`는 구현됨) · `text.md`(속성 목록 + `<text>`에 `w`/`h`가 없다는 것) | `make docs --strict`, 커밋 `cc8239f` |
 
 ---
@@ -243,14 +244,26 @@
       그 이유를 문서 안에 적었다. `docs/index.md`의 빠른 시작도 아직 없는 `balpyo server`
       대신 `balpyo watch`를 쓴다.
 
-### P3.2 `balpyo preview --target pptx` (D8) — 손으로 하던 검수 루프를 제품으로 ← **지금 여기**
+### P3.2 `balpyo preview --target pptx` (D8) — 손으로 하던 검수 루프를 제품으로
 2회차에서도 PPTX를 보려고 임시 테스트 파일을 만들어 `soffice`+`pdftoppm`을 돌렸다.
 `internal/testkit/soffice.go`가 이미 같은 일을 한다 — 테스트 전용으로 묶여 있을 뿐이다.
-- [ ] RED: PPTX → PNG 산출물 존재·장수·결정성 테스트(컨테이너 전용, 호스트는 skip).
-- [ ] GREEN: 리뷰 갤러리 생성기를 CLI로 승격(웹/PPTX 나란히 + 차이 강조는 `make review` 재사용).
-- [ ] DOC: `docs/reference/cli.md` + "PPTX 검수는 컨테이너가 필요하다"를 명시.
+- [x] RED: PPTX → PNG 산출물 존재·장수·결정성 테스트(컨테이너 전용, 호스트는 skip). `51d61ec`.
+      `internal/preview/raster_pptx_test.go`가 장수(= 슬라이드 수)·PNG 크기(= 논리 스테이지)와
+      **두 번 래스터화한 결과의 픽셀 0 차이**를 단정한다. 엔진을 `internal/testkit`에서
+      `internal/preview`로 먼저 옮겼다(`b4f7cca`) — 릴리스 바이너리가 `testing`을 링크하지
+      않아야 하므로 CLI가 쓸 코드는 하네스 밖에 있어야 한다.
+- [x] GREEN: 리뷰 갤러리 생성기를 CLI로 승격(웹/PPTX 나란히 + 차이 강조는 `make review` 재사용).
+      `c572b33`(`internal/preview.Run`) + `ac35197`(`balpyo preview`). `make review`와 사용자
+      명령이 **같은 래스터화·같은 diff·같은 갤러리 문서**를 쓴다. `--target` 하나만 주면
+      갤러리가 한 열이 되고(오차 배지도 없다), 도구가 없으면 **빌드 전에** 멈춘다.
+- [x] DOC: `docs/reference/cli.md` + "PPTX 검수에 무엇이 필요한가"를 명시. `4c4c051`.
+      원래 문구는 "컨테이너가 필요하다"였는데, 필요한 것은 **도구 둘**(`soffice`·`pdftoppm`)이고
+      컨테이너는 그 둘을 얻는 **세 길 중 하나**다(설치 · `BALPYO_SOFFICE`/`BALPYO_PDFTOPPM` ·
+      `make shell`). 사용자에게 "컨테이너를 쓰라"고 말하면 빌드가 바이너리 하나로 끝난다는
+      계약(PRD §10)까지 흐려지므로 셋을 나란히 적었다. `docs/internals/testing.md`의 시각 리뷰
+      절도 엔진의 새 주인을 가리킨다.
 
-### P3.3 `balpyo init` · `balpyo check`
+### P3.3 `balpyo init` · `balpyo check` ← **지금 여기**
 - [ ] `init`: 스캐폴딩(테마 선택 포함). 첫 덱까지 걸리는 시간이 채택을 정한다.
 - [ ] `check`: 빌드 없이 진단만(P1.1의 경고를 CI에서 쓰는 입구). 종료 코드 규약을 문서화.
 - [ ] DOC: `docs/reference/cli.md`.
@@ -343,8 +356,9 @@
 - [ ] **두 타깃이 갈리지 않는다**: 슬롯·정렬·문장부호가 웹과 PPTX에서 같은 그림 (P1.3–P1.5)
 - [x] **세로 공간을 저자가 손으로 만들지 않는다**: 슬롯 모드는 테마가, 흐름 모드는
       `<slide justify>` 한 선언이 세로 리듬을 소유한다 (P1.4)
-- [ ] **한 명령으로 검수한다**: `balpyo watch` + `balpyo preview --target pptx` (P3.1 닫힘 —
-      웹은 저장하면 탭이 새로고침된다. PPTX는 아직 `soffice`를 손으로 돈다: P3.2)
+- [x] **한 명령으로 검수한다**: `balpyo watch`가 저장마다 탭을 새로고침하고(P3.1),
+      `balpyo preview`가 웹·PPTX·diff를 나란히 놓은 갤러리를 한 줄로 만든다(P3.2). PPTX 렌더에는
+      도구 둘(`soffice`·`pdftoppm`)이 필요하고 없으면 빌드 전에 그렇게 말한다
 - [ ] **덱이 덱처럼 생겼다**: 페이지 번호·푸터는 켤 수 있다 (P2.2 닫힘 — 번호는 뷰어가 다시
       세는 `a:fld`다). 색 위계는 아직 accent 하나다 (P4.1)
 - [ ] **예제가 썩지 않는다**: CI가 모든 예제를 경고 0으로 빌드한다 (P5.1)
@@ -364,6 +378,7 @@
 | 슬롯 구멍: 테마가 채우기 vs 경고 · 본문 높이의 소유자 | P1.4 | ADR 0044 (둘 다 — 테마를 채우고, 못 받는 슬롯은 값 층에서 경고 + 미탑재) |
 | 덱 크롬 어휘와 `a:fld` 매핑 | P2.2 | ADR 0045 (설정이 내용을, 테마가 자리를, `a:fld`가 번호를) |
 | 감시가 변경을 보는 법 · 리로드 클라이언트가 사는 곳 | P3.1 | ADR 0046 (폴링 + 스캔 안정화, 주입은 응답에만) |
+| 검수 갤러리의 소유자 · `preview`가 게이트가 아닌 이유 | P3.2 | ADR 0047 (엔진은 `internal/preview`, 오차 표는 테스트 정책 — 그래서 코드 0) |
 | 도형이 컨테이너를 자식으로 받을 때의 좌표·매핑 | P2.3 | 대기 |
 | 코드 하이라이팅 토크나이저와 색 토큰 · 탭 처리 · "예정된 속성" 진단 | P2.4 | 대기 |
 | 차트: 네이티브 `c:chart` vs 도형 합성 | P2.5 | 대기 |
