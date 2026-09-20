@@ -244,3 +244,49 @@ func TestMinimalLayoutStyles(t *testing.T) {
 		t.Error("canvas가 배치 맵에 있다 — 빈 레이아웃은 제외되어야 한다")
 	}
 }
+
+// TestMinimalCoversEverySlotArea는 **슬롯 카탈로그와 테마의 대조**다 (ADR 0044 D3).
+//
+// soml이 슬롯 어휘를 소유하고(LayoutSlots) 영역의 실체는 테마가 소유하므로(ADR 0035), 두
+// 목록이 어긋나면 슬롯 이름은 어휘에 있는데 **놓일 자리가 없다**. minimal은 폴백 기준이라
+// (layouts.md) 그 구멍이 곧 제품의 구멍이다: `layout="quote"` + `slot="quote"`가 웹에서는
+// 조용히 무효, PPTX에서는 플레이스홀더 발행이 됐다.
+//
+// 이름까지 대조하는 이유: `grid-template-areas`에 이름 하나가 빠지면 그 자식의 `grid-area`가
+// 정의되지 않은 영역을 가리켜 **자동 배치로 조용히 떨어진다** (appendSlot의 주석과 같은 실패).
+func TestMinimalCoversEverySlotArea(t *testing.T) {
+	pkg := loadBuiltinTheme("minimal")
+	styles := pkg.slotLayoutStyles()
+	for _, layout := range soml.SlideLayouts() {
+		name := string(layout)
+		slots := soml.LayoutSlots(layout)
+		if len(slots) == 0 {
+			// canvas — 슬롯 어휘가 비어 있으니 영역 CSS도 있으면 안 된다 (쓸 수 없는 규칙이다).
+			if _, ok := styles[name]; ok {
+				t.Errorf("%s는 슬롯 어휘가 비어 있는데 슬롯 영역 CSS가 있다", name)
+			}
+			continue
+		}
+		decl, ok := styles[name]
+		if !ok || decl == "" {
+			t.Errorf("레이아웃 %q의 슬롯 %d종이 놓일 자리가 없다 — layouts/%s.slots.css가 필요하다",
+				name, len(slots), name)
+			continue
+		}
+		// 슬롯 영역 규칙은 흐름 규칙과 배타적이므로(layoutStagesCSS의 `:not(.balpyo-slots)`)
+		// display부터 스스로 갖춰야 한다 — grid가 아니면 `grid-area`가 아무것도 하지 않는다.
+		if !strings.Contains(decl, "display: grid") {
+			t.Errorf("%s의 슬롯 영역 CSS가 display: grid를 스스로 갖지 않는다: %q", name, decl)
+		}
+		for _, slot := range slots {
+			if !strings.Contains(decl, slot.Name) {
+				t.Errorf("%s의 슬롯 영역 CSS에 슬롯 %q의 자리가 없다: %q", name, slot.Name, decl)
+			}
+		}
+	}
+	// 린터도 같이 본다 — 새 파일이 외관 프로퍼티를 들이면 여기서 잡힌다 (TestMinimalLayoutStyles의
+	// 흐름 CSS와 같은 계약: 배치 CSS는 PPTX 마스터에 도달하지 못하는 외관을 담을 수 없다).
+	if diags := lintLayouts(pkg.slotLayouts); len(diags) != 0 {
+		t.Errorf("minimal 슬롯 영역 CSS가 진단을 냈다:\n%v", diags)
+	}
+}

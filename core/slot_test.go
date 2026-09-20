@@ -113,3 +113,59 @@ func TestResolveSlotNested(t *testing.T) {
 		t.Errorf("중첩 요소의 슬롯 = %q, want \"\"", got)
 	}
 }
+
+// 테마가 그 레이아웃의 슬롯 영역을 갖지 않으면 슬롯은 **경고 + 미탑재**다 (ADR 0044 D3).
+//
+// 이 판정이 core에 있는 이유가 결정의 전부다: 렌더러 두 곳이 각자 조건을 적었을 때 그 둘이
+// 갈라졌다 (웹은 `Theme.SlotLayouts`를, PPTX는 슬롯 탑재 여부만 봤다). 확정 모델에 싣지
+// **않는** 쪽을 고르면 판정이 한 번만 일어나고 두 렌더러는 이미 그 하나의 입력을 읽는다.
+//
+// 에러가 아니라 경고인 이유: 슬롯 이름은 어휘에 있고 오타도 아니다 — 부족한 것은 테마이며
+// 테마를 바꾸면 같은 소스가 그대로 뜻을 얻는다 (모르는 variant의 선례, PRD §13-6).
+// `--strict`가 승격한다.
+func TestResolveSlotWarnsWhenThemeHasNoArea(t *testing.T) {
+	doc, diags := soml.Parse("slides/001_slots.slide", `<slide layout="content"><p slot="body">x</p></slide>`)
+	if err := diags.Err(); err != nil {
+		t.Fatalf("파싱 실패: %v", err)
+	}
+	elem := doc.Content[0].(*soml.Element)
+	// 슬롯 영역을 하나도 갖지 않은 테마다 — minimal이 11종을 다 채운 뒤에도 외부 테마·
+	// 부분 구현 테마가 이 자리에 온다.
+	r := resolver{
+		theme:  soml.Theme{SlotLayouts: map[string]string{}},
+		file:   "slides/001_slots.slide",
+		layout: soml.LayoutContent,
+	}
+	r.resolveSlot(elem, nil)
+
+	if len(r.diags) != 1 {
+		t.Fatalf("진단 %d개, want 1개: %v", len(r.diags), r.diags)
+	}
+	diag := r.diags[0]
+	if diag.Severity != soml.SeverityWarning {
+		t.Errorf("심각도 = %v, want 경고 (테마 교체로 풀리는 이식성 문제다)", diag.Severity)
+	}
+	if !strings.Contains(diag.Message, "테마") {
+		t.Errorf("진단이 테마를 짚지 않는다: %q", diag.Message)
+	}
+	// 값 구간을 짚는다 — 진단이 부호가 아니라 슬롯 이름에 밑줄을 긋는다.
+	if !diag.Span.Start.IsValid() {
+		t.Error("진단에 위치가 없다")
+	}
+	// **슬롯이 실리지 않았다**: 이 한 줄이 두 렌더러의 합의 지점이다.
+	if elem.Appearance != nil && elem.Appearance.Slot != "" {
+		t.Errorf("슬롯 = %q, want \"\" — 테마가 못 받는 슬롯은 확정 모델에 실리지 않는다", elem.Appearance.Slot)
+	}
+}
+
+// 테마가 영역을 가진 레이아웃은 경고 없이 그대로 실린다 (위 테스트의 짝 — 조건이 뒤집히지
+// 않았는지 본다).
+func TestResolveSlotQuietWhenThemeHasArea(t *testing.T) {
+	deck, diags := resolveSlide(t, `<slide layout="content"><p slot="body">x</p></slide>`)
+	if len(diags) != 0 {
+		t.Fatalf("minimal은 content 슬롯 영역을 갖는다 — 진단이 없어야 한다: %v", diags)
+	}
+	if got := slotOf(t, deck, "p"); got != "body" {
+		t.Errorf("슬롯 = %q, want \"body\"", got)
+	}
+}
