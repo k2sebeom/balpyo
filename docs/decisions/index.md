@@ -48,6 +48,7 @@
 | [0040](0040-preset-text-rect-is-a-geometry-column.md) | 프리셋의 텍스트 영역은 기하 표의 한 열이고, 그 표는 웹만 읽는다 | P1.2 | 확정 |
 | [0041](0041-chevron-text-rect-is-cancelled-in-pptx.md) | chevron의 텍스트 영역은 폭 0이고, PPTX가 음수 인셋으로 되돌린다 | P1.2 | 확정 |
 | [0042](0042-chevron-labels-stay-outside-the-shape.md) | chevron의 라벨은 도형 밖에 둔다 (0040 결과의 소개 덱 한 줄을 철회한다) | P1.2 | 확정 |
+| [0043](0043-explicit-width-belongs-to-the-placement-context.md) | 확정 폭은 배치 문맥의 것이다 (슬롯 영역은 테마가, `<text>`의 가로 크기는 저자가) | P1.3 | 확정 |
 
 PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다. 그 결정들의
 색인은 PRD에 있고, 이 표는 **그 이후 구현 중에 새로 확정한 것**만 담는다.
