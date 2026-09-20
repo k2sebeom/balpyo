@@ -98,6 +98,22 @@ PPTX를 읽을 때 자기 기본값(켜짐)을 쓴다. ODP로 바꿔 `style:text
 않는다** (골든에서 움직인 것은 CSS뿐이다). 이 선언의 값은 내일 브라우저가 기본값을 켤 때
 드러난다.
 
+## 코드 블록의 한글 — 고정폭 CJK를 이름으로 못 박는다
+
+이것은 **고친 차이**다. 테마가 고정폭 라틴(`Noto Sans Mono`)에 비례폭 CJK(`Noto Sans CJK KR`)를
+짝지어 놓으면 코드 블록의 한글 주석 한 줄이 두 엔진에서 다른 폭으로 그려진다 — 13_code
+픽스처의 주석 줄에서 **잉크 폭 −7.9%**였다 (같은 블록의 순 ASCII 줄들은 ±0.0%였다).
+
+원인은 **글리프가 없을 때 누가 고르는가**다. 브라우저는 스택의 `Noto Sans Mono`에 한글이 없으면
+fontconfig에 물어보고, 고정폭 요청에는 고정폭 CJK 면이 돌아온다. LibreOffice·PowerPoint는
+`a:rPr`의 `a:ea`에 적힌 이름을 그대로 쓴다 — 비례폭 면이다. 같은 줄의 한글이 한쪽에서는
+0.5 em 라틴 + 1 em 한글, 다른 쪽에서는 비례폭 라틴 + 1 em 한글로 전진한다.
+
+그래서 `ea`를 고정폭 면으로 바꿨다 (`Noto Sans Mono CJK KR` — `core/themes/minimal/tokens.json`).
+같은 줄이 **+0.6%**가 된다. 테마를 만들 때의 규칙이다: **`mono` 토큰의 `ea`는 고정폭 CJK 면이어야
+한다.** 코드의 글자가 고정폭이라는 약속은 한글에도 걸린다 — 두 슬롯이 다른 가족을 가리키면
+엔진이 그 틈을 각자 메운다.
+
 ## 무엇이 이 문서를 지키는가
 
 여기 적힌 수치는 문장이 아니라 **테스트가 잰 값**이다:
@@ -108,6 +124,7 @@ PPTX를 읽을 때 자기 기본값(켜짐)을 쓴다. ODP로 바꿔 `style:text
   군데다: `loLineWidthMaxRatios`를 다시 재고 이 문서를 고친다.
 - `TestBrowserHonorsTheScriptSpacingPin` — 브라우저가 계산한 `text-autospace`가
   `no-autospace`인지 본다 (CSS 문자열 검사만으로는 뒤 층의 재정의를 잡지 못한다).
-- `TestFixtureLineBreaksMatchLibreOffice` — 픽스처 전체의 줄 수와 글줄 잉크 폭·위치.
+- `TestFixtureLineBreaksMatchLibreOffice` — 픽스처 전체의 줄 수와 글줄 잉크 폭·위치. 13_code의
+  한글 주석 줄이 고정폭 짝의 증인이다 (허용 비율을 따로 올리지 않은 픽스처다).
 
 측정 환경은 [테스트 환경](../internals/testing.md)에 있다.

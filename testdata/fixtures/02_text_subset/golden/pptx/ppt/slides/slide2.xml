@@ -154,7 +154,7 @@
                   <a:schemeClr val="tx1"/>
                 </a:solidFill>
                 <a:latin typeface="Noto Sans Mono"/>
-                <a:ea typeface="Noto Sans CJK KR"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
               </a:rPr>
               <a:t>otel</a:t>
             </a:r>

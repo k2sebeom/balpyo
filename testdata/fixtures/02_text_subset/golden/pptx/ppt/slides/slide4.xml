@@ -94,7 +94,7 @@
                   <a:schemeClr val="tx1"/>
                 </a:solidFill>
                 <a:latin typeface="Noto Sans Mono"/>
-                <a:ea typeface="Noto Sans CJK KR"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
               </a:rPr>
               <a:t>func main() {</a:t>
             </a:r>
@@ -105,9 +105,9 @@
                   <a:schemeClr val="tx1"/>
                 </a:solidFill>
                 <a:latin typeface="Noto Sans Mono"/>
-                <a:ea typeface="Noto Sans CJK KR"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
               </a:rPr>
-              <a:t>	fmt.Println(&quot;balpyo&quot;)  // 연속  공백도 내용이다</a:t>
+              <a:t>  fmt.Println(&quot;balpyo&quot;)  // 연속  공백도 내용이다</a:t>
             </a:r>
             <a:br/>
             <a:r>
@@ -116,7 +116,7 @@
                   <a:schemeClr val="tx1"/>
                 </a:solidFill>
                 <a:latin typeface="Noto Sans Mono"/>
-                <a:ea typeface="Noto Sans CJK KR"/>
+                <a:ea typeface="Noto Sans Mono CJK KR"/>
               </a:rPr>
               <a:t>}</a:t>
             </a:r>

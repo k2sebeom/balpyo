@@ -45,7 +45,7 @@ func TestLoadBuiltinMinimal(t *testing.T) {
 		Fonts: []soml.FontToken{
 			{Name: soml.FontHeading, Latin: "Noto Sans", EastAsian: "Noto Sans CJK KR", Generic: "sans-serif", Scheme: "major"},
 			{Name: soml.FontBody, Latin: "Noto Sans", EastAsian: "Noto Sans CJK KR", Generic: "sans-serif", Scheme: "minor"},
-			{Name: soml.FontMono, Latin: "Noto Sans Mono", EastAsian: "Noto Sans CJK KR", Generic: "monospace"},
+			{Name: soml.FontMono, Latin: "Noto Sans Mono", EastAsian: "Noto Sans Mono CJK KR", Generic: "monospace"},
 		},
 		Spaces: []soml.SpaceToken{
 			{Name: "xs", Px: 6}, {Name: "sm", Px: 12}, {Name: "md", Px: 24},

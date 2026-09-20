@@ -20,7 +20,7 @@ make shell     # 컨테이너 안에서 셸 (디버깅)
 | **LibreOffice**(impress, headless) | PPTX 열림 테스트, PPTX → PDF 렌더 |
 | **Chromium** | 지오메트리 패스, 웹 스크린샷 |
 | **poppler-utils**(`pdftoppm`) | PDF → PNG |
-| **Noto Sans / Noto Sans CJK KR** | 텍스트 메트릭의 유일한 폰트 집합 |
+| **Noto Sans / Noto Sans CJK KR / Noto Sans Mono (+ Mono CJK KR)** | 텍스트 메트릭의 유일한 폰트 집합 |
 
 결정성을 만드는 장치:
 

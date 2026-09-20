@@ -439,7 +439,7 @@ PPTX는 마스터 배경의 `bg1` 참조).
 |---|---|---|
 | `heading` | Noto Sans, Noto Sans CJK KR, sans-serif | major |
 | `body` | Noto Sans, Noto Sans CJK KR, sans-serif | minor |
-| `mono` | Noto Sans Mono, Noto Sans CJK KR, monospace | 없음 (리터럴) |
+| `mono` | Noto Sans Mono, Noto Sans Mono CJK KR, monospace | 없음 (리터럴) |
 
 공간 토큰 (`--balpyo-space-*`) — [레이아웃 태그](soml/layout.md)의 `gap`/`pad` 값 어휘다
 (PRD §8.4의 `space` 스케일). 값은 **수직 리듬**에서 나온다: 본문 24px, 줄박스 36px을 기준
