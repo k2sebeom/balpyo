@@ -12,9 +12,16 @@ import (
 //
 // # 도형 하나는 박스 하나와 그림 하나다
 //
-//	<div class="balpyo-shape" …>      ← 잰 박스. pad·크기·회전·앵커가 여기 걸린다.
+//	<div class="balpyo-shape" …>      ← 잰 박스. 크기·회전이 여기 걸린다 (pad·앵커는 본문 쪽).
 //	  <svg class="balpyo-shape-ink">  ← 그림. 채움·테두리·그림자·불투명도·대칭이 여기 걸린다.
 //	  <p class="balpyo-text" …>       ← 도형 안 텍스트 (문서 순서대로 쌓인다).
+//
+// 프리셋의 **텍스트 영역**이 박스보다 작은 여덟 종은 텍스트가 래퍼 하나를 더 쓴다 (ADR 0040):
+//
+//	<div class="balpyo-shape" …>
+//	  <svg class="balpyo-shape-ink">
+//	  <div class="balpyo-shape-body" style="left: 25%; top: 25%; …">  ← 프리셋의 텍스트 영역
+//	    <p class="balpyo-text" …>
 //
 // 박스와 그림을 나눈 이유는 **잰 rect가 도형의 겉 박스여야** 하기 때문이다: 그 rect가 곧
 // PPTX `xfrm`이므로(PRD §9.3) 그림이 레이아웃에 영향을 주면 안 된다 — svg는 절대 배치로
@@ -60,12 +67,14 @@ import (
 //	엔진 CSS (shapeCSS, 태그마다 고정):
 //	  .balpyo-shape:     position, display, flex-direction   — "박스 + 세로로 쌓이는 텍스트"의 정의
 //	  .balpyo-shape-ink: position, left/top/width/height, overflow  — 그림이 박스를 덮는다는 정의
+//	  .balpyo-shape-body: position, display, flex-direction  — 텍스트 영역이 상자라는 정의
 //	  자식의 position: relative                              — 그림 위에 글자가 온다는 정의
 //	  회전 선언(transform)과 측정 뷰의 무효화                 — 아래 회전 절
 //
 //	인라인 style (요소마다 다른 확정 값):
-//	  padding, width/height/min-*/max-*, aspect-ratio, justify-content(anchor),
-//	  --balpyo-shape-rotate                                  — 박스 쪽
+//	  width/height/min-*/max-*, aspect-ratio, --balpyo-shape-rotate  — 박스 쪽
+//	  padding, justify-content(anchor)                       — 텍스트가 사는 상자 쪽
+//	  left/top/right/bottom (프리셋 텍스트 영역의 백분율 인셋)  — 본문 래퍼 쪽
 //	  fill, stroke, stroke-width, stroke-dasharray, filter(shadow), opacity,
 //	  transform(flip)                                        — 그림 쪽
 //	  자식 배치 선언과 저자의 `style` 탈출구 (맨 끝)
@@ -121,6 +130,11 @@ const (
 	// 도형에 `transform: rotate(0deg)`를 걸면 회전 없는 도형까지 스택 문맥과 래스터화 경로가
 	// 바뀐다 (그 변화는 픽셀 비교에서만 드러난다).
 	shapeRotateClass = "balpyo-shape-rotate"
+	// shapeBodyClass는 프리셋의 텍스트 영역을 차지하는 래퍼다 (ADR 0040) — 백분율 인셋이
+	// 있는 프리셋에만 나온다. 0인 프리셋(rect·rounded-rect·chevron·callout)에서 구조를 그대로
+	// 두는 이유는 골든의 뜻이다: 결과가 같은데 래퍼를 넣으면 가장 많이 쓰이는 프리셋의 픽셀이
+	// 서브픽셀 반올림으로 흔들리고, 그 변화는 텍스트 영역과 무관하다.
+	shapeBodyClass = "balpyo-shape-body"
 )
 
 // shapeRotateVar는 회전 각도를 싣는 커스텀 프로퍼티다 (선언은 엔진 CSS, 값은 인라인 —
@@ -522,6 +536,21 @@ func ShapeAnchor(elem *soml.Element) soml.TextAnchor {
 	return ""
 }
 
+// shapeHasContent는 도형이 그릴 자식을 갖는지다 — 공백 문자 데이터는 자식이 아니다
+// (`<shape>\n  </shape>`는 빈 도형이다). ShapeAnchor와 같은 자리에 두는 이유는 같은 사실을
+// 묻기 때문이다: 텍스트 영역·앵커는 담을 것이 있을 때만 뜻이 있는 박스의 성질이다.
+func shapeHasContent(elem *soml.Element) bool {
+	if elem == nil {
+		return false
+	}
+	for _, child := range elem.Children {
+		if _, ok := child.(*soml.Element); ok {
+			return true
+		}
+	}
+	return false
+}
+
 // writeShape는 `<shape>`를 박스 div + 그림 svg + 자식 텍스트로 쓴다.
 //
 // 식별자(data-balpyo-id)를 갖는다 — 도형은 **재는 것과 도형이 되는 것이 처음 일치하는
@@ -539,7 +568,15 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	decls, err := shapeBoxCSS(*style, elem)
+	// 텍스트 영역은 **담을 것이 있을 때만** 모양을 바꾼다 (ADR 0040) — 빈 도형은 놓을 글자가
+	// 없으므로 인셋이 아무것도 하지 않고, 그래도 내면 골든 열두 장에 빈 래퍼와 쓰이지 않는
+	// 패딩이 남아 정작 텍스트가 어디 놓였는지가 묻힌다 (`anchor`가 첫 자식에서 오는 것과 같은
+	// 자리: 박스 CSS의 일부는 내용이 있을 때만 뜻이 있다).
+	text := geom.TextRect
+	if !shapeHasContent(elem) {
+		text = ShapeInsets{}
+	}
+	decls, err := shapeBoxCSS(*style, elem, text)
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
@@ -557,10 +594,23 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	if err := writeShapeInk(b, geom, *style, deck.Theme, ElementID(slide.Index, path)); err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
+	// 백분율 인셋 프리셋은 텍스트를 그 사각형에 담는 래퍼를 하나 더 갖는다 (ADR 0040) —
+	// 인셋이 px인 rounded-rect는 패딩으로 받았으므로 구조가 오늘과 같다.
+	body := text.HasPercent()
+	if body {
+		bodyDecls, err := shapeBodyCSS(*style, elem, text)
+		if err != nil {
+			return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
+		}
+		fmt.Fprintf(b, "<div class=%q%s>\n", shapeBodyClass, styleAttr(bodyDecls))
+	}
 	for i, child := range elem.Children {
 		if err := writeNode(b, deck, slide, child, ChildPath(path, i)); err != nil {
 			return err
 		}
+	}
+	if body {
+		b.WriteString("</div>\n")
 	}
 	b.WriteString("</div>\n")
 	return nil
@@ -624,12 +674,20 @@ func writeShapeInk(b *strings.Builder, geom shapeGeometry, style soml.ShapeStyle
 // 순서는 "박스 → 변형 → 정렬"이다: 박스 속성은 레이아웃 컨테이너와 **같은 함수**에서 나오고
 // (boxSizeCSS — soml.Box를 두 요소가 공유하므로 매핑도 하나여야 한다), 그 뒤에 도형만의
 // 선언이 온다.
-func shapeBoxCSS(style soml.ShapeStyle, elem *soml.Element) ([]string, error) {
+//
+// text(프리셋의 텍스트 영역)에 백분율이 있으면 **여백과 앵커는 여기서 빠진다** — 그 둘은
+// 텍스트가 사는 사각형의 성질이고, 텍스트가 래퍼로 옮겨 가면 래퍼가 받아야 한다 (ADR 0040).
+func shapeBoxCSS(style soml.ShapeStyle, elem *soml.Element, text ShapeInsets) ([]string, error) {
 	var decls []string
-	if style.Pad != nil {
+	if !text.HasPercent() {
 		// `box-sizing: border-box`(baseCSS)와 함께 잰 박스를 키우지 않고 안쪽으로 들어간다 —
 		// 그래야 잰 rect가 도형의 겉 박스이고 텍스트는 그 안에 놓인다.
-		decls = append(decls, "padding: "+padValue(*style.Pad))
+		//
+		// 반경 비례 인셋(rounded-rect)이 여백에 **더해지는** 이유: 그 값은 px이므로 패딩으로
+		// 표현할 수 있고, 패딩은 내용이 높이를 정하는 것을 막지 않는다 — 카드가 그대로 산다.
+		if pad := shapePadValue(style.Pad, text.Radius*radiusPx(style.Radius)); pad != "" {
+			decls = append(decls, "padding: "+pad)
+		}
 	}
 	sizes, err := boxSizeCSS(style.Box)
 	if err != nil {
@@ -641,7 +699,7 @@ func shapeBoxCSS(style soml.ShapeStyle, elem *soml.Element) ([]string, error) {
 		// 있어야 한다, 파일 머리 주석의 측정과 회전 절).
 		decls = append(decls, fmt.Sprintf("%s: %sdeg", shapeRotateVar, formatNumber(*style.Rotate)))
 	}
-	if anchor := ShapeAnchor(elem); anchor != "" {
+	if anchor := ShapeAnchor(elem); anchor != "" && !text.HasPercent() {
 		value, err := anchorValue(anchor)
 		if err != nil {
 			return nil, err
@@ -652,6 +710,72 @@ func shapeBoxCSS(style soml.ShapeStyle, elem *soml.Element) ([]string, error) {
 		decls = append(decls, "justify-content: "+value)
 	}
 	return decls, nil
+}
+
+// shapeBodyCSS는 프리셋의 텍스트 영역을 차지하는 래퍼의 CSS 선언이다 (ADR 0040).
+//
+// 네 변을 백분율 `left`/`top`/`right`/`bottom`으로 내는 이유: 인셋의 기준은 도형 박스이고
+// 절대 배치의 백분율은 **각 축의** 포함 블록 크기를 쓴다 (padding/margin 백분율은 네 변 모두
+// 부모 **폭** 기준이라 세로 인셋을 표현할 수 없다 — 마름모의 위 25%가 폭의 25%가 된다).
+// 대가는 도형에 확정 높이가 필요한 것이고, 값 층이 그 조합을 먼저 막는다 (core/shape.go).
+//
+// 여백과 앵커가 여기 오는 이유는 두 타깃의 뜻이 같아야 하기 때문이다: PPTX에서 `pad`는
+// `bodyPr` 인셋이고 그것은 프리셋 텍스트 영역 **안쪽에** 들어간다 (실측 — ADR 0040).
+func shapeBodyCSS(style soml.ShapeStyle, elem *soml.Element, text ShapeInsets) ([]string, error) {
+	decls := []string{
+		"left: " + percentValue(text.L),
+		"top: " + percentValue(text.T),
+		"right: " + percentValue(text.R),
+		"bottom: " + percentValue(text.B),
+	}
+	if pad := shapePadValue(style.Pad, 0); pad != "" {
+		decls = append(decls, "padding: "+pad)
+	}
+	if anchor := ShapeAnchor(elem); anchor != "" {
+		value, err := anchorValue(anchor)
+		if err != nil {
+			return nil, err
+		}
+		decls = append(decls, "justify-content: "+value)
+	}
+	return decls, nil
+}
+
+// percentValue는 백분율 인셋의 CSS 값이다 (0도 적는다 — 네 변이 함께 있어야 래퍼가
+// 박스를 채우는 사각형으로 읽힌다).
+func percentValue(v float64) string { return formatNumber(round(v)) + "%" }
+
+// radiusPx는 반경의 px 값이다 (반경이 없으면 0 — 반경을 실을 자리가 없는 프리셋이거나
+// writeShapeInk가 곧 멈출 덱이다).
+func radiusPx(radius *soml.Radius) float64 {
+	if radius == nil {
+		return 0
+	}
+	return radius.Px
+}
+
+// shapePadValue는 도형 안쪽 여백의 CSS 값이다 — 저자의 `pad`에 프리셋의 px 인셋을 더한다.
+//
+// `calc()`로 더하는 이유는 공간 토큰이 변수 참조로 남아야 하기 때문이다 (lengthValue의 근거 —
+// 여기서 px로 눕히면 테마의 리듬을 바꿨을 때 이 도형만 옛 여백으로 남는다).
+func shapePadValue(pad *soml.Pad, edge float64) string {
+	edge = round(edge)
+	if edge == 0 {
+		if pad == nil {
+			return ""
+		}
+		return padValue(*pad)
+	}
+	px := formatNumber(edge) + "px"
+	if pad == nil {
+		return px
+	}
+	sides := [...]soml.Length{pad.Top, pad.Right, pad.Bottom, pad.Left}
+	parts := make([]string, 0, len(sides))
+	for _, side := range sides {
+		parts = append(parts, fmt.Sprintf("calc(%s + %s)", lengthValue(side), px))
+	}
+	return strings.Join(parts, " ")
 }
 
 // anchorValue는 세로 앵커를 CSS 주축 분배 값으로 만든다.
@@ -952,6 +1076,16 @@ func shapeCSS() string {
      바탕 아래로 사라질 수 있어 쓰지 않는다. */
   .balpyo-shape > .balpyo-text {
     position: relative;
+  }
+
+  /* 프리셋의 텍스트 영역 (ADR 0040). 네 변의 인셋은 인라인 백분율이고, 이 규칙은 "그
+     사각형이 박스 안의 절대 배치 상자이며 텍스트가 세로로 쌓인다"는 정의만 갖는다.
+     그림보다 문서 순서에서 뒤에 오므로 글자가 그림 위에 칠해진다 (위 규칙과 같은 이유로
+     z-index를 쓰지 않는다). */
+  .balpyo-shape-body {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
   }
 
   /* 회전 — 선언은 여기, 각도는 인라인 커스텀 프로퍼티다. 측정 뷰가 이 선언을 무효화해야

@@ -282,6 +282,26 @@ func TestShapeTextRectsMatchPresetDefinitions(t *testing.T) {
 	}
 }
 
+// 어휘 카탈로그의 `soml.ShapeInsetText`(이름 8종)와 이 표의 `TextRect.HasPercent()`(수치)는
+// **같은 사실의 두 얼굴**이다 — 값 층이 확정 높이를 요구하는 프리셋과 웹이 절대 배치 래퍼를
+// 쓰는 프리셋이 갈라지면, 진단 없이 납작해지는 도형이나 이유 없이 높이를 요구하는 도형이
+// 생긴다. 수치가 여기 있고 이름이 저기 있는 이유는 층의 소유다 (core는 렌더러를 볼 수 없다).
+func TestShapeInsetTextVocabularyMatchesTheTable(t *testing.T) {
+	for _, shapeType := range soml.ShapeTypes() {
+		insets, ok := ShapeTextRect(shapeType)
+		if !ok {
+			t.Fatalf("ShapeTextRect(%q)가 표에 없다", shapeType)
+		}
+		if got, want := soml.ShapeInsetText(shapeType), insets.HasPercent(); got != want {
+			t.Errorf("%q: soml.ShapeInsetText = %v인데 표의 백분율 인셋 = %v (%+v)",
+				shapeType, got, want, insets)
+		}
+	}
+	if soml.ShapeInsetText("triangle") {
+		t.Error("어휘 밖 type이 백분율 인셋 프리셋이라고 한다")
+	}
+}
+
 // Px는 백분율을 **잰 박스** 기준으로 푼다 — 그 기준이 CSS(절대 배치)와 테스트(잰 rect)에
 // 한 번만 적혀야 두 소비자가 같은 사각형을 본다.
 func TestShapeInsetsPxResolvesAgainstTheBox(t *testing.T) {
@@ -349,7 +369,9 @@ func TestShapeStretchedSpaceKeepsStrokeUniform(t *testing.T) {
 // 토큰은 **참조와 선언이 한 표에서** 나온다 (색·폰트·공간과 같은 계약). 그림자도 같다 —
 // 리터럴 수치가 요소 쪽에 남으면 테마를 바꿨을 때 그 도형만 옛 그림자로 남는다.
 func TestShapeTokensStayReferences(t *testing.T) {
-	deck := subsetDeck(t, `<shape type="rounded-rect" fill="surface" border="1 solid muted" radius="md" shadow="soft" pad="md"/>`)
+	// 글자를 담은 도형이다 — 텍스트 영역의 px 인셋은 담을 것이 있을 때만 여백에 더해지므로
+	// (ADR 0040) 빈 도형으로는 `calc()` 안의 참조를 볼 수 없다.
+	deck := subsetDeck(t, `<shape type="rounded-rect" fill="surface" border="1 solid muted" radius="md" shadow="soft" pad="md"><p>카드</p></shape>`)
 	out := renderString(t, deck)
 	box, ink := openTagOf(t, out, "s0.0"), inkOf(t, out, "s0.0")
 	for _, want := range []string{
@@ -361,7 +383,9 @@ func TestShapeTokensStayReferences(t *testing.T) {
 			t.Errorf("그림에 %q가 없다: %s", want, ink)
 		}
 	}
-	if !strings.Contains(box, "padding: var(--balpyo-space-md)") {
+	// rounded-rect는 프리셋 텍스트 영역의 px 인셋이 여백에 더해지므로 `calc()`다 (ADR 0040) —
+	// 토큰은 그 안에서도 **참조로** 남아야 한다. 더해지는 수치는 TestShapeTextRects…가 본다.
+	if !strings.Contains(box, "padding: calc(var(--balpyo-space-md) + ") {
 		t.Errorf("박스에 공간 토큰 참조가 없다: %s", box)
 	}
 	// 해석된 값이 요소 쪽에 새면 참조가 아니라 값이 나간 것이다.
@@ -611,7 +635,7 @@ func TestShapeRenderRejectsUnresolvedOrUnknown(t *testing.T) {
 
 func TestShapeRenderIsDeterministic(t *testing.T) {
 	body := `<grid cols="2" gap="md">
-    <shape type="cloud" fill="accent1" shadow="soft" rotate="15" span="2"><p anchor="center">구름</p></shape>
+    <shape type="cloud" fill="accent1" shadow="soft" rotate="15" span="2" h="160"><p anchor="center">구름</p></shape>
     <shape type="cylinder" fill="none" border="2 dashed muted" flip="v"/>
   </grid>`
 	a, b := renderString(t, subsetDeck(t, body)), renderString(t, subsetDeck(t, body))

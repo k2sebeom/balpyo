@@ -92,12 +92,12 @@
         </p:nvSpPr>
         <p:spPr>
           <a:xfrm>
-            <a:off x="3510409" y="1283940"/>
-            <a:ext cx="528191" cy="428625"/>
+            <a:off x="3443734" y="1283940"/>
+            <a:ext cx="594866" cy="495300"/>
           </a:xfrm>
           <a:prstGeom prst="roundRect">
             <a:avLst>
-              <a:gd name="adj" fmla="val 26667"/>
+              <a:gd name="adj" fmla="val 23077"/>
             </a:avLst>
           </a:prstGeom>
           <a:solidFill>
