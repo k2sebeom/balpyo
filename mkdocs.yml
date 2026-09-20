@@ -86,6 +86,7 @@ nav:
       - 0041 chevron의 텍스트 영역은 PPTX가 되돌린다: decisions/0041-chevron-text-rect-is-cancelled-in-pptx.md
       - 0042 chevron의 라벨은 도형 밖에 둔다: decisions/0042-chevron-labels-stay-outside-the-shape.md
       - 0043 확정 폭은 배치 문맥의 것이다: decisions/0043-explicit-width-belongs-to-the-placement-context.md
+      - 0044 슬롯은 테마가 받아야 뜻이 있다: decisions/0044-slots-need-a-theme-and-vertical-rhythm-needs-an-owner.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |
