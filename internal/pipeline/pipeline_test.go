@@ -169,6 +169,47 @@ func TestLoadDeckWithoutConfig(t *testing.T) {
 	}
 }
 
+// TestLoadDeckCarriesTheThemeRequest는 `balpyo.json`의 theme가 **덱을 통해 값 층에 닿는다**는
+// 배선을 잇는다 (P4.2 · ADR 0052). 그전에는 이 필드가 설정 검사만 받고 버려졌다 — 파이프라인이
+// 옮기지 않으면 core는 언제나 기본 테마를 로드한다.
+func TestLoadDeckCarriesTheThemeRequest(t *testing.T) {
+	dir := newProject(t, map[string]string{
+		"balpyo.json":            `{"theme": "ink"}`,
+		"slides/001_title.slide": "<slide><h1>제목</h1></slide>",
+	})
+	deck, diags, err := LoadDeck(Options{ProjectDir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(diags) != 0 {
+		t.Fatalf("진단이 없어야 한다: %v", diags)
+	}
+	if deck.ThemeName != "ink" {
+		t.Errorf("deck.ThemeName = %q, want ink (설정의 요청)", deck.ThemeName)
+	}
+	if deck.Theme.Name != "ink" {
+		t.Errorf("deck.Theme.Name = %q, want ink (요청의 결과)", deck.Theme.Name)
+	}
+}
+
+// 없는 테마 이름은 설정 로드에서 멈춘다 — 값 층도 같은 판정을 하지만(core) 설정 검사가 먼저
+// 서서 `balpyo.json`을 가리킨다.
+func TestLoadDeckRejectsUnknownTheme(t *testing.T) {
+	dir := newProject(t, map[string]string{
+		"balpyo.json":            `{"theme": "corp"}`,
+		"slides/001_title.slide": "<slide><h1>제목</h1></slide>",
+	})
+	_, _, err := LoadDeck(Options{ProjectDir: dir})
+	if err == nil {
+		t.Fatal("없는 테마인데 덱이 로드됐다")
+	}
+	for _, want := range []string{"balpyo.json", "corp", "minimal"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("에러가 %q를 말하지 않는다: %v", want, err)
+		}
+	}
+}
+
 func TestLoadDeckErrors(t *testing.T) {
 	tests := []struct {
 		name    string

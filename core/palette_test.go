@@ -8,7 +8,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// accent 팔레트가 지켜야 하는 성질을 **수치로** 못 박는다 (P4.1 — D12).
+// accent 팔레트가 지켜야 하는 성질을 **수치로** 못 박는다 (P4.1 — D12 · P4.2에서 전 테마로).
 //
 // 값 자체는 tokens.json이 소유하고 TestLoadBuiltinMinimal이 표로 지킨다. 이 파일이 더하는
 // 것은 **왜 그 값인가**다: 강조색을 고르는 규칙이 코드에 없으면 다음 사람이 "파랑 옆에
@@ -24,12 +24,26 @@ import (
 //  3. **밝기(상대 휘도)가 한 띠에 있다** (최대/최소 ≤ 1.25). 한 색만 밝거나 어두우면 강조의
 //     위계가 아니라 소음이 된다 — accent4를 골랐을 때 accent1보다 더 크게 외치지 않아야 한다.
 //
-// surface(F3F4F6) 위에서는 같은 여섯 색이 4.33~4.89:1이다 (accent1이 4.49로 이미 4.5 아래다).
-// 기준을 bg로 두는 이유: accent1의 값은 팔레트가 하나였을 때부터의 baseline이고, 새 색들을
-// 그보다 엄격하게 잡으면 같은 팔레트 안에서 규칙이 둘이 된다. 회색 면 위의 작은 글자는
-// 저자가 accent를 쓸 자리가 아니다.
-func TestMinimalAccentPalette(t *testing.T) {
-	theme := minimalTheme()
+// minimal의 surface(F3F4F6) 위에서는 같은 여섯 색이 4.33~4.89:1이다 (accent1이 4.49로 이미
+// 4.5 아래다). 기준을 bg로 두는 이유: accent1의 값은 팔레트가 하나였을 때부터의 baseline이고,
+// 새 색들을 그보다 엄격하게 잡으면 같은 팔레트 안에서 규칙이 둘이 된다. 회색 면 위의 작은
+// 글자는 저자가 accent를 쓸 자리가 아니다.
+//
+// **내장 테마 전수로 돈다** (P4.2 · ADR 0052): 대비율은 두 색의 순서에 대해 대칭이라 "bg 대비
+// 4.5:1"이라는 한 수치가 밝은 테마와 어두운 테마에서 같은 문장으로 성립한다. 규칙이 minimal
+// 만의 것이면 다음 테마는 눈으로 고른 색을 갖게 되고, 그 차이는 프로젝터에서 드러난다.
+// 실측은 minimal 4.76~5.38(띠 1.18) · editorial 4.92~5.00(1.02) · ink 5.93~6.00(1.02)이다.
+func TestBuiltinAccentPalettes(t *testing.T) {
+	for _, name := range BuiltinThemes() {
+		t.Run(name, func(t *testing.T) {
+			checkAccentPalette(t, loadBuiltinTheme(name).tokens)
+		})
+	}
+}
+
+// checkAccentPalette는 테마 하나의 강조색 여섯에 세 규칙을 전수로 적용한다.
+func checkAccentPalette(t *testing.T, theme soml.Theme) {
+	t.Helper()
 	accents := make([]soml.ColorToken, 0, 6)
 	for _, token := range theme.Colors {
 		if len(token.Name) == 7 && token.Name[:6] == "accent" {
@@ -75,6 +89,27 @@ func TestMinimalAccentPalette(t *testing.T) {
 	}
 	if ratio := max / min; ratio > 1.25 {
 		t.Errorf("accent 휘도 띠 최대/최소 = %.2f, want ≤ 1.25 — 한 색만 튀면 위계가 아니라 소음이다", ratio)
+	}
+}
+
+// TestBuiltinBaseColorContrast는 바탕·글자·보조 글자의 대비를 전 테마에서 못 박는다 — 어두운
+// 테마를 더하는 순간 필요해진 판정이다 (밝은 테마 하나였을 때는 fg가 검정이라 물어볼 것이
+// 없었다). muted는 본문보다 작은 글자에 쓰이지만 기준을 4.5:1로 같이 두는 이유는 그 색이 캡션
+// **역할의 색**이고, 캡션은 읽히기 위해 있는 글자라는 것이다.
+func TestBuiltinBaseColorContrast(t *testing.T) {
+	for _, name := range BuiltinThemes() {
+		theme := loadBuiltinTheme(name).tokens
+		bg := colorTokenRGB(t, theme, "bg")
+		for _, token := range []string{"fg", "muted"} {
+			if got := contrastRatio(t, colorTokenRGB(t, theme, token), bg); got < 4.5 {
+				t.Errorf("%s의 %s 대비 = %.2f:1, want ≥ 4.5:1", name, token, got)
+			}
+		}
+		// surface는 글자색이 아니라 면이다 — bg와 **구별되기만** 하면 된다 (카드가 스테이지
+		// 위에서 보이는 최소 조건). 같은 값이면 카드가 사라진다.
+		if colorTokenRGB(t, theme, "surface") == bg {
+			t.Errorf("%s의 surface가 bg와 같다 — 카드가 스테이지에서 보이지 않는다", name)
+		}
 	}
 }
 

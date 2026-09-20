@@ -251,17 +251,25 @@ func TestMinimalLayoutStyles(t *testing.T) {
 	}
 }
 
-// TestMinimalCoversEverySlotArea는 **슬롯 카탈로그와 테마의 대조**다 (ADR 0044 D3).
+// TestBuiltinThemesCoverEverySlotArea는 **슬롯 카탈로그와 테마의 대조**다 (ADR 0044 D3).
 //
 // soml이 슬롯 어휘를 소유하고(LayoutSlots) 영역의 실체는 테마가 소유하므로(ADR 0035), 두
-// 목록이 어긋나면 슬롯 이름은 어휘에 있는데 **놓일 자리가 없다**. minimal은 폴백 기준이라
-// (layouts.md) 그 구멍이 곧 제품의 구멍이다: `layout="quote"` + `slot="quote"`가 웹에서는
-// 조용히 무효, PPTX에서는 플레이스홀더 발행이 됐다.
+// 목록이 어긋나면 슬롯 이름은 어휘에 있는데 **놓일 자리가 없다**. 그 구멍은 곧 제품의 구멍이다:
+// `layout="quote"` + `slot="quote"`가 웹에서는 조용히 무효, PPTX에서는 플레이스홀더 발행이 됐다.
 //
 // 이름까지 대조하는 이유: `grid-template-areas`에 이름 하나가 빠지면 그 자식의 `grid-area`가
 // 정의되지 않은 영역을 가리켜 **자동 배치로 조용히 떨어진다** (appendSlot의 주석과 같은 실패).
-func TestMinimalCoversEverySlotArea(t *testing.T) {
-	pkg := loadBuiltinTheme("minimal")
+//
+// **내장 테마 전수로 돈다** (P4.2): 미구현 레이아웃 폴백은 구현하지 않기로 했으므로(ADR 0052)
+// 테마가 슬롯 하나를 빠뜨리면 그 테마를 고른 덱에서 그 슬롯이 조용히 무효가 된다.
+func TestBuiltinThemesCoverEverySlotArea(t *testing.T) {
+	for _, name := range BuiltinThemes() {
+		t.Run(name, func(t *testing.T) { checkSlotAreas(t, loadBuiltinTheme(name)) })
+	}
+}
+
+func checkSlotAreas(t *testing.T, pkg themePackage) {
+	t.Helper()
 	styles := pkg.slotLayoutStyles()
 	for _, layout := range soml.SlideLayouts() {
 		name := string(layout)
@@ -293,7 +301,38 @@ func TestMinimalCoversEverySlotArea(t *testing.T) {
 	// 린터도 같이 본다 — 새 파일이 외관 프로퍼티를 들이면 여기서 잡힌다 (TestMinimalLayoutStyles의
 	// 흐름 CSS와 같은 계약: 배치 CSS는 PPTX 마스터에 도달하지 못하는 외관을 담을 수 없다).
 	if diags := lintLayouts(pkg.slotLayouts); len(diags) != 0 {
-		t.Errorf("minimal 슬롯 영역 CSS가 진단을 냈다:\n%v", diags)
+		t.Errorf("%s 슬롯 영역 CSS가 진단을 냈다:\n%v", pkg.manifest.Name, diags)
+	}
+}
+
+// TestBuiltinThemesImplementEveryStandardLayout은 내장 테마 셋이 표준 카탈로그 11종을 **전부**
+// 구현함을 못 박는다 (ADR 0052의 결정 7).
+//
+// 문서가 오래 적어 온 "테마가 빠뜨린 표준 레이아웃은 minimal로 폴백하고 경고한다"는 코드가 된
+// 적이 없다. 폴백을 구현하는 대신 **계약을 테스트로** 세운 이유는 폴백이 섞인 테마가 디자인
+// 시스템이 아니라는 것이다: editorial 덱의 stat 슬라이드만 minimal의 짜임으로 나오면 저자는
+// 그 한 장이 왜 다른지 알 길이 없다. 외부 테마(P4.3)가 이 규칙을 다시 만난다.
+func TestBuiltinThemesImplementEveryStandardLayout(t *testing.T) {
+	for _, name := range BuiltinThemes() {
+		pkg := loadBuiltinTheme(name)
+		declared := map[string]bool{}
+		for _, layout := range pkg.manifest.Layouts {
+			declared[layout] = true
+		}
+		for _, layout := range soml.SlideLayouts() {
+			if !declared[string(layout)] {
+				t.Errorf("테마 %q가 표준 레이아웃 %q를 구현하지 않았다 (폴백은 없다)", name, layout)
+			}
+		}
+		if len(pkg.manifest.Layouts) != len(soml.SlideLayouts()) {
+			t.Errorf("테마 %q의 레이아웃 %d종, want %d종 (%v)",
+				name, len(pkg.manifest.Layouts), len(soml.SlideLayouts()), pkg.manifest.Layouts)
+		}
+		// 배치 CSS도 전 테마에서 배치 전용이어야 한다 — 외관은 components.json의 몫이고,
+		// 레이아웃 CSS의 색·글꼴은 PPTX 마스터에 도달하지 못한다 (theme_lint.go).
+		if diags := lintLayouts(pkg.layouts); len(diags) != 0 {
+			t.Errorf("%s 레이아웃 CSS가 진단을 냈다:\n%v", name, diags)
+		}
 	}
 }
 
@@ -304,8 +343,11 @@ func TestBuiltinThemesAreLoadable(t *testing.T) {
 	if len(names) == 0 {
 		t.Fatal("내장 테마가 하나도 없다")
 	}
-	if names[0] != "minimal" {
-		t.Errorf("BuiltinThemes()[0] = %q, want minimal (기본값이자 폴백 기준)", names[0])
+	// 목록은 알파벳 정렬이므로 minimal이 첫 이름이라는 보장은 없다 (P4.2에서 editorial이 들어와
+	// 첫 자리를 가져갔다). 못 박는 것은 **기본 테마가 목록에 있다**는 것이다 — 기본값이 어휘
+	// 밖이면 설정을 쓰지 않는 프로젝트가 빌드되지 않는다.
+	if !IsBuiltinTheme(DefaultTheme) {
+		t.Errorf("기본 테마 %q가 내장 목록에 없다 (%v)", DefaultTheme, names)
 	}
 	// 목록에 있는 이름은 전부 **실제로 로드된다** — 디렉토리만 있고 theme.json이 없는 이름이
 	// 어휘에 들어오면 init이 빌드되지 않는 프로젝트를 만든다.
