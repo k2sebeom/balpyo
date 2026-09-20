@@ -1,5 +1,5 @@
 {
-  "$comment": "minimal 테마의 컴포넌트 외관 (PRD §8.3). 각 범주의 variants는 순서 있는 배열이다 — JSON 객체 키 순서에 기대지 않는다 (tokens.json과 같은 계약). 값의 근거는 core/theme.go의 옛 하드코딩 주석에 있다.",
+  "$comment": "minimal 테마의 컴포넌트 외관 (PRD §8.3). 각 범주의 variants는 순서 있는 배열이다 — JSON 객체 키 순서에 기대지 않는다 (tokens.json과 같은 계약). 값의 근거는 docs/reference/appearance.md에 있다 — 그 문서의 역할·variant 표가 이 파일의 값이다.",
 
   "text": {
     "roles": [
