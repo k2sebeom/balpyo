@@ -5,13 +5,16 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime/debug"
+	"syscall"
 
 	"github.com/k2sebeom/balpyo/internal/pipeline"
 	"github.com/k2sebeom/balpyo/render"
@@ -34,6 +37,12 @@ func run(args []string, stdout, stderr io.Writer) error {
 	switch args[0] {
 	case "build":
 		return runBuild(args[1:], stdout, stderr)
+	case "watch":
+		// 종료 신호를 ctx로 받는다 — Ctrl+C가 웜 브라우저를 닫고(runner.Close) 서버를 내린 뒤
+		// 돌아와야 다음 watch가 같은 포트를 잡고 프로세스가 남지 않는다.
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		return runWatch(ctx, args[1:], stdout, stderr)
 	case "version":
 		fmt.Fprintln(stdout, versionString())
 		return nil
@@ -51,6 +60,7 @@ func usage(w io.Writer) {
 
 사용법:
   balpyo build [옵션]   슬라이드를 빌드한다
+  balpyo watch [옵션]   고치면 다시 빌드하고 브라우저를 새로고침한다
   balpyo version        버전을 출력한다
 
 build 옵션:
@@ -59,6 +69,10 @@ build 옵션:
   --project .           프로젝트 루트
   --strict              경고를 에러로 승격한다
   --check-layout        배치를 검사한다 (넘침·스테이지 이탈·겹침 — 브라우저를 띄운다)
+
+watch 옵션:
+  build의 옵션 전부 (html 타깃은 필수) 그리고
+  --addr 127.0.0.1:4600 감시 서버 주소
 `)
 }
 
