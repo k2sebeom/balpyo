@@ -107,6 +107,13 @@ func LoadConfig(projectDir string) (Config, error) {
 	if err := cfg.Validate(); err != nil {
 		return Config{}, fmt.Errorf("%s: %w", ConfigFile, err)
 	}
+	// 테마 이름은 **프로젝트의 어휘**와 대조한다 (ADR 0054의 결정 5): 내장 ∪ `themes/<이름>/`.
+	// Validate가 아니라 여기인 이유는 어휘가 파일시스템에 달렸다는 것이다 — 설정 구조체만으로는
+	// 로컬 테마를 알 수 없고, 프로젝트를 아는 자리는 이 함수다. 값 층이 같은 판정을 한 번 더
+	// 하는 이유는 설정 없이 Deck을 만드는 길이 있다는 것이다 (Resolve).
+	if err := CheckThemeName(os.DirFS(projectDir), cfg.Theme); err != nil {
+		return Config{}, fmt.Errorf("%s: theme: %w", ConfigFile, err)
+	}
 	return cfg, nil
 }
 
@@ -135,15 +142,12 @@ func (c *Config) Validate() error {
 	if _, err := c.Aspect.Stage(); err != nil {
 		return fmt.Errorf("aspect: %w", err)
 	}
-	// 테마 이름은 **내장 어휘**와 대조한다 (ADR 0052). 값 층도 같은 판정을 하지만(Resolve)
-	// 여기서 먼저 멈추는 이유는 에러의 질이다: 파일을 가리키고 쓸 수 있는 이름을 나열한다.
-	// 폴백하지 않는 이유는 모르는 variant와 갈라지는 자리다 — variant 어휘는 테마의
-	// 사유물이지만 테마 **이름**의 어휘는 엔진이 소유하므로, 목록 밖 이름은 오타이거나 설치되지
-	// 않은 테마이고 둘 다 저자가 즉시 고칠 수 있다.
-	if !IsBuiltinTheme(c.Theme) {
-		return fmt.Errorf("theme: 알 수 없는 테마 %q (쓸 수 있는 테마: %s)",
-			c.Theme, strings.Join(BuiltinThemes(), ", "))
-	}
+	// 테마 **이름의 어휘**는 여기서 보지 않는다 (ADR 0054의 결정 5): 쓸 수 있는 이름이 내장 ∪
+	// 프로젝트 로컬이므로 판정에 프로젝트 파일시스템이 필요하고, 이 함수는 그것을 모른다.
+	// 판정하는 자리는 둘이다 — 프로젝트를 아는 LoadConfig와 값 층의 Resolve. 폴백하지 않는
+	// 이유는 모르는 variant와 갈라지는 자리다: variant 어휘는 테마의 사유물이지만 테마 이름의
+	// 어휘는 프로젝트가 소유하므로, 목록 밖 이름은 오타이거나 아직 만들지 않은 테마이고 둘 다
+	// 저자가 즉시 고칠 수 있다.
 	switch c.Targets.PPTX.Mode {
 	case PPTXNative, PPTXImage:
 	default:

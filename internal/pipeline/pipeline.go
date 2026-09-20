@@ -11,7 +11,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/k2sebeom/balpyo/core"
 	"github.com/k2sebeom/balpyo/render"
@@ -103,21 +102,21 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	// 프로젝트 루트를 **한 fs.FS로** 본다: 슬라이드 수집과 에셋 해석의 경로 기준이 하나라는
+	// 사실이 그 한 값으로 보인다 (`<image src>`는 프로젝트 루트 기준이다 — core.ResolveAssets).
+	// 테마 이름의 어휘도 이 기준을 쓴다 (`themes/<이름>/` — ADR 0054).
+	fsys := os.DirFS(projectDir)
+
 	// 테마 옵션은 설정을 **읽은 뒤** 갈아 끼운다 (OutDir과 같은 자리): 아래 흐름은 cfg 하나만
 	// 보므로 덮어쓰기가 여기서 끝나야 값 층·렌더러가 두 출처를 알 필요가 없다. 어휘 검사를
 	// 여기서 다시 하는 이유는 진단이 가리킬 자리가 다르다는 것이다 — 설정의 오타는
-	// `balpyo.json`이고 이 오타는 방금 친 명령이다 (core.Config.Validate와 같은 목록·문구).
+	// `balpyo.json`이고 이 오타는 방금 친 명령이다 (core.LoadConfig와 같은 목록·문구).
 	if opts.Theme != "" {
-		if !core.IsBuiltinTheme(opts.Theme) {
-			return nil, nil, fmt.Errorf("--theme: 알 수 없는 테마 %q (쓸 수 있는 테마: %s)",
-				opts.Theme, strings.Join(core.BuiltinThemes(), ", "))
+		if err := core.CheckThemeName(fsys, opts.Theme); err != nil {
+			return nil, nil, fmt.Errorf("--theme: %w", err)
 		}
 		cfg.Theme = opts.Theme
 	}
-
-	// 프로젝트 루트를 **한 fs.FS로** 본다: 슬라이드 수집과 에셋 해석의 경로 기준이 하나라는
-	// 사실이 그 한 값으로 보인다 (`<image src>`는 프로젝트 루트 기준이다 — core.ResolveAssets).
-	fsys := os.DirFS(projectDir)
 	files, err := soml.Collect(fsys, cfg.SlidesDir)
 	if err != nil {
 		return nil, nil, err
@@ -133,7 +132,8 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 		Aspect: cfg.Aspect,
 		Stage:  stage,
 		// 테마 요청도 크롬과 같은 태도로 옮긴다 (ADR 0052) — 이름을 패키지로 바꾸는 것은
-		// core.Resolve다. 설정 로드가 이미 어휘를 검사했으므로 여기 도달한 이름은 내장 테마다.
+		// core.Resolve다. 설정 로드가 이미 어휘를 검사했으므로 여기 도달한 이름은 내장 테마
+		// 아니면 이 프로젝트의 `themes/<이름>/`이다 (ADR 0054).
 		ThemeName: cfg.Theme,
 		// 크롬 요청은 설정에서 그대로 옮긴다 (ADR 0045) — 테마 선언과 합치는 것은 core.Resolve다.
 		Chrome: soml.DeckChrome{Footer: cfg.Footer, PageNumber: cfg.PageNumber},

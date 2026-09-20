@@ -43,16 +43,20 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 	// 어휘 밖 이름은 **에러 + 해석 중단**이다. 폴백 테마로 계속하면 산출물이 저자가 고르지 않은
 	// 테마로 나가고, 그 사실은 슬라이드를 열어야 드러난다. 진단이 `balpyo.json`을 가리키는
 	// 이유는 고칠 자리가 거기라는 것이다 (테마를 선언하지 않은 크롬 경고와 같은 태도).
+	//
+	// 이름을 찾는 자리는 둘이다 — 내장 테마와 `themes/<이름>/` (ADR 0054). fsys가 그래서 여기
+	// 있고, nil이면 내장 테마만 보인다.
 	name := deck.ThemeName
 	if name == "" {
 		name = DefaultTheme
 	}
-	if !IsBuiltinTheme(name) {
-		return soml.Diagnostics{soml.Errorf(ConfigFile, soml.Span{},
-			"알 수 없는 테마 %q (쓸 수 있는 테마: %s)", name, strings.Join(BuiltinThemes(), ", "))}
+	// 토큰과 컴포넌트 외관 표를 한 번에 로드해 slide 루프에 나른다. 어휘 밖 이름·이름 충돌·
+	// 순환 `extends`·불완전한 로컬 테마가 모두 이 한 에러로 온다 (ADR 0054) — 로컬 테마는
+	// 저자가 방금 쓴 파일이므로 내장 테마처럼 panic할 수 없다.
+	pkg, err := loadThemeNamed(fsys, name)
+	if err != nil {
+		return soml.Diagnostics{soml.Errorf(ConfigFile, soml.Span{}, "%s", err)}
 	}
-	// 토큰과 컴포넌트 외관 표를 한 번에 로드해 slide 루프에 나른다.
-	pkg := loadBuiltinTheme(name)
 	deck.Theme = pkg.tokens
 	// 레이아웃 배치 CSS도 토큰 표에 싣는다 — 웹 스테이지 CSS와 지오메트리 패스가 재는 박스가
 	// 같은 한 표에서 나와야 두 타깃의 배치가 갈라지지 않는다 (soml.Theme.Layouts).

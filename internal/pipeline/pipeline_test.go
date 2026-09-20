@@ -277,9 +277,24 @@ func TestLoadDeckUsesAProjectLocalTheme(t *testing.T) {
 	if !strings.Contains(deck.Theme.Layouts["title"], "display: grid") {
 		t.Errorf("표지 배치가 로컬 테마의 파일이 아니다: %q", deck.Theme.Layouts["title"])
 	}
-	if len(deck.Theme.Layouts) != len(soml.SlideLayouts()) {
+	// 나머지 배치는 부모 것을 그대로 물려받는다. 같은 프로젝트를 minimal로 한 번 더 읽어
+	// 견주는 이유는 이 맵이 **선언이 있는 레이아웃만** 싣는다는 것이다 (layoutStyles — 주석만
+	// 있는 스텁은 여기 없다). 그래서 "11개"가 아니라 "부모와 같은 집합"이 상속의 증인이다.
+	base, _, err := LoadDeck(Options{ProjectDir: dir, Theme: "minimal"})
+	if err != nil {
+		t.Fatalf("부모 테마로 견줄 덱이 로드되지 않았다: %v", err)
+	}
+	if len(deck.Theme.Layouts) != len(base.Theme.Layouts) {
 		t.Errorf("배치 CSS %d개, want %d — 부모의 파일을 물려받지 않았다",
-			len(deck.Theme.Layouts), len(soml.SlideLayouts()))
+			len(deck.Theme.Layouts), len(base.Theme.Layouts))
+	}
+	for name, css := range base.Theme.Layouts {
+		if name == "title" {
+			continue // 자식이 자기 파일로 갈아 끼운 하나.
+		}
+		if deck.Theme.Layouts[name] != css {
+			t.Errorf("레이아웃 %q가 부모 것과 다르다: %q", name, deck.Theme.Layouts[name])
+		}
 	}
 
 	// 플래그도 같은 어휘를 받는다 — 설정이 내장 테마를 적어도 `--theme corp`가 된다.
