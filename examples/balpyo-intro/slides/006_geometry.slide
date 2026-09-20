@@ -6,7 +6,7 @@
       <shape variant="card-header" type="rounded-rect" fill="accent1" w="fill" pad="sm">
         <text color="bg" align="center">선언</text>
       </shape>
-      <shape variant="card-body" type="rect" border="1 solid muted" w="fill" h="200" pad="md">
+      <shape variant="card-body" type="rect" border="1 solid muted" w="fill" h="150" pad="md">
         <p size="20" anchor="top">저자는 flex와 grid로 배치를 선언한다. 좌표를 쓰는 자리가
         어휘에 없다.</p>
       </shape>
@@ -15,7 +15,7 @@
       <shape variant="card-header" type="rounded-rect" fill="accent1" w="fill" pad="sm">
         <text color="bg" align="center">측정</text>
       </shape>
-      <shape variant="card-body" type="rect" border="1 solid muted" w="fill" h="200" pad="md">
+      <shape variant="card-body" type="rect" border="1 solid muted" w="fill" h="150" pad="md">
         <p size="20" anchor="top">헤드리스 Chromium이 요소마다 박스를 재고, 패스는 그
         지오메트리만 읽는다.</p>
       </shape>
@@ -24,12 +24,14 @@
       <shape variant="card-header" type="rounded-rect" fill="accent1" w="fill" pad="sm">
         <text color="bg" align="center">굽기</text>
       </shape>
-      <shape variant="card-body" type="rect" border="1 solid muted" w="fill" h="200" pad="md">
+      <shape variant="card-body" type="rect" border="1 solid muted" w="fill" h="150" pad="md">
         <p size="20" anchor="top">잰 rect가 곧 PPTX 좌표다 — 1px은 9525 EMU이고 환산은 한
         곳에만 있다.</p>
       </shape>
     </col>
   </grid>
-  <text role="caption">파이프라인이 주고받는 수치는 전부 논리 스테이지 px다 (16:9는 1280×720). EMU와 pt는 PPTX 렌더러 안에서만 존재한다.</text>
+  <shape variant="card-backdrop" type="rounded-rect" fill="surface" w="fill" pad="md">
+    <text role="caption" align="center">파이프라인이 주고받는 수치는 전부 논리 스테이지 px다 (16:9는 1280×720). EMU와 pt는 PPTX 렌더러 안에서만 존재한다.</text>
+  </shape>
   <note>이것이 두 번째 통찰이다 — 브라우저를 레이아웃 엔진으로 빌려 쓴다.</note>
 </slide>

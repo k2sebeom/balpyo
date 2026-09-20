@@ -4,17 +4,17 @@
   <col slot="left" gap="md">
     <text variant="kicker">환경을 고정한다</text>
     <ul>
-      <li>Docker 이미지 하나가 렌더 환경 전체를 소유한다 (베이스는 패치 버전까지 고정)</li>
-      <li>폰트는 Noto만 설치하고 힌팅과 서브픽셀을 끈다 — 글자 폭이 흔들리면 잰 박스가 흔들린다</li>
-      <li>도구 버전을 핀으로 박아, 보안 패치로 버전이 움직이면 골든이 아니라 그 테스트가 먼저 깨진다</li>
+      <li>이미지 하나가 렌더 환경을 소유한다</li>
+      <li>폰트는 Noto만, 힌팅은 끈다 — 글자 폭이 흔들리면 박스가 흔들린다</li>
+      <li>도구 버전은 핀으로 박는다 — 움직이면 그 테스트가 먼저 깨진다</li>
     </ul>
   </col>
   <col slot="right" gap="md">
     <text variant="kicker">무엇이 판정하는가</text>
     <ul>
-      <li>픽스처 아홉 개가 각각 완전한 balpyo 프로젝트이고, 골든은 HTML과 PPTX 파트별 XML이다</li>
-      <li>웹 스크린샷과 LibreOffice 렌더를 픽셀로 맞댄다 — 채널 32, 비율 예산은 슬라이드 단위</li>
-      <li>웹이 잰 좌표와 PPTX의 EMU는 0 오차로 못 박는다</li>
+      <li>픽스처 아홉 개, 골든은 HTML과 파트별 XML이다</li>
+      <li>웹 스크린샷과 LibreOffice 렌더를 픽셀로 맞댄다</li>
+      <li>웹이 잰 좌표와 PPTX의 EMU는 0 오차다</li>
     </ul>
   </col>
   <note>파트별 XML을 골든으로 두는 이유는 하나다 — "도형이 하나 늘었다"가 diff에서 읽힌다.</note>

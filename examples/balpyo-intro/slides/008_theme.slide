@@ -30,9 +30,8 @@
     </col>
     <col gap="sm">
       <text variant="kicker">토큰은 눕지 않는다</text>
-      <p size="20">토큰으로 선언한 색은 웹에서 CSS 변수 참조로, PPTX에서 a:schemeClr
-      참조로 남는다. 리터럴로 쓴 색만 srgbClr가 된다 — 그래서 PowerPoint에서 테마를
-      바꾸면 덱 전체가 따라온다.</p>
+      <p size="20">토큰으로 쓴 색은 웹에서 CSS 변수로, PPTX에서 a:schemeClr로 남는다.
+      리터럴만 srgbClr가 된다 — PowerPoint에서 테마 색을 바꾸면 덱이 따라온다.</p>
     </col>
   </grid>
   <note>토큰이 리터럴로 눕는 순간 제품의 약속이 깨진다. 골든 테스트가 그것을 감시한다.</note>

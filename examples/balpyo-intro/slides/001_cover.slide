@@ -1,11 +1,11 @@
 <!-- 표지 — title 레이아웃의 슬롯 모드. 다섯 슬롯(kicker·title·subtitle·author·date)은 웹에서
      테마의 grid 영역이 되고 PPTX에서는 진짜 p:ph 플레이스홀더가 된다 (ADR 0035). -->
 <slide id="cover" layout="title">
-  <text slot="kicker" variant="kicker">SLIDE ORIENTED MARKUP LANGUAGE</text>
-  <h1 slot="title" size="88">balpyo</h1>
+  <text slot="kicker" variant="kicker" align="center">SLIDE ORIENTED MARKUP LANGUAGE</text>
+  <h1 slot="title" size="88" align="center">balpyo</h1>
   <text slot="subtitle" role="heading" color="muted" align="center">슬라이드를 한 번 쓰면
   웹과 편집 가능한 PPTX가 같이 나온다</text>
-  <text slot="author" role="body">렌더 엔진 · 테마 · CLI</text>
-  <text slot="date" role="caption">이 덱은 SOML 열두 장이고, balpyo가 렌더했다</text>
+  <text slot="author" role="body" align="center">렌더 엔진 · 테마 · CLI</text>
+  <text slot="date" role="caption" align="center">이 덱은 SOML 열두 장이고, balpyo가 렌더했다</text>
   <note>덱 자체가 산출물이다 — 지금 보고 있는 화면과 배포한 pptx가 같은 소스에서 나왔다.</note>
 </slide>

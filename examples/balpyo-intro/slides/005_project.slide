@@ -10,7 +10,7 @@
     _draft_ideas.slide
   dist/
     index.html
-    balpyo-소개.pptx</pre>
+    my-deck.pptx</pre>
     <col gap="md">
       <text variant="kicker">수집 규칙</text>
       <ul>
@@ -21,6 +21,8 @@
       </ul>
     </col>
   </grid>
-  <pre size="20">balpyo build --project my-deck --target html,pptx</pre>
+  <shape type="rounded-rect" fill="surface" w="fill" pad="md">
+    <pre size="20">balpyo build --project my-deck --target html,pptx</pre>
+  </shape>
   <note>덱 설정은 balpyo.json 한 파일이다 — 제목·저자·언어·비율·출력 경로.</note>
 </slide>
