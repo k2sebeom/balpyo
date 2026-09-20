@@ -147,6 +147,69 @@ func TestDiagnoseParentEscape(t *testing.T) {
 	}
 }
 
+// 표의 셀은 부모 행을 넘겨도 사고가 아니다 — `rowspan`이 든 셀은 자기 행보다 높은 것이
+// 정상이다 (격자를 짜는 것은 브라우저의 표 알고리즘이다). 이 예외가 없으면 병합이 든 표마다
+// 저자가 고칠 수 없는 경고가 나온다 (testdata/fixtures/09_table/slides/002_merge.slide).
+func TestDiagnoseTableCellMayOutgrowItsRow(t *testing.T) {
+	source := "slides/001_table" + soml.Ext
+	doc, diags := soml.Parse(source, `<slide id="t">
+  <table>
+    <tr><th rowspan="2">구분</th><th>Q1</th></tr>
+    <tr><th>Q2</th></tr>
+  </table>
+</slide>
+`)
+	if len(diags) != 0 {
+		t.Fatalf("파서 진단이 없어야 한다: %v", diags)
+	}
+	stage, err := soml.Aspect16x9.Stage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	deck := &soml.Deck{Aspect: soml.Aspect16x9, Stage: stage, Slides: []*soml.Slide{
+		{Index: 0, ID: "t", Source: source, Content: doc.Content},
+	}}
+	if diags := core.Resolve(deck); len(diags) > 0 {
+		t.Fatalf("외관 해석 진단: %v", diags)
+	}
+
+	// 잰 격자를 손으로 준다 — 병합 셀(120px)이 자기 행(60px)의 아래 변을 60px 넘는다. 식별자를
+	// 적지 않고 Refs의 순서로 주는 이유: 표 안의 공백 문자 노드가 자식 번호를 밀므로(web.ChildPath)
+	// 손으로 적은 식별자는 마크업을 한 줄 고칠 때마다 틀린다.
+	grid := []struct {
+		el   string
+		rect Rect
+	}{
+		{soml.TableElement, Rect{X: 64, Y: 64, W: 600, H: 120}},
+		{soml.TableRowElement, Rect{X: 64, Y: 64, W: 600, H: 60}},
+		{soml.TableHeaderCellElement, Rect{X: 64, Y: 64, W: 300, H: 120}}, // rowspan="2"
+		{soml.TableHeaderCellElement, Rect{X: 364, Y: 64, W: 300, H: 60}},
+		{soml.TableRowElement, Rect{X: 364, Y: 124, W: 300, H: 60}},
+		{soml.TableHeaderCellElement, Rect{X: 364, Y: 124, W: 300, H: 60}},
+	}
+	refs := Refs(deck)
+	if len(refs) != len(grid) {
+		t.Fatalf("표의 요소 %d개, want %d개", len(refs), len(grid))
+	}
+	rects := make(map[string]Rect, len(refs))
+	for i, ref := range refs {
+		if ref.El != grid[i].el {
+			t.Fatalf("%d번째 요소가 <%s>다, want <%s>", i, ref.El, grid[i].el)
+		}
+		rects[ref.ID] = grid[i].rect
+	}
+	g := measured(t, deck, rects, nil)
+	if diags := Diagnose(deck, g); len(diags) > 0 {
+		t.Errorf("병합 셀의 경고 %d건, want 0건:\n%s", len(diags), diags)
+	}
+
+	// 예외는 셀에만 있다 — 행이 프레임을 넘치는 것은 격자가 설명하지 않는다.
+	rects[refs[4].ID] = Rect{X: 364, Y: 124, W: 300, H: 100}
+	rects[refs[5].ID] = Rect{X: 364, Y: 124, W: 300, H: 100}
+	g = measured(t, deck, rects, nil)
+	wantDiags(t, Diagnose(deck, g), "부모 <table>를 아래로 40px 넘친다")
+}
+
 // 글줄의 가로 이탈은 줄바꿈이 불가능한 글자다 (긴 URL·`<pre>`). 세로는 보지 않는다 — 글자
 // 상자가 CSS 줄 박스보다 커서 정상 텍스트도 늘 몇 px 넘치기 때문이다 (ADR 0039).
 func TestDiagnoseTextEscape(t *testing.T) {

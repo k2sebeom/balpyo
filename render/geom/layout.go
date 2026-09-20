@@ -25,7 +25,8 @@ import (
 //
 // 2·3은 좌표를 직접 쓴 요소에게 묻지 않고(Ref.Free), 4는 겹치도록 놓인 자리를 묻지 않는다
 // (Ref.Overlap — `<stack>`·canvas·`at`/`x`/`y`). 저자가 좌표를 쓴 것은 "여백과 부모 변을
-// 넘어서는 선택"까지 포함한다.
+// 넘어서는 선택"까지 포함한다. 2는 표의 셀에게도 묻지 않는다 — 셀의 박스는 저자가 정한 크기가
+// 아니라 브라우저의 표 알고리즘이 짠 격자이고, `rowspan`이 든 셀은 자기 행보다 높은 것이 정상이다.
 //
 // # `scrollHeight`를 쓰지 않는 이유
 //
@@ -102,6 +103,15 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 				ref.El, dir, px(over)))
 		case ref.Free:
 			// 좌표를 직접 쓴 요소(와 그 자손)는 부모 변과 여백을 넘어서는 것이 저작 수단이다.
+		case soml.KindOf(ref.El) == soml.KindTableCell:
+			// 표의 셀은 부모 `<tr>`를 **합법적으로** 넘친다: `rowspan`이 든 셀의 박스는 여러
+			// 행에 걸치므로 자기 행보다 높다 (격자를 짜는 것은 브라우저의 표 알고리즘이다 —
+			// ADR 0036). 격자의 어느 박스도 저자가 크기를 정한 것이 아니므로, "고정 크기 박스가
+			// 내용을 담지 못했다"는 이 판정의 사고가 셀에서는 성립하지 않는다.
+			//
+			// 표가 담기지 않는 사고를 놓치지는 않는다 — 그것은 프레임(`<table>`)이 부모나
+			// 콘텐츠 박스를 넘치는 모양으로 나타나고, 그 판정은 그대로 남는다. 행(`<tr>`)도
+			// 그대로 본다: 행이 표를 넘치는 것은 격자가 설명하지 않는 일이다.
 		case hasParent:
 			if dir, over := escape(box.Rect, g.Boxes[parent].Rect); over > overflowTolerance {
 				diags = append(diags, soml.Warningf(ref.Source, ref.Span,
