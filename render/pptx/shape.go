@@ -163,6 +163,9 @@ var renderedKinds = []soml.ElementKind{
 	soml.KindListContainer,   // 도형 하나       (writeListShape: 불릿 문단이 한 박스에 산다)
 	soml.KindShape,           // 도형 하나+흡수  (writeShapeSp)
 	soml.KindImage,           // 도형 하나       (writePicShape — p:sp가 아니라 p:pic)
+	soml.KindTable,           // 도형 하나       (writeGraphicFrameTbl — p:sp도 p:pic도 아닌 p:graphicFrame)
+	soml.KindTableRow,        // 도형 0개        (a:tr: 표 프레임 안에 접힌다 — 잰 높이만 쓰인다)
+	soml.KindTableCell,       // 도형 0개        (a:tc: 같다 — 잰 좌우 경계가 열 너비가 된다)
 	soml.KindListItem,        // 도형 0개        (writeListItem: 리스트 도형의 문단이 된다)
 	soml.KindInline,          // 도형 0개        (writeRuns: 문단의 런이 된다)
 	soml.KindLayoutContainer, // 도형 0개        (자식으로 내려간다 — 좌표만 남는다)
@@ -189,6 +192,10 @@ func shapeWriterFor(kind soml.ElementKind) shapeWriter {
 		return writeShapeSp
 	case soml.KindImage:
 		return writePicShape
+	case soml.KindTable:
+		// 표는 도형 하나를 소비한다 — 행·셀은 이 프레임 안에 접히므로 자기 번호를 갖지 않는다
+		// (`<shape>`가 자식 텍스트를 흡수하는 것과 같은 모양 — render/pptx/table.go).
+		return writeGraphicFrameTbl
 	}
 	return nil
 }
@@ -201,11 +208,12 @@ func shapeWriterFor(kind soml.ElementKind) shapeWriter {
 // 주지 않는다 (잰 rect는 이미 슬라이드 상대다 — geom 패키지 주석). 컨테이너 상대 좌표를
 // 다시 더하는 코드가 여기 없는 것이 "좌표 계산 0회"의 렌더러 쪽 절반이다.
 //
-// # 분기는 다섯 가지다 (같은 단어를 쓰는 개념들이 정반대로 매핑되는 자리)
+// # 분기는 여섯 가지다 (같은 단어를 쓰는 개념들이 정반대로 매핑되는 자리)
 //
 //	리스트 컨테이너 (<ul>/<ol>)             → 도형 **하나**  (writeListShape: 불릿 문단이 한 텍스트 박스에 산다)
 //	<shape>                                 → 도형 **하나** + 자식을 **흡수** (writeShapeSp: 자식 텍스트가 이 도형의 txBody 문단이 된다)
 //	<image/>                                → 도형 **하나**  (writePicShape: p:sp가 아니라 **p:pic**이다 — 자식은 없다)
+//	<table>                                 → 도형 **하나** + 자식을 **흡수** (writeGraphicFrameTbl: 행·셀이 a:tr/a:tc로 접힌다 — p:graphicFrame이다)
 //	레이아웃 컨테이너 (<row>/<col>/<grid>)  → 도형 **0개** + 자식으로 **내려가기** (좌표만 남고 컨테이너는 사라진다)
 //	<spacer/>                               → 도형 **0개**  (자식도 없다 — void)
 //

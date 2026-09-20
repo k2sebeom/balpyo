@@ -12,13 +12,7 @@ import (
 func resolveSlide(t *testing.T, src string) (*soml.Deck, soml.Diagnostics) {
 	t.Helper()
 	doc, parseDiags := soml.Parse("slides/001_text.slide", src)
-	// 렌더러가 아직 그리지 못하는 어휘(표 — soml.KindRendered)는 파스 시점에 진단을 받는다.
-	// 값 해석은 그 어휘까지 열려 있으므로 여기서는 그 진단만 빼고 나머지를 요구한다 —
-	// 렌더러가 붙으면(TASKS P2.1) 이 필터가 사라진다.
-	for _, d := range parseDiags {
-		if strings.Contains(d.Message, soml.UnrenderedVocabMessage) {
-			continue
-		}
+	if len(parseDiags) != 0 {
 		t.Fatalf("파서 진단이 없어야 한다: %v", parseDiags)
 	}
 	deck := &soml.Deck{Slides: []*soml.Slide{{

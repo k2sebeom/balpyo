@@ -47,9 +47,7 @@ func TestParseTable(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			doc, diags := Parse("slides/001_table.slide", tc.src)
-			// 표는 렌더러가 없어 파스 시점에 진단을 받는다 (checkRendered) — 트리 테스트는
-			// 그 진단을 빼고 본다. 어휘 자체는 파서와 값 층까지 열려 있다.
-			if diags = withoutUnrenderedVocab(diags); len(diags) != 0 {
+			if len(diags) != 0 {
 				t.Fatalf("진단이 없어야 한다:\n%s", diags.Err())
 			}
 			if got := dumpNodes(doc.Content); got != tc.want {
@@ -148,7 +146,6 @@ func TestParseTablePlacementErrors(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			_, diags := Parse("slides/001_table.slide", tc.src)
-			diags = withoutUnrenderedVocab(diags)
 			if len(diags) != len(tc.want) {
 				t.Fatalf("진단 %d개, want %d개:\n%s", len(diags), len(tc.want), diags.Err())
 			}

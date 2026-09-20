@@ -9,24 +9,16 @@ import (
 
 	"github.com/k2sebeom/balpyo/core"
 	"github.com/k2sebeom/balpyo/render/geom"
-	"github.com/k2sebeom/balpyo/render/web"
 	"github.com/k2sebeom/balpyo/soml"
 )
 
 // tableDeck는 표 하나를 담은 슬라이드를 파이프라인과 같은 순서(파싱 → 해석)로 덱으로 만든다
 // (resolvedDeck의 표 판 — render/web/table_test.go의 같은 이름 헬퍼와 짝이다).
-//
-// 파서 진단에서 "아직 그리지 못하는 어휘"만 걸러내는 이유는 순서다: 두 렌더러가 **함께** 붙는
-// 순간에만 `soml.unrenderedKinds`에서 표를 지울 수 있으므로(render/vocabulary_test.go의 양방향
-// 대조), PPTX 쪽 절반을 짜는 동안은 파서가 아직 표를 막는다. 이 필터는 그 플립에서 사라진다.
 func tableDeck(t *testing.T, body string) *soml.Deck {
 	t.Helper()
 	const source = "slides/001_table.slide"
 	doc, diags := soml.Parse(source, "<slide id=\"table\">\n"+body+"\n</slide>\n")
-	for _, d := range diags {
-		if strings.Contains(d.Message, soml.UnrenderedVocabMessage) {
-			continue
-		}
+	if len(diags) != 0 {
 		t.Fatalf("파싱 실패: %v", diags)
 	}
 	stage, err := soml.Aspect16x9.Stage()
@@ -45,8 +37,11 @@ func tableDeck(t *testing.T, body string) *soml.Deck {
 	return deck
 }
 
-// renderTableFrame는 덱의 첫 콘텐츠 노드(표 프레임)를 도형 조각으로 쓴다 — 디스패치가 아직
-// 표를 받지 않으므로 writer를 직접 부른다 (tableDeck의 주석과 같은 순서 근거).
+// renderTableFrame는 덱의 첫 콘텐츠 노드(표 프레임)를 도형 조각으로 쓴다.
+//
+// writeGraphicFrameTbl을 직접 부르지 않고 **writeShapeNode를 지난다** — 디스패치
+// (shapeWriterFor)가 표를 받는다는 것과 표가 도형 번호를 **하나만** 소비한다는 것이 같은
+// 호출에서 드러난다 (도형 번호가 2에서 멈추는 것이 그 증거다 — 행·셀이 번호를 쓰면 3·4로 뛴다).
 //
 // 조각이 XML로서 well-formed인지도 함께 본다: 표는 우리가 내는 가장 깊은 중첩이라
 // (graphicFrame > graphic > graphicData > tbl > tr > tc > txBody > p > r) 닫는 태그 하나만
@@ -59,9 +54,12 @@ func renderTableFrame(t *testing.T, deck *soml.Deck, g *geom.Geometry) string {
 		t.Fatalf("첫 콘텐츠 노드가 표가 아니다: %T", slide.Content[0])
 	}
 	var b strings.Builder
-	id := web.ElementID(slide.Index, []int{0})
-	if err := writeGraphicFrameTbl(&b, deck, slide, elem, id, firstShapeID, g, &slideRels{}); err != nil {
+	shapeID := firstShapeID
+	if err := writeShapeNode(&b, deck, slide, elem, []int{0}, &shapeID, g, &slideRels{}); err != nil {
 		t.Fatalf("표 렌더 실패: %v", err)
+	}
+	if shapeID != firstShapeID+1 {
+		t.Errorf("표가 도형 번호 %d개를 썼다, want 1개 (행·셀은 프레임 안에 접힌다)", shapeID-firstShapeID)
 	}
 	out := b.String()
 	dec := xml.NewDecoder(strings.NewReader(out))

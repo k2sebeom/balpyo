@@ -140,12 +140,17 @@ func allElementNames() []string {
 
 // unrenderedKinds는 **파서와 값 층은 아는데 어느 렌더러도 그리지 못하는** 종류다.
 //
-// 이 목록이 존재하는 이유는 어휘가 층마다 다른 속도로 자란다는 것이다: 표는 soml의 카탈로그와
-// core의 값 해석까지 열렸지만 렌더러가 없다 (TASKS P2.1). 목록을 **언어 층에 명시**해 두면
-// 세 가지가 동시에 성립한다 — (1) 파서가 저자에게 즉시 말할 수 있고(checkPlacement),
-// (2) 렌더러 디스패치와 대조하는 테스트가 "빠뜨린 것"과 "적어 두고 구현한 것"을 둘 다 잡고,
-// (3) 렌더러를 구현하는 커밋이 이 줄을 지우지 않으면 테스트가 실패한다.
-var unrenderedKinds = []ElementKind{KindTable, KindTableRow, KindTableCell}
+// **지금은 비어 있다** — 카탈로그의 종류 전부가 두 렌더러에 닿는다 (표가 마지막이었다:
+// render/web/table.go · render/pptx/table.go). 목록을 남겨 두는 이유는 어휘가 층마다 다른
+// 속도로 자란다는 것이다: 새 태그는 카탈로그와 값 해석부터 열리고 렌더러가 뒤따르는 순서로
+// 들어오므로(다음은 `<chart>` — TASKS P2.5) 그 사이의 상태를 말할 자리가 필요하다. 목록을
+// **언어 층에 명시**해 두면 세 가지가 동시에 성립한다 — (1) 파서가 저자에게 즉시 말할 수 있고
+// (checkRendered), (2) 렌더러 디스패치와 대조하는 테스트가 "빠뜨린 것"과 "적어 두고 구현한
+// 것"을 둘 다 잡고(render/vocabulary_test.go), (3) 렌더러를 구현하는 커밋이 여기서 종류를
+// 지우지 않으면 그 대조가 실패한다.
+//
+// 목록이 빈 동안 관문 자체는 목록을 잠시 세워 보는 테스트가 지킨다 (withUnrenderedKinds).
+var unrenderedKinds []ElementKind
 
 // KindRendered는 두 렌더러가 이 종류를 그릴 수 있는지 보고한다. KindNone(카탈로그 밖 —
 // `<slide>`·`<text>`·`<note>`)은 각자의 규칙을 따르므로 참이다.

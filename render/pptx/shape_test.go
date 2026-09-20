@@ -416,12 +416,14 @@ func TestRenderedKindsMatchShapeDispatch(t *testing.T) {
 	for _, kind := range RenderedKinds() {
 		listed[kind] = true
 	}
-	// 도형이 되는 종류는 정확히 넷이다 — 이 목록이 늘어나는 것이 새 산출 요소가 생겼다는 뜻이다.
+	// 도형이 되는 종류는 정확히 다섯이다 — 이 목록이 늘어나는 것이 새 산출 요소가 생겼다는
+	// 뜻이다 (표가 p:graphicFrame으로 다섯째가 됐다: 행·셀은 그 안에 접히므로 여기 없다).
 	shapeKinds := map[soml.ElementKind]bool{
 		soml.KindBlock:         true,
 		soml.KindListContainer: true,
 		soml.KindShape:         true,
 		soml.KindImage:         true,
+		soml.KindTable:         true,
 	}
 	for _, kind := range soml.ElementKinds() {
 		if got, want := shapeWriterFor(kind) != nil, shapeKinds[kind]; got != want {

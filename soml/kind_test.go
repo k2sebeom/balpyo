@@ -59,16 +59,13 @@ func TestElementNamesOf(t *testing.T) {
 	}
 }
 
-// 지금 그리지 못하는 종류는 표 3종뿐이다 — 이 목록이 줄어드는 것이 P2.1의 완료 신호다.
+// 지금은 **카탈로그의 종류 전부**를 그릴 수 있다 (표가 마지막이었다 — unrenderedKinds가
+// 비었다). 두 렌더러가 정말로 그 종류들을 받는지는 render 패키지의 대조가 본다
+// (render/vocabulary_test.go) — 여기서는 언어 층의 대답만 고정한다.
 func TestKindRendered(t *testing.T) {
 	for _, kind := range ElementKinds() {
-		want := true
-		switch kind {
-		case KindTable, KindTableRow, KindTableCell:
-			want = false
-		}
-		if got := KindRendered(kind); got != want {
-			t.Errorf("KindRendered(%v) = %v, want %v", kind, got, want)
+		if !KindRendered(kind) {
+			t.Errorf("KindRendered(%v) = false, want true — 그리지 못하는 어휘가 생겼다면 렌더러 대조도 함께 빨갛게 된다", kind)
 		}
 	}
 	// 카탈로그 밖(<slide>·<text>·<note>)은 각자의 규칙을 따른다.

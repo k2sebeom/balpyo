@@ -10,19 +10,11 @@ import (
 
 // tableDeck는 표 하나를 담은 슬라이드를 파이프라인과 같은 순서(파싱 → 해석)로 덱으로 만든다
 // (subsetDeck의 표 판 — 손으로 만든 트리 대신 원문을 쓰는 이유도 같다).
-//
-// 파서 진단에서 "아직 그리지 못하는 어휘"만 걸러내는 이유는 순서다: 두 렌더러가 **함께**
-// 붙는 순간에만 `soml.unrenderedKinds`에서 표를 지울 수 있으므로(render/vocabulary_test.go의
-// 양방향 대조), 웹 쪽 절반을 짜는 동안은 파서가 아직 표를 막는다. 이 필터는 그 플립에서
-// 사라진다 — 그때 이 테스트들은 renderString을 그대로 쓴다.
 func tableDeck(t *testing.T, body string) *soml.Deck {
 	t.Helper()
 	const source = "slides/001_table.slide"
 	doc, diags := soml.Parse(source, "<slide id=\"table\">\n"+body+"\n</slide>\n")
-	for _, d := range diags {
-		if strings.Contains(d.Message, soml.UnrenderedVocabMessage) {
-			continue
-		}
+	if len(diags) != 0 {
 		t.Fatalf("파싱 실패: %v", diags)
 	}
 	stage, err := soml.Aspect16x9.Stage()
@@ -41,8 +33,10 @@ func tableDeck(t *testing.T, body string) *soml.Deck {
 	return deck
 }
 
-// renderTable는 덱의 첫 콘텐츠 노드(표 프레임)를 HTML로 쓴다 — 디스패치가 아직 표를 받지
-// 않으므로 writer를 직접 부른다 (tableDeck의 주석과 같은 순서 근거).
+// renderTable는 덱의 첫 콘텐츠 노드(표 프레임)를 HTML로 쓴다.
+//
+// writeTable을 직접 부르지 않고 **writeNode를 지난다** — 슬라이드 껍데기 없이 조각만 보면서도
+// 디스패치(writerFor)가 표를 받는다는 사실까지 함께 단정하는 자리다.
 func renderTable(t *testing.T, deck *soml.Deck) string {
 	t.Helper()
 	slide := deck.Slides[0]
@@ -51,7 +45,7 @@ func renderTable(t *testing.T, deck *soml.Deck) string {
 		t.Fatalf("첫 콘텐츠 노드가 표가 아니다: %T", slide.Content[0])
 	}
 	var b strings.Builder
-	if err := writeTable(&b, deck, slide, elem, []int{0}); err != nil {
+	if err := writeNode(&b, deck, slide, elem, []int{0}); err != nil {
 		t.Fatalf("표 렌더 실패: %v", err)
 	}
 	return b.String()

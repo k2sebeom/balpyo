@@ -211,6 +211,9 @@ var renderedKinds = []soml.ElementKind{
 	soml.KindImage,
 	soml.KindSpacer,
 	soml.KindInline,
+	soml.KindTable,
+	soml.KindTableRow,
+	soml.KindTableCell,
 }
 
 // RenderedKinds는 이 렌더러가 다루는 종류다 (선언 순서). soml 카탈로그와 대조하는 테스트가
@@ -241,6 +244,20 @@ func writerFor(kind soml.ElementKind) nodeWriter {
 		return func(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, _ []int) error {
 			return writeInline(b, deck, slide, elem)
 		}
+	// 표 세 종류는 각자 자기 태그를 낸다 (`<table>`/`<tr>`/`<th>`·`<td>`) — 웹에서는 프레임만
+	// 그리는 것이 아니라 격자 전체가 마크업이 되므로 셋 다 writer를 갖는다 (PPTX는 프레임
+	// 하나가 도형이 되고 행·셀이 그 안에 접힌다 — render/pptx/shape.go의 비대칭).
+	//
+	// 실제 호출은 부모가 한다 (writeTable → writeTableRow → writeTableCell): 자식이 행인지
+	// 셀인지를 부모가 확인해야 콘텐츠 모델이 깨진 덱에서 `<table>` 안에 `<p>`가 조용히 섞이지
+	// 않는다. 그래도 종류마다 writer를 등록하는 이유는 이 함수가 "이 종류를 웹으로 쓸 수
+	// 있는가"의 유일한 대답이라는 것이다 — 목록과 어긋나면 카탈로그 대조가 거짓말을 한다.
+	case soml.KindTable:
+		return writeTable
+	case soml.KindTableRow:
+		return writeTableRow
+	case soml.KindTableCell:
+		return writeTableCell
 	}
 	return nil
 }
