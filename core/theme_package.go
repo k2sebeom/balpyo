@@ -35,6 +35,38 @@ import (
 //go:embed themes
 var builtinThemes embed.FS
 
+// BuiltinThemes는 내장 테마 이름 목록이다 (정렬, 지금은 `minimal` 하나).
+//
+// 공개하는 이유는 **어휘의 단일 출처**다 (ADR 0048): `balpyo init --theme`이 받을 수 있는
+// 이름이 곧 이 목록이어야 하고, 목록을 CLI에 적어 두면 내장 테마를 늘릴 때(P4.2) 두 곳이
+// 갈라져 사용자가 값 층이 읽지 않는 이름을 `balpyo.json`에 갖게 된다.
+func BuiltinThemes() []string {
+	entries, err := fs.ReadDir(builtinThemes, "themes")
+	if err != nil {
+		// 내장 파일은 빌드 시점에 고정이다 — 읽히지 않으면 프로그래머 오류다
+		// (loadBuiltinTheme의 panic과 같은 자리).
+		panic(fmt.Sprintf("내장 테마 목록을 읽을 수 없다: %v", err))
+	}
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() {
+			names = append(names, e.Name())
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+// IsBuiltinTheme는 이름이 내장 테마인지다.
+func IsBuiltinTheme(name string) bool {
+	for _, n := range BuiltinThemes() {
+		if n == name {
+			return true
+		}
+	}
+	return false
+}
+
 // themeManifest는 theme.json의 파싱 결과다 (PRD §8.2).
 type themeManifest struct {
 	Name string `json:"name"`

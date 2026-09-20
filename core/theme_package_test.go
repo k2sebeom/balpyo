@@ -1,6 +1,7 @@
 package core
 
 import (
+	"path"
 	"reflect"
 	"sort"
 	"strings"
@@ -288,5 +289,30 @@ func TestMinimalCoversEverySlotArea(t *testing.T) {
 	// 흐름 CSS와 같은 계약: 배치 CSS는 PPTX 마스터에 도달하지 못하는 외관을 담을 수 없다).
 	if diags := lintLayouts(pkg.slotLayouts); len(diags) != 0 {
 		t.Errorf("minimal 슬롯 영역 CSS가 진단을 냈다:\n%v", diags)
+	}
+}
+
+// 내장 테마 목록은 embed 트리에서 나온다 — `balpyo init`의 `--theme` 어휘가 이 값이므로,
+// 내장 테마를 늘리면 CLI의 어휘가 함께 열려야 한다 (ADR 0048).
+func TestBuiltinThemesAreLoadable(t *testing.T) {
+	names := BuiltinThemes()
+	if len(names) == 0 {
+		t.Fatal("내장 테마가 하나도 없다")
+	}
+	if names[0] != "minimal" {
+		t.Errorf("BuiltinThemes()[0] = %q, want minimal (기본값이자 폴백 기준)", names[0])
+	}
+	// 목록에 있는 이름은 전부 **실제로 로드된다** — 디렉토리만 있고 theme.json이 없는 이름이
+	// 어휘에 들어오면 init이 빌드되지 않는 프로젝트를 만든다.
+	for _, name := range names {
+		if _, err := loadTheme(builtinThemes, path.Join("themes", name)); err != nil {
+			t.Errorf("내장 테마 %q 로드 실패: %v", name, err)
+		}
+		if !IsBuiltinTheme(name) {
+			t.Errorf("IsBuiltinTheme(%q) = false", name)
+		}
+	}
+	if IsBuiltinTheme("corp") {
+		t.Error(`IsBuiltinTheme("corp") = true — 없는 테마를 받아들인다`)
 	}
 }
