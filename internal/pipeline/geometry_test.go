@@ -4,6 +4,7 @@
 package pipeline_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,8 @@ import (
 	"github.com/k2sebeom/balpyo/internal/testkit"
 	"github.com/k2sebeom/balpyo/render"
 	"github.com/k2sebeom/balpyo/render/geom"
+	"github.com/k2sebeom/balpyo/render/web"
+	"github.com/k2sebeom/balpyo/soml"
 )
 
 // project는 파일 맵으로 프로젝트 디렉토리를 만든다.
@@ -89,6 +92,50 @@ func TestBuildEmptyDeckNeedsNoBrowser(t *testing.T) {
 	}
 	if result.Geometry != nil {
 		t.Errorf("잴 것이 없는 빌드의 Geometry = %+v, want nil", result.Geometry)
+	}
+}
+
+// recordingMeasurer는 지오메트리 패스를 대신 받는다 — 브라우저 없이 배선만 본다.
+type recordingMeasurer struct {
+	calls int
+	path  string
+	body  []byte
+	err   error
+}
+
+func (m *recordingMeasurer) Measure(deck *soml.Deck, htmlPath string) (*geom.Geometry, error) {
+	m.calls++
+	m.path = htmlPath
+	m.body, _ = os.ReadFile(htmlPath)
+	return nil, m.err
+}
+
+// 호출자가 준 측정기가 있으면 빌드는 그것을 쓴다 — `balpyo watch`가 브라우저 하나를 **웜으로**
+// 재사용하는 길이다 (ADR 0046). 기동이 저작 루프의 가장 큰 비용이므로 루프마다 다시 띄우지
+// 않는 것이 이 옵션의 전부이고, 측정기를 만들고 닫는 일은 루프가 소유한다.
+//
+// 측정기에 넘어가는 HTML은 **이 빌드가 낼 산출물 그대로**여야 한다 (그러지 않으면 잰 좌표가
+// 다른 페이지의 것이다) — 그 사실도 여기서 함께 못 박는다.
+func TestBuildUsesTheInjectedMeasurer(t *testing.T) {
+	noBrowser(t)
+	measurer := &recordingMeasurer{err: errors.New("잰 척했다")}
+	dir := project(t, map[string]string{"slides/001_title.slide": textSlide})
+	_, err := pipeline.Build(pipeline.Options{
+		ProjectDir: dir,
+		Targets:    []render.Target{render.TargetHTML, render.TargetPPTX},
+		Measurer:   measurer,
+	})
+	if err == nil || !strings.Contains(err.Error(), "잰 척했다") {
+		t.Fatalf("주입한 측정기가 쓰이지 않았다: %v", err)
+	}
+	if measurer.calls != 1 {
+		t.Errorf("측정기 호출 %d회, want 1회", measurer.calls)
+	}
+	if filepath.Base(measurer.path) != web.IndexFile {
+		t.Errorf("측정 대상 = %s, want %s", measurer.path, web.IndexFile)
+	}
+	if !strings.Contains(string(measurer.body), "2026 아키텍처 리뷰") {
+		t.Errorf("측정기가 받은 HTML이 이 덱의 산출물이 아니다:\n%s", measurer.body)
 	}
 }
 
