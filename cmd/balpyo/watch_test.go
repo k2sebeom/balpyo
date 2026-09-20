@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"os"
@@ -37,6 +38,10 @@ func TestWatchCommandServesTheDeckWithItsReloadClient(t *testing.T) {
 	go func() { done <- runWatch(ctx, []string{"--project", dir, "--addr", "127.0.0.1:0"}, stdout, &stderr) }()
 
 	url := waitForURL(t, stdout)
+	// 주소는 첫 빌드보다 먼저 찍힌다 (실패한 빌드도 브라우저가 붙을 자리를 가져야 한다) —
+	// 산출물을 보기 전에 그 빌드가 끝났는지 상태에 묻는다.
+	waitForFirstBuild(t, url)
+
 	res, err := http.Get(url)
 	if err != nil {
 		t.Fatalf("%s에 붙을 수 없다: %v", url, err)
@@ -127,6 +132,27 @@ func waitForURL(t *testing.T, out *syncBuffer) string {
 	}
 	t.Fatalf("watch가 주소를 찍지 않았다:\n%s", out.String())
 	return ""
+}
+
+// waitForFirstBuild는 상태 엔드포인트가 성공한 빌드를 말할 때까지 기다린다.
+func waitForFirstBuild(t *testing.T, base string) {
+	t.Helper()
+	deadline := time.Now().Add(20 * time.Second)
+	var last string
+	for time.Now().Before(deadline) {
+		res, err := http.Get(base + watch.StatusPath)
+		if err == nil {
+			body, _ := io.ReadAll(res.Body)
+			res.Body.Close()
+			last = string(body)
+			var status watch.Status
+			if json.Unmarshal(body, &status) == nil && status.OK {
+				return
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("첫 빌드가 성공하지 않았다: %s", last)
 }
 
 // syncBuffer는 감시 루프가 쓰는 동안 테스트가 읽을 수 있는 버퍼다.
