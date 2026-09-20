@@ -64,9 +64,10 @@
 | P2.3 `<shape>` 안에 레이아웃 컨테이너 (D7) | 카드 한 장이 **도형 하나**다: 도형이 컨테이너를 담으면 **배경**이 되고(빈 `<a:p/>` + 인셋·앵커는 그대로) 자식은 잰 좌표를 가진 **형제** 도형이 된다 — `p:grpSp`를 쓰지 않아 "잰 rect가 곧 xfrm"이 그대로다. 모드는 **도형마다** 정해져 배경 카드 안의 배지가 흡수 모드로 남고, 판정의 단일 소유자는 `soml.ShapeHoldsLayout`이다. 배경 + `rotate`는 에러다(두 타깃이 다른 그림이 된다). 흡수 모드로는 불가능했던 것이 열렸다: 푸터를 `justify="between"`으로 아래에 붙이는 것, 카드 전체의 둥근 모서리, 테두리를 한 번만 그리는 것 | [ADR 0049](docs/decisions/0049-a-shape-that-holds-layout-becomes-a-backdrop.md), `11_shape_layout`(3장) · `render/pptx/preset_test.go`(배경은 `<a:p/>` 하나 · 자식이 형제 · `<p:grpSp>`가 없다) · `internal/testkit`(좌표 대조로 자식의 xfrm 전수 · 도형 안 줄 세기를 두 픽스처가 공유) · `core`의 `rotate` 거부, `balpyo-intro` 06이 카드 하나로 돌아왔다, `docs/reference/soml/shape.md` |
 | P3.1 `balpyo watch` — 핫 리로드 (D8) | 폴링(250ms) + "스캔이 같아진 뒤 빌드"로 저장 한 번 = 빌드 한 번. `build`와 **같은 파이프라인·같은 출력 디렉토리**를 쓰고 리로드 클라이언트는 **응답 바이트에만** 주입한다(디스크는 배포본 그대로). 실패한 빌드는 산출물을 건드리지 않아 마지막 성공본 위에 진단 오버레이가 뜨고, 터미널에는 `build`와 같은 규칙으로 요약 한 줄이 간다. 측정이 필요한 감시는 브라우저 **하나**를 계속 쓴다 | [ADR 0046](docs/decisions/0046-watch-polls-the-project-and-injects-its-reload-client.md), `internal/watch`(스캐너·서버·루프) · `cmd/balpyo/watch_test.go`(응답에 있고 디스크에 없다) · `TestRunnerReusesOneWarmBrowser`(세션 동일성 · 0.61초), `docs/reference/cli.md#balpyo-watch` · `docs/guides/getting-started.md` |
 | P3.2 `balpyo preview` — 검수 갤러리 (D8) | 래스터화(PPTX → PDF → PNG)·픽셀 diff·갤러리 문서를 `internal/preview`가 소유하고 `make review`와 사용자 명령이 **그것을 함께 쓴다** (테스트가 보는 그림과 사람이 보는 그림이 달라지지 않는다). 하네스에 남는 것은 **테스트 정책**뿐이다 — 건너뛰기/실패, 픽스처별 오차 조정표("이 슬라이드는 달라야 정답이다"까지 든 표). 그 표가 사용자 덱에는 없으므로 `preview`는 **게이트가 아니다**: 오차를 넘어도 코드 0이고, 1은 검수할 것이 안 만들어졌을 때만이다. 도구가 없으면 빌드 전에 멈춘다 | [ADR 0047](docs/decisions/0047-review-gallery-lives-in-internal-preview.md), `internal/preview`(`Run`·래스터라이저·갤러리) · `raster_pptx_test.go`(장수 · 스테이지 크기 · 재실행 0 픽셀 차) · `cmd/balpyo/preview_test.go`(경로를 찍는다 · 한 열 갤러리 · 도구 없음은 빌드 전에), `04_shape` 실물 확인(슬라이드 4장이 기본 2.5% 초과, 종료 코드 0), `docs/reference/cli.md#balpyo-preview` |
-| P3.3 `balpyo init` · `balpyo check` — 첫 덱과 CI 입구 | `init`은 자기 덱을 **소유한다**(`internal/scaffold`의 임베드 템플릿 3장) — `examples/`는 마찰점을 일부러 밟는 회귀 테스트라 출발점이 못 된다. 계약은 파일 목록이 아니라 **다음 명령의 성공**이다: 스캐폴딩 덱이 `build --target html,pptx --check-layout --strict`를 경고 0으로 통과한다. `--force`는 없고(덮어쓸 대상이 저자의 원고다) 내장 아닌 `--theme`은 거부한다(`balpyo.json`의 `theme`을 아직 아무도 읽지 않는다 — P4.2). `check`는 **쓰지 않는 `build`**다: 같은 코드로 판정하고, 종료 코드도 같고(경고는 0을 타고 나간다), 출력 디렉토리를 만들지도 않는다 | [ADR 0048](docs/decisions/0048-init-owns-its-deck-and-check-is-build-without-writing.md), `core.BuiltinThemes`(어휘 단일 출처) · `internal/scaffold` · `pipeline.Check` · `cmd/balpyo/init_test.go`(`init`→`--strict` 빌드) · `check_test.go`(디렉토리 목록이 그대로 · `dist/`가 생기지도 않는다), 스캐폴딩 덱 `preview` 실물 확인(3장 0.625%/1.772%/0.581%), `docs/reference/cli.md#balpyo-init` · `#balpyo-check` · `docs/guides/getting-started.md` |
+| P3.3 `balpyo init` · `balpyo check` — 첫 덱과 CI 입구 | `init`은 자기 덱을 **소유한다**(`internal/scaffold`의 임베드 템플릿 3장) — `examples/`는 마찰점을 일부러 밟는 회귀 테스트라 출발점이 못 된다. 계약은 파일 목록이 아니라 **다음 명령의 성공**이다: 스캐폴딩 덱이 `build --target html,pptx --check-layout --strict`를 경고 0으로 통과한다. `--force`는 없고(덮어쓸 대상이 저자의 원고다) 내장 아닌 `--theme`은 거부한다(`balpyo.json`의 `theme`을 아직 아무도 읽지 않는다 — P4.2에서 읽는다). `check`는 **쓰지 않는 `build`**다: 같은 코드로 판정하고, 종료 코드도 같고(경고는 0을 타고 나간다), 출력 디렉토리를 만들지도 않는다 | [ADR 0048](docs/decisions/0048-init-owns-its-deck-and-check-is-build-without-writing.md), `core.BuiltinThemes`(어휘 단일 출처) · `internal/scaffold` · `pipeline.Check` · `cmd/balpyo/init_test.go`(`init`→`--strict` 빌드) · `check_test.go`(디렉토리 목록이 그대로 · `dist/`가 생기지도 않는다), 스캐폴딩 덱 `preview` 실물 확인(3장 0.625%/1.772%/0.581%), `docs/reference/cli.md#balpyo-init` · `#balpyo-check` · `docs/guides/getting-started.md` |
 | P4.1 accent 팔레트 확장 (D12) | 강조색이 **여섯**이고, 눈이 아니라 **세 수치**가 고른 값이다 — `bg` 대비 4.5:1↑(대비율이 대칭이라 글자색과 면색을 한 수치로 보장한다) · 서로 색상 25°↑ · 휘도 한 띠(≤1.25). 실측 4.76~5.38 · 26° · 1.18이고, 그 규칙을 주석이 아니라 **테스트가 소유한다**. `clrScheme`에서 accent1을 빌려 가던 다섯 자리가 자기 색을 갖고(빌리는 자리는 링크 둘뿐) 폴백은 강조색 하나짜리 **다른** 테마를 위해 남는다. 번호는 위계가 아니라 색상환의 이웃 순서이고, **위계는 덱이 만든다** | [ADR 0050](docs/decisions/0050-six-accents-are-a-measured-palette-not-a-ranking.md), `core/palette_test.go`(WCAG 상대 휘도 · 대비 · 색상 간격 전수) · `core/theme_package_test.go`(값 드리프트) · `render/pptx.TestClrSchemeMinimalFillsSixAccents`(로드된 테마의 여섯 슬롯이 서로 다르다) · `12_palette`(2장 — 견본 여섯 + 변형/그라디언트, `TestPaletteFixtureBindsSixAccentSlots`, 슬라이드 파트에 리터럴 `srgbClr` 0건), `examples/incident-postmortem`을 **세 색**으로 다시 칠했다(피해=`accent5` · 우리가 늦은 곳=`accent4` · 대응=`accent3`, 파랑 0건 · 두 래스터 실물 확인), `docs/reference/theme.md`(표준 토큰 어휘 + 팔레트 규칙) · `appearance.md` |
 | P2.4 코드 블록: `lang`과 탭 (D15 · D16) | 하이라이팅은 **값 층의 토큰 스트림**이다 — Chroma의 토큰을 우리가 닫은 **7종**으로 축약하고 색이 하나인 조각마다 **합성 인라인 런**을 만든다. 두 렌더러는 한 줄도 고치지 않았고(인라인 런 경로가 이미 있었다) 색은 테마의 `code.tokens` 부분 패치가 갖는다(색 토큰 이름만 — 리터럴은 `schemeClr` 참조를 끊어 코드 블록만 테마 색 편집에서 빠지게 만든다). 런 경계는 종류가 아니라 **해결된 색**이다. 탭은 `lang`과 무관하게 `code.tabSize`로 펴 두 렌더러가 **같은 한 문자열**을 받는다(CSS `tab-size`와 `a:defTabSz`는 같은 규칙이 아니다). `lang` 어휘는 엔진이 닫고(`go`·`xml`/`soml`·`json`·`bash`) 목록 밖은 **에러**다 — 미구현과 오타를 가르는 자리는 `plannedAttrs`가 따로 갖는다 | [ADR 0051](docs/decisions/0051-highlighting-is-a-token-stream-compiled-to-runs.md), `core/highlight_test.go`(어휘 전수 · 탭 칼럼 · 원문 왕복 보존) · `soml/planned_test.go`(예정 목록 ↔ 어휘 표 양방향) · `13_code`(2장 — 골든에 `a:r` 분할, 리터럴 `srgbClr` 0건) · `render/geom`의 `TestMeasureLinesIncludeInlineRuns`(합성 런이 줄 수를 늘리지 않는다), `examples/incident-postmortem` 005가 gofmt 탭을 그대로 붙인다, `minimal`의 `mono` `ea`를 고정폭 CJK로(한글 주석 줄 −7.9% → +0.6%), `docs/reference/soml/text-subset.md`(코드 블록 절) · `appearance.md`(코드 하이라이팅) · `theme.md` · `guides/known-differences.md` |
+| P4.2 테마 선택 · 다중 내장 테마 | 테마는 **덱의 요청**이다: `balpyo.json`의 `theme`(과 그것을 덮어쓰는 `--theme`)이 패키지를 고르고, 없는 이름은 렌더 전에 멈춰 쓸 수 있는 이름을 나열한다 — **폴백 테마가 없다**. 폴백이 없으므로 빠진 값을 메울 곳도 없어 로더가 토큰·역할 어휘의 **완전성**을 요구하고, 하드코딩 외관 표(`core/theme.go`)가 사라져 **엔진에 외관 값이 하나도 없다**. 내장은 손으로 쓴 셋(`minimal`·`editorial`·`ink`)이고 하나의 계약을 받는다: 레이아웃 11종 전부 · 슬롯 영역 전부 · `variant` 어휘 동일 · 본문 24px/1.5 · 팔레트 세 수치. 리뷰가 그림을 바꾸지 않는 선언 하나를 잡았다 — `justify-items: start`가 여유 폭을 0으로 만들어 PPTX에서 줄을 접었다(왼쪽은 선언하지 않는다) | [ADR 0052](docs/decisions/0052-theme-selection-is-a-deck-request-and-there-is-no-fallback-theme.md)·[0053](docs/decisions/0053-a-theme-takes-the-horizontal-channel-only-to-center.md), `core/theme_select_test.go`(선택·에러·두 테마가 다르다 + **갈리지 않는 것** 전수: variant 어휘·본문 리듬·레이아웃 11종·슬롯 영역) · `core/palette_test.go`(세 테마 실측 4.76~5.38 · 4.92~5.00 · 5.93~6.00, 띠 ≤1.18) · `cmd/balpyo/theme_test.go`(`--theme` 네 자리) · `14_theme`(`ink`로 렌더되는 3장 골든), `make review` 세 테마 갤러리 실물 확인, `docs/guides/theming.md`(새 가이드) · `docs/reference/theme.md` · `guides/known-differences.md` |
 | D19 문서가 어휘를 숨긴다 | `slide.md`(11종 표 + 실제 진단 문구) · `reference/index.md`(`layouts.md`는 구현됨) · `text.md`(속성 목록 + `<text>`에 `w`/`h`가 없다는 것) | `make docs --strict`, 커밋 `cc8239f` |
 
 ---
@@ -278,7 +279,8 @@
       테스트가 먼저 깨진다. `examples/`를 복사하지 않은 이유는 그쪽이 마찰점을 일부러 밟는
       회귀 테스트라는 것이고, `--force`가 없는 이유는 덮어쓸 대상이 저자의 원고라는 것이다.
       내장 아닌 `--theme`는 거부한다 — `core.Resolve`가 아직 `balpyo.json`의 `theme`을 읽지
-      않으므로(P4.2) 쓰면 조용한 거짓말이 된다.
+      않으므로(P4.2) 쓰면 조용한 거짓말이 된다. (P4.2에서 읽는다: 이제 `init --theme`이 적은
+      값이 그대로 선택이 되고, `build`·`check`·`watch`·`preview`의 `--theme`이 그 값을 덮어쓴다.)
 - [x] `check`: 빌드 없이 진단만(P1.1의 경고를 CI에서 쓰는 입구). 종료 코드 규약을 문서화.
       `21d9a08`(`pipeline.Check`) · `3606cea`(서브커맨드). 판정은 `Build`와 **같은 코드**다
       (`LoadDeck` + `needsGeometry`/`measure` + `geom.Diagnose`) — 파싱까지만 보는 빠른 길로
@@ -386,13 +388,55 @@
       하는 이름 · 색 토큰 네 필드와 슬롯 규칙 · **강조색 여섯의 규칙** 표) + `appearance.md`의
       색 표에 여섯과 대비 수치, `shape.md`·`text.md`의 진단 토큰 목록. `make docs --strict` 초록.
 
-### P4.2 테마 선택 · 다중 내장 테마 ← **지금 여기**
-- [ ] RED: `balpyo.json`의 `theme` 필드가 로더 선택을 바꾸는 테스트, 없는 테마 에러, 같은 덱이
+### P4.2 테마 선택 · 다중 내장 테마 — **닫힘** (ADR 0052 · 0053)
+- [x] RED: `balpyo.json`의 `theme` 필드가 로더 선택을 바꾸는 테스트, 없는 테마 에러, 같은 덱이
       두 테마에서 다르게 렌더되는 픽스처.
-- [ ] GREEN: `core`의 하드코딩 `minimal` 선택·레거시 폴백 제거 + 내장 테마 2~3종.
-- [ ] DOC: `docs/reference/theme.md`, `docs/guides/theming.md`.
+      **선결정 ADR** [0052](docs/decisions/0052-theme-selection-is-a-deck-request-and-there-is-no-fallback-theme.md)
+      (`ef4634e`) → `b0efc69`(`core/theme_select_test.go` · 팔레트·컴포넌트 테스트를 내장 전수로)
+      · `50f1573`(픽스처 `14_theme` — `ink`로 렌더되는 3장 덱, 웹·PPTX 골든까지).
+      요청과 결과를 이름으로 갈랐다(`ThemeName` = 덱이 쓴 요청 · `Theme` = 로드된 결과):
+      `TestResolveUsesDeckThemeName` · `TestResolveEmptyThemeNameUsesDefault` ·
+      `TestResolveUnknownThemeIsAnError`(같은 판정을 `Config.Validate`도
+      한다 — `TestConfigValidateChecksThemeVocabulary`, `TestLoadDeckRejectsUnknownTheme`).
+      "같은 덱이 다르게 렌더된다"는 것을 픽스처 없이도 못 박는 테스트가
+      `TestBuiltinThemesRenderTheSameDeckDifferently`이고, **갈리지 않아야 하는 것**도 같은
+      파일이 잡는다: `TestBuiltinThemesShareRecommendedVariants`(이름과 순서까지) ·
+      `TestBuiltinThemesShareBodyRhythm`(본문 24px · 1.5) ·
+      `TestBuiltinThemesImplementEveryStandardLayout` · `TestBuiltinThemesCoverEverySlotArea` ·
+      `TestBuiltinAccentPalettes`/`TestBuiltinBaseColorContrast`(P4.1의 세 수치를 세 테마에).
+- [x] GREEN: `core`의 하드코딩 `minimal` 선택·레거시 폴백 제거 + 내장 테마 2~3종.
+      `16ef5f7`(요청으로 고르고 폴백하지 않는다) · `b7f950f`(로더가 토큰·역할 어휘의 **완전성**을
+      요구한다 — 폴백이 없으면 빠진 값을 메울 곳도 없다) · `ffa6d1b`(`core/theme.go` 삭제:
+      엔진이 들고 있던 하드코딩 외관 표가 사라져 **엔진에 외관 값이 하나도 없다**) ·
+      `1aa7168`(`editorial` — 종이 바탕 · 세리프 제목 · 표지가 아래로) · `b1bf77d`(`ink` —
+      먹빛 바탕 · 밝은 강조색 · 왼쪽 기준선) · `56cad35`(`--theme`이 `build`·`check`·`watch`·
+      `preview`에서 `balpyo.json`을 덮어쓴다 — 파일을 고치지 않고 두 테마를 견주는 자리다).
+      내장 테마가 **셋 다 손으로 쓴 값**인 것은 의도다: `extends`가 없으므로 레이아웃 CSS가
+      세 벌 존재하고, 무엇이 정말 갈라지는지 본 뒤에 병합 규칙을 정한다(P4.3).
+- [x] REVIEW: `make review`로 세 테마 갤러리를 만들어 눈으로 확인했고, 거기서 **하나를 잡았다**:
+      `ink` 표지의 부제가 웹에서 한 줄인데 PPTX에서 두 줄로 접혔다. 원인은 그림을 바꾸지 않는
+      선언이었다 — 슬롯 영역의 `justify-items: start`가 텍스트 박스를 내용 폭으로 줄여
+      여유 폭(`Slack`)을 0으로 만들고, LibreOffice의 문장부호 간격(경계마다 +0.245em)이 4%
+      슬랙을 넘는다. `4ee50d7`에서 내장 테마의 모든 `justify-items: start`를 지웠다(왼쪽은
+      기본값이라 선언할 필요가 없다). 가운데 정렬은 그 축소가 **수단**이라 남겨 두고 비용을
+      문서로 넘겼다 — [ADR 0053](docs/decisions/0053-a-theme-takes-the-horizontal-channel-only-to-center.md)
+      (`bd7115e`)이 그 결정과 열어 둔 것("한 줄짜리 박스를 슬롯 영역 폭으로 넓힌다")을 적는다.
+      같은 커밋이 빠져 있던 ADR 0052 인덱스 줄도 채웠다.
+- [x] DOC: `docs/reference/theme.md`, `docs/guides/theming.md`.
+      `6771a0d`(theme.md에 **테마 선택** 절 — 우선순위 표 · 없는 이름의 실제 문구 · 폴백이 없는
+      이유 · 로더 완전성 · 세 테마의 팔레트 실측 · **슬롯 영역의 가로 채널** 절) ·
+      `86d20ca`(known-differences에 "가운데 정렬 슬롯은 여유가 없다" — 잰 값과 저자 조언) ·
+      `037830f`(cli.md의 `--theme` 네 자리) · `1e650a8`(appearance.md의 값은 minimal의 것이고
+      테마가 무엇을 갈아치우는지 표) · `a678075`(**새 가이드** `guides/theming.md` + nav) ·
+      `0f26643`(layouts.md) · `0069072`(getting-started의 다음 목록). `make docs` 초록.
+      문서를 코드와 대조하다 **거짓 두 줄을 잡았다**: theme.md의 "빠진 표준 레이아웃은 경고 +
+      minimal 폴백"과 layouts.md의 "선언하지 않은 레이아웃은 `content`로 폴백하고 경고한다" —
+      둘 다 그런 코드가 없다(`lintLayouts`는 **테스트만** 부르고, 레이아웃 맵 조회는 조용히
+      빈 값을 준다). 실제 동작(아무 일도 일어나지 않는다)과 테스트가 지키는 계약으로 다시 썼고,
+      `3eb45c7`에서 `core/themes/minimal/*.json`의 같은 거짓 주석과 죽은 `core/theme.go`
+      포인터도 지웠다.
 
-### P4.3 외부 테마 패키지 · `extends` · `chrome`
+### P4.3 외부 테마 패키지 · `extends` · `chrome` ← **지금 여기**
 - [ ] RED: 프로젝트 로컬 테마 디렉토리 로딩, `extends` 병합, `chrome`(마스터 고정 요소) 픽스처.
 - [ ] GREEN: 외부 경로 로더 + 병합 + 마스터 고정 요소(P2.2와 물린다).
 - [ ] DOC: `docs/reference/theme.md`.
