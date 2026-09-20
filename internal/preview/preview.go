@@ -1,0 +1,340 @@
+// Package preview는 검수 산출물을 만든다 — PPTX를 그림으로 되돌리고, 웹 스크린샷과 나란히
+// 놓고, 다른 픽셀을 강조한 갤러리 문서 하나로 묶는다.
+//
+// 왜 테스트 하네스가 아니라 여기인가 (ADR 0047): 이 흐름은 Iteration 내내 사람이 손으로 돌던
+// 것이다 — 임시 테스트 파일을 쓰고, 컨테이너에 들어가고, soffice와 pdftoppm을 돌리고, PNG를
+// 열어 본다. 그 루프가 제품이어야 저자도 같은 것을 볼 수 있다. 반대로 `cmd/balpyo`가
+// internal/testkit을 임포트하면 릴리스 바이너리에 testing이 링크되고, "도구가 없으면
+// 건너뛴다"는 **테스트 정책**이 사용자 행동이 된다.
+//
+// 그래서 소유가 뒤집혔다: 엔진(래스터화·픽셀 diff·갤러리)은 이 패키지가 갖고, 하네스는 그 위에
+// 테스트 정책(건너뛰기·t.Fatal·픽스처별 오차표)만 얹는다. internal/testkit이 internal/preview를
+// 임포트하며, 반대 방향은 없다.
+//
+// `balpyo preview`는 **게이트가 아니다** (ADR 0047 결정 4). 허용 오차를 넘은 슬라이드가 있어도
+// 종료 코드는 0이다 — 두 렌더가 달라야 정답인 슬라이드가 있고(§7.9의 `style` 외관), 그 판단에
+// 필요한 픽스처별 조정표는 저장소의 테스트 정책이지 사용자 덱의 기준이 아니다. 여기서 하는 일은
+// 숫자와 그림을 사람 앞에 놓는 것까지다.
+package preview
+
+import (
+	"fmt"
+	"image"
+	"io"
+	"os"
+	"path/filepath"
+
+	"github.com/k2sebeom/balpyo/internal/pipeline"
+	"github.com/k2sebeom/balpyo/render"
+	"github.com/k2sebeom/balpyo/render/geom"
+	"github.com/k2sebeom/balpyo/render/pptx"
+	"github.com/k2sebeom/balpyo/render/web"
+	"github.com/k2sebeom/balpyo/soml"
+)
+
+// DefaultDirName은 갤러리가 떨어지는 디렉토리 이름이다 (프로젝트 루트 기준).
+//
+// 산출물 디렉토리(dist/) 안에 두지 않는 이유: 검수 산출물은 배포물이 아니다. dist/를 그대로
+// 올리는 사람이 웹 스크린샷 수십 장과 diff 이미지를 함께 올리게 된다.
+const DefaultDirName = "preview"
+
+// DefaultRenders는 갤러리에 나란히 놓는 렌더다.
+//
+// 기본이 둘인 이유: 이 명령의 존재 이유가 **두 타깃이 같은지 눈으로 보는 것**이다. 하나만
+// 보려면 그 타깃을 주면 되고, 그때 갤러리는 한 열이 된다.
+func DefaultRenders() []render.Target { return []render.Target{render.TargetHTML, render.TargetPPTX} }
+
+// Options는 검수 실행의 입력이다.
+type Options struct {
+	// Build는 빌드 옵션이다 — `balpyo build`가 받는 것과 같은 값이다. Targets는 Renders에서
+	// 정해지므로 여기서 준 값은 무시한다.
+	Build pipeline.Options
+	// Renders는 갤러리에 나타날 렌더다. 비면 DefaultRenders다.
+	Renders []render.Target
+	// Dir가 비면 <프로젝트 루트>/preview다.
+	Dir string
+	// Log가 nil이면 로그를 버린다.
+	Log io.Writer
+}
+
+// SlideReport는 슬라이드 한 장의 검수 결과다.
+type SlideReport struct {
+	Index int
+	ID    string
+	// Diff는 두 렌더를 모두 본 경우의 픽셀 비교다 (한 열 갤러리에서는 nil).
+	Diff *DiffResult
+	// Over는 허용 오차를 넘었는지다 — **사람이 볼 자리라는 표시**이고 실패가 아니다.
+	Over bool
+}
+
+// Result는 검수 실행의 산출이다.
+type Result struct {
+	// Index는 갤러리 문서 경로다.
+	Index string
+	// Dir는 갤러리 디렉토리다.
+	Dir string
+	// OutDir은 빌드 산출물 디렉토리다 — PPTX를 PowerPoint/Keynote로 직접 열어 보는 확인은
+	// 갤러리가 대신할 수 없다.
+	OutDir string
+	// Slides는 슬라이드 순서대로의 결과다.
+	Slides []SlideReport
+	// Diagnostics는 빌드가 남긴 경고다.
+	Diagnostics soml.Diagnostics
+	// Noise는 LibreOffice가 낸 무해하지 않은 출력이다 (있으면 산출물을 의심할 자리다).
+	Noise string
+}
+
+// Over는 허용 오차를 넘은 슬라이드 수다.
+func (r *Result) Over() int {
+	count := 0
+	for _, slide := range r.Slides {
+		if slide.Over {
+			count++
+		}
+	}
+	return count
+}
+
+// Run은 프로젝트를 빌드하고 검수 갤러리를 만든다.
+//
+// 순서가 중요하다: **도구를 먼저 찾는다.** 여섯 장을 빌드하고 브라우저까지 띄운 뒤에
+// "soffice가 없다"를 알려 주는 것은 사람의 시간을 버리는 일이다.
+func Run(opts Options) (*Result, error) {
+	renders := opts.Renders
+	if len(renders) == 0 {
+		renders = DefaultRenders()
+	}
+	log := opts.Log
+	if log == nil {
+		log = io.Discard
+	}
+	var wantWeb, wantPPTX bool
+	for _, target := range renders {
+		switch target {
+		case render.TargetHTML:
+			wantWeb = true
+		case render.TargetPPTX:
+			wantPPTX = true
+		default:
+			return nil, fmt.Errorf("검수할 수 없는 타깃 %q", string(target))
+		}
+	}
+
+	var raster *Rasterizer
+	if wantPPTX {
+		found, err := NewRasterizer()
+		if err != nil {
+			return nil, err
+		}
+		raster = found
+	}
+
+	projectDir := opts.Build.ProjectDir
+	if projectDir == "" {
+		projectDir = "."
+	}
+	dir := opts.Dir
+	if dir == "" {
+		dir = filepath.Join(projectDir, DefaultDirName)
+	}
+
+	// 웹 열이 있으면 세션을 우리가 띄우고 **지오메트리 패스에 넘긴다**: 스크린샷을 찍으려면
+	// 어차피 브라우저가 필요하고, 빌드가 자기 브라우저를 따로 띄우면 이 명령이 기동 비용을 두 번
+	// 낸다 (`balpyo watch`의 웜 세션과 같은 근거 — ADR 0046).
+	build := opts.Build
+	build.ProjectDir = projectDir
+	build.Targets = renders
+	var session *geom.Session
+	if wantWeb {
+		launched, err := geom.Launch("")
+		if err != nil {
+			return nil, err
+		}
+		defer launched.Close()
+		session = launched
+		build.Measurer = session
+	}
+
+	built, err := pipeline.Build(build)
+	result := &Result{Dir: dir}
+	if built != nil {
+		result.Diagnostics = built.Diagnostics
+		result.OutDir = built.OutDir
+	}
+	if err != nil {
+		return result, err
+	}
+	deck := built.Deck
+	size := image.Pt(deck.Stage.Width, deck.Stage.Height)
+
+	// 래스터화는 임시 디렉토리에서 한다 — PDF와 중간 PNG는 검수 산출물이 아니다.
+	var pptxPages []image.Image
+	pptxPath := filepath.Join(built.OutDir, pptx.FileName(deck))
+	if wantPPTX {
+		workDir, err := os.MkdirTemp("", "balpyo-preview-")
+		if err != nil {
+			return result, fmt.Errorf("검수 임시 디렉토리를 만들 수 없다: %w", err)
+		}
+		defer os.RemoveAll(workDir)
+		pages, noise, err := raster.Slides(pptxPath, size, workDir)
+		if err != nil {
+			return result, err
+		}
+		result.Noise = noise
+		if noise != "" {
+			// 경고를 실패로 바꾸지 않는 이유는 ADR 0047 결정 4와 같다 — 다만 **삼키지도** 않는다:
+			// LibreOffice가 복구했다면 사용자도 파일을 열 때마다 그 경고를 본다.
+			fmt.Fprintf(log, "LibreOffice가 경고를 냈다 — PPTX를 직접 열어 확인한다:\n%s\n", noise)
+		}
+		if len(pages) != len(deck.Slides) {
+			return result, fmt.Errorf("PPTX 페이지 %d장, 덱 슬라이드 %d장 — 산출물이 덱과 맞지 않는다",
+				len(pages), len(deck.Slides))
+		}
+		pptxPages = pages
+	}
+
+	indexPath := filepath.Join(built.OutDir, web.IndexFile)
+	if wantWeb {
+		if err := session.Open(indexPath); err != nil {
+			return result, err
+		}
+	}
+
+	gallery, err := NewGallery(dir)
+	if err != nil {
+		return result, err
+	}
+	gallery.Title = galleryTitle(deck)
+	gallery.Lede = galleryLede(wantWeb, wantPPTX)
+	// 묶음 이름은 디렉토리 이름이 되므로 슬러그를 쓴다 — 덱 제목에 `/`나 `:`가 있으면 갤러리가
+	// 엉뚱한 곳에 파일을 쓴다 (산출 PPTX 이름을 정하는 것과 같은 규칙이다 — pptx.FileName).
+	group := soml.Slug(deck.Title)
+	if group == "" {
+		group = soml.Slug(filepath.Base(mustAbs(projectDir)))
+	}
+	if group == "" {
+		group = "deck"
+	}
+
+	for i, slide := range deck.Slides {
+		var shots []Shot
+		var webImg image.Image
+		if wantWeb {
+			shot, err := screenshot(session, i)
+			if err != nil {
+				return result, err
+			}
+			webImg = shot
+			shots = append(shots, Shot{Caption: "web", Image: webImg})
+		}
+		var pptxImg image.Image
+		if wantPPTX {
+			pptxImg = pptxPages[i]
+			shots = append(shots, Shot{Caption: "pptx", Image: pptxImg})
+		}
+
+		report := SlideReport{Index: i, ID: slide.ID}
+		verdict := VerdictNone
+		summary := ""
+		if webImg != nil && pptxImg != nil {
+			tolerance := DefaultDiffOptions()
+			diff, err := Diff(webImg, pptxImg, tolerance)
+			if err != nil {
+				return result, fmt.Errorf("슬라이드 %d(%s): %w", i+1, slide.ID, err)
+			}
+			report.Diff = &diff
+			report.Over = diff.Ratio > tolerance.MaxRatio
+			verdict = VerdictOK
+			if report.Over {
+				verdict = VerdictOver
+			}
+			summary = diff.String()
+			shots = append(shots, Shot{Caption: "diff", Image: diff.Image})
+		}
+		if err := gallery.AddSlide(group, Slide{
+			ID:      slide.ID,
+			Index:   i,
+			Shots:   shots,
+			Summary: summary,
+			Verdict: verdict,
+		}); err != nil {
+			return result, err
+		}
+		result.Slides = append(result.Slides, report)
+		if summary != "" {
+			fmt.Fprintf(log, "  #%d %s: %s\n", i+1, slide.ID, summary)
+		}
+	}
+
+	// 산출물도 갤러리 옆에 둔다 — 갤러리로 판정할 수 없는 확인이 있다: PPTX를 PowerPoint/
+	// Keynote로 열어 텍스트 박스가 진짜 텍스트 박스인지, 테마 색 편집이 먹는지 보는 일.
+	if wantPPTX {
+		if err := gallery.AddArtifact(group, pptxPath); err != nil {
+			return result, err
+		}
+	}
+	if wantWeb {
+		if err := gallery.AddArtifact(group, indexPath); err != nil {
+			return result, err
+		}
+	}
+
+	written, err := gallery.Write()
+	if err != nil {
+		return result, err
+	}
+	result.Index = written
+	return result, nil
+}
+
+// screenshot은 슬라이드 하나를 찍는다.
+//
+// 선택자는 렌더러가 소유한다 (web.SlideIndexSelector) — 클래스 이름을 여기에 손으로 적으면 이름을
+// 바꾼 순간 "요소가 없다"로 죽거나, 더 나쁘게는 다른 요소를 찍는다.
+func screenshot(session *geom.Session, index int) (image.Image, error) {
+	selector := web.SlideIndexSelector(index)
+	rects, err := session.Rects(selector)
+	if err != nil {
+		return nil, err
+	}
+	if len(rects) == 0 {
+		return nil, fmt.Errorf("%s에 맞는 요소가 없다 — 웹 산출물이 덱과 맞지 않는다", selector)
+	}
+	buf, err := session.Clip(rects[0])
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", selector, err)
+	}
+	return DecodePNG(buf)
+}
+
+// galleryTitle은 갤러리 문서 제목이다 — 덱 이름이 보이면 탭을 여러 개 열어 두고 비교할 수 있다.
+func galleryTitle(deck *soml.Deck) string {
+	if deck.Title == "" {
+		return "balpyo 검수"
+	}
+	return "balpyo 검수 — " + deck.Title
+}
+
+// galleryLede는 열이 무엇인지 말하는 한 줄이다. 열이 하나뿐인 갤러리에 "왼쪽이 웹"이라고 쓰면
+// 사람이 보고 있는 것을 잘못 읽는다.
+func galleryLede(hasWeb, hasPPTX bool) string {
+	switch {
+	case hasWeb && hasPPTX:
+		return "왼쪽이 웹 스크린샷, 가운데가 LibreOffice로 되돌린 PPTX, 오른쪽이 픽셀 diff(마젠타가 다른 픽셀)다. " +
+			"허용 오차 표시는 판정이 아니라 눈으로 볼 자리라는 뜻이다."
+	case hasPPTX:
+		return "LibreOffice로 되돌린 PPTX다. 웹과 나란히 보려면 --target에 html을 넣는다."
+	default:
+		return "웹 스크린샷이다. PPTX와 나란히 보려면 --target에 pptx를 넣는다 (LibreOffice가 필요하다)."
+	}
+}
+
+// mustAbs는 절대 경로를 구한다. 실패하면 준 값을 그대로 쓴다 — 여기서 쓰이는 곳은 갤러리
+// 묶음 이름뿐이고, 그 이름 때문에 검수가 멈추는 것은 균형이 맞지 않는다.
+func mustAbs(path string) string {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return path
+	}
+	return abs
+}
