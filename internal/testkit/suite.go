@@ -77,6 +77,14 @@ var fixtureDiffOptions = map[string]DiffOptions{
 	// 도형 안 줄 세기가 따로 잡는다 (TestShapeFixtureInShapeTextLineCounts). 그래서 이 비율은
 	// 잔차만 남은 수치다. 3.7%는 측정값에 앞 픽스처들과 같은 폭의 여유를 더한 값이다.
 	"04_shape": {Channel: 32, MaxRatio: 0.037},
+	// 측정 최대 3.13% (슬라이드 2 002_body — P2.2). 잔차의 출처는 **크롬이 아니라 본문**이다:
+	// 띠 안(y≥656)에서 다른 픽셀은 1381개(슬라이드의 0.15%)이고 나머지 전부가 제목·문단·목록의
+	// 글리프 잔차다 (02_text_subset·06_stack/content-explicit와 같은 성질 — LibreOffice의 첫
+	// 기준선 +2~5px). 크롬 자체의 자리는 이 비율이 아니라 0 오차로 따로 못 박힌다
+	// (TestChromeFixtureShapesMatchGeometry — 잰 rect ↔ 골든 EMU 전수). 띠의 잉크 가로 범위도
+	// 두 렌더에서 같다 (웹 x=[64,1215], PPTX x=[64,1214] — 푸터 왼쪽 끝과 번호 오른쪽 끝이
+	// 콘텐츠 박스 경계에 맞는다). 3.6%는 측정값에 앞 픽스처들과 같은 폭의 여유를 더한 값이다.
+	"10_chrome": {Channel: 32, MaxRatio: 0.036},
 }
 
 // slideDiffOptions는 **슬라이드 한 장**의 픽셀 비교 허용 오차다 (`<픽스처>/<슬라이드 id>`).

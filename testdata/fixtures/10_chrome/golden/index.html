@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>chrome deck</title>
+<meta name="author" content="balpyo">
+<style>
+@layer balpyo.base, balpyo.theme, balpyo.author;
+
+@layer balpyo.base {
+  :root {
+    --balpyo-stage-width: 1280px;
+    --balpyo-stage-height: 720px;
+  }
+
+  * { box-sizing: border-box; }
+
+  /* 뷰어 크롬의 바탕 — 슬라이드 밖의 색이므로 덱의 색이 아니다 (테마 토큰이 아닌 유일한 색). */
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #111;
+  }
+
+  .balpyo-deck {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 24px;
+  }
+
+  /* 슬라이드는 논리 스테이지 크기를 그대로 갖는다. 저자·웹·지오메트리 패스가 같은
+     좌표계를 쓰므로 지오메트리 패스가 읽은 rect가 곧 PPTX 좌표다 (환산 분기 없음). */
+  .balpyo-slide {
+    position: relative;
+    width: var(--balpyo-stage-width);
+    height: var(--balpyo-stage-height);
+    overflow: hidden;
+  }
+
+  /* 스테이지는 자식을 문서 순서대로 세로로 쌓는다. 여백 64px은 1280폭의 5%로,
+     프로젝터의 오버스캔에서도 글자가 잘리지 않는다.
+
+     text-autospace는 잰 폭을 고정한다 — 브라우저가 한글↔라틴 경계에 간격을 넣기
+     시작하면(CSS Text 4는 그것을 기본값에 둔다) 잰 폭이 움직이고, 잰 폭이 곧 PPTX
+     좌표이므로 저자가 아무것도 고치지 않은 채 줄이 다시 접힌다 (D11, ADR 0005). */
+  .balpyo-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    text-autospace: no-autospace;
+  }
+
+  /* 텍스트 블록은 콘텐츠 폭 전체를 갖는다 — 줄바꿈 폭이 확정되어야 브라우저가 잰 박스가
+     PPTX 텍스트 박스로 그대로 간다. flex: 0 0 auto는 스택이 스테이지보다 길 때 박스가
+     눌리는 것을 막는다 (기본 정책은 박스 고정 + 오버플로 허용 — PRD §13-1). */
+  .balpyo-text {
+    margin: 0;
+    width: 100%;
+    flex: 0 0 auto;
+  }
+
+  /* 리스트 — 마커는 UA의 ::marker가 아니라 엔진이 그린다 (list-style: none + ::before).
+     UA 마커는 텍스트 왼쪽에 오른쪽 정렬이지만 PPTX는 marL+indent 위치에 왼쪽 정렬이고
+     뷰어가 그리는 방식이라 바꿀 수 없다 — 웹이 PPTX의 관례를 따른다 (ListTextIndent 주석). */
+  .balpyo-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    width: 100%;
+    flex: 0 0 auto;
+  }
+
+  /* display: block은 UA의 list-item 마커 박스를 아예 없앤다 — list-style: none 위에
+     이중 안전판이다. 항목 간 margin은 ListItemGap(0) — 수직 리듬은 줄높이가 소유한다.
+     행잉 인덴트는 padding-left + 음수 text-indent다 (첫 줄만 마커 자리로 나간다) —
+     PPTX의 marL + 음수 indent와 같은 모델이다. */
+  .balpyo-list > li {
+    display: block;
+    margin: 0 0 0px;
+    padding-left: 36px;
+    text-indent: -36px;
+  }
+
+  /* 마커는 **텍스트 흐름 안의 첫 박스**다 — 폭이 ListMarkerHang인 inline-block이라
+     텍스트가 정확히 padding 경계에서 시작한다. 흐름 밖(절대 배치)에 두지 않는 이유는
+     정렬이다: OOXML은 마커를 문단과 함께 정렬하므로 algn="ctr"이면 마커도 텍스트와 함께
+     가운데로 오는데, 절대 배치 마커는 들여쓰기 자리에 남아 두 타깃이 갈라진다.
+     text-indent를 되돌리는 것은 inline-block이 블록 컨테이너라 li의 음수 값을 상속해
+     자기 첫 줄에 다시 적용하기 때문이다. 확정 스타일(폰트·색·줄높이)은 그대로 상속하므로
+     마커와 첫 줄의 기준선이 맞는다 — PPTX의 마커도 런 서식을 따른다 (항목 07). */
+  .balpyo-list > li::before {
+    display: inline-block;
+    width: 36px;
+    text-indent: 0;
+  }
+
+  ul.balpyo-list > li::before { content: "•"; }
+
+  /* ol은 엔진 카운터를 쓴다 — UA의 list-item 카운터는 display를 되돌려야 움직이므로
+     의존하지 않는다. "1." 형식은 PPTX buAutoNum@type="arabicPeriod"와 짝이다. */
+  ol.balpyo-list { counter-reset: balpyo-item; }
+  ol.balpyo-list > li {
+    counter-increment: balpyo-item;
+  }
+  ol.balpyo-list > li::before { content: counter(balpyo-item) "."; }
+
+  /* <stack>·캔버스 스테이지 = 단일 셀 grid 겹침 (PRD §13-3). 자식이 grid-area 1/1에
+     겹치되 in-flow로 남아 stack 크기가 가장 큰 자식에 맞춰 자동 결정된다. position:relative는
+     x/y 자식의 포함 블록을 만들고(패딩 박스 기준), 자식의 position:relative는 칠 순서를
+     문서 순서로 되돌린다 (위치 지정 형제는 문서 순서로 칠해진다 — 별도 z-index 없음). */
+  .balpyo-stack { display: grid; position: relative; }
+  .balpyo-stage-canvas { display: grid; }
+  :is(.balpyo-stack, .balpyo-stage-canvas) > * {
+    grid-area: 1 / 1;
+    position: relative;
+  }
+
+  /* stack 자식의 텍스트·리스트는 확정 폭에서 벗어나 auto로 돌아간다 — 폭이 칸을 다 먹으면
+     at의 justify-self가 자식을 움직이지 못한다. 기존 row/col/grid 초기화와 별도 규칙이다
+     (그 규칙은 stack 없는 골든에도 나가므로 stack을 끼워 넣으면 골든이 움직인다). */
+  :is(.balpyo-stack, .balpyo-stage-canvas) > :is(.balpyo-text, .balpyo-list) {
+    width: auto;
+  }
+
+  /* <shape>는 **박스 하나와 그림 하나**다. 박스가 잰 rect(=PPTX xfrm)이고 그림은 절대
+     배치로 흐름에서 빠지므로, 프리셋 기하가 배치에 영향을 주지 않는다. 세로 flex인 이유는
+     도형 안 텍스트가 문서 순서대로 쌓이고 세로 앵커가 주축 분배가 되기 때문이다. */
+  .balpyo-shape {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 그림은 박스를 덮는다. overflow: visible이어야 하는 이유가 둘이다 — 선이 경로 중앙에
+     그려져 굵기의 절반이 박스 밖으로 번지고(OOXML a:ln과 같은 규약), callout의 꼬리가
+     박스 아래로 나간다. UA는 바깥 <svg>에 overflow: hidden을 걸므로 명시한다. */
+  .balpyo-shape-ink {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  /* 그림이 절대 배치라 흐름 콘텐츠보다 위에 칠해진다 — 자식을 position: relative로 올려
+     글자가 그림 위에 오게 한다. z-index로 그림을 내리는 길은 스택 문맥에 따라 슬라이드
+     바탕 아래로 사라질 수 있어 쓰지 않는다. */
+  .balpyo-shape > .balpyo-text {
+    position: relative;
+  }
+
+  /* 프리셋의 텍스트 영역 (ADR 0040). 네 변의 인셋은 인라인 백분율이고, 이 규칙은 "그
+     사각형이 박스 안의 절대 배치 상자이며 텍스트가 세로로 쌓인다"는 정의만 갖는다.
+     그림보다 문서 순서에서 뒤에 오므로 글자가 그림 위에 칠해진다 (위 규칙과 같은 이유로
+     z-index를 쓰지 않는다). */
+  .balpyo-shape-body {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 회전 — 선언은 여기, 각도는 인라인 커스텀 프로퍼티다. 측정 뷰가 이 선언을 무효화해야
+     잰 rect가 **회전 전** 박스가 된다 (getBoundingClientRect는 회전된 bbox를 준다: 45도에서
+     1.41배). 인라인 style은 층 밖에서 이기므로 선언이 요소 쪽에 있으면 덮을 수 없다. */
+  .balpyo-shape-rotate {
+    transform: rotate(var(--balpyo-shape-rotate, 0deg));
+  }
+  html[data-balpyo-view="measure"] .balpyo-shape-rotate {
+    transform: none;
+  }
+
+  /* 덱 크롬은 스테이지의 형제다 (ADR 0045) — 흐름 밖에 있어 본문 높이를 먹지 않는다. */
+  .balpyo-chrome {
+    position: absolute;
+    bottom: 0;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .balpyo-chrome-start { left: 64px; }
+  .balpyo-chrome-center { left: 50%; transform: translateX(-50%); }
+  .balpyo-chrome-end { right: 64px; }
+
+  /* ── 발표자 뷰 ── 런타임 JS가 <html>에 data-balpyo-view="presenter"를 켠다.
+     속성이 없으면(JS 꺼짐, 또는 지오메트리 패스가 지운 상태) 위의 세로 스택 그대로다. */
+  .balpyo-viewer-bar, .balpyo-viewer-notes { display: none; }
+
+  html[data-balpyo-view="presenter"] { height: 100%; }
+  html[data-balpyo-view="presenter"] body { height: 100%; overflow: hidden; }
+  html[data-balpyo-view="presenter"] .balpyo-deck {
+    position: fixed;
+    inset: 0;
+    padding: 0;
+    display: block;
+  }
+
+  /* 슬라이드는 전부 화면 가운데 겹쳐 두고 활성 슬라이드만 보인다. display가 아니라
+     visibility인 이유와 transform 스케일인 이유는 파일 머리 주석에 있다. */
+  html[data-balpyo-view="presenter"] .balpyo-slide {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(var(--balpyo-view-scale, 1));
+    visibility: hidden;
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-active {
+    visibility: visible;
+  }
+
+  html[data-balpyo-view="presenter"] .balpyo-viewer-bar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    position: fixed;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    z-index: 10;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(20, 20, 22, 0.88);
+    color: #ddd;
+    font: 14px/1 system-ui, sans-serif;
+  }
+  .balpyo-viewer-bar button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    padding: 8px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .balpyo-viewer-bar button:hover { background: rgba(255, 255, 255, 0.12); }
+  .balpyo-viewer-bar button:disabled { opacity: 0.35; cursor: default; background: transparent; }
+  .balpyo-viewer-bar button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.18); }
+  .balpyo-viewer-counter {
+    padding: 0 10px;
+    color: #aaa;
+    font-variant-numeric: tabular-nums;
+  }
+
+  html[data-balpyo-view="presenter"] .balpyo-viewer-notes {
+    display: block;
+    position: fixed;
+    left: 50%;
+    bottom: 64px;
+    transform: translateX(-50%);
+    z-index: 10;
+    width: min(640px, calc(100vw - 48px));
+    max-height: 40vh;
+    overflow-y: auto;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: rgba(20, 20, 22, 0.92);
+    color: #e6e6e6;
+    font: 15px/1.6 system-ui, sans-serif;
+    white-space: pre-wrap;
+  }
+  /* hidden 속성이 이겨야 한다 — 위의 display: block이 UA 스타일을 덮으므로 명시한다. */
+  html[data-balpyo-view="presenter"] .balpyo-viewer-notes[hidden] { display: none; }
+  .balpyo-viewer-notes.balpyo-viewer-empty { color: #999; font-style: italic; }
+}
+
+@layer balpyo.theme {
+  /* 테마 "minimal"의 토큰 표 — 웹 변수와 PPTX 테마 파트가 이 한 표에서 나온다. */
+  :root {
+    --balpyo-color-fg: #1A1A1A;
+    --balpyo-color-bg: #FFFFFF;
+    --balpyo-color-muted: #6B7280;
+    --balpyo-color-surface: #F3F4F6;
+    --balpyo-color-accent1: #0F65F9;
+    --balpyo-font-heading: "Noto Sans", "Noto Sans CJK KR", sans-serif;
+    --balpyo-font-body: "Noto Sans", "Noto Sans CJK KR", sans-serif;
+    --balpyo-font-mono: "Noto Sans Mono", "Noto Sans CJK KR", monospace;
+    --balpyo-space-xs: 6px;
+    --balpyo-space-sm: 12px;
+    --balpyo-space-md: 24px;
+    --balpyo-space-lg: 36px;
+    --balpyo-space-xl: 48px;
+    --balpyo-space-2xl: 72px;
+    --balpyo-shadow-soft: 0px 4px 16px color-mix(in srgb, var(--balpyo-color-fg) 15%, transparent);
+  }
+
+  .balpyo-slide { background: var(--balpyo-color-bg); }
+
+  .balpyo-stage.balpyo-slots > :is(.balpyo-text, .balpyo-list) { width: auto; }
+  .balpyo-stage.balpyo-layout-section-divider.balpyo-slots { display: grid; grid-template-columns: 1fr; grid-template-rows: auto auto; grid-template-areas: "title" "subtitle"; align-content: center; }
+  .balpyo-stage.balpyo-layout-title.balpyo-slots { display: grid; grid-template-columns: 1fr; grid-template-rows: auto auto auto 1fr auto auto; grid-template-areas: "kicker" "title" "subtitle" "." "author" "date"; justify-items: center; align-content: center; }
+}
+</style>
+</head>
+<body>
+<div class="balpyo-deck" data-aspect="16:9" data-slides="4">
+<section class="balpyo-slide" id="chrome-cover" data-slide-index="0" data-slide-source="slides/001_cover.slide">
+<div class="balpyo-stage balpyo-layout-title balpyo-slots">
+<p class="balpyo-text" data-balpyo-id="s0.0" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; grid-area: kicker">2026 Q3</p>
+<h1 class="balpyo-text" data-balpyo-id="s0.1" data-balpyo-el="h1" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start; grid-area: title">덱 크롬</h1>
+<p class="balpyo-text" data-balpyo-id="s0.2" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; grid-area: subtitle">페이지 번호와 푸터는 덱의 사실이다</p>
+<p class="balpyo-text" data-balpyo-id="s0.3" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; grid-area: author">김서봄</p>
+<p class="balpyo-text" data-balpyo-id="s0.4" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; grid-area: date">2026-09-20</p>
+</div>
+</section>
+<section class="balpyo-slide" id="chrome-body" data-slide-index="1" data-slide-source="slides/002_body.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s1.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">두 번째 장</h2>
+<p class="balpyo-text" data-balpyo-id="s1.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">이 장의 번호는 둘이다. 표지가 크롬을 달지 않았어도 덱 안의 자리는 그대로 세기 때문이다. 푸터 글자는 설정에 한 번 쓰고 모든 장이 같은 값을 받는다.</p>
+<ul class="balpyo-list" data-balpyo-id="s1.2" data-balpyo-el="ul">
+<li class="balpyo-text" data-balpyo-id="s1.2.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">내용과 켜짐은 설정이 갖는다</li>
+<li class="balpyo-text" data-balpyo-id="s1.2.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">자리와 정렬, 역할과 제외 규칙은 테마가 갖는다</li>
+</ul>
+</div>
+<div class="balpyo-chrome balpyo-chrome-start" data-chrome-kind="footer" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">2026 Q3 · 내부용</div>
+<div class="balpyo-chrome balpyo-chrome-end" data-chrome-kind="pageNumber" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: end">2</div>
+</section>
+<section class="balpyo-slide" id="chrome-divider" data-slide-index="2" data-slide-source="slides/003_divider.slide">
+<div class="balpyo-stage balpyo-layout-section-divider balpyo-slots">
+<h2 class="balpyo-text" data-balpyo-id="s2.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start; grid-area: title">2부 · 측정</h2>
+<p class="balpyo-text" data-balpyo-id="s2.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; grid-area: subtitle">크롬의 자리도 브라우저가 잰다</p>
+</div>
+</section>
+<section class="balpyo-slide" id="chrome-after-divider" data-slide-index="3" data-slide-source="slides/004_after_divider.slide">
+<div class="balpyo-stage balpyo-stage-canvas">
+<div class="balpyo-shape" data-balpyo-id="s3.0" data-balpyo-el="shape" style="padding: var(--balpyo-space-lg) var(--balpyo-space-lg) var(--balpyo-space-lg) var(--balpyo-space-lg); width: 1152px; height: 480px; position: absolute; left: 64px; top: 120px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%"/></svg>
+<h2 class="balpyo-text" data-balpyo-id="s3.0.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">네 번째 장</h2>
+<p class="balpyo-text" data-balpyo-id="s3.0.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">칠한 면이 아래 띠에 닿을 만큼 내려오면 번호를 덮을 수 있다. 크롬 도형이 이 면보다 뒤에 나오는 것이 그때도 번호가 보인다는 증거다.</p>
+</div>
+</div>
+<div class="balpyo-chrome balpyo-chrome-start" data-chrome-kind="footer" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">2026 Q3 · 내부용</div>
+<div class="balpyo-chrome balpyo-chrome-end" data-chrome-kind="pageNumber" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: end">4</div>
+</section>
+</div>
+<script>
+(() => {
+  "use strict";
+  const root = document.documentElement;
+  const slides = Array.from(document.querySelectorAll(".balpyo-slide"));
+  if (slides.length === 0) return;
+
+  const button = (cls, label, text) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = cls;
+    b.setAttribute("aria-label", label);
+    b.textContent = text;
+    return b;
+  };
+  const prev = button("balpyo-viewer-prev", "Previous slide", "‹");
+  const next = button("balpyo-viewer-next", "Next slide", "›");
+  const notesToggle = button("balpyo-viewer-notes-toggle", "Toggle speaker notes", "Notes");
+  notesToggle.setAttribute("aria-pressed", "false");
+  const counter = document.createElement("span");
+  counter.className = "balpyo-viewer-counter";
+
+  const bar = document.createElement("nav");
+  bar.className = "balpyo-viewer-bar";
+  bar.setAttribute("aria-label", "Presentation controls");
+  bar.append(prev, counter, next, notesToggle);
+
+  const notes = document.createElement("aside");
+  notes.className = "balpyo-viewer-notes";
+  notes.setAttribute("aria-label", "Speaker notes");
+  notes.hidden = true;
+
+  document.body.append(notes, bar);
+
+  let current = -1;
+
+  // 배율은 창에 꽉 차는 fit이다. 레이아웃 크기(offsetWidth)는 transform과 무관하게 논리
+  // 스테이지이므로, 잰 값을 다시 스케일하는 되먹임이 없다.
+  const fit = () => {
+    const scale = Math.min(
+      window.innerWidth / slides[0].offsetWidth,
+      window.innerHeight / slides[0].offsetHeight);
+    root.style.setProperty("--balpyo-view-scale", String(scale));
+  };
+
+  const show = (index, writeHash) => {
+    const target = Math.min(Math.max(index, 0), slides.length - 1);
+    if (target === current) return;
+    if (current >= 0) slides[current].classList.remove("balpyo-viewer-active");
+    current = target;
+    const slide = slides[current];
+    slide.classList.add("balpyo-viewer-active");
+    counter.textContent = (current + 1) + " / " + slides.length;
+    prev.disabled = current === 0;
+    next.disabled = current === slides.length - 1;
+    const note = slide.querySelector(".balpyo-notes");
+    notes.textContent = note ? note.textContent : "No notes for this slide.";
+    notes.classList.toggle("balpyo-viewer-empty", !note);
+    if (writeHash) {
+      // 히스토리를 쌓지 않는다 — 뒤로 가기가 슬라이드를 되감으면 발표 중에 페이지를
+      // 떠나는 길이 없어진다. file://에서 막는 브라우저가 있어도 조용히 넘어간다.
+      try { history.replaceState(null, "", "#/" + encodeURIComponent(slide.id)); } catch (e) {}
+    }
+  };
+
+  const fromHash = () => {
+    let raw = location.hash.replace(/^#\/?/, "");
+    try { raw = decodeURIComponent(raw); } catch (e) {}
+    if (raw === "") return 0;
+    const byID = slides.findIndex((s) => s.id === raw);
+    if (byID >= 0) return byID;
+    const n = Number(raw);
+    if (Number.isInteger(n) && n >= 1 && n <= slides.length) return n - 1;
+    return 0;
+  };
+
+  prev.addEventListener("click", () => show(current - 1, true));
+  next.addEventListener("click", () => show(current + 1, true));
+  notesToggle.addEventListener("click", () => {
+    notes.hidden = !notes.hidden;
+    notesToggle.setAttribute("aria-pressed", String(!notes.hidden));
+  });
+  window.addEventListener("hashchange", () => show(fromHash(), false));
+  window.addEventListener("resize", fit);
+  window.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    switch (e.key) {
+    case "ArrowRight": case "ArrowDown": case "PageDown": case " ":
+      e.preventDefault(); show(current + 1, true); break;
+    case "ArrowLeft": case "ArrowUp": case "PageUp":
+      e.preventDefault(); show(current - 1, true); break;
+    case "Home": e.preventDefault(); show(0, true); break;
+    case "End": e.preventDefault(); show(slides.length - 1, true); break;
+    case "n": case "N": notesToggle.click(); break;
+    }
+  });
+
+  root.setAttribute("data-balpyo-view", "presenter");
+  fit();
+  // 해시가 있으면 그 슬라이드로 열되 해시는 손대지 않는다 — 사용자가 준 딥링크 형태
+  // (번호든 id든)를 열자마자 바꿔치지 않는다. 해시가 없으면 첫 슬라이드고 URL은 깨끗하다.
+  show(fromHash(), false);
+})();
+</script>
+</body>
+</html>

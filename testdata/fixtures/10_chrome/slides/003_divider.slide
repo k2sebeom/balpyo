@@ -1,0 +1,8 @@
+<!-- 구역 표지도 제외 레이아웃이다 — 제외가 **슬라이드 단위**라는 사실이 이 픽스처에 두 번
+     나오는 이유다: 흐름 모드 슬라이드는 PPTX 레이아웃 파트 하나(slideLayout1)를 공유하므로
+     `p:ph type="sldNum"`으로는 "이 장에만 번호가 없다"를 표현할 수 없다. 그래서 크롬은
+     플레이스홀더가 아니라 슬라이드 파트의 도형이다 (ADR 0045 · render/pptx/chrome.go). -->
+<slide id="chrome-divider" layout="section-divider">
+  <h2 slot="title">2부 · 측정</h2>
+  <p slot="subtitle">크롬의 자리도 브라우저가 잰다</p>
+</slide>
