@@ -272,8 +272,8 @@ func TestParseShapeErrors(t *testing.T) {
 			want: []string{"1:9 알 수 없는 태그 <group>"},
 		},
 		{
-			// <li>는 리스트 컨테이너의 자식이지 도형 안 문단이 아니다 — 앵커를 열면
-			// 웹에서만 뜻을 갖는 선언이 된다 (childPlacementAttrs와 같은 근거).
+			// 항목은 외관 속성을 받지 않는다 (ADR 0038) — 앵커는 목록 단위의 성질이므로
+			// 컨테이너(`<ul anchor>`)가 받아 항목이 상속한다.
 			name: "li에는 anchor가 없다",
 			src:  `<slide><ul><li anchor="center">항목</li></ul></slide>`,
 			want: []string{"1:16 <li>에는 속성을 쓸 수 없다 (anchor)"},
@@ -282,11 +282,6 @@ func TestParseShapeErrors(t *testing.T) {
 			name: "인라인에는 anchor가 없다",
 			src:  `<slide><p><span anchor="center">글자</span></p></slide>`,
 			want: []string{"1:17 <span>에 알 수 없는 속성 anchor (쓸 수 있는 속성: color, weight)"},
-		},
-		{
-			name: "리스트 컨테이너에는 anchor가 없다",
-			src:  `<slide><ul anchor="center"><li>항목</li></ul></slide>`,
-			want: []string{"1:12 <ul>에 알 수 없는 속성 anchor (쓸 수 있는 속성: grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
 		},
 		{
 			// 컨테이너는 자기 외관을 갖지 않는다 — 앵커도 텍스트의 것이다.
@@ -463,14 +458,17 @@ func TestBoxAttrsSharedWithContainers(t *testing.T) {
 // `anchor`가 열린 자리와 닫힌 자리 전수 — 속성 표가 흔들리면 저자가 쓴 앵커가 조용히
 // 무시되거나 뜻 없는 자리에서 받아들여진다.
 func TestAnchorAttrCoverage(t *testing.T) {
-	for _, name := range append([]string{TextElement}, blockElements...) {
+	// 텍스트 외관을 받는 요소는 전부 앵커를 받는다 — 리스트 컨테이너가 이 목록에 들어온 것이
+	// P0.3이다 (ADR 0038: 외관은 목록 단위의 성질이므로 컨테이너가 받아 항목이 상속한다).
+	open := append([]string{TextElement}, blockElements...)
+	open = append(open, listContainerElements...)
+	for _, name := range open {
 		if !hasAttr(elementSpecs[name].attrs, AnchorAttr) {
 			t.Errorf("<%s>에 %s가 없다", name, AnchorAttr)
 		}
 	}
 	closed := []string{ShapeElement, ListItemElement, RootElement, noteElement, SpacerElement}
 	closed = append(closed, inlineElements...)
-	closed = append(closed, listContainerElements...)
 	closed = append(closed, layoutContainerElements...)
 	for _, name := range closed {
 		if hasAttr(elementSpecs[name].attrs, AnchorAttr) {

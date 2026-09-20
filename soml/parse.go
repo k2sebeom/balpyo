@@ -112,14 +112,23 @@ func buildElementSpecs() map[string]elementSpec {
 		}
 	}
 	for _, name := range listContainerElements {
-		// 리스트 컨테이너는 외관 속성을 갖지 않지만(위 주석) 배치의 대상은 된다 —
-		// `<row><ul basis="360">`은 두 열에 리스트를 놓는 흔한 배치다.
+		// 리스트 컨테이너는 블록과 **같은 외관 4종**을 받는다 (variant만 빠진다 — ADR 0038):
+		// 목록 글자 크기를 바꾸려고 레이아웃을 바꿀 이유가 없어야 한다. 속성이 컨테이너에
+		// 붙고 `<li>`는 상속만 받는 이유는 외관이 **목록 단위의 성질**이라는 것이다 —
+		// 항목마다 크기가 갈리면 그것은 목록이 아니라 문단 여럿이다.
+		//
+		// variant를 열지 않는 이유는 위 블록 주석과 같다: variant는 외관 **번들**이라
+		// 상속의 뜻이 "글자 하나"가 아니라 "역할 바꾸기"가 된다.
+		//
+		// 배치의 대상도 된다 — `<row><ul basis="360">`은 두 열에 리스트를 놓는 흔한 배치다.
 		specs[name] = elementSpec{
-			attrs:    withChildPlacement(nil),
+			attrs:    withChildPlacement([]string{"size", "color", "align", AnchorAttr}),
 			model:    modelElements,
 			children: []string{ListItemElement},
 		}
 	}
+	// `<li>`는 속성을 갖지 않는다 — 외관은 컨테이너에서 상속하고(ADR 0038), 자식 배치
+	// 속성도 없다 (리스트 항목은 flex 항목이 아니라 한 텍스트 흐름의 문단이다).
 	specs[ListItemElement] = elementSpec{model: modelInline}
 	for _, name := range layoutContainerElements {
 		// 빈 컨테이너(`<row></row>`)는 유효하다 — 자식 0개의 flex 컨테이너는 CSS에서

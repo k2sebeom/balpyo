@@ -123,6 +123,18 @@ func TestParseTextSubset(t *testing.T) {
 			want: `h3[size=40 color=accent1 align=center]("소제")`,
 		},
 		{
+			// 리스트 컨테이너는 블록과 **같은** 외관 4종을 받는다 (P0.3 — variant는 여전히
+			// 닫혀 있다): 목록의 타이포그래피를 바꾸려고 레이아웃을 바꿀 이유가 없어야 한다.
+			name: "리스트 컨테이너의 외관 속성 — 블록과 같은 4종",
+			src:  `<slide><ul size="20" color="accent1" align="center" anchor="center"><li>항목</li></ul></slide>`,
+			want: `ul[size=20 color=accent1 align=center anchor=center](li("항목"))`,
+		},
+		{
+			name: "리스트 컨테이너의 외관과 배치는 함께 쓴다",
+			src:  `<slide><row><ol basis="360" size="20"><li>항목</li></ol></row></slide>`,
+			want: `row(ol[basis=360 size=20](li("항목")))`,
+		},
+		{
 			name: "pre 코드 블록",
 			src:  `<slide><pre>x := 1</pre></slide>`,
 			want: `pre("x := 1")`,
@@ -215,16 +227,25 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			want: []string{"1:19 <strong>에는 속성을 쓸 수 없다 (variant)"},
 		},
 		{
-			// 리스트 컨테이너의 외관은 여전히 닫혀 있다. 열린 것은 배치뿐이다 —
-			// `<row><ul basis="360">`이 유효해야 하므로 (Iteration 3, soml/layout.go).
+			// 외관 4종은 열렸지만 variant는 닫혀 있다 (P0.3·ADR 0038): variant는 외관
+			// **번들**이라 항목마다 다른 번들이 붙으면 목록의 타이포그래피가 목록이기를
+			// 멈춘다 — 컨테이너에 열어도 상속의 뜻이 "글자 하나"가 아니라 "역할 바꾸기"가
+			// 된다.
 			name: "리스트 컨테이너에는 variant가 없다",
 			src:  `<slide><ul variant="lead"><li>x</li></ul></slide>`,
-			want: []string{"1:12 <ul>에 알 수 없는 속성 variant (쓸 수 있는 속성: grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
+			want: []string{"1:12 <ul>에 알 수 없는 속성 variant (쓸 수 있는 속성: size, color, align, anchor, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
 		},
 		{
 			name: "li에는 variant가 없다",
 			src:  `<slide><ul><li variant="lead">x</li></ul></slide>`,
 			want: []string{"1:16 <li>에는 속성을 쓸 수 없다 (variant)"},
+		},
+		{
+			// 항목은 **상속만** 받는다 (ADR 0038) — 외관은 목록 단위의 성질이고, 항목마다
+			// 다른 크기를 허용하면 목록이 문단 여럿과 구별되지 않는다.
+			name: "li에는 외관 속성이 없다",
+			src:  `<slide><ul><li size="20">x</li></ul></slide>`,
+			want: []string{"1:16 <li>에는 속성을 쓸 수 없다 (size)"},
 		},
 		{
 			name: "pre 안의 인라인은 아직이다",

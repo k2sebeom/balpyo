@@ -122,10 +122,9 @@ func (r *resolver) slideLayout(slide *soml.Slide) {
 // 무관하게 전부 지난다** (resolveLayout — 자식 배치 속성은 한 벌이므로 종류마다 표를
 // 복제하지 않는다). 한 요소가 두 채널을 함께 쓰는 것은 정상이다 (`<p grow="1" size="30">`).
 //
-// 리스트 컨테이너(<ul>/<ol>)의 Appearance는 **텍스트 외관**을 채우지 않는다: 컨테이너는
-// 항목을 담을 뿐이고 타이포그래피는 <li>(body 역할)에 붙는다. 마커·들여쓰기 같은 리스트
-// 표현을 렌더러가 컨테이너에서 무엇으로 읽을지는 렌더 매핑(Iteration 2 항목 05·07)이
-// 정한다 — 여기서 미리 정하면 그 결정 전에 두 렌더러가 각자 추측하게 된다. 반면 배치는
+// 리스트 컨테이너(<ul>/<ol>)의 Appearance는 **텍스트 외관을 채우지 않는다**: 컨테이너는
+// 항목을 담을 뿐이고 타이포그래피는 <li>(body 역할)에 붙는다. 컨테이너가 받는 외관 속성은
+// 확정 값이 아니라 **항목들이 함께 받는 패치**다 (resolveList, ADR 0038). 반면 배치는
 // 컨테이너에도 붙는다 (`<row><ul basis="360">`은 두 열에 리스트를 놓는 흔한 배치다).
 func (r *resolver) node(node soml.Node, parent *soml.Element) {
 	elem, ok := node.(*soml.Element)
@@ -155,8 +154,14 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 		r.resolveTable(elem)
 		return
 	}
+	if soml.KindOf(elem.Name) == soml.KindListContainer {
+		// 여섯 번째 갈래다. 표와 같은 이유로 return한다 — 컨테이너의 외관 속성이 항목의
+		// 캐스케이드에 들어가므로(resolveList) 항목을 아래 순회에 맡기면 그 패치가 사라진다.
+		r.resolveList(elem)
+		return
+	}
 	if role, ok := r.textRole(elem); ok {
-		r.resolveText(elem, role)
+		r.resolveText(elem, role, textPatch{})
 		// 텍스트 역할 요소의 자식은 문자 데이터와 인라인 태그뿐이다 (파서의 modelInline) —
 		// 인라인 런 스타일은 블록의 확정 스타일에서 상속하므로 여기서 트리 순회가 끝난다.
 		r.resolveInlines(elem, elem.Appearance.Text)
@@ -217,14 +222,51 @@ func (r *resolver) textRole(elem *soml.Element) (soml.TextRole, bool) {
 //
 // 역할 기본값(완전한 외관)을 바닥에 깔고, 위 세 단을 낮은 단부터 부분 패치로 얹는다.
 // 컴포넌트 기본값 단은 태그별이다 (textComponentDefault — h3의 크기, blockquote의 색).
-// 병합은 mergeText(cascade.go) 한 곳에서만 일어난다 — 우선순위는 아래 세 줄의 순서가
+// 병합은 mergeText(cascade.go) 한 곳에서만 일어난다 — 우선순위는 아래 네 줄의 순서가
 // 전부이고, 다른 어디에도 없다.
-func (r *resolver) resolveText(elem *soml.Element, role soml.TextRole) {
+//
+// inherited는 **부모가 물려준 패치**다 (리스트 항목만 쓴다 — resolveList). 자기 인라인
+// 속성보다 **먼저** 얹는 이유는 우선순위의 방향이다: 가까운 선언이 이긴다. `<li>`는 지금
+// 속성을 받지 않으므로(ADR 0038) 두 단이 겹치는 경우가 아직 없지만, 순서를 여기서 못 박아
+// 두면 `<li>`에 속성을 여는 날 우선순위를 다시 논의할 필요가 없다.
+func (r *resolver) resolveText(elem *soml.Element, role soml.TextRole, inherited textPatch) {
 	style := r.textRoleDefaults(role)
 	mergeText(&style, r.textComponentDefault(elem.Name))
 	mergeText(&style, r.variantPatch(elem))
+	mergeText(&style, inherited)
 	mergeText(&style, r.inlinePatch(elem))
 	elemAppearance(elem).Text = &style
+}
+
+// resolveList는 리스트 컨테이너와 그 항목을 해석한다 (ADR 0038).
+//
+// 컨테이너의 외관 속성(size/color/align/anchor)은 컨테이너의 확정 값이 되지 않고 **모든
+// 항목이 함께 받는 패치**가 된다. 근거는 외관이 목록 단위의 성질이라는 것이다: 목록 하나의
+// 글자 크기는 목록의 성질이고, 항목마다 갈리면 그것은 목록이 아니라 문단 여럿이다. 컨테이너
+// 자신에게 확정 스타일을 채우지 않는 이유는 소비자가 없다는 것이다 — 컨테이너는 텍스트를
+// 담지 않으므로(자식은 `<li>`뿐) 값을 채우면 두 렌더러가 "컨테이너의 값"과 "항목의 값"
+// 중 어느 쪽이 진실인지 각자 고르게 된다.
+//
+// 패치는 여기서 **한 번** 만들어 모든 항목에 같은 것을 준다: 항목마다 다시 읽으면 값 진단이
+// 항목 수만큼 나고(저자가 쓴 속성은 하나다), 같은 속성을 두 번 해석할 이유도 없다.
+func (r *resolver) resolveList(list *soml.Element) {
+	patch := r.inlinePatch(list)
+	for _, child := range list.Children {
+		item, ok := child.(*soml.Element)
+		if !ok {
+			// 컨테이너 직속 문자 데이터는 파서가 막는다 (modelElements) — 여기 오는 노드는
+			// 없지만, 파서를 거치지 않은 덱을 조용히 통과시키지 않고 건너뛴다.
+			continue
+		}
+		role, ok := r.textRole(item)
+		if !ok {
+			// 컨테이너의 자식은 `<li>`뿐이다 (파서의 children allowlist) — 역할 없는 자식은
+			// 파서를 거치지 않은 덱이고, 렌더러가 매핑 없음으로 멈춘다.
+			continue
+		}
+		r.resolveText(item, role, patch)
+		r.resolveInlines(item, item.Appearance.Text)
+	}
 }
 
 // elemAppearance는 요소의 확정 외관·배치 자리다 (없으면 만든다).
