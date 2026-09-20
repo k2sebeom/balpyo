@@ -46,7 +46,7 @@ balpyo init my-talk --author "이세범"
 | `--project <dir>` | `.` | 만들 프로젝트 루트 (위치 인자와 같은 뜻) |
 | `--title <제목>` | 디렉토리 이름 | 덱 제목. PPTX 파일 이름이 여기서 나온다 |
 | `--author <이름>` | `발표자` (자리표시자) | 발표자 |
-| `--theme <이름>` | `minimal` | 테마. **내장 테마만** 받는다 |
+| `--theme <이름>` | `minimal` | 테마. **내장 테마만** 받는다 (`minimal`·`editorial`·`ink`) |
 | `--aspect <비율>` | `16:9` | 종횡비 (`16:9`·`4:3`) |
 | `--lang <코드>` | `ko` | 덱 언어 (`index.html`의 `lang`) |
 
@@ -93,11 +93,16 @@ balpyo build --project testdata/fixtures/01_text --target html,pptx
 | `--project <dir>` | `.` | 프로젝트 루트 — `balpyo.json`과 `slides/`가 있는 곳 |
 | `--target <목록>` | `html` | 렌더 타깃. 쉼표로 여러 개: `html,pptx` |
 | `--out <dir>` | `balpyo.json`의 `outDir` (기본 `dist`) | 출력 디렉토리. 상대 경로는 프로젝트 루트 기준 |
+| `--theme <이름>` | `balpyo.json`의 `theme` (기본 `minimal`) | 테마. **내장 테마만** 받는다 (`minimal`·`editorial`·`ink`) |
 | `--strict` | 꺼짐 | 경고를 에러로 승격한다 |
 | `--check-layout` | 꺼짐 | 배치를 검사한다 (넘침·스테이지 이탈·겹침). 브라우저를 띄운다 |
 
 값 우선순위는 **CLI 플래그 > `balpyo.json` > 기본값**이다. `balpyo.json`은 선택이다 —
 없으면 기본값을 쓰고 덱 제목은 디렉토리 이름에서 유도한다.
+
+`--theme`가 플래그인 이유는 테마를 고르는 방법이 **같은 덱을 두 테마로 내서 견주는 것**이라는
+것이다 (자세히는 [테마 고르기·만들기](../guides/theming.md)). `balpyo.json`을 고쳐서 하면
+되돌리기를 잊는다. 없는 이름은 렌더 전에 멈춘다 — 쓸 수 있는 이름을 함께 나열한다.
 
 `--target html,pptx`처럼 PPTX가 포함되고 덱에 좌표가 필요한 요소가 있으면 빌드가
 지오메트리 패스를 위해 시스템 브라우저(Chromium/Chrome)를 띄운다 —
@@ -208,6 +213,7 @@ balpyo check --project my-talk
 | 옵션 | 기본값 | 뜻 |
 |---|---|---|
 | `--project <dir>` | `.` | 프로젝트 루트 |
+| `--theme <이름>` | `balpyo.json`의 `theme` | `build`와 같다 — 테마가 배치를 바꾸므로 배치 판정도 바뀐다 |
 | `--strict` | 꺼짐 | 경고를 에러로 승격한다 |
 | `--check-layout` | 꺼짐 | 배치도 검사한다 (넘침·스테이지 이탈·겹침). 브라우저를 띄운다 |
 
@@ -277,7 +283,7 @@ balpyo watch --project examples/quarterly-review
 
 ### 옵션
 
-`build`의 옵션을 전부 같은 뜻으로 받고(`--project`·`--target`·`--out`·`--strict`·
+`build`의 옵션을 전부 같은 뜻으로 받고(`--project`·`--target`·`--out`·`--theme`·`--strict`·
 `--check-layout`) 하나가 더 있다.
 
 | 옵션 | 기본값 | 뜻 |
@@ -382,8 +388,10 @@ LibreOffice로 되돌린 PPTX, 그리고 다른 픽셀을 마젠타로 칠한 di
 
 ### 옵션
 
-`build`의 옵션을 같은 뜻으로 받고(`--project`·`--target`·`--out`·`--strict`) 하나가 더 있다.
-`--out`은 여기서도 **빌드 산출물**이 가는 곳이고, 갤러리는 `--gallery`가 정한다.
+`build`의 옵션을 같은 뜻으로 받고(`--project`·`--target`·`--out`·`--theme`·`--strict`) 하나가
+더 있다. `--out`은 여기서도 **빌드 산출물**이 가는 곳이고, 갤러리는 `--gallery`가 정한다.
+`--theme`로 갤러리를 두 번 만들면(`--gallery preview-ink` 등) 한 덱의 두 테마를 눈으로 견줄 수
+있다.
 
 | 옵션 | 기본값 | 뜻 |
 |---|---|---|
