@@ -98,12 +98,26 @@ PNG로 되돌려 12장 검수.
 ### P0.2 미구현 어휘는 **파싱 전에** 막는다 (D2)
 표를 다 쓴 뒤 렌더 단계에서 죽는 것은 진단의 실패다. 어휘 카탈로그와 렌더러 능력이 갈라질 수
 있는 구조 자체를 닫는다.
-- [ ] RED: 두 렌더러가 다루는 kind 집합과 `soml`의 요소 카탈로그를 **대조하는 테스트**
+- [x] RED: 두 렌더러가 다루는 kind 집합과 `soml`의 요소 카탈로그를 **대조하는 테스트**
       (`soml/subset.go`의 `ElementKind` 표 ↔ `render/web`·`render/pptx`의 디스패치 표). 카탈로그에
       있는데 어느 렌더러도 다루지 않는 kind가 있으면 실패 — `<table>`이 바로 이 상태였다.
-- [ ] GREEN: 렌더러 디스패치를 표로 노출하고(맵 대신 명시 목록 — 카탈로그와 같은 태도),
+      → `render/vocabulary_test.go`(두 렌더러를 함께 봐야 하므로 이 파일만 `package render_test`).
+      대조는 **양방향**이다: `KindRendered`가 참이면 두 목록에 있어야 하고 거짓이면 없어야 한다
+      (빠뜨린 것 + 적어 두고 구현한 것). 목록이 실제 디스패치와 어긋나지 않는지는 각 렌더러의
+      in-package 테스트가 본다(`render/web/content_test.go`·`render/pptx/shape_test.go`).
+      카탈로그 자체의 자기 일관성은 `soml/kind_test.go`, 파스 시점 차단은 `soml/unrendered_test.go`.
+- [x] GREEN: 렌더러 디스패치를 표로 노출하고(맵 대신 명시 목록 — 카탈로그와 같은 태도),
       미구현 kind는 **파스 시점에** "아직 구현되지 않은 어휘다"로 진단. 위치는 태그가 있는 곳.
-- [ ] DOC: `docs/internals/` — "어휘를 추가하면 렌더러 표를 먼저 늘린다" 규칙.
+      → `soml.ElementKinds()`·`ElementNamesOf`·`KindRendered`(+`unrenderedKinds`에 표 3종),
+      `web.RenderedKinds()`/`writerFor`, `pptx.RenderedKinds()`/`shapeWriterFor`,
+      `parse.go`의 `checkRendered`. 진단은 **가장 바깥 요소에서만** 낸다(표 하나 = 진단 하나)
+      이고 배치 규칙 진단과 함께 난다. PPTX 쪽은 목록이 디스패치보다 넓다 — `<li>`·인라인은
+      부모 도형에 흡수되고 레이아웃·`<spacer>`는 사라진다(그 비대칭도 테스트가 고정한다).
+      산출물은 바뀌지 않았다: 컨테이너 전체 스위트(골든·픽셀·LibreOffice) 통과.
+- [x] DOC: `docs/internals/` — "어휘를 추가하면 렌더러 표를 먼저 늘린다" 규칙.
+      → `docs/internals/architecture.md` 「어휘를 늘리면 렌더러 표를 먼저 늘린다」: 세 장치 표
+      (카탈로그·렌더러 목록·`KindRendered`)와 태그 추가 3단계 — 렌더러를 구현하는 커밋이
+      `unrenderedKinds`의 줄을 지우지 않으면 대조 테스트가 실패한다. `--strict` 빌드 통과.
 
 ### P0.3 목록에 외관 속성 열기 (D6)
 블록 5종(`h1–h3`/`p`/`blockquote`/`pre`)은 `size/color/align/anchor`를 받는데 `ul`/`ol`만 못 받는다.
