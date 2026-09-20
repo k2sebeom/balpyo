@@ -169,3 +169,37 @@ func TestResolveSlotQuietWhenThemeHasArea(t *testing.T) {
 		t.Errorf("슬롯 = %q, want \"body\"", got)
 	}
 }
+
+// 슬롯은 **도형·그림에도** 실린다 — 두 요소의 속성 순회가 slot을 모르면 저자는 "엔진 버그"
+// 진단을 받는다 (catalogGap).
+//
+// 이 자리가 조용히 깨져 있던 이유: 파서는 slot을 childPlacementAttrs **밖에서** 잇는데
+// (withChildPlacement의 마지막 한 칸 — core의 Placement 해석과 섞이지 않게 한 의도다)
+// shapeAttrs·imageAttrs의 exhaustive 검사는 배치 목록만 면제해 줬다. 그래서 `slot`을 쓴
+// 도형이 어휘·테마를 다 만족해도 빌드가 멈췄고, 그 결과 media 슬롯을 가진 두 레이아웃
+// (image-full·image-text)은 **테마에 영역이 있어도 저작할 수 없었다**.
+//
+// 텍스트 요소가 멀쩡했던 것이 이 버그를 오래 숨겼다: 텍스트 경로에는 그 exhaustive 검사가
+// 없어서 슬롯 테스트 전부가 통과했다.
+func TestResolveSlotOnShapeAndImage(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		tag  string
+		want string
+	}{
+		{"도형", `<slide layout="image-text"><shape type="rect" h="240" slot="media"/></slide>`, "shape", "media"},
+		{"그림", `<slide layout="image-full"><image src="a.png" slot="media"/></slide>`, "image", "media"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			deck, diags := resolveSlide(t, tc.src)
+			if len(diags) != 0 {
+				t.Fatalf("진단이 없어야 한다: %v", diags)
+			}
+			if got := slotOf(t, deck, tc.tag); got != tc.want {
+				t.Errorf("<%s> 슬롯 = %q, want %q", tc.tag, got, tc.want)
+			}
+		})
+	}
+}
