@@ -663,6 +663,9 @@ type features struct {
 	// `filter: drop-shadow(var(--balpyo-shadow-soft))`가 정의되지 않은 변수를 가리켜
 	// **그림자가 조용히 사라진다** (var()는 모르는 변수에 아무 소리도 내지 않는다).
 	images bool
+	// chrome은 확정된 덱 크롬이 실린 슬라이드가 있는지다 (chromeCSS). 콘텐츠 어휘가 아니라
+	// 덱 수준의 사실이므로 순회가 아니라 슬라이드 루프에서 켠다 — canvas와 같은 자리다.
+	chrome bool
 	// tables는 `<table>`가 있는지다 (tableCSS). 표 CSS 절은 셀 여백·테두리 합침처럼 셀 하나로
 	// 표현할 수 없는 값만 담는다 — 표를 안 쓴 덱의 골든이 이 절로 움직이지 않는다.
 	tables bool
@@ -729,6 +732,11 @@ func contentFeatures(deck *soml.Deck) features {
 			// 캔버스 스테이지는 stack이다 (PRD §13-3) — 스테이지 CSS(stackCSS)가 이때만
 			// 나간다. 슬라이드 수준 어휘라 콘텐츠 순회가 아니라 여기서 켠다.
 			feat.canvas = true
+		}
+		if len(slide.Chrome) > 0 {
+			// 크롬은 값 층이 이미 걸러 확정한 목록이다 (ADR 0045) — 설정이 켰는지도, 테마가
+			// 선언했는지도 여기서 보지 않는다.
+			feat.chrome = true
 		}
 		// 레이아웃 규칙은 이 슬라이드가 **슬롯 모드인가 흐름 모드인가**로 갈린다 (writeStage와
 		// 같은 판정): 슬롯 모드면 슬롯 영역 CSS를, 아니면 흐름 배치 CSS를 모은다. 한 슬라이드는

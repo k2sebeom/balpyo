@@ -163,6 +163,11 @@ func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 	if err := writeStage(b, deck, slide); err != nil {
 		return err
 	}
+	// 크롬은 스테이지의 형제다 (ADR 0045) — 스테이지 안에 넣으면 흐름에 끼어 본문 높이를 먹고,
+	// 지오메트리 패스가 재는 Ref가 되어 저자가 고칠 수 없는 배치 경고가 나온다.
+	if err := writeChrome(b, deck, slide); err != nil {
+		return err
+	}
 	if slide.Notes != "" {
 		// 노트는 발표자용이다 — 슬라이드에는 나오지 않지만 문서에는 있어야 한다
 		// (PPTX 노트 슬라이드와 같은 내용). 뷰어 런타임의 노트 패널이 여기서 읽는다.
@@ -216,6 +221,6 @@ func baseCSS(stage soml.Stage, feat features) string {
     height: var(--balpyo-stage-height);
     overflow: hidden;
   }
-%s%s}
-`, stage.Width, stage.Height, contentCSS(feat), viewerCSS())
+%s%s%s}
+`, stage.Width, stage.Height, contentCSS(feat), chromeCSS(feat), viewerCSS())
 }
