@@ -27,7 +27,7 @@
 | D5 | `chevron` 중앙 텍스트가 노치에 **잘린다**. `pad`를 키워도 해결 불가 → 라벨을 도형 밖으로 내렸다 | 중간 | P1.2 | 닫힘 |
 | D6 | `<ul>`/`<ol>`에 외관 속성이 없다. 목록 글자 크기를 바꾸려면 레이아웃을 바꿔야 한다 | 중간 | P0.3 | 닫힘 |
 | D7 | 도형 안에 레이아웃 컨테이너를 넣을 수 없어, 카드 헤더/본문을 **도형 2개 + `gap="0"` `col`**로 흉냈다 | 중간 | P2.3 | 열림 |
-| D8 | 검수 루프가 전부 수동이다: 웹은 호스트, PPTX는 컨테이너, 그림 확인은 `soffice` + `pdftoppm`을 직접 조립했다 | 중간 | P3.1 · P3.2 | 열림 |
+| D8 | 검수 루프가 전부 수동이다: 웹은 호스트, PPTX는 컨테이너, 그림 확인은 `soffice` + `pdftoppm`을 직접 조립했다 | 중간 | P3.1 · P3.2 | 열림 (웹 절반은 P3.1이 닫았다 — `balpyo watch`가 고치면 다시 빌드하고 탭을 새로고침한다. PPTX 검수는 P3.2) |
 | D9 | **오버플로 진단이 없다.** 글이 박스를 넘쳐도 빌드는 조용하고 열어봐야 안다 | **높음** | P1.1 | 닫힘 |
 | D10 | 페이지 번호·푸터·러닝 헤더가 없다 (`a:fld`/`slidenum` 미구현) | 중간 | P2.2 | **닫힘** (P2.2 — 번호·푸터. 러닝 헤더는 같은 `chrome` 어휘에 `kind`를 더하면 열린다) |
 | D11 | LibreOffice 렌더에서 문장부호 앞뒤에 **간격이 벌어져 보인다** (`선언으로 , 색과`). 웹에는 없다 | 중간 | P1.5 | **닫힘** (알려진 차이 — 뷰어의 CJK↔서양 자동 간격, 경계당 1/4 em. DrawingML로 끌 수 없다) |
@@ -61,6 +61,7 @@
 | P1.4 슬롯의 테마 구멍과 세로 리듬 (D3 · D17) | minimal이 슬롯 10종 전부에 `*.slots.css`를 갖고, 테마가 못 받는 슬롯은 **값 층에서 경고 + 미탑재**(두 렌더러가 한 입력을 읽는다). 세로 리듬은 `<slide justify>`가 소유한다 | [ADR 0044](docs/decisions/0044-slots-need-a-theme-and-vertical-rhythm-needs-an-owner.md), `render/pptx/placeholder_test.go`(두 타깃 모드 합의) · `core/theme_package_test.go`(카탈로그 ↔ 테마 대조), `03_layout/008` · `08_slots/005` |
 | P2.1 `<table>` 렌더러 (D2 · D20) | 웹은 진짜 `<table>`, PPTX는 `p:graphicFrame`+`a:tbl`(표 스타일 없음 + 명시 `tcPr`). 격자 수치는 전부 **잰 값**이고 그 합이 프레임 크기와 같다. 예제 덱 셋의 손으로 짠 표가 표로 돌아왔다 | [ADR 0036](docs/decisions/0036-table-is-html-ish-tr-td-with-explicit-a-tbl.md), `09_table`(5장) · `internal/testkit/table_fixture_test.go`(병합 격자 전수), LibreOffice flat ODF 왕복(`table:table-cell` 78개 · 덮인 셀 4개), `docs/reference/soml/table.md` |
 | P2.2 덱 크롬: 페이지 번호 · 푸터 (D10) | 어휘를 **나눠 갖는다**: 내용·켜짐은 `balpyo.json`(`footer`·`pageNumber`, 둘 다 기본 꺼짐), 자리·정렬·역할·제외는 테마 `chrome` 선언. 제외 규칙은 값 층이 적용해 두 렌더러가 확정 모델 하나를 읽는다. 번호는 `a:fld type="slidenum"`(캐시 숫자 동봉)이라 뷰어가 다시 센다 — `p:ph`도 `p:hf`도 쓰지 않았다 | [ADR 0045](docs/decisions/0045-deck-chrome-is-config-text-in-a-theme-declared-band.md), `10_chrome`(4장) · `internal/testkit/chrome_fixture_test.go`(잰 rect ↔ 골든 EMU 0 오차 · 다른 픽스처 골든에 크롬 0조각), LibreOffice flat ODF 왕복(`<text:page-number>`가 포함된 두 장에만 · 장을 끼우면 1/3/5로 따라온다), `docs/reference/theme.md` |
+| P3.1 `balpyo watch` — 핫 리로드 (D8) | 폴링(250ms) + "스캔이 같아진 뒤 빌드"로 저장 한 번 = 빌드 한 번. `build`와 **같은 파이프라인·같은 출력 디렉토리**를 쓰고 리로드 클라이언트는 **응답 바이트에만** 주입한다(디스크는 배포본 그대로). 실패한 빌드는 산출물을 건드리지 않아 마지막 성공본 위에 진단 오버레이가 뜨고, 터미널에는 `build`와 같은 규칙으로 요약 한 줄이 간다. 측정이 필요한 감시는 브라우저 **하나**를 계속 쓴다 | [ADR 0046](docs/decisions/0046-watch-polls-the-project-and-injects-its-reload-client.md), `internal/watch`(스캐너·서버·루프) · `cmd/balpyo/watch_test.go`(응답에 있고 디스크에 없다) · `TestRunnerReusesOneWarmBrowser`(세션 동일성 · 0.61초), `docs/reference/cli.md#balpyo-watch` · `docs/guides/getting-started.md` |
 | D19 문서가 어휘를 숨긴다 | `slide.md`(11종 표 + 실제 진단 문구) · `reference/index.md`(`layouts.md`는 구현됨) · `text.md`(속성 목록 + `<text>`에 `w`/`h`가 없다는 것) | `make docs --strict`, 커밋 `cc8239f` |
 
 ---
@@ -226,13 +227,23 @@
       따로 못 박힌다: `TestChromeFixtureShapesMatchGeometry`가 잰 rect의 EMU와 골든
       `a:off`/`a:ext`를 전수 비교한다.
 
-### P3.1 `balpyo watch` — 핫 리로드 (D8) ← **지금 여기**
-- [ ] RED: 파일 변경 → 재빌드 → 브라우저 갱신의 단위 테스트(감시기·디바운스·진단 오버레이).
-- [ ] GREEN: 웜 브라우저 세션 재사용(지오메트리 패스 시작 비용이 루프의 대부분이다) + 진단
-      오버레이.
-- [ ] DOC: `docs/reference/cli.md` + `docs/guides/getting-started.md`.
+### P3.1 `balpyo watch` — 핫 리로드 (D8)
+- [x] RED: 파일 변경 → 재빌드 → 브라우저 갱신의 단위 테스트(감시기·디바운스·진단 오버레이).
+      네 층을 따로 못 박았다 — 스캐너(`cdda61b`) · 서버와 클라이언트 주입(`8864997`) ·
+      루프(`9b9fe8c`) · CLI 표면(`90d5008`), 그리고 파이프라인이 주입된 측정기를 쓴다는
+      것(`3e82f45`).
+- [x] GREEN: 웜 브라우저 세션 재사용(지오메트리 패스 시작 비용이 루프의 대부분이다) + 진단
+      오버레이. `5ebceb1`(스캐너) · `1682d44`(서버+클라이언트) · `b427256`·`532d3b3`
+      (`pipeline.Options.Measurer` + 루프) · `94daf06`(서브커맨드) · `00905ab`(실패 요약) ·
+      `fd1928d`. 웜 세션은 주장이 아니라 **측정**이다 —
+      `TestRunnerReusesOneWarmBrowser`가 두 번의 `--check-layout` 빌드에서 세션 포인터
+      동일성을 확인하고 0.61초에 끝난다(기동 1회분).
+- [x] DOC: `docs/reference/cli.md` + `docs/guides/getting-started.md`. `9f04176`.
+      시작하기는 `balpyo init`이 아니라 **예제 복사**에서 출발한다 (스캐폴딩은 P3.3이다) —
+      그 이유를 문서 안에 적었다. `docs/index.md`의 빠른 시작도 아직 없는 `balpyo server`
+      대신 `balpyo watch`를 쓴다.
 
-### P3.2 `balpyo preview --target pptx` (D8) — 손으로 하던 검수 루프를 제품으로
+### P3.2 `balpyo preview --target pptx` (D8) — 손으로 하던 검수 루프를 제품으로 ← **지금 여기**
 2회차에서도 PPTX를 보려고 임시 테스트 파일을 만들어 `soffice`+`pdftoppm`을 돌렸다.
 `internal/testkit/soffice.go`가 이미 같은 일을 한다 — 테스트 전용으로 묶여 있을 뿐이다.
 - [ ] RED: PPTX → PNG 산출물 존재·장수·결정성 테스트(컨테이너 전용, 호스트는 skip).
@@ -332,7 +343,8 @@
 - [ ] **두 타깃이 갈리지 않는다**: 슬롯·정렬·문장부호가 웹과 PPTX에서 같은 그림 (P1.3–P1.5)
 - [x] **세로 공간을 저자가 손으로 만들지 않는다**: 슬롯 모드는 테마가, 흐름 모드는
       `<slide justify>` 한 선언이 세로 리듬을 소유한다 (P1.4)
-- [ ] **한 명령으로 검수한다**: `balpyo watch` + `balpyo preview --target pptx` (P3.1, P3.2)
+- [ ] **한 명령으로 검수한다**: `balpyo watch` + `balpyo preview --target pptx` (P3.1 닫힘 —
+      웹은 저장하면 탭이 새로고침된다. PPTX는 아직 `soffice`를 손으로 돈다: P3.2)
 - [ ] **덱이 덱처럼 생겼다**: 페이지 번호·푸터는 켤 수 있다 (P2.2 닫힘 — 번호는 뷰어가 다시
       세는 `a:fld`다). 색 위계는 아직 accent 하나다 (P4.1)
 - [ ] **예제가 썩지 않는다**: CI가 모든 예제를 경고 0으로 빌드한다 (P5.1)
@@ -351,6 +363,7 @@
 | 정렬 소유권 (base `width: 100%`) + `<text>`의 박스 속성 | P1.3 | ADR 0043 |
 | 슬롯 구멍: 테마가 채우기 vs 경고 · 본문 높이의 소유자 | P1.4 | ADR 0044 (둘 다 — 테마를 채우고, 못 받는 슬롯은 값 층에서 경고 + 미탑재) |
 | 덱 크롬 어휘와 `a:fld` 매핑 | P2.2 | ADR 0045 (설정이 내용을, 테마가 자리를, `a:fld`가 번호를) |
+| 감시가 변경을 보는 법 · 리로드 클라이언트가 사는 곳 | P3.1 | ADR 0046 (폴링 + 스캔 안정화, 주입은 응답에만) |
 | 도형이 컨테이너를 자식으로 받을 때의 좌표·매핑 | P2.3 | 대기 |
 | 코드 하이라이팅 토크나이저와 색 토큰 · 탭 처리 · "예정된 속성" 진단 | P2.4 | 대기 |
 | 차트: 네이티브 `c:chart` vs 도형 합성 | P2.5 | 대기 |
