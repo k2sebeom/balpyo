@@ -1,0 +1,39 @@
+<!-- 테마 = 디자인 시스템. 색 견본 다섯 장은 토큰 이름 그대로 칠한 도형이다 — 산출 PPTX에서
+     이 채움은 리터럴 RGB가 아니라 schemeClr 참조로 남는다. -->
+<slide id="theme">
+  <h1>테마는 디자인 시스템이다</h1>
+  <grid cols="5" gap="sm">
+    <shape type="rounded-rect" fill="fg" w="fill" h="88" pad="sm">
+      <text size="16" color="bg" align="center" anchor="center">fg</text>
+    </shape>
+    <shape type="rounded-rect" fill="bg" border="1 solid muted" w="fill" h="88" pad="sm">
+      <text size="16" align="center" anchor="center">bg</text>
+    </shape>
+    <shape type="rounded-rect" fill="muted" w="fill" h="88" pad="sm">
+      <text size="16" color="bg" align="center" anchor="center">muted</text>
+    </shape>
+    <shape type="rounded-rect" fill="surface" w="fill" h="88" pad="sm">
+      <text size="16" align="center" anchor="center">surface</text>
+    </shape>
+    <shape type="rounded-rect" fill="accent1" w="fill" h="88" pad="sm">
+      <text size="16" color="bg" align="center" anchor="center">accent1</text>
+    </shape>
+  </grid>
+  <grid cols="2" gap="xl">
+    <col gap="sm">
+      <text variant="kicker">토큰과 컴포넌트가 파일이다</text>
+      <ul>
+        <li>tokens.json — 색 5 · 폰트 3 · 공간 6 · 반경 3 · 그림자 1</li>
+        <li>components.json — 역할 5종과 variant (kicker · card · stat-card · badge)</li>
+        <li>layouts 아래 CSS — 배치만 쓸 수 있고 외관을 쓰면 경고다</li>
+      </ul>
+    </col>
+    <col gap="sm">
+      <text variant="kicker">토큰은 눕지 않는다</text>
+      <p size="20">토큰으로 선언한 색은 웹에서 CSS 변수 참조로, PPTX에서 a:schemeClr
+      참조로 남는다. 리터럴로 쓴 색만 srgbClr가 된다 — 그래서 PowerPoint에서 테마를
+      바꾸면 덱 전체가 따라온다.</p>
+    </col>
+  </grid>
+  <note>토큰이 리터럴로 눕는 순간 제품의 약속이 깨진다. 골든 테스트가 그것을 감시한다.</note>
+</slide>
