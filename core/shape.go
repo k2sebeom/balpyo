@@ -177,10 +177,16 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 			}
 		default:
 			// 박스 속성(`pad`·크기·`ratio`)은 컨테이너와 공유하는 헬퍼가 해석하고, 자식 배치
-			// 속성은 resolveLayout이 이미 지났다 (요소 종류와 무관한 한 벌). 그 둘도 아니면
-			// 카탈로그와 값 층이 어긋난 것이다 — 조용히 지나가면 저자가 쓴 외관이 사라진다.
+			// 속성과 슬롯 배정은 resolveLayout·resolveSlot이 이미 지났다 (요소 종류와 무관한
+			// 한 벌). 그 셋도 아니면 카탈로그와 값 층이 어긋난 것이다 — 조용히 지나가면
+			// 저자가 쓴 외관이 사라진다.
+			//
+			// `slot`을 따로 적는 이유: 파서는 그것을 childPlacementAttrs **밖에서** 잇는다
+			// (withChildPlacement의 마지막 한 칸 — Placement 해석과 섞이지 않게 한 의도다).
+			// 그래서 배치 목록만 면제하면 슬롯을 쓴 도형이 엔진 버그 진단을 받는다.
 			if r.boxAttr(&style.Box, attr) ||
-				containsName(soml.ChildPlacementAttrs(), attr.Name) {
+				containsName(soml.ChildPlacementAttrs(), attr.Name) ||
+				attr.Name == soml.SlotAttr {
 				continue
 			}
 			r.catalogGap(attr)

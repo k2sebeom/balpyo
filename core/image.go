@@ -132,10 +132,12 @@ func (r *resolver) imageAttrs(elem *soml.Element, style *soml.ImageStyle) imageP
 			}
 		default:
 			// 박스 속성(`pad`·크기·`ratio`)은 컨테이너·도형과 공유하는 헬퍼가 해석하고, 자식
-			// 배치 속성은 resolveLayout이 이미 지났다. 그 둘도 아니면 카탈로그와 값 층이
-			// 어긋난 것이다 — 조용히 지나가면 저자가 쓴 것이 사라진다.
+			// 배치 속성과 슬롯 배정은 resolveLayout·resolveSlot이 이미 지났다. 그 셋도 아니면
+			// 카탈로그와 값 층이 어긋난 것이다 — 조용히 지나가면 저자가 쓴 것이 사라진다.
+			// `slot`을 따로 적는 근거는 도형 판과 같다 (shapeAttrs의 주석).
 			if r.boxAttr(&style.Box, attr) ||
-				containsName(soml.ChildPlacementAttrs(), attr.Name) {
+				containsName(soml.ChildPlacementAttrs(), attr.Name) ||
+				attr.Name == soml.SlotAttr {
 				continue
 			}
 			r.catalogGap(attr)
