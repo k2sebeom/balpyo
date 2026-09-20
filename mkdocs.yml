@@ -83,6 +83,7 @@ nav:
       - 0038 목록의 외관은 컨테이너에 쓰고 항목이 상속한다: decisions/0038-list-appearance-lives-on-the-container.md
       - 0039 배치 경고는 박스 포함 관계로 판정한다: decisions/0039-layout-warnings-are-box-containment.md
       - 0040 프리셋의 텍스트 영역은 기하 표의 한 열이다: decisions/0040-preset-text-rect-is-a-geometry-column.md
+      - 0041 chevron의 텍스트 영역은 PPTX가 되돌린다: decisions/0041-chevron-text-rect-is-cancelled-in-pptx.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |
