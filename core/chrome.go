@@ -42,11 +42,17 @@ func resolveChrome(deck *soml.Deck, pkg themePackage) ([]soml.ChromeItem, soml.D
 				pkg.manifest.Name, kind, kind, chromeNoun(kind)))
 			continue
 		}
+		// 역할이 가져온 **정렬은 선언이 덮는다**: 그러지 않으면 확정 모델 하나에 정렬이 둘이
+		// 되고(선언의 align과 역할의 Align), 웹은 외관 쪽을 `text-align`으로 읽고 PPTX는 선언
+		// 쪽을 `algn`으로 읽어 같은 입력에서 두 산출물이 갈라진다. 한 줄 박스라 지금은
+		// 눈에 보이지 않을 뿐이고, 보이지 않는 갈라짐이 D3의 모양이었다 (ADR 0044·0045).
+		style := chromeStyle(pkg, decl.role)
+		style.Align = decl.align
 		items = append(items, soml.ChromeItem{
 			Kind:  kind,
 			Text:  text,
 			Align: decl.align,
-			Style: chromeStyle(pkg, decl.role),
+			Style: style,
 		})
 	}
 	return items, diags

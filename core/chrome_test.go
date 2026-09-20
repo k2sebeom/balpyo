@@ -184,11 +184,19 @@ func TestResolveChromePerSlide(t *testing.T) {
 		if items[1].Align != soml.AlignEnd {
 			t.Errorf("번호 align = %q, want end", items[1].Align)
 		}
-		// 외관은 테마 역할에서 온다 — 크롬이 자기 크기·색을 갖지 않는다.
+		// 외관은 테마 역할에서 온다 — 크롬이 자기 크기·색을 갖지 않는다. 정렬 **하나만** 선언이
+		// 덮는다: 확정 모델에 정렬이 둘이면 웹(`text-align`)과 PPTX(`algn`)가 다른 쪽을 읽는다.
 		caption := loadBuiltinTheme("minimal").components.textRoles[soml.RoleCaption]
 		for i, item := range items {
-			if item.Style != caption {
-				t.Errorf("chrome[%d].Style = %+v, want caption 역할 %+v", i, item.Style, caption)
+			want := caption
+			want.Align = item.Align
+			if item.Style != want {
+				t.Errorf("chrome[%d].Style = %+v, want caption 역할 + align %q %+v",
+					i, item.Style, item.Align, want)
+			}
+			if item.Style.Align != item.Align {
+				t.Errorf("chrome[%d]의 정렬이 둘이다: Style.Align=%q, Align=%q",
+					i, item.Style.Align, item.Align)
 			}
 		}
 	}
