@@ -54,6 +54,7 @@
 | [0046](0046-watch-polls-the-project-and-injects-its-reload-client.md) | `balpyo watch`는 프로젝트를 폴링하고 리로드 클라이언트를 응답에 주입한다 | P3.1 | 확정 |
 | [0047](0047-review-gallery-lives-in-internal-preview.md) | 검수 갤러리는 `internal/preview`가 소유하고, `balpyo preview`는 게이트가 아니다 | P3.2 | 확정 |
 | [0048](0048-init-owns-its-deck-and-check-is-build-without-writing.md) | `init`은 자기 덱을 소유하고, `check`는 쓰지 않는 `build`다 | P3.3 | 확정 |
+| [0049](0049-a-shape-that-holds-layout-becomes-a-backdrop.md) | 배치를 담은 도형은 배경이 되고, 자식은 형제 도형이 된다 | P2.3 | 확정 |
 
 PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다. 그 결정들의
 색인은 PRD에 있고, 이 표는 **그 이후 구현 중에 새로 확정한 것**만 담는다.

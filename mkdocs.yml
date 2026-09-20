@@ -95,6 +95,7 @@ nav:
       - 0046 watch는 폴링하고 리로드 클라이언트를 주입한다: decisions/0046-watch-polls-the-project-and-injects-its-reload-client.md
       - 0047 검수 갤러리는 internal/preview가 소유한다: decisions/0047-review-gallery-lives-in-internal-preview.md
       - 0048 init은 자기 덱을 소유하고 check는 쓰지 않는 build다: decisions/0048-init-owns-its-deck-and-check-is-build-without-writing.md
+      - 0049 배치를 담은 도형은 배경이 된다: decisions/0049-a-shape-that-holds-layout-becomes-a-backdrop.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |
