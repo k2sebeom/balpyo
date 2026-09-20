@@ -5,6 +5,7 @@ balpyo의 테스트는 두 렌더러가 **같은 그림을 낸다**는 것을 �
 
 ```
 make test      # 컨테이너 안에서 전체 테스트
+make examples  # 예제 덱 셋을 경고 0으로 빌드하는지만 확인 (make test에도 포함)
 make review    # 웹/PPTX/diff 이미지를 review/ 에 남기고 갤러리를 만든다
 make golden    # 골든 갱신
 make versions  # 이미지에 실제로 설치된 버전 출력
@@ -104,6 +105,48 @@ go run ./cmd/balpyo build --project testdata/fixtures/00_empty --target html,ppt
 - 픽스처는 **자기 프로젝트의 것만** 쓴다. `15_local_theme`이 그 성질의 증인이다: 바이너리에 없는
   테마 이름(`corp`)이 `themes/corp/`에서 풀리고, 그래서 이 픽스처는 `core/themes/`를 고치지 않고
   테마 상속을 끝까지 시험한다 (ADR 0054).
+
+## 예제 게이트 — 도그푸딩 덱은 조용해야 한다
+
+`examples/` 아래 덱 셋(`balpyo-intro` 12장 · `incident-postmortem` 10장 ·
+`quarterly-review` 6장)은 **사람이 실제로 쓴 덱**이고, 픽스처가 못 하는 일을 한다: 어휘 수십
+개가 한 장에 겹쳐 있어 "이 도구로 덱을 쓸 수 있다"의 실물 증거가 된다. 그래서 게이트도 다르다.
+
+```bash
+make examples   # 예제만 (몇 초) — make test가 같은 테스트를 이미 돈다
+```
+
+`TestExamplesBuildClean`이 예제마다 판정하는 것은 셋이다 ([ADR 0056](../decisions/0056-examples-are-gated-by-a-strict-build-not-by-goldens.md)):
+
+| 판정 | 어떻게 |
+|---|---|
+| 두 타깃으로 빌드된다 | `--target html,pptx` — PPTX가 지오메트리 패스를 돌리므로 좌표까지 난다 |
+| **진단이 0건이다** | `Strict` — 경고도 실패다. 넘침·이탈·겹침(`geom.Diagnose`)과 테마에 없는 variant가 여기서 걸린다 |
+| 슬라이드 수가 선언한 숫자와 같다 | `exampleSlideCounts` 표 (`12 · 10 · 6`) |
+
+**경고가 실패인 이유**는 예제가 사용자 덱이 아니라는 것이다. 경고는 "통과하되 보이는 것"으로
+정의돼 있지만([ADR 0039](../decisions/0039-layout-warnings-are-box-containment.md)) 그 정의는
+저자의 덱을 위한 것이고, 넘침 경고를 내는 예제는 읽는 사람에게 "경고는 무시해도 된다"를
+가르친다. 일부러 경고를 내는 덱이 필요하면 그것은 예제가 아니라 **픽스처**다 — 픽스처는
+`diagnostics.txt` 골든으로 경고를 증거로 남긴다.
+
+**슬라이드 수를 손으로 적는 이유**는 이 게이트가 놓칠 수 있는 가장 조용한 사고를 잡는 것이다:
+장이 사라졌는데 남은 장이 깨끗하게 빌드되는 것(파일 이름이 `_`로 시작하게 되거나 파일이
+지워졌을 때). 목록 자체는 디렉토리를 걸어 얻으므로 새 예제는 자동으로 게이트에 들어오고, 그
+표에 줄을 더할 때까지 **실패한다**.
+
+**예제에는 골든이 없다.** 골든의 값은 사람이 diff를 읽는 데서 나오고, 픽스처가 그 조건을
+만족하는 이유는 크기와 의도다(한 픽스처가 한 어휘, 2~4장). 예제 28장에 골든을 걸면 `accent1`
+색을 한 번 고치는 일이 28장의 XML diff가 되고, 그 안에 섞인 진짜 회귀 한 줄은 보이지 않는
+채로 승인된다. 그래서 예제는 "빌드되고 조용하다"만 지키고, **무엇이 어떻게 나오는가는
+픽스처의 골든이** 지킨다. 픽셀 비교와 LibreOffice 열림 검사도 같은 이유로 픽스처의 몫이다.
+
+산출물은 임시 디렉토리에 쓴다 — 예제 디렉토리는 입력 전용이고 `examples/*/dist`는 커밋하지
+않는다. 사람이 손으로 보는 길은 그대로다:
+
+```bash
+go run ./cmd/balpyo build --project examples/balpyo-intro --target html,pptx --strict
+```
 
 ## 골든
 
@@ -330,3 +373,9 @@ macOS Keynote나 PowerPoint로 **직접 열어** 편집 가능성을 확인한�
 CI에서도 초록이어야 하고, 그 등식이 성립하는 이유는 두 곳이 같은 컨테이너를 쓰기 때문이다.
 렌더 비교가 실패하면 워크플로우가 `review/` 갤러리를 아티팩트로 올려 실패한 diff 이미지를
 받아 볼 수 있게 한다. 문서 빌드(`make docs`, `--strict`)도 같은 워크플로우가 검사한다.
+
+게이트를 늘리는 방법도 그 등식이 정한다: **잡을 더하지 않고 테스트를 더한다.** 예제 게이트가
+그 예다 — `make test`가 이미 `TestExamplesBuildClean`을 돌기 때문에 CI에 잡이 따로 없고,
+"CI가 예제를 빌드한다"는 사실은 잡의 이름이 아니라 **실패의 유무**다
+([ADR 0056](../decisions/0056-examples-are-gated-by-a-strict-build-not-by-goldens.md)). 잡을
+쪼개면 가장 무거운 단계(이미지 빌드)가 한 번 더 붙으므로, 분리의 근거는 실측이어야 한다.
