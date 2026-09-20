@@ -7,35 +7,31 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// clrSchemeSlots는 OOXML clrScheme의 12자리다 — 스키마가 요구하는 순서 그대로.
+// clrSchemeFallbacks는 테마 표에 그 슬롯의 토큰이 **없을 때** 값을 빌려 오는 슬롯이다.
+// 자리와 순서 자체는 soml.ColorSlots()가 소유한다 (열두 자리 — 값 층의 검사와 같은 목록을
+// 읽어야 "로더는 받는데 렌더러는 모르는 슬롯"이 생기지 않는다). 여기 없는 슬롯은 **필수**다:
+// 테마 표가 반드시 채워야 한다.
 //
-// fallback은 테마 표에 그 슬롯의 토큰이 없을 때 값을 빌려 오는 슬롯이다. 자리를 비워 둘 수
-// 없는 이유: clrScheme은 12자리 고정이고, PowerPoint의 테마 색 편집 UI에 전부 보인다.
-// Office 기본값 같은 팔레트 밖 색으로 채우면 사용자가 그 자리를 골랐을 때 테마와 무관한
-// 색이 나온다 — 이미 있는 가장 가까운 토큰에서 빌린다 (두 번째 어두움/밝음은 첫 번째에서,
-// 나머지 강조와 링크는 accent1에서). 표의 모든 토큰이 자기 슬롯을 가지므로
+// 자리를 비워 둘 수 없는 이유: clrScheme은 12자리 고정이고, PowerPoint의 테마 색 편집 UI에
+// 전부 보인다. Office 기본값 같은 팔레트 밖 색으로 채우면 사용자가 그 자리를 골랐을 때 테마와
+// 무관한 색이 나온다 — 이미 있는 가장 가까운 토큰에서 빌린다 (두 번째 어두움/밝음은 첫
+// 번째에서, 나머지 강조와 링크는 accent1에서). 표의 모든 토큰이 자기 슬롯을 가지므로
 // (soml.ColorToken), 빌린 자리를 **참조하는** 도형은 생기지 않는다 — 이 채움은 편집 UI를
 // 위한 것이다.
 //
 // 내장 minimal 테마는 P4.1부터 강조색 여섯을 모두 갖는다 (ADR 0050) — 그래서 기본 테마에서
 // 빌리는 자리는 hlink/folHlink 둘뿐이다 (어휘에 링크 색이 없다). 폴백을 남겨 두는 이유는
 // 다른 테마가 강조색을 하나만 정해도 열리는 파일을 내야 하기 때문이다.
-var clrSchemeSlots = []struct {
-	slot     string
-	fallback string // 비어 있으면 필수 슬롯 — 테마 표가 반드시 채워야 한다.
-}{
-	{slot: "dk1"},
-	{slot: "lt1"},
-	{slot: "dk2", fallback: "dk1"},
-	{slot: "lt2", fallback: "lt1"},
-	{slot: "accent1"},
-	{slot: "accent2", fallback: "accent1"},
-	{slot: "accent3", fallback: "accent1"},
-	{slot: "accent4", fallback: "accent1"},
-	{slot: "accent5", fallback: "accent1"},
-	{slot: "accent6", fallback: "accent1"},
-	{slot: "hlink", fallback: "accent1"},
-	{slot: "folHlink", fallback: "accent1"},
+var clrSchemeFallbacks = map[string]string{
+	"dk2":      "dk1",
+	"lt2":      "lt1",
+	"accent2":  "accent1",
+	"accent3":  "accent1",
+	"accent4":  "accent1",
+	"accent5":  "accent1",
+	"accent6":  "accent1",
+	"hlink":    "accent1",
+	"folHlink": "accent1",
 }
 
 // clrSchemeXML은 덱에 실린 토큰 표를 테마 파트의 clrScheme으로 컴파일한다.
@@ -61,15 +57,17 @@ func clrSchemeXML(theme soml.Theme) (string, error) {
 
 	var b strings.Builder
 	fmt.Fprintf(&b, `    <a:clrScheme name="%s">`+"\n", escapeXML(theme.Name))
-	for _, s := range clrSchemeSlots {
-		rgb, ok := values[s.slot]
-		if !ok && s.fallback != "" {
-			rgb, ok = values[s.fallback]
+	for _, slot := range soml.ColorSlots() {
+		rgb, ok := values[slot]
+		if !ok {
+			if fallback, has := clrSchemeFallbacks[slot]; has {
+				rgb, ok = values[fallback]
+			}
 		}
 		if !ok {
-			return "", fmt.Errorf("테마 %q에 clrScheme %s 자리를 채울 색 토큰이 없다", theme.Name, s.slot)
+			return "", fmt.Errorf("테마 %q에 clrScheme %s 자리를 채울 색 토큰이 없다", theme.Name, slot)
 		}
-		fmt.Fprintf(&b, `      <a:%s><a:srgbClr val="%s"/></a:%s>`+"\n", s.slot, rgb, s.slot)
+		fmt.Fprintf(&b, `      <a:%s><a:srgbClr val="%s"/></a:%s>`+"\n", slot, rgb, slot)
 	}
 	b.WriteString("    </a:clrScheme>")
 	return b.String(), nil

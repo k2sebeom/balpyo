@@ -68,6 +68,69 @@ func requireTokens(theme soml.Theme) error {
 	return nil
 }
 
+// requireColorSlots는 색 토큰 표가 clrScheme에 **실릴 수 있는 모양**인지 본다 (ADR 0055).
+//
+// 완전성 검사 옆에 있는 이유: 이것은 P4.3까지 PPTX 조립에서만 드러나던 계약이고
+// (render/pptx.clrSchemeXML이 같은 판정을 한다 — 렌더러는 자기 계약을 스스로 지킨다), 그
+// 자리에서 멈추면 진단이 "pptx 렌더 실패"를 가리켜 고칠 파일(tokens.json)에서 멀어진다.
+// 테마의 문제는 슬라이드를 렌더하기 전에 멈춘다.
+//
+// 그래서 색 토큰 표에는 **상한**이 있다: 슬롯은 열둘이고 겹칠 수 없으므로 새 색 이름을 더하려면
+// 남은 자리가 있어야 한다 — 부모를 물려받은 테마가 색을 더하는 대신 갈아 끼우는 이유다.
+// 반경·공간·그림자·폰트에는 이 상한이 없다.
+func requireColorSlots(theme soml.Theme) error {
+	// 자리 임자를 **먼저** 다 모은다: 빈 슬롯 진단은 "이 토큰 앞까지"가 아니라 이 테마의 남은
+	// 자리를 나열해야 고칠 수 있다.
+	owner := make(map[string]string, len(theme.Colors))
+	for _, token := range theme.Colors {
+		if token.Slot == "" || !knownColorSlot(token.Slot) {
+			continue
+		}
+		if first, dup := owner[token.Slot]; dup {
+			return fmt.Errorf("tokens.json의 clrScheme 슬롯 %q를 색 토큰 %q와 %q가 나눠 쓴다 — 어느 색이 그 자리를 차지하는지 정할 수 없다",
+				token.Slot, first, token.Name)
+		}
+		owner[token.Slot] = token.Name
+	}
+	for _, token := range theme.Colors {
+		if token.Slot == "" {
+			return fmt.Errorf("tokens.json의 색 토큰 %q에 clrScheme 슬롯이 없다 — 모든 색 토큰은 PPTX 테마 색 편집을 따라가야 한다 (%s)",
+				token.Name, freeColorSlots(owner))
+		}
+		if !knownColorSlot(token.Slot) {
+			return fmt.Errorf("tokens.json의 색 토큰 %q의 clrScheme 슬롯 %q가 없는 자리다 (쓸 수 있는 슬롯: %s)",
+				token.Name, token.Slot, strings.Join(soml.ColorSlots(), ", "))
+		}
+	}
+	return nil
+}
+
+// knownColorSlot은 이름이 clrScheme의 열두 자리 중 하나인지 본다.
+func knownColorSlot(slot string) bool {
+	for _, known := range soml.ColorSlots() {
+		if slot == known {
+			return true
+		}
+	}
+	return false
+}
+
+// freeColorSlots는 빈 슬롯 진단의 뒷말이다 — 남은 자리를 나열하고, 없으면 고치는 방법을 적는다
+// (내장 테마 셋은 열을 쓰므로 남는 자리가 링크 둘뿐이다).
+func freeColorSlots(owner map[string]string) string {
+	slots := soml.ColorSlots()
+	free := make([]string, 0, len(slots))
+	for _, slot := range slots {
+		if _, taken := owner[slot]; !taken {
+			free = append(free, slot)
+		}
+	}
+	if len(free) == 0 {
+		return "남은 슬롯이 없다 — 새 색 이름 대신 기존 이름의 값을 갈아 끼운다"
+	}
+	return "남은 슬롯: " + strings.Join(free, ", ")
+}
+
 // requireComponents는 컴포넌트 표가 **역할 5종을 전부** 정하고, 각 역할이 이 테마의 토큰을
 // 가리키는지 본다.
 //

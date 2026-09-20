@@ -486,6 +486,12 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 	if err := requireTokens(tokens); err != nil {
 		return pkg, err
 	}
+	// 색 토큰의 clrScheme 자리도 여기서 본다 (ADR 0055) — 필수 이름이 다 있는지 다음에 보는
+	// 이유는 순서가 진단의 품질이라는 것이다: 슬롯 상한("남은 자리가 없다")보다 빠진 이름이
+	// 먼저 읽혀야 테마 제작자가 표를 두 번 고치지 않는다.
+	if err := requireColorSlots(tokens); err != nil {
+		return pkg, err
+	}
 	pkg.tokens = tokens
 
 	comps, err := componentsFromFile(raw.components, tokens)

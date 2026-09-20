@@ -488,6 +488,23 @@ type ColorToken struct {
 	Ref string
 }
 
+// ColorSlots는 OOXML clrScheme의 **열두 자리**다 — 스키마가 요구하는 순서 그대로.
+//
+// 이 목록이 색 토큰 표의 **상한**이다 (ADR 0055): 모든 색 토큰이 슬롯을 가져야 하고 슬롯은
+// 겹칠 수 없으므로 한 테마의 색 이름은 최대 열둘이다. 그래서 부모를 물려받은 테마는 색을
+// 더하는 대신 **갈아 끼운다** — 반경·공간·그림자·폰트에는 이 상한이 없다 (SpaceToken의
+// 주석이 그 비대칭의 근거를 적는다).
+//
+// 값 층(테마 로더)과 PPTX 렌더러가 **같은 목록**을 읽는다: 두 곳에 적으면 "로더는 받는데
+// 렌더러는 모르는 슬롯"이 생기고, 그 어긋남은 파일을 조립할 때까지 보이지 않는다.
+func ColorSlots() []string {
+	return []string{
+		"dk1", "lt1", "dk2", "lt2",
+		"accent1", "accent2", "accent3", "accent4", "accent5", "accent6",
+		"hlink", "folHlink",
+	}
+}
+
 // FontToken은 폰트 토큰 하나다.
 type FontToken struct {
 	Name FontRole

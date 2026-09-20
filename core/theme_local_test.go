@@ -73,12 +73,16 @@ func standaloneLocal(name string) fstest.MapFS {
 // 자식이 가진 것: 크롬 선언 하나(footer) · 색 둘(덮기 하나 + 더하기 하나) · 역할 하나(title) ·
 // 텍스트 variant 둘(덮기 하나 + 더하기 하나) · 도형 기본값의 fill 하나 · 코드 토큰 하나 ·
 // 레이아웃 CSS 하나. **layouts 선언과 tokens/components의 나머지는 없다** — 부모가 깐다.
+//
+// 더하는 색(`brand`)이 `hlink` 자리에 앉는 이유는 ADR 0055다: 모든 색 토큰은 clrScheme 슬롯을
+// 가져야 하고 그 자리는 열둘로 닫혀 있다 — minimal이 열을 쓰므로 남은 자리가 링크 둘이다.
+// 슬롯 없는 색을 로더가 어떻게 멈추는지는 TestLocalThemeColorNeedsAFreeClrSchemeSlot이 본다.
 func childOfMinimal() fstest.MapFS {
 	return localTheme("corp",
 		`{"name":"corp","extends":"minimal",
 		  "chrome":[{"kind":"footer","align":"center","role":"caption","skipLayouts":["title"]}]}`,
 		`{"color":[{"name":"accent1","rgb":"112233","slot":"accent1","ref":"accent1"},
-		           {"name":"brand","rgb":"445566"}]}`,
+		           {"name":"brand","rgb":"445566","slot":"hlink","ref":"hlink"}]}`,
 		`{"text":{"roles":[{"name":"title","font":"heading","size":72,"weight":700,
 		                    "lineHeight":1.1,"color":"accent1","align":"center"}],
 		          "variants":[{"name":"kicker","size":20},{"name":"eyebrow","color":"accent1"}]},
@@ -181,6 +185,75 @@ func TestLocalThemeWithoutExtendsMustBeComplete(t *testing.T) {
 	}
 	if !strings.Contains(diags[0].Message, "bg") {
 		t.Errorf("진단이 빠진 토큰을 말하지 않는다: %s", diags[0].Message)
+	}
+}
+
+// TestLocalThemeColorNeedsAFreeClrSchemeSlot은 색 토큰 표의 **상한**을 못 박는다 (ADR 0055):
+// 모든 색 토큰은 clrScheme 슬롯을 가져야 하고, 그 자리는 열둘이며 겹칠 수 없다.
+//
+// 이 판정이 **테마 로딩**에 있는 것이 이 테스트의 요점이다. P4.3 전까지 같은 계약은 PPTX 조립
+// 에서만 드러났고(render/pptx.clrSchemeXML) 그때 진단은 "pptx 렌더 실패"를 가리켰다 — 고칠
+// 파일이 tokens.json인데 메시지가 렌더러를 말하면, 슬라이드를 쓰는 사람은 자기 슬라이드를
+// 뒤진다. 그래서 세 경우 모두 **어느 슬라이드도 렌더되기 전에** 멈추고, 문구는 고칠 방법
+// (남은 자리)을 함께 적는다.
+func TestLocalThemeColorNeedsAFreeClrSchemeSlot(t *testing.T) {
+	cases := []struct {
+		name  string
+		color string
+		want  []string
+	}{
+		{
+			name:  "슬롯이 없다",
+			color: `{"name":"brand","rgb":"445566"}`,
+			// 남은 자리를 나열한다 — minimal이 열을 쓰므로 링크 둘이다.
+			want: []string{"brand", "슬롯이 없다", "hlink", "folHlink"},
+		},
+		{
+			name:  "없는 자리를 가리킨다",
+			color: `{"name":"brand","rgb":"445566","slot":"accent7","ref":"accent7"}`,
+			want:  []string{"brand", "accent7", "쓸 수 있는 슬롯"},
+		},
+		{
+			name:  "부모가 쓰는 자리를 빼앗는다",
+			color: `{"name":"brand","rgb":"445566","slot":"accent1","ref":"accent1"}`,
+			want:  []string{"accent1", "accent1", "brand"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			project := localTheme("corp",
+				`{"name":"corp","extends":"minimal"}`,
+				`{"color":[`+tc.color+`]}`, "", nil)
+			_, diags := themeDeckIn(t, project, "corp", themeProbe)
+			if len(diags) != 1 {
+				t.Fatalf("슬롯 없는/겹치는 색이 통과했다: %v", diags)
+			}
+			for _, want := range tc.want {
+				if !strings.Contains(diags[0].Message, want) {
+					t.Errorf("진단에 %q가 없다: %s", want, diags[0].Message)
+				}
+			}
+			if !strings.Contains(diags[0].Message, "tokens.json") {
+				t.Errorf("진단이 고칠 파일을 가리키지 않는다: %s", diags[0].Message)
+			}
+		})
+	}
+}
+
+// TestFullColorTableLeavesNoFreeSlot은 상한에 닿은 표의 진단이 **고치는 방법**을 말함을 못
+// 박는다: 남은 자리가 없으면 나열할 것이 없으므로 "새 이름 대신 값을 갈아 끼운다"를 적는다.
+// 이것이 자식 테마가 색을 더하지 않고 **갈아 끼우는** 이유의 문구다 (ADR 0055).
+func TestFullColorTableLeavesNoFreeSlot(t *testing.T) {
+	owner := map[string]string{}
+	for _, slot := range soml.ColorSlots() {
+		owner[slot] = "쓰는 색"
+	}
+	if got := freeColorSlots(owner); !strings.Contains(got, "갈아 끼운다") {
+		t.Errorf("자리가 다 찬 표의 문구 = %q — 고치는 방법을 말하지 않는다", got)
+	}
+	delete(owner, "folHlink")
+	if got := freeColorSlots(owner); got != "남은 슬롯: folHlink" {
+		t.Errorf("한 자리 남은 표의 문구 = %q, want 남은 슬롯: folHlink", got)
 	}
 }
 
