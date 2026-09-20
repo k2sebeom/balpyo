@@ -74,6 +74,90 @@ const (
 	KindTableCell
 )
 
+// ElementKinds는 카탈로그의 모든 종류다 (KindNone은 카탈로그 밖이므로 빠진다).
+// **순서는 상수 선언 순서**이고 그것이 문서·진단·테스트의 순서다.
+//
+// 목록을 노출하는 이유는 카탈로그를 한 곳에 둔 이유의 연장이다: 렌더러가 다루는 종류
+// 집합과 이 카탈로그를 **대조할 수 있어야** "파싱은 되는데 그려지지 않는" 종류가 생기지
+// 않는다 (`<table>`이 정확히 그 상태였다 — TASKS P0.2). 대조는 render 패키지의 테스트가
+// 한다: 여기 있는 종류는 전부 두 렌더러가 다루거나 KindRendered가 거짓이어야 한다.
+func ElementKinds() []ElementKind {
+	return []ElementKind{
+		KindBlock, KindListContainer, KindListItem, KindInline,
+		KindLayoutContainer, KindSpacer, KindShape, KindImage,
+		KindTable, KindTableRow, KindTableCell,
+	}
+}
+
+// elementKindNames는 진단·테스트 출력용 이름표다.
+var elementKindNames = map[ElementKind]string{
+	KindNone:            "None",
+	KindBlock:           "Block",
+	KindListContainer:   "ListContainer",
+	KindListItem:        "ListItem",
+	KindInline:          "Inline",
+	KindLayoutContainer: "LayoutContainer",
+	KindSpacer:          "Spacer",
+	KindShape:           "Shape",
+	KindImage:           "Image",
+	KindTable:           "Table",
+	KindTableRow:        "TableRow",
+	KindTableCell:       "TableCell",
+}
+
+// String은 종류 이름을 돌려준다.
+func (k ElementKind) String() string {
+	if name, ok := elementKindNames[k]; ok {
+		return name
+	}
+	return "Unknown"
+}
+
+// ElementNamesOf는 이 종류를 갖는 태그 이름 전부다 (카탈로그 순서). 진단과 테스트가
+// "이 종류가 무슨 태그인가"를 이름 목록을 따로 들지 않고 물을 수 있게 한다.
+func ElementNamesOf(kind ElementKind) []string {
+	var names []string
+	for _, name := range allElementNames() {
+		if elementKinds[name] == kind {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+// allElementNames는 종류를 갖는 이름 전부다 — 카탈로그 순서(종류 선언 순서 안에서 각
+// 목록의 순서)를 유지하려고 맵을 훑지 않고 목록을 이어 붙인다.
+func allElementNames() []string {
+	names := make([]string, 0, len(elementKinds))
+	names = append(names, blockElements...)
+	names = append(names, listContainerElements...)
+	names = append(names, ListItemElement)
+	names = append(names, inlineElements...)
+	names = append(names, layoutContainerElements...)
+	names = append(names, SpacerElement, ShapeElement, ImageElement, TableElement, TableRowElement)
+	return append(names, tableCellElements...)
+}
+
+// unrenderedKinds는 **파서와 값 층은 아는데 어느 렌더러도 그리지 못하는** 종류다.
+//
+// 이 목록이 존재하는 이유는 어휘가 층마다 다른 속도로 자란다는 것이다: 표는 soml의 카탈로그와
+// core의 값 해석까지 열렸지만 렌더러가 없다 (TASKS P2.1). 목록을 **언어 층에 명시**해 두면
+// 세 가지가 동시에 성립한다 — (1) 파서가 저자에게 즉시 말할 수 있고(checkPlacement),
+// (2) 렌더러 디스패치와 대조하는 테스트가 "빠뜨린 것"과 "적어 두고 구현한 것"을 둘 다 잡고,
+// (3) 렌더러를 구현하는 커밋이 이 줄을 지우지 않으면 테스트가 실패한다.
+var unrenderedKinds = []ElementKind{KindTable, KindTableRow, KindTableCell}
+
+// KindRendered는 두 렌더러가 이 종류를 그릴 수 있는지 보고한다. KindNone(카탈로그 밖 —
+// `<slide>`·`<text>`·`<note>`)은 각자의 규칙을 따르므로 참이다.
+func KindRendered(kind ElementKind) bool {
+	for _, k := range unrenderedKinds {
+		if k == kind {
+			return false
+		}
+	}
+	return true
+}
+
 // 종류별 이름 목록. **순서가 곧 진단 메시지와 문서의 순서다** — 맵이 아니라 슬라이스인
 // 이유이고, elementKinds 맵은 여기서 파생된다.
 var (
