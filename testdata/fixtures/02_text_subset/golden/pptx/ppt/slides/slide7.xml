@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld name="list-appearance">
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="h2 s6.0"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="609600"/>
+            <a:ext cx="11411712" cy="445740"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="3510"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="2700" b="1">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="+mj-lt"/>
+                <a:ea typeface="+mj-ea"/>
+              </a:rPr>
+              <a:t>컨테이너에 쓴 외관은 항목이 상속한다</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="ul s6.1.0"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="1283940"/>
+            <a:ext cx="4296728" cy="685800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr marL="342900" indent="-342900" algn="l">
+              <a:lnSpc>
+                <a:spcPts val="2700"/>
+              </a:lnSpc>
+              <a:buFont typeface="+mn-lt"/>
+              <a:buChar char="•"/>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1800" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>기본 크기 — body 역할의 24px</a:t>
+            </a:r>
+          </a:p>
+          <a:p>
+            <a:pPr marL="342900" indent="-342900" algn="l">
+              <a:lnSpc>
+                <a:spcPts val="2700"/>
+              </a:lnSpc>
+              <a:buFont typeface="+mn-lt"/>
+              <a:buChar char="•"/>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1800" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>항목마다 속성을 쓰지 않는다</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="4" name="ul s6.1.1"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="5083969" y="1283940"/>
+            <a:ext cx="6758369" cy="685800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr marL="342900" indent="-342900" algn="l">
+              <a:lnSpc>
+                <a:spcPts val="2250"/>
+              </a:lnSpc>
+              <a:buFont typeface="+mn-lt"/>
+              <a:buChar char="•"/>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>컨테이너에 한 번 쓴 20px와 muted가 항목 둘에 함께 내려온다</a:t>
+            </a:r>
+          </a:p>
+          <a:p>
+            <a:pPr marL="342900" indent="-342900" algn="l">
+              <a:lnSpc>
+                <a:spcPts val="2250"/>
+              </a:lnSpc>
+              <a:buFont typeface="+mn-lt"/>
+              <a:buChar char="•"/>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1500" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>마커도 항목의 확정 폰트·색을 딴다 — 글리프만 남아 어긋나지 않는다</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="5" name="ol s6.2"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="2198340"/>
+            <a:ext cx="11411712" cy="685800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr marL="342900" indent="-342900" algn="ctr">
+              <a:lnSpc>
+                <a:spcPts val="2700"/>
+              </a:lnSpc>
+              <a:buFont typeface="+mn-lt"/>
+              <a:buAutoNum type="arabicPeriod"/>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1800" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>정렬도 목록 단위다</a:t>
+            </a:r>
+          </a:p>
+          <a:p>
+            <a:pPr marL="342900" indent="-342900" algn="ctr">
+              <a:lnSpc>
+                <a:spcPts val="2700"/>
+              </a:lnSpc>
+              <a:buFont typeface="+mn-lt"/>
+              <a:buAutoNum type="arabicPeriod"/>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1800" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>번호는 엔진이 그린다</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sld>

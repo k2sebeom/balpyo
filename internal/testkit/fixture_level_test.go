@@ -152,12 +152,15 @@ var goldenPartLists = map[string][]string{
 		"pptx/ppt/slides/_rels/slide4.xml.rels",
 		"pptx/ppt/slides/_rels/slide5.xml.rels",
 		"pptx/ppt/slides/_rels/slide6.xml.rels",
+		// 007은 목록 컨테이너의 외관(P0.3)을 시험한다 — 파트는 슬라이드 하나만 늘린다.
+		"pptx/ppt/slides/_rels/slide7.xml.rels",
 		"pptx/ppt/slides/slide1.xml",
 		"pptx/ppt/slides/slide2.xml",
 		"pptx/ppt/slides/slide3.xml",
 		"pptx/ppt/slides/slide4.xml",
 		"pptx/ppt/slides/slide5.xml",
 		"pptx/ppt/slides/slide6.xml",
+		"pptx/ppt/slides/slide7.xml",
 		"pptx/ppt/theme/theme1.xml",
 	},
 	layoutFixtureName: {

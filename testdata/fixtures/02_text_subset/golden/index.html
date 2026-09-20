@@ -106,6 +106,29 @@
   }
   ol.balpyo-list > li::before { content: counter(balpyo-item) "."; }
 
+  /* 레이아웃 태그 = CSS flex/grid의 이름 바꾸기 층 (PRD §7.4). 여기 있는 것은 태그의
+     정의 그 자체이고, 요소마다 다른 값(gap·align·pad·cols…)은 인라인 style로 나간다. */
+  .balpyo-row { display: flex; flex-direction: row; }
+  .balpyo-col { display: flex; flex-direction: column; }
+  .balpyo-grid { display: grid; }
+
+  /* <spacer>는 밀어내기가 내용인 빈 박스다. flex: 1은 남은 공간을 전부 받는다는 뜻이고,
+     저자가 적은 배치 속성(<spacer grow="2">)은 인라인 style로 이 값을 덮는다. */
+  .balpyo-spacer { flex: 1; }
+
+  /* 레이아웃 컨테이너의 자식은 **브라우저 기본값**으로 돌아간다.
+     스테이지의 세로 스택은 텍스트·리스트에 확정 폭(width: 100%)과 눌리지 않는
+     flex(0 0 auto)를 준다 (contentCSS) — 스택 안에서 줄바꿈을 결정적으로 만들기 위한
+     규칙이다. 그 규칙이 컨테이너 안까지 따라오면 자식마다 부모 폭 전체를 요구하는 셈이 되어
+     가로 컨테이너를 넘치고, <spacer>가 받을 "남은 공간"이 사라진다 (실측으로 드러났다 —
+     render/geom의 spacer 테스트). 컨테이너 안에서 폭을 정하는 것은 컨테이너다: 트랙,
+     교차축 정렬(stretch), 그리고 자식이 적은 basis/grow가 그 값을 만든다.
+     폭이 확정된다는 사실은 그대로다 — 브라우저가 정하고 지오메트리 패스가 그 값을 잰다. */
+  :is(.balpyo-row, .balpyo-col, .balpyo-grid) > :is(.balpyo-text, .balpyo-list) {
+    width: auto;
+    flex: 0 1 auto;
+  }
+
   /* ── 발표자 뷰 ── 런타임 JS가 <html>에 data-balpyo-view="presenter"를 켠다.
      속성이 없으면(JS 꺼짐, 또는 지오메트리 패스가 지운 상태) 위의 세로 스택 그대로다. */
   .balpyo-viewer-bar, .balpyo-viewer-notes { display: none; }
@@ -199,6 +222,12 @@
     --balpyo-font-heading: "Noto Sans", "Noto Sans CJK KR", sans-serif;
     --balpyo-font-body: "Noto Sans", "Noto Sans CJK KR", sans-serif;
     --balpyo-font-mono: "Noto Sans Mono", "Noto Sans CJK KR", monospace;
+    --balpyo-space-xs: 6px;
+    --balpyo-space-sm: 12px;
+    --balpyo-space-md: 24px;
+    --balpyo-space-lg: 36px;
+    --balpyo-space-xl: 48px;
+    --balpyo-space-2xl: 72px;
   }
 
   .balpyo-slide { background: var(--balpyo-color-bg); }
@@ -206,7 +235,7 @@
 </style>
 </head>
 <body>
-<div class="balpyo-deck" data-aspect="16:9" data-slides="6">
+<div class="balpyo-deck" data-aspect="16:9" data-slides="7">
 <section class="balpyo-slide" id="headings" data-slide-index="0" data-slide-source="slides/001_headings.slide">
 <div class="balpyo-stage">
 <h1 class="balpyo-text" data-balpyo-id="s0.0" data-balpyo-el="h1" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">2026 아키텍처 리뷰</h1>
@@ -261,6 +290,25 @@
 <h2 class="balpyo-text" data-balpyo-id="s5.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">모르는 variant는 기본 외관으로 폴백한다</h2>
 <div class="balpyo-text" data-balpyo-id="s5.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start">KICKER — 작고 굵은 강조색</div>
 <p class="balpyo-text" data-balpyo-id="s5.2" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 32px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">lead — 본문보다 큰 도입 문단이다.</p>
+</div>
+</section>
+<section class="balpyo-slide" id="list-appearance" data-slide-index="6" data-slide-source="slides/007_list_appearance.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s6.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">컨테이너에 쓴 외관은 항목이 상속한다</h2>
+<div class="balpyo-row" data-balpyo-id="s6.1" data-balpyo-el="row" style="gap: var(--balpyo-space-lg)">
+<ul class="balpyo-list" data-balpyo-id="s6.1.0" data-balpyo-el="ul" style="flex-grow: 1">
+<li class="balpyo-text" data-balpyo-id="s6.1.0.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">기본 크기 — body 역할의 24px</li>
+<li class="balpyo-text" data-balpyo-id="s6.1.0.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">항목마다 속성을 쓰지 않는다</li>
+</ul>
+<ul class="balpyo-list" data-balpyo-id="s6.1.1" data-balpyo-el="ul" style="flex-grow: 1">
+<li class="balpyo-text" data-balpyo-id="s6.1.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">컨테이너에 한 번 쓴 20px와 muted가 항목 둘에 함께 내려온다</li>
+<li class="balpyo-text" data-balpyo-id="s6.1.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">마커도 항목의 확정 폰트·색을 딴다 — 글리프만 남아 어긋나지 않는다</li>
+</ul>
+</div>
+<ol class="balpyo-list" data-balpyo-id="s6.2" data-balpyo-el="ol">
+<li class="balpyo-text" data-balpyo-id="s6.2.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">정렬도 목록 단위다</li>
+<li class="balpyo-text" data-balpyo-id="s6.2.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">번호는 엔진이 그린다</li>
+</ol>
 </div>
 </section>
 </div>
