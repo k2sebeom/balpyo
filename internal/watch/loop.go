@@ -2,6 +2,7 @@ package watch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -123,7 +124,7 @@ func (r *Runner) Build() Status {
 		status.Diagnostics = DiagnosticsOf(result.Diagnostics)
 	}
 	if err != nil {
-		status.Error = err.Error()
+		status.Error = summarize(err)
 	} else {
 		status.OK = true
 		status.Slides = len(result.Deck.Slides)
@@ -155,6 +156,19 @@ func (r *Runner) Watch(ctx context.Context) error {
 			}
 		}
 	}
+}
+
+// summarize는 실패 이유를 **한 줄로** 만든다.
+//
+// 진단 에러는 개수만 남긴다 (`balpyo build`가 같은 규칙을 쓴다): 상세는 Status.Diagnostics에
+// 이미 있고 오버레이가 그것을 목록으로 낸다. 요약하지 않으면 에러 9건의 전문이 오버레이 제목
+// 한 줄과 터미널 한 줄에 각각 통째로 들어간다.
+func summarize(err error) string {
+	var de *soml.DiagnosticsError
+	if errors.As(err, &de) {
+		return fmt.Sprintf("빌드 실패: 에러 %d건", de.Count())
+	}
+	return err.Error()
 }
 
 // log는 빌드 하나를 터미널에 한 줄로 찍고, 진단은 그 아래에 붙인다.

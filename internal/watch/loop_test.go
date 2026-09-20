@@ -81,6 +81,11 @@ func TestRunnerKeepsTheLastGoodOutputWhenABuildFails(t *testing.T) {
 	if status.Error == "" {
 		t.Error("실패에 이유가 없다")
 	}
+	// 이유는 **요약 한 줄**이다 — 상세는 진단 목록이 낸다. 전문이 여기 들어가면 오버레이 제목이
+	// 에러 9건의 전문이 되고(그 줄에는 파일 이름도 안 보인다) 터미널 한 줄도 같은 것이 된다.
+	if strings.ContainsAny(status.Error, "\n") || strings.Contains(status.Error, "<txt>") {
+		t.Errorf("실패 이유가 요약이 아니다: %q", status.Error)
+	}
 	if len(status.Diagnostics) != 1 {
 		t.Fatalf("진단 %d건, want 1건: %+v", len(status.Diagnostics), status.Diagnostics)
 	}
