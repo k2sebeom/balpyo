@@ -297,6 +297,15 @@ type Geometry struct {
 	Stage soml.Stage `json:"stage"`
 	// Boxes는 문서 순서의 측정 결과다 (Refs와 같은 순서).
 	Boxes []Box `json:"boxes"`
+	// Content는 슬라이드마다의 콘텐츠 박스다 (슬라이드 순서, 슬라이드 상대 좌표) — 스테이지의
+	// 패딩 안쪽을 **잰** 값이다.
+	//
+	// 왜 슬라이드마다인가: 여백은 테마가 레이아웃마다 정한다 (`image-full`은 전면 배치라
+	// `padding: 0`이다). 덱 하나에 한 값이 아니므로 판정 기준도 슬라이드마다다.
+	//
+	// 비어 있을 수 있다 (JSON에서 되읽은 값·Synthetic·손으로 만든 시험 입력) — 그때는
+	// ContentBox가 기본 여백으로 물러선다.
+	Content []Rect `json:"content,omitempty"`
 
 	// index는 식별자 → Boxes 위치다. 생성자가 채우고 그 뒤로는 읽기만 한다 — Box에서
 	// 지연 생성하면 지오메트리를 여러 goroutine이 읽는 순간(픽스처 병렬 실행) 경쟁이 된다.
@@ -323,6 +332,24 @@ func (g *Geometry) Box(id string) (Box, bool) {
 		return Box{}, false
 	}
 	return g.Boxes[i], true
+}
+
+// ContentBox는 슬라이드 하나의 콘텐츠 박스다 — 잰 값이 있으면 그것, 없으면 기본 여백으로
+// 계산한 사각형이다 (ContentBox 함수).
+//
+// 물러서는 길을 두는 이유: 좌표를 소비하는 쪽은 잰 지오메트리만 받는 것이 아니다 (Synthetic·
+// JSON에서 되읽은 값). 그 입력에서 콘텐츠 박스가 0×0이 되면 모든 박스가 여백을 침범한 것으로
+// 보이고, 그 경고는 진단 전부를 믿지 못하게 만든다.
+func (g *Geometry) ContentBox(slide int) Rect {
+	if g == nil {
+		return Rect{}
+	}
+	if slide >= 0 && slide < len(g.Content) {
+		if rect := g.Content[slide]; rect.valid() && rect.W > 0 && rect.H > 0 {
+			return rect
+		}
+	}
+	return ContentBox(g.Stage)
 }
 
 // newIndex는 식별자 색인이다.
@@ -387,6 +414,7 @@ func newGeometry(deck *soml.Deck, m measurement) (*Geometry, error) {
 
 	refs := Refs(deck)
 	boxes := make([]Box, 0, len(refs))
+	content := make([]Rect, len(m.Slides))
 	next := 0
 	for i, sm := range m.Slides {
 		slide := deck.Slides[i]
@@ -400,6 +428,13 @@ func newGeometry(deck *soml.Deck, m measurement) (*Geometry, error) {
 		if !sameSize(sm.W, float64(deck.Stage.Width)) || !sameSize(sm.H, float64(deck.Stage.Height)) {
 			return nil, fmt.Errorf("%s: 브라우저가 잰 슬라이드 크기가 %s×%s다 — 논리 스테이지 %dx%d와 달라 페이지가 스케일된 상태다",
 				slide.Source, formatPx(sm.W), formatPx(sm.H), deck.Stage.Width, deck.Stage.Height)
+		}
+
+		// 콘텐츠 박스는 판정에만 쓰이므로(배치 진단) 어긋나도 빌드를 멈추지 않는다 — 유효하지
+		// 않으면 담지 않고 판정 쪽이 기본 여백으로 물러선다 (Geometry.ContentBox). 좌표를
+		// 소비하는 쪽은 이 값을 읽지 않는다.
+		if sm.Content.valid() {
+			content[i] = sm.Content
 		}
 
 		for _, bm := range sm.Boxes {
@@ -436,7 +471,7 @@ func newGeometry(deck *soml.Deck, m measurement) (*Geometry, error) {
 			strings.Join(missing, ", "))
 	}
 
-	g := &Geometry{Stage: deck.Stage, Boxes: boxes, index: newIndex(boxes)}
+	g := &Geometry{Stage: deck.Stage, Boxes: boxes, Content: content, index: newIndex(boxes)}
 	// 같은 대조를 소비 측 계약(Verify)으로 한 번 더 돈다 — 두 경로가 같은 판정을 하는지
 	// 여기서 확인해 두면, 나중에 한쪽만 느슨해지는 일을 막는다.
 	if err := g.Verify(deck); err != nil {

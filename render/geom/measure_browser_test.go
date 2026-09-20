@@ -1163,3 +1163,50 @@ func TestStackPaintOrderIsDocumentOrder(t *testing.T) {
 		t.Errorf("position:relative를 뺐는데 겹친 픽셀 = %s, want %s (뒤집힘이 없으면 테스트가 계약을 지키지 않는다)", stripped, blue)
 	}
 }
+
+// 콘텐츠 박스는 **슬라이드마다 잰다** — 여백은 테마가 레이아웃마다 정하기 때문이다.
+//
+// minimal의 `image-full`은 전면 배치라 `padding: 0`이다 (layouts/image-full.css). 판정 기준을
+// 상수(web.StagePadding)로 계산하던 동안 그 레이아웃의 그림 한 장이 "여백을 침범한다" 경고
+// 두 줄을 받았고, 여백을 없앤 것은 테마의 결정이므로 저자의 소스에는 고칠 곳이 없었다.
+// 여기서 재는 것이 그 판정의 유일한 정직한 입력이다: CSS를 소유한 것은 테마이고, 테마가 정한
+// 여백을 아는 곳은 브라우저다.
+func TestMeasureReadsPerSlideContentBox(t *testing.T) {
+	testkit.RequireChromium(t)
+	stage, err := soml.Aspect16x9.Stage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	deck := &soml.Deck{Title: "content box", Lang: "ko", Aspect: soml.Aspect16x9, Stage: stage}
+	for i, layout := range []string{"content", "image-full"} {
+		source := fmt.Sprintf("slides/%03d_%s%s", i+1, layout, soml.Ext)
+		src := fmt.Sprintf("<slide id=%q layout=%q>\n  <p>본문</p>\n</slide>\n", layout, layout)
+		doc, diags := soml.Parse(source, src)
+		if err := diags.Err(); err != nil {
+			t.Fatalf("파싱 실패: %v", err)
+		}
+		deck.Slides = append(deck.Slides, &soml.Slide{
+			Index: i, ID: layout, Source: source,
+			Layout: soml.SlideLayout(doc.Layout), Content: doc.Content,
+		})
+	}
+	if err := core.Resolve(deck).Err(); err != nil {
+		t.Fatalf("해석 실패: %v", err)
+	}
+
+	g := measureLayout(t, deck)
+	// 기본 여백 64px: 스테이지에서 네 변을 뺀 1152×592다.
+	if got, want := g.ContentBox(0), (geom.Rect{X: 64, Y: 64, W: 1152, H: 592}); got != want {
+		t.Errorf("content의 콘텐츠 박스 = %s, want %s", got, want)
+	}
+	// 전면 배치: 콘텐츠 박스가 스테이지 전체다 — 이 한 줄이 거짓 경고를 없앤다.
+	if got, want := g.ContentBox(1), (geom.Rect{W: 1280, H: 720}); got != want {
+		t.Errorf("image-full의 콘텐츠 박스 = %s, want %s", got, want)
+	}
+	// 전면 배치 슬라이드의 그림·텍스트는 여백 침범 경고를 받지 않는다.
+	for _, diag := range geom.Diagnose(deck, g) {
+		if strings.Contains(diag.Message, "콘텐츠 박스") {
+			t.Errorf("전면 배치에서 여백 침범 경고가 났다: %s", diag.String())
+		}
+	}
+}

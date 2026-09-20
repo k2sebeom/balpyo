@@ -251,3 +251,49 @@ func TestContentBox(t *testing.T) {
 		t.Errorf("ContentBox = %s, want %s", got, want)
 	}
 }
+
+// 콘텐츠 박스는 **잰 값**이다 — 여백을 테마가 레이아웃마다 정하기 때문이다.
+//
+// 이 판정이 상수(web.StagePadding)로 돌던 동안 minimal의 전면 배치 레이아웃(`image-full`은
+// `padding: 0`이다)에서 그림 한 장이 경고 두 줄을 받았고, 저자가 고칠 방법이 없었다 — 여백을
+// 없앤 것이 테마의 결정이므로 소스에는 고칠 곳이 없다. 고칠 수 없는 경고는 나머지 판정 전부를
+// 함께 잃게 만든다 (ADR 0039의 전제).
+func TestDiagnoseUsesTheMeasuredContentBox(t *testing.T) {
+	// 전면 배치: 스테이지를 꽉 채운 박스는 조용하다.
+	full := textDeck(t, 1)
+	g := measured(t, full, map[string]Rect{"s0.0": {X: 0, Y: 0, W: 1280, H: 720}}, nil)
+	g.Content = []Rect{{X: 0, Y: 0, W: 1280, H: 720}}
+	if diags := Diagnose(full, g); len(diags) > 0 {
+		t.Errorf("여백 없는 레이아웃의 경고 %d건, want 0건:\n%s", len(diags), diags)
+	}
+
+	// 여백이 기본보다 넓은 레이아웃(96px)에서는 기본 여백에 맞춘 박스가 경고를 받는다 —
+	// 판정이 상수가 아니라 잰 박스를 본다는 사실의 반대쪽 증거다.
+	wide := textDeck(t, 1)
+	g = measured(t, wide, map[string]Rect{"s0.0": {X: 64, Y: 96, W: 1152, H: 528}}, nil)
+	g.Content = []Rect{{X: 96, Y: 96, W: 1088, H: 528}}
+	wantDiags(t, Diagnose(wide, g), "콘텐츠 박스를 오른쪽으로 32px 넘친다")
+
+	// 잰 값이 없는 지오메트리(Synthetic·JSON에서 되읽은 값)는 기본 여백으로 물러선다 —
+	// 0×0 콘텐츠 박스로 모든 박스가 경고를 받으면 진단 전부를 잃는다.
+	plain := textDeck(t, 1)
+	g = measured(t, plain, map[string]Rect{"s0.0": {X: 64, Y: 64, W: 1152, H: 626}}, nil)
+	if len(g.Content) != 0 {
+		t.Fatalf("시험 입력에 잰 콘텐츠 박스가 있다: %v", g.Content)
+	}
+	wantDiags(t, Diagnose(plain, g), "콘텐츠 박스를 아래로 34px 넘친다")
+}
+
+// 슬라이드마다 다른 콘텐츠 박스를 쓴다 — 덱 하나에 여백이 한 값이 아니다 (전면 배치 한 장과
+// 보통 레이아웃 한 장이 같은 덱에 있는 것이 정상이다).
+func TestDiagnoseContentBoxIsPerSlide(t *testing.T) {
+	deck := textDeck(t, 1, 1)
+	g := measured(t, deck, map[string]Rect{
+		// 첫 장은 전면 배치다 — 스테이지를 꽉 채워도 조용하다.
+		"s0.0": {X: 0, Y: 0, W: 1280, H: 720},
+		// 둘째 장은 기본 여백이다 — 같은 박스가 경고를 받는다.
+		"s1.0": {X: 0, Y: 0, W: 1280, H: 720},
+	}, nil)
+	g.Content = []Rect{{X: 0, Y: 0, W: 1280, H: 720}, ContentBox(deck.Stage)}
+	wantDiags(t, Diagnose(deck, g), "콘텐츠 박스를 아래로 64px 넘친다")
+}

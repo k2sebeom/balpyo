@@ -31,6 +31,13 @@ const (
 	// NotesClass는 슬라이드 안의 숨은 발표자 노트 요소다 — 뷰어 런타임의 노트 패널과
 	// 테스트가 이 클래스로 읽는다.
 	NotesClass = "balpyo-notes"
+	// StageClass는 슬라이드 안의 스테이지 요소다 — **콘텐츠 박스를 가진 박스**다.
+	//
+	// 지오메트리 패스가 이 요소의 패딩 안쪽을 재기 때문에 export한다 (geom의 콘텐츠 박스):
+	// 여백은 StagePadding이 기본값이지만 테마의 레이아웃 CSS가 레이아웃마다 다시 정할 수
+	// 있으므로(minimal의 `image-full.css`는 `padding: 0`이다) 판정 기준을 상수로 계산하면
+	// 전면 배치 레이아웃에서 저자가 고칠 수 없는 경고가 나온다.
+	StageClass = "balpyo-stage"
 )
 
 // SlideSelector는 문서 순서의 모든 슬라이드를 집는 선택자다.
@@ -43,6 +50,9 @@ func SlideIndexSelector(index int) string {
 
 // ElementSelector는 식별자를 가진 모든 요소를 집는 선택자다 — 지오메트리 패스가 재는 대상.
 func ElementSelector() string { return "[" + IDAttr + "]" }
+
+// StageSelector는 슬라이드 안의 스테이지를 집는 선택자다 (StageClass의 주석).
+func StageSelector() string { return "." + StageClass }
 
 // 스테이지 여백과 스택 간격이다 (논리 px). 간격 24px은 본문 크기와 같아 한 글자 높이만큼
 // 벌어진 리듬이 된다 — 역할 기본값의 수직 리듬(core/theme.go)과 같은 근거다.
@@ -112,7 +122,7 @@ func writeStage(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 	// 하나뿐이고, 겹침 CSS는 stack과 한 벌을 공유한다 (stackCSS). 스테이지를 `<col>`로
 	// 재정의하는 통합은 Iteration 10(`layout=`/`slot=`)의 몫이다 — 여기서는 canvas 분기만
 	// 넣고 그 통합까지 하지 않는다.
-	stageClass := "balpyo-stage"
+	stageClass := StageClass
 	if slide.Layout == soml.LayoutCanvas {
 		stageClass += " balpyo-stage-canvas"
 	}

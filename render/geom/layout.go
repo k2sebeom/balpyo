@@ -81,7 +81,6 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 	}
 	refs := Refs(deck)
 	stage := stageRect(deck.Stage)
-	content := ContentBox(deck.Stage)
 
 	var diags soml.Diagnostics
 	// 식별자 → refs 색인이다. 부모는 문서 순서에서 자식보다 앞에 오므로(Refs) 순회하며 채우면
@@ -110,10 +109,14 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 					ref.El, refs[parent].El, dir, px(over)))
 			}
 		default:
+			// 콘텐츠 박스는 **이 슬라이드에서 잰** 것이다 — 여백은 테마가 레이아웃마다 정하므로
+			// (`image-full`은 전면 배치라 여백이 없다) 상수로 판정하면 그 레이아웃의 전면
+			// 그림마다 저자가 고칠 수 없는 경고가 나온다 (Geometry.Content).
+			content := g.ContentBox(ref.Slide)
 			if dir, over := escape(box.Rect, content); over > overflowTolerance {
 				diags = append(diags, soml.Warningf(ref.Source, ref.Span,
-					"<%s>가 콘텐츠 박스를 %s %s 넘친다 — 스테이지 여백 %dpx를 침범한다",
-					ref.El, dir, px(over), web.StagePadding))
+					"<%s>가 콘텐츠 박스를 %s %s 넘친다 — 이 레이아웃의 콘텐츠 박스는 %s다 (여백은 테마가 정한다)",
+					ref.El, dir, px(over), content))
 			}
 		}
 

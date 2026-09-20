@@ -23,5 +23,7 @@ func Synthetic(deck *soml.Deck, rect Rect) *Geometry {
 	for _, ref := range refs {
 		boxes = append(boxes, Box{ID: ref.ID, El: ref.El, Slide: ref.Slide, Rect: rect})
 	}
+	// 콘텐츠 박스는 채우지 않는다 — 잰 값이 아니므로 여기서 만들면 "테마가 정한 여백"이라는
+	// 뜻이 없는 숫자가 된다. 소비 측은 기본 여백으로 물러선다 (Geometry.ContentBox).
 	return &Geometry{Stage: deck.Stage, Boxes: boxes, index: newIndex(boxes)}
 }

@@ -29,6 +29,13 @@ type slideMeasurement struct {
 	// W/H는 브라우저가 잰 슬라이드 크기다 (CSS px). 논리 스테이지와 같아야 한다.
 	W float64 `json:"w"`
 	H float64 `json:"h"`
+	// Content는 스테이지의 **패딩 안쪽** 사각형이다 (슬라이드 상대) — 콘텐츠 박스.
+	//
+	// 상수로 계산하지 않고 재는 이유: 여백은 테마가 레이아웃마다 다시 정한다 (minimal의
+	// `image-full.css`는 `padding: 0`이다 — 전면 배치). 상수로 판정하면 그 레이아웃에서
+	// 전면 그림마다 저자가 고칠 수 없는 경고가 나오고, 고칠 수 없는 경고는 나머지 판정
+	// 전부를 함께 잃게 만든다 (ADR 0039).
+	Content Rect `json:"content"`
 	// Boxes는 이 슬라이드 안 요소의 측정값이다 (문서 순서, 슬라이드 상대 좌표).
 	Boxes []boxMeasurement `json:"boxes"`
 }
@@ -86,6 +93,21 @@ const measureScript = `(() => {
       }
       return rects;
     };
+    // 콘텐츠 박스는 스테이지의 **패딩 안쪽**이다 — 여백을 레이아웃마다 테마가 정하므로
+    // (slideMeasurement.Content의 주석) 상수가 아니라 계산된 스타일에서 읽는다. 테두리를
+    // 함께 빼는 이유는 그것도 내용이 놓일 수 없는 띠라는 것이다. 스테이지가 없으면(있어야
+    // 하지만) 0을 주고 판정 쪽이 기본 여백으로 물러선다.
+    const contentRect = (stage, sr) => {
+      if (!stage) return {x: 0, y: 0, w: 0, h: 0};
+      const r = stage.getBoundingClientRect();
+      const cs = getComputedStyle(stage);
+      const n = (v) => parseFloat(v) || 0;
+      const l = n(cs.borderLeftWidth) + n(cs.paddingLeft);
+      const t = n(cs.borderTopWidth) + n(cs.paddingTop);
+      const rt = n(cs.borderRightWidth) + n(cs.paddingRight);
+      const b = n(cs.borderBottomWidth) + n(cs.paddingBottom);
+      return {x: r.x - sr.x + l, y: r.y - sr.y + t, w: r.width - l - rt, h: r.height - t - b};
+    };
     const slides = Array.from(document.querySelectorAll(%q));
     return {
       dpr: window.devicePixelRatio,
@@ -98,6 +120,7 @@ const measureScript = `(() => {
           index: Number.isInteger(index) ? index : -1,
           w: sr.width,
           h: sr.height,
+          content: contentRect(slide.querySelector(%q), sr),
           boxes: Array.from(slide.querySelectorAll(%q)).map((el) => ({
             id: el.getAttribute(%q) || "",
             el: el.getAttribute(%q) || "",
@@ -122,7 +145,8 @@ const measureScript = `(() => {
 func measureExpr() string {
 	return fmt.Sprintf(measureScript,
 		web.MeasureViewExpr(),
-		web.SlideSelector(), web.SlideIndexAttr, web.ElementSelector(), web.IDAttr, web.ElAttr,
+		web.SlideSelector(), web.SlideIndexAttr, web.StageSelector(),
+		web.ElementSelector(), web.IDAttr, web.ElAttr,
 		web.DocumentViewExpr())
 }
 
