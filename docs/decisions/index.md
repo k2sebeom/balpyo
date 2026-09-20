@@ -56,6 +56,7 @@
 | [0048](0048-init-owns-its-deck-and-check-is-build-without-writing.md) | `init`은 자기 덱을 소유하고, `check`는 쓰지 않는 `build`다 | P3.3 | 확정 |
 | [0049](0049-a-shape-that-holds-layout-becomes-a-backdrop.md) | 배치를 담은 도형은 배경이 되고, 자식은 형제 도형이 된다 | P2.3 | 확정 |
 | [0050](0050-six-accents-are-a-measured-palette-not-a-ranking.md) | 강조색 여섯은 위계가 아니라 재서 고른 팔레트다 | P4.1 | 확정 |
+| [0051](0051-highlighting-is-a-token-stream-compiled-to-runs.md) | 하이라이팅은 토큰 스트림이고, 값 층이 그것을 런으로 컴파일한다 | P2.4 | 확정 |
 
 PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다. 그 결정들의
 색인은 PRD에 있고, 이 표는 **그 이후 구현 중에 새로 확정한 것**만 담는다.
