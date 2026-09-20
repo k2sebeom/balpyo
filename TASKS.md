@@ -21,7 +21,7 @@
 | # | 증상 (실측) | 심각도 | 항목 | 상태 |
 |---|---|---|---|---|
 | D1 | 텍스트 안에 **리터럴 `<`를 쓸 수 없고** 문자 참조도 해석되지 않는다 (`&lt;`가 그대로 보인다). 마크업 언어를 설명하는 덱이 자기 문법을 화면에 띄울 수 없었다 | **높음** (우회 불가) | P0.1 | 닫힘 |
-| D2 | `<table>`은 파싱·검증까지 통과한 뒤 **렌더에서 빌드가 죽었다**. 표 한 장을 `grid` + 도형 14개로 손으로 짰다 | **높음** | P0.2 · P2.1 | 진단만 닫힘 |
+| D2 | `<table>`은 파싱·검증까지 통과한 뒤 **렌더에서 빌드가 죽었다**. 표 한 장을 `grid` + 도형 14개로 손으로 짰다 | **높음** | P0.2 · P2.1 | **닫힘** (P2.1) |
 | D3 | 슬롯 카탈로그는 레이아웃 11종에 있는데 minimal 테마에는 `*.slots.css`가 3종뿐이다. `layout="quote"` + `slot=`이 **웹에서 조용히 무효**인데 **PPTX에는 `p:ph`가 그대로 나간다** — 같은 소스가 두 타깃에서 갈린다 | **높음** | P1.4 | **닫힘** (ADR 0044) |
 | D4 | `title.slots.css`의 `justify-items: center`가 base 층 `.balpyo-text { width: 100% }`에 무력화된다. 표지가 왼쪽에 붙어서 슬롯 자식마다 `align="center"`를 손으로 달았다 | **높음** | P1.3 | **닫힘** (ADR 0043) |
 | D5 | `chevron` 중앙 텍스트가 노치에 **잘린다**. `pad`를 키워도 해결 불가 → 라벨을 도형 밖으로 내렸다 | 중간 | P1.2 | 닫힘 |
@@ -39,7 +39,7 @@
 | D17 | **레이아웃이 본문 높이를 소유하지 않는다.** `content`는 위에서부터 쌓기만 해서 10장 중 5장의 아래 40%가 비었다. 세로 리듬은 저자가 `<col h="fill" justify="between">` 랩퍼로 슬라이드마다 손수 만든다 (랩퍼 없음·`justify="center"`·`between` 셋 다 재봤다) | **높음** | P1.4 | **닫힘** (ADR 0044) |
 | D18 | 같은 뜻의 이름이 갈린다: 컨테이너는 `justify`/`align`, 도형은 `anchor`다. 첫 시도가 `<col>에 알 수 없는 속성 anchor`로 죽었다 | 낮음 | P5.2 | 열림 |
 | D19 | **저자가 처음 읽는 페이지가 틀렸다.** `slide.md`는 "`layout` 어휘는 2종"이라고 했고 `reference/index.md`는 `layouts.md`가 "Iteration 10에서 생긴다"고 했다 — 11종이 다 살아 있고 그 페이지도 이미 있다 | **높음** | P5.2 | 닫힘 |
-| D20 | 도형으로 흉낸 표는 **머리행 아래 선이 없고** 본문 셀 테두리가 이웃과 2px로 겹친다. `border-collapse`를 흉낼 방법이 없다 | 중간 | P2.1 | 열림 |
+| D20 | 도형으로 흉낸 표는 **머리행 아래 선이 없고** 본문 셀 테두리가 이웃과 2px로 겹친다. `border-collapse`를 흉낼 방법이 없다 | 중간 | P2.1 | **닫힘** (P2.1 — 표는 셀이 격자선을 공유한다) |
 
 **2회차에서 통과한 것** (이 로드맵이 건드리지 않는 baseline): 슬롯 모드 레이아웃 5종
 (`title`·`code`·`two-column`·`quote`·`end`)이 웹·PPTX 양쪽에서 살아 있고, `cols`의 트랙
@@ -59,6 +59,7 @@
 | P1.2 도형 프리셋의 텍스트 영역 (D5) | 프리셋 12종의 텍스트 영역을 `render/web` 기하표의 `TextRect` 열로. chevron은 음수 `bodyPr` 인셋으로 되돌린다 | ADR [0040](docs/decisions/0040-preset-text-rect-lives-in-the-web-geometry-table.md)·[0041](docs/decisions/0041-chevron-cancels-its-text-rect.md)·[0042](docs/decisions/0042-chevron-labels-stay-outside-the-shape.md), `04_shape/009`·`010` |
 | P1.3 정렬과 텍스트 박스의 소유권 (D4 · D14) | 슬롯 모드가 세 번째 폭 리셋 문맥 + `<text>`에 가로 크기 3종. PPTX 렌더러는 손대지 않았다 | [ADR 0043](docs/decisions/0043-explicit-width-belongs-to-the-placement-context.md), `08_slots/004`(자식에 `align`이 없다), `06_stack/011` |
 | P1.4 슬롯의 테마 구멍과 세로 리듬 (D3 · D17) | minimal이 슬롯 10종 전부에 `*.slots.css`를 갖고, 테마가 못 받는 슬롯은 **값 층에서 경고 + 미탑재**(두 렌더러가 한 입력을 읽는다). 세로 리듬은 `<slide justify>`가 소유한다 | [ADR 0044](docs/decisions/0044-slots-need-a-theme-and-vertical-rhythm-needs-an-owner.md), `render/pptx/placeholder_test.go`(두 타깃 모드 합의) · `core/theme_package_test.go`(카탈로그 ↔ 테마 대조), `03_layout/008` · `08_slots/005` |
+| P2.1 `<table>` 렌더러 (D2 · D20) | 웹은 진짜 `<table>`, PPTX는 `p:graphicFrame`+`a:tbl`(표 스타일 없음 + 명시 `tcPr`). 격자 수치는 전부 **잰 값**이고 그 합이 프레임 크기와 같다. 예제 덱 셋의 손으로 짠 표가 표로 돌아왔다 | [ADR 0036](docs/decisions/0036-table-is-html-ish-tr-td-with-explicit-a-tbl.md), `09_table`(5장) · `internal/testkit/table_fixture_test.go`(병합 격자 전수), LibreOffice flat ODF 왕복(`table:table-cell` 78개 · 덮인 셀 4개), `docs/reference/soml/table.md` |
 | D19 문서가 어휘를 숨긴다 | `slide.md`(11종 표 + 실제 진단 문구) · `reference/index.md`(`layouts.md`는 구현됨) · `text.md`(속성 목록 + `<text>`에 `w`/`h`가 없다는 것) | `make docs --strict`, 커밋 `cc8239f` |
 
 ---
@@ -165,18 +166,33 @@
       `guides/index.md` · `mkdocs.yml` 내비. ADR 0005의 "+3.3%"가 상한이 아니었음을 그 ADR의
       결과 절과 `pptx.textBoxSlackRatio`·`loLineWidthMaxRatio` 주석에 되먹였다.
 
-### P2.1 `<table>` 렌더러 (D2 · D20) — 어휘는 있고 렌더러만 없다 ← **지금 여기**
-문법·값 층·테마 `table` 컴포넌트·ADR 0036까지 끝나 있다. 남은 것은 두 렌더러와 측정이다.
-- [ ] RED: 웹 골든(진짜 `<table>`) + PPTX 구조(`a:graphicFrame`+`a:tbl`, 명시 `tcPr`,
-      `colspan`→`gridSpan` / `rowspan`→`rowSpan`+`vMerge`) + 픽셀 비교. 픽스처 `09_table`.
-- [ ] GREEN: `render/web`의 `writeTable`, `render/pptx`의 `writeGraphicFrameTbl`, 지오메트리
-      패스의 셀 박스 수집(열 너비·행 높이). `unrenderedKinds`에서 표 3종을 지운다.
-- [ ] REVIEW: PowerPoint/LibreOffice에서 셀을 클릭해 편집하고 행을 추가할 수 있는 **진짜 표**인지.
-- [ ] DOC: `docs/reference/soml/table.md` + 손으로 짠 표 둘을 `<table>`로 되돌린다:
-      `balpyo-intro/007_pptx.slide`(도형 14개)와 `incident-postmortem/004_impact.slide`(도형 16개,
-      **D20**의 머리행 선 없음·2px 겹침이 여기서 사라진다). 이게 이 항목의 증거다.
+### P2.1 `<table>` 렌더러 (D2 · D20) — 어휘는 있고 렌더러만 없다
+문법·값 층·테마 `table` 컴포넌트·ADR 0036까지 끝나 있었다. 한 것은 두 렌더러와 측정이다.
+- [x] RED: 웹 골든(진짜 `<table>`) + PPTX 구조(`a:graphicFrame`+`a:tbl`, 명시 `tcPr`,
+      `colspan`→`gridSpan` / `rowspan`→`rowSpan`+`vMerge`) + 픽셀 비교. 픽스처 `09_table`
+      (기본·병합·줄무늬·슬롯·컨테이너 5장). 구조 어서션은 `internal/testkit/table_fixture_test.go`가
+      픽스처 **전체 빌드**를 놓고 본다: 행마다 열 수만큼의 `a:tc`가 서 있는지(덮인 칸의
+      `hMerge`/`vMerge`를 센다 — 이 실패는 골든 diff에도 픽셀에도 보이지 않고 PowerPoint의 복구
+      대화상자로만 나타난다), 모든 셀이 네 변과 앵커를 명시하는지, 격자 수치가 잰 박스이고 그
+      합이 프레임 크기와 정확히 같은지.
+- [x] GREEN: `render/web`의 `writeTable`, `render/pptx`의 `writeGraphicFrameTbl`, 지오메트리
+      패스의 셀 박스 수집(열 너비·행 높이). `unrenderedKinds`에서 표 3종을 지웠다. 배치 판정은
+      **셀을 부모 박스 판정에서 뺀다** — `rowspan`이 든 셀은 자기 행보다 높은 것이 정상이라
+      병합이 든 표마다 저자가 고칠 수 없는 경고가 났다 (`render/geom/layout.go`,
+      `TestDiagnoseTableCellMayOutgrowItsRow`).
+- [x] REVIEW: LibreOffice로 `09_table` 덱을 열어 flat ODF로 되돌렸다 — `table:table-row` 23개,
+      `table:table-cell` 78개, `table:covered-table-cell` 4개,
+      `table:number-columns-spanned="2"` 2개, `table:number-rows-spanned="2"` 2개, 셀 글자 그대로.
+      도형으로 흉낸 표라면 여기에 표가 하나도 없다 — 프레임이 **진짜 표**로 임포트된다는 뜻이고,
+      그래서 셀을 클릭해 고치고 행을 더할 수 있다.
+- [x] DOC: `docs/reference/soml/table.md`(+ nav · `reference/index.md`) + 손으로 짠 표 **셋**을
+      `<table>`로 되돌렸다: `balpyo-intro/007_pptx.slide`(도형 14개 → 표 1개, 마지막 행이 자기
+      자신을 설명한다) · `incident-postmortem/004_impact.slide`(도형 16개 → 표 1개, 슬라이드
+      도형이 18개에서 3개로) · `quarterly-review/004_table.slide`(P5.2의 주석 항목). **D20**의
+      머리행 선 없음·2px 겹침은 `border-collapse`와 공유 격자선으로 사라졌고, 세 덱 모두
+      `--check-layout`이 조용하다.
 
-### P2.2 덱 크롬: 페이지 번호 · 푸터 (D10)
+### P2.2 덱 크롬: 페이지 번호 · 푸터 (D10) ← **지금 여기**
 - [ ] **선결정 ADR**: 어휘(`balpyo.json`의 `footer`/`pageNumber` vs 테마 `chrome` 선언 vs
       `<footer>` 태그)와 매핑 — PPTX는 마스터/레이아웃의 `a:fld type="slidenum"`, 웹은 스테이지
       크롬 요소. "표지·섹션 구분은 제외" 규칙을 어디서 쓰는지도 같이 정한다.
@@ -250,7 +266,8 @@
 - [ ] DOC: `docs/internals/testing.md`에 예제 게이트 추가.
 
 ### P5.2 문서·예제 주석의 사실 정정 (D13 · D16 · D18)
-- [ ] `examples/quarterly-review/slides/004_table.slide`의 "표는 어휘에 없다" 주석 (P2.1과 함께).
+- [x] `examples/quarterly-review/slides/004_table.slide`의 "표는 어휘에 없다" 주석 (P2.1과 함께) —
+      주석만 고치지 않고 슬라이드를 `<table>`로 되돌렸다 (우회가 사라지면 주석도 사라진다).
 - [ ] `docs/index.md`의 "Iteration 5까지" 상태 문구 → 현재 상태 또는 상태 문구 제거.
 - [ ] `docs/index.md`에 예제 덱 셋을 소개 링크로 넣는다(빌드해서 보는 방법 포함).
 - [ ] **D18**: 컨테이너의 `justify`/`align`과 도형의 `anchor`가 같은 뜻의 다른 이름이라는 것을
