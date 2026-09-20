@@ -63,8 +63,8 @@ func deckSlotLayouts(deck *soml.Deck) []slotLayoutPart {
 		return nil
 	}
 	var parts []slotLayoutPart
-	n := 2                 // slideLayout1 = blank
-	masterRel := 3         // rId1 = layout1, rId2 = theme
+	n := 2                    // slideLayout1 = blank
+	masterRel := 3            // rId1 = layout1, rId2 = theme
 	sldLayoutID := 2147483650 // layout1 = 2147483649
 	for _, layout := range soml.SlideLayouts() {
 		if !used[layout] {
@@ -135,7 +135,7 @@ type masterPlaceholders struct {
 
 // masterPlaceholderLayout은 슬라이드 크기 안에 title/body 프로토타입 자리를 잡는다.
 func masterPlaceholderLayout(slideCX, slideCY int64) masterPlaceholders {
-	const margin int64 = EMUPerInch / 2 // 좌우 0.5in
+	const margin int64 = EMUPerInch / 2    // 좌우 0.5in
 	var titleY int64 = EMUPerInch * 3 / 10 // 제목 상단 0.3in
 	var titleCY int64 = EMUPerInch * 5 / 4 // 제목 높이 1.25in
 	bodyY := titleY + titleCY + EMUPerInch/5
