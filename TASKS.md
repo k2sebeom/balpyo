@@ -206,13 +206,42 @@ PNG로 되돌려 12장 검수.
 ### P1.2 도형 프리셋의 텍스트 영역 (D5)
 프리셋 12종은 저마다 글자가 들어갈 수 있는 영역이 다르다(`chevron` 노치, `arrow-right` 머리,
 `callout` 꼬리, `cylinder` 상단 타원). 지금은 모든 프리셋에 균일 인셋을 쓴다.
-- [ ] **선결정 ADR**: 프리셋별 텍스트 영역을 **soml의 닫힌 표**로 둔다(프리셋 목록과 같은 곳),
+- [x] **선결정 ADR**: 프리셋별 텍스트 영역을 **soml의 닫힌 표**로 둔다(프리셋 목록과 같은 곳),
       OOXML 프리셋의 `rect` 정의를 기준으로 삼고 웹 인셋과 PPTX `bodyPr` 인셋이 **같은 표**를 읽는다.
-- [ ] RED: 프리셋 12종 × 중앙 정렬 텍스트 픽스처 → 웹/LibreOffice 양쪽에서 글자가 도형 안에
+      → ADR 0040이 **자리를 바꿨다**: 수치는 `render/web`의 기하 유도표(`shapeGeometries`)의
+      `TextRect` 열이고 **웹만 읽는다** — PPTX는 뷰어가 프리셋 rect를 네이티브로 적용하므로 낼
+      것이 없다(같은 표를 두 렌더러가 읽으면 인셋이 두 번 들어간다). `soml`에는 이름만 산다
+      (`ShapeInsetText` 8종 — core가 렌더러를 임포트할 수 없으므로). 그 결정이 **chevron 하나에서
+      뒤집혀** ADR 0041이 `TextCancel` 열과 PPTX의 음수 인셋을 더했고, ADR 0042가 0040 결과의
+      소개 덱 한 줄(라벨을 도형 안으로)을 철회했다.
+- [x] RED: 프리셋 12종 × 중앙 정렬 텍스트 픽스처 → 웹/LibreOffice 양쪽에서 글자가 도형 안에
       남는지 픽셀 비교, 표와 렌더러 인셋 일치 단위 테스트.
-- [ ] GREEN: 표 + 웹(패딩/clip-path 보정) + PPTX(`bodyPr` 인셋).
-- [ ] REVIEW: `examples/balpyo-intro` 04를 **라벨을 chevron 안으로 되돌려** 다시 검수 (이 항목의 증거).
-- [ ] DOC: `docs/reference/soml/shape.md`에 프리셋별 텍스트 영역 표.
+      → 픽스처 `04_shape/009`(가운데 정렬·앵커)·`010`(왼쪽·위)이 12종 전수를 두 장으로 재고,
+      `TestShapeFixtureInShapeTextRect`가 잉크의 **중심**과 **왼쪽 위**를 두 타깃에서 견준다.
+      두 엔진의 첫 베이스라인이 상수 4px 다르므로 `rect` 프리셋을 **대조군**으로 두고 그 Δ를
+      빼서 허용 오차를 2.0px까지 내렸다(빼지 않으면 거의 모든 행이 그 상수에 걸린다). 표와
+      어휘의 일치는 `render/web`의 단위 테스트 둘(`TestShapeInsetTextVocabularyMatchesTheTable`
+      ·`TestShapeTextCancelIsChevronOnly` — 두 열이 동시에 차는 것을 금지한다), 렌더러 인셋은
+      `TestRenderChevronCancelsItsTextRect`가 EMU로 단정한다.
+- [x] GREEN: 표 + 웹(패딩/clip-path 보정) + PPTX(`bodyPr` 인셋).
+      → 웹은 `clip-path`가 아니라 **절대 배치 래퍼**(`.balpyo-shape-body`)다: CSS 백분율 padding은
+      네 변 모두 부모 **폭** 기준이라 백분율 인셋을 담을 수 없다. `rounded-rect`만 인셋이 px
+      (`radius × (1 − √2/2)`)이라 `padding: calc(…)`로 접히고, 그래서 **내용이 높이를 정하는
+      카드**가 그대로 산다. 나머지 8종은 자기 박스 높이를 참조하므로 `h`나 `ratio`를 요구한다
+      (`core`의 새 진단 — 내용이 높이를 정하면 기준이 순환한다). 텍스트 영역은 도형이 **내용을
+      담을 때만** 적용된다(빈 도형에 래퍼·패딩을 내면 골든이 시끄러워진다). PPTX는 chevron에서만
+      `bodyPr`에 음수 `lIns`/`rIns`를 싣는다(ADR 0041).
+- [x] REVIEW: `examples/balpyo-intro` 04를 **라벨을 chevron 안으로 되돌려** 다시 검수 (이 항목의 증거).
+      → **하지 않는다** (ADR 0042). 우리 유도에서 chevron의 노치 깊이가 박스 폭의 절반이라
+      (ADR 0017) 실루엣 안에 라벨이 들어갈 자리가 없다: 오른쪽 삼각형에 들어가는 가장 큰 사각형이
+      박스의 25%×50%(270×72 도형에서 67×36px)이고, 가운데 정렬한 줄은 노치 끝을 가로지른다 —
+      프로브 렌더로 확인했다. 그래서 이 항목의 증거는 `04_shape/009`·`010` 갤러리다: 12종 × 두
+      정렬이 두 타깃에서 같은 자리에 글을 놓고(diff는 글자 베이스라인 1~4px만 남는다), chevron도
+      음수 인셋 뒤 박스 전체를 쓴다. 컨테이너 `make test` 전체 통과.
+- [x] DOC: `docs/reference/soml/shape.md`에 프리셋별 텍스트 영역 표.
+      → 「프리셋별 텍스트 영역」 절(12종 표 · `pad`는 그 위에 더해진다 · `rounded-rect`만 px인
+      이유 · 백분율 인셋 프리셋의 높이 요구 · chevron 라벨의 관용)과 값 층 진단 표의 새 행.
+      ADR 0040·0041·0042 + 색인·nav, `--strict` 빌드 통과.
 
 ### P1.3 슬롯 정렬 계약 (D4)
 테마가 `justify-items`/`align-items`로 쓴 정렬이 base 층 규칙에 먹힌다 — 즉 **테마가 배치를
@@ -395,7 +424,7 @@ P0·P1이 먼저인 이유: 어휘를 더 늘려도 **저자가 결과를 신뢰
 | 문자 참조 · CDATA · `<`의 렉서 규칙 | P0.1 | ADR 0037 |
 | 어휘 카탈로그 ↔ 렌더러 능력의 단일 출처 | P0.2 | `internals/architecture.md` (ADR 없이 닫았다) |
 | 오버플로 판정 기준과 경고/에러 승격 | P1.1 | ADR 0039 |
-| 프리셋별 텍스트 영역 표(웹 인셋 ↔ `bodyPr`) | P1.2 | 대기 |
+| 프리셋별 텍스트 영역 표(웹 인셋 ↔ `bodyPr`) | P1.2 | ADR 0040 (0041·0042가 chevron을 고쳤다) |
 | 정렬 소유권 (base `width: 100%` 처리) | P1.3 | 대기 |
 | 슬롯 구멍: 테마가 채우기 vs 경고 | P1.4 | 대기 |
 | 덱 크롬 어휘와 `a:fld` 매핑 | P2.2 | 대기 |
