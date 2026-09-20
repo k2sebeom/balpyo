@@ -3,11 +3,6 @@
 빈 디렉토리에서 발표할 수 있는 덱까지. 저작 루프는 [`balpyo watch`](../reference/cli.md#balpyo-watch)
 하나이고, 그 루프가 이 문서의 절반이다.
 
-!!! note "`balpyo init`은 아직 없다"
-    스캐폴딩 명령이 Phase 2에 생기면 아래 2단계가 `balpyo init my-talk` 한 줄로 바뀐다.
-    그때까지 출발점은 저장소의 **예제를 복사하는 것**이다 — 예제 하나가 곧 완전한
-    프로젝트이므로 그대로 빌드되고, 고칠 자리도 이미 있다.
-
 ## 1. 바이너리
 
 런타임 의존은 없다. Go 툴체인이 있으면 저장소에서 직접 만든다.
@@ -25,22 +20,32 @@ PPTX 타깃과 `--check-layout`은 시스템 브라우저(Chromium/Chrome)를 �
 ## 2. 프로젝트 하나
 
 ```bash
-cp -r examples/quarterly-review my-talk
+./balpyo init my-talk --author "이세범"
 ```
 
 ```text
 my-talk/
 ├── balpyo.json              # 덱 설정: 제목·저자·종횡비·출력 디렉토리
+├── .gitignore               # dist/ 와 preview/
 └── slides/
     ├── 001_title.slide      # 파일 이름의 번호가 슬라이드 순서다
-    ├── 002_agenda.slide
-    └── …
+    ├── 002_content.slide
+    └── 003_end.slide
 ```
+
+세 장은 그대로 빌드된다 — `--check-layout --strict`까지 경고 0으로 통과하므로, 여기서
+나오는 경고는 전부 방금 고친 것에서 온다. 각 장이 하나씩 가르친다: 표지는 자리를 **테마의
+슬롯**이 정한다는 것(그래서 자식에 `align`이 없다), 두 번째 장은 `<row>`·`<col>`·`<shape>`로
+칸을 나누는 방법, 세 번째 장은 `layout`이 정렬을 바꾼다는 것이다.
 
 `balpyo.json`은 선택이다 (없으면 기본값을 쓰고 제목은 디렉토리 이름에서 유도한다). 슬라이드는
 `slides/` 아래의 `.slide` 파일이고, **파일 이름으로 정렬한다** — 사이에 한 장을 끼우려면
 `002_5_…`처럼 이름을 붙이는 대신 번호를 다시 매기는 쪽이 낫다. 설정 키는
 [개요](../index.md)에, 슬라이드 어휘는 [레퍼런스](../reference/index.md)에 있다.
+
+`init`은 이미 프로젝트인 자리를 **덮어쓰지 않는다** (`--force`가 없다). 완성된 덱을 읽고
+싶으면 저장소의 `examples/`를 본다 — 다만 그쪽은 어휘의 마찰점을 일부러 밟는 회귀
+테스트이므로 출발점보다 참고용이다.
 
 ## 3. 감시하며 쓴다
 
@@ -50,7 +55,7 @@ my-talk/
 
 ```
 감시 중: my-talk → http://127.0.0.1:4600  (Ctrl+C로 끝낸다)
-✓ 14:31:02  슬라이드 6개 · 파일 1개 (41ms)
+✓ 14:31:02  슬라이드 3개 · 파일 1개 (41ms)
 ```
 
 주소를 브라우저에 붙이고 `slides/001_title.slide`의 제목을 고쳐 저장하면 그 탭이 스스로
@@ -74,7 +79,7 @@ my-talk/
 
 ## 4. 슬라이드 한 장 추가
 
-`slides/007_next.slide`를 만든다. 감시 중이면 저장하는 순간 덱에 들어온다.
+`slides/004_next.slide`를 만든다. 감시 중이면 저장하는 순간 덱에 들어온다.
 
 ```html
 <slide id="next" layout="content">
@@ -106,19 +111,21 @@ my-talk/
 ```
 
 ```
-슬라이드 7장 → /path/to/my-talk/dist
+슬라이드 4장 → /path/to/my-talk/dist
   index.html
-  q3-비즈니스-리뷰.pptx
+  my-talk.pptx
 ```
 
 `index.html`은 자체 완결형이다 — 파일 하나(와 있으면 `assets/`)를 열면 오프라인에서 발표된다.
 `.pptx`의 텍스트 박스는 진짜 텍스트 박스이고 도형은 진짜 도형이며 색은 테마 색 참조를
 유지한다. 뷰어가 웹과 다르게 그리는 몇 가지는 [알려진 차이](known-differences.md)에 있다.
 
-CI에서는 경고를 통과시키지 않는다.
+CI에서는 경고를 통과시키지 않는다. 산출물이 필요 없는 검사라면 `check`가 같은 판정을
+산출물 없이 한다 ([`balpyo check`](../reference/cli.md#balpyo-check)).
 
 ```bash
 ./balpyo build --project my-talk --target html,pptx --strict
+./balpyo check --project my-talk --check-layout --strict   # 산출물 없이 판정만
 ```
 
 두 산출물이 같은지 **눈으로** 보려면 검수 갤러리를 만든다 — 슬라이드마다 웹 스크린샷과 PPTX
@@ -142,6 +149,6 @@ CI에서는 경고를 통과시키지 않는다.
 
 ## 다음
 
-- [CLI](../reference/cli.md) — `build`·`watch`·`preview`의 옵션과 종료 코드
+- [CLI](../reference/cli.md) — `init`·`build`·`check`·`watch`·`preview`의 옵션과 종료 코드
 - [테마 패키지](../reference/theme.md) — 토큰·컴포넌트·레이아웃과 덱 크롬(페이지 번호·푸터)
 - [외관 속성](../reference/appearance.md) — 색·크기·간격의 캐스케이드와 탈출구

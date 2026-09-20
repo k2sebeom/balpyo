@@ -4,7 +4,7 @@
 
 | 가이드 | 다루는 것 |
 |---|---|
-| [시작하기](getting-started.md) | 예제 복사 → `watch`로 고치며 보기 → `build`로 내보내기 → 발표 |
+| [시작하기](getting-started.md) | `init` → `watch`로 고치며 보기 → `build`로 내보내기 → 발표 |
 | [배치 경고 읽기](layout-warnings.md) | 넘침·스테이지 이탈·겹침 경고를 켜고 읽고 고치는 순서 |
 | [알려진 차이](known-differences.md) | 뷰어가 웹과 다르게 그리는 것 — 문장부호 앞뒤의 틈이 버그가 아닌 이유 |
 
@@ -15,9 +15,10 @@
 | `theming.md` | 테마 만들기 (`minimal`을 예제로) | 테마 패키지 포맷 — Iteration 10 |
 | `components.md` | 합성 컴포넌트 만들기 (`dim-card` 예제) | `<define>`/`<slot>` — Iteration 11 |
 
-[시작하기](getting-started.md)의 출발점이 `balpyo init`이 아니라 **예제 복사**인 이유는
-스캐폴딩 명령이 아직 없다는 것이다 (Phase 2). 같은 이유로 실행 가능한 출발점이 하나 더
-있다 — 저장소의 픽스처다. 하나가 곧 완전한 프로젝트이므로 그대로 빌드해 볼 수 있다.
+[시작하기](getting-started.md)의 출발점은 `balpyo init`이다 — 세 장짜리 덱 하나가 경고 없이
+빌드되는 상태로 나온다. 저장소 안에서 읽을 수 있는 출발점도 둘 있다: `examples/`(완성된 덱,
+다만 어휘의 마찰점을 일부러 밟는다)와 픽스처다. 픽스처 하나가 곧 완전한 프로젝트이므로
+그대로 빌드해 볼 수 있다.
 
 ```bash
 go run ./cmd/balpyo build --project testdata/fixtures/00_empty --target html,pptx

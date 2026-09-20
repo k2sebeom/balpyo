@@ -1,8 +1,76 @@
 # CLI
 
-바이너리 하나가 모든 서브커맨드를 담는다 (PRD §10). 지금 구현된 표면은 `build`·`watch`·
-`preview`·`version`이다 — `init`/`check`/`format`/`lsp`는 Phase 2에서 열리며, 그때 이 문서에
-함께 실린다.
+바이너리 하나가 모든 서브커맨드를 담는다 (PRD §10). 지금 구현된 표면은 `init`·`build`·
+`check`·`watch`·`preview`·`version`이다 — `format`/`lsp`는 아직 열리지 않았고, 열리면 이
+문서에 함께 실린다.
+
+## `balpyo init`
+
+빌드되는 프로젝트 하나를 만든다 — 빈 디렉토리에서 시작하는 명령이다.
+
+```bash
+balpyo init my-talk --author "이세범"
+```
+
+```
+프로젝트를 만들었다: /path/to/my-talk
+  balpyo.json
+  slides/001_title.slide
+  slides/002_content.slide
+  slides/003_end.slide
+  .gitignore
+
+다음:
+  balpyo watch --project my-talk
+  balpyo build --project my-talk --target html,pptx
+```
+
+만들어진 덱은 **그 자리에서 빌드된다** — `balpyo build --target html,pptx --check-layout
+--strict`를 경고 0으로 통과한다. 첫 명령이 경고를 내면 저자는 경고를 읽지 않는 습관부터
+배우므로, 이것이 스캐폴딩의 계약이다.
+
+세 장이 각각 가르치는 것이 있다. 표지는 자리를 **테마의 슬롯**이 정한다는 것(자식에 `align`이
+하나도 없다 — [슬롯](layouts.md)), 두 번째 장은 `<row>`·`<col>`·`<shape>`로 칸을 나누는
+방법과 파일 이름의 번호가 슬라이드 순서라는 것, 세 번째 장은 `layout`이 정렬을 바꾼다는
+것이다. `<note>`(발표자 노트)도 표지에 한 줄 들어
+있다.
+
+### 옵션
+
+디렉토리는 위치 인자로도 `--project`로도 준다 (`balpyo init my-talk` = `balpyo init
+--project my-talk`). 둘을 함께 주면 멈춘다 — 어느 쪽이 이겼는지 추측하게 두지 않는다.
+위치 인자는 플래그 앞에도 뒤에도 올 수 있다.
+
+| 옵션 | 기본값 | 뜻 |
+|---|---|---|
+| `--project <dir>` | `.` | 만들 프로젝트 루트 (위치 인자와 같은 뜻) |
+| `--title <제목>` | 디렉토리 이름 | 덱 제목. PPTX 파일 이름이 여기서 나온다 |
+| `--author <이름>` | `발표자` (자리표시자) | 발표자 |
+| `--theme <이름>` | `minimal` | 테마. **내장 테마만** 받는다 |
+| `--aspect <비율>` | `16:9` | 종횡비 (`16:9`·`4:3`) |
+| `--lang <코드>` | `ko` | 덱 언어 (`index.html`의 `lang`) |
+
+`--theme`가 내장 테마만 받는 이유는 지금 빌드가 내장 테마만 해석하기 때문이다 —
+`balpyo.json`에 읽히지 않는 이름을 써 두면 그 파일이 조용한 거짓말이 된다. 외부 테마 패키지는
+아직 열리지 않았다.
+
+### 덮어쓰지 않는다
+
+`balpyo.json`이나 `.slide` 파일이 이미 있는 디렉토리에서는 **아무것도 쓰지 않고** 멈춘다.
+`--force`는 없다: 덮어쓸 대상이 저자가 쓴 원고이므로, 되돌릴 수 없는 손실 쪽이 한 번 더
+타이핑하는 불편보다 크다. 이미 있는 `.gitignore`는 건드리지 않고 나머지만 쓴다.
+
+| 코드 | 뜻 |
+|---|---|
+| 0 | 프로젝트를 만들었다 — 찍힌 파일 전부가 새로 쓰였다 |
+| 1 | 아무것도 쓰지 않았다 — 이미 프로젝트인 자리, 내장 아닌 테마, 없는 종횡비, 디렉토리를 두 번 준 경우 |
+
+### 아직 아닌 것
+
+템플릿 선택(`--template`), 예제 덱 복사, 슬라이드 추가 명령(`balpyo new slide`)은 열지 않았다.
+근거는 [ADR 0048](../decisions/0048-init-owns-its-deck-and-check-is-build-without-writing.md)에
+있다. 저장소의 `examples/`는 스캐폴딩이 아니라 **회귀 테스트**다 — 어휘의 마찰점을 일부러
+밟고 다니므로 출발점으로는 시끄럽다.
 
 ## `balpyo build`
 
@@ -114,6 +182,79 @@ balpyo build --check-layout
 # CI: 넘친 덱을 통과시키지 않는다
 balpyo build --target html,pptx --strict
 ```
+
+## `balpyo check`
+
+판정만 한다 — 산출물을 쓰지 않는다. CI에서 진단을 게이트로 쓰는 입구다.
+
+```bash
+balpyo check --project my-talk
+```
+
+```
+슬라이드 3장 · 진단 없다 · 배치는 보지 않았다 (--check-layout)
+```
+
+판정은 `build`와 **같은 코드**다: 설정 → 수집 → 파싱 → 값 해석 → 에셋 → 검증, 그리고
+`--check-layout`이면 측정과 배치 진단까지. 파싱까지만 보는 빠른 길로 가지 않은 이유는
+"`check`는 통과했는데 `build`가 실패한다"가 가능해지는 순간 이 명령의 가치가 사라진다는
+것이다.
+
+디스크에는 아무것도 남지 않는다 — 출력 디렉토리를 만들지도 않는다 (`build`는 만든다).
+`--check-layout`이 재는 웹 문서는 임시 디렉토리에 쓰고 지운다.
+
+### 옵션
+
+| 옵션 | 기본값 | 뜻 |
+|---|---|---|
+| `--project <dir>` | `.` | 프로젝트 루트 |
+| `--strict` | 꺼짐 | 경고를 에러로 승격한다 |
+| `--check-layout` | 꺼짐 | 배치도 검사한다 (넘침·스테이지 이탈·겹침). 브라우저를 띄운다 |
+
+`--target`과 `--out`은 없다. 진단은 타깃에 의존하지 않고(배치 경고까지 잰 박스에서 나온다),
+렌더 단계에서만 나는 실패는 `build`의 판정이다. 배치를 기본으로 켜지 않은 이유는 `build`와
+같다 — 브라우저 기동이 가장 큰 고정 비용이고, 브라우저가 없는 CI에서도 어휘 검사는 돌아야
+한다.
+
+요약 한 줄은 **무엇을 봤는지** 말한다: `배치는 보지 않았다 (--check-layout)` 또는
+`배치까지 봤다`. "깨끗하다"와 "안 봤다"는 다른 문장이다.
+
+### 종료 코드
+
+`build`와 **같은 규약**이다. 같은 덱에 대해 두 명령의 판정이 갈리지 않는다.
+
+| 코드 | 뜻 |
+|---|---|
+| 0 | 에러가 없다. **경고는 코드 0을 타고 나간다** — stderr에 나오고 요약에 개수가 실린다 |
+| 1 | 진단 에러, 또는 `--strict`로 승격된 경고. 설정·파일 오류도 1이다 |
+
+```
+$ balpyo check
+slides/002_content.slide:1:30: warning: variant "hero"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: kicker, lead)
+슬라이드 3장 · 경고 1건 · 배치는 보지 않았다 (--check-layout)
+$ echo $?
+0
+
+$ balpyo check --strict
+slides/002_content.slide:1:30: error: variant "hero"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: kicker, lead)
+검사 실패: 에러 1건
+$ echo $?
+1
+```
+
+진단의 형태와 중복 규칙은 위 `balpyo build`의 **진단 출력** 절과 같다 — 각 진단은 stderr에
+정확히 한 번 나오고, 마지막 한 줄이 개수를 요약한다 (`검사 실패: 에러 N건`). 실패한 검사는 stdout에
+아무것도 쓰지 않는다.
+
+```bash
+# CI 레시피: 어휘와 배치를 모두 게이트로 쓴다
+balpyo check --check-layout --strict
+```
+
+### 아직 아닌 것
+
+기계가 읽는 출력(JSON·SARIF), 슬라이드 범위 지정, 진단 규칙 끄기는 열지 않았다. 근거는
+[ADR 0048](../decisions/0048-init-owns-its-deck-and-check-is-build-without-writing.md)에 있다.
 
 ## `balpyo watch`
 
