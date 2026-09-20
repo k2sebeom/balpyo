@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/k2sebeom/balpyo/internal/testkit"
 )
 
 // newProject는 슬라이드 하나가 있는 프로젝트를 만든다.
@@ -53,6 +55,41 @@ func TestBuildCommandOutFlagOverridesConfig(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(out, "index.html")); err != nil {
 		t.Errorf("--out이 balpyo.json을 덮어쓰지 않았다: %v", err)
+	}
+}
+
+// `--check-layout`은 좌표를 쓰는 타깃이 없어도 배치를 검사한다 (ADR 0039) — 저작 루프가
+// 넘침을 빌드 로그에서 보는 길이다. 경고이므로 종료 코드는 0이고, `--strict`가 그것을 막는다.
+func TestBuildCheckLayoutPrintsWarnings(t *testing.T) {
+	testkit.RequireChromium(t)
+	dir := newProject(t)
+	// 1200px 도형은 1152px 콘텐츠 폭을 48px 넘친다 — 넘친 양이 선언한 px에서 나온다.
+	slide := `<slide id="wide"><shape type="rect" fill="surface" w="1200" h="100"></shape></slide>`
+	if err := os.WriteFile(filepath.Join(dir, "slides", "001_title.slide"), []byte(slide), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	if err := run([]string{"build", "--project", dir, "--check-layout"}, &stdout, &stderr); err != nil {
+		t.Fatalf("경고가 빌드를 멈췄다: %v\nstderr: %s", err, stderr.String())
+	}
+	if want := "콘텐츠 박스를 오른쪽으로 48px 넘친다"; !strings.Contains(stderr.String(), want) {
+		t.Errorf("stderr에 %q가 없다:\n%s", want, stderr.String())
+	}
+
+	// 플래그가 없으면 브라우저를 띄우지 않으므로 경고도 없다 (기본은 꺼짐).
+	stdout.Reset()
+	stderr.Reset()
+	if err := run([]string{"build", "--project", dir}, &stdout, &stderr); err != nil {
+		t.Fatal(err)
+	}
+	if stderr.Len() > 0 {
+		t.Errorf("--check-layout 없는 빌드의 stderr:\n%s", stderr.String())
+	}
+
+	stderr.Reset()
+	if err := run([]string{"build", "--project", dir, "--check-layout", "--strict"}, &stdout, &stderr); err == nil {
+		t.Error("--strict가 배치 경고를 통과시켰다")
 	}
 }
 

@@ -58,6 +58,7 @@ build 옵션:
   --out dist            출력 디렉토리 (기본 balpyo.json의 outDir)
   --project .           프로젝트 루트
   --strict              경고를 에러로 승격한다
+  --check-layout        배치를 검사한다 (넘침·스테이지 이탈·겹침 — 브라우저를 띄운다)
 `)
 }
 
@@ -69,6 +70,10 @@ func runBuild(args []string, stdout, stderr io.Writer) error {
 	outDir := fs.String("out", "", "출력 디렉토리 (기본: balpyo.json의 outDir)")
 	projectDir := fs.String("project", ".", "프로젝트 루트")
 	strict := fs.Bool("strict", false, "경고를 에러로 승격한다")
+	// pptx 타깃은 이미 재므로 배치 검사를 공짜로 받는다 — 이 플래그가 뜻을 갖는 자리는 html만
+	// 쓰는 저작 루프다. 기본을 끈 이유는 브라우저 기동이 빌드의 가장 큰 고정 비용이라는 것이다
+	// (ADR 0039).
+	checkLayout := fs.Bool("check-layout", false, "배치를 검사한다 (넘침·스테이지 이탈·겹침)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -76,7 +81,12 @@ func runBuild(args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("build는 인자를 받지 않는다: %v", fs.Args())
 	}
 
-	opts := pipeline.Options{ProjectDir: *projectDir, OutDir: *outDir, Strict: *strict}
+	opts := pipeline.Options{
+		ProjectDir:  *projectDir,
+		OutDir:      *outDir,
+		Strict:      *strict,
+		CheckLayout: *checkLayout,
+	}
 	if *targetList != "" {
 		targets, err := render.ParseTargets(*targetList)
 		if err != nil {

@@ -31,6 +31,13 @@ type Options struct {
 	OutDir string
 	// Strict는 경고를 에러로 승격한다.
 	Strict bool
+	// CheckLayout은 배치 진단(geom.Diagnose)을 위해 **지오메트리 패스를 강제**한다.
+	//
+	// 좌표를 쓰는 타깃이 있으면(pptx) 이미 재므로 배치 진단은 값을 공짜로 얻는다 — 이
+	// 플래그가 뜻을 갖는 자리는 `--target html`만 쓰는 저작 루프다 (ADR 0039). 기본을 끈
+	// 이유는 브라우저 기동이 빌드의 가장 큰 고정 비용이고, 브라우저가 없는 환경에서도
+	// 웹 빌드는 돌아가야 하기 때문이다.
+	CheckLayout bool
 }
 
 // Result는 빌드 산출이다.
@@ -151,8 +158,16 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 //
 // 순서는 웹 렌더 → 지오메트리 → 나머지 렌더다 (PRD §9.3). 지오메트리 패스가 재는 것은 웹
 // 타깃의 산출물이므로 웹 렌더가 앞에 와야 하고, PPTX 좌표가 그 측정에서 나오므로 PPTX가
-// 뒤에 온다. 두 번째 반환값은 측정한 좌표이며, 재지 않았으면 nil이다.
-func Render(deck *soml.Deck, targets []render.Target) (map[render.Target]render.Files, *geom.Geometry, error) {
+// 뒤에 온다.
+//
+// 반환값이 셋인 이유: 좌표(재지 않았으면 nil)와 **배치 진단**이다. 배치 진단은 좌표에서만
+// 나오므로 LoadDeck이 낼 수 없고(그때는 브라우저를 띄우기 전이다), 그래서 승격(`--strict`)도
+// 여기서 한 번 더 한다 — 진단이 나오는 자리마다 같은 규칙을 적용하는 쪽이 한 곳에 모으는
+// 것보다 안전하다 (LoadDeck의 승격과 짝이다).
+//
+// opts는 Targets·Strict·CheckLayout만 읽는다 (경로는 덱이 이미 읽혀 있으므로 뜻이 없다).
+func Render(deck *soml.Deck, opts Options) (map[render.Target]render.Files, *geom.Geometry, soml.Diagnostics, error) {
+	targets := opts.Targets
 	if len(targets) == 0 {
 		targets = render.DefaultTargets()
 	}
@@ -160,17 +175,28 @@ func Render(deck *soml.Deck, targets []render.Target) (map[render.Target]render.
 	// 사용자는 오타를 알기까지 기동 시간을 기다린다.
 	for _, target := range targets {
 		if _, ok := Renderers(nil)[target]; !ok {
-			return nil, nil, fmt.Errorf("타깃 %q의 렌더러가 없다", string(target))
+			return nil, nil, nil, fmt.Errorf("타깃 %q의 렌더러가 없다", string(target))
 		}
 	}
 
 	var geometry *geom.Geometry
-	if needsGeometry(deck, targets) {
+	var diags soml.Diagnostics
+	if needsGeometry(deck, targets, opts.CheckLayout) {
 		measured, err := measure(deck)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		geometry = measured
+		// 잰 빌드는 배치를 **항상** 본다: 숫자가 이미 있는데 묻지 않는 것이 D9의 증상이었다.
+		diags = geom.Diagnose(deck, geometry)
+		if opts.Strict {
+			diags = diags.Strict()
+		}
+		if err := diags.Err(); err != nil {
+			// 승격된 에러는 산출물을 쓰기 **전에** 멈춘다 — 반쯤 갱신된 출력 디렉토리가
+			// 남으면 다음 빌드가 무엇이 새 산출물인지 말해 주지 못한다.
+			return nil, geometry, diags, err
+		}
 	}
 
 	available := Renderers(geometry)
@@ -178,24 +204,28 @@ func Render(deck *soml.Deck, targets []render.Target) (map[render.Target]render.
 	for _, target := range targets {
 		files, err := available[target].Render(deck)
 		if err != nil {
-			return nil, geometry, fmt.Errorf("%s 렌더 실패: %w", string(target), err)
+			return nil, geometry, diags, fmt.Errorf("%s 렌더 실패: %w", string(target), err)
 		}
 		out[target] = files
 	}
-	return out, geometry, nil
+	return out, geometry, diags, nil
 }
 
 // needsGeometry는 이 빌드가 브라우저를 띄워야 하는지 정한다.
 //
-// 두 조건이 모두 맞아야 띄운다. **좌표를 쓰는 타깃**이 있어야 하고(웹은 자기 좌표를 브라우저가
-// 직접 계산하므로 필요 없다), 잴 요소가 하나라도 있어야 한다. 브라우저 기동은 빌드의 가장 큰
-// 고정 비용이므로, `--target html`만 쓰는 저작 루프가 그 비용을 내지 않는 것이 중요하다.
+// 잴 요소가 하나라도 있고, **좌표를 쓰는 타깃**이 있거나(웹은 자기 좌표를 브라우저가 직접
+// 계산하므로 필요 없다) 저자가 배치 검사를 요청했어야 띄운다. 브라우저 기동은 빌드의 가장 큰
+// 고정 비용이므로, `--target html`만 쓰는 저작 루프가 그 비용을 내지 않는 것이 중요하다 —
+// 배치 진단을 그 루프에서도 받는 길이 `--check-layout`이다 (ADR 0039).
 //
 // 판정을 pptx 렌더러와 같은 기준(geom.Refs가 비었는가)으로 두는 이유: 여기서는 재지 않기로
 // 했는데 렌더러는 좌표를 요구하면 빈 슬라이드 프로젝트가 브라우저 없이 못 돌아간다.
-func needsGeometry(deck *soml.Deck, targets []render.Target) bool {
+func needsGeometry(deck *soml.Deck, targets []render.Target, checkLayout bool) bool {
 	if len(geom.Refs(deck)) == 0 {
 		return false
+	}
+	if checkLayout {
+		return true
 	}
 	for _, target := range targets {
 		if target == render.TargetPPTX {
@@ -249,7 +279,9 @@ func Build(opts Options) (*Result, error) {
 	if len(targets) == 0 {
 		targets = render.DefaultTargets()
 	}
-	rendered, geometry, err := Render(deck, targets)
+	rendered, geometry, layoutDiags, err := Render(deck, opts)
+	// 배치 진단은 렌더가 실패해도 사람에게 보여야 한다 — 승격된 경고가 곧 그 실패의 이유다.
+	diags = append(diags, layoutDiags...)
 	if err != nil {
 		return &Result{Deck: deck, Diagnostics: diags, Geometry: geometry}, err
 	}

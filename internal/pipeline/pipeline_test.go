@@ -304,7 +304,7 @@ func TestBuildHonorsOutDir(t *testing.T) {
 func TestRenderRejectsUnknownTarget(t *testing.T) {
 	stage, _ := soml.Aspect16x9.Stage()
 	deck := &soml.Deck{Stage: stage, Slides: []*soml.Slide{{ID: "a"}}}
-	if _, _, err := Render(deck, []render.Target{"pdf"}); err == nil {
+	if _, _, _, err := Render(deck, Options{Targets: []render.Target{"pdf"}}); err == nil {
 		t.Error("PDF는 아직 렌더러가 없다 — 에러여야 한다")
 	}
 }
@@ -484,7 +484,7 @@ func TestBuildLayoutWebOutputInvariant(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		files, _, err := Render(deck, []render.Target{render.TargetHTML})
+		files, _, _, err := Render(deck, Options{Targets: []render.Target{render.TargetHTML}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -512,7 +512,7 @@ func TestBuildLayoutPPTXOutputInvariant(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		files, _, err := Render(deck, []render.Target{render.TargetPPTX})
+		files, _, _, err := Render(deck, Options{Targets: []render.Target{render.TargetPPTX}})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -92,6 +92,111 @@ func TestBuildEmptyDeckNeedsNoBrowser(t *testing.T) {
 	}
 }
 
+// overflowProject는 배치 사고 3종을 담은 프로젝트다 (TASKS.md P1.1의 RED 목록).
+//
+// 세 사고를 슬라이드 하나에 섞지 않는 이유: 요소 하나가 받는 이탈 진단은 하나이므로(ADR 0039)
+// 섞으면 어느 규칙이 말했는지가 흐려진다. 넘친 양을 **선언한 px로** 정할 수 있게 도형 크기를
+// 쓴 것도 같은 이유다 — 폰트 줄바꿈에 기대면 판정이 아니라 폰트를 시험하게 된다.
+func overflowProject(t *testing.T) string {
+	t.Helper()
+	return project(t, map[string]string{
+		"balpyo.json": `{"title": "overflow"}`,
+		// (1) 콘텐츠 박스 이탈: 1200px 도형은 1152px 콘텐츠 폭을 48px 넘친다.
+		"slides/001_wide.slide": `<slide id="wide">
+  <shape type="rect" fill="surface" w="1200" h="100"></shape>
+</slide>`,
+		// (2) 작은 도형 안 텍스트: 300×80 도형에 여러 줄이 되는 문장을 담는다.
+		"slides/002_small_shape.slide": `<slide id="small-shape">
+  <shape type="rect" fill="surface" w="300" h="80">
+    <p>도형이 작으면 문장은 줄을 늘리고, 늘어난 줄은 도형 밖으로 흐른다.</p>
+  </shape>
+</slide>`,
+		// (3) 스테이지 이탈: canvas 좌표로 스테이지 오른쪽 밖에 둔다.
+		"slides/003_offstage.slide": `<slide id="offstage" layout="canvas">
+  <shape type="rect" fill="surface" x="1200" y="64" w="200" h="100"></shape>
+</slide>`,
+	})
+}
+
+// `--check-layout`은 좌표를 쓰는 타깃이 없어도 지오메트리 패스를 켠다 — 저작 루프(html만)가
+// 배치 경고를 받는 길이다 (ADR 0039). 경고이므로 빌드는 성공하고 산출물도 나온다.
+func TestBuildCheckLayoutWarnsOnOverflow(t *testing.T) {
+	testkit.RequireChromium(t)
+	result, err := pipeline.Build(pipeline.Options{
+		ProjectDir:  overflowProject(t),
+		Targets:     []render.Target{render.TargetHTML},
+		CheckLayout: true,
+	})
+	if err != nil {
+		t.Fatalf("경고가 빌드를 멈췄다: %v", err)
+	}
+	if result.Geometry == nil {
+		t.Fatal("--check-layout 빌드에 지오메트리가 없다")
+	}
+	if len(result.Written) == 0 {
+		t.Error("경고만 있는 빌드가 산출물을 쓰지 않았다")
+	}
+	want := []string{
+		"<shape>가 콘텐츠 박스를 오른쪽으로 48px 넘친다",
+		"<p>가 부모 <shape>를 아래로",
+		"<shape>가 스테이지를 오른쪽으로",
+	}
+	if len(result.Diagnostics) != len(want) {
+		t.Fatalf("진단 %d건, want %d건:\n%s", len(result.Diagnostics), len(want), result.Diagnostics)
+	}
+	for i, fragment := range want {
+		if !strings.Contains(result.Diagnostics[i].Message, fragment) {
+			t.Errorf("%d번째 진단 = %q, want %q 포함", i, result.Diagnostics[i].Message, fragment)
+		}
+	}
+}
+
+// `--strict`는 배치 경고도 에러로 승격한다 — CI가 넘친 덱을 통과시키지 않는 길이다. 승격된
+// 에러는 산출물을 **쓰기 전에** 멈춘다: 반쯤 갱신된 출력 디렉토리가 남으면 다음 빌드가
+// 무엇이 새 산출물인지 말해 주지 못한다.
+func TestBuildStrictPromotesLayoutWarnings(t *testing.T) {
+	testkit.RequireChromium(t)
+	dir := overflowProject(t)
+	outDir := filepath.Join(t.TempDir(), "dist")
+	result, err := pipeline.Build(pipeline.Options{
+		ProjectDir:  dir,
+		Targets:     []render.Target{render.TargetHTML},
+		OutDir:      outDir,
+		CheckLayout: true,
+		Strict:      true,
+	})
+	if err == nil {
+		t.Fatal("--strict가 배치 경고를 통과시켰다")
+	}
+	if !result.Diagnostics.HasErrors() {
+		t.Errorf("승격되지 않은 진단: %s", result.Diagnostics)
+	}
+	if len(result.Written) != 0 {
+		t.Errorf("승격된 에러에도 산출물을 썼다: %v", result.Written)
+	}
+	if entries, err := os.ReadDir(outDir); err == nil && len(entries) > 0 {
+		t.Errorf("출력 디렉토리에 파일이 남았다: %d개", len(entries))
+	}
+}
+
+// 반대 방향: 제자리에 있는 덱은 `--check-layout`에서도 조용하다. 정상 덱이 경고를 받으면
+// 저자는 경고를 읽지 않게 되고, 그것이 진단을 잃는 방식이다.
+func TestBuildCheckLayoutIsQuietOnAFittingDeck(t *testing.T) {
+	testkit.RequireChromium(t)
+	dir := project(t, map[string]string{"slides/001_title.slide": textSlide})
+	result, err := pipeline.Build(pipeline.Options{
+		ProjectDir:  dir,
+		Targets:     []render.Target{render.TargetHTML},
+		CheckLayout: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) > 0 {
+		t.Errorf("정상 덱의 진단 %d건, want 0건:\n%s", len(result.Diagnostics), result.Diagnostics)
+	}
+}
+
 // 두 타깃을 함께 빌드하면 웹 렌더 → 지오메트리 → PPTX 순으로 돌고, 측정 결과가 결과에 남는다
 // (Iteration 1 리뷰와 다음 iteration의 좌표 스냅샷이 이 값을 본다).
 func TestBuildPPTXRunsGeometryPass(t *testing.T) {
