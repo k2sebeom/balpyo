@@ -35,8 +35,12 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("서브커맨드가 필요하다")
 	}
 	switch args[0] {
+	case "init":
+		return runInit(args[1:], stdout, stderr)
 	case "build":
 		return runBuild(args[1:], stdout, stderr)
+	case "check":
+		return runCheck(args[1:], stdout, stderr)
 	case "watch":
 		// 종료 신호를 ctx로 받는다 — Ctrl+C가 웜 브라우저를 닫고(runner.Close) 서버를 내린 뒤
 		// 돌아와야 다음 watch가 같은 포트를 잡고 프로세스가 남지 않는다.
@@ -61,10 +65,20 @@ func usage(w io.Writer) {
 	fmt.Fprint(w, `balpyo — SOML 슬라이드를 웹과 편집 가능한 네이티브 PPTX로 렌더한다.
 
 사용법:
+  balpyo init [디렉토리] 빌드되는 프로젝트 하나를 만든다
   balpyo build [옵션]   슬라이드를 빌드한다
+  balpyo check [옵션]   산출물 없이 진단만 한다
   balpyo watch [옵션]   고치면 다시 빌드하고 브라우저를 새로고침한다
   balpyo preview [옵션] 웹과 PPTX를 나란히 놓은 검수 갤러리를 만든다
   balpyo version        버전을 출력한다
+
+init 옵션:
+  --project .           만들 프로젝트 루트 (위치 인자와 같은 뜻)
+  --title 제목          덱 제목 (기본: 디렉토리 이름)
+  --author 이름         발표자
+  --theme minimal       테마 (내장 테마만 받는다)
+  --aspect 16:9         종횡비
+  --lang ko             덱 언어
 
 build 옵션:
   --target html,pptx    렌더 타깃 (기본 html)
@@ -72,6 +86,13 @@ build 옵션:
   --project .           프로젝트 루트
   --strict              경고를 에러로 승격한다
   --check-layout        배치를 검사한다 (넘침·스테이지 이탈·겹침 — 브라우저를 띄운다)
+
+check 옵션:
+  --project .           프로젝트 루트
+  --strict              경고를 에러로 승격한다
+  --check-layout        배치도 검사한다 (브라우저를 띄운다)
+
+  판정은 build와 같고 산출물을 쓰지 않는다. CI: balpyo check --check-layout --strict
 
 watch 옵션:
   build의 옵션 전부 (html 타깃은 필수) 그리고

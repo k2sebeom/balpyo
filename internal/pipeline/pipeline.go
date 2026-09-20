@@ -325,6 +325,8 @@ type CheckResult struct {
 //
 // 디스크에는 아무것도 남지 않는다 — 출력 디렉토리를 만들지도 않는다 (Build는 resolveOutDir이
 // 만든다). 측정에 필요한 웹 문서는 measure가 임시 디렉토리에 쓰고 지운다.
+//
+// 결과는 **언제나 non-nil**이다: 실패한 검사의 진단도 사람에게 보여야 한다.
 func Check(opts Options) (*CheckResult, error) {
 	deck, diags, err := LoadDeck(opts)
 	if err != nil {
