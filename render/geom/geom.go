@@ -86,6 +86,17 @@ type Ref struct {
 	Slide int
 	// Source는 슬라이드 파일 경로다 — 대조가 실패했을 때 진단이 가리킬 곳.
 	Source string
+	// Parent는 부모 요소의 ID다 (슬라이드의 직계 자식은 "").
+	Parent string
+	// Span은 태그 이름 구간이다 (soml.Element.NameSpan) — 이 요소를 가리키는 진단이 쓴다.
+	Span soml.Span
+	// Free는 저자가 이 요소의 자리를 **좌표로** 정했는지다 (`at`/`x`/`y`를 썼거나, 그런
+	// 요소의 자손이거나, canvas 슬라이드 안이다). 배치 진단이 콘텐츠 박스 이탈을 이 요소에
+	// 대해 묻지 않는다 — 좌표를 직접 쓴 것은 여백을 벗어나는 선택까지 포함한다 (ADR 0039).
+	Free bool
+	// Overlap은 이 요소가 **겹치도록** 놓인 자리에 있는지다 (`<stack>`·canvas의 직계이거나
+	// 자기 좌표를 가졌다). 형제 겹침 진단에서 제외된다.
+	Overlap bool
 }
 
 // Refs는 덱에서 좌표가 필요한 요소를 문서 순서로 모은다.
@@ -99,15 +110,30 @@ func Refs(deck *soml.Deck) []Ref {
 	}
 	var refs []Ref
 	for _, slide := range deck.Slides {
+		// canvas 슬라이드의 스테이지는 단일 셀이다 (PRD §13-3) — 직계 자식이 좌표로 자기
+		// 자리를 정하고 서로 겹칠 수 있다. 그 사실은 슬라이드에서 시작하는 문맥이다.
+		canvas := slide.Layout == soml.LayoutCanvas
+		ctx := placeContext{free: canvas, overlap: canvas}
 		for i, node := range slide.Content {
-			refs = collect(refs, slide, node, []int{i})
+			refs = collect(refs, slide, node, []int{i}, ctx)
 		}
 	}
 	return refs
 }
 
+// placeContext는 순회 중의 배치 문맥이다 — 부모가 정하고 자식이 물려받는 사실이다.
+// 배치 진단(layout.go)이 "이 이탈·겹침이 저자의 선택인가"를 이 문맥으로 판정한다.
+type placeContext struct {
+	// parent는 부모 요소의 식별자다 (슬라이드 직계는 "").
+	parent string
+	// free는 조상 중에 좌표로 놓인 요소가 있는지다 (canvas 슬라이드 포함).
+	free bool
+	// overlap은 부모가 겹침 컨테이너인지다 (`<stack>`·canvas 스테이지).
+	overlap bool
+}
+
 // collect는 노드 하나와 그 자손을 모은다.
-func collect(refs []Ref, slide *soml.Slide, node soml.Node, path []int) []Ref {
+func collect(refs []Ref, slide *soml.Slide, node soml.Node, path []int, ctx placeContext) []Ref {
 	elem, ok := node.(*soml.Element)
 	if !ok {
 		// 문자 데이터는 자기 박스를 갖지 않는다 (줄 박스로 부모 요소 안에서 측정된다).
@@ -139,18 +165,44 @@ func collect(refs []Ref, slide *soml.Slide, node soml.Node, path []int) []Ref {
 		// 유지되고 이 순회는 그림을 **다른 종류와 똑같이** 담으면 된다. 자손은 없다 (void).
 		return refs
 	}
+	id := web.ElementID(slide.Index, path)
+	// 좌표를 직접 쓴 요소는 그 자리에 대한 판단을 저자가 이미 했다 — `at`은 셀 안 앵커,
+	// `x`/`y`는 축 오프셋이다 (soml.Placement). 확정 값을 읽는 이유는 렌더러와 같다:
+	// 속성을 다시 해석하면 값 층을 지나지 않은 판정이 생긴다.
+	positioned := isPositioned(elem)
 	refs = append(refs, Ref{
-		ID:     web.ElementID(slide.Index, path),
-		El:     elem.Name,
-		Slide:  slide.Index,
-		Source: slide.Source,
+		ID:      id,
+		El:      elem.Name,
+		Slide:   slide.Index,
+		Source:  slide.Source,
+		Parent:  ctx.parent,
+		Span:    elem.NameSpan,
+		Free:    ctx.free || positioned,
+		Overlap: ctx.overlap || positioned,
 	})
-	for i, child := range elem.Children {
+	child := placeContext{
+		parent: id,
+		free:   ctx.free || positioned,
+		// 겹침은 **부모가** 정한다: `<stack>`의 자식은 한 칸에 쌓이고, 다른 컨테이너의
+		// 자식은 서로 자리를 나눈다. 좌표를 쓴 요소의 **자식**은 그 안에서 다시 흐름이므로
+		// 겹침 문맥을 물려받지 않는다.
+		overlap: elem.Name == soml.StackElement,
+	}
+	for i, node := range elem.Children {
 		// 경로 규칙은 웹 렌더러가 소유한다 (web.ChildPath) — 식별자를 만드는 규칙과 같은
 		// 곳에 있어야 순회 셋의 자리가 어긋날 수 없다.
-		refs = collect(refs, slide, child, web.ChildPath(path, i))
+		refs = collect(refs, slide, node, web.ChildPath(path, i), child)
 	}
 	return refs
+}
+
+// isPositioned는 저자가 이 요소의 자리를 좌표로 정했는지 본다 (`at`·`x`·`y`).
+func isPositioned(elem *soml.Element) bool {
+	if elem.Appearance == nil || elem.Appearance.Placement == nil {
+		return false
+	}
+	p := elem.Appearance.Placement
+	return p.At != "" || p.X != nil || p.Y != nil
 }
 
 // Box는 요소 하나의 측정 결과다. 좌표는 **슬라이드 상대 논리 px**다.

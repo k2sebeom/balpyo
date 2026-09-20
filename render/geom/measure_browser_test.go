@@ -467,7 +467,7 @@ func TestMeasureSpacerPushesSiblings(t *testing.T) {
 
 	// 슬라이드 직속 spacer는 세로 스택에서 밀어낸다 — 꼬리글이 스테이지 아래쪽에 붙는다.
 	footer := boxOf(t, g, "s1.2")
-	stageBottom := float64(deck.Stage.Height) - 64 // stagePadding (render/web contentCSS)
+	stageBottom := float64(deck.Stage.Height) - web.StagePadding
 	if math.Abs(footer.Rect.Bottom()-stageBottom) > 0.5 {
 		t.Errorf("꼬리글의 바닥 = %v, want %v (스테이지 콘텐츠 바닥)", footer.Rect.Bottom(), stageBottom)
 	}

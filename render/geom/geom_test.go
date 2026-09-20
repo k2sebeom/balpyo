@@ -191,6 +191,65 @@ func TestRefsCollectShapesAndTheirText(t *testing.T) {
 	}
 }
 
+// Ref는 좌표 말고 **배치 문맥**도 나른다 (Parent·Free·Overlap) — 배치 진단이 "이 이탈·겹침이
+// 저자의 선택인가"를 물을 때 쓰는 사실이다 (layout.go, ADR 0039). 순회가 이미 덱을 걷고 있으므로
+// 그 문맥은 여기서 나오는 것이 맞다: 진단이 덱을 한 번 더 걸으면 두 순회가 갈라질 수 있다.
+func TestRefsCarryPlacementFacts(t *testing.T) {
+	shape := func(attrs []soml.Attr, children ...soml.Node) *soml.Element {
+		return &soml.Element{
+			Name:     soml.ShapeElement,
+			Attrs:    append([]soml.Attr{{Name: "type", Value: "rect", HasValue: true}}, attrs...),
+			Children: children,
+		}
+	}
+	// 첫 장: `<stack>`의 자식 둘 — 하나는 그냥 쌓이고 하나는 좌표로 비켜 앉는다.
+	// 둘째 장: canvas 스테이지 — 직계 자식 전부가 좌표를 쓰는 자리다.
+	deck := testDeck(
+		[]soml.Node{&soml.Element{Name: soml.StackElement, Children: []soml.Node{
+			shape(nil, textElem(chars("바닥"))),
+			shape([]soml.Attr{{Name: "x", Value: "-16", HasValue: true}}, textElem(chars("배지"))),
+		}}},
+		[]soml.Node{shape(nil)},
+	)
+	deck.Slides[1].Layout = soml.LayoutCanvas
+	if diags := core.Resolve(deck); len(diags) > 0 {
+		t.Fatalf("외관 해석 진단: %v", diags)
+	}
+
+	want := map[string]struct {
+		parent        string
+		free, overlap bool
+	}{
+		// 스택 자신은 흐름 안의 보통 박스다.
+		"s0.0": {parent: "", free: false, overlap: false},
+		// 스택의 직계는 한 칸에 쌓이므로 겹침을 묻지 않는다 — 좌표는 쓰지 않았다.
+		"s0.0.0": {parent: "s0.0", free: false, overlap: true},
+		// 도형 **안**은 다시 흐름이다: 겹침 문맥을 물려받지 않는다.
+		"s0.0.0.0": {parent: "s0.0.0", free: false, overlap: false},
+		// 좌표를 쓴 요소는 둘 다 참이다.
+		"s0.0.1": {parent: "s0.0", free: true, overlap: true},
+		// 그 **자손**은 부모 변을 넘어서는 선택을 물려받는다 (Free) — 겹침은 아니다.
+		"s0.0.1.0": {parent: "s0.0.1", free: true, overlap: false},
+		// canvas 슬라이드의 직계는 좌표를 쓰지 않아도 둘 다 참이다 (PRD §13-3).
+		"s1.0": {parent: "", free: true, overlap: true},
+	}
+	refs := Refs(deck)
+	if len(refs) != len(want) {
+		t.Fatalf("Refs %d개, want %d개", len(refs), len(want))
+	}
+	for _, ref := range refs {
+		fact, ok := want[ref.ID]
+		if !ok {
+			t.Errorf("뜻밖의 요소 %s <%s>", ref.ID, ref.El)
+			continue
+		}
+		if ref.Parent != fact.parent || ref.Free != fact.free || ref.Overlap != fact.overlap {
+			t.Errorf("%s <%s>: parent=%q free=%v overlap=%v, want parent=%q free=%v overlap=%v",
+				ref.ID, ref.El, ref.Parent, ref.Free, ref.Overlap, fact.parent, fact.free, fact.overlap)
+		}
+	}
+}
+
 // 측정 스크립트는 **측정 뷰를 켜고 재고 되돌린다** — 회전 도형의 rect가 회전 전 박스여야
 // 하기 때문이다 (web.MeasureView). 표현식을 리터럴로 쓰지 않는 계약(양쪽이 같은 문자열)과
 // 순서(켜기 → 읽기 → finally 되돌리기)를 브라우저 없이 확인한다.
