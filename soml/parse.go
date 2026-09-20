@@ -857,6 +857,23 @@ func specOf(elem *Element) elementSpec {
 	return elementSpecs[elem.Name]
 }
 
+// ElementAttrs는 태그가 여는 속성 이름 전체다 (진단·문서 순서). 미지의 태그는 nil이다.
+//
+// 내보내는 이유는 값 층의 **엔진 버그 가드**다 (core.catalogGap): "카탈로그가 열었는데 값 층이
+// 모르는 속성"은 소리를 내야 하지만, 파서가 이미 "알 수 없는 속성"으로 거절한 이름은 값 층의
+// 몫이 아니다 — 그것까지 가드에 닿으면 저자의 오타 하나가 진단 둘이 되고 둘째가 엔진을
+// 탓한다. 두 경우를 가르는 판정이 이 목록이므로, 값 층은 여기서 읽는다 (ContainerAttrs·
+// ShapeAttrs와 같은 이유로 목록은 한 벌이다).
+func ElementAttrs(name string) []string {
+	spec, known := elementSpecs[name]
+	if !known {
+		return nil
+	}
+	attrs := make([]string, len(spec.attrs))
+	copy(attrs, spec.attrs)
+	return attrs
+}
+
 func parentOf(stack []*Element) *Element {
 	if len(stack) == 0 {
 		return nil

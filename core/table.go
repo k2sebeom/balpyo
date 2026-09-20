@@ -313,7 +313,7 @@ func (r *resolver) cellAttrs(cell *soml.Element, cs *soml.CellStyle) (cellPatch,
 		default:
 			// 셀 어휘 밖 속성이 값 층에 닿았다면 카탈로그(soml)와 값 층(core)이 어긋난 것이다 —
 			// 조용히 지나가면 저자가 쓴 외관이 사라진다 (shapeAttrs의 catalogGap과 같은 태도).
-			r.catalogGap(attr)
+			r.catalogGap(cell, attr)
 		}
 	}
 	return patch, spansValid

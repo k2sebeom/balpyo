@@ -58,15 +58,15 @@ func (r *resolver) resolveLayout(elem, parent *soml.Element) {
 		// 값 층이 해석하는 속성이 갈라지고, 갈라진 쪽은 조용히 무시된다.
 		switch {
 		case container != nil && containsName(containerNames, attr.Name):
-			r.containerAttr(container, attr)
+			r.containerAttr(elem, container, attr)
 		case takesSize && containsName(soml.TextSizeAttrs(), attr.Name):
 			// 컨테이너 분기 **뒤**에 온다: 컨테이너는 자기 목록에 크기 7종을 다 갖고 있어
 			// 여기까지 오지 않는다 (같은 속성이 두 자리에 담기면 렌더러가 둘 다 읽는다).
 			if !r.boxAttr(&box, attr) {
-				r.catalogGap(attr)
+				r.catalogGap(elem, attr)
 			}
 		case containsName(soml.ChildPlacementAttrs(), attr.Name):
-			r.placementAttr(&placement, attr, parent, anchorConflict)
+			r.placementAttr(elem, &placement, attr, parent, anchorConflict)
 		}
 	}
 	if container == nil && box == (soml.Box{}) && placement == (soml.Placement{}) {
@@ -94,7 +94,7 @@ func (r *resolver) resolveLayout(elem, parent *soml.Element) {
 // 틀린 값은 확정 배치에 실리지 않는다 — 외관 해석과 같은 정책이다 (틀린 size가 역할
 // 기본값을 남기는 것처럼, 틀린 gap은 "gap 없음"으로 남는다). 그래야 진단 하나가 다른
 // 속성의 진단을 삼키지 않고 저자가 한 번에 다 고친다.
-func (r *resolver) containerAttr(container *soml.ContainerLayout, attr soml.Attr) {
+func (r *resolver) containerAttr(elem *soml.Element, container *soml.ContainerLayout, attr soml.Attr) {
 	switch attr.Name {
 	case "gap":
 		if length, ok := r.length(attr, lengthSyntax{tokens: true}); ok {
@@ -122,7 +122,7 @@ func (r *resolver) containerAttr(container *soml.ContainerLayout, attr soml.Attr
 		}
 	default:
 		if !r.boxAttr(&container.Box, attr) {
-			r.catalogGap(attr)
+			r.catalogGap(elem, attr)
 		}
 	}
 }
@@ -180,7 +180,7 @@ func (r *resolver) boxAttr(box *soml.Box, attr soml.Attr) bool {
 // anchorConflict는 at과 x/y를 함께 썼는지다 (resolveLayout이 한 번 판정한다). 참이면 두
 // 채널(at·x·y)을 확정 배치에 싣지 않는다 — 진단은 이미 한 번 났고, 충돌한 값을 실으면
 // 저자가 고친 뒤의 결과를 예측할 수 없다 (틀린 값을 싣지 않는 값 층의 정책과 같다).
-func (r *resolver) placementAttr(placement *soml.Placement, attr soml.Attr, parent *soml.Element, anchorConflict bool) {
+func (r *resolver) placementAttr(elem *soml.Element, placement *soml.Placement, attr soml.Attr, parent *soml.Element, anchorConflict bool) {
 	switch attr.Name {
 	case "grow":
 		if n, ok := r.nonNegativeInt(attr); ok {
@@ -227,7 +227,7 @@ func (r *resolver) placementAttr(placement *soml.Placement, attr soml.Attr, pare
 			placement.Style = style
 		}
 	default:
-		r.catalogGap(attr)
+		r.catalogGap(elem, attr)
 	}
 }
 
@@ -254,10 +254,19 @@ func (r *resolver) placementConflict(elem *soml.Element) bool {
 	return true
 }
 
-// catalogGap은 카탈로그(soml)가 연 배치 속성을 값 층이 모르는 상태다 — 엔진 버그다.
-// 조용히 지나가면 저자가 쓴 배치가 산출물에서 사라지므로 소리를 낸다 (렌더러의 "렌더하는
+// catalogGap은 카탈로그(soml)가 연 속성을 값 층이 모르는 상태다 — 엔진 버그다.
+// 조용히 지나가면 저자가 쓴 배치·외관이 산출물에서 사라지므로 소리를 낸다 (렌더러의 "렌더하는
 // 매핑이 없다" 가드와 같은 태도).
-func (r *resolver) catalogGap(attr soml.Attr) {
+//
+// **파서가 거절한 이름에는 소리를 내지 않는다.** 파서는 어휘 밖 속성을 진단한 뒤에도 트리에
+// 남겨 두므로(에러 복구) 값 층이 그것을 다시 만난다 — 그때 이 가드가 울면 저자는 오타 하나에
+// 진단 둘을 받고 둘째가 "엔진 버그"라고 말한다. 자기 오타를 제품의 결함으로 읽게 만드는
+// 진단이므로, 두 경우를 태그의 카탈로그(soml.ElementAttrs)로 가른다. 컨테이너 경로는 카탈로그
+// 목록에 없는 이름을 애초에 지나가므로 이 정책이 요소 종류를 넘어 하나가 된다.
+func (r *resolver) catalogGap(elem *soml.Element, attr soml.Attr) {
+	if !containsName(soml.ElementAttrs(elem.Name), attr.Name) {
+		return
+	}
 	r.errorf(attr.NameSpan, "%s 속성의 값 해석이 없다 — 카탈로그(soml)와 값 층(core)이 어긋났다 (엔진 버그)", attr.Name)
 }
 

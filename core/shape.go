@@ -201,7 +201,7 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 				attr.Name == soml.SlotAttr {
 				continue
 			}
-			r.catalogGap(attr)
+			r.catalogGap(elem, attr)
 		}
 	}
 	return patch

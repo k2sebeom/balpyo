@@ -140,7 +140,7 @@ func (r *resolver) imageAttrs(elem *soml.Element, style *soml.ImageStyle) imageP
 				attr.Name == soml.SlotAttr {
 				continue
 			}
-			r.catalogGap(attr)
+			r.catalogGap(elem, attr)
 		}
 	}
 	return patch
