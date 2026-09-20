@@ -36,6 +36,11 @@ func TestLoadBuiltinMinimal(t *testing.T) {
 			{Name: "muted", RGB: "6B7280", Slot: "dk2", Ref: "tx2"},
 			{Name: "surface", RGB: "F3F4F6", Slot: "lt2", Ref: "bg2"},
 			{Name: "accent1", RGB: "0F65F9", Slot: "accent1", Ref: "accent1"},
+			{Name: "accent2", RGB: "0E8174", Slot: "accent2", Ref: "accent2"},
+			{Name: "accent3", RGB: "15803D", Slot: "accent3", Ref: "accent3"},
+			{Name: "accent4", RGB: "B45309", Slot: "accent4", Ref: "accent4"},
+			{Name: "accent5", RGB: "DC2626", Slot: "accent5", Ref: "accent5"},
+			{Name: "accent6", RGB: "9333EA", Slot: "accent6", Ref: "accent6"},
 		},
 		Fonts: []soml.FontToken{
 			{Name: soml.FontHeading, Latin: "Noto Sans", EastAsian: "Noto Sans CJK KR", Generic: "sans-serif", Scheme: "major"},
