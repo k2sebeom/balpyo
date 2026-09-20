@@ -1,34 +1,34 @@
 <!-- 탐지 시간 추이: <chart>가 없어서 canvas에 막대를 손으로 놓는다.
      좌표는 전부 손계산이다 — 값이 하나 바뀌면 여섯 숫자를 다시 센다 (마찰점).
 
-     막대 위/아래 라벨을 막대 폭에 맞춰 가운데 두고 싶은데 <text>는 w를 못 받는다.
-     canvas의 <text at>는 자기 내용만큼만 넓어서 align="center"가 기댈 폭이 없다.
-     그래서 라벨마다 보이지 않는 도형(fill="none" border="none" w="140")으로 감싸고
-     그 안에서 가운데 맞춘다 — 태그가 두 배가 된다 (마찰점). -->
+     막대 위/아래 라벨은 막대와 같은 폭을 가진 텍스트 박스다 (`<text w="140" align="center">`
+     — ADR 0043). 그 폭이 없던 동안에는 라벨마다 보이지 않는 도형
+     (`<shape fill="none" border="none" w="140">`)으로 감싸야 했고, 라벨 열 개가 태그
+     스무 개였다. -->
 <slide id="detection" layout="canvas">
   <text role="heading" size="32" x="0" y="0">평균 탐지 시간이 줄고 있다 — 아직 느리다</text>
 
   <shape type="rect" fill="muted" w="940" h="1" x="106" y="420"/>
 
-  <shape type="rect" fill="none" border="none" pad="0" w="140" h="22" x="106" y="216"><text size="16" color="muted" align="center">22분</text></shape>
+  <text size="16" color="muted" w="140" align="center" x="106" y="216">22분</text>
   <shape type="rect" fill="surface" w="140" h="176" x="106" y="244"/>
-  <shape type="rect" fill="none" border="none" pad="0" w="140" h="22" x="106" y="430"><text size="16" color="muted" align="center">5월</text></shape>
+  <text size="16" color="muted" w="140" align="center" x="106" y="430">5월</text>
 
-  <shape type="rect" fill="none" border="none" pad="0" w="140" h="22" x="306" y="240"><text size="16" color="muted" align="center">19분</text></shape>
+  <text size="16" color="muted" w="140" align="center" x="306" y="240">19분</text>
   <shape type="rect" fill="surface" w="140" h="152" x="306" y="268"/>
-  <shape type="rect" fill="none" border="none" pad="0" w="140" h="22" x="306" y="430"><text size="16" color="muted" align="center">6월</text></shape>
+  <text size="16" color="muted" w="140" align="center" x="306" y="430">6월</text>
 
-  <shape type="rect" fill="none" border="none" pad="0" w="140" h="22" x="506" y="272"><text size="16" color="muted" align="center">15분</text></shape>
+  <text size="16" color="muted" w="140" align="center" x="506" y="272">15분</text>
   <shape type="rect" fill="surface" w="140" h="120" x="506" y="300"/>
-  <shape type="rect" fill="none" border="none" pad="0" w="140" h="22" x="506" y="430"><text size="16" color="muted" align="center">7월</text></shape>
+  <text size="16" color="muted" w="140" align="center" x="506" y="430">7월</text>
 
-  <shape type="rect" fill="none" border="none" pad="0" w="140" h="22" x="706" y="288"><text size="16" color="muted" align="center">13분</text></shape>
+  <text size="16" color="muted" w="140" align="center" x="706" y="288">13분</text>
   <shape type="rect" fill="surface" w="140" h="104" x="706" y="316"/>
-  <shape type="rect" fill="none" border="none" pad="0" w="140" h="22" x="706" y="430"><text size="16" color="muted" align="center">8월</text></shape>
+  <text size="16" color="muted" w="140" align="center" x="706" y="430">8월</text>
 
-  <shape type="rect" fill="none" border="none" pad="0" w="140" h="22" x="906" y="296"><text size="16" color="accent1" align="center">12분</text></shape>
+  <text size="16" color="accent1" w="140" align="center" x="906" y="296">12분</text>
   <shape type="rect" fill="accent1" w="140" h="96" x="906" y="324"/>
-  <shape type="rect" fill="none" border="none" pad="0" w="140" h="22" x="906" y="430"><text size="16" color="accent1" align="center">이번 장애</text></shape>
+  <text size="16" color="accent1" w="140" align="center" x="906" y="430">이번 장애</text>
 
   <text role="caption" color="muted" x="0" y="480">목표는 3분(1분 p99 경보 + 2분 확인)이다. 액션 2번이 이 막대를 반으로 줄인다.</text>
   <note>추세는 좋지만 목표선이 없다. 다음 회고에 목표선을 그린다.</note>
