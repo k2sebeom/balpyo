@@ -577,6 +577,64 @@ func TestShapeIsMeasuredWithItsText(t *testing.T) {
 	}
 }
 
+// 배치를 담은 도형은 **배경**이다 (ADR 0049): 레이아웃 컨테이너 자식이 박스 안에서 그대로
+// 흐르고, PPTX에서는 그 자식들이 형제 도형이 된다. 웹 쪽 계약은 둘이다 —
+//
+//   - 구조: 컨테이너가 도형 박스 **안에**, 그림 svg **뒤에** 온다 (흡수 모드처럼 사라지지
+//     않는다). 문서 순서가 칠 순서이므로 이 순서가 곧 "글자가 그림 위"다.
+//   - 엔진 CSS: 그림이 절대 배치라 흐름 콘텐츠보다 위에 칠해지므로, 도형의 흐름 자식은
+//     position: relative로 올라와야 한다. 그 규칙이 `.balpyo-text`에만 걸려 있으면 카드의
+//     내용 **전부**가 배경 그림 아래로 사라지고, 그 실패는 산출물을 열어 보기 전까지 조용하다
+//     (도형 안에 컨테이너를 넣을 수 있게 된 지금이 그 규칙이 좁아지는 순간이다).
+func TestShapeHoldingLayoutLiftsItsChildrenAboveTheInk(t *testing.T) {
+	out := renderString(t, subsetDeck(t, `
+  <shape type="rounded-rect" pad="lg" w="320" h="240">
+    <col gap="sm">
+      <text role="heading">카드 제목</text>
+      <p>본문 한 줄.</p>
+      <text role="caption">푸터</text>
+    </col>
+  </shape>`))
+	for _, tc := range []struct{ id, el string }{
+		{"s0.0", "shape"}, {"s0.0.0", "col"},
+		{"s0.0.0.0", "text"}, {"s0.0.0.1", "p"}, {"s0.0.0.2", "text"},
+	} {
+		open := openTagOf(t, out, tc.id)
+		if want := fmt.Sprintf("%s=%q", ElAttr, tc.el); !strings.Contains(open, want) {
+			t.Errorf("%s의 여는 태그에 %s가 없다: %s", tc.id, want, open)
+		}
+	}
+	// 도형 → 그림 → 컨테이너 순서다 (컨테이너가 도형 밖으로 나가면 배경이 아니라 형제가 된다).
+	shapeAt := strings.Index(out, fmt.Sprintf("%s=%q", IDAttr, "s0.0"))
+	inkAt := strings.Index(out, fmt.Sprintf("<svg class=%q", shapeInkClass))
+	colAt := strings.Index(out, fmt.Sprintf("%s=%q", IDAttr, "s0.0.0"))
+	if shapeAt > inkAt || inkAt > colAt {
+		t.Errorf("구조 순서가 도형 > 그림 > 컨테이너가 아니다 (%d %d %d)\n%s", shapeAt, inkAt, colAt, out)
+	}
+	if end := strings.Index(out[colAt:], "</div>"); end < 0 {
+		t.Error("컨테이너가 도형 박스 안에서 닫히지 않았다")
+	}
+	// 엔진 CSS가 올리는 자식 목록에 컨테이너 넷이 있어야 한다 — 어휘를 열고 이 선택자를
+	// 잊으면 "파싱은 되는데 보이지 않는" 카드가 된다.
+	css := shapeCSS()
+	for _, class := range []string{"balpyo-text", rowClass, colClass, gridClass, stackClass} {
+		want := "." + shapeClass + " > ." + class
+		if !strings.Contains(css, want) {
+			t.Errorf("도형 엔진 CSS에 %q가 없다 — 그림 위로 올릴 자식 목록이 좁다", want)
+		}
+	}
+	// 그림과 텍스트 영역 래퍼는 여전히 절대 배치다 (올리는 규칙이 그 둘을 덮으면 배경 그림이
+	// 흐름에 끼어들어 잰 rect가 곧 xfrm이라는 계약이 깨진다).
+	for _, want := range []string{
+		"." + shapeInkClass + " {\n    position: absolute;",
+		"." + shapeBodyClass + " {\n    position: absolute;",
+	} {
+		if !strings.Contains(css, want) {
+			t.Errorf("도형 엔진 CSS에 %q가 없다", want)
+		}
+	}
+}
+
 // 도형을 쓰지 않은 덱에는 도형 CSS도, 그림자 토큰 변수도 나가지 않는다 — 골든 불변의 단위
 // 테스트 절반이다 (나머지 절반은 픽스처 골든이 바이트로 확인한다).
 func TestShapeCSSOnlyWhenShapesUsed(t *testing.T) {

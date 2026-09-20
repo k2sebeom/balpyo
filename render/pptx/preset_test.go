@@ -397,6 +397,109 @@ func TestRenderShapeTextBody(t *testing.T) {
 	}
 }
 
+// 배치를 담은 도형은 **배경**이 되고 자식은 **형제 도형**이 된다 (ADR 0049) — 흡수 모드와
+// 정반대다: 도형은 빈 문단만 갖고, 안의 텍스트는 자기 잰 rect를 좌표로 쓰는 텍스트 박스가
+// 된다. `p:grpSp`가 아닌 이유는 좌표 공간이다 — 그룹은 `chOff`/`chExt`로 자식 좌표계를 하나
+// 더 만들어 "잰 rect가 곧 xfrm"이라는 계약(PRD §9.3)을 깨뜨린다.
+//
+// 카드가 이 항목의 이유다: 도형 둘(배경 + 텍스트 박스)로 흉내 낸 카드는 PowerPoint에서 테두리가
+// 겹치고 모서리가 맞지 않았다 (D7).
+func TestRenderShapeWithLayoutBecomesBackdrop(t *testing.T) {
+	deck := resolvedDeck(t, `<slide>
+  <shape type="rounded-rect" fill="surface" w="280" h="220" pad="lg">
+    <col gap="sm">
+      <text role="heading">카드 제목</text>
+      <p>카드 본문.</p>
+      <text role="caption">푸터</text>
+    </col>
+  </shape>
+</slide>`)
+	shape := geom.Rect{X: 64, Y: 64, W: 280, H: 220}
+	children := []geom.Rect{
+		{X: 100, Y: 100, W: 208, H: 32}, // text role=heading
+		{X: 100, Y: 144, W: 208, H: 48}, // p
+		{X: 100, Y: 204, W: 208, H: 24}, // text role=caption
+	}
+	xml := slideXML(t, deck, measuredGeometry(t, deck, shape,
+		// 컨테이너의 rect는 측정되지만 소비되지 않는다 (레이아웃 컨테이너는 도형이 아니다).
+		geom.Rect{X: 100, Y: 100, W: 208, H: 128},
+		children[0], children[1], children[2],
+	))
+
+	// 배경 1 + 자식 텍스트 박스 3 = p:sp 4개.
+	if got := strings.Count(xml, "<p:sp>"); got != 4 {
+		t.Fatalf("p:sp %d개, want 4개 (배경 1 + 자식 3)\n%s", got, xml)
+	}
+	if strings.Contains(xml, "p:grpSp") {
+		t.Errorf("배경 모드가 그룹이 되었다 — 자식 좌표 공간이 생긴다 (ADR 0049)\n%s", xml)
+	}
+	for _, want := range []string{
+		`name="shape s0.0"`, // 배경 도형은 남는다
+		// 자식은 형제 도형이 된다 (흡수 모드에서는 이 이름들이 없었다).
+		`name="text s0.0.0.0"`,
+		`name="p s0.0.0.1"`,
+		`name="text s0.0.0.2"`,
+		`prst="roundRect"`, // 배경은 여전히 프리셋 도형이다
+	} {
+		if !strings.Contains(xml, want) {
+			t.Errorf("slide1.xml에 %q가 없다\n%s", want, xml)
+		}
+	}
+	if strings.Contains(xml, `name="col s0.0.0"`) {
+		t.Errorf("컨테이너가 도형을 냈다 — 배치는 좌표로 구워진다 (ADR 0011)\n%s", xml)
+	}
+	// 배경이 spTree의 **첫** 도형이다 (나중 도형이 위에 그려지므로 이 순서가 곧 "글자가 배경 위").
+	if at := strings.Index(xml, `name="shape s0.0"`); at > strings.Index(xml, `name="text s0.0.0.0"`) {
+		t.Errorf("배경이 자식보다 뒤에 나왔다 — 글자가 배경에 덮인다\n%s", xml)
+	}
+	// 배경의 좌표는 잰 rect 그대로이고, 본문은 **빈 문단**이다 (자식 없는 도형과 같은 갈래).
+	x, y := Offset(shape)
+	cx, cy := Extent(shape)
+	for _, want := range []string{
+		fmt.Sprintf(`<a:off x="%d" y="%d"/>`, x, y),
+		fmt.Sprintf(`<a:ext cx="%d" cy="%d"/>`, cx, cy),
+		// pad·앵커는 그대로 실린다 — 저자가 PowerPoint에서 배경에 글자를 넣을 때 서식이
+		// 뷰어 기본값에서 오지 않아야 한다 (shapeBodyXML의 근거).
+		`<a:bodyPr wrap="square" lIns="342900" tIns="342900" rIns="342900" bIns="342900" anchor="t">`,
+		"<a:p/>",
+	} {
+		if !strings.Contains(xml, want) {
+			t.Errorf("slide1.xml에 %q가 없다\n%s", want, xml)
+		}
+	}
+	// 자식 텍스트는 배경에 흡수되지 않았다 — 배경의 txBody에 런이 하나라도 있으면 글자가
+	// 두 번(배경 문단 + 형제 도형) 그려진다.
+	backdrop := xml[strings.Index(xml, `name="shape s0.0"`):strings.Index(xml, `name="text s0.0.0.0"`)]
+	for _, absent := range []string{"카드 제목", "카드 본문.", "푸터", "<a:r>"} {
+		if strings.Contains(backdrop, absent) {
+			t.Errorf("배경의 본문에 %q가 있다 — 자식을 흡수했다\n%s", absent, backdrop)
+		}
+	}
+	// 자식은 텍스트 박스다 — 잰 rect에 안전 여유(4%)가 붙는다 (흡수 모드에서는 붙지 않았다).
+	for _, rect := range children {
+		box := TextBoxRect(rect, soml.AlignStart)
+		bx, by := Offset(box)
+		bcx, bcy := Extent(box)
+		for _, want := range []string{
+			fmt.Sprintf(`<a:off x="%d" y="%d"/>`, bx, by),
+			fmt.Sprintf(`<a:ext cx="%d" cy="%d"/>`, bcx, bcy),
+		} {
+			if !strings.Contains(xml, want) {
+				t.Errorf("자식 텍스트 박스에 %q가 없다\n%s", want, xml)
+			}
+		}
+	}
+	// 도형 id는 도형을 낸 자리에서만 오른다 (컨테이너는 소비하지 않는다).
+	for _, want := range []string{`id="2"`, `id="3"`, `id="4"`, `id="5"`} {
+		if !strings.Contains(xml, want) {
+			t.Errorf("도형 id가 연속하지 않는다 — %q가 없다\n%s", want, xml)
+		}
+	}
+	if strings.Contains(xml, `id="6"`) {
+		t.Errorf("도형 4개인데 id가 6까지 갔다 — 컨테이너가 id를 소비했다\n%s", xml)
+	}
+}
+
 // chevron의 프리셋 rect는 폭 0 열(`x1 = x2 = w/2`)이라 좌우 인셋이 **음수**로 그 폭을
 // 되돌린다 (ADR 0041) — 되돌리지 않으면 뷰어가 글자를 한 자씩 세로로 쌓는다.
 //

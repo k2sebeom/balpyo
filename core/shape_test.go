@@ -448,6 +448,54 @@ func TestResolveShapeInsetTextNeedsDefiniteHeight(t *testing.T) {
 	}
 }
 
+// ADR 0040의 확정 높이 요구는 **내용이 컨테이너일 때도** 걸린다 (ADR 0049): 배경 모드의
+// 자식은 백분율 텍스트 영역 안에서 흐르므로 기준의 순환이 그대로다.
+func TestResolveShapeInsetTextHeightCountsContainers(t *testing.T) {
+	shapeWith := func(attrs, children string) string {
+		return "<slide id=\"shape\">\n  <shape " + attrs + ">" + children + "</shape>\n</slide>\n"
+	}
+	attrs := `type="ellipse"`
+	_, diags := resolveSlide(t, shapeWith(attrs, `<col gap="sm"><p>라벨</p></col>`))
+	if len(diags) != 1 {
+		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+	}
+	assertShapeDiag(t, diags[0], 4, "h나 ratio가 필요하다", "ellipse")
+	if _, diags := resolveSlide(t, shapeWith(attrs+` h="200"`, `<col gap="sm"><p>라벨</p></col>`)); len(diags) != 0 {
+		t.Errorf("진단 %d개, want 0개: %v", len(diags), diags)
+	}
+}
+
+// 배경 모드 도형의 `rotate`는 에러다 (ADR 0049 결정 6). 웹은 도형 박스를 돌려 **자식까지**
+// 돌리는데 PPTX의 형제 도형은 남의 회전을 물려받지 않으므로, 받아 두면 같은 SOML이 두
+// 타깃에서 다른 그림이 된다 — 조용한 갈라짐을 막는 유일한 자리가 값 층이다.
+func TestResolveShapeRotateWithLayoutIsError(t *testing.T) {
+	shapeWith := func(attrs, children string) string {
+		return "<slide id=\"shape\">\n  <shape " + attrs + ">" + children + "</shape>\n</slide>\n"
+	}
+	attrs := `type="rect" rotate="12"`
+	deck, diags := resolveSlide(t, shapeWith(attrs, `<col gap="sm"><p>본문</p></col>`))
+	if len(diags) != 1 {
+		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+	}
+	// 진단은 `rotate` **속성 이름**을 가리킨다 — 고칠 것이 값이 아니라 속성과 내용의
+	// 조합이고, 저자가 고르는 쪽(회전을 지우거나 배치를 빼는 것)을 메시지가 적는다.
+	assertShapeDiag(t, diags[0], shapeCol(attrs, "rotate"),
+		"배치를 담은 도형은 rotate를 쓸 수 없다", "자식은 형제 도형이 되어")
+	if style := findElement(t, deck, soml.ShapeElement).ShapeStyle(); style == nil || style.Rotate != nil {
+		t.Errorf("무효한 rotate가 실렸다: %+v", style)
+	}
+
+	// 흡수 모드(텍스트 자식)와 빈 도형의 회전은 그대로다 — 문단은 도형과 함께 돌아간다.
+	for _, quiet := range []string{
+		shapeWith(attrs, "<p>본문</p>"),
+		shapeSlide(attrs),
+	} {
+		if _, diags := resolveSlide(t, quiet); len(diags) != 0 {
+			t.Errorf("진단 %d개, want 0개 (%s): %v", len(diags), quiet, diags)
+		}
+	}
+}
+
 // 나머지 값 문법의 위반 전수 — 각 진단이 **고치는 방법**을 담고 있어야 한다.
 func TestResolveShapeValueErrors(t *testing.T) {
 	cases := []struct {

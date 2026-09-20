@@ -66,6 +66,38 @@ func TestParseShape(t *testing.T) {
 			want: "shape[type=rect](pre(\"a\\n  b\"))",
 		},
 		{
+			// 도형이 배치를 담으면 **배경**이 된다 (ADR 0049) — 카드 하나가 도형 하나이고
+			// 헤더/본문/푸터는 그 안의 `<col>` 칸이다 (D7이 흉내던 도형 둘이 하나로 돌아온다).
+			name: "도형 안 레이아웃 컨테이너 — 카드 헤더/본문/푸터",
+			src: `<slide><shape type="rounded-rect" pad="md"><col gap="sm">` +
+				`<text role="heading">헤더</text><p>본문</p><text role="caption">푸터</text></col></shape></slide>`,
+			want: `shape[type=rounded-rect pad=md](col[gap=sm](text[role=heading]("헤더") p("본문") text[role=caption]("푸터")))`,
+		},
+		{
+			// 컨테이너 넷이 함께 열린다 (ADR 0049 결정 4) — `<stack>`도 포함이다: 배경 모드의
+			// 자식은 각자의 좌표를 갖는 형제 도형이므로 겹침이 그 위에서 그냥 성립한다.
+			name: "도형 안 컨테이너 넷",
+			src: `<slide><shape type="rect"><row><text>a</text></row><col><text>b</text></col>` +
+				`<grid cols="2"><text>c</text></grid><stack><text>d</text></stack></shape></slide>`,
+			want: `shape[type=rect](row(text("a")) col(text("b")) grid[cols=2](text("c")) stack(text("d")))`,
+		},
+		{
+			// 섞는 것을 막지 않는다 — 모드는 도형 단위이고, 컨테이너가 하나라도 있으면
+			// 텍스트 자식도 자기 박스를 갖는다 (ADR 0049 결정 2).
+			name: "도형 안에서 텍스트와 컨테이너가 섞인다",
+			src: `<slide><shape type="rect"><text role="heading">헤더</text>` +
+				`<row gap="md"><p>왼</p><p>오</p></row></shape></slide>`,
+			want: `shape[type=rect](text[role=heading]("헤더") row[gap=md](p("왼") p("오")))`,
+		},
+		{
+			// 그림·표·리스트·중첩 도형은 **컨테이너를 거쳐** 들어온다 (ADR 0049 결정 4) —
+			// 직속 자식으로는 여전히 닫혀 있고, 그래서 모드 판정이 한 문장으로 남는다.
+			name: "도형 안 컨테이너를 거친 리스트와 중첩 도형",
+			src: `<slide><shape type="rounded-rect" pad="md"><col gap="sm">` +
+				`<ul><li>항목</li></ul><shape type="ellipse" w="24" h="24"/></col></shape></slide>`,
+			want: `shape[type=rounded-rect pad=md](col[gap=sm](ul(li("항목")) shape[type=ellipse w=24 h=24]))`,
+		},
+		{
 			name: "슬라이드 직속 도형 — 세로 스택의 한 칸",
 			src:  `<slide><h2>표제</h2><shape type="rect" h="4" fill="muted"/><p>본문</p></slide>`,
 			want: `h2("표제") shape[type=rect h=4 fill=muted] p("본문")`,
@@ -179,32 +211,23 @@ func TestParseShapeErrors(t *testing.T) {
 			want: []string{"1:27 <shape> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)"},
 		},
 		{
-			// 도형 안 리스트는 불릿 문단 조립과 도형 txBody 조립을 합치는 일이다 (shapeChildren).
+			// 직속 리스트는 불릿 문단 조립과 도형 txBody 조립을 합치는 일이다 (shapeChildren) —
+			// 배경 모드는 그 합침을 필요 없게 만들므로 리스트는 컨테이너를 거쳐 들어온다
+			// (ADR 0049 결정 4). 진단의 태그 목록에 컨테이너 넷이 실려 고칠 방법이 보인다.
 			name: "도형 안의 리스트",
 			src:  `<slide><shape type="rect"><ul><li>항목</li></ul></shape></slide>`,
-			want: []string{"1:28 <shape>의 자식으로 <ul>는 올 수 없다 (쓸 수 있는 태그: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>)"},
+			want: []string{"1:28 <shape>의 자식으로 <ul>는 올 수 없다 (쓸 수 있는 태그: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)"},
 		},
 		{
-			// 도형 안의 배치는 겹침(I6)·편집 단위(I9)의 자리다.
-			name: "도형 안의 레이아웃 컨테이너",
-			src:  `<slide><shape type="rect"><row><text>a</text></row></shape></slide>`,
-			want: []string{"1:28 <shape>의 자식으로 <row>는 올 수 없다"},
-		},
-		{
-			// stack이 어휘에 열렸어도 도형 안 겹침은 열리지 않는다 — 도형은 txBody 하나를
-			// 갖는다는 Iteration 4의 매핑이 그대로다 (shapeChildren). 그림 위 글자·도형 위
-			// 배지는 stack의 **형제 자식**으로 쓴다.
-			name: "도형 안의 stack",
-			src:  `<slide><shape type="rect"><stack><text>a</text></stack></shape></slide>`,
-			want: []string{"1:28 <shape>의 자식으로 <stack>는 올 수 없다"},
-		},
-		{
+			// `<spacer/>`도 컨테이너를 거친다 — 흡수 모드에서는 txBody에 놓을 자리가 없고,
+			// 배경 모드에서는 컨테이너 안이 그 수단의 자리다 (ADR 0049 결정 4).
 			name: "도형 안의 spacer",
 			src:  `<slide><shape type="rect"><spacer/></shape></slide>`,
 			want: []string{"1:28 <shape>의 자식으로 <spacer>는 올 수 없다"},
 		},
 		{
-			// 도형이 txBody 하나를 갖는다는 이번 매핑과 정면으로 부딪힌다.
+			// 직속 중첩은 열지 않는다: 컨테이너 없이 배경 모드를 요구하므로 모드 판정이
+			// 두 조건이 된다 (ADR 0049 결정 4의 근거). `<col>` 하나를 거치면 된다.
 			name: "도형 안의 도형",
 			src:  `<slide><shape type="rect"><shape type="ellipse"/></shape></slide>`,
 			want: []string{"1:28 <shape>의 자식으로 <shape>는 올 수 없다"},
@@ -369,6 +392,93 @@ func TestShapeKind(t *testing.T) {
 			t.Errorf("<%s>가 문법 표에 있다 — 뒤 iteration의 어휘다", name)
 		}
 	}
+}
+
+// 모드 판정은 **어휘 층의 술어 하나**다 (ADR 0049 결정 3) — 값 층(`rotate` 검사)·웹(CSS
+// 구조)·PPTX(매핑 분기)가 같은 함수를 읽어야 세 층이 갈라질 방법이 없다.
+func TestShapeHoldsLayout(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want bool
+	}{
+		{name: "빈 도형", src: `<slide><shape type="rect"/></slide>`, want: false},
+		{
+			name: "텍스트만 — 흡수 모드",
+			src:  `<slide><shape type="rect"><text>배지</text><p>본문</p></shape></slide>`,
+			want: false,
+		},
+		{
+			name: "컨테이너 하나 — 배경 모드",
+			src:  `<slide><shape type="rect"><col><p>본문</p></col></shape></slide>`,
+			want: true,
+		},
+		{
+			name: "텍스트와 컨테이너가 섞이면 배경 모드",
+			src:  `<slide><shape type="rect"><text>헤더</text><row><p>왼</p></row></shape></slide>`,
+			want: true,
+		},
+		{
+			// 손자는 묻지 않는다 — 모드는 **직계 자식**이 정한다: 텍스트 안의 컨테이너는
+			// 어휘에 없고, 흡수할 수 있는 자식만 있으면 흡수 모드다.
+			name: "손자 컨테이너는 모드를 바꾸지 않는다",
+			src:  `<slide><row><shape type="rect"><p>본문</p></shape></row></slide>`,
+			want: false,
+		},
+		{
+			name: "빈 컨테이너도 배경 모드다",
+			src:  `<slide><shape type="rect"><col></col></shape></slide>`,
+			want: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := parseOK(t, tc.src)
+			shape := findShape(t, doc.Content)
+			if got := ShapeHoldsLayout(shape); got != tc.want {
+				t.Errorf("ShapeHoldsLayout() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+	// nil은 도형이 아니다 — 호출자가 문자 데이터 노드를 걸러 내지 않고 물어볼 수 있어야 한다.
+	if ShapeHoldsLayout(nil) {
+		t.Error("ShapeHoldsLayout(nil) = true")
+	}
+}
+
+// findShape는 트리에서 첫 `<shape>`를 찾는다 (깊이 우선).
+func findShape(t *testing.T, nodes []Node) *Element {
+	t.Helper()
+	for _, node := range nodes {
+		elem, ok := node.(*Element)
+		if !ok {
+			continue
+		}
+		if elem.Name == ShapeElement {
+			return elem
+		}
+		if found := findShapeIn(elem); found != nil {
+			return found
+		}
+	}
+	t.Fatal("트리에 <shape>가 없다")
+	return nil
+}
+
+func findShapeIn(elem *Element) *Element {
+	for _, node := range elem.Children {
+		child, ok := node.(*Element)
+		if !ok {
+			continue
+		}
+		if child.Name == ShapeElement {
+			return child
+		}
+		if found := findShapeIn(child); found != nil {
+			return found
+		}
+	}
+	return nil
 }
 
 // `type` 값 어휘 12종은 PRD §7.5의 표 순서 그대로다 — 목록은 soml에 있고 검사는 core다

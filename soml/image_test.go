@@ -160,11 +160,11 @@ func TestParseImageErrors(t *testing.T) {
 			want: []string{"1:9 void 태그 <image>은 내용을 가질 수 없다"},
 		},
 		{
-			// 도형은 txBody 하나를 갖는다는 Iteration 4의 매핑과 정면으로 부딪힌다
-			// (shapeChildren) — 도형 안 그림은 <stack>의 자리다.
+			// 직속 그림은 열지 않는다 — 배경 모드 도형 안의 그림은 **컨테이너를 거쳐**
+			// 들어온다 (ADR 0049 결정 4). 진단의 태그 목록이 그 길(컨테이너 넷)을 보여 준다.
 			name: "도형 안의 이미지",
 			src:  `<slide><shape type="rect"><image src="assets/wide.png"/></shape></slide>`,
-			want: []string{"1:28 <shape>의 자식으로 <image>는 올 수 없다 (쓸 수 있는 태그: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>)"},
+			want: []string{"1:28 <shape>의 자식으로 <image>는 올 수 없다 (쓸 수 있는 태그: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)"},
 		},
 		{
 			name: "블록 안의 이미지",
@@ -425,7 +425,7 @@ func TestImageChildVocabulary(t *testing.T) {
 		}
 	}
 	if hasAttr(shapeChildren(), ImageElement) {
-		t.Errorf("도형의 자식 어휘에 <%s>가 있다 — 도형은 txBody 하나를 갖는다", ImageElement)
+		t.Errorf("도형의 자식 어휘에 <%s>가 있다 — 도형 안 그림은 컨테이너를 거친다 (ADR 0049)", ImageElement)
 	}
 }
 

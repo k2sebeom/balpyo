@@ -1,0 +1,40 @@
+<!-- 카드 하나 = 도형 하나 (ADR 0049). 04_shape/006_cards가 같은 카드를 **도형 둘**(헤더 +
+     본문)로 흉내 낸 슬라이드이고, 그 흉내의 값이 거기 주석과 ADR 0049 맥락에 적혀 있다:
+     테두리가 두 번 그려지고, 카드 전체의 둥근 모서리를 만들 수 없고, PowerPoint에서 카드가
+     한 물건이 아니다.
+
+     여기서는 도형 하나가 **배경**이 되고 그 안의 `<col>`이 헤더/본문/푸터를 배치한다 —
+     PPTX에서 도형은 빈 문단만 가진 `p:sp` 하나이고, 세 글자는 각자 잰 좌표의 형제 텍스트
+     박스가 된다 (`p:grpSp`가 아니다 — 자식 좌표 공간을 만들면 "잰 rect가 곧 xfrm"이 깨진다).
+
+     그래서 도형 수는 제목 1 + 카드 3 + 카드 안 텍스트 9 = 13이다. `<grid>`·`<col>`은 도형이
+     아니고(ADR 0011), 카드 안 텍스트는 이제 **흡수되지 않는다** — 그 대비가 이 픽스처의
+     이유다. 푸터를 `justify="between"`으로 아래에 붙이는 것도 흡수 모드로는 불가능했다:
+     bodyPr의 앵커는 본문 전체에 하나뿐이다. -->
+<slide id="shape-layout-card">
+  <h2>카드 하나가 도형 하나다</h2>
+  <grid cols="3" gap="lg">
+    <shape type="rounded-rect" fill="surface" border="1 solid muted" radius="md" w="fill" h="260" pad="md">
+      <col gap="sm" justify="between" h="fill">
+        <text role="heading">측정</text>
+        <p>브라우저가 배치를 계산하고 우리는 그 결과를 잰다.</p>
+        <text role="caption">geom.Refs</text>
+      </col>
+    </shape>
+    <shape type="rounded-rect" fill="surface" border="1 solid muted" radius="md" w="fill" h="260" pad="md">
+      <col gap="sm" justify="between" h="fill">
+        <text role="heading">해석</text>
+        <p>토큰과 역할 기본값이 확정 외관이 된다.</p>
+        <text role="caption">core.Resolve</text>
+      </col>
+    </shape>
+    <shape type="rounded-rect" fill="surface" border="1 solid muted" radius="md" w="fill" h="260" pad="md">
+      <col gap="sm" justify="between" h="fill">
+        <text role="heading">조립</text>
+        <p>잰 좌표가 그대로 xfrm이 되어 두 타깃이 만난다.</p>
+        <text role="caption">render/pptx</text>
+      </col>
+    </shape>
+  </grid>
+  <note>카드 하나가 도형 하나라는 것을 PowerPoint 선택 창에서 보인다.</note>
+</slide>

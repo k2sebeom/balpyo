@@ -66,6 +66,16 @@ const (
 	// **캔버스 슬라이드(008·009)가 파트를 늘리지 않았다는 것**이 goldenPartLists로 확인된다
 	// (항목 02·05의 판단): `layout` 속성은 렌더러에 닿을 뿐 파트 구조를 바꾸지 않는다.
 	stackFixtureName = "06_stack"
+	// shapeLayoutFixtureName은 P2.3의 "도형 안 레이아웃 컨테이너" 픽스처다 (ADR 0049).
+	// 새로 시험하는 것은 **도형 하나가 배경이 되고 자식이 형제 도형이 되는가**다: 04_shape이
+	// 도형 안 텍스트가 `txBody`로 흡수되는 것을 못 박았고(ADR 0016), 이 픽스처는 그 흡수가
+	// 도형마다 꺼질 수 있다는 것과 그때 자식의 좌표가 **잰 값 그대로** 나오는 것을 본다
+	// (좌표 대조가 그 절반이다 — shapeRoles가 모드를 판정한다).
+	//
+	// 앞 픽스처들이 깨뜨린 전제를 그대로 물려받는다: 카드 배경이 큰 면을 덮으므로 잉크 띠의
+	// 단색 배경 가정이 깨지고(inkBandSkipSlides), 색은 전부 토큰이라 슬라이드 파트에 리터럴
+	// `srgbClr`는 0건이다 (fixtureLiteralColors에 행이 없다).
+	shapeLayoutFixtureName = "11_shape_layout"
 )
 
 // fixtureNames는 픽스처 수준 검증(파트 목록·색 계약·좌표 대조·도형 수 등식·잉크 띠)이 도는
@@ -76,7 +86,7 @@ const (
 // 있으면 도형 픽스처를 넣는 것이 표의 뜻을 어기는 일처럼 보이고, 그러면 다음 사람이 같은
 // 계약을 받을 픽스처를 두 번째 표에 적는다.
 var fixtureNames = []string{textFixtureName, textSubsetFixtureName, layoutFixtureName, shapeFixtureName,
-	imageFixtureName, stackFixtureName}
+	imageFixtureName, stackFixtureName, shapeLayoutFixtureName}
 
 // fixtureByName은 픽스처 러너와 같은 수집 경로로 픽스처를 집는다 — 경로를 직접 조립하면
 // 러너가 못 보는 픽스처를 여기만 보는 상태가 생길 수 있다.
@@ -355,6 +365,36 @@ var goldenPartLists = map[string][]string{
 		// 하나에 담기고 새 마스터·레이아웃을 만들지 않는다 (slideLayout1 하나뿐이다).
 		// diagnostics.txt도 **없다** — 겹침 픽스처는 경고 없이 빌드되어야 한다.
 	},
+	shapeLayoutFixtureName: {
+		// diagnostics.txt가 **없다**: 배경 모드의 자식은 도형의 박스 안에 들어가야 하고
+		// (geom.Diagnose가 도형을 부모 박스로 본다 — ADR 0039), 그 포함 관계가 깨지면 이
+		// 목록이 먼저 말한다 — 카드 밖으로 나간 글자는 경고 파일을 만든다.
+		"index.html",
+		"pptx/[Content_Types].xml",
+		"pptx/_rels/.rels",
+		"pptx/docProps/app.xml",
+		"pptx/docProps/core.xml",
+		"pptx/ppt/_rels/presentation.xml.rels",
+		"pptx/ppt/notesMasters/_rels/notesMaster1.xml.rels",
+		"pptx/ppt/notesMasters/notesMaster1.xml",
+		// 노트는 001·003에만 있다 (002는 없다).
+		"pptx/ppt/notesSlides/_rels/notesSlide1.xml.rels",
+		"pptx/ppt/notesSlides/_rels/notesSlide3.xml.rels",
+		"pptx/ppt/notesSlides/notesSlide1.xml",
+		"pptx/ppt/notesSlides/notesSlide3.xml",
+		"pptx/ppt/presentation.xml",
+		"pptx/ppt/slideLayouts/_rels/slideLayout1.xml.rels",
+		"pptx/ppt/slideLayouts/slideLayout1.xml",
+		"pptx/ppt/slideMasters/_rels/slideMaster1.xml.rels",
+		"pptx/ppt/slideMasters/slideMaster1.xml",
+		"pptx/ppt/slides/_rels/slide1.xml.rels",
+		"pptx/ppt/slides/_rels/slide2.xml.rels",
+		"pptx/ppt/slides/_rels/slide3.xml.rels",
+		"pptx/ppt/slides/slide1.xml",
+		"pptx/ppt/slides/slide2.xml",
+		"pptx/ppt/slides/slide3.xml",
+		"pptx/ppt/theme/theme1.xml",
+	},
 }
 
 // 골든에 들어간 파트 목록을 픽스처별로 통째로 단정한다.
@@ -404,6 +444,8 @@ var slideCounts = map[string]int{
 	shapeFixtureName:      8,
 	imageFixtureName:      7,
 	stackFixtureName:      11,
+	// 카드 + 컨테이너를 거친 어휘 + 두 모드 대비 = 3장이다 (ADR 0049).
+	shapeLayoutFixtureName: 3,
 }
 
 // fixtureLiteralColors는 슬라이드 파트에 **리터럴 색으로 나와야 하는** 값의 전수 목록이다
@@ -1909,6 +1951,16 @@ var inkBandSkipSlides = map[string]bool{
 	"06_stack/nested":        true, // 중첩 stack — 도형 안 도형이 면을 덮는다
 	"06_stack/canvas-free":   true, // 캔버스 자유 배치 도형들
 	"06_stack/canvas-stack":  true, // 캔버스 위 stack + 도형
+	// 11_shape_layout 전 슬라이드: 04_shape과 **같은 이유**다 (칠한 카드가 큰 띠 하나가 되고
+	// 그 안의 글줄이 묻힌다). 이 픽스처의 카드는 배경 하나가 헤더·본문·푸터 셋을 덮으므로
+	// 전제가 04보다 더 크게 깨진다 — 잰 줄 셋이 카드 띠 하나 안에 있다.
+	//
+	// 잃는 것과 남는 것: 자식의 자리는 좌표 대조가 0 오차로 판정하고
+	// (TestFixtureCoordinatesMatchGeometry — 배경 모드의 자식은 자기 xfrm을 갖는다), 슬라이드
+	// 직속 텍스트(제목)의 줄바꿈은 01~03 픽스처가 같은 검사로 지킨다.
+	"11_shape_layout/shape-layout-card":   true,
+	"11_shape_layout/shape-layout-nested": true,
+	"11_shape_layout/shape-layout-modes":  true,
 }
 
 // 두 렌더 엔진이 같은 자리에서 줄을 나누는가 — Iteration 1의 리뷰 포인트를 수치로 판정한다
