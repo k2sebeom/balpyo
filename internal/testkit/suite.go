@@ -98,6 +98,16 @@ var fixtureDiffOptions = map[string]DiffOptions{
 	// (inkBandSkipSlides) 그 둘이 이 완화의 근거다. 4.0%는 측정값에 앞 픽스처들과 같은 폭의
 	// 여유를 더한 값이다 (3.18%→3.7%, 3.13%→3.6%와 같은 태도).
 	"11_shape_layout": {Channel: 32, MaxRatio: 0.040},
+	// 측정 최대 2.85% (슬라이드 1 001_go — P2.4). 이 픽스처는 **글자가 가장 빽빽한** 덱이다:
+	// 코드 블록 한 장이 620~740px 줄 11개를 담고, 고정폭 글리프는 같은 면적에 획을 더 많이
+	// 세운다 — LibreOffice의 첫 기준선 +3px(엔진 소관 — 02_text_subset의 주석)이 그 획의
+	// 경계 픽셀을 전부 이중으로 세는 자리가 줄마다 늘어난 것이다. 하이라이팅이 잔차를 새로
+	// 만들지는 않는다: 합성 런의 색은 두 타깃에서 같은 색 토큰을 지나고(슬라이드 파트의
+	// `schemeClr` 0 리터럴 — TestFixtureGoldenSlideColorsKeepTokenReferences), 잉크 띠 검사는
+	// 순 ASCII 코드 줄에서 폭 오차 ±0.0%다 (한글 주석 줄 +0.6% — 고정폭 CJK 짝의 증인,
+	// docs/guides/known-differences.md). 슬라이드 2는 2.27%다. 3.4%는 측정값에 앞 픽스처들과
+	// 같은 폭의 여유를 더한 값이다.
+	"13_code": {Channel: 32, MaxRatio: 0.034},
 }
 
 // slideDiffOptions는 **슬라이드 한 장**의 픽셀 비교 허용 오차다 (`<픽스처>/<슬라이드 id>`).

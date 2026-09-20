@@ -445,6 +445,36 @@ var goldenPartLists = map[string][]string{
 		"pptx/ppt/slides/slide2.xml",
 		"pptx/ppt/theme/theme1.xml",
 	},
+	codeFixtureName: {
+		// diagnostics.txt가 **없다**: `lang` 어휘 안의 네 이름만 쓰고(목록 밖은 에러다) 코드
+		// 블록은 넘치지 않는다 — 진단 파일이 생기면 하이라이팅이 경고를 내기 시작한 것이다.
+		"index.html",
+		"pptx/[Content_Types].xml",
+		"pptx/_rels/.rels",
+		"pptx/docProps/app.xml",
+		"pptx/docProps/core.xml",
+		"pptx/ppt/_rels/presentation.xml.rels",
+		"pptx/ppt/notesMasters/_rels/notesMaster1.xml.rels",
+		"pptx/ppt/notesMasters/notesMaster1.xml",
+		// 노트는 두 장 모두에 있다.
+		"pptx/ppt/notesSlides/_rels/notesSlide1.xml.rels",
+		"pptx/ppt/notesSlides/_rels/notesSlide2.xml.rels",
+		"pptx/ppt/notesSlides/notesSlide1.xml",
+		"pptx/ppt/notesSlides/notesSlide2.xml",
+		"pptx/ppt/presentation.xml",
+		// 레이아웃 파트가 둘이다 — 001은 `layout="code"`, 002는 기본 레이아웃이다.
+		"pptx/ppt/slideLayouts/_rels/slideLayout1.xml.rels",
+		"pptx/ppt/slideLayouts/_rels/slideLayout2.xml.rels",
+		"pptx/ppt/slideLayouts/slideLayout1.xml",
+		"pptx/ppt/slideLayouts/slideLayout2.xml",
+		"pptx/ppt/slideMasters/_rels/slideMaster1.xml.rels",
+		"pptx/ppt/slideMasters/slideMaster1.xml",
+		"pptx/ppt/slides/_rels/slide1.xml.rels",
+		"pptx/ppt/slides/_rels/slide2.xml.rels",
+		"pptx/ppt/slides/slide1.xml",
+		"pptx/ppt/slides/slide2.xml",
+		"pptx/ppt/theme/theme1.xml",
+	},
 }
 
 // 골든에 들어간 파트 목록을 픽스처별로 통째로 단정한다.
@@ -498,6 +528,8 @@ var slideCounts = map[string]int{
 	shapeLayoutFixtureName: 3,
 	// 견본 여섯 + 변형·그라디언트 = 2장이다 (ADR 0050).
 	paletteFixtureName: 2,
+	// go 한 장 + 마크업·설정·셸 한 장 = 2장이다 (ADR 0051).
+	codeFixtureName: 2,
 }
 
 // fixtureLiteralColors는 슬라이드 파트에 **리터럴 색으로 나와야 하는** 값의 전수 목록이다
