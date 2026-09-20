@@ -1,0 +1,6 @@
+/* image-text — 2열에 콘텐츠를 세로 가운데로. 글 단이 그림 단보다 넓은 것이 이 테마의 선택이다:
+   어두운 덱에서 그림은 대개 스크린샷·도해이고 옆의 글이 그것을 읽어 준다 — 도판이 지면의
+   주인인 editorial과 반대 방향이다. 좌우 배치는 자식 순서가 정한다. */
+display: grid;
+grid-template-columns: 1fr 1.2fr;
+align-content: center;

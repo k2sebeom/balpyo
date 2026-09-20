@@ -1,0 +1,8 @@
+/* code 슬롯 영역 — 제목이 위, 코드 블록이 남은 높이를 전부 갖고, 캡션이 맨 아래. 코드 영역이
+   1fr인 이유는 content.slots.css의 body와 같다: 블록의 배경이 줄 수마다 들쑥날쑥하면 연달아
+   보는 코드 슬라이드의 리듬이 깨진다 — 어두운 테마에서는 그 배경이 화면의 큰 면이라 더 눈에 띈다. */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: auto 1fr auto;
+grid-template-areas: "title" "code" "caption";
+align-content: start;

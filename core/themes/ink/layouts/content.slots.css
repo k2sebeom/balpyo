@@ -1,0 +1,7 @@
+/* content 슬롯 영역 — 제목이 위, 본문이 남은 높이를 갖는다 (세 테마가 같은 짜임).
+   본문 슬라이드의 짜임은 테마의 목소리를 낼 자리가 아니다: 색과 글자가 그 일을 한다. */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: auto 1fr;
+grid-template-areas: "title" "body";
+align-content: start;

@@ -1,0 +1,8 @@
+/* image-full 슬롯 영역 — 그림이 가장자리까지 닿고 캡션이 바닥 스트립이다. `padding: 0`을 여기
+   다시 쓰는 이유는 슬롯 영역 CSS가 자족적이기 때문이다 (흐름 규칙은 `:not(.balpyo-slots)`로
+   나가 이 모드에 얹히지 않는다 — layoutStagesCSS). 빠뜨리면 전면 그림이 조용히 액자를 얻는다. */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: 1fr auto;
+grid-template-areas: "media" "caption";
+padding: 0;

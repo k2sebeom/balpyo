@@ -1,0 +1,5 @@
+/* two-column — 스테이지를 같은 두 단으로 나눈다. 자식이 문서 순서대로 좌→우로 채운다.
+   비교·대조가 두 단의 뜻이므로 폭이 같아야 한다 (editorial의 본문/방주 단과 다른 태도다). */
+display: grid;
+grid-template-columns: 1fr 1fr;
+align-content: start;

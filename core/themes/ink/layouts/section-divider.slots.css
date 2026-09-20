@@ -1,0 +1,9 @@
+/* section-divider 슬롯 영역 — 섹션 구분은 이 테마에서 **화면 한 장을 비워 쓰는 자리**다:
+   가로까지 가운데로 모아 다음 장으로 넘어간다는 신호를 준다 (본문 슬라이드는 전부 왼쪽
+   정렬이므로 이 한 장의 가운데가 곧 리듬의 끊김이 된다). */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: auto auto;
+grid-template-areas: "title" "subtitle";
+align-content: center;
+justify-items: center;
