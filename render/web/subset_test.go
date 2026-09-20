@@ -220,7 +220,10 @@ func TestRenderPrePreservesWhitespace(t *testing.T) {
 	if !strings.Contains(out, "white-space: pre") {
 		t.Error("pre의 style에 white-space: pre가 없다")
 	}
-	if !strings.Contains(out, "func main() {\n\tgo build()  // 연속  공백\n}") {
+	// 탭은 값 층이 테마 폭(minimal은 2)으로 **펴서** 보낸다 (D15 · ADR 0051) — CSS tab-size와
+	// OOXML a:defTabSz는 같은 규칙이 아니어서, 탭을 그대로 흘리면 두 산출물의 줄이 갈라진다.
+	// 연속 공백은 그대로다 — 접히지 않는 것이 pre의 계약이다.
+	if !strings.Contains(out, "func main() {\n  go build()  // 연속  공백\n}") {
 		t.Errorf("pre 안의 개행·탭·연속 공백이 보존되지 않았다:\n%s", stageOf(t, out))
 	}
 	// 파서가 양 끝 개행을 벗겼으므로 여는 태그 직후에 바로 내용이 온다.

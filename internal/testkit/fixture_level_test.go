@@ -89,6 +89,16 @@ const (
 	// 앞 픽스처들이 깬 전제 하나를 물려받는다: 색 견본이 큰 면을 덮으므로 잉크 띠의 단색
 	// 배경 가정이 깨진다 (inkBandSkipSlides에 두 슬라이드가 있다).
 	paletteFixtureName = "12_palette"
+	// codeFixtureName은 P2.4의 코드 하이라이팅 픽스처다 (D15·D16 — ADR 0051). 새로 시험하는
+	// 것은 **토큰 스트림이 런이 된다**는 것이다: `lang`이 붙은 `<pre>`의 문자 데이터가 값 층에서
+	// 합성 인라인 런으로 컴파일되므로 슬라이드 파트의 `a:r`가 여럿으로 늘고, 그 색은 전부
+	// `schemeClr` 참조다 (fixtureLiteralColors에 행이 없다 — 하이라이팅 색이 리터럴 RGB로
+	// 나가면 PowerPoint의 테마 색 편집이 코드 블록만 두고 간다).
+	//
+	// 탭도 여기서 지난다 (D15): 001은 gofmt 출력 그대로라 들여쓰기가 탭인데, 산출물에는 탭이
+	// 없다 — 값 층이 테마 폭으로 칼럼을 세어 편다. 앞 픽스처의 전제는 그대로 물려받는다
+	// (코드 블록은 텍스트이므로 잉크 띠의 단색 배경 가정을 깨지 않는다).
+	codeFixtureName = "13_code"
 )
 
 // fixtureNames는 픽스처 수준 검증(파트 목록·색 계약·좌표 대조·도형 수 등식·잉크 띠)이 도는
@@ -99,7 +109,7 @@ const (
 // 있으면 도형 픽스처를 넣는 것이 표의 뜻을 어기는 일처럼 보이고, 그러면 다음 사람이 같은
 // 계약을 받을 픽스처를 두 번째 표에 적는다.
 var fixtureNames = []string{textFixtureName, textSubsetFixtureName, layoutFixtureName, shapeFixtureName,
-	imageFixtureName, stackFixtureName, shapeLayoutFixtureName, paletteFixtureName}
+	imageFixtureName, stackFixtureName, shapeLayoutFixtureName, paletteFixtureName, codeFixtureName}
 
 // fixtureByName은 픽스처 러너와 같은 수집 경로로 픽스처를 집는다 — 경로를 직접 조립하면
 // 러너가 못 보는 픽스처를 여기만 보는 상태가 생길 수 있다.

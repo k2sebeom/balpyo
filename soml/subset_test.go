@@ -272,6 +272,18 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			src:  `<slide><ul><p>x</p></ul></slide>`,
 			want: []string{"1:13 <ul>의 자식으로 <p>는 올 수 없다 (쓸 수 있는 태그: <li>)"},
 		},
+		{
+			// lang은 `<pre>` 고유 속성이다 (ADR 0051) — 다른 블록에는 뜻이 없다.
+			// 어휘 순서는 고유 → 외관 → 박스이므로 pre의 목록에서 lang이 맨 앞이다.
+			name: "lang은 pre만 받는다",
+			src:  `<slide><p lang="go">x</p></slide>`,
+			want: []string{"1:11 <p>에 알 수 없는 속성 lang (쓸 수 있는 속성: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
+		},
+		{
+			name: "pre의 속성 목록은 lang으로 시작한다",
+			src:  `<slide><pre role="code">x</pre></slide>`,
+			want: []string{"1:13 <pre>에 알 수 없는 속성 role (쓸 수 있는 속성: lang, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

@@ -1,0 +1,28 @@
+<!-- 코드 하이라이팅 — go (P2.4 · D15 — ADR 0051). 이 슬라이드가 시험하는 것은 셋이다.
+
+     ① `lang="go"`가 토큰 스트림이 되어 **합성 인라인 런**으로 도착한다: 산출 PPTX의 이
+     슬라이드 파트에 `a:r`가 여럿이고 색은 전부 `schemeClr` 참조다 (fixtureLiteralColors에
+     이 슬라이드의 행이 없는 것이 그 계약이다). 웹에서는 같은 경계가 `<span>`이 된다.
+
+     ② 원문은 **gofmt 출력 그대로**다 — 들여쓰기가 탭이다. 값 층이 테마의 `code.tabSize`
+     (minimal은 2)로 칼럼을 세어 펴므로 산출물에는 탭이 한 개도 없다. 손으로 스페이스로
+     바꿔 붙이던 것이 2회차 피드백의 마찰점이었다 (examples/incident-postmortem 005의
+     머리 주석에 그 기록이 남아 있다).
+
+     ③ 색의 주인은 테마다 — 주석은 muted, 키워드는 accent6, 이름은 accent1이다. 저자가
+     쓰는 어휘에는 색이 없다 (`lang` 하나뿐이다). -->
+<slide id="code-go" layout="code">
+  <text slot="title" role="heading">코드 하이라이팅 — go</text>
+  <pre slot="code" lang="go">// TTL에 지터를 준다 — 만료가 한 시각에 몰리지 않는다.
+func warm(ctx context.Context, ids []string) error {
+	for _, id := range ids {
+		ttl := 30*time.Minute + jitter(id)
+		if err := cache.Set(ctx, key(id), load(id), ttl); err != nil {
+			return err
+		}
+	}
+	return nil
+}</pre>
+  <text slot="caption" role="caption" color="muted">탭은 테마가 정한 폭으로 펴진다 — gofmt 출력을 그대로 붙인다.</text>
+  <note>lang은 엔진 어휘의 닫힌 목록이다 — 목록 밖 이름은 오타이거나 아직 없는 언어다.</note>
+</slide>
