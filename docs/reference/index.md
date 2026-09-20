@@ -25,6 +25,8 @@ Iteration 6까지 구현된 어휘와 표면:
   `style` 탈출구), [`<stack>`](soml/stack.md) (겹침 컨테이너 + 자식 배치 `at`·`x`/`y`),
   [`<shape>`](soml/shape.md) (`type` 12종 + 외관 8종 + 박스 속성),
   [`<image>`](soml/image.md) (`src`·`fit`·`alt` + 외관 7종 + 박스 속성)
+- 문법: [문자 참조와 CDATA](soml/text-subset.md) (닫힌 5종 + 수치 참조,
+  원문 그대로 담는 섹션), 마크업이 아닌 `<`·`&`의 리터럴 규칙
 - [외관 속성](appearance.md) — 4단 캐스케이드, 텍스트 역할 5종, 컴포넌트 기본값과
   variant 세 벌(텍스트·도형·이미지), 인라인 서식·리스트·도형·이미지 외관 매핑 표, 토큰 색
   보존 계약, 공간·반경·그림자 토큰
