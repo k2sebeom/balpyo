@@ -101,6 +101,8 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 		Lang:   cfg.Lang,
 		Aspect: cfg.Aspect,
 		Stage:  stage,
+		// 크롬 요청은 설정에서 그대로 옮긴다 (ADR 0045) — 테마 선언과 합치는 것은 core.Resolve다.
+		Chrome: soml.DeckChrome{Footer: cfg.Footer, PageNumber: cfg.PageNumber},
 		Slides: make([]*soml.Slide, 0, len(files)),
 	}
 	var diags soml.Diagnostics

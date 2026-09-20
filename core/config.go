@@ -31,6 +31,15 @@ type Config struct {
 	SlidesDir string      `json:"slidesDir"`
 	OutDir    string      `json:"outDir"`
 	Targets   Targets     `json:"targets"`
+	// Footer는 덱 크롬의 푸터 한 줄이다 (ADR 0045). 빈 문자열이면 꺼져 있다.
+	//
+	// 크롬의 **내용과 켜짐만** 여기 있다 — 자리·정렬·역할·제외 규칙은 테마의 `chrome`
+	// 선언이 소유한다. 기본값이 꺼짐인 이유는 크롬이 덱마다의 선택이라는 것이다(내부 공유
+	// 덱과 공개 발표 덱이 다르다).
+	Footer string `json:"footer"`
+	// PageNumber는 페이지 번호를 켤지다. PPTX에서 `a:fld type="slidenum"`이 되므로 뷰어에서
+	// 장을 더하면 번호가 따라온다.
+	PageNumber bool `json:"pageNumber"`
 }
 
 // Targets는 타깃별 옵션이다.

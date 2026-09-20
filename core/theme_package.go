@@ -45,14 +45,32 @@ type themeManifest struct {
 	// 이름은 minimal 구현으로 폴백하고 경고한다 (core.slideLayout, 10/03). 테마 자체
 	// 레이아웃(`corp-hero`)도 여기 실려 어휘가 된다.
 	Layouts []string `json:"layouts"`
-	// Chrome은 전 슬라이드 장식(로고·푸터) 선언이다 (PRD §8.1·§8.4) — v1 minimal은 비어 있다.
-	Chrome []chromeDecl `json:"chrome"`
+	// Chrome은 덱 크롬(페이지 번호·푸터) 선언이다 (PRD §8.1·§8.4 · ADR 0045).
+	//
+	// 테마가 소유하는 것은 **자리·정렬·역할·제외 규칙**이고, 내용과 켜짐은 `balpyo.json`의
+	// footer·pageNumber다. 테마가 어떤 kind를 선언하지 않으면 그 크롬은 값 층에서 경고와
+	// 함께 미탑재된다 (ADR 0044의 슬롯 규칙 그대로) — "테마가 받아야 뜻이 있다".
+	Chrome []chromeDeclFile `json:"chrome"`
 }
 
-// chromeDecl은 크롬 요소 하나의 선언이다 (10/04·10/05가 소비한다). v1 minimal은 크롬이 없어
-// 필드가 최소이며, 크롬 어휘가 실제로 필요한 iteration이 채운다.
+// chromeDeclFile은 theme.json의 크롬 선언 하나다 (원문 문자열). 값 어휘 검사는 loadChrome이
+// 하고, 그 뒤로는 타입이 붙은 chromeDecl만 돈다 — 렌더러도 값 층도 원문 문자열을 다시 읽지
+// 않는다 (컴포넌트 표가 값 문법을 미리 눕혀 담는 것과 같은 태도).
+type chromeDeclFile struct {
+	Kind        string   `json:"kind"`
+	Align       string   `json:"align"`
+	Role        string   `json:"role"`
+	SkipLayouts []string `json:"skipLayouts"`
+}
+
+// chromeDecl은 검사가 끝난 크롬 선언 하나다.
 type chromeDecl struct {
-	Kind string `json:"kind"`
+	kind  soml.ChromeKind
+	align soml.TextAlign
+	role  soml.TextRole
+	// skip은 이 크롬을 싣지 않을 레이아웃 집합이다 (표지·섹션 구분 등). 값 층이 슬라이드마다
+	// 이 집합을 보고 확정 모델에서 뺀다 — 렌더러는 규칙을 모른다.
+	skip map[soml.SlideLayout]bool
 }
 
 // themePackage는 로드된 테마 하나다 — 토큰 표(soml.Theme)와 매니페스트를 함께 담는다.
@@ -73,6 +91,23 @@ type themePackage struct {
 	// 겨누는 선택자가 달라 한 선언 블록에 섞을 수 없다. 슬롯 영역 파일은 **선택**이라(슬롯이
 	// 없는 canvas는 파일이 없다) 로더는 키가 선언된 레이아웃의 부분집합임만 확인한다.
 	slotLayouts map[string]string
+	// chrome은 검사가 끝난 크롬 선언들이다 (theme.json의 chrome — 선언 순서 그대로).
+	// 선언 순서가 곧 슬라이드에 실리는 순서이므로(웹 DOM · PPTX 도형 순서) 맵이 아니라
+	// 목록이다: 맵으로 두면 두 타깃의 산출물 순서가 실행마다 달라진다.
+	chrome []chromeDecl
+}
+
+// chromeDecls는 이 테마의 크롬 선언이다 (선언 순서).
+func (p themePackage) chromeDecls() []chromeDecl { return p.chrome }
+
+// chromeDecl은 kind로 선언 하나를 찾는다.
+func (p themePackage) chromeDeclFor(kind soml.ChromeKind) (chromeDecl, bool) {
+	for _, decl := range p.chrome {
+		if decl.kind == kind {
+			return decl, true
+		}
+	}
+	return chromeDecl{}, false
 }
 
 // layoutStyles는 레이아웃 이름 → **정규화된 배치 선언**이다 (soml.Theme.Layouts로 실린다).
@@ -298,6 +333,14 @@ func loadTheme(fsys fs.FS, dir string) (themePackage, error) {
 		return pkg, fmt.Errorf("theme.json의 extends는 아직 지원하지 않는다 (%q)", pkg.manifest.Extends)
 	}
 
+	// 크롬 선언은 토큰·컴포넌트보다 **먼저** 검사한다 — 선언만으로 판정할 수 있는 값 어휘이고,
+	// 먼저 멈추면 "테마의 오타"와 "토큰 표의 문제"가 한 메시지에 섞이지 않는다.
+	chrome, err := loadChrome(pkg.manifest)
+	if err != nil {
+		return pkg, err
+	}
+	pkg.chrome = chrome
+
 	tokens, err := loadTokens(fsys, dir, pkg.manifest.Name)
 	if err != nil {
 		return pkg, err
@@ -322,6 +365,103 @@ func loadTheme(fsys fs.FS, dir string) (themePackage, error) {
 	}
 	pkg.slotLayouts = slotLayouts
 	return pkg, nil
+}
+
+// loadChrome은 매니페스트의 크롬 선언을 검사해 타입 붙은 목록으로 만든다 (ADR 0045).
+//
+// 값 어휘가 어긋나면 **로드를 멈춘다** (경고가 아니다): 테마의 오타를 조용히 무시하면 저자는
+// "표지에 번호가 왜 찍히는가"를 자기 슬라이드에서 찾게 되고, 테마는 저자가 고칠 수 없는
+// 자리다. 같은 이유로 skipLayouts의 이름은 **이 테마가 구현하는 레이아웃**이어야 한다 —
+// 오타 하나가 제외 규칙을 조용히 무효로 만든다.
+func loadChrome(manifest themeManifest) ([]chromeDecl, error) {
+	if len(manifest.Chrome) == 0 {
+		return nil, nil
+	}
+	layouts := make(map[string]bool, len(manifest.Layouts))
+	for _, name := range manifest.Layouts {
+		layouts[name] = true
+	}
+	seen := map[soml.ChromeKind]bool{}
+	decls := make([]chromeDecl, 0, len(manifest.Chrome))
+	for i, raw := range manifest.Chrome {
+		decl, err := chromeDeclOf(raw, layouts)
+		if err != nil {
+			return nil, fmt.Errorf("theme.json의 chrome[%d]: %w", i, err)
+		}
+		if seen[decl.kind] {
+			return nil, fmt.Errorf("theme.json의 chrome[%d]: kind %s가 두 번 선언되었다", i, decl.kind)
+		}
+		seen[decl.kind] = true
+		decls = append(decls, decl)
+	}
+	return decls, nil
+}
+
+// chromeDeclOf는 선언 하나의 값 어휘를 검사한다. align·role은 **생략할 수 없다** — 테마가
+// 자리와 타이포그래피를 소유하기로 했으므로(ADR 0045) 기본값을 엔진에 두면 그 소유가 반으로
+// 쪼개진다.
+func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool) (chromeDecl, error) {
+	var decl chromeDecl
+	kinds := make([]string, 0, len(soml.ChromeKinds()))
+	for _, kind := range soml.ChromeKinds() {
+		kinds = append(kinds, string(kind))
+		if string(kind) == raw.Kind {
+			decl.kind = kind
+		}
+	}
+	if decl.kind == "" {
+		return decl, fmt.Errorf("알 수 없는 kind %q (쓸 수 있는 kind: %s)", raw.Kind, strings.Join(kinds, ", "))
+	}
+
+	aligns := make([]string, 0, len(soml.ChromeAligns()))
+	for _, align := range soml.ChromeAligns() {
+		aligns = append(aligns, string(align))
+		if string(align) == raw.Align {
+			decl.align = align
+		}
+	}
+	if decl.align == "" {
+		if raw.Align == "" {
+			return decl, fmt.Errorf("align이 없다 (쓸 수 있는 align: %s)", strings.Join(aligns, ", "))
+		}
+		return decl, fmt.Errorf("알 수 없는 align %q (쓸 수 있는 align: %s)", raw.Align, strings.Join(aligns, ", "))
+	}
+
+	roles := make([]string, 0, len(soml.TextRoles()))
+	for _, role := range soml.TextRoles() {
+		roles = append(roles, string(role))
+		if string(role) == raw.Role {
+			decl.role = role
+		}
+	}
+	if decl.role == "" {
+		if raw.Role == "" {
+			return decl, fmt.Errorf("role이 없다 (쓸 수 있는 role: %s)", strings.Join(roles, ", "))
+		}
+		return decl, fmt.Errorf("알 수 없는 role %q (쓸 수 있는 role: %s)", raw.Role, strings.Join(roles, ", "))
+	}
+
+	if len(raw.SkipLayouts) > 0 {
+		decl.skip = make(map[soml.SlideLayout]bool, len(raw.SkipLayouts))
+		for _, name := range raw.SkipLayouts {
+			if !layouts[name] {
+				return decl, fmt.Errorf("skipLayouts의 %q는 이 테마의 레이아웃이 아니다 (이 테마의 레이아웃: %s)",
+					name, strings.Join(sortedKeys(layouts), ", "))
+			}
+			decl.skip[soml.SlideLayout(name)] = true
+		}
+	}
+	return decl, nil
+}
+
+// sortedKeys는 진단 문구가 실행마다 같도록 이름 집합을 정렬해 돌려준다.
+func sortedKeys(set map[string]bool) []string {
+	names := make([]string, 0, len(set))
+	for name := range set {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // loadTokens는 tokens.json을 soml.Theme로 읽는다. 배열 순서를 그대로 옮겨 byte 동일성을

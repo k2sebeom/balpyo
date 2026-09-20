@@ -129,6 +129,9 @@ type Deck struct {
 	// 아니라 입력이고, 렌더 전에 결정적으로 한 번 채워지므로 타깃 순서와 무관하다
 	// (곁 표로 두지 않은 근거는 asset.go의 패키지 주석에 있다).
 	Assets Assets
+	// Chrome은 덱 크롬 요청이다 (`balpyo.json`의 footer·pageNumber — ADR 0045). 파이프라인이
+	// 설정에서 옮기고 core.Resolve가 테마 선언과 합쳐 슬라이드마다 Slide.Chrome을 확정한다.
+	Chrome DeckChrome
 	Slides []*Slide
 }
 
@@ -162,6 +165,13 @@ type Slide struct {
 	JustifySpan Span
 	// Notes는 발표자 노트다 (`<note>`). PPTX에서는 노트 슬라이드가 된다.
 	Notes string
+	// Chrome은 이 슬라이드에 실릴 확정된 덱 크롬이다 (ADR 0045) — 테마 선언 순서를 지킨다.
+	//
+	// Content의 형제이고 그 안이 아닌 이유: 크롬은 슬라이드의 내용이 아니라 덱의 사실이고,
+	// 콘텐츠 트리에 넣으면 스테이지 흐름에 끼어 본문 높이를 먹는다 (그리고 Refs가 재는
+	// 대상이 되어 배치 판정이 저자가 고칠 수 없는 경고를 낸다). 제외 규칙이 이미 적용된
+	// 목록이므로 표지·섹션 구분에서는 비어 있다 — 렌더러는 이 목록을 그대로 그린다.
+	Chrome []ChromeItem
 	// Content는 슬라이드 콘텐츠 트리다 (`<note>`는 여기 없다 — Notes로 간다).
 	Content []Node
 	// Tokens는 이 슬라이드를 만든 원문 토큰 열이다. format이 원문을 되돌려 쓰고,

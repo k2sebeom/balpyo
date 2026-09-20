@@ -42,7 +42,9 @@ func Resolve(deck *soml.Deck) soml.Diagnostics {
 	// 겨누는 선택자만 다르고 계약은 같다: 한 표에서 웹 CSS와 지오메트리 패스가 나온다.
 	deck.Theme.SlotLayouts = pkg.slotLayoutStyles()
 
-	var diags soml.Diagnostics
+	// 덱 크롬 계획은 슬라이드 루프 **앞**이다 (ADR 0045): 설정과 테마 선언만 보므로 덱에 한
+	// 번 결정되고, 테마가 침묵했을 때의 경고도 그래서 덱에 한 번 나간다.
+	chromePlan, diags := resolveChrome(deck, pkg)
 	for _, slide := range deck.Slides {
 		r := resolver{theme: deck.Theme, comps: pkg.components, file: slide.Source}
 		// 레이아웃 어휘는 슬라이드마다 도는 이 루프 머리에서 확정한다 — 파일 하나로
@@ -51,6 +53,9 @@ func Resolve(deck *soml.Deck) soml.Diagnostics {
 		// 확정된 layout을 resolver에 싣는다 — canvas 슬라이드의 직속 자식에서 `x`/`y`가
 		// 유효한지 판정하려면 배치 해석이 슬라이드의 layout을 알아야 한다 (coordParentOK).
 		r.layout = slide.Layout
+		// 크롬 확정도 layout이 정해진 **뒤**다 — 제외 규칙의 입력이 확정된 레이아웃이라서,
+		// 어휘 밖 이름이 content로 폴백한 슬라이드도 폴백된 레이아웃으로 판정된다.
+		slide.Chrome = slideChrome(chromePlan, pkg, slide)
 		for _, node := range slide.Content {
 			// 슬라이드 직속 노드의 부모는 없다 — 배치 해석이 부모를 보는 이유는
 			// resolveLayout의 주석에 있다 (span은 <grid>의 자식에서만 뜻이 있다).
