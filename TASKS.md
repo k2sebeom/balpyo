@@ -68,6 +68,7 @@
 | P4.1 accent 팔레트 확장 (D12) | 강조색이 **여섯**이고, 눈이 아니라 **세 수치**가 고른 값이다 — `bg` 대비 4.5:1↑(대비율이 대칭이라 글자색과 면색을 한 수치로 보장한다) · 서로 색상 25°↑ · 휘도 한 띠(≤1.25). 실측 4.76~5.38 · 26° · 1.18이고, 그 규칙을 주석이 아니라 **테스트가 소유한다**. `clrScheme`에서 accent1을 빌려 가던 다섯 자리가 자기 색을 갖고(빌리는 자리는 링크 둘뿐) 폴백은 강조색 하나짜리 **다른** 테마를 위해 남는다. 번호는 위계가 아니라 색상환의 이웃 순서이고, **위계는 덱이 만든다** | [ADR 0050](docs/decisions/0050-six-accents-are-a-measured-palette-not-a-ranking.md), `core/palette_test.go`(WCAG 상대 휘도 · 대비 · 색상 간격 전수) · `core/theme_package_test.go`(값 드리프트) · `render/pptx.TestClrSchemeMinimalFillsSixAccents`(로드된 테마의 여섯 슬롯이 서로 다르다) · `12_palette`(2장 — 견본 여섯 + 변형/그라디언트, `TestPaletteFixtureBindsSixAccentSlots`, 슬라이드 파트에 리터럴 `srgbClr` 0건), `examples/incident-postmortem`을 **세 색**으로 다시 칠했다(피해=`accent5` · 우리가 늦은 곳=`accent4` · 대응=`accent3`, 파랑 0건 · 두 래스터 실물 확인), `docs/reference/theme.md`(표준 토큰 어휘 + 팔레트 규칙) · `appearance.md` |
 | P2.4 코드 블록: `lang`과 탭 (D15 · D16) | 하이라이팅은 **값 층의 토큰 스트림**이다 — Chroma의 토큰을 우리가 닫은 **7종**으로 축약하고 색이 하나인 조각마다 **합성 인라인 런**을 만든다. 두 렌더러는 한 줄도 고치지 않았고(인라인 런 경로가 이미 있었다) 색은 테마의 `code.tokens` 부분 패치가 갖는다(색 토큰 이름만 — 리터럴은 `schemeClr` 참조를 끊어 코드 블록만 테마 색 편집에서 빠지게 만든다). 런 경계는 종류가 아니라 **해결된 색**이다. 탭은 `lang`과 무관하게 `code.tabSize`로 펴 두 렌더러가 **같은 한 문자열**을 받는다(CSS `tab-size`와 `a:defTabSz`는 같은 규칙이 아니다). `lang` 어휘는 엔진이 닫고(`go`·`xml`/`soml`·`json`·`bash`) 목록 밖은 **에러**다 — 미구현과 오타를 가르는 자리는 `plannedAttrs`가 따로 갖는다 | [ADR 0051](docs/decisions/0051-highlighting-is-a-token-stream-compiled-to-runs.md), `core/highlight_test.go`(어휘 전수 · 탭 칼럼 · 원문 왕복 보존) · `soml/planned_test.go`(예정 목록 ↔ 어휘 표 양방향) · `13_code`(2장 — 골든에 `a:r` 분할, 리터럴 `srgbClr` 0건) · `render/geom`의 `TestMeasureLinesIncludeInlineRuns`(합성 런이 줄 수를 늘리지 않는다), `examples/incident-postmortem` 005가 gofmt 탭을 그대로 붙인다, `minimal`의 `mono` `ea`를 고정폭 CJK로(한글 주석 줄 −7.9% → +0.6%), `docs/reference/soml/text-subset.md`(코드 블록 절) · `appearance.md`(코드 하이라이팅) · `theme.md` · `guides/known-differences.md` |
 | P4.2 테마 선택 · 다중 내장 테마 | 테마는 **덱의 요청**이다: `balpyo.json`의 `theme`(과 그것을 덮어쓰는 `--theme`)이 패키지를 고르고, 없는 이름은 렌더 전에 멈춰 쓸 수 있는 이름을 나열한다 — **폴백 테마가 없다**. 폴백이 없으므로 빠진 값을 메울 곳도 없어 로더가 토큰·역할 어휘의 **완전성**을 요구하고, 하드코딩 외관 표(`core/theme.go`)가 사라져 **엔진에 외관 값이 하나도 없다**. 내장은 손으로 쓴 셋(`minimal`·`editorial`·`ink`)이고 하나의 계약을 받는다: 레이아웃 11종 전부 · 슬롯 영역 전부 · `variant` 어휘 동일 · 본문 24px/1.5 · 팔레트 세 수치. 리뷰가 그림을 바꾸지 않는 선언 하나를 잡았다 — `justify-items: start`가 여유 폭을 0으로 만들어 PPTX에서 줄을 접었다(왼쪽은 선언하지 않는다) | [ADR 0052](docs/decisions/0052-theme-selection-is-a-deck-request-and-there-is-no-fallback-theme.md)·[0053](docs/decisions/0053-a-theme-takes-the-horizontal-channel-only-to-center.md), `core/theme_select_test.go`(선택·에러·두 테마가 다르다 + **갈리지 않는 것** 전수: variant 어휘·본문 리듬·레이아웃 11종·슬롯 영역) · `core/palette_test.go`(세 테마 실측 4.76~5.38 · 4.92~5.00 · 5.93~6.00, 띠 ≤1.18) · `cmd/balpyo/theme_test.go`(`--theme` 네 자리) · `14_theme`(`ink`로 렌더되는 3장 골든), `make review` 세 테마 갤러리 실물 확인, `docs/guides/theming.md`(새 가이드) · `docs/reference/theme.md` · `guides/known-differences.md` |
+| P4.3 외부 테마 패키지 · `extends` | 자기 테마는 **프로젝트 안의 이름**이다 — `themes/<이름>/`이 `--theme`·`balpyo.json`의 어휘에 들어가고 **경로 문법은 없다**(값이 언제나 이름이라 진단이 어휘 하나만 나열하고, 프로젝트 밖 파일을 읽는 길이 없다). 이름을 규칙 셋이 지킨다: 디렉토리 = 매니페스트 `name` · 내장 이름 가림은 **요청한 테마와 무관하게** 에러 · 없는 부모와 순환은 체인을 적고 멈춘다. 병합은 한 문장이다 — **이름이 같으면 자식이 이기고, 없던 이름은 부모 순서 뒤에 붙는다**(순서가 `clrScheme`·CSS 변수·경고 목록에 보인다). 이름 없는 절만 필드 단위, 레이아웃 CSS는 파일 단위, 지우는 문법은 없다. 로더를 읽는 반·변환하는 반으로 쪼개 병합을 **원시 선언 층**에서 하고 완전성 검사는 결과에 한 번만 돈다. 리뷰가 상한을 드러냈다 — 색 토큰은 `clrScheme` 열두 자리를 넘을 수 없어 **자식은 색을 갈아 끼운다** | [ADR 0054](docs/decisions/0054-an-external-theme-is-a-name-inside-the-project-and-extends-overrides-by-name.md)·[0055](docs/decisions/0055-a-child-theme-recolors-by-name-because-color-tokens-are-bounded-by-the-clrscheme.md), `core/theme_local_test.go`(어휘·이름 규칙·체인 병합·슬롯 상한) · `core/theme_require.go`의 `requireColorSlots`(판정이 **테마 로딩**에 있고 남은 자리를 나열한다) · `soml.ColorSlots()`(12자리 단일 출처 — 값 층과 PPTX 렌더러가 같은 목록을 읽는다) · `15_local_theme`(`themes/corp/` 파일 넷으로 `minimal`을 물려받는 3장 골든 — 나머지 열 레이아웃·역할 넷이 부모와 **같다**는 것이 상속의 증인) · `internal/testkit`의 `chromeEnabledFixtures`(크롬 부재 게이트를 이름으로 옵트인), `make review` 실물 확인, `docs/reference/theme.md`(외부 테마 절 + 병합 표) · `guides/theming.md`(자기 테마 만들기) · `cli.md`·`layouts.md` |
 | D19 문서가 어휘를 숨긴다 | `slide.md`(11종 표 + 실제 진단 문구) · `reference/index.md`(`layouts.md`는 구현됨) · `text.md`(속성 목록 + `<text>`에 `w`/`h`가 없다는 것) | `make docs --strict`, 커밋 `cc8239f` |
 
 ---
@@ -436,12 +437,53 @@
       `3eb45c7`에서 `core/themes/minimal/*.json`의 같은 거짓 주석과 죽은 `core/theme.go`
       포인터도 지웠다.
 
-### P4.3 외부 테마 패키지 · `extends` · `chrome` ← **지금 여기**
-- [ ] RED: 프로젝트 로컬 테마 디렉토리 로딩, `extends` 병합, `chrome`(마스터 고정 요소) 픽스처.
-- [ ] GREEN: 외부 경로 로더 + 병합 + 마스터 고정 요소(P2.2와 물린다).
-- [ ] DOC: `docs/reference/theme.md`.
+### P4.3 외부 테마 패키지 · `extends` · `chrome` — **닫힘** (ADR 0054 · 0055)
+- [x] RED: 프로젝트 로컬 테마 디렉토리 로딩, `extends` 병합, `chrome` 선언까지 도는 픽스처.
+      **선결정 ADR** [0054](docs/decisions/0054-an-external-theme-is-a-name-inside-the-project-and-extends-overrides-by-name.md)
+      (`c9d24b6`) → `b72101b`(`core.Resolve`가 프로젝트 파일시스템을 받는다 — 테마를 거기서
+      읽으므로 `..`이나 절대 경로로 프로젝트 밖을 읽는 길이 없다) → `088be37`
+      (`core/theme_local_test.go`). 요구한 것이 어휘 하나다: `themes/<이름>/`이 `--theme`과
+      `balpyo.json`의 어휘에 **들어가고**, 디렉토리 이름 ≠ 매니페스트 `name`·내장 이름 가림·
+      없는 부모·순환(자기 자신 포함)이 전부 로드 시점 에러이고, 병합이 **이름 단위**로 돈다
+      (`TestLocalThemeOverridesByName` · `TestExtendsChainMergesRootFirst` ·
+      `TestLocalThemeShadowingABuiltinIsAnErrorForAnyRequest`).
+- [x] GREEN: 이름 어휘 확장 + `extends` 병합. `b18d559`(로더를 **읽는 반**과 **변환하는 반**으로
+      쪼갰다 — 병합은 원시 선언 층에서 일어나야 하고, 변환·완전성 검사는 병합 **결과에** 한 번만
+      돈다) · `274378d`(로컬 테마 해석 + `extends` 체인 병합). 병합 규칙이 한 문장이다:
+      **이름이 같으면 자식이 이기고, 없던 이름은 부모 순서 뒤에 붙는다** — 순서가 산출물에
+      보이기 때문에(`clrScheme` 슬롯 순서 · CSS 변수 선언 순서 · variant 경고의 목록) 부모 순서를
+      지키는 것이 규칙의 일부다. 이름 없는 절(`shape.default`·표의 `cell`)만 필드 단위,
+      레이아웃 CSS는 **파일 단위**, 지우는 문법은 없다.
+- [x] REVIEW: 픽스처 `15_local_theme`(`142aaa0` — `themes/corp/`가 `minimal`을 물려받는 3장 덱,
+      웹·PPTX 골든까지)을 `make review`로 눈으로 봤고, 픽스처를 만들다 **하나를 잡았다**:
+      자식이 색 이름 하나를 더하자 빌드가 `pptx 렌더 실패: 색 토큰 "brand"에 clrScheme 슬롯이
+      없다`로 죽었다 — 고칠 자리는 `tokens.json`인데 진단이 PPTX 조립을 가리켰다. 원인이 상한
+      이라는 것이 진짜 발견이다: 모든 색 토큰은 `clrScheme` 슬롯을 가져야 PowerPoint의 테마 색
+      편집이 따라오고 그 자리는 **열둘로 닫혀** 있어, 내장 테마가 열을 쓰는 지금 자식이 더할 수
+      있는 색 이름은 둘뿐이다. 그래서 **자식 테마의 색 작업은 갈아 끼우기**라고 정하고
+      ([ADR 0055](docs/decisions/0055-a-child-theme-recolors-by-name-because-color-tokens-are-bounded-by-the-clrscheme.md),
+      `63891f1`) 판정을 **테마 로딩으로** 옮겼다(`0c7ebe6` — `requireColorSlots`가 `requireTokens`
+      옆에 서고, 진단이 남은 자리를 나열하거나 자리가 없으면 "기존 이름의 값을 갈아 끼운다"고
+      말한다). 같은 커밋이 12자리 목록을 `soml.ColorSlots()` 하나로 모았다 — 값 층과 PPTX
+      렌더러가 **같은 목록**을 읽어야 둘의 판정이 갈리지 않는다(렌더러의 검사는 층으로 남겼다).
+      `chromeEnabledFixtures`를 둔 것도 리뷰의 산물이다: 크롬 부재 게이트를 픽스처 이름으로
+      옵트인하게 해서 게이트가 헐거워지지 않게 했다.
+- [x] DOC: `c746b73` — `docs/reference/theme.md`의 **외부 테마** 절(트리 · 경로 문법이 없는 이유 ·
+      이름 규칙 셋 · `extends` 에러 표 · 병합 규칙 한 문장과 단위 표 · 색의 상한 · 예제) ·
+      `guides/theming.md`의 **자기 테마 만들기**(물려받는 `theme.json`/`tokens.json`과 외울 세 줄) ·
+      `cli.md`(`build`의 `--theme`는 내장 ∪ 로컬 이름이고 경로가 아니다 · `init --theme`만 내장
+      제한인 이유) · `layouts.md`(로드 시점에 멈춘다 · **테마 자기만의 레이아웃 이름은 없다**) ·
+      `reference/index.md`의 "외부 패키지는 아직 없다" 정정 · 두 픽스처 문서. `make docs` 초록.
+      쓰면서 mkdocs의 제약을 하나 배웠다 — 기본 slugify가 비ASCII를 버려 한글 제목의 앵커가
+      `_1`·`_2`가 되고 `pymdownx`가 없다. 한글 앵커 링크를 굵은 본문 참조로 바꿨다(미리 있던 셋도).
 
-### P5.1 예제를 CI가 빌드한다 — **도그푸딩을 상시화한다** (D13)
+**`chrome`의 마스터 고정 요소는 열지 않았다.** 테마의 `chrome` 선언이 병합 어휘에 들어간 것까지가
+이 항목이고(같은 `kind`면 자식이 통째로 이긴다), 로고·브랜드 스트립처럼 **모든 장에 도형을 얹는**
+어휘는 없다. P2.2에서 정한 크롬의 경계가 "설정이 내용을, 테마가 자리를"인데(ADR 0045) 도형은 내용도
+자리도 테마의 것이라 어휘가 한 겹 더 필요하고, 도그푸딩에서 그것을 요구한 기록이 D1–D20에 없다 —
+근거 없는 어휘를 먼저 열지 않는다. 열 때 붙일 자리는 `theme.json`의 `chrome`이다.
+
+### P5.1 예제를 CI가 빌드한다 — **도그푸딩을 상시화한다** (D13) ← **지금 여기**
 - [ ] GREEN: `make examples`(모든 `examples/*`를 두 타깃으로, 진단 0건 + P1.1 경고 0건) → CI 잡.
       예제 산출물은 커밋하지 않는다(`dist/`는 ignore).
 - [ ] GREEN: 예제를 **픽스처로도** 승격할지 판단 — 골든까지 걸면 어휘 변경마다 28장 diff를 봐야
@@ -518,5 +560,6 @@
 | 도형이 컨테이너를 자식으로 받을 때의 좌표·매핑 | P2.3 | ADR 0049 (도형은 배경 `p:sp` 하나, 자식은 절대 좌표 **형제** — 그룹이 아니다 · 모드는 도형마다) |
 | 강조색을 몇 개 · 어떻게 고르는가 · 번호가 위계인가 | P4.1 | ADR 0050 (여섯 · 세 수치가 고른다(테스트가 규칙을 소유) · 번호는 색상환의 이웃 순서이고 위계는 덱이 만든다) |
 | 하이라이팅의 토크나이저 · 토큰이 런이 되는 자리 · 코드 색의 주인 · 탭 | P2.4 | ADR 0051 (Chroma 토큰 스트림만 · 값 층이 합성 인라인 런으로 컴파일(렌더러 무변경) · 색은 테마의 `code.tokens` · 탭은 칼럼 세어 펴고 폭은 테마) |
-| 코드 하이라이팅 토크나이저와 색 토큰 · 탭 처리 · "예정된 속성" 진단 | P2.4 | 대기 |
+| 외부 테마가 이름인가 경로인가 · `extends`의 병합 단위 | P4.3 | ADR 0054 (프로젝트 안의 **이름**이고 경로 문법이 없다 · 이름이 같으면 자식이 이기고 없던 이름은 부모 순서 뒤에 붙는다 · 병합은 원시 선언 층에서) |
+| 색 토큰의 상한 — 자식이 색을 더할 수 있는가 | P4.3 | ADR 0055 (모든 색 토큰이 `clrScheme` 슬롯을 갖고 자리는 열둘이다 → 자식은 **갈아 끼운다** · 판정은 테마 로딩에서) |
 | 차트: 네이티브 `c:chart` vs 도형 합성 | P2.5 | 대기 |
