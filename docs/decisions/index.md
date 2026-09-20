@@ -42,6 +42,7 @@
 | [0034](0034-gradient-svg-def-and-objectboundingbox.md) | 그라디언트는 SVG def로 내고 objectBoundingBox로 늘린다 (대각·비정사각형 한계) | 8 | 확정 |
 | [0035](0035-slots-are-real-placeholders-with-explicit-override.md) | 슬롯은 진짜 PPTX 플레이스홀더가 되고 명시 xfrm/rPr로 패리티를 지킨다 | M1.2 | 확정 |
 | [0036](0036-table-is-html-ish-tr-td-with-explicit-a-tbl.md) | `<table>`은 HTML식 `tr/td`, 셀은 텍스트 전용, 명시 `tcPr`로 `a:tbl`이 된다 | M2.1 | 확정 |
+| [0037](0037-char-refs-require-semicolon-and-cdata.md) | 문자 참조는 `;`를 요구하는 닫힌 어휘이고, 마크업이 아닌 `<`·`&`는 리터럴이다 | P0.1 | 확정 |
 
 PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다. 그 결정들의
 색인은 PRD에 있고, 이 표는 **그 이후 구현 중에 새로 확정한 것**만 담는다.

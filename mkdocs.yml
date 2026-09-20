@@ -78,6 +78,7 @@ nav:
       - 0034 그라디언트는 SVG def로 내고 objectBoundingBox로 늘린다: decisions/0034-gradient-svg-def-and-objectboundingbox.md
       - 0035 슬롯은 진짜 플레이스홀더가 되고 명시 재정의로 패리티를 지킨다: decisions/0035-slots-are-real-placeholders-with-explicit-override.md
       - 0036 table은 HTML식 tr/td이고 명시 좌표로 a:tbl이 된다: decisions/0036-table-is-html-ish-tr-td-with-explicit-a-tbl.md
+      - 0037 문자 참조는 세미콜론을 요구하고 CDATA를 연다: decisions/0037-char-refs-require-semicolon-and-cdata.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |
