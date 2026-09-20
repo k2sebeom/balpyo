@@ -150,5 +150,6 @@ CI에서는 경고를 통과시키지 않는다. 산출물이 필요 없는 검�
 ## 다음
 
 - [CLI](../reference/cli.md) — `init`·`build`·`check`·`watch`·`preview`의 옵션과 종료 코드
+- [테마 고르기·만들기](theming.md) — 내장 테마 셋을 `--theme`로 견주고 고르는 방법
 - [테마 패키지](../reference/theme.md) — 토큰·컴포넌트·레이아웃과 덱 크롬(페이지 번호·푸터)
 - [외관 속성](../reference/appearance.md) — 색·크기·간격의 캐스케이드와 탈출구
