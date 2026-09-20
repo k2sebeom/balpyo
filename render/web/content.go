@@ -514,19 +514,27 @@ func listCSS() string {
   }
 
   /* display: block은 UA의 list-item 마커 박스를 아예 없앤다 — list-style: none 위에
-     이중 안전판이다. 항목 간 margin은 ListItemGap(0) — 수직 리듬은 줄높이가 소유한다. */
+     이중 안전판이다. 항목 간 margin은 ListItemGap(0) — 수직 리듬은 줄높이가 소유한다.
+     행잉 인덴트는 padding-left + 음수 text-indent다 (첫 줄만 마커 자리로 나간다) —
+     PPTX의 marL + 음수 indent와 같은 모델이다. */
   .balpyo-list > li {
     display: block;
-    position: relative;
     margin: 0 0 %dpx;
     padding-left: %dpx;
+    text-indent: -%dpx;
   }
 
-  /* 마커는 첫 줄의 정적 위치에 절대 배치된다 — li의 확정 스타일(폰트·색·줄높이)을
-     상속하므로 첫 줄과 기준선이 맞는다. PPTX의 마커도 런 서식을 따른다 (항목 07). */
+  /* 마커는 **텍스트 흐름 안의 첫 박스**다 — 폭이 ListMarkerHang인 inline-block이라
+     텍스트가 정확히 padding 경계에서 시작한다. 흐름 밖(절대 배치)에 두지 않는 이유는
+     정렬이다: OOXML은 마커를 문단과 함께 정렬하므로 algn="ctr"이면 마커도 텍스트와 함께
+     가운데로 오는데, 절대 배치 마커는 들여쓰기 자리에 남아 두 타깃이 갈라진다.
+     text-indent를 되돌리는 것은 inline-block이 블록 컨테이너라 li의 음수 값을 상속해
+     자기 첫 줄에 다시 적용하기 때문이다. 확정 스타일(폰트·색·줄높이)은 그대로 상속하므로
+     마커와 첫 줄의 기준선이 맞는다 — PPTX의 마커도 런 서식을 따른다 (항목 07). */
   .balpyo-list > li::before {
-    position: absolute;
-    left: %dpx;
+    display: inline-block;
+    width: %dpx;
+    text-indent: 0;
   }
 
   ul.balpyo-list > li::before { content: %q; }
@@ -538,7 +546,7 @@ func listCSS() string {
     counter-increment: balpyo-item;
   }
   ol.balpyo-list > li::before { content: counter(balpyo-item) "."; }
-`, ListItemGap, ListTextIndent, ListTextIndent-ListMarkerHang, ListBulletChar)
+`, ListItemGap, ListTextIndent, ListMarkerHang, ListMarkerHang, ListBulletChar)
 }
 
 // features는 덱이 실제로 쓴 어휘다 — 어느 CSS 절을 낼지 정하는 근거다.

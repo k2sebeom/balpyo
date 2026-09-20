@@ -108,7 +108,11 @@ func TestRenderListCSSComesFromConstants(t *testing.T) {
 	for _, want := range []string{
 		"list-style: none;",
 		fmt.Sprintf("padding-left: %dpx;", ListTextIndent),
-		fmt.Sprintf("left: %dpx;", ListTextIndent-ListMarkerHang),
+		// 행잉 인덴트는 음수 text-indent이고 마커는 흐름 안의 inline-block이다 — 마커가
+		// 문단과 **함께** 정렬되어야 `<ul align="center">`가 PPTX와 갈라지지 않는다.
+		fmt.Sprintf("text-indent: -%dpx;", ListMarkerHang),
+		fmt.Sprintf("width: %dpx;", ListMarkerHang),
+		"display: inline-block;",
 		fmt.Sprintf("margin: 0 0 %dpx;", ListItemGap),
 		fmt.Sprintf("content: %q;", ListBulletChar),
 		`content: counter(balpyo-item) ".";`,
