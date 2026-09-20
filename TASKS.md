@@ -34,8 +34,8 @@
 | D12 | accent 색이 **하나**라서 덱 전체가 한 가지 파랑이다. 강조의 위계를 만들 수 없다 | 중간 | P4.1 | **닫힘** (ADR 0050 — 강조색 여섯, 번호는 위계가 아니다) |
 | D13 | 예제·문서가 썩는다. **예제는 CI에서 빌드되지 않는다** | 중간 | P5.1 · P5.2 | 열림 |
 | D14 | **`<text>`에 `w`/`h`가 없다.** canvas 라벨은 자기 내용만큼만 넓어서 `align="center"`가 기댈 폭이 없다 — 라벨마다 보이지 않는 도형(`fill="none" border="none" w="140"`)으로 감쌌다. 라벨 10개가 태그 20개가 됐다 | **높음** | P1.3 · P2.5 | P1.3 닫힘 (ADR 0043) · `<chart>`는 P2.5 |
-| D15 | `<pre>`에 **`lang`도 탭 폭도 없다.** gofmt 출력(탭)이 중첩 세 번에 x=350까지 밀려서 탭을 스페이스 두 칸으로 손으로 바꿨다 | 중간 | P2.4 | 열림 |
-| D16 | **미구현과 오타의 진단이 구별되지 않는다.** `<table>`은 "아직 구현되지 않은 어휘다"라고 말해 주는데 `<pre lang="go">`는 그냥 "알 수 없는 속성"이다 | 중간 | P2.4 · P5.2 | 열림 |
+| D15 | `<pre>`에 **`lang`도 탭 폭도 없다.** gofmt 출력(탭)이 중첩 세 번에 x=350까지 밀려서 탭을 스페이스 두 칸으로 손으로 바꿨다 | 중간 | P2.4 | **닫힘** (ADR 0051 — `lang`은 닫힌 5값, 탭 폭은 테마의 `code.tabSize`) |
+| D16 | **미구현과 오타의 진단이 구별되지 않는다.** `<table>`은 "아직 구현되지 않은 어휘다"라고 말해 주는데 `<pre lang="go">`는 그냥 "알 수 없는 속성"이다 | 중간 | P2.4 · P5.2 | **닫힘** (P2.4 — `soml.plannedAttrs`, 어휘 표와 양방향 대조) |
 | D17 | **레이아웃이 본문 높이를 소유하지 않는다.** `content`는 위에서부터 쌓기만 해서 10장 중 5장의 아래 40%가 비었다. 세로 리듬은 저자가 `<col h="fill" justify="between">` 랩퍼로 슬라이드마다 손수 만든다 (랩퍼 없음·`justify="center"`·`between` 셋 다 재봤다) | **높음** | P1.4 | **닫힘** (ADR 0044) |
 | D18 | 같은 뜻의 이름이 갈린다: 컨테이너는 `justify`/`align`, 도형은 `anchor`다. 첫 시도가 `<col>에 알 수 없는 속성 anchor`로 죽었다 | 낮음 | P5.2 | 열림 |
 | D19 | **저자가 처음 읽는 페이지가 틀렸다.** `slide.md`는 "`layout` 어휘는 2종"이라고 했고 `reference/index.md`는 `layouts.md`가 "Iteration 10에서 생긴다"고 했다 — 11종이 다 살아 있고 그 페이지도 이미 있다 | **높음** | P5.2 | 닫힘 |
@@ -66,6 +66,7 @@
 | P3.2 `balpyo preview` — 검수 갤러리 (D8) | 래스터화(PPTX → PDF → PNG)·픽셀 diff·갤러리 문서를 `internal/preview`가 소유하고 `make review`와 사용자 명령이 **그것을 함께 쓴다** (테스트가 보는 그림과 사람이 보는 그림이 달라지지 않는다). 하네스에 남는 것은 **테스트 정책**뿐이다 — 건너뛰기/실패, 픽스처별 오차 조정표("이 슬라이드는 달라야 정답이다"까지 든 표). 그 표가 사용자 덱에는 없으므로 `preview`는 **게이트가 아니다**: 오차를 넘어도 코드 0이고, 1은 검수할 것이 안 만들어졌을 때만이다. 도구가 없으면 빌드 전에 멈춘다 | [ADR 0047](docs/decisions/0047-review-gallery-lives-in-internal-preview.md), `internal/preview`(`Run`·래스터라이저·갤러리) · `raster_pptx_test.go`(장수 · 스테이지 크기 · 재실행 0 픽셀 차) · `cmd/balpyo/preview_test.go`(경로를 찍는다 · 한 열 갤러리 · 도구 없음은 빌드 전에), `04_shape` 실물 확인(슬라이드 4장이 기본 2.5% 초과, 종료 코드 0), `docs/reference/cli.md#balpyo-preview` |
 | P3.3 `balpyo init` · `balpyo check` — 첫 덱과 CI 입구 | `init`은 자기 덱을 **소유한다**(`internal/scaffold`의 임베드 템플릿 3장) — `examples/`는 마찰점을 일부러 밟는 회귀 테스트라 출발점이 못 된다. 계약은 파일 목록이 아니라 **다음 명령의 성공**이다: 스캐폴딩 덱이 `build --target html,pptx --check-layout --strict`를 경고 0으로 통과한다. `--force`는 없고(덮어쓸 대상이 저자의 원고다) 내장 아닌 `--theme`은 거부한다(`balpyo.json`의 `theme`을 아직 아무도 읽지 않는다 — P4.2). `check`는 **쓰지 않는 `build`**다: 같은 코드로 판정하고, 종료 코드도 같고(경고는 0을 타고 나간다), 출력 디렉토리를 만들지도 않는다 | [ADR 0048](docs/decisions/0048-init-owns-its-deck-and-check-is-build-without-writing.md), `core.BuiltinThemes`(어휘 단일 출처) · `internal/scaffold` · `pipeline.Check` · `cmd/balpyo/init_test.go`(`init`→`--strict` 빌드) · `check_test.go`(디렉토리 목록이 그대로 · `dist/`가 생기지도 않는다), 스캐폴딩 덱 `preview` 실물 확인(3장 0.625%/1.772%/0.581%), `docs/reference/cli.md#balpyo-init` · `#balpyo-check` · `docs/guides/getting-started.md` |
 | P4.1 accent 팔레트 확장 (D12) | 강조색이 **여섯**이고, 눈이 아니라 **세 수치**가 고른 값이다 — `bg` 대비 4.5:1↑(대비율이 대칭이라 글자색과 면색을 한 수치로 보장한다) · 서로 색상 25°↑ · 휘도 한 띠(≤1.25). 실측 4.76~5.38 · 26° · 1.18이고, 그 규칙을 주석이 아니라 **테스트가 소유한다**. `clrScheme`에서 accent1을 빌려 가던 다섯 자리가 자기 색을 갖고(빌리는 자리는 링크 둘뿐) 폴백은 강조색 하나짜리 **다른** 테마를 위해 남는다. 번호는 위계가 아니라 색상환의 이웃 순서이고, **위계는 덱이 만든다** | [ADR 0050](docs/decisions/0050-six-accents-are-a-measured-palette-not-a-ranking.md), `core/palette_test.go`(WCAG 상대 휘도 · 대비 · 색상 간격 전수) · `core/theme_package_test.go`(값 드리프트) · `render/pptx.TestClrSchemeMinimalFillsSixAccents`(로드된 테마의 여섯 슬롯이 서로 다르다) · `12_palette`(2장 — 견본 여섯 + 변형/그라디언트, `TestPaletteFixtureBindsSixAccentSlots`, 슬라이드 파트에 리터럴 `srgbClr` 0건), `examples/incident-postmortem`을 **세 색**으로 다시 칠했다(피해=`accent5` · 우리가 늦은 곳=`accent4` · 대응=`accent3`, 파랑 0건 · 두 래스터 실물 확인), `docs/reference/theme.md`(표준 토큰 어휘 + 팔레트 규칙) · `appearance.md` |
+| P2.4 코드 블록: `lang`과 탭 (D15 · D16) | 하이라이팅은 **값 층의 토큰 스트림**이다 — Chroma의 토큰을 우리가 닫은 **7종**으로 축약하고 색이 하나인 조각마다 **합성 인라인 런**을 만든다. 두 렌더러는 한 줄도 고치지 않았고(인라인 런 경로가 이미 있었다) 색은 테마의 `code.tokens` 부분 패치가 갖는다(색 토큰 이름만 — 리터럴은 `schemeClr` 참조를 끊어 코드 블록만 테마 색 편집에서 빠지게 만든다). 런 경계는 종류가 아니라 **해결된 색**이다. 탭은 `lang`과 무관하게 `code.tabSize`로 펴 두 렌더러가 **같은 한 문자열**을 받는다(CSS `tab-size`와 `a:defTabSz`는 같은 규칙이 아니다). `lang` 어휘는 엔진이 닫고(`go`·`xml`/`soml`·`json`·`bash`) 목록 밖은 **에러**다 — 미구현과 오타를 가르는 자리는 `plannedAttrs`가 따로 갖는다 | [ADR 0051](docs/decisions/0051-highlighting-is-a-token-stream-compiled-to-runs.md), `core/highlight_test.go`(어휘 전수 · 탭 칼럼 · 원문 왕복 보존) · `soml/planned_test.go`(예정 목록 ↔ 어휘 표 양방향) · `13_code`(2장 — 골든에 `a:r` 분할, 리터럴 `srgbClr` 0건) · `render/geom`의 `TestMeasureLinesIncludeInlineRuns`(합성 런이 줄 수를 늘리지 않는다), `examples/incident-postmortem` 005가 gofmt 탭을 그대로 붙인다, `minimal`의 `mono` `ea`를 고정폭 CJK로(한글 주석 줄 −7.9% → +0.6%), `docs/reference/soml/text-subset.md`(코드 블록 절) · `appearance.md`(코드 하이라이팅) · `theme.md` · `guides/known-differences.md` |
 | D19 문서가 어휘를 숨긴다 | `slide.md`(11종 표 + 실제 진단 문구) · `reference/index.md`(`layouts.md`는 구현됨) · `text.md`(속성 목록 + `<text>`에 `w`/`h`가 없다는 것) | `make docs --strict`, 커밋 `cc8239f` |
 
 ---
@@ -320,7 +321,7 @@
       둘 · 배경 모드의 PPTX 산출 · 도형 수 표에 배경 행) + `layout.md`(컨테이너가 올 수 있는
       자리) · `image.md`(도형 안 그림은 컨테이너를 거친다). `make docs --strict` 초록.
 
-### P2.4 코드 블록: `lang`과 탭 (D15 · D16) ← **지금 여기**
+### P2.4 코드 블록: `lang`과 탭 (D15 · D16) — **닫힘** (ADR 0051)
 소프트웨어를 설명하는 덱은 코드를 띄운다. P0.1이 끝나 이제 의미가 있다.
 - [x] **선결정 ADR** ([0051](docs/decisions/0051-highlighting-is-a-token-stream-compiled-to-runs.md)):
       토크나이저는 **Chroma의 토큰 스트림만**(스타일·포매터는 쓰지 않는다), 우리 경계는 닫힌
@@ -331,14 +332,38 @@
       name→`accent1` · attr→`accent2` · string→`accent3` · number→`accent4` · comment→`muted`.
       언어 1차 집합은 `go`·`xml`(별칭 `soml`)·`json`·`bash`이고 목록 밖은 **에러**다
       (엔진 어휘이므로 variant처럼 폴백하지 않는다). `<pre><code>`는 열지 않는다.
-- [ ] RED: 토큰 → 웹 `span` + PPTX **런 분할**(`a:r` 여러 개, 색은 `schemeClr` 참조) 어서션.
-- [ ] GREEN: `pre lang="…"` 속성 + 렌더.
-- [ ] **D15**: 탭 처리도 같이 정한다 — 저자가 손으로 스페이스로 바꾸지 않아도 되게 `tab-size`
-      (웹)와 PPTX 대응(런에 탭을 두는지 펴는지)을 **테마가** 정한다(어휘를 늘리지 않는다).
-- [ ] **D16**: 계획된 속성의 진단을 오타와 구별한다 — `<table>`처럼 "아직 구현되지 않은 어휘다"로
-      말하는 자리를 **속성**에도 만든다. 예정 이름은 닫힌 목록이고, 목록 밖은 지금처럼
-      "알 수 없는 속성"이다. (`lang`을 구현하면 이 목록의 첫 줄이 지워진다.)
-- [ ] DOC: `docs/reference/soml/text-subset.md`의 `pre` 절.
+- [x] RED: `core/highlight_test.go`(토큰 → 색 있는 런 경계 · `lang` 어휘 전수 · 탭 칼럼 ·
+      왕복 보존) + `core/chrome_test.go`의 합성 테마 `code` 절 + `13_code` 픽스처 2장
+      (`go` 한 장 · `soml`/`json`/`bash` 한 장, 둘 다 원문이 탭 들여쓰기다). 런 분할과
+      `schemeClr` 참조는 **기존 판정이 그대로 받는다** —
+      `TestFixtureGoldenSlideColorsKeepTokenReferences`(슬라이드 파트의 리터럴 `srgbClr`
+      전수 표)에 이 픽스처의 행이 없는 것이 계약이고, 골든 파트에 `a:r`가 여럿 보인다.
+- [x] GREEN: `soml`이 `<pre>`에 `lang`을 열고(고유 속성 — 다른 블록에는 뜻이 없다) `core`가
+      값 층에서 **탭을 펴고 토큰 스트림을 합성 런으로 컴파일한다**. 두 렌더러는 한 줄도
+      고치지 않았다 — 인라인 런 경로가 이미 있었다. 런 경계는 종류가 아니라 **해결된 색**이다
+      (테마가 적지 않은 종류는 plain과 같은 색이므로 끊을 이유가 없다).
+- [x] **D15**: 탭은 `lang`과 무관하게 **값 층이 칼럼을 세어 편다** — 폭은 테마의
+      `code.tabSize`(`minimal`은 2)이고 어휘는 늘지 않았다. `tab-size`(CSS)와 `a:defTabSz`
+      (OOXML)가 같은 규칙이 아니므로 탭을 흘리면 두 산출물의 줄이 갈라진다: 두 렌더러가
+      **같은 한 문자열**을 받는 쪽으로 풀었다. 탭 없는 덱의 산출물은 한 바이트도 안 움직인다.
+- [x] **D16**: `soml`의 `plannedAttrs`가 그 자리다 — "이름은 맞는데 아직 구현되지 않은 속성"이
+      `PlannedAttrMessage`로 말하고, 목록 밖은 지금처럼 "알 수 없는 속성"이다(오타와 예정을
+      한 문장으로 뭉치지 않는다). 목록이 썩지 않게 어휘 표와 **양방향 대조**한다
+      (`planned_test.go` — `unrenderedKinds` ↔ 렌더러 디스패치와 같은 장치). `lang`이 그
+      규칙의 첫 증인이다: 이 항목이 줄을 적고 같은 항목이 지웠다.
+- [x] REVIEW: `examples/incident-postmortem` 005를 **두 마찰점이 사라진 모습으로** 되돌렸다 —
+      `lang="go"` + gofmt 출력의 탭을 그대로 붙이고, 머리 주석은 이제 마찰의 **기록**이다.
+      두 래스터를 견줘 토큰 색·2칸 계단·줄 수가 같고, 남은 차이는 이미 문서화된 LibreOffice의
+      스크립트 간격(한글 주석·캡션)뿐이다. 이 항목에서 실물로 잡은 것 둘: 잰 줄 수가 인라인
+      런을 블록의 줄로 세지 않아 `13_code`가 "띠에 주인이 없다"로 죽었고(`render/geom`의
+      `lineRects`가 식별자 없는 자손까지 읽고 같은 줄 조각을 합치게 고쳤다), `minimal`의
+      `mono`가 고정폭 라틴에 **비례폭 CJK**를 짝지어 한글 주석 줄이 −7.9%였다
+      (`ea: Noto Sans Mono CJK KR`로 +0.6%).
+- [x] DOC: `text-subset.md`에 **코드 블록 — `lang`과 탭** 절(닫힌 값 표 · 강조는 토크나이저가
+      만든다 · 탭은 `lang`과 무관하다) + 진단 표 네 줄, `appearance.md`에 **코드 하이라이팅
+      (합성 런)** 절(7종 ↔ `minimal`의 색 · 색 토큰 이름만), `theme.md`에 `code` 절의 에러
+      다섯 줄과 **`mono`의 `ea`는 고정폭 CJK여야 한다**는 규칙, `known-differences.md`에 그
+      규칙의 측정. `make docs --strict` 초록.
 
 ### P4.1 accent 팔레트 확장 (D12) — **닫힘** (ADR 0050)
 **순서를 바꿔 P2.4보다 먼저 했다.** P2.4의 선결정이 "코드 색은 **테마 토큰**으로만"이고 그
@@ -361,7 +386,7 @@
       하는 이름 · 색 토큰 네 필드와 슬롯 규칙 · **강조색 여섯의 규칙** 표) + `appearance.md`의
       색 표에 여섯과 대비 수치, `shape.md`·`text.md`의 진단 토큰 목록. `make docs --strict` 초록.
 
-### P4.2 테마 선택 · 다중 내장 테마
+### P4.2 테마 선택 · 다중 내장 테마 ← **지금 여기**
 - [ ] RED: `balpyo.json`의 `theme` 필드가 로더 선택을 바꾸는 테스트, 없는 테마 에러, 같은 덱이
       두 테마에서 다르게 렌더되는 픽스처.
 - [ ] GREEN: `core`의 하드코딩 `minimal` 선택·레거시 폴백 제거 + 내장 테마 2~3종.
