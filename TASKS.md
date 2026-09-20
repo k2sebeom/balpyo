@@ -122,11 +122,38 @@ PNG로 되돌려 12장 검수.
 ### P0.3 목록에 외관 속성 열기 (D6)
 블록 5종(`h1–h3`/`p`/`blockquote`/`pre`)은 `size/color/align/anchor`를 받는데 `ul`/`ol`만 못 받는다.
 저자가 이유를 알 수 없는 비대칭이다.
-- [ ] **선결정**: `ul`/`ol`에 블록과 **같은** 외관 4종을 열고 `li`는 상속만 받는다(런 상속 규칙과
+- [x] **선결정**: `ul`/`ol`에 블록과 **같은** 외관 4종을 열고 `li`는 상속만 받는다(런 상속 규칙과
       동일). 불릿 글리프·들여쓰기 토큰화는 이 항목에서 다루지 않는다(별 항목).
-- [ ] RED: 파서 속성 표 + core 캐스케이드(목록 → 항목 상속), 웹 CSS·PPTX `a:pPr`/`a:rPr` 어서션.
-- [ ] GREEN: `soml/parse.go` 스펙 표 + `core` 해석 + 두 렌더러.
-- [ ] DOC: `docs/reference/soml/text.md`의 속성 표.
+      → 그대로 지켰다. 다만 `variant`는 **열지 않았다**: 번들(크기+굵기+색)을 상속시키면 항목의
+      역할이 바뀌고, 그건 등가 표(`<li>` ≡ body)가 소유한 위계다. 컨테이너 자신에게는 확정
+      외관을 채우지 않는다 — 텍스트를 담지 않으므로 소비자가 없고, 채우면 두 렌더러가 컨테이너와
+      항목 중 어느 쪽이 진실인지 각자 고른다. ADR 0038.
+- [x] RED: 파서 속성 표 + core 캐스케이드(목록 → 항목 상속), 웹 CSS·PPTX `a:pPr`/`a:rPr` 어서션.
+      → `soml/subset_test.go`(4종 통과 + `<ul variant>`·`<li size>` 거부)·`soml/shape_test.go`
+      (`TestAnchorAttrCoverage`가 열린 자리/닫힌 자리를 전수로 다시 그린다),
+      `core/list_test.go`(항목 둘이 **같은** 확정 값에 도달 · 컨테이너는 `TextStyle()==nil` ·
+      진단은 속성 하나당 하나 · 패치가 옆 목록으로 새지 않는다),
+      `render/web/subset_test.go`·`render/pptx/lists_test.go`(`font-size: 20px`·`text-align: center`
+      ×2, `sz="1500"`·`algn="ctr"` ×2 — 컨테이너 태그의 산출은 불변),
+      `testdata/fixtures/02_text_subset/slides/007_list_appearance.slide`(골든 + 픽셀 비교).
+- [x] GREEN: `soml/parse.go` 스펙 표 + `core` 해석 + 두 렌더러.
+      → 파서는 블록의 표에서 `variant`만 뺀 것, `core/resolve.go`는 `resolveList`가 패치를 한 번
+      읽어 항목의 `resolveText(elem, role, inherited)`에 넘긴다(상속 단은 자기 인라인 속성보다
+      **먼저** 얹힌다 — 가까운 선언이 이긴다). 렌더러는 손대지 않아도 값이 닿는다.
+      **다만 리뷰가 웹 CSS의 버그를 잡았다**: 마커가 절대 배치라 `align="center"`에서 웹은 마커를
+      들여쓰기 자리에 두고 텍스트만 가운데로 보냈고(잉크 폭 −68%), PPTX는 마커를 문단과 함께
+      옮긴다. 마커를 흐름 안의 `inline-block`(폭 `ListMarkerHang`) + 음수 `text-indent`로 바꿔
+      두 타깃을 맞췄다 — `start`에서는 픽셀이 그대로다.
+- [x] REVIEW: `make review` 갤러리의 02_text_subset 07(웹·PPTX·diff)과 도그푸딩 덱.
+      → 왼쪽 24px / 오른쪽 20px muted / 가운데 정렬 `<ol>`이 두 타깃에서 같은 자리에 온다
+      (컨테이너 전체 스위트 통과 = 픽셀 비교 ±5.5% 안). `examples/balpyo-intro` 011의 2단 목록에
+      `size="20"`을 써서 다시 빌드했다 — 12장 그대로, PPTX 쪽 8문단이 `sz="1500"`이다.
+      PowerPoint/Keynote 직접 확인은 이 환경에서 불가하다(LibreOffice 렌더까지가 증거다).
+- [x] DOC: `docs/reference/soml/text.md`의 속성 표.
+      → `text.md`에 4종이 목록 컨테이너에도 열린다는 항, `text-subset.md`의 태그 표(`ul`/`ol`의
+      허용 속성 · `li`는 상속)와 배치 규칙 3줄·진단 2줄, `appearance.md`의 캐스케이드에
+      「리스트 컨테이너의 외관」 절(트리를 한 칸 내려가는 유일한 단이고 ADR 0022와 어긋나지
+      않는 이유). ADR 0038 + 색인·nav. `--strict` 빌드 통과.
 
 ---
 
