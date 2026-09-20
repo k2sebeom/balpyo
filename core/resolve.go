@@ -187,6 +187,18 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 //
 // slot을 쓰지 않은 직계 자식은 손대지 않는다 — 빈 Slot이 곧 "슬롯 배치 없음"이라(기본 슬롯은
 // 렌더 매핑의 몫), 슬롯을 쓰지 않은 덱의 산출물이 이 검증 때문에 달라지지 않는다.
+//
+// # 테마가 못 받는 슬롯은 경고 + 미탑재다 (ADR 0044)
+//
+// 어휘에 있는 슬롯 이름이라도 **테마에 그 레이아웃의 슬롯 영역이 없으면**(`*.slots.css`) 놓일
+// 자리가 없다. 그 판정을 여기서 한 번만 하고 슬롯을 **싣지 않는** 것이 계약이다: 렌더러 두
+// 곳이 각자 조건을 적었을 때 웹은 조용히 무효, PPTX는 플레이스홀더 발행이 되어 한 소스가 두
+// 산출물에서 다른 그림이 됐다. 확정 모델에 싣지 않으면 두 렌더러가 보는 입력이
+// `Appearance.Slot` 하나로 합쳐진다.
+//
+// 에러가 아니라 경고인 이유: 슬롯 이름은 어휘에 있고 오타도 아니다 — 부족한 것은 테마이고,
+// 테마를 바꾸면 같은 소스가 그대로 뜻을 얻는다 (모르는 variant의 선례 — PRD §13-6).
+// `--strict`가 승격한다.
 func (r *resolver) resolveSlot(elem *soml.Element, parent *soml.Element) {
 	attr, ok := elem.Attr(soml.SlotAttr)
 	if !ok {
@@ -199,6 +211,11 @@ func (r *resolver) resolveSlot(elem *soml.Element, parent *soml.Element) {
 	if _, ok := soml.LayoutSlot(r.layout, attr.Value); !ok {
 		r.errorf(attr.ValueSpan, "레이아웃 %q에 없는 슬롯 %q (쓸 수 있는 슬롯: %s)",
 			string(r.layout), attr.Value, slotList(r.layout))
+		return
+	}
+	if _, ok := r.theme.SlotLayouts[string(r.layout)]; !ok {
+		r.warnf(attr.ValueSpan, "테마에 레이아웃 %q의 슬롯 영역이 없어 slot=%q을 쓸 수 없다 (layouts/%s.slots.css) — 이 슬라이드는 흐름 배치로 렌더된다",
+			string(r.layout), attr.Value, string(r.layout))
 		return
 	}
 	elemAppearance(elem).Slot = attr.Value
