@@ -218,6 +218,26 @@ func boxSizeCSS(box soml.Box) ([]string, error) {
 	return decls, nil
 }
 
+// appendTextBox는 텍스트 요소 자신의 가로 크기 선언을 이어 붙인다 (`w`·`min-w`·`max-w` —
+// ADR 0043). 컨테이너·도형과 **같은 함수**(boxSizeCSS)가 값을 컴파일하므로 `<row w="140">`과
+// `<text w="140">`이 같은 선언을 낸다.
+//
+// 자리는 **외관 뒤, 슬롯·배치 앞**이다 — 속성 표의 순서(외관 → 박스 → 자식 배치 → 슬롯)를
+// 산출 CSS의 선언 순서가 따라간다. 폭은 자기 박스의 성질이고 슬롯·배치는 부모 안에서의
+// 자리라, 순서가 갈리면 두 채널을 함께 쓴 요소의 골든이 읽기 어려워진다.
+func appendTextBox(decls []string, box *soml.Box) ([]string, error) {
+	if box == nil {
+		// 크기 속성이 없는 요소는 선언을 하나도 더하지 않는다 (appendPlacement의 nil과 같은
+		// 계약 — 크기를 쓰지 않은 덱의 골든이 이 항목으로 움직이지 않는다).
+		return decls, nil
+	}
+	sizes, err := boxSizeCSS(*box)
+	if err != nil {
+		return nil, err
+	}
+	return append(decls, sizes...), nil
+}
+
 // appendPlacement는 자식 배치 선언을 이어 붙인다 (PRD §7.4 자식 표).
 //
 // **배치 선언을 만드는 코드는 이 함수 하나다.** `<text>`·블록·리스트·컨테이너·`<spacer>`가

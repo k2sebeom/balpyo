@@ -76,7 +76,7 @@ var (
 	// textSizeAttrs는 텍스트 박스가 받는 크기 속성이다 — **가로 축만** (ADR 0043).
 	//
 	// boxSizeAttrs의 **부분집합이고 순서도 같다** (TestTextSizeAttrsAreBoxSubset이 지킨다):
-	// 값 문법을 컨테이너·도형과 공유하므로(`core.boxAttr`) `fill`·`%`·공간 토큰이 같은 뜻이고,
+	// 값 문법을 컨테이너·도형과 공유하므로(`core.boxAttr`) 무단위 px·`%`·`fill`이 같은 뜻이고,
 	// 목록이 두 벌이면 같은 표기가 두 뜻을 갖게 된다.
 	//
 	// 세로 축(`h`·`min-h`·`max-h`)과 `pad`·`ratio`를 닫아 두는 이유 (ADR 0043):

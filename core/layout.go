@@ -44,7 +44,8 @@ func (r *resolver) resolveLayout(elem, parent *soml.Element) {
 	}
 	// 텍스트 요소(`<text>`·블록·리스트 컨테이너)는 **가로 크기**를 자기 박스에 받는다
 	// (ADR 0043 — soml.TakesTextSize가 그 집합을 소유한다). 값 문법은 컨테이너·도형과 같은
-	// 헬퍼(boxAttr)가 해석하므로 `fill`·`%`·공간 토큰이 같은 뜻이다.
+	// 헬퍼(boxAttr)가 해석하므로 무단위 px·`%`·`fill`이 같은 뜻이다 (공간 토큰은 크기에
+	// 쓸 수 없다 — gap·pad 전용이다).
 	var box soml.Box
 	takesSize := soml.TakesTextSize(elem.Name)
 	var placement soml.Placement

@@ -94,6 +94,20 @@ func layoutStagesCSS(theme soml.Theme, feat features) string {
 	}
 	var b strings.Builder
 	b.WriteString("\n")
+	if len(feat.slotLayouts) > 0 {
+		// 슬롯 영역 자식의 텍스트·리스트는 확정 폭(width:100%, contentCSS)에서 벗어나 auto로
+		// 돌아간다 — **세 번째 리셋 문맥이다** (ADR 0043). 앞의 둘은 레이아웃 컨테이너의
+		// 자식(layoutCSS)과 stack·캔버스의 자식(stackCSS)이고, 근거 문장이 셋 다 같다: 폭이
+		// 칸을 다 먹으면 테마가 쓴 정렬(`justify-items`·`place-self`)이 자식을 움직일 여지가
+		// 없다. ADR 0035가 "배치의 실체는 테마가 소유한다"고 정했는데, 이 리셋이 없으면
+		// 테마가 쓴 선언이 엔진 base 층에 조용히 지워진다 (`title.slots.css`의
+		// `justify-items: center`가 그랬다).
+		//
+		// 슬롯 영역 CSS가 있는 덱에만 나간다 — 흐름 모드 덱과 슬롯을 쓰지 않은 덱의 산출물은
+		// 바이트가 같다 (이 함수의 다른 조건과 같은 근거). `justify-items`의 기본값이
+		// stretch이므로 정렬을 쓰지 않은 슬롯 영역에서는 자식이 그대로 영역 폭까지 늘어난다.
+		b.WriteString("  .balpyo-stage.balpyo-slots > :is(.balpyo-text, .balpyo-list) { width: auto; }\n")
+	}
 	for _, name := range feat.layouts {
 		// feat.layouts는 배치 CSS가 있는 레이아웃만 담으므로 조회는 언제나 성공한다.
 		fmt.Fprintf(&b, "  .balpyo-stage.balpyo-layout-%s:not(.balpyo-slots) { %s; }\n", name, theme.Layouts[name])

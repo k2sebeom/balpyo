@@ -288,6 +288,11 @@ func writeBlock(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 		// PRD §13-1과 같은 태도. PPTX 쪽 짝 bodyPr@wrap은 항목 06이 맞춘다).
 		decls = append(decls, "white-space: pre")
 	}
+	// 가로 크기는 외관 뒤, 슬롯·배치 앞이다 (appendTextBox — 속성 표의 순서와 같다).
+	decls, err = appendTextBox(decls, elem.Box())
+	if err != nil {
+		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
+	}
 	// 배치 선언은 **한 곳에서** 나온다 (appendPlacement) — 블록도 컨테이너의 자식이 될 수
 	// 있으므로 컨테이너·spacer·리스트와 같은 코드를 쓴다. 요소 종류마다 따로 쓰면 자식
 	// 배치 속성이 하나 늘 때 어느 종류가 빠졌는지 사람이 세어야 한다.
@@ -336,7 +341,13 @@ func firstText(elem *soml.Element) (string, bool) {
 // 식별자는 언제나 갖는다: 리스트는 PPTX에서 박스 하나가 되므로(항목 07) 이 rect가 곧
 // PPTX 텍스트 박스다. 마커·들여쓰기는 엔진 CSS가 상수로 명시한다 (contentCSS의 리스트 절).
 func writeList(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, path []int) error {
-	decls, err := appendPlacement(appendSlot(nil, elem), elem.Placement())
+	// 리스트 컨테이너도 가로 크기를 받는다 (ADR 0038의 대칭 — 외관이 컨테이너에 붙는 것과 같은
+	// 자리). 순서는 블록과 같다: 크기 → 슬롯 → 배치.
+	decls, err := appendTextBox(nil, elem.Box())
+	if err != nil {
+		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
+	}
+	decls, err = appendPlacement(appendSlot(decls, elem), elem.Placement())
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
