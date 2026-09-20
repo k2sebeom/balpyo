@@ -148,6 +148,35 @@ make examples   # 예제만 (몇 초) — make test가 같은 테스트를 이�
 go run ./cmd/balpyo build --project examples/balpyo-intro --target html,pptx --strict
 ```
 
+## 문서 게이트 — 닫힌 목록은 테스트가 문서에서 읽는다
+
+문서에는 어휘의 **사본**이 있다 (도형 12종, 레이아웃 11종, 색 토큰 10종 …). 실제로 낡은 것이
+그 사본이었으므로 — D19의 "`layout` 어휘는 2종", 개요의 "내장 테마는 `minimal`·`dark`·`paper`" —
+`TestDocsVocabularyListsMatchCode`가 등록된 자리마다 문서의 목록을 코드의 목록과 맞댄다
+([ADR 0057](../decisions/0057-docs-are-hand-written-but-closed-lists-are-read-from-them-by-a-test.md)).
+
+```bash
+go test ./core -run TestDocsVocabularyListsMatchCode   # 도구 없이 밀리초
+```
+
+| 판정 | 어떻게 |
+|---|---|
+| 문서의 목록이 코드의 목록과 **집합으로 같다** | `docVocabularies`의 (문서 · 어휘 · 패턴 · 구분자) 등록 줄 |
+| 문서에서 목록을 **찾았다** | 패턴이 한 번도 맞지 않으면 `Fatal` — 생략(`…`)만 남은 문서도 실패다 |
+
+순서와 표기는 문서의 것이다: 같은 목록이 진단 형식(`rect, rounded-rect, …`)으로도 산문 형식
+(`` `minimal`·`editorial`·`ink` ``)으로도 적힐 수 있고, 판정하는 것은 이름의 집합뿐이다.
+**패턴 불일치를 실패로 두는 이유**는 이 게이트가 죽는 가장 조용한 길이 문서를 고쳐 써서 패턴이
+어긋나는 것이기 때문이다 — 그러면 테스트는 초록인데 아무것도 보지 않는다.
+
+**진단 문구 전체는 대조하지 않는다.** 문서 표의 칸은 진단 + 사람을 위한 꼬리이고, 문구의 회귀는
+각 패키지의 테스트가 기댓값으로 이미 잡는다. 문서에만 있는 위험은 목록이다. 문서에 실린 SOML
+예제가 실제로 빌드되는지도 아직 아무것도 보지 않는다 (픽스처에서 가져오는 관례가 유일한 장치다).
+
+테스트가 `core`에 있는 이유: 필수 토큰 목록이 그 패키지의 비공개 변수이고(테스트 때문에 공개
+API를 늘리지 않는다), `internal/testkit`은 `internal/pipeline`을 임포트하므로 거기 두면 순환이다.
+문서만 고치는 커밋은 이 판정만 돌리면 된다 — 브라우저도, 130초짜리 스위트도 필요하지 않다.
+
 ## 골든
 
 골든은 `make golden`으로만 갱신하고, 손으로 쓰지 않는다. 골든 변경은 구현 변경과 **같은
