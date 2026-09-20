@@ -103,6 +103,7 @@ nav:
       - 0053 가운데 정렬만 가로를 가져간다: decisions/0053-a-theme-takes-the-horizontal-channel-only-to-center.md
       - 0054 외부 테마는 이름이고 extends는 이름 단위다: decisions/0054-an-external-theme-is-a-name-inside-the-project-and-extends-overrides-by-name.md
       - 0055 자식 테마는 색을 갈아 끼운다: decisions/0055-a-child-theme-recolors-by-name-because-color-tokens-are-bounded-by-the-clrscheme.md
+      - 0056 예제는 경고 0의 빌드로 게이트한다: decisions/0056-examples-are-gated-by-a-strict-build-not-by-goldens.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |
