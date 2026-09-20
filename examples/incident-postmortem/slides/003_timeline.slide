@@ -1,6 +1,7 @@
-<!-- 타임라인: 다섯 단계를 chevron으로. 라벨은 도형 밖 형제다 (ADR 0042). -->
-<slide id="timeline">
-  <col h="fill" justify="between" gap="md">
+<!-- 타임라인: 다섯 단계를 chevron으로. 라벨은 도형 밖 형제다 (ADR 0042).
+     세로 분배는 슬라이드의 `justify`가 소유한다 (ADR 0044 D17) — 제목이 위, 캡션이 아래
+     끝이고 chevron 줄이 그 사이를 갖는다. 랩퍼가 한 겹 줄어 자식이 모두 직계 자식이다. -->
+<slide id="timeline" justify="between">
   <h2>타임라인 (KST)</h2>
   <grid cols="5" gap="sm">
     <col gap="sm">
@@ -30,6 +31,5 @@
     </col>
   </grid>
   <text role="caption" color="muted">탐지 12분, 완화 17분, 복구 18분. 가장 비싼 구간은 <strong>탐지</strong>였다.</text>
-  </col>
   <note>경보가 늦은 이유는 5xx 임계값이 5분 평균이어서다. 액션 1번이 여기서 나온다.</note>
 </slide>
