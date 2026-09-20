@@ -540,6 +540,9 @@ func contentCSS(feat features) string {
 	if feat.images {
 		css += imageCSS()
 	}
+	if feat.tables {
+		css += tableCSS()
+	}
 	return css
 }
 
@@ -633,6 +636,9 @@ type features struct {
 	// `filter: drop-shadow(var(--balpyo-shadow-soft))`가 정의되지 않은 변수를 가리켜
 	// **그림자가 조용히 사라진다** (var()는 모르는 변수에 아무 소리도 내지 않는다).
 	images bool
+	// tables는 `<table>`가 있는지다 (tableCSS). 표 CSS 절은 셀 여백·테두리 합침처럼 셀 하나로
+	// 표현할 수 없는 값만 담는다 — 표를 안 쓴 덱의 골든이 이 절로 움직이지 않는다.
+	tables bool
 	// layouts는 이 덱이 실제로 쓴, **배치 CSS를 가진** 레이아웃 이름들이다 (정렬·중복 제거).
 	// themeCSS가 이 목록만 규칙으로 낸다 — 다른 어휘 조건과 같은 근거다 (골든 불변): 쓰지 않은
 	// 레이아웃의 배치 규칙이 산출물에 들어가면 diff가 무엇이 변했는지 말해 주지 못한다.
@@ -683,6 +689,8 @@ func contentFeatures(deck *soml.Deck) features {
 				feat.shapes = true
 			case soml.KindImage:
 				feat.images = true
+			case soml.KindTable:
+				feat.tables = true
 			}
 			walk(elem.Children)
 		}

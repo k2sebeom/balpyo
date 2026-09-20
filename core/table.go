@@ -241,6 +241,11 @@ func (r *resolver) resolveCell(cell *soml.Element, stripe bool) (spansValid bool
 	cs := &soml.CellStyle{Header: header, ColSpan: 1, RowSpan: 1}
 	// 셀 텍스트의 바닥 = body 역할 기본값. mergeCell이 이 Text에 색·정렬·앵커·굵기를 얹는다.
 	text := r.textRoleDefaults(soml.RoleBody)
+	// 세로 앵커의 기본값은 **값 층이** 정한다 — 도형과 갈라지는 자리다: 도형은 자식이 앵커를
+	// 적지 않으면 렌더러가 선언을 내지 않지만(ShapeAnchor의 빈 값), 셀의 두 타깃은 모두 값을
+	// 요구한다 (CSS `vertical-align`은 UA 기본값 `middle`이고 OOXML `bodyPr@anchor`도 값을
+	// 갖는다). 렌더러가 각자 기본값을 고르면 그 순간 두 타깃이 갈라진다.
+	text.Anchor = soml.AnchorTop
 	cs.Text = &text
 
 	mergeCell(cs, r.comps.table.cell)

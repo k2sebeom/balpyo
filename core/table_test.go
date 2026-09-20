@@ -122,12 +122,15 @@ func TestResolveCellDefaults(t *testing.T) {
 	if !reflect.DeepEqual(cell.Border, tableCellBorder()) {
 		t.Errorf("Border = %+v, want 테마 cell 기본값 %+v", cell.Border, tableCellBorder())
 	}
-	// 텍스트는 body 역할 기본값 그대로다 (헤더·인라인이 아무것도 얹지 않았다).
+	// 텍스트는 body 역할 기본값 + 세로 앵커 top이다 (헤더·인라인이 아무것도 얹지 않았다).
+	// 앵커 기본값이 값 층에 있는 이유는 두 타깃이 모두 값을 요구하기 때문이다 (resolveCell).
 	if cell.Text == nil {
 		t.Fatal("셀 텍스트 외관이 없다")
 	}
-	if want := textRoleDefaults(soml.RoleBody); *cell.Text != want {
-		t.Errorf("셀 텍스트 = %+v, want body 역할 기본값 %+v", *cell.Text, want)
+	want := textRoleDefaults(soml.RoleBody)
+	want.Anchor = soml.AnchorTop
+	if *cell.Text != want {
+		t.Errorf("셀 텍스트 = %+v, want body 역할 기본값 + 앵커 top %+v", *cell.Text, want)
 	}
 }
 
