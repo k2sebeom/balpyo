@@ -69,17 +69,31 @@ PNG로 되돌려 12장 검수.
 ### P0.1 문자 참조와 리터럴 `<` (D1)
 마크업을 설명하는 덱이 마크업을 못 쓰는 것은 제품 모순이다. 코드·수식·비교 연산자·XML 예제가
 전부 막힌다.
-- [ ] **선결정 ADR**: 세 선택지 — (a) 표준 문자 참조 5종(`&lt; &gt; &amp; &quot; &apos;`) +
+- [x] **선결정 ADR**: 세 선택지 — (a) 표준 문자 참조 5종(`&lt; &gt; &amp; &quot; &apos;`) +
       수치 참조 해석, (b) `<pre>`·`<code>`에 CDATA 섹션 허용, (c) 둘 다. 같이 확정할 것:
       **비-`<pre>` 텍스트에서 `<`가 태그 시작이 아닐 때의 렉서 규칙**(공백이 뒤따르면 문자로 볼지),
       그리고 **역방향 호환**(지금 `&lt;`를 리터럴로 쓰는 덱이 있는가 — 픽스처·예제 검사).
-- [ ] RED: 렉서/파서 단위 테스트(참조 5종 + `&#x27E8;` + 잘못된 참조 진단), `<pre>` 안 CDATA에
+      → [ADR 0037](docs/decisions/0037-char-refs-require-semicolon-and-cdata.md): (c) 둘 다.
+      참조는 `;`로 닫힌 모양일 때만 참조로 **읽고**(그래서 `R&D`·`?a=1&b=2`가 그대로 남아 역방향
+      호환이 성립했다 — 픽스처·예제에 `&`가 하나도 없었다), 어휘 밖이면 에러다. `<`는 영문자·`/`·
+      `<!--`·`<![CDATA[` 앞에서만 마크업이다. 접기 **다음**에 참조를 푼다(`&#32;`가 살아남는다).
+- [x] RED: 렉서/파서 단위 테스트(참조 5종 + `&#x27E8;` + 잘못된 참조 진단), `<pre>` 안 CDATA에
       `<slide id="x">` 원문 보존, 웹 출력에서 **재이스케이프**되어 `&amp;lt;`가 아닌 `&lt;`가 나가는지,
       PPTX `a:t`에서 `<`가 XML 이스케이프되는지.
-- [ ] GREEN: 렉서(`soml/lexer.go` `lexContent`) + 웹/PPTX 이스케이프 경로.
-- [ ] REVIEW: `examples/balpyo-intro`의 매핑 표(P2.1 이후 진짜 `<table>`)를 **실제 SOML 태그
+      → `soml/charref_test.go`(참조·CDATA·경계), `soml/lexer_test.go`(무손실 + 토큰 종류),
+      `render/web/subset_test.go`·`render/pptx/shape_test.go`(한 번만 이스케이프).
+- [x] GREEN: 렉서(`soml/lexer.go` `lexContent`) + 웹/PPTX 이스케이프 경로.
+      → `soml/charref.go`(어휘 + 디코더), `lexer.go`의 `startsMarkup`·`textLen` + CDATA 토큰,
+      `parse.go`의 `charDataValue`(문자 데이터·속성 값 공용). 이스케이프 경로는 이미 출력
+      경계에 한 번만 있어(`html.EscapeString` · `escapeXML`) 손대지 않았다.
+- [x] REVIEW: `examples/balpyo-intro`의 매핑 표(P2.1 이후 진짜 `<table>`)를 **실제 SOML 태그
       문법으로** 다시 쓴다 — 이 항목의 완료 증거는 "덱이 자기 문법을 보여준다"다.
-- [ ] DOC: `docs/reference/soml/text-subset.md`에 문자 참조 절(`pre`·`code` 포함) + `text.md` 갱신.
+      → 7장 매핑 표의 SOML 칸이 CDATA로 `<text>`·`<shape>`·`<row>`…를 원문 그대로 싣고, 3장이
+      `&lt;grid cols="4"&gt;`를 쓴다. 두 타깃 빌드 진단 0건, PPTX를 PNG로 되돌려 확인했다.
+      표 자체를 `<table>`로 바꾸는 것은 P2.1에 남는다 (표 렌더러가 없다).
+- [x] DOC: `docs/reference/soml/text-subset.md`에 문자 참조 절(`pre`·`code` 포함) + `text.md` 갱신.
+      → 「문자 참조」·「CDATA」 두 절 + 진단 표 4줄, `text.md`의 공백 규칙 옆 한 줄,
+      `docs/reference/index.md` 현재 상태에 문법 한 줄. `--strict` 빌드 통과.
 
 ### P0.2 미구현 어휘는 **파싱 전에** 막는다 (D2)
 표를 다 쓴 뒤 렌더 단계에서 죽는 것은 진단의 실패다. 어휘 카탈로그와 렌더러 능력이 갈라질 수
