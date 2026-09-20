@@ -38,6 +38,17 @@ type slideMeasurement struct {
 	Content Rect `json:"content"`
 	// Boxes는 이 슬라이드 안 요소의 측정값이다 (문서 순서, 슬라이드 상대 좌표).
 	Boxes []boxMeasurement `json:"boxes"`
+	// Chrome은 이 슬라이드의 덱 크롬이다 (문서 순서, 슬라이드 상대 좌표 — ADR 0045).
+	//
+	// Boxes와 따로 읽는 이유는 크롬이 덱 트리에 없다는 것이다 (Geometry.Chrome의 주석):
+	// 같은 목록에 담으면 Refs ↔ Boxes 자리 맞대기가 크롬 수만큼 어긋난다.
+	Chrome []chromeMeasurement `json:"chrome"`
+}
+
+// chromeMeasurement는 크롬 하나의 측정값이다 — kind와 rect.
+type chromeMeasurement struct {
+	Kind string `json:"kind"`
+	Rect Rect   `json:"rect"`
 }
 
 // boxMeasurement는 요소 하나의 측정값이다.
@@ -127,6 +138,13 @@ const measureScript = `(() => {
             rect: rel(el.getBoundingClientRect()),
             lines: lineRects(el).map(rel),
           })),
+          // 크롬은 따로 집는다 — 덱 트리에 없으므로 요소 목록에 섞이면 안 된다
+          // (slideMeasurement.Chrome의 주석). 줄 박스는 읽지 않는다: 크롬은 한 줄이고
+          // (CSS의 nowrap), 글줄 넘침 판정의 대상도 아니다 (ADR 0045).
+          chrome: Array.from(slide.querySelectorAll(%q)).map((el) => ({
+            kind: el.getAttribute(%q) || "",
+            rect: rel(el.getBoundingClientRect()),
+          })),
         };
       }),
     };
@@ -147,6 +165,7 @@ func measureExpr() string {
 		web.MeasureViewExpr(),
 		web.SlideSelector(), web.SlideIndexAttr, web.StageSelector(),
 		web.ElementSelector(), web.IDAttr, web.ElAttr,
+		web.ChromeSelector(), web.ChromeKindAttr,
 		web.DocumentViewExpr())
 }
 

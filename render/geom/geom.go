@@ -306,10 +306,48 @@ type Geometry struct {
 	// 비어 있을 수 있다 (JSON에서 되읽은 값·Synthetic·손으로 만든 시험 입력) — 그때는
 	// ContentBox가 기본 여백으로 물러선다.
 	Content []Rect `json:"content,omitempty"`
+	// Chrome은 덱 크롬의 측정 결과다 (슬라이드 순서 · 슬라이드 안에서는 확정 모델 순서).
+	//
+	// Boxes가 아니라 **곁 표**인 이유는 Boxes의 계약이다 (ADR 0045): Boxes는 덱 트리의 요소와
+	// 1:1이고 그 자리 맞대기가 "잰 HTML이 이 덱의 산출물인가"를 판정한다 (Refs ↔ Boxes,
+	// Verify). 크롬은 덱 트리에 없으므로(Slide.Chrome은 Content의 형제다) 끼우면 그 대조가
+	// 무너지고, 배치 진단도 크롬에는 다른 질문을 한다 (여백 띠에 사는 것이 정의다).
+	// Content가 곁 표인 것과 같은 자리다.
+	Chrome []ChromeBox `json:"chrome,omitempty"`
 
 	// index는 식별자 → Boxes 위치다. 생성자가 채우고 그 뒤로는 읽기만 한다 — Box에서
 	// 지연 생성하면 지오메트리를 여러 goroutine이 읽는 순간(픽스처 병렬 실행) 경쟁이 된다.
 	index map[string]int
+}
+
+// ChromeBox는 크롬 하나의 측정 결과다 — 어느 슬라이드의 어느 kind가 어디에 놓였는가.
+//
+// kind를 함께 나르는 이유: PPTX가 rect의 주인을 알아야 같은 자리에 같은 도형을 놓는다.
+// 문서 순서만으로 짝을 지으면 제외 규칙이 한쪽을 뺀 슬라이드에서 번호가 푸터 자리에 놓인다.
+type ChromeBox struct {
+	// Slide는 0-based 슬라이드 순서다 (soml.Slide.Index).
+	Slide int `json:"slide"`
+	// Kind는 크롬 종류다 (soml.ChromeKind).
+	Kind soml.ChromeKind `json:"kind"`
+	// Rect는 슬라이드 상대 좌표의 사각형이다 — 바닥 띠 안이다 (web.chromeCSS).
+	Rect Rect `json:"rect"`
+}
+
+// ChromeRect는 슬라이드 하나의 kind 하나가 놓인 사각형이다.
+//
+// 훑는 이유는 Box와 다르다: 크롬은 슬라이드마다 최대 2개이므로 색인을 만들면 자료구조가
+// 목록보다 커진다. 없으면 false다 — 소비 측은 그때 도형을 만들지 않고 에러를 낸다
+// (조용히 건너뛰면 크롬이 PPTX에서만 사라진다).
+func (g *Geometry) ChromeRect(slide int, kind soml.ChromeKind) (Rect, bool) {
+	if g == nil {
+		return Rect{}, false
+	}
+	for _, box := range g.Chrome {
+		if box.Slide == slide && box.Kind == kind {
+			return box.Rect, true
+		}
+	}
+	return Rect{}, false
 }
 
 // Box는 식별자로 측정 결과를 찾는다.
@@ -415,6 +453,7 @@ func newGeometry(deck *soml.Deck, m measurement) (*Geometry, error) {
 	refs := Refs(deck)
 	boxes := make([]Box, 0, len(refs))
 	content := make([]Rect, len(m.Slides))
+	var chrome []ChromeBox
 	next := 0
 	for i, sm := range m.Slides {
 		slide := deck.Slides[i]
@@ -435,6 +474,24 @@ func newGeometry(deck *soml.Deck, m measurement) (*Geometry, error) {
 		// 소비하는 쪽은 이 값을 읽지 않는다.
 		if sm.Content.valid() {
 			content[i] = sm.Content
+		}
+
+		// 크롬은 확정 모델과 **자리 하나씩** 맞댄다 (ADR 0045) — 수가 맞아도 kind가 뒤바뀌면
+		// 번호가 푸터 자리에 놓인 PPTX가 나오고, 그것은 열어 보기 전까지 정상으로 보인다.
+		if len(sm.Chrome) != len(slide.Chrome) {
+			return nil, fmt.Errorf("%s: HTML의 크롬 %d개, 덱의 크롬 %d개 — 잰 HTML이 이 덱의 산출물이 아니다",
+				slide.Source, len(sm.Chrome), len(slide.Chrome))
+		}
+		for j, cm := range sm.Chrome {
+			item := slide.Chrome[j]
+			if cm.Kind != string(item.Kind) {
+				return nil, fmt.Errorf("%s: %d번째 크롬이 어긋난다 — HTML %s, 덱 %s",
+					slide.Source, j, cm.Kind, item.Kind)
+			}
+			if !cm.Rect.valid() {
+				return nil, fmt.Errorf("%s: 크롬 %s의 rect %s가 유효하지 않다", slide.Source, cm.Kind, cm.Rect)
+			}
+			chrome = append(chrome, ChromeBox{Slide: slide.Index, Kind: item.Kind, Rect: cm.Rect})
 		}
 
 		for _, bm := range sm.Boxes {
@@ -471,7 +528,7 @@ func newGeometry(deck *soml.Deck, m measurement) (*Geometry, error) {
 			strings.Join(missing, ", "))
 	}
 
-	g := &Geometry{Stage: deck.Stage, Boxes: boxes, Content: content, index: newIndex(boxes)}
+	g := &Geometry{Stage: deck.Stage, Boxes: boxes, Content: content, Chrome: chrome, index: newIndex(boxes)}
 	// 같은 대조를 소비 측 계약(Verify)으로 한 번 더 돈다 — 두 경로가 같은 판정을 하는지
 	// 여기서 확인해 두면, 나중에 한쪽만 느슨해지는 일을 막는다.
 	if err := g.Verify(deck); err != nil {

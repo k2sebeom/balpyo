@@ -152,8 +152,61 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 		}
 		siblings[group] = append(siblings[group], i)
 	}
+	return append(diags, diagnoseChrome(deck, g)...)
+}
+
+// diagnoseChrome은 덱 크롬의 배치 사고를 찾는다 (ADR 0045). 질문은 둘뿐이다:
+//
+//  1. 슬라이드 이탈 — 크롬이 논리 스테이지 밖으로 나갔다 (긴 푸터 문자열의 전형).
+//  2. 크롬끼리 겹침 — 푸터가 길어 번호를 덮었다. 두 글자가 겹쳐 둘 다 읽히지 않는다.
+//
+// 요소의 판정(Diagnose의 목록) 중 **콘텐츠 박스 이탈은 묻지 않는다**: 크롬은 스테이지 여백
+// 띠에 사는 것이 정의이므로(web.chromeCSS) 그 판정을 적용하면 크롬을 켠 모든 덱이 슬라이드마다
+// 고칠 수 없는 경고를 받고, 그것이 진단 전부를 잃는 방식이다 (ADR 0039). 부모 이탈도 없다 —
+// 크롬의 부모는 슬라이드이므로 1과 같은 질문이다. 형제 겹침은 **크롬끼리만** 본다: 크롬과
+// 본문은 띠와 콘텐츠 박스로 갈라져 있고, 본문이 띠를 침범한 사고는 그 요소가 이미 콘텐츠 박스
+// 이탈로 듣는다.
+//
+// 진단이 가리키는 파일은 슬라이드다 — 사고가 난 장을 알아야 고칠 수 있다. 무엇을 고치는지는
+// 문장이 말한다 (`balpyo.json`의 문자열이거나 테마의 자리다): 크롬은 저자가 그 슬라이드에 쓴
+// 것이 아니므로 구간(Span)은 없다.
+func diagnoseChrome(deck *soml.Deck, g *Geometry) soml.Diagnostics {
+	stage := stageRect(deck.Stage)
+	var diags soml.Diagnostics
+	for _, slide := range deck.Slides {
+		var seen []ChromeBox
+		for _, item := range slide.Chrome {
+			rect, ok := g.ChromeRect(slide.Index, item.Kind)
+			if !ok {
+				// 잰 지오메트리에는 반드시 있다 (newGeometry가 자리를 맞댄다). 손으로 만든
+				// 입력에는 없을 수 있으므로 조용히 넘긴다 — 여기서 경고를 내면 그 경고가
+				// 가리키는 것은 덱이 아니라 시험 입력이다.
+				continue
+			}
+			if dir, over := escape(rect, stage); over > overflowTolerance {
+				diags = append(diags, soml.Warningf(slide.Source, soml.Span{},
+					"덱 크롬(%s)이 슬라이드를 %s %s 벗어난다 — 글자가 길어 바닥 띠를 넘쳤다 (%s의 footer를 줄이거나 테마가 역할을 작은 것으로 바꾼다)",
+					item.Kind, dir, px(over), configFileName))
+			}
+			for _, other := range seen {
+				if w, h, ok := overlap(other.Rect, rect); ok {
+					diags = append(diags, soml.Warningf(slide.Source, soml.Span{},
+						"덱 크롬(%s)이 크롬(%s)과 %s×%s 겹친다 — 둘 다 읽히지 않는다 (%s의 footer를 줄인다)",
+						item.Kind, other.Kind, px(w), px(h), configFileName))
+				}
+			}
+			seen = append(seen, ChromeBox{Slide: slide.Index, Kind: item.Kind, Rect: rect})
+		}
+	}
 	return diags
 }
+
+// configFileName은 진단 문구에서 가리키는 설정 파일 이름이다 (core.ConfigFile).
+//
+// core를 임포트하지 않는 이유: 렌더 층은 값 층을 임포트하지 않는다 (파이프라인이 둘을
+// 조립한다 — internal/pipeline). 이름 하나를 위해 그 방향을 열면 렌더러가 설정 구조체를
+// 읽을 수 있게 되고, 그러면 "확정 모델만 읽는다"는 계약이 문서상의 약속으로 내려간다.
+const configFileName = "balpyo.json"
 
 // sibGroup은 형제 집합의 열쇠다 — 슬라이드 하나 안의 부모 하나.
 type sibGroup struct {

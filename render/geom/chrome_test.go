@@ -133,9 +133,11 @@ func TestMeasureExprReadsChrome(t *testing.T) {
 // 묻지 않는다 — 크롬은 여백 띠에 사는 것이 정의다.
 func TestDiagnoseChromeEscapesSlide(t *testing.T) {
 	deck := testDeck([]soml.Node{textElem(chars("본문"))})
-	deck.Slides[0].Chrome = chromeItems()
+	// 푸터만 켠 덱이다 — 이탈만 보기 위해 겹침의 상대를 두지 않는다 (둘 다 나면 두 사실이
+	// 한 테스트에서 섞인다).
+	deck.Slides[0].Chrome = chromeItems()[:1]
 	// 푸터가 오른쪽으로 흘러 슬라이드를 나갔다 (긴 문자열).
-	g, err := newGeometry(deck, chromeMeasured(deck, chromeBand(64, 1300), chromeBand(1180, 36)))
+	g, err := newGeometry(deck, chromeMeasured(deck, chromeBand(64, 1300)))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -23,7 +23,15 @@ func Synthetic(deck *soml.Deck, rect Rect) *Geometry {
 	for _, ref := range refs {
 		boxes = append(boxes, Box{ID: ref.ID, El: ref.El, Slide: ref.Slide, Rect: rect})
 	}
-	// 콘텐츠 박스는 채우지 않는다 — 잰 값이 아니므로 여기서 만들면 "테마가 정한 여백"이라는
-	// 뜻이 없는 숫자가 된다. 소비 측은 기본 여백으로 물러선다 (Geometry.ContentBox).
-	return &Geometry{Stage: deck.Stage, Boxes: boxes, index: newIndex(boxes)}
+	// 크롬은 **채운다** (콘텐츠 박스와 갈라지는 자리다): 소비 측이 크롬 도형을 조립하려면
+	// rect가 있어야 하고, 없으면 에러를 내도록 되어 있다 (Geometry.ChromeRect의 주석) —
+	// 그러면 PPTX 조립 테스트가 크롬을 시험할 길이 사라진다. 콘텐츠 박스는 반대다: 없으면
+	// 소비 측이 기본 여백으로 물러서므로(Geometry.ContentBox) 뜻 없는 숫자를 만들지 않는다.
+	var chrome []ChromeBox
+	for _, slide := range deck.Slides {
+		for _, item := range slide.Chrome {
+			chrome = append(chrome, ChromeBox{Slide: slide.Index, Kind: item.Kind, Rect: rect})
+		}
+	}
+	return &Geometry{Stage: deck.Stage, Boxes: boxes, Chrome: chrome, index: newIndex(boxes)}
 }
