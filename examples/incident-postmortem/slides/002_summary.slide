@@ -1,0 +1,27 @@
+<!-- 한 장 요약: 숫자 셋을 나란히. stat 레이아웃은 value 슬롯이 하나라 흐름 모드로 짠다.
+
+     content 레이아웃은 자식을 위에서부터 쌓기만 해서 아래 절반이 빈다. 세로 리듬은
+     저자가 <col h="fill" justify="between">으로 손수 만든다 — 레이아웃이 본문 높이를
+     소유하지 않아 슬라이드마다 이 랩퍼를 다시 쓴다 (마찰점). -->
+<slide id="summary">
+  <col h="fill" justify="between" gap="md">
+  <h2>한 장 요약</h2>
+  <grid cols="3" gap="md">
+    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" h="150" pad="lg">
+      <text role="title" size="44" color="accent1">47분</text>
+      <text role="caption" color="muted">결제 API 5xx 지속</text>
+    </shape>
+    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" h="150" pad="lg">
+      <text role="title" size="44" color="accent1">8.4%</text>
+      <text role="caption" color="muted">최대 오류율 (평시 0.02%)</text>
+    </shape>
+    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" h="150" pad="lg">
+      <text role="title" size="44" color="accent1">12분</text>
+      <text role="caption" color="muted">탐지까지 걸린 시간</text>
+    </shape>
+  </grid>
+  <p>결제 캐시 키 하나가 동시에 만료되면서 DB로 요청이 쏟아졌다. 읽기 풀이 고갈되고
+  결제 API가 5xx를 반환했다. 롤백이 아니라 <strong>부하 차단</strong>으로 멈췄다.</p>
+  </col>
+  <note>숫자 셋만 읽고 다음으로. 자세한 것은 뒤에 있다.</note>
+</slide>

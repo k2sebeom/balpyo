@@ -1,0 +1,21 @@
+<!-- 액션: two-column 레이아웃의 슬롯 둘에 "이번 주 / 다음 스프린트"를 나눈다. -->
+<slide id="actions" layout="two-column">
+  <text slot="title" role="heading">재발 방지 액션</text>
+  <col slot="left" gap="sm">
+    <text role="heading" size="24" color="accent1">이번 주</text>
+    <ol size="18">
+      <li>TTL에 ±10% 지터 (결제 캐시 전부)</li>
+      <li>5xx 경보를 1분 p99로 교체</li>
+      <li>읽기 풀 상한 40 → 96, 경보 80%</li>
+    </ol>
+  </col>
+  <col slot="right" gap="sm">
+    <text role="heading" size="24" color="accent1">다음 스프린트</text>
+    <ol size="18">
+      <li>캐시 미스에 단일 비행 잠금</li>
+      <li>부하 차단을 수동 → 자동 (오류율 2%)</li>
+      <li>스탬피드 부하 시험을 배포 게이트에</li>
+    </ol>
+  </col>
+  <note>담당과 기한은 이슈에 있다. 여기서는 순서만 합의한다.</note>
+</slide>

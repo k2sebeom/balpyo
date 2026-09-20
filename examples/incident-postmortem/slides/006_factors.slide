@@ -1,0 +1,13 @@
+<!-- 기여 요인: 목록 외관(size)과 인라인 서식. -->
+<slide id="factors">
+  <h2>기여 요인 넷</h2>
+  <ul size="20">
+    <li><strong>고정 TTL</strong> — 예열이 모든 키에 같은 만료 시각을 준다.</li>
+    <li><strong>단일 비행 없음</strong> — 캐시 미스가 그대로 DB 질의가 된다
+    (<code>cache.Get</code> 실패 경로에 잠금이 없다).</li>
+    <li><strong>읽기 풀이 작다</strong> — 풀 상한 40, 평시 피크 26. 여유가 14개뿐이었다.</li>
+    <li><strong>경보가 5분 평균</strong> — 임계값이 평균이라 급한 스파이크를 늦게 본다.</li>
+  </ul>
+  <text role="caption" color="muted">넷 중 하나만 없었어도 47분이 아니라 5분이었다.</text>
+  <note>순서는 고치는 비용 순이다. 1번과 4번이 이번 주, 2번이 다음 스프린트.</note>
+</slide>

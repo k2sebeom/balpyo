@@ -1,0 +1,9 @@
+<!-- 표지: title 레이아웃의 슬롯 5종을 다 쓴다. -->
+<slide id="cover" layout="title">
+  <text slot="kicker" role="caption" color="muted" align="center">INCIDENT REVIEW · INC-2431</text>
+  <text slot="title" role="title" align="center">결제 API 5xx, 47분</text>
+  <text slot="subtitle" role="body" color="muted" align="center">캐시 스탬피드 — 무슨 일이 있었고 무엇을 바꾸는가</text>
+  <text slot="author" role="caption" align="center">Platform Team</text>
+  <text slot="date" role="caption" color="muted" align="center">2026-09-18</text>
+  <note>회고의 규칙 먼저: 사람이 아니라 시스템을 본다. 30초.</note>
+</slide>

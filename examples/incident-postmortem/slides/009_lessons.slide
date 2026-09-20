@@ -1,0 +1,7 @@
+<!-- 배운 것: quote 레이아웃의 슬롯 둘. -->
+<slide id="lessons" layout="quote">
+  <blockquote slot="quote" size="34">캐시는 가용성 장치가 아니다. 캐시가 사라진 순간의
+  부하를 견딜 수 있을 때만 캐시다.</blockquote>
+  <text slot="attribution" role="caption" color="muted" align="end">— 회고에서 합의한 한 문장</text>
+  <note>이 문장을 캐시 설계 리뷰 체크리스트 맨 위에 넣는다.</note>
+</slide>

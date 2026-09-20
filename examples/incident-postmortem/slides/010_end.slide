@@ -1,0 +1,6 @@
+<!-- 마무리: end 레이아웃의 슬롯 둘. -->
+<slide id="end" layout="end">
+  <text slot="title" role="title" align="center">질문과 반론</text>
+  <text slot="contact" role="body" color="muted" align="center">기록: <a href="https://example.com/inc-2431">INC-2431 회고 문서</a> · #incident-2431</text>
+  <note>반론이 나오면 액션을 고친다. 회고는 합의가 아니라 수정이 목적이다.</note>
+</slide>
