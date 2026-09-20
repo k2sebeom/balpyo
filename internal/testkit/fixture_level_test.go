@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/k2sebeom/balpyo/core"
+	"github.com/k2sebeom/balpyo/internal/preview"
 	"github.com/k2sebeom/balpyo/render/geom"
 	"github.com/k2sebeom/balpyo/render/pptx"
 	"github.com/k2sebeom/balpyo/render/web"
@@ -869,7 +870,7 @@ func cropImage(img image.Image, r geom.Rect) image.Image {
 	out := image.NewRGBA(image.Rect(0, 0, max(x1-x0, 0), max(y1-y0, 0)))
 	for y := y0; y < y1; y++ {
 		for x := x0; x < x1; x++ {
-			out.SetRGBA(x-x0, y-y0, rgb8(img.At(b.Min.X+x, b.Min.Y+y)))
+			out.SetRGBA(x-x0, y-y0, preview.RGB8(img.At(b.Min.X+x, b.Min.Y+y)))
 		}
 	}
 	return out

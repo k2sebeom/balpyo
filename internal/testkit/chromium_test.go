@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/k2sebeom/balpyo/internal/preview"
 )
 
 // geometryProbe는 크기와 위치가 CSS로 못 박힌 문서다. 브라우저가 읽어 주는 rect가 우리가
@@ -59,7 +61,7 @@ func TestBrowserReadsElementRects(t *testing.T) {
 		{79, 60, white}, {80, 59, white}, {480, 259, white}, {479, 260, white},
 		{0, 0, white}, {1279, 719, white},
 	} {
-		if got := rgb8(shot.At(probe.x, probe.y)); got != probe.want {
+		if got := preview.RGB8(shot.At(probe.x, probe.y)); got != probe.want {
 			t.Errorf("(%d,%d) = %v, want %v — 요소 박스가 아닌 영역을 찍었다",
 				probe.x, probe.y, got, probe.want)
 		}
@@ -100,7 +102,7 @@ func TestBrowserScreenshotIgnoresPageOffset(t *testing.T) {
 		white := color.RGBA{R: 255, G: 255, B: 255, A: 255}
 		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 			for x := bounds.Min.X; x < bounds.Max.X; x++ {
-				if got := rgb8(shot.At(x, y)); got != white {
+				if got := preview.RGB8(shot.At(x, y)); got != white {
 					t.Fatalf("스테이지 %d: (%d,%d) = %v, want 흰색 — 요소 밖(페이지 배경)이 찍혔다",
 						i+1, x-bounds.Min.X, y-bounds.Min.Y, got)
 				}

@@ -1,4 +1,4 @@
-package testkit
+package preview
 
 import (
 	"image"
@@ -75,7 +75,11 @@ func TestDiffCompositesTransparentOverWhite(t *testing.T) {
 
 func TestPNGRoundTrip(t *testing.T) {
 	img := fill(3, 2, color.RGBA{R: 10, G: 20, B: 30, A: 255})
-	decoded, err := DecodePNG(EncodePNG(t, img))
+	data, err := EncodePNG(img)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := DecodePNG(data)
 	if err != nil {
 		t.Fatal(err)
 	}

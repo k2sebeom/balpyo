@@ -14,11 +14,10 @@ package testkit
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 
+	"github.com/k2sebeom/balpyo/internal/preview"
 	"github.com/k2sebeom/balpyo/render/geom"
 )
 
@@ -37,9 +36,9 @@ const (
 	// EnvChromiumNoSandbox가 1이면 --no-sandbox를 붙인다 (컨테이너 안에서는 root라 필수).
 	EnvChromiumNoSandbox = geom.EnvNoSandbox
 	// EnvSoffice는 LibreOffice 실행 파일 경로다.
-	EnvSoffice = "BALPYO_SOFFICE"
+	EnvSoffice = preview.EnvSoffice
 	// EnvPdftoppm은 poppler의 pdftoppm 실행 파일 경로다.
-	EnvPdftoppm = "BALPYO_PDFTOPPM"
+	EnvPdftoppm = preview.EnvPdftoppm
 )
 
 // Strict는 외부 도구가 없을 때 실패해야 하는지 알려준다.
@@ -71,33 +70,21 @@ func RepoRoot(t testing.TB) string {
 	}
 }
 
-// 도구 탐색 순서: 환경 변수 → PATH → 알려진 설치 경로. macOS 경로를 함께 두는 이유는
-// 로컬에서도 (컨테이너 없이) 렌더 헬퍼를 돌려 볼 수 있게 하기 위해서다 — 다만 픽셀
-// 결과는 이미지 안에서만 신뢰한다.
-var (
-	// 브라우저 후보는 빌드와 공유한다 (render/geom) — 목록이 두 벌이면 이미지에 있는
-	// 브라우저를 한쪽만 찾는 상태가 생긴다.
-	chromiumCandidates = geom.Candidates()
-	sofficeCandidates  = []string{
-		"soffice",
-		"libreoffice",
-		"/Applications/LibreOffice.app/Contents/MacOS/soffice",
-	}
-	pdftoppmCandidates = []string{
-		"pdftoppm",
-		"/opt/homebrew/bin/pdftoppm",
-		"/usr/local/bin/pdftoppm",
-	}
-)
+// 도구 탐색은 internal/preview가 소유한다 (환경 변수 → PATH → 알려진 설치 경로). 목록과
+// 순서가 두 벌이면 `balpyo preview`가 찾는 도구와 테스트가 찾는 도구가 갈린다 — 브라우저
+// 후보를 render/geom과 공유하는 것과 같은 이유다.
+//
+// 브라우저 후보는 빌드가 소유한다 (render/geom).
+var chromiumCandidates = geom.Candidates()
 
 // LookChromium은 Chromium 실행 파일을 찾는다.
-func LookChromium() (string, error) { return lookTool(EnvChromium, chromiumCandidates) }
+func LookChromium() (string, error) { return preview.LookTool(EnvChromium, chromiumCandidates) }
 
 // LookSoffice는 LibreOffice 실행 파일을 찾는다.
-func LookSoffice() (string, error) { return lookTool(EnvSoffice, sofficeCandidates) }
+func LookSoffice() (string, error) { return preview.LookSoffice() }
 
 // LookPdftoppm은 pdftoppm 실행 파일을 찾는다.
-func LookPdftoppm() (string, error) { return lookTool(EnvPdftoppm, pdftoppmCandidates) }
+func LookPdftoppm() (string, error) { return preview.LookPdftoppm() }
 
 // RequireChromium은 Chromium이 필요한 테스트의 진입점이다. 없으면 Strict에서 실패,
 // 아니면 건너뛴다.
@@ -120,43 +107,6 @@ func RequirePdftoppm(t testing.TB) string {
 
 // ChromiumNoSandbox는 --no-sandbox가 필요한 환경인지 알려준다.
 func ChromiumNoSandbox() bool { return geom.NoSandbox() }
-
-// lookTool은 환경 변수 → PATH → 후보 경로 순으로 실행 파일을 찾는다.
-func lookTool(env string, candidates []string) (string, error) {
-	if custom := os.Getenv(env); custom != "" {
-		if err := executable(custom); err != nil {
-			return "", fmt.Errorf("%s=%s: %w", env, custom, err)
-		}
-		return custom, nil
-	}
-	for _, candidate := range candidates {
-		if strings.ContainsRune(candidate, filepath.Separator) {
-			if err := executable(candidate); err == nil {
-				return candidate, nil
-			}
-			continue
-		}
-		if path, err := exec.LookPath(candidate); err == nil {
-			return path, nil
-		}
-	}
-	return "", fmt.Errorf("실행 파일을 찾을 수 없다 (후보: %s)", strings.Join(candidates, ", "))
-}
-
-// executable은 경로가 실행 가능한 파일인지 본다.
-func executable(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-	if info.IsDir() {
-		return fmt.Errorf("디렉토리다")
-	}
-	if info.Mode()&0o111 == 0 {
-		return fmt.Errorf("실행 권한이 없다")
-	}
-	return nil
-}
 
 // requireTool은 탐색 실패를 Strict 정책에 따라 실패 또는 건너뛰기로 바꾼다.
 func requireTool(t testing.TB, name, env string, look func() (string, error)) string {

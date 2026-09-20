@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"math"
 
+	"github.com/k2sebeom/balpyo/internal/preview"
 	"github.com/k2sebeom/balpyo/render/geom"
 )
 
@@ -39,7 +40,7 @@ func InkBands(img image.Image, r geom.Rect) []geom.Rect {
 	for y := y0; y < y1; y++ {
 		left, right := -1, -1
 		for x := x0; x < x1; x++ {
-			if maxChannelDelta(rgb8(img.At(bounds.Min.X+x, bounds.Min.Y+y)), background) <= inkChannel {
+			if preview.ChannelDelta(preview.RGB8(img.At(bounds.Min.X+x, bounds.Min.Y+y)), background) <= inkChannel {
 				continue
 			}
 			if left < 0 {
@@ -75,7 +76,7 @@ func modeColor(img image.Image, x0, y0, x1, y1 int) color.RGBA {
 	counts := map[color.RGBA]int{}
 	for y := y0; y < y1; y++ {
 		for x := x0; x < x1; x++ {
-			counts[rgb8(img.At(bounds.Min.X+x, bounds.Min.Y+y))]++
+			counts[preview.RGB8(img.At(bounds.Min.X+x, bounds.Min.Y+y))]++
 		}
 	}
 	var mode color.RGBA
