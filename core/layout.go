@@ -42,6 +42,11 @@ func (r *resolver) resolveLayout(elem, parent *soml.Element) {
 		container = &soml.ContainerLayout{Flow: soml.FlowOf(elem.Name)}
 		containerNames = soml.ContainerAttrs(elem.Name)
 	}
+	// 텍스트 요소(`<text>`·블록·리스트 컨테이너)는 **가로 크기**를 자기 박스에 받는다
+	// (ADR 0043 — soml.TakesTextSize가 그 집합을 소유한다). 값 문법은 컨테이너·도형과 같은
+	// 헬퍼(boxAttr)가 해석하므로 `fill`·`%`·공간 토큰이 같은 뜻이다.
+	var box soml.Box
+	takesSize := soml.TakesTextSize(elem.Name)
 	var placement soml.Placement
 	// at과 x/y는 같은 축의 위치를 정하는 두 채널이다 — 함께 쓰면 어느 쪽이 이기는지 저자가
 	// 외워야 하므로 묻는다 (variant/frame을 함께 받지 않은 것과 같은 기준, ADR 0027). 충돌을
@@ -53,11 +58,17 @@ func (r *resolver) resolveLayout(elem, parent *soml.Element) {
 		switch {
 		case container != nil && containsName(containerNames, attr.Name):
 			r.containerAttr(container, attr)
+		case takesSize && containsName(soml.TextSizeAttrs(), attr.Name):
+			// 컨테이너 분기 **뒤**에 온다: 컨테이너는 자기 목록에 크기 7종을 다 갖고 있어
+			// 여기까지 오지 않는다 (같은 속성이 두 자리에 담기면 렌더러가 둘 다 읽는다).
+			if !r.boxAttr(&box, attr) {
+				r.catalogGap(attr)
+			}
 		case containsName(soml.ChildPlacementAttrs(), attr.Name):
 			r.placementAttr(&placement, attr, parent, anchorConflict)
 		}
 	}
-	if container == nil && placement == (soml.Placement{}) {
+	if container == nil && box == (soml.Box{}) && placement == (soml.Placement{}) {
 		// 배치 속성이 없는 요소는 배치 필드가 **nil로 남는다**. 렌더러의 산출물이 배치
 		// 해석이 붙었다는 이유로 달라지지 않는다는 뜻이고, Iteration 1·2의 골든이 이 nil에
 		// 달려 있다 (빈 구조체를 채우면 렌더러가 "정하지 않음"과 0을 구별할 수 없다).
@@ -65,6 +76,9 @@ func (r *resolver) resolveLayout(elem, parent *soml.Element) {
 	}
 	appearance := elemAppearance(elem)
 	appearance.Container = container
+	if box != (soml.Box{}) {
+		appearance.Box = &box
+	}
 	if placement != (soml.Placement{}) {
 		appearance.Placement = &placement
 	}

@@ -162,3 +162,28 @@ func TestTextSizeAttrsAreBoxSubset(t *testing.T) {
 		}
 	}
 }
+
+// TakesTextSize(값 층이 소비하는 술어)와 파서의 속성 표가 갈라지지 않는다 — 갈라지면 저자가
+// 쓴 `w`가 파싱은 통과하고 값 층에서 조용히 사라진다.
+func TestTakesTextSizeMatchesSpecs(t *testing.T) {
+	want := map[string]bool{TextElement: true}
+	for _, name := range blockElements {
+		want[name] = true
+	}
+	for _, name := range listContainerElements {
+		want[name] = true
+	}
+	for _, name := range allElementNames() {
+		if got := TakesTextSize(name); got != want[name] {
+			t.Errorf("TakesTextSize(%q) = %v, want %v", name, got, want[name])
+		}
+		if !want[name] {
+			continue
+		}
+		for _, attr := range TextSizeAttrs() {
+			if !hasAttr(elementSpecs[name].attrs, attr) {
+				t.Errorf("<%s>가 %s를 받지 않는다 (TakesTextSize는 참이다)", name, attr)
+			}
+		}
+	}
+}

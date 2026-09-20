@@ -122,6 +122,23 @@ func withTextSize(attrs []string) []string {
 	return append(merged, textSizeAttrs...)
 }
 
+// TakesTextSize는 이 태그가 가로 크기 속성을 받는지 보고한다 — `<text>`·블록·리스트
+// 컨테이너다 (withTextSize의 호출자 집합과 같다).
+//
+// 내보내는 이유: 값 층(core)이 "텍스트의 `w`를 해석할 자리"를 이름 비교로 다시 적으면
+// 파서가 연 속성과 값 층이 해석하는 속성이 갈라지고, 갈라진 쪽은 조용히 무시된다. 종류
+// (KindOf)만으로는 답이 안 나온다 — `<text>`는 카탈로그 밖(KindNone)이다.
+func TakesTextSize(name string) bool {
+	if name == TextElement {
+		return true
+	}
+	switch KindOf(name) {
+	case KindBlock, KindListContainer:
+		return true
+	}
+	return false
+}
+
 // childPlacementAttrs는 **자식 배치 속성**이다 (PRD §7.4 자식 표) — 부모 컨테이너 안에서
 // 자기 자리를 정하는 채널이므로 컨테이너가 아니라 **자식**에 붙는다.
 //

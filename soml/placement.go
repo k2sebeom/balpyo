@@ -284,6 +284,16 @@ func (e *Element) Container() *ContainerLayout {
 	return e.Appearance.Container
 }
 
+// Box는 이 요소의 확정 텍스트 박스다 (가로 크기 — ADR 0043). 크기 속성이 없거나 해석
+// 전이면 nil이고, 컨테이너·도형에서는 언제나 nil이다 (그쪽은 Container()·ShapeStyle()이
+// Box를 임베드로 갖는다).
+func (e *Element) Box() *Box {
+	if e.Appearance == nil {
+		return nil
+	}
+	return e.Appearance.Box
+}
+
 // Placement는 이 요소의 확정 자식 배치다. 배치 속성이 없거나 해석 전이면 nil이다.
 func (e *Element) Placement() *Placement {
 	if e.Appearance == nil {
