@@ -10,7 +10,7 @@
   형식을 따른다: 속성 표 → SOML 예제 → 웹/PPTX 각각의 렌더 결과 → 빌드 에러가 나는 조건.
 - `appearance.md` — 외관 속성 전체와 타깃별 컴파일 매핑 표.
 - `layouts.md` — 표준 레이아웃 카탈로그와 슬롯 목록.
-- `theme.md` — 테마 패키지 포맷 (**아직 없다** — 외부 테마 패키지와 함께 생긴다).
+- `theme.md` — 테마 패키지 포맷과 덱 크롬(페이지 번호·푸터) 선언.
 - `cli.md` — 서브커맨드 레퍼런스.
 
 ## 현재 상태
@@ -39,6 +39,9 @@
   슬롯 목록, 배치 CSS의 경계. 배치의 실체는 테마의 `layouts/<이름>.css`가 소유하고, 슬롯은
   웹의 `grid-area`와 PPTX의 `p:ph`가 **같은 카탈로그**에서 나온다.
 
-`theme.md`(테마 패키지 포맷)는 아직 없다 — 지금 테마는 내장 `minimal` 하나이고, 외부 테마
-패키지(`extends`·`chrome`)와 함께 페이지가 생긴다. 구조와 파이프라인은
-[내부 구조](../internals/architecture.md)에 있다.
+- [테마 패키지](theme.md) — `theme.json`·`tokens.json`·`components.json`·`layouts/*.css`가
+  나눠 갖는 것, 그리고 **덱 크롬**(페이지 번호·푸터): 내용과 켜짐은 `balpyo.json`의
+  `footer`·`pageNumber`가, 자리·정렬·역할·제외 규칙은 테마의 `chrome` 선언이 소유한다.
+
+지금 테마는 내장 `minimal` 하나다 — 외부 패키지 로딩과 `extends` 상속은 아직 없다. 구조와
+파이프라인은 [내부 구조](../internals/architecture.md)에 있다.
