@@ -76,6 +76,19 @@ const (
 	// 단색 배경 가정이 깨지고(inkBandSkipSlides), 색은 전부 토큰이라 슬라이드 파트에 리터럴
 	// `srgbClr`는 0건이다 (fixtureLiteralColors에 행이 없다).
 	shapeLayoutFixtureName = "11_shape_layout"
+	// paletteFixtureName은 P4.1의 강조색 팔레트 픽스처다 (D12 — ADR 0050). 새로 시험하는
+	// 것은 **여섯 토큰이 여섯 슬롯으로 간다**는 것이다: 팔레트가 하나였을 때 clrScheme의
+	// accent2..6은 accent1에서 빌려 채운 자리였고(render/pptx.clrSchemeSlots), 그래서
+	// `fill="accent3"`을 쓸 어휘가 있어도 색이 파랑이었다.
+	//
+	// 아래 검사들이 이 픽스처에서 보는 것은 **참조**다: 슬라이드 파트에 리터럴 `srgbClr`가
+	// 0건이고(fixtureLiteralColors에 행이 없다) 여섯 accent 참조가 그대로 있다. 색 변형과
+	// 그라디언트까지 토큰으로만 쓴 이유가 그것이다 — 변형 코드가 토큰 이름을 보고 분기하지
+	// 않는다는 것은 accent1 밖에서도 같은 XML이 나올 때 사실이 된다 (ADR 0033).
+	//
+	// 앞 픽스처들이 깬 전제 하나를 물려받는다: 색 견본이 큰 면을 덮으므로 잉크 띠의 단색
+	// 배경 가정이 깨진다 (inkBandSkipSlides에 두 슬라이드가 있다).
+	paletteFixtureName = "12_palette"
 )
 
 // fixtureNames는 픽스처 수준 검증(파트 목록·색 계약·좌표 대조·도형 수 등식·잉크 띠)이 도는
@@ -86,7 +99,7 @@ const (
 // 있으면 도형 픽스처를 넣는 것이 표의 뜻을 어기는 일처럼 보이고, 그러면 다음 사람이 같은
 // 계약을 받을 픽스처를 두 번째 표에 적는다.
 var fixtureNames = []string{textFixtureName, textSubsetFixtureName, layoutFixtureName, shapeFixtureName,
-	imageFixtureName, stackFixtureName, shapeLayoutFixtureName}
+	imageFixtureName, stackFixtureName, shapeLayoutFixtureName, paletteFixtureName}
 
 // fixtureByName은 픽스처 러너와 같은 수집 경로로 픽스처를 집는다 — 경로를 직접 조립하면
 // 러너가 못 보는 픽스처를 여기만 보는 상태가 생길 수 있다.
@@ -395,6 +408,33 @@ var goldenPartLists = map[string][]string{
 		"pptx/ppt/slides/slide3.xml",
 		"pptx/ppt/theme/theme1.xml",
 	},
+	paletteFixtureName: {
+		// diagnostics.txt가 **없다**: 색 견본은 크기를 직접 정한 도형이라 넘칠 것이 없고,
+		// 모든 색이 테마에 있는 토큰이므로 경고할 자리도 없다 — 새 accent 이름 하나가
+		// tokens.json에서 빠지면 이 목록이 먼저 말한다 (없는 토큰은 에러이므로 빌드가 죽고,
+		// 오타 난 variant라면 diagnostics.txt가 생긴다).
+		"index.html",
+		"pptx/[Content_Types].xml",
+		"pptx/_rels/.rels",
+		"pptx/docProps/app.xml",
+		"pptx/docProps/core.xml",
+		"pptx/ppt/_rels/presentation.xml.rels",
+		"pptx/ppt/notesMasters/_rels/notesMaster1.xml.rels",
+		"pptx/ppt/notesMasters/notesMaster1.xml",
+		// 노트는 001에만 있다.
+		"pptx/ppt/notesSlides/_rels/notesSlide1.xml.rels",
+		"pptx/ppt/notesSlides/notesSlide1.xml",
+		"pptx/ppt/presentation.xml",
+		"pptx/ppt/slideLayouts/_rels/slideLayout1.xml.rels",
+		"pptx/ppt/slideLayouts/slideLayout1.xml",
+		"pptx/ppt/slideMasters/_rels/slideMaster1.xml.rels",
+		"pptx/ppt/slideMasters/slideMaster1.xml",
+		"pptx/ppt/slides/_rels/slide1.xml.rels",
+		"pptx/ppt/slides/_rels/slide2.xml.rels",
+		"pptx/ppt/slides/slide1.xml",
+		"pptx/ppt/slides/slide2.xml",
+		"pptx/ppt/theme/theme1.xml",
+	},
 }
 
 // 골든에 들어간 파트 목록을 픽스처별로 통째로 단정한다.
@@ -446,6 +486,8 @@ var slideCounts = map[string]int{
 	stackFixtureName:      11,
 	// 카드 + 컨테이너를 거친 어휘 + 두 모드 대비 = 3장이다 (ADR 0049).
 	shapeLayoutFixtureName: 3,
+	// 견본 여섯 + 변형·그라디언트 = 2장이다 (ADR 0050).
+	paletteFixtureName: 2,
 }
 
 // fixtureLiteralColors는 슬라이드 파트에 **리터럴 색으로 나와야 하는** 값의 전수 목록이다
@@ -498,6 +540,49 @@ func TestFixtureGoldenSlideColorsKeepTokenReferences(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// 강조색 여섯이 **여섯 슬롯을 각각 채우고** 슬라이드가 그 여섯을 참조한다 (P4.1 — D12,
+// ADR 0050). 두 파트를 함께 보는 이유: 참조만 있으면 어휘가 열린 것이고(`fill="accent3"`이
+// 빌드된다) 슬롯만 있으면 쓸 자리가 없다 — 색의 위계는 **참조가 서로 다른 색으로 해석될 때**
+// 비로소 생긴다. 팔레트가 하나였을 때 이 테스트는 accent2..6이 전부 accent1의 파랑이라
+// 실패한다 (clrScheme의 폴백이 그 자리를 빌려 채웠다 — render/pptx.clrSchemeSlots).
+//
+// 브라우저 없이 골든만 읽는다 (파트 목록 검사와 같은 자리다).
+func TestPaletteFixtureBindsSixAccentSlots(t *testing.T) {
+	goldenDir := fixtureByName(t, paletteFixtureName).GoldenDir()
+	read := func(parts ...string) string {
+		data, err := os.ReadFile(filepath.Join(append([]string{goldenDir}, parts...)...))
+		if err != nil {
+			t.Fatalf("골든이 없다 (`make golden`으로 만든다): %v", err)
+		}
+		return string(data)
+	}
+
+	theme := read("pptx", "ppt", "theme", "theme1.xml")
+	slide := read("pptx", "ppt", "slides", "slide1.xml")
+	slot := regexp.MustCompile(`<a:(accent[1-6])><a:srgbClr val="([0-9A-F]{6})"/></a:accent[1-6]>`)
+	rgbBySlot := map[string]string{}
+	for _, m := range slot.FindAllStringSubmatch(theme, -1) {
+		rgbBySlot[m[1]] = m[2]
+	}
+	slotByRGB := map[string]string{}
+	for i := 1; i <= 6; i++ {
+		name := fmt.Sprintf("accent%d", i)
+		rgb, ok := rgbBySlot[name]
+		if !ok {
+			t.Errorf("theme1.xml에 %s 자리가 없다", name)
+			continue
+		}
+		if first, dup := slotByRGB[rgb]; dup {
+			t.Errorf("%s의 색 %s가 %s와 같다 — 여섯 자리가 같은 색이면 색의 위계를 만들 수 없다",
+				name, rgb, first)
+		}
+		slotByRGB[rgb] = name
+		if ref := `<a:schemeClr val="` + name + `"`; !strings.Contains(slide, ref) {
+			t.Errorf("slide1.xml이 %s를 참조하지 않는다 — 견본 슬라이드가 여섯 토큰을 전수로 쓴다", name)
+		}
 	}
 }
 
@@ -2021,6 +2106,15 @@ var inkBandSkipSlides = map[string]bool{
 	"11_shape_layout/shape-layout-card":   true,
 	"11_shape_layout/shape-layout-nested": true,
 	"11_shape_layout/shape-layout-modes":  true,
+	// 12_palette 두 장: 색 견본이 슬라이드의 큰 면을 덮는다 — 색을 보는 픽스처이므로 04와
+	// 같은 이유로 "가장 흔한 색이 배경"이라는 전제가 깨진다 (여섯 견본 합이 슬라이드의 12%,
+	// 흰 라벨 글자는 그 면 **안**에 있어 띠로 뭉친다).
+	//
+	// 잃는 것과 남는 것: 이 픽스처가 시험하는 것은 줄바꿈이 아니라 색 참조이고, 그 참조는
+	// 0 오차로 따로 못 박힌다 (아래 리터럴 색 검사 + render/pptx.TestRenderColorVariants).
+	// 좌표는 좌표 대조가 판정한다.
+	"12_palette/palette-accents":  true,
+	"12_palette/palette-variants": true,
 }
 
 // 두 렌더 엔진이 같은 자리에서 줄을 나누는가 — Iteration 1의 리뷰 포인트를 수치로 판정한다

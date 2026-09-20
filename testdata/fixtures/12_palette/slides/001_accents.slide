@@ -1,0 +1,36 @@
+<!-- 강조색 여섯 (P4.1 — D12). 이 슬라이드가 시험하는 것은 **여섯 토큰이 여섯 슬롯으로
+     간다**는 것이다: 산출 PPTX의 이 슬라이드 파트에는 `schemeClr val="accent1"`부터
+     `accent6`까지가 각각 있고 리터럴 `srgbClr`는 0건이다 (fixtureLiteralColors에 이
+     슬라이드의 행이 없는 것이 그 계약이다). 팔레트가 하나였을 때는 이 여섯 칸이 전부 같은
+     파랑이었다 — clrScheme의 accent2..6을 accent1에서 빌려 채웠기 때문이다
+     (render/pptx.clrSchemeSlots).
+
+     `border="none"`인 이유: 컴포넌트 기본값이 `border: 1 solid muted`이므로 그냥 두면 색
+     견본마다 회색 테두리가 생겨 색을 보는 슬라이드에 색이 아닌 것이 끼어든다.
+
+     라벨을 `color="bg"`로 쓰는 것이 팔레트 규칙의 절반이다 — 여섯 색 모두 bg 대비 4.5:1
+     이상이므로(core.TestMinimalAccentPalette) 흰 글자가 여섯 면 위에서 모두 읽힌다. -->
+<slide id="palette-accents">
+  <h2>강조색 여섯</h2>
+  <grid cols="3" gap="md">
+    <shape type="rounded-rect" fill="accent1" border="none" radius="md" w="fill" h="120" pad="sm">
+      <text color="bg" align="center" anchor="center">accent1</text>
+    </shape>
+    <shape type="rounded-rect" fill="accent2" border="none" radius="md" w="fill" h="120" pad="sm">
+      <text color="bg" align="center" anchor="center">accent2</text>
+    </shape>
+    <shape type="rounded-rect" fill="accent3" border="none" radius="md" w="fill" h="120" pad="sm">
+      <text color="bg" align="center" anchor="center">accent3</text>
+    </shape>
+    <shape type="rounded-rect" fill="accent4" border="none" radius="md" w="fill" h="120" pad="sm">
+      <text color="bg" align="center" anchor="center">accent4</text>
+    </shape>
+    <shape type="rounded-rect" fill="accent5" border="none" radius="md" w="fill" h="120" pad="sm">
+      <text color="bg" align="center" anchor="center">accent5</text>
+    </shape>
+    <shape type="rounded-rect" fill="accent6" border="none" radius="md" w="fill" h="120" pad="sm">
+      <text color="bg" align="center" anchor="center">accent6</text>
+    </shape>
+  </grid>
+  <note>색상환의 이웃 순서다 — accent2는 accent1의 "두 번째로 중요한 색"이 아니라 옆 색이다.</note>
+</slide>

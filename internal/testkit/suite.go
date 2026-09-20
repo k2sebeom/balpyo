@@ -151,6 +151,22 @@ var slideDiffOptions = map[string]DiffOptions{
 	// render/web.TestShapeFillGradientEmitsSVGDef)가 0 오차로 못 박으므로 이 픽셀 여유가
 	// 스톱 갈라짐을 덮어 감추지 않는다.
 	"07_gradient/fill-gradient": {Channel: 32, MaxRatio: 0.038},
+	// 12_palette/palette-variants: 색 변형 슬라이드다 (P4.1). 갈라짐의 절반이 **tint 블록
+	// 하나**다 — 측정 3.750% 중 tint 40% 견본(160×110px)이 1.895%이고 그 블록은 **전체가**
+	// 다르다. ADR 0033이 의식적으로 포기한 색 일치가 여기서 처음 눈에 보인다: 웹의
+	// `color-mix(in srgb, …, white 40%)`는 흰색을 섞어 채도를 낮추고, PPTX의
+	// `lumMod`/`lumOff`는 광도만 올려 채도를 남긴다. 그래서 LibreOffice의 tint는 밝은 초록,
+	// 웹은 옅은 초록이다. accent1(파랑)에서 이 차이가 2.0%로 작았던 것은 색상 때문이지
+	// 매핑이 달라서가 아니다 — 팔레트를 여섯 색으로 늘린 결과가 같은 결정을 더 크게 보이게
+	// 했다 (ADR 0050의 결과 절).
+	//
+	// 참조는 이 비율이 아니라 구조 테스트가 0 오차로 판정한다
+	// (render/pptx.TestRenderColorVariants — `schemeClr` + `lumMod`/`lumOff`,
+	// TestFixtureGoldenSlideColorsKeepTokenReferences — 슬라이드 파트에 리터럴 srgbClr 0건). 나머지
+	// 1.855%는 글리프·그라디언트 경계 잔차다. 4.2%는 측정값에 앞 픽스처들과 같은 폭의 여유를
+	// 더한 값이다. 슬라이드 1(견본 여섯)은 0.829%로 기본 허용 안이다 — 완화가 변형 슬라이드
+	// 한 장에만 있는 이유다.
+	"12_palette/palette-variants": {Channel: 32, MaxRatio: 0.042},
 }
 
 // CompareRenders는 픽스처의 웹 스크린샷과 PPTX 렌더를 슬라이드별로 비교한다.

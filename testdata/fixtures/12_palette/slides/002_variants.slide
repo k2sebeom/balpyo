@@ -1,0 +1,43 @@
+<!-- 새 강조색에서도 **참조가 보존된다** (P4.1). 07_gradient가 이미 못 박은 계약이지만
+     (색 변형·그라디언트는 `schemeClr` 안의 `lumMod`/`lumOff`/`alpha`와 `gradFill`의 스톱
+     참조로 컴파일된다), 그때 시험한 색은 accent1 하나였다 — 변형 코드가 토큰 이름을 보고
+     분기하지 않는다는 것은 다른 슬롯에서도 같은 XML이 나올 때 비로소 사실이 된다.
+
+     그래서 이 슬라이드의 모든 색이 토큰이다 (리터럴 `#RRGGBB`가 하나도 없다): 첫 행은
+     accent3을 base·shade·tint·alpha로 나란히 놓고, 둘째 행은 **두 강조색 사이**의
+     그라디언트(accent2 → accent6)와 accent4·accent5 글자다.
+
+     스톱을 둘로 두는 이유: 3색 스톱은 LibreOffice가 근사해 그려 픽셀 비교가 뷰어 소관의
+     갈라짐을 재게 된다 (07_gradient/fill-gradient의 기록). 여기서 볼 것은 스톱 수가 아니라
+     **스톱이 토큰 참조로 남는가**다. -->
+<slide id="palette-variants">
+  <h2>변형과 그라디언트도 참조로 남는다</h2>
+  <row gap="md" align="center">
+    <shape type="rect" fill="accent3" border="none" w="160" h="110" pad="sm">
+      <text color="bg" align="center" anchor="center">base</text>
+    </shape>
+    <shape type="rect" fill="shade(accent3, 40%)" border="none" w="160" h="110" pad="sm">
+      <text color="bg" align="center" anchor="center">shade 40%</text>
+    </shape>
+    <shape type="rect" fill="tint(accent3, 40%)" border="none" w="160" h="110" pad="sm">
+      <text color="fg" align="center" anchor="center">tint 40%</text>
+    </shape>
+    <shape type="rect" fill="alpha(accent3, 0.5)" border="none" w="160" h="110" pad="sm">
+      <text color="fg" align="center" anchor="center">alpha 0.5</text>
+    </shape>
+  </row>
+  <row gap="lg" align="center">
+    <shape type="rounded-rect" fill="gradient(accent2 accent6)" border="none" radius="lg" w="280" h="120" pad="sm">
+      <text color="bg" align="center" anchor="center">accent2 → accent6</text>
+    </shape>
+    <!-- `w="320"`은 글자를 잰 폭보다 넓다 — 컨테이너의 교차축 stretch가 그 폭을 자식
+         텍스트 박스에 준다. 폭을 정하지 않으면 박스가 글자를 정확히 감싸고, 그러면 잰 폭
+         +4% 안전 여유(PRD §13-1)로도 LibreOffice가 한 줄을 지키지 못해 "accent4"와 "글자"가
+         갈라진다 (라틴+한글이 섞인 짧은 줄에서 두 엔진의 폭 계산 차가 여유를 넘는다). 이
+         픽스처가 볼 것은 색이므로 줄바꿈 잔차를 미리 없앤다. -->
+    <col gap="sm" w="320">
+      <text color="accent4">accent4 글자</text>
+      <text color="accent5">accent5 글자</text>
+    </col>
+  </row>
+</slide>
