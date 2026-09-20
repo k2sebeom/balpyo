@@ -311,7 +311,7 @@
           </a:ln>
         </p:spPr>
         <p:txBody>
-          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+          <a:bodyPr wrap="square" lIns="-1285875" tIns="0" rIns="-1285875" bIns="0" anchor="t">
             <a:noAutofit/>
           </a:bodyPr>
           <a:lstStyle/>

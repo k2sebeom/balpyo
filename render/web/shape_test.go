@@ -282,6 +282,39 @@ func TestShapeTextRectsMatchPresetDefinitions(t *testing.T) {
 	}
 }
 
+// 되돌림 열(TextCancel)은 **chevron 하나**다 (ADR 0041) — 그 프리셋의 rect가 우리가 내는
+// 조정값에서 폭 0 열로 붕괴하기 때문이다. 값은 `x1 = w/2`·`x2 = r − x1`에서 오는 좌우 50%다.
+//
+// 두 열이 **동시에** 차 있을 수 없다는 것이 이 표의 계약이다: 프리셋의 rect를 쓰기로 했으면
+// (TextRect) 되돌릴 것이 없고, 되돌리기로 했으면 그 rect를 안 쓰는 것이다. 둘이 겹치면 웹이
+// 인셋을 넣고 PPTX가 같은 인셋을 빼는 상쇄가 생겨 어느 쪽이 참인지 알 수 없다.
+func TestShapeTextCancelIsChevronOnly(t *testing.T) {
+	for _, geom := range shapeGeometries() {
+		cancel, ok := ShapeTextCancel(geom.Type)
+		if !ok {
+			t.Fatalf("ShapeTextCancel(%q)가 표에 없다", geom.Type)
+		}
+		want := ShapeInsets{}
+		if geom.Type == "chevron" {
+			want = ShapeInsets{L: 50, R: 50}
+		}
+		if cancel != want {
+			t.Errorf("%q의 되돌림 = %+v, want %+v", geom.Type, cancel, want)
+		}
+		if cancel.HasPercent() && geom.TextRect.HasPercent() {
+			t.Errorf("%q: 텍스트 영역과 되돌림이 함께 차 있다 (%+v / %+v) — 웹의 인셋과 PPTX의 "+
+				"음수 인셋이 상쇄된다", geom.Type, geom.TextRect, cancel)
+		}
+		if cancel.Radius != 0 {
+			t.Errorf("%q: 되돌림에 반경 비례가 있다 (%v) — 반경은 프리셋의 rect를 움직이지 않는다",
+				geom.Type, cancel.Radius)
+		}
+	}
+	if _, ok := ShapeTextCancel("triangle"); ok {
+		t.Error("어휘 밖 type에 되돌림이 있다")
+	}
+}
+
 // 어휘 카탈로그의 `soml.ShapeInsetText`(이름 8종)와 이 표의 `TextRect.HasPercent()`(수치)는
 // **같은 사실의 두 얼굴**이다 — 값 층이 확정 높이를 요구하는 프리셋과 웹이 절대 배치 래퍼를
 // 쓰는 프리셋이 갈라지면, 진단 없이 납작해지는 도형이나 이유 없이 높이를 요구하는 도형이

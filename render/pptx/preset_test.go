@@ -397,6 +397,44 @@ func TestRenderShapeTextBody(t *testing.T) {
 	}
 }
 
+// chevron의 프리셋 rect는 폭 0 열(`x1 = x2 = w/2`)이라 좌우 인셋이 **음수**로 그 폭을
+// 되돌린다 (ADR 0041) — 되돌리지 않으면 뷰어가 글자를 한 자씩 세로로 쌓는다.
+//
+// 세로가 0인 것이 이 보정의 좁음이다: chevron 프리셋의 rect는 위아래가 박스와 같다. 나머지
+// 11종은 보정이 아예 없고(`rect` 갈래가 그것을 단정한다), 그 짝은 픽셀이 지킨다
+// (internal/testkit의 도형 안 텍스트 대조).
+func TestRenderChevronCancelsItsTextRect(t *testing.T) {
+	shape := geom.Rect{X: 64, Y: 64, W: 280, H: 120}
+	cancel := EMU(shape.W / 2)
+	for _, tc := range []struct {
+		name  string
+		attrs string
+		want  string
+	}{
+		{"pad 없는 chevron", `type="chevron"`,
+			fmt.Sprintf(`lIns="%d" tIns="0" rIns="%d" bIns="0"`, -cancel, -cancel)},
+		// `pad`는 보정 **위에** 더해진다 — 뜻이 "텍스트 영역 안쪽으로"이므로 두 값이 한 축에서
+		// 만나고, 웹에서도 같은 여백이 같은 자리에 들어간다 (ADR 0040).
+		{"pad 있는 chevron", `type="chevron" pad="16"`,
+			fmt.Sprintf(`lIns="%d" tIns="%d" rIns="%d" bIns="%d"`,
+				EMU(16)-cancel, EMU(16), EMU(16)-cancel, EMU(16))},
+		{"보정 없는 프리셋", `type="rect"`, `lIns="0" tIns="0" rIns="0" bIns="0"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			deck := resolvedDeck(t, fmt.Sprintf(`<slide>
+  <shape %s fill="surface" w="280" h="120">
+    <p>단계</p>
+  </shape>
+</slide>`, tc.attrs))
+			xml := slideXML(t, deck, measuredGeometry(t, deck, shape,
+				geom.Rect{X: 64, Y: 100, W: 280, H: 30}))
+			if !strings.Contains(xml, tc.want) {
+				t.Errorf("slide1.xml에 %q가 없다\n%s", tc.want, xml)
+			}
+		})
+	}
+}
+
 // 세로 앵커 3종 → `bodyPr@anchor`. 규칙(첫 자식이 정한다)은 웹과 **같은 함수**에서 온다
 // (web.ShapeAnchor) — 두 벌이면 두 타깃의 앵커가 갈라진다.
 func TestRenderShapeAnchor(t *testing.T) {
