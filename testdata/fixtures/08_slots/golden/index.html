@@ -160,13 +160,14 @@
 
   .balpyo-stage.balpyo-slots > :is(.balpyo-text, .balpyo-list) { width: auto; }
   .balpyo-stage.balpyo-layout-content.balpyo-slots { display: grid; grid-template-columns: 1fr; grid-template-rows: auto 1fr; grid-template-areas: "title" "body"; align-content: start; }
+  .balpyo-stage.balpyo-layout-quote.balpyo-slots { display: grid; grid-template-columns: 1fr; grid-template-rows: auto auto; grid-template-areas: "quote" "attribution"; align-content: center; }
   .balpyo-stage.balpyo-layout-title.balpyo-slots { display: grid; grid-template-columns: 1fr; grid-template-rows: auto auto auto 1fr auto auto; grid-template-areas: "kicker" "title" "subtitle" "." "author" "date"; justify-items: center; align-content: center; }
   .balpyo-stage.balpyo-layout-two-column.balpyo-slots { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; grid-template-areas: "title title" "left right"; align-content: start; }
 }
 </style>
 </head>
 <body>
-<div class="balpyo-deck" data-aspect="16:9" data-slides="4">
+<div class="balpyo-deck" data-aspect="16:9" data-slides="5">
 <section class="balpyo-slide" id="content-slots" data-slide-index="0" data-slide-source="slides/001_content_slots.slide">
 <div class="balpyo-stage balpyo-layout-content balpyo-slots">
 <h1 class="balpyo-text" data-balpyo-id="s0.0" data-balpyo-el="h1" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start; grid-area: title">분기 하이라이트</h1>
@@ -193,6 +194,12 @@
 <p class="balpyo-text" data-balpyo-id="s3.2" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; grid-area: subtitle">모놀리스에서 서비스 경계로</p>
 <p class="balpyo-text" data-balpyo-id="s3.3" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; grid-area: author">김서봄</p>
 <p class="balpyo-text" data-balpyo-id="s3.4" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; grid-area: date">2026-09-20</p>
+</div>
+</section>
+<section class="balpyo-slide" id="quote-slots" data-slide-index="4" data-slide-source="slides/005_quote_slots.slide">
+<div class="balpyo-stage balpyo-layout-quote balpyo-slots">
+<blockquote class="balpyo-text" data-balpyo-id="s4.0" data-balpyo-el="blockquote" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start; grid-area: quote">측정할 수 없는 것은 관리할 수 없다는 말은 절반만 맞다 — 측정한 것만 관리하면 측정하지 않은 것이 무너진다.</blockquote>
+<p class="balpyo-text" data-balpyo-id="s4.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; grid-area: attribution">— 운영 회고, 2026 H1</p>
 </div>
 </section>
 </div>

@@ -1,0 +1,12 @@
+<!-- 슬라이드 수준 `justify`가 세로 리듬을 정한다 (ADR 0044 D17). 흐름 스테이지는 세로
+     flex이므로 `justify="between"` 한 선언이 첫 블록을 위 끝, 마지막 블록을 아래 끝으로
+     보낸다 — 이 채널이 없던 동안 저자는 슬라이드마다 `<col h="fill" justify="between">`
+     랩퍼를 손으로 만들었고, 그 랩퍼 안의 자식은 슬라이드 직계 자식이 아니게 되어 `slot=`을
+     쓸 수 없었다. **판정은 잰 좌표다**: 첫 박스의 y가 콘텐츠 박스 위, 마지막 박스의 아래가
+     콘텐츠 박스 아래에 닿아야 하고, 그 좌표가 그대로 PPTX `a:off`로 실린다. -->
+<slide id="slide-justify" justify="between">
+  <text role="heading">위에서 시작한다</text>
+  <text role="body">가운데 블록은 남은 공간이 나눠 준 자리에 앉는다. 랩퍼 없이 스테이지가
+  직접 분배하므로 이 세 블록은 모두 슬라이드 직계 자식이다.</text>
+  <text role="caption" color="muted">아래 끝에 닿는다</text>
+</slide>

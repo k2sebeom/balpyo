@@ -191,6 +191,9 @@ var goldenPartLists = map[string][]string{
 		"pptx/ppt/slides/_rels/slide5.xml.rels",
 		"pptx/ppt/slides/_rels/slide6.xml.rels",
 		"pptx/ppt/slides/_rels/slide7.xml.rels",
+		// 008(슬라이드 justify)이 파트를 늘리지 않았다 — 세로 분배는 스테이지의 인라인
+		// 선언이고 잰 좌표만 움직인다 (ADR 0044 D17).
+		"pptx/ppt/slides/_rels/slide8.xml.rels",
 		"pptx/ppt/slides/slide1.xml",
 		"pptx/ppt/slides/slide2.xml",
 		"pptx/ppt/slides/slide3.xml",
@@ -198,6 +201,7 @@ var goldenPartLists = map[string][]string{
 		"pptx/ppt/slides/slide5.xml",
 		"pptx/ppt/slides/slide6.xml",
 		"pptx/ppt/slides/slide7.xml",
+		"pptx/ppt/slides/slide8.xml",
 		"pptx/ppt/theme/theme1.xml",
 	},
 	shapeFixtureName: {
@@ -395,7 +399,7 @@ func TestFixtureGoldenPartList(t *testing.T) {
 var slideCounts = map[string]int{
 	textFixtureName:       3,
 	textSubsetFixtureName: 6,
-	layoutFixtureName:     7,
+	layoutFixtureName:     8,
 	shapeFixtureName:      8,
 	imageFixtureName:      7,
 	stackFixtureName:      11,
