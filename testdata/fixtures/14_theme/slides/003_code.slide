@@ -1,0 +1,19 @@
+<!-- 코드 색의 주인도 테마다 (ADR 0051 · 0052). 같은 `lang="go"` 블록이 minimal에서는 어두운
+     글자 넷, ink에서는 밝은 글자 넷을 얻는다 — 13_code의 골든과 이 골든의 차이가 그것이다.
+     밝은 테마의 코드 색을 어두운 바탕에 그대로 옮기면 주석 말고는 보이지 않으므로, 어두운
+     테마는 자기 강조색을 갖는다 (core/palette_test.go가 여섯 색의 bg 대비를 지킨다).
+
+     탭도 테마가 정한 폭으로 펴진다 (`code.tabSize` — ink도 2다): 원문은 gofmt 출력 그대로
+     탭이지만 산출물에는 탭이 한 개도 없다. -->
+<slide id="theme-code" layout="code">
+  <text slot="title" role="heading">코드도 테마의 색을 받는다</text>
+  <pre slot="code" lang="go">// 테마 이름은 덱의 요청이고, 결과는 토큰 표다.
+func themeOf(deck *Deck) (Theme, error) {
+	name := deck.ThemeName
+	if name == "" {
+		name = DefaultTheme
+	}
+	return load(name)
+}</pre>
+  <text slot="caption" role="caption">같은 블록이 테마마다 다른 색을 얻는다.</text>
+</slide>

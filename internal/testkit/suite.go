@@ -108,6 +108,19 @@ var fixtureDiffOptions = map[string]DiffOptions{
 	// docs/guides/known-differences.md). 슬라이드 2는 2.27%다. 3.4%는 측정값에 앞 픽스처들과
 	// 같은 폭의 여유를 더한 값이다.
 	"13_code": {Channel: 32, MaxRatio: 0.034},
+	// 측정 최대 2.92% (슬라이드 2 002_roles — P4.2). 잔차는 **어두운 바탕 때문이 아니다**:
+	// 채널 임계값 32는 배경과 글자의 차이가 아니라 같은 글자의 두 래스터 사이 차이를 재고,
+	// 밝은 글자의 AA 계조는 어두운 글자의 것과 폭이 같다. 이 픽스처가 기본 2.5%를 넘는 이유는
+	// 02_text_subset·13_code과 같다: 글줄마다 라틴 낱말이 한글 문장에 박혀 있어
+	// (`24px`·`muted`·`variant`) LibreOffice의 스크립트 간격이 **줄 오른쪽 전체를** 밀고, 밀린
+	// 글자의 획이 양쪽에서 이중으로 세어진다 (한 줄에 경계가 둘이면 줄의 절반이 그렇게 된다).
+	//
+	// 구조는 이 비율이 아니라 0 오차 검사들이 판정한다: 좌표는 좌표 대조가
+	// (TestFixtureCoordinatesMatchGeometry — ink의 표지가 minimal과 다른 자리라는 사실이 그
+	// 검사에서 확인된다), 줄 수와 폭은 잉크 띠 검사가 (세 장 모두 판정에 남아 있다 —
+	// inkBandSkipSlides에 행이 없다). 3.4%는 측정값에 앞 픽스처들과 같은 폭의 여유를 더한
+	// 값이다 (13_code의 2.85%→3.4%와 같은 태도).
+	"14_theme": {Channel: 32, MaxRatio: 0.034},
 }
 
 // slideDiffOptions는 **슬라이드 한 장**의 픽셀 비교 허용 오차다 (`<픽스처>/<슬라이드 id>`).

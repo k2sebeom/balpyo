@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>theme deck</title>
+<meta name="author" content="balpyo">
+<style>
+@layer balpyo.base, balpyo.theme, balpyo.author;
+
+@layer balpyo.base {
+  :root {
+    --balpyo-stage-width: 1280px;
+    --balpyo-stage-height: 720px;
+  }
+
+  * { box-sizing: border-box; }
+
+  /* 뷰어 크롬의 바탕 — 슬라이드 밖의 색이므로 덱의 색이 아니다 (테마 토큰이 아닌 유일한 색). */
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #111;
+  }
+
+  .balpyo-deck {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 24px;
+  }
+
+  /* 슬라이드는 논리 스테이지 크기를 그대로 갖는다. 저자·웹·지오메트리 패스가 같은
+     좌표계를 쓰므로 지오메트리 패스가 읽은 rect가 곧 PPTX 좌표다 (환산 분기 없음). */
+  .balpyo-slide {
+    position: relative;
+    width: var(--balpyo-stage-width);
+    height: var(--balpyo-stage-height);
+    overflow: hidden;
+  }
+
+  /* 스테이지는 자식을 문서 순서대로 세로로 쌓는다. 여백 64px은 1280폭의 5%로,
+     프로젝터의 오버스캔에서도 글자가 잘리지 않는다.
+
+     text-autospace는 잰 폭을 고정한다 — 브라우저가 한글↔라틴 경계에 간격을 넣기
+     시작하면(CSS Text 4는 그것을 기본값에 둔다) 잰 폭이 움직이고, 잰 폭이 곧 PPTX
+     좌표이므로 저자가 아무것도 고치지 않은 채 줄이 다시 접힌다 (D11, ADR 0005). */
+  .balpyo-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    text-autospace: no-autospace;
+  }
+
+  /* 텍스트 블록은 콘텐츠 폭 전체를 갖는다 — 줄바꿈 폭이 확정되어야 브라우저가 잰 박스가
+     PPTX 텍스트 박스로 그대로 간다. flex: 0 0 auto는 스택이 스테이지보다 길 때 박스가
+     눌리는 것을 막는다 (기본 정책은 박스 고정 + 오버플로 허용 — PRD §13-1). */
+  .balpyo-text {
+    margin: 0;
+    width: 100%;
+    flex: 0 0 auto;
+  }
+
+  /* 레이아웃 태그 = CSS flex/grid의 이름 바꾸기 층 (PRD §7.4). 여기 있는 것은 태그의
+     정의 그 자체이고, 요소마다 다른 값(gap·align·pad·cols…)은 인라인 style로 나간다. */
+  .balpyo-row { display: flex; flex-direction: row; }
+  .balpyo-col { display: flex; flex-direction: column; }
+  .balpyo-grid { display: grid; }
+
+  /* <spacer>는 밀어내기가 내용인 빈 박스다. flex: 1은 남은 공간을 전부 받는다는 뜻이고,
+     저자가 적은 배치 속성(<spacer grow="2">)은 인라인 style로 이 값을 덮는다. */
+  .balpyo-spacer { flex: 1; }
+
+  /* 레이아웃 컨테이너의 자식은 **브라우저 기본값**으로 돌아간다.
+     스테이지의 세로 스택은 텍스트·리스트에 확정 폭(width: 100%)과 눌리지 않는
+     flex(0 0 auto)를 준다 (contentCSS) — 스택 안에서 줄바꿈을 결정적으로 만들기 위한
+     규칙이다. 그 규칙이 컨테이너 안까지 따라오면 자식마다 부모 폭 전체를 요구하는 셈이 되어
+     가로 컨테이너를 넘치고, <spacer>가 받을 "남은 공간"이 사라진다 (실측으로 드러났다 —
+     render/geom의 spacer 테스트). 컨테이너 안에서 폭을 정하는 것은 컨테이너다: 트랙,
+     교차축 정렬(stretch), 그리고 자식이 적은 basis/grow가 그 값을 만든다.
+     폭이 확정된다는 사실은 그대로다 — 브라우저가 정하고 지오메트리 패스가 그 값을 잰다. */
+  :is(.balpyo-row, .balpyo-col, .balpyo-grid) > :is(.balpyo-text, .balpyo-list) {
+    width: auto;
+    flex: 0 1 auto;
+  }
+
+  /* ── 발표자 뷰 ── 런타임 JS가 <html>에 data-balpyo-view="presenter"를 켠다.
+     속성이 없으면(JS 꺼짐, 또는 지오메트리 패스가 지운 상태) 위의 세로 스택 그대로다. */
+  .balpyo-viewer-bar, .balpyo-viewer-notes { display: none; }
+
+  html[data-balpyo-view="presenter"] { height: 100%; }
+  html[data-balpyo-view="presenter"] body { height: 100%; overflow: hidden; }
+  html[data-balpyo-view="presenter"] .balpyo-deck {
+    position: fixed;
+    inset: 0;
+    padding: 0;
+    display: block;
+  }
+
+  /* 슬라이드는 전부 화면 가운데 겹쳐 두고 활성 슬라이드만 보인다. display가 아니라
+     visibility인 이유와 transform 스케일인 이유는 파일 머리 주석에 있다. */
+  html[data-balpyo-view="presenter"] .balpyo-slide {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(var(--balpyo-view-scale, 1));
+    visibility: hidden;
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-active {
+    visibility: visible;
+  }
+
+  html[data-balpyo-view="presenter"] .balpyo-viewer-bar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    position: fixed;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    z-index: 10;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(20, 20, 22, 0.88);
+    color: #ddd;
+    font: 14px/1 system-ui, sans-serif;
+  }
+  .balpyo-viewer-bar button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    padding: 8px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .balpyo-viewer-bar button:hover { background: rgba(255, 255, 255, 0.12); }
+  .balpyo-viewer-bar button:disabled { opacity: 0.35; cursor: default; background: transparent; }
+  .balpyo-viewer-bar button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.18); }
+  .balpyo-viewer-counter {
+    padding: 0 10px;
+    color: #aaa;
+    font-variant-numeric: tabular-nums;
+  }
+
+  html[data-balpyo-view="presenter"] .balpyo-viewer-notes {
+    display: block;
+    position: fixed;
+    left: 50%;
+    bottom: 64px;
+    transform: translateX(-50%);
+    z-index: 10;
+    width: min(640px, calc(100vw - 48px));
+    max-height: 40vh;
+    overflow-y: auto;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: rgba(20, 20, 22, 0.92);
+    color: #e6e6e6;
+    font: 15px/1.6 system-ui, sans-serif;
+    white-space: pre-wrap;
+  }
+  /* hidden 속성이 이겨야 한다 — 위의 display: block이 UA 스타일을 덮으므로 명시한다. */
+  html[data-balpyo-view="presenter"] .balpyo-viewer-notes[hidden] { display: none; }
+  .balpyo-viewer-notes.balpyo-viewer-empty { color: #999; font-style: italic; }
+}
+
+@layer balpyo.theme {
+  /* 테마 "ink"의 토큰 표 — 웹 변수와 PPTX 테마 파트가 이 한 표에서 나온다. */
+  :root {
+    --balpyo-color-fg: #F2F4F7;
+    --balpyo-color-bg: #15171B;
+    --balpyo-color-muted: #9CA3AF;
+    --balpyo-color-surface: #21252B;
+    --balpyo-color-accent1: #3B96FF;
+    --balpyo-color-accent2: #00A987;
+    --balpyo-color-accent3: #00AD2B;
+    --balpyo-color-accent4: #CB8700;
+    --balpyo-color-accent5: #FF5E4F;
+    --balpyo-color-accent6: #D75EFF;
+    --balpyo-font-heading: "Noto Sans", "Noto Sans CJK KR", sans-serif;
+    --balpyo-font-body: "Noto Sans", "Noto Sans CJK KR", sans-serif;
+    --balpyo-font-mono: "Noto Sans Mono", "Noto Sans Mono CJK KR", monospace;
+    --balpyo-space-xs: 4px;
+    --balpyo-space-sm: 10px;
+    --balpyo-space-md: 20px;
+    --balpyo-space-lg: 32px;
+    --balpyo-space-xl: 48px;
+    --balpyo-space-2xl: 72px;
+  }
+
+  .balpyo-slide { background: var(--balpyo-color-bg); }
+
+  .balpyo-stage.balpyo-slots > :is(.balpyo-text, .balpyo-list) { width: auto; }
+  .balpyo-stage.balpyo-layout-code.balpyo-slots { display: grid; grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; grid-template-areas: "title" "code" "caption"; align-content: start; }
+  .balpyo-stage.balpyo-layout-content.balpyo-slots { display: grid; grid-template-columns: 1fr; grid-template-rows: auto 1fr; grid-template-areas: "title" "body"; align-content: start; }
+  .balpyo-stage.balpyo-layout-title.balpyo-slots { display: grid; grid-template-columns: 1fr; grid-template-rows: 1fr auto auto auto 1fr auto auto; grid-template-areas: "." "kicker" "title" "subtitle" "." "author" "date"; justify-items: start; }
+}
+</style>
+</head>
+<body>
+<div class="balpyo-deck" data-aspect="16:9" data-slides="3">
+<section class="balpyo-slide" id="theme-title" data-slide-index="0" data-slide-source="slides/001_title.slide">
+<div class="balpyo-stage balpyo-layout-title balpyo-slots">
+<div class="balpyo-text" data-balpyo-id="s0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; grid-area: kicker">P4.2</div>
+<div class="balpyo-text" data-balpyo-id="s0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 52px; font-weight: 600; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start; grid-area: title">어두운 테마</div>
+<div class="balpyo-text" data-balpyo-id="s0.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start; grid-area: subtitle">같은 원문을 다른 테마로 본다</div>
+<div class="balpyo-text" data-balpyo-id="s0.3" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start; grid-area: author">balpyo</div>
+<div class="balpyo-text" data-balpyo-id="s0.4" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start; grid-area: date">2026-09</div>
+</div>
+<div class="balpyo-notes" hidden>테마는 덱의 요청이고 결과는 토큰 표다 — 폴백 테마는 없다.</div>
+</section>
+<section class="balpyo-slide" id="theme-roles" data-slide-index="1" data-slide-source="slides/002_roles.slide">
+<div class="balpyo-stage balpyo-layout-content balpyo-slots">
+<div class="balpyo-text" data-balpyo-id="s1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 34px; font-weight: 600; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start; grid-area: title">역할과 variant</div>
+<div class="balpyo-col" data-balpyo-id="s1.1" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); grid-area: body">
+<div class="balpyo-text" data-balpyo-id="s1.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 32px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">테마가 바뀌면 크기와 색이 함께 바뀐다.</div>
+<p class="balpyo-text" data-balpyo-id="s1.1.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">본문은 24px에 줄높이 1.5다 — 세 내장 테마가 같은 리듬을 쓴다.</p>
+<h3 class="balpyo-text" data-balpyo-id="s1.1.2" data-balpyo-el="h3" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 600; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">컴포넌트 기본값</h3>
+<blockquote class="balpyo-text" data-balpyo-id="s1.1.3" data-balpyo-el="blockquote" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">인용은 색만 물러난다.</blockquote>
+<div class="balpyo-text" data-balpyo-id="s1.1.4" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start">variant는 테마의 어휘다</div>
+<div class="balpyo-text" data-balpyo-id="s1.1.5" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">캡션은 muted로 물러난다.</div>
+</div>
+</div>
+</section>
+<section class="balpyo-slide" id="theme-code" data-slide-index="2" data-slide-source="slides/003_code.slide">
+<div class="balpyo-stage balpyo-layout-code balpyo-slots">
+<div class="balpyo-text" data-balpyo-id="s2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 34px; font-weight: 600; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start; grid-area: title">코드도 테마의 색을 받는다</div>
+<pre class="balpyo-text" data-balpyo-id="s2.1" data-balpyo-el="pre" style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; white-space: pre; grid-area: code"><span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start; font-style: normal; text-decoration: none">// 테마 이름은 덱의 요청이고, 결과는 토큰 표다.</span>
+<span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent6); text-align: start; font-style: normal; text-decoration: none">func</span> <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">themeOf</span>(deck *Deck) (Theme, <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent6); text-align: start; font-style: normal; text-decoration: none">error</span>) {
+  name := deck.ThemeName
+  <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent6); text-align: start; font-style: normal; text-decoration: none">if</span> name == <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: start; font-style: normal; text-decoration: none">&#34;&#34;</span> {
+    name = DefaultTheme
+  }
+  <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent6); text-align: start; font-style: normal; text-decoration: none">return</span> <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">load</span>(name)
+}</pre>
+<div class="balpyo-text" data-balpyo-id="s2.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start; grid-area: caption">같은 블록이 테마마다 다른 색을 얻는다.</div>
+</div>
+</section>
+</div>
+<script>
+(() => {
+  "use strict";
+  const root = document.documentElement;
+  const slides = Array.from(document.querySelectorAll(".balpyo-slide"));
+  if (slides.length === 0) return;
+
+  const button = (cls, label, text) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = cls;
+    b.setAttribute("aria-label", label);
+    b.textContent = text;
+    return b;
+  };
+  const prev = button("balpyo-viewer-prev", "Previous slide", "‹");
+  const next = button("balpyo-viewer-next", "Next slide", "›");
+  const notesToggle = button("balpyo-viewer-notes-toggle", "Toggle speaker notes", "Notes");
+  notesToggle.setAttribute("aria-pressed", "false");
+  const counter = document.createElement("span");
+  counter.className = "balpyo-viewer-counter";
+
+  const bar = document.createElement("nav");
+  bar.className = "balpyo-viewer-bar";
+  bar.setAttribute("aria-label", "Presentation controls");
+  bar.append(prev, counter, next, notesToggle);
+
+  const notes = document.createElement("aside");
+  notes.className = "balpyo-viewer-notes";
+  notes.setAttribute("aria-label", "Speaker notes");
+  notes.hidden = true;
+
+  document.body.append(notes, bar);
+
+  let current = -1;
+
+  // 배율은 창에 꽉 차는 fit이다. 레이아웃 크기(offsetWidth)는 transform과 무관하게 논리
+  // 스테이지이므로, 잰 값을 다시 스케일하는 되먹임이 없다.
+  const fit = () => {
+    const scale = Math.min(
+      window.innerWidth / slides[0].offsetWidth,
+      window.innerHeight / slides[0].offsetHeight);
+    root.style.setProperty("--balpyo-view-scale", String(scale));
+  };
+
+  const show = (index, writeHash) => {
+    const target = Math.min(Math.max(index, 0), slides.length - 1);
+    if (target === current) return;
+    if (current >= 0) slides[current].classList.remove("balpyo-viewer-active");
+    current = target;
+    const slide = slides[current];
+    slide.classList.add("balpyo-viewer-active");
+    counter.textContent = (current + 1) + " / " + slides.length;
+    prev.disabled = current === 0;
+    next.disabled = current === slides.length - 1;
+    const note = slide.querySelector(".balpyo-notes");
+    notes.textContent = note ? note.textContent : "No notes for this slide.";
+    notes.classList.toggle("balpyo-viewer-empty", !note);
+    if (writeHash) {
+      // 히스토리를 쌓지 않는다 — 뒤로 가기가 슬라이드를 되감으면 발표 중에 페이지를
+      // 떠나는 길이 없어진다. file://에서 막는 브라우저가 있어도 조용히 넘어간다.
+      try { history.replaceState(null, "", "#/" + encodeURIComponent(slide.id)); } catch (e) {}
+    }
+  };
+
+  const fromHash = () => {
+    let raw = location.hash.replace(/^#\/?/, "");
+    try { raw = decodeURIComponent(raw); } catch (e) {}
+    if (raw === "") return 0;
+    const byID = slides.findIndex((s) => s.id === raw);
+    if (byID >= 0) return byID;
+    const n = Number(raw);
+    if (Number.isInteger(n) && n >= 1 && n <= slides.length) return n - 1;
+    return 0;
+  };
+
+  prev.addEventListener("click", () => show(current - 1, true));
+  next.addEventListener("click", () => show(current + 1, true));
+  notesToggle.addEventListener("click", () => {
+    notes.hidden = !notes.hidden;
+    notesToggle.setAttribute("aria-pressed", String(!notes.hidden));
+  });
+  window.addEventListener("hashchange", () => show(fromHash(), false));
+  window.addEventListener("resize", fit);
+  window.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    switch (e.key) {
+    case "ArrowRight": case "ArrowDown": case "PageDown": case " ":
+      e.preventDefault(); show(current + 1, true); break;
+    case "ArrowLeft": case "ArrowUp": case "PageUp":
+      e.preventDefault(); show(current - 1, true); break;
+    case "Home": e.preventDefault(); show(0, true); break;
+    case "End": e.preventDefault(); show(slides.length - 1, true); break;
+    case "n": case "N": notesToggle.click(); break;
+    }
+  });
+
+  root.setAttribute("data-balpyo-view", "presenter");
+  fit();
+  // 해시가 있으면 그 슬라이드로 열되 해시는 손대지 않는다 — 사용자가 준 딥링크 형태
+  // (번호든 id든)를 열자마자 바꿔치지 않는다. 해시가 없으면 첫 슬라이드고 URL은 깨끗하다.
+  show(fromHash(), false);
+})();
+</script>
+</body>
+</html>

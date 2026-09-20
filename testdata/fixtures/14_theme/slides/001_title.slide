@@ -1,0 +1,27 @@
+<!-- 테마 선택 (P4.2 — ADR 0052). 이 픽스처가 시험하는 것은 **덱이 고른 테마가 두 산출물에
+     끝까지 닿는가**다: `balpyo.json`의 `"theme": "ink"` 한 줄이 토큰 표(clrScheme·fontScheme)와
+     컴포넌트 외관(역할 크기·굵기)과 배치 CSS(이 슬라이드의 슬롯 영역)를 모두 바꾼다.
+     기본 테마(minimal)로 렌더된 다른 픽스처들과 골든을 나란히 놓으면 무엇이 테마의 것인지
+     그 차이가 곧 대답이다.
+
+     이 슬라이드가 보는 것은 **배치**다: ink의 title.slots.css는 제목 묶음을 세로 가운데에
+     두고 저자·날짜를 바닥에 붙이며 전부 왼쪽 정렬이다 (minimal은 둘 다 가운데다). 슬롯
+     이름은 같은데 자리가 다르므로, 같은 원문이 테마마다 다른 좌표를 얻는다 — 그 좌표가
+     PPTX에 구워지는지는 TestFixtureCoordinatesMatchGeometry가 0 오차로 본다.
+
+     슬롯 글줄에 **쉼표와 라틴 글자를 섞지 않은** 이유 (첫 판에서 실제로 갈라졌다): 슬롯
+     영역은 `justify-items`로 자식을 왼쪽에 붙이므로 텍스트 박스가 내용 폭으로 줄어든다 —
+     여유 폭(Slack)이 0이라는 뜻이고, 그러면 LibreOffice가 한글 사이 문장부호에 넣는
+     스크립트 간격(docs/guides/known-differences.md) 한 곳만으로도 줄이 하나 늘어난다
+     (측정: `같은 원문, 다른 테마`가 PPTX에서 두 줄이 됐다 — 안전 여유 4%보다 큰 오차다).
+     그 갈라짐은 테마의 것이 아니라 렌더 엔진의 것이므로 이 픽스처의 골든이 붙들 대상이
+     아니다 — 문장부호 오차는 여유가 큰 본문 박스에서 재는 것이 맞고, 다음 슬라이드가
+     (폭 100%의 content 슬롯) 그 자리다. -->
+<slide id="theme-title" layout="title">
+  <text slot="kicker" variant="kicker">P4.2</text>
+  <text slot="title" role="title">어두운 테마</text>
+  <text slot="subtitle" role="body" color="muted">같은 원문을 다른 테마로 본다</text>
+  <text slot="author" role="caption">balpyo</text>
+  <text slot="date" role="caption">2026-09</text>
+  <note>테마는 덱의 요청이고 결과는 토큰 표다 — 폴백 테마는 없다.</note>
+</slide>

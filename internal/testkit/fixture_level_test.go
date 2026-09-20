@@ -99,6 +99,21 @@ const (
 	// 없다 — 값 층이 테마 폭으로 칼럼을 세어 편다. 앞 픽스처의 전제는 그대로 물려받는다
 	// (코드 블록은 텍스트이므로 잉크 띠의 단색 배경 가정을 깨지 않는다).
 	codeFixtureName = "13_code"
+	// themeFixtureName은 P4.2의 테마 선택 픽스처다 (ADR 0052). 새로 시험하는 것은 **덱이
+	// minimal이 아닌 테마로 끝까지 간다**는 것이다: 앞 픽스처 열셋은 모두 기본 테마로 빌드되므로,
+	// 값 층이 테마를 하드코딩으로 되돌리거나(삭제한 core/theme.go) 렌더러가 특정 테마의 수치를
+	// 가정하면 그 열셋은 전부 초록인 채 남는다. `balpyo.json`의 `"theme": "ink"` 한 줄이
+	// 산출물의 모든 색·서체·레이아웃 CSS를 바꾸는 것을 골든이 붙든다.
+	//
+	// 어두운 테마를 고른 이유: 밝은 테마끼리는 골든이 갈라져도 눈으로 틀렸음을 알기 어렵지만,
+	// 바탕이 #15171B인 산출물에 minimal의 흰 바탕이 한 군데라도 남으면 리뷰에서 즉시 보인다.
+	//
+	// 앞 픽스처가 깬 전제를 **하나도** 물려받지 않는다: 텍스트만 쓰고 칠한 도형·그림이 없으므로
+	// 잉크 띠의 단색 배경 가정이 성립하고(inkBandSkipSlides에 행이 없다 — 어두운 바탕도
+	// "영역에서 가장 흔한 색"이라는 점에서 흰 바탕과 다르지 않다), 색은 전부 토큰이라 슬라이드
+	// 파트에 리터럴 `srgbClr`가 0건이다 (fixtureLiteralColors에 행이 없다). 즉 테마를 바꿔도
+	// 계약이 약해지지 않는다는 것까지 이 픽스처가 말한다.
+	themeFixtureName = "14_theme"
 )
 
 // fixtureNames는 픽스처 수준 검증(파트 목록·색 계약·좌표 대조·도형 수 등식·잉크 띠)이 도는
@@ -109,7 +124,8 @@ const (
 // 있으면 도형 픽스처를 넣는 것이 표의 뜻을 어기는 일처럼 보이고, 그러면 다음 사람이 같은
 // 계약을 받을 픽스처를 두 번째 표에 적는다.
 var fixtureNames = []string{textFixtureName, textSubsetFixtureName, layoutFixtureName, shapeFixtureName,
-	imageFixtureName, stackFixtureName, shapeLayoutFixtureName, paletteFixtureName, codeFixtureName}
+	imageFixtureName, stackFixtureName, shapeLayoutFixtureName, paletteFixtureName, codeFixtureName,
+	themeFixtureName}
 
 // fixtureByName은 픽스처 러너와 같은 수집 경로로 픽스처를 집는다 — 경로를 직접 조립하면
 // 러너가 못 보는 픽스처를 여기만 보는 상태가 생길 수 있다.
@@ -475,6 +491,46 @@ var goldenPartLists = map[string][]string{
 		"pptx/ppt/slides/slide2.xml",
 		"pptx/ppt/theme/theme1.xml",
 	},
+	themeFixtureName: {
+		// diagnostics.txt가 **없다**: 테마를 바꾸는 것은 경고를 만드는 일이 아니다 (ADR 0052 —
+		// 없는 이름은 진단이 아니라 로드 실패다). 이 파일이 생기면 ink의 어휘(역할·variant)가
+		// minimal과 갈라졌다는 뜻이다 — TestBuiltinThemesShareRecommendedVariants의 짝이다.
+		"index.html",
+		"pptx/[Content_Types].xml",
+		"pptx/_rels/.rels",
+		"pptx/docProps/app.xml",
+		"pptx/docProps/core.xml",
+		"pptx/ppt/_rels/presentation.xml.rels",
+		"pptx/ppt/notesMasters/_rels/notesMaster1.xml.rels",
+		"pptx/ppt/notesMasters/notesMaster1.xml",
+		// 노트는 001에만 있다.
+		"pptx/ppt/notesSlides/_rels/notesSlide1.xml.rels",
+		"pptx/ppt/notesSlides/notesSlide1.xml",
+		"pptx/ppt/presentation.xml",
+		// 레이아웃 파트가 넷이다: Blank(1) + 슬라이드가 쓴 셋 — title(2)·content(3)·code(4).
+		// 슬롯을 쓴 레이아웃마다 파트가 하나씩 나오는 것이 계약이고(ADR 0035), 그 파트에는
+		// **테마의 슬롯 이름**이 자리표로 실린다 — 즉 이 넷의 존재가 "테마의 레이아웃 카탈로그가
+		// PPTX 구조까지 간다"는 증거다.
+		"pptx/ppt/slideLayouts/_rels/slideLayout1.xml.rels",
+		"pptx/ppt/slideLayouts/_rels/slideLayout2.xml.rels",
+		"pptx/ppt/slideLayouts/_rels/slideLayout3.xml.rels",
+		"pptx/ppt/slideLayouts/_rels/slideLayout4.xml.rels",
+		"pptx/ppt/slideLayouts/slideLayout1.xml",
+		"pptx/ppt/slideLayouts/slideLayout2.xml",
+		"pptx/ppt/slideLayouts/slideLayout3.xml",
+		"pptx/ppt/slideLayouts/slideLayout4.xml",
+		"pptx/ppt/slideMasters/_rels/slideMaster1.xml.rels",
+		"pptx/ppt/slideMasters/slideMaster1.xml",
+		"pptx/ppt/slides/_rels/slide1.xml.rels",
+		"pptx/ppt/slides/_rels/slide2.xml.rels",
+		"pptx/ppt/slides/_rels/slide3.xml.rels",
+		"pptx/ppt/slides/slide1.xml",
+		"pptx/ppt/slides/slide2.xml",
+		"pptx/ppt/slides/slide3.xml",
+		// theme1.xml이 이 픽스처의 핵심 파트다 — clrScheme·fontScheme이 ink의 값이어야 한다
+		// (어두운 lt1, 밝은 dk1, 여섯 accent). 테마 선택이 끊기면 이 파트만 minimal로 돌아간다.
+		"pptx/ppt/theme/theme1.xml",
+	},
 }
 
 // 골든에 들어간 파트 목록을 픽스처별로 통째로 단정한다.
@@ -530,6 +586,10 @@ var slideCounts = map[string]int{
 	paletteFixtureName: 2,
 	// go 한 장 + 마크업·설정·셸 한 장 = 2장이다 (ADR 0051).
 	codeFixtureName: 2,
+	// 표지 + 역할 표 + 코드 = 3장이다 (ADR 0052). 테마가 바꾸는 것을 층마다 하나씩 본다:
+	// 표지는 레이아웃 CSS(ink의 표지는 왼쪽 기준선), 역할 표는 타이포 역할과 색, 코드는 mono
+	// 서체와 탭 폭이다.
+	themeFixtureName: 3,
 }
 
 // fixtureLiteralColors는 슬라이드 파트에 **리터럴 색으로 나와야 하는** 값의 전수 목록이다
@@ -2062,6 +2122,18 @@ var loLineWidthMaxRatios = map[string]float64{
 	// 따로 잡고(이 슬라이드는 줄 수가 같다), 6.0%는 측정값에 앞 픽스처들과 같은 폭의 여유를
 	// 더한 값이다 (02 5.0%→5.5%, 03 5.8%→6.5%와 같은 태도).
 	stackFixtureName: 0.06,
+	// 14_theme: 측정 최대 +5.5% (002_roles의 캡션 줄 — P4.2). 원인은 02·03·06과 같다
+	// (스크립트 간격은 한글↔라틴 **경계 수**에 비례하고 비율은 줄 길이로 나눈 값이다): 이
+	// 픽스처의 글줄은 역할 이름과 수치를 말하느라 `24px`·`muted`·`variant`처럼 라틴 낱말이
+	// 한글 문장에 박혀 있고, 캡션 줄(`캡션은 muted로 물러난다.` — 200px, 18px 글자)은 그 중
+	// 가장 짧아 경계 둘의 간격이 비율로 가장 크게 나온다.
+	//
+	// 테마가 이 수치를 만든 것이 아니다: ink의 본문 리듬은 세 내장 테마가 공유하는 24px/1.5이고
+	// (TestBuiltinThemesShareBodyRhythm), 어두운 바탕은 잉크 띠 측정의 전제를 바꾸지 않는다
+	// (가장 흔한 색이 배경이다 — InkBands). 줄 수 갈라짐은 0 오차의 줄 수 검사가 따로 잡고
+	// (이 픽스처는 세 장 모두 줄 수가 같다), 6.0%는 측정값에 앞 픽스처들과 같은 폭의 여유를
+	// 더한 값이다 (06_stack의 5.5%→6.0%와 같은 태도).
+	themeFixtureName: 0.06,
 }
 
 // inkBandSkipSlides는 잉크 띠 판정을 **적용할 수 없는** 슬라이드다 (`<픽스처>/<슬라이드 id>`).
