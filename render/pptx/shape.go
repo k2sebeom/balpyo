@@ -717,12 +717,22 @@ func writeFill(w func(depth int, line string), depth int, fill soml.Fill, alpha 
 // 절반이 잰 박스 밖으로 **두 타깃 모두** 번진다 (render/web/shape.go의 테두리 절). 그래서
 // 도형 rect를 굵기 절반만큼 줄이는 보정을 하지 않는다: 보정하면 PPTX만 작아진다.
 func writeLine(w func(depth int, line string), depth int, border soml.Border, alpha *float64, theme soml.Theme) error {
+	return writeLineElem(w, depth, "a:ln", border, alpha, theme)
+}
+
+// writeLineElem은 writeLine의 요소 이름을 고른 판이다 — 표 셀의 테두리는 같은 선 어휘를
+// 변마다 다른 이름으로 싣는다 (`a:lnL`/`a:lnR`/`a:lnT`/`a:lnB` — render/pptx/table.go).
+//
+// 이름만 다르고 내용이 같아야 하는 것이 요점이다: 셀 테두리를 따로 조립하면 굵기 환산·그라디언트·
+// 대시 어휘가 두 벌이 되고, 갈라진 순간 도형 테두리와 셀 테두리가 같은 `border` 값에서 다르게
+// 나간다.
+func writeLineElem(w func(depth int, line string), depth int, name string, border soml.Border, alpha *float64, theme soml.Theme) error {
 	if border.None {
 		// 선 없음도 **명시한다** — 비워 두면 테마 fmtScheme의 기본 선이 상속되어 웹에 없는
 		// 외곽선이 그려진다 (textBoxSp의 근거와 같다).
-		w(depth, "<a:ln>")
+		w(depth, "<"+name+">")
 		w(depth+1, "<a:noFill/>")
-		w(depth, "</a:ln>")
+		w(depth, "</"+name+">")
 		return nil
 	}
 	if border.Width <= 0 {
@@ -732,7 +742,7 @@ func writeLine(w func(depth int, line string), depth int, border soml.Border, al
 	if err != nil {
 		return err
 	}
-	w(depth, fmt.Sprintf(`<a:ln w="%d">`, EMU(border.Width)))
+	w(depth, fmt.Sprintf(`<%s w="%d">`, name, EMU(border.Width)))
 	if border.Color.IsGradient() {
 		// 그라디언트 테두리는 `ln` 안의 `gradFill`이다 (PRD §9.4의 `border=… gradient(…)` 행 —
 		// PPTX는 `ln` + `gradFill`). 웹은 SVG stroke가 gradient def를 참조한다 (render/web).
@@ -748,7 +758,7 @@ func writeLine(w func(depth int, line string), depth int, border soml.Border, al
 	}
 	// 스키마 순서(CT_LineProperties): 채움 → prstDash → 조인·화살촉.
 	w(depth+1, fmt.Sprintf(`<a:prstDash val="%s"/>`, dash))
-	w(depth, "</a:ln>")
+	w(depth, "</"+name+">")
 	return nil
 }
 

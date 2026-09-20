@@ -461,12 +461,22 @@ func writeInlineChild(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, no
 // rect가 엉뚱한 요소에 붙고, 그 실패는 산출물을 열어 보기 전까지 조용하다 — 그래서
 // render/geom이 이 함수를 부른다.
 func ElementID(slideIndex int, path []int) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "s%d", slideIndex)
+	id := fmt.Sprintf("s%d", slideIndex)
 	for _, i := range path {
-		fmt.Fprintf(&b, ".%d", i)
+		id = ChildID(id, i)
 	}
-	return b.String()
+	return id
+}
+
+// ChildID는 부모 식별자에 자식 인덱스를 더한 자식 식별자다 — `ElementID(slide, ChildPath(path, i))`와
+// **같은 값**이다 (ElementID가 이 함수로 조립되므로 갈라질 수 없다).
+//
+// 경로 없이 식별자만 든 소비자를 위해 내보낸다: PPTX의 표 렌더러는 도형 writer 서명으로
+// (요소, id)만 받는데(shapeWriter) 행·셀의 잰 박스를 찾으려면 자식 식별자가 필요하다. 그 자리에서
+// 문자열을 손으로 이어 붙이면 ElementID와 별개 구현이 하나 더 생기고, 규칙이 갈라지는 날 좌표가
+// 엉뚱한 셀에 붙는다 (ElementID 주석의 "구현이 하나여야 한다").
+func ChildID(id string, i int) string {
+	return fmt.Sprintf("%s.%d", id, i)
 }
 
 // ChildPath는 부모 경로에 자식 인덱스를 더한 **새** 경로다. append를 그대로 쓰면 형제끼리
