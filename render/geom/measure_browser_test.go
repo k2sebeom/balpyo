@@ -51,7 +51,7 @@ func browserDeck(t *testing.T) *soml.Deck {
 			{Index: 1, ID: "second", Source: "slides/002_second.slide", Content: content()},
 		},
 	}
-	if diags := core.Resolve(deck); len(diags) > 0 {
+	if diags := core.Resolve(deck, nil); len(diags) > 0 {
 		t.Fatalf("외관 해석 진단: %v", diags)
 	}
 	return deck
@@ -285,7 +285,7 @@ func main() {
 		Title: "subset", Lang: "ko", Aspect: soml.Aspect16x9, Stage: stage,
 		Slides: []*soml.Slide{{Index: 0, ID: "subset", Source: source, Content: doc.Content}},
 	}
-	if err := core.Resolve(deck).Err(); err != nil {
+	if err := core.Resolve(deck, nil).Err(); err != nil {
 		t.Fatalf("외관 해석 실패: %v", err)
 	}
 
@@ -367,7 +367,7 @@ func layoutDeck(t *testing.T, bodies ...string) *soml.Deck {
 			Index: i, ID: id, Source: source, Notes: doc.Notes, Content: doc.Content,
 		})
 	}
-	if err := core.Resolve(deck).Err(); err != nil {
+	if err := core.Resolve(deck, nil).Err(); err != nil {
 		t.Fatalf("해석 실패: %v", err)
 	}
 	return deck
@@ -992,7 +992,7 @@ func canvasDeck(t *testing.T, bodies ...string) *soml.Deck {
 			Notes: doc.Notes, Content: doc.Content,
 		})
 	}
-	if err := core.Resolve(deck).Err(); err != nil {
+	if err := core.Resolve(deck, nil).Err(); err != nil {
 		t.Fatalf("해석 실패: %v", err)
 	}
 	return deck
@@ -1229,7 +1229,7 @@ func TestMeasureReadsPerSlideContentBox(t *testing.T) {
 			Layout: soml.SlideLayout(doc.Layout), Content: doc.Content,
 		})
 	}
-	if err := core.Resolve(deck).Err(); err != nil {
+	if err := core.Resolve(deck, nil).Err(); err != nil {
 		t.Fatalf("해석 실패: %v", err)
 	}
 

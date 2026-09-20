@@ -32,7 +32,7 @@ func themeDeck(t *testing.T, name, src string) (*soml.Deck, soml.Diagnostics) {
 		Layout: soml.SlideLayout(doc.Layout), LayoutSpan: doc.LayoutSpan,
 		Content: doc.Content, Tokens: doc.Tokens,
 	}}}
-	return deck, Resolve(deck)
+	return deck, Resolve(deck, nil)
 }
 
 const themeProbe = `<slide id="probe"><h1>제목</h1><p>본문</p></slide>`

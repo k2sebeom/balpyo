@@ -124,7 +124,7 @@ func TestRefsMatchRenderedHTML(t *testing.T) {
 		[]soml.Node{textElem(chars("제목")), textElem(chars("본문"))},
 		[]soml.Node{textElem(chars("끝"))},
 	)
-	if diags := core.Resolve(deck); len(diags) > 0 {
+	if diags := core.Resolve(deck, nil); len(diags) > 0 {
 		t.Fatalf("외관 해석 진단: %v", diags)
 	}
 	files, err := web.New().Render(deck)
@@ -163,7 +163,7 @@ func TestRefsCollectShapesAndTheirText(t *testing.T) {
 		shape(textElem(chars("머리")), textElem(chars("본문"))),
 		shape(),
 	})
-	if diags := core.Resolve(deck); len(diags) > 0 {
+	if diags := core.Resolve(deck, nil); len(diags) > 0 {
 		t.Fatalf("외관 해석 진단: %v", diags)
 	}
 	var got []string
@@ -212,7 +212,7 @@ func TestRefsCarryPlacementFacts(t *testing.T) {
 		[]soml.Node{shape(nil)},
 	)
 	deck.Slides[1].Layout = soml.LayoutCanvas
-	if diags := core.Resolve(deck); len(diags) > 0 {
+	if diags := core.Resolve(deck, nil); len(diags) > 0 {
 		t.Fatalf("외관 해석 진단: %v", diags)
 	}
 

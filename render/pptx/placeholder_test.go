@@ -176,7 +176,7 @@ func layoutSlotDeck(t *testing.T, layout soml.SlideLayout, body string) *soml.De
 			Notes: doc.Notes, Content: doc.Content,
 		}},
 	}
-	if err := core.Resolve(deck).Err(); err != nil {
+	if err := core.Resolve(deck, nil).Err(); err != nil {
 		t.Fatalf("외관 해석 실패: %v", err)
 	}
 	return deck

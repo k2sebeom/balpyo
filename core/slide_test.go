@@ -25,7 +25,7 @@ func resolveLayoutSlide(t *testing.T, src string) (*soml.Slide, soml.Diagnostics
 		Tokens:     doc.Tokens,
 	}
 	deck := &soml.Deck{Slides: []*soml.Slide{slide}}
-	return slide, Resolve(deck)
+	return slide, Resolve(deck, nil)
 }
 
 // 생략·명시한 content·canvas는 진단 없이 확정 값에 도착한다. 생략은 기본값(content)으로

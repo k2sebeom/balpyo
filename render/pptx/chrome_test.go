@@ -29,7 +29,7 @@ func chromeDeck(t *testing.T) *soml.Deck {
 func resolvedContentDeck(t *testing.T) *soml.Deck {
 	t.Helper()
 	deck := contentDeck()
-	if err := core.Resolve(deck).Err(); err != nil {
+	if err := core.Resolve(deck, nil).Err(); err != nil {
 		t.Fatalf("외관 해석 실패: %v", err)
 	}
 	return deck

@@ -721,7 +721,7 @@ func TestResolveShapeKeepsPlacement(t *testing.T) {
 // 값 층이 픽스처를 해석하는지, 경고가 나는 자리가 예상한 곳뿐인지 여기서 못 박는다.
 func TestResolveShapeFixture(t *testing.T) {
 	deck := readFixtureDeck(t, "04_shape")
-	diags := Resolve(deck)
+	diags := Resolve(deck, nil)
 	for _, diag := range diags {
 		if diag.Severity != soml.SeverityWarning {
 			t.Errorf("픽스처에 에러가 있다: %s", diag.String())

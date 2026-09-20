@@ -566,7 +566,7 @@ func TestResolveSignedAxisRegression(t *testing.T) {
 // 나면 여기서 빨갛게 된다.
 func TestResolveStackFixture(t *testing.T) {
 	deck := readFixtureDeck(t, "06_stack")
-	diags := Resolve(deck)
+	diags := Resolve(deck, nil)
 	for _, diag := range diags {
 		t.Errorf("픽스처가 진단 없이 해석되어야 한다 (항목 06이 테마 안 토큰으로 고쳤다): %s", diag.String())
 	}
@@ -792,7 +792,7 @@ func TestResolveLayoutReportsEveryBadValue(t *testing.T) {
 // 골든 `diagnostics.txt`가 같은 사실을 산출물 쪽에서 지킨다 (경고는 있을 때만 골든이 된다).
 func TestResolveLayoutFixture(t *testing.T) {
 	deck := readFixtureDeck(t, "03_layout")
-	diags := Resolve(deck)
+	diags := Resolve(deck, nil)
 	for _, diag := range diags {
 		if diag.Severity != soml.SeverityWarning {
 			t.Errorf("픽스처에 에러가 있다: %s", diag.String())

@@ -25,7 +25,7 @@ func resolveSlide(t *testing.T, src string) (*soml.Deck, soml.Diagnostics) {
 		Content:     doc.Content,
 		Tokens:      doc.Tokens,
 	}}}
-	return deck, Resolve(deck)
+	return deck, Resolve(deck, nil)
 }
 
 // textStyles는 덱의 모든 `<text>` 외관을 문서 순서로 모은다.
@@ -465,7 +465,7 @@ func TestResolveContinuesAfterBadRole(t *testing.T) {
 
 func TestResolveAttachesThemeToDeck(t *testing.T) {
 	deck := &soml.Deck{}
-	if diags := Resolve(deck); len(diags) != 0 {
+	if diags := Resolve(deck, nil); len(diags) != 0 {
 		t.Errorf("진단이 없어야 한다: %v", diags)
 	}
 	// 렌더러는 덱에 실린 표에서만 토큰 값을 얻는다 — 표가 비어 있으면 색을 찾을 곳이 없다.
@@ -569,7 +569,7 @@ func TestResolveTextFixture(t *testing.T) {
 	// 픽스처 읽기는 readFixtureDeck 한 곳이다 (layout_test.go) — 같은 일을 하는 코드가
 	// 두 벌이 되면 한쪽만 고쳐진 채 남는다.
 	deck := readFixtureDeck(t, "01_text")
-	if diags := Resolve(deck); len(diags) != 0 {
+	if diags := Resolve(deck, nil); len(diags) != 0 {
 		t.Fatalf("픽스처는 진단 없이 해석되어야 한다: %v", diags)
 	}
 

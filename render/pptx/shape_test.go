@@ -35,7 +35,7 @@ func resolvedDeck(t *testing.T, sources ...string) *soml.Deck {
 			Notes: doc.Notes, Content: doc.Content, Tokens: doc.Tokens,
 		})
 	}
-	if err := core.Resolve(deck).Err(); err != nil {
+	if err := core.Resolve(deck, nil).Err(); err != nil {
 		t.Fatalf("외관 해석 실패: %v", err)
 	}
 	return deck

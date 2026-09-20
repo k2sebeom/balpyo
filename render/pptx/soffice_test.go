@@ -145,7 +145,7 @@ func TestLibreOfficeOpensTextShapes(t *testing.T) {
 			Notes: doc.Notes, Content: doc.Content, Tokens: doc.Tokens,
 		})
 	}
-	if err := core.Resolve(deck).Err(); err != nil {
+	if err := core.Resolve(deck, nil).Err(); err != nil {
 		t.Fatalf("외관 해석 실패: %v", err)
 	}
 
@@ -194,7 +194,7 @@ func TestLibreOfficeOpensStackOverlapAndNegativeCoords(t *testing.T) {
 		Index: 0, ID: "s1", Source: "slides/001.slide",
 		Notes: doc.Notes, Content: doc.Content, Tokens: doc.Tokens,
 	})
-	if err := core.Resolve(deck).Err(); err != nil {
+	if err := core.Resolve(deck, nil).Err(); err != nil {
 		t.Fatalf("외관 해석 실패: %v", err)
 	}
 

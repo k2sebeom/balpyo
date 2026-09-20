@@ -174,7 +174,7 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 		})
 	}
 
-	diags = append(diags, core.Resolve(deck)...)
+	diags = append(diags, core.Resolve(deck, fsys)...)
 	// 에셋 패스는 Resolve 다음, Validate 형제다 — 확정 값의 `src`를 읽고 **디스크를 봐야** 알
 	// 수 있는 것(존재·포맷·고유 크기)을 본다. 파일 시스템이 여기서만 core로 넘어간다.
 	diags = append(diags, core.ResolveAssets(deck, fsys)...)

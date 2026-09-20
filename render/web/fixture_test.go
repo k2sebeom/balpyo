@@ -62,7 +62,7 @@ func fixtureDeck(t *testing.T, name string) *soml.Deck {
 			Notes: doc.Notes, Content: doc.Content, Tokens: doc.Tokens,
 		})
 	}
-	if err := core.Resolve(deck).Err(); err != nil {
+	if err := core.Resolve(deck, nil).Err(); err != nil {
 		t.Fatalf("외관 해석 실패: %v", err)
 	}
 	// 에셋 패스는 Resolve 다음이다 (pipeline.LoadDeck과 같은 순서) — `<image>`가 있는 픽스처는

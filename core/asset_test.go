@@ -63,7 +63,7 @@ func resolveImageDeck(t *testing.T, srcs ...string) (*soml.Deck, soml.Diagnostic
 			Index: i, ID: doc.ID, Source: doc.File, Content: doc.Content, Tokens: doc.Tokens,
 		})
 	}
-	return deck, Resolve(deck)
+	return deck, Resolve(deck, nil)
 }
 
 // 정상 경로: 포맷 2종, 같은 파일 두 번(표 항목 1개), 경로 정규화, 고유 크기가 헤더의 값과
@@ -215,7 +215,7 @@ func TestResolveAssetsWithoutFS(t *testing.T) {
 // 값 층과 에셋 패스가 픽스처를 통째로 해석하는지, 표의 항목이 예상한 셋뿐인지 못 박는다.
 func TestResolveImageFixture(t *testing.T) {
 	deck := readFixtureDeck(t, "05_image")
-	if diags := Resolve(deck); len(diags) != 0 {
+	if diags := Resolve(deck, nil); len(diags) != 0 {
 		t.Fatalf("픽스처 해석 진단이 없어야 한다: %v", diags)
 	}
 	dir := filepath.Join("..", "testdata", "fixtures", "05_image")

@@ -44,7 +44,7 @@ func textDeck(t *testing.T, counts ...int) *soml.Deck {
 		slides = append(slides, content)
 	}
 	deck := testDeck(slides...)
-	if diags := core.Resolve(deck); len(diags) > 0 {
+	if diags := core.Resolve(deck, nil); len(diags) > 0 {
 		t.Fatalf("외관 해석 진단: %v", diags)
 	}
 	return deck
@@ -122,7 +122,7 @@ func TestDiagnoseParentEscape(t *testing.T) {
 			Children: []soml.Node{textElem(chars("담기지 않는 긴 본문"))},
 		}
 		deck := testDeck([]soml.Node{&soml.Element{Name: soml.StackElement, Children: []soml.Node{shape}}})
-		if diags := core.Resolve(deck); len(diags) > 0 {
+		if diags := core.Resolve(deck, nil); len(diags) > 0 {
 			t.Fatalf("외관 해석 진단: %v", diags)
 		}
 		return deck
@@ -169,7 +169,7 @@ func TestDiagnoseTableCellMayOutgrowItsRow(t *testing.T) {
 	deck := &soml.Deck{Aspect: soml.Aspect16x9, Stage: stage, Slides: []*soml.Slide{
 		{Index: 0, ID: "t", Source: source, Content: doc.Content},
 	}}
-	if diags := core.Resolve(deck); len(diags) > 0 {
+	if diags := core.Resolve(deck, nil); len(diags) > 0 {
 		t.Fatalf("외관 해석 진단: %v", diags)
 	}
 
@@ -252,7 +252,7 @@ func TestDiagnoseSiblingOverlap(t *testing.T) {
 	stack := testDeck([]soml.Node{&soml.Element{Name: soml.StackElement, Children: []soml.Node{
 		textElem(chars("바닥")), textElem(chars("위")),
 	}}})
-	if diags := core.Resolve(stack); len(diags) > 0 {
+	if diags := core.Resolve(stack, nil); len(diags) > 0 {
 		t.Fatalf("외관 해석 진단: %v", diags)
 	}
 	g = measured(t, stack, map[string]Rect{

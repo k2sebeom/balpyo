@@ -1,6 +1,7 @@
 package core
 
 import (
+	"io/fs"
 	"sort"
 	"strconv"
 	"strings"
@@ -27,7 +28,11 @@ import (
 // 값 어휘도 이 층이 소유한다. 파서는 태그·속성 **이름**만 보고 값은 원문으로 남기므로
 // (soml/node.go), 역할 5종·정렬 4종·색 토큰 같은 **값 층의 닫힌 어휘**를 여기서 검사한다.
 // 진단은 Attr.ValueSpan을 근거로 파서와 같은 정밀도의 line:col을 갖는다.
-func Resolve(deck *soml.Deck) soml.Diagnostics {
+//
+// fsys는 **프로젝트 루트**다 (`ResolveAssets`와 같은 인자, 같은 기준 — ADR 0054). 테마 이름을
+// 찾는 자리가 둘이기 때문에 받는다: 내장 테마와 `themes/<이름>/`. nil이면 내장 테마만 보인다 —
+// 설정 없이 `Deck`을 만드는 길이 그대로 남는다 (테스트·프리뷰·미래의 API).
+func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 	if deck == nil {
 		return nil
 	}

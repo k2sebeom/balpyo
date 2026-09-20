@@ -150,7 +150,7 @@ func themeFSWithChrome(chrome string) fstest.MapFS {
 func TestResolveChromePerSlide(t *testing.T) {
 	deck := chromeDeck("title", "content", "section-divider", "content")
 	deck.Chrome = soml.DeckChrome{Footer: "내부용", PageNumber: true}
-	diags := Resolve(deck)
+	diags := Resolve(deck, nil)
 	if len(diags) != 0 {
 		t.Fatalf("진단이 없어야 한다: %v", diags)
 	}
@@ -206,7 +206,7 @@ func TestResolveChromePerSlide(t *testing.T) {
 // 켜지 않은 크롬은 확정 모델에 없다 — 이 필드 때문에 기존 덱의 산출물이 움직이지 않는다.
 func TestResolveChromeOffByDefault(t *testing.T) {
 	deck := chromeDeck("content", "content")
-	diags := Resolve(deck)
+	diags := Resolve(deck, nil)
 	if len(diags) != 0 {
 		t.Fatalf("진단이 없어야 한다: %v", diags)
 	}
@@ -221,7 +221,7 @@ func TestResolveChromeOffByDefault(t *testing.T) {
 func TestResolveChromeFooterOnly(t *testing.T) {
 	deck := chromeDeck("content")
 	deck.Chrome = soml.DeckChrome{Footer: "내부용"}
-	if diags := Resolve(deck); len(diags) != 0 {
+	if diags := Resolve(deck, nil); len(diags) != 0 {
 		t.Fatalf("진단이 없어야 한다: %v", diags)
 	}
 	items := deck.Slides[0].Chrome
