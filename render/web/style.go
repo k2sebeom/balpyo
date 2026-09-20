@@ -113,7 +113,8 @@ func layoutStagesCSS(theme soml.Theme, feat features) string {
 		fmt.Fprintf(&b, "  .balpyo-stage.balpyo-layout-%s:not(.balpyo-slots) { %s; }\n", name, theme.Layouts[name])
 	}
 	for _, name := range feat.slotLayouts {
-		// feat.slotLayouts는 슬롯 영역 CSS가 있는 레이아웃만 담으므로 조회는 언제나 성공한다.
+		// 조회는 언제나 성공한다 — 테마에 슬롯 영역이 없으면 core가 슬롯을 싣지 않으므로
+		// (ADR 0044) 그 레이아웃은 슬롯 모드가 될 수 없고 feat.slotLayouts에 들어오지 못한다.
 		fmt.Fprintf(&b, "  .balpyo-stage.balpyo-layout-%s.balpyo-slots { %s; }\n", name, theme.SlotLayouts[name])
 	}
 	return b.String()

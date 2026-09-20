@@ -120,14 +120,15 @@ func writeStage(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 	// 얹은 배치 규칙(themeCSS)의 표적이 된다. 배치 CSS가 없는 레이아웃(content 세로 스택·canvas
 	// 자유 배치는 렌더러가 소유)은 맵에 없으므로 클래스가 붙지 않는다 — 그래야 그 레이아웃의
 	// 산출물이 이 기능 때문에 움직이지 않는다 (soml.Theme.Layouts의 근거).
-	// 슬롯 모드는 **슬라이드마다** 판정한다: 이 레이아웃에 슬롯 영역 CSS가 있고(테마) 이
-	// 슬라이드의 직계 자식이 실제로 슬롯을 쓸 때만 켠다 (ADR 0035, 추가형 슬롯 결정). 슬롯을
-	// 쓰지 않은 슬라이드는 흐름 배치 그대로다 — 그래야 슬롯을 안 쓴 덱의 산출물이 이 기능
-	// 때문에 움직이지 않는다 (골든 불변). 슬롯 모드에서도 레이아웃 클래스를 붙여 슬롯 영역
-	// 선택자(`.balpyo-layout-<이름>.balpyo-slots`)가 맞도록 한다.
+	// 슬롯 모드는 **슬라이드마다** 판정하고, 판정의 입력은 확정 모델 하나다: 이 슬라이드의
+	// 직계 자식이 슬롯을 실었는가 (ADR 0035, 추가형 슬롯 결정). 테마에 슬롯 영역이 있는지는
+	// **여기서 보지 않는다** — core가 그 조건을 이미 보고, 테마가 못 받는 슬롯은 경고와 함께
+	// 확정 모델에 싣지 않는다 (ADR 0044). 그 조건을 렌더러마다 적었을 때 웹과 PPTX가 갈라진
+	// 것이 D3였다. 슬롯을 쓰지 않은 슬라이드는 흐름 배치 그대로다 — 그래야 슬롯을 안 쓴 덱의
+	// 산출물이 이 기능 때문에 움직이지 않는다 (골든 불변). 슬롯 모드에서도 레이아웃 클래스를
+	// 붙여 슬롯 영역 선택자(`.balpyo-layout-<이름>.balpyo-slots`)가 맞도록 한다.
 	_, hasFlow := deck.Theme.Layouts[string(slide.Layout)]
-	_, hasSlotCSS := deck.Theme.SlotLayouts[string(slide.Layout)]
-	slotMode := hasSlotCSS && slideUsesSlots(slide)
+	slotMode := slideUsesSlots(slide)
 	if hasFlow || slotMode {
 		stageClass += " balpyo-layout-" + string(slide.Layout)
 	}
@@ -668,10 +669,12 @@ func contentFeatures(deck *soml.Deck) features {
 		// 레이아웃 규칙은 이 슬라이드가 **슬롯 모드인가 흐름 모드인가**로 갈린다 (writeStage와
 		// 같은 판정): 슬롯 모드면 슬롯 영역 CSS를, 아니면 흐름 배치 CSS를 모은다. 한 슬라이드는
 		// 둘 중 하나뿐이므로 순수 흐름 덱은 슬롯 규칙을, 순수 슬롯 덱은 흐름 규칙을 내지 않아
-		// 양쪽 골든이 모두 이 기능 때문에 움직이지 않는다.
+		// 양쪽 골든이 모두 이 기능 때문에 움직이지 않는다. 판정은 writeStage와 **같은 한 줄**이다
+		// (슬롯 탑재 여부만 본다 — ADR 0044, 테마 조건은 core가 이미 걸렀다): 여기서
+		// 조건이 갈리면 스테이지에 모디파이어는 붙었는데 그 규칙이 CSS에 없는(또는 반대의)
+		// 산출물이 나온다.
 		name := string(slide.Layout)
-		_, hasSlotCSS := deck.Theme.SlotLayouts[name]
-		if hasSlotCSS && slideUsesSlots(slide) {
+		if slideUsesSlots(slide) {
 			if !seenSlot[name] {
 				seenSlot[name] = true
 				feat.slotLayouts = append(feat.slotLayouts, name)
