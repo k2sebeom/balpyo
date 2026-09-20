@@ -248,6 +248,51 @@ func TestLoadDeckRejectsUnknownThemeOption(t *testing.T) {
 	}
 }
 
+// TestLoadDeckUsesAProjectLocalTheme는 프로젝트의 `themes/<이름>/`이 설정과 플래그 **양쪽**에서
+// 이름으로 불림을 못 박는다 (P4.3 · ADR 0054). 파이프라인이 프로젝트 파일시스템을 값 층에
+// 넘기지 않으면 로컬 테마는 core에서 보이지 않는다.
+func TestLoadDeckUsesAProjectLocalTheme(t *testing.T) {
+	files := map[string]string{
+		"balpyo.json":                   `{"theme": "corp"}`,
+		"slides/001_title.slide":        "<slide><h1>제목</h1></slide>",
+		"themes/corp/theme.json":        `{"name":"corp","extends":"minimal"}`,
+		"themes/corp/tokens.json":       `{"color":[{"name":"accent1","rgb":"112233","slot":"accent1","ref":"accent1"}]}`,
+		"themes/corp/layouts/title.css": "/* corp의 표지 */\ndisplay: grid;",
+	}
+	dir := newProject(t, files)
+	deck, diags, err := LoadDeck(Options{ProjectDir: dir})
+	if err != nil {
+		t.Fatalf("로컬 테마를 요청한 덱이 로드되지 않았다: %v", err)
+	}
+	if len(diags) != 0 {
+		t.Fatalf("진단이 없어야 한다: %v", diags)
+	}
+	if deck.Theme.Name != "corp" {
+		t.Errorf("deck.Theme.Name = %q, want corp", deck.Theme.Name)
+	}
+	accent1, ok := deck.Theme.Color("accent1")
+	if !ok || accent1.RGB != "112233" {
+		t.Errorf("accent1 = %+v, want 112233 (로컬 테마의 값)", accent1)
+	}
+	if !strings.Contains(deck.Theme.Layouts["title"], "display: grid") {
+		t.Errorf("표지 배치가 로컬 테마의 파일이 아니다: %q", deck.Theme.Layouts["title"])
+	}
+	if len(deck.Theme.Layouts) != len(soml.SlideLayouts()) {
+		t.Errorf("배치 CSS %d개, want %d — 부모의 파일을 물려받지 않았다",
+			len(deck.Theme.Layouts), len(soml.SlideLayouts()))
+	}
+
+	// 플래그도 같은 어휘를 받는다 — 설정이 내장 테마를 적어도 `--theme corp`가 된다.
+	files["balpyo.json"] = `{"theme": "ink"}`
+	flagged, _, err := LoadDeck(Options{ProjectDir: newProject(t, files), Theme: "corp"})
+	if err != nil {
+		t.Fatalf("--theme이 로컬 이름을 받지 않았다: %v", err)
+	}
+	if flagged.Theme.Name != "corp" {
+		t.Errorf("deck.Theme.Name = %q, want corp (플래그가 설정을 덮는다)", flagged.Theme.Name)
+	}
+}
+
 func TestLoadDeckErrors(t *testing.T) {
 	tests := []struct {
 		name    string

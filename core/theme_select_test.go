@@ -1,6 +1,8 @@
 package core
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -114,24 +116,32 @@ func TestBuiltinThemesRenderTheSameDeckDifferently(t *testing.T) {
 	}
 }
 
-// TestConfigValidateChecksThemeVocabulary는 `balpyo.json`의 theme가 내장 어휘와 대조됨을 못
-// 박는다. 값 층도 같은 판정을 하지만(위 테스트) 설정 검사가 **더 좋은 에러**를 준다 — 파일을
-// 가리키고 쓸 수 있는 이름을 나열한다.
-func TestConfigValidateChecksThemeVocabulary(t *testing.T) {
+// TestLoadConfigChecksThemeVocabulary는 `balpyo.json`의 theme가 어휘와 대조됨을 못 박는다.
+// 값 층도 같은 판정을 하지만(위 테스트) 설정 로드가 **더 좋은 에러**를 준다 — 파일을 가리키고
+// 쓸 수 있는 이름을 나열한다.
+//
+// 검사하는 자리가 `Config.Validate`가 아니라 `LoadConfig`인 이유는 어휘가 **프로젝트에
+// 달렸다**는 것이다 (`themes/<이름>/` — ADR 0054의 결정 5): `Validate`는 파일시스템을 모르므로
+// 기본값 채우기만 하고, 프로젝트를 아는 자리가 이름을 판정한다.
+func TestLoadConfigChecksThemeVocabulary(t *testing.T) {
+	write := func(t *testing.T, body string) string {
+		t.Helper()
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, ConfigFile), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return dir
+	}
 	for _, name := range BuiltinThemes() {
-		cfg := DefaultConfig()
-		cfg.Theme = name
-		if err := cfg.Validate(); err != nil {
+		if _, err := LoadConfig(write(t, `{"theme":"`+name+`"}`)); err != nil {
 			t.Errorf("내장 테마 %q가 거부됐다: %v", name, err)
 		}
 	}
-	cfg := DefaultConfig()
-	cfg.Theme = "corp"
-	err := cfg.Validate()
+	_, err := LoadConfig(write(t, `{"theme":"corp"}`))
 	if err == nil {
 		t.Fatal("없는 테마 이름이 통과했다 — 값이 조용히 버려지던 시절의 필드가 된다")
 	}
-	for _, want := range append([]string{"theme", "corp"}, BuiltinThemes()...) {
+	for _, want := range append([]string{ConfigFile, "theme", "corp"}, BuiltinThemes()...) {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("에러가 %q를 말하지 않는다: %v", want, err)
 		}
@@ -144,6 +154,13 @@ func TestConfigValidateChecksThemeVocabulary(t *testing.T) {
 	}
 	if empty.Theme != DefaultTheme {
 		t.Errorf("빈 theme = %q, want %q", empty.Theme, DefaultTheme)
+	}
+	// Validate는 이름을 판정하지 않는다 — 프로젝트를 모르는 자리가 어휘를 좁히면 로컬 테마를
+	// 쓰는 설정이 파일시스템을 보지도 않고 거부된다.
+	local := DefaultConfig()
+	local.Theme = "corp"
+	if err := local.Validate(); err != nil {
+		t.Errorf("Validate가 이름을 판정했다: %v", err)
 	}
 }
 
