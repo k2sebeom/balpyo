@@ -64,7 +64,7 @@ balpyo는 SOML 슬라이드를 테마로 렌더링하는 **프레젠테이션 �
 brew install balpyo                    # 또는 바이너리 1개 내려받기 (런타임 의존 없음)
 
 balpyo init my-talk && cd my-talk
-balpyo server                          # localhost 라이브 프리뷰 (핫 리로드)
+balpyo watch                           # localhost 라이브 프리뷰 (핫 리로드)
 balpyo build --target html             # → dist/index.html   (발표용)
 balpyo build --target pptx             # → dist/my-talk.pptx (제출용, 편집 가능)
 ```

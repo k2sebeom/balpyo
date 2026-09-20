@@ -38,6 +38,7 @@ nav:
       - CLI: reference/cli.md
   - 가이드:
       - guides/index.md
+      - 시작하기: guides/getting-started.md
       - 배치 경고 읽기: guides/layout-warnings.md
       - 알려진 차이: guides/known-differences.md
   - 내부 구조:
