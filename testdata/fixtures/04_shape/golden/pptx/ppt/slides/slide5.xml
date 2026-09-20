@@ -211,7 +211,7 @@
         <p:spPr>
           <a:xfrm>
             <a:off x="609600" y="3608040"/>
-            <a:ext cx="3429000" cy="1333500"/>
+            <a:ext cx="3429000" cy="1905000"/>
           </a:xfrm>
           <a:prstGeom prst="rect">
             <a:avLst/>
@@ -259,11 +259,11 @@
         <p:spPr>
           <a:xfrm>
             <a:off x="4267200" y="3608040"/>
-            <a:ext cx="3810000" cy="1333500"/>
+            <a:ext cx="3810000" cy="1905000"/>
           </a:xfrm>
           <a:prstGeom prst="roundRect">
             <a:avLst>
-              <a:gd name="adj" fmla="val 8571"/>
+              <a:gd name="adj" fmla="val 6000"/>
             </a:avLst>
           </a:prstGeom>
           <a:solidFill>

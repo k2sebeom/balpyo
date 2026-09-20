@@ -10,7 +10,12 @@
      글자가 박스를 **정확히** 채워 여유가 0%가 된다 — LibreOffice의 스크립트 간격이 그
      0%를 넘겨 라벨마다 줄이 하나 늘었다 (NOTES 04/05의 열린 질문 (a)가 그림이 된 것이다).
      앵커를 보이려는 슬라이드가 줄바꿈 갈라짐을 시험하게 되므로 줄을 나눠 선언한 크기가
-     그대로 서게 했다. 여유의 성질 자체는 아래 두 문단 도형이 여전히 시험한다. -->
+     그대로 서게 했다. 여유의 성질 자체는 아래 두 문단 도형이 여전히 시험한다.
+     **둘째 줄의 높이가 200px인 이유**(P1.1): 처음에는 140px이었는데 배치 진단이 "본문이
+     도형을 아래로 4px 넘친다"를 찾았다 — 두 문단(h3 36 + p 두 줄 72 = 108px)에 `pad="lg"`
+     여백 72px을 더하면 180px이 필요한데 140px을 선언했고, 본문 마지막 줄이 도형의 아래
+     변을 가로지르고 있었다. 픽셀 골든과 리뷰 갤러리를 다섯 iteration 통과한 사고다
+     (ADR 0039). 두 도형을 같은 높이로 두는 것은 `pad` 비교가 나란히 보여야 해서다. -->
 <slide id="shape-text-anchor">
   <h2>도형 안 텍스트의 세로 앵커</h2>
   <row gap="md" align="stretch">
@@ -25,10 +30,10 @@
     </shape>
   </row>
   <row gap="md" align="stretch">
-    <shape type="rect" fill="surface" border="1 solid muted" w="360" h="140">
+    <shape type="rect" fill="surface" border="1 solid muted" w="360" h="200">
       <p anchor="center">pad 없음 — 글자가 변에 붙는다</p>
     </shape>
-    <shape type="rounded-rect" fill="surface" border="1 solid muted" w="400" h="140" pad="lg">
+    <shape type="rounded-rect" fill="surface" border="1 solid muted" w="400" h="200" pad="lg">
       <h3>문단 둘</h3>
       <p>도형 하나에 자식 여럿은 문단 여럿이다.</p>
     </shape>
