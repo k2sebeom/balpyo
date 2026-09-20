@@ -22,7 +22,7 @@
 |---|---|---|---|---|
 | D1 | 텍스트 안에 **리터럴 `<`를 쓸 수 없고** 문자 참조도 해석되지 않는다 (`&lt;`가 그대로 보인다). 마크업 언어를 설명하는 덱이 자기 문법을 화면에 띄울 수 없었다 | **높음** (우회 불가) | P0.1 | 닫힘 |
 | D2 | `<table>`은 파싱·검증까지 통과한 뒤 **렌더에서 빌드가 죽었다**. 표 한 장을 `grid` + 도형 14개로 손으로 짰다 | **높음** | P0.2 · P2.1 | 진단만 닫힘 |
-| D3 | 슬롯 카탈로그는 레이아웃 11종에 있는데 minimal 테마에는 `*.slots.css`가 3종뿐이다. `layout="quote"` + `slot=`이 **웹에서 조용히 무효**인데 **PPTX에는 `p:ph`가 그대로 나간다** — 같은 소스가 두 타깃에서 갈린다 | **높음** | P1.4 | 열림 |
+| D3 | 슬롯 카탈로그는 레이아웃 11종에 있는데 minimal 테마에는 `*.slots.css`가 3종뿐이다. `layout="quote"` + `slot=`이 **웹에서 조용히 무효**인데 **PPTX에는 `p:ph`가 그대로 나간다** — 같은 소스가 두 타깃에서 갈린다 | **높음** | P1.4 | **닫힘** (ADR 0044) |
 | D4 | `title.slots.css`의 `justify-items: center`가 base 층 `.balpyo-text { width: 100% }`에 무력화된다. 표지가 왼쪽에 붙어서 슬롯 자식마다 `align="center"`를 손으로 달았다 | **높음** | P1.3 | **닫힘** (ADR 0043) |
 | D5 | `chevron` 중앙 텍스트가 노치에 **잘린다**. `pad`를 키워도 해결 불가 → 라벨을 도형 밖으로 내렸다 | 중간 | P1.2 | 닫힘 |
 | D6 | `<ul>`/`<ol>`에 외관 속성이 없다. 목록 글자 크기를 바꾸려면 레이아웃을 바꿔야 한다 | 중간 | P0.3 | 닫힘 |
@@ -36,7 +36,7 @@
 | D14 | **`<text>`에 `w`/`h`가 없다.** canvas 라벨은 자기 내용만큼만 넓어서 `align="center"`가 기댈 폭이 없다 — 라벨마다 보이지 않는 도형(`fill="none" border="none" w="140"`)으로 감쌌다. 라벨 10개가 태그 20개가 됐다 | **높음** | P1.3 · P2.5 | P1.3 닫힘 (ADR 0043) · `<chart>`는 P2.5 |
 | D15 | `<pre>`에 **`lang`도 탭 폭도 없다.** gofmt 출력(탭)이 중첩 세 번에 x=350까지 밀려서 탭을 스페이스 두 칸으로 손으로 바꿨다 | 중간 | P2.4 | 열림 |
 | D16 | **미구현과 오타의 진단이 구별되지 않는다.** `<table>`은 "아직 구현되지 않은 어휘다"라고 말해 주는데 `<pre lang="go">`는 그냥 "알 수 없는 속성"이다 | 중간 | P2.4 · P5.2 | 열림 |
-| D17 | **레이아웃이 본문 높이를 소유하지 않는다.** `content`는 위에서부터 쌓기만 해서 10장 중 5장의 아래 40%가 비었다. 세로 리듬은 저자가 `<col h="fill" justify="between">` 랩퍼로 슬라이드마다 손수 만든다 (랩퍼 없음·`justify="center"`·`between` 셋 다 재봤다) | **높음** | P1.4 | 열림 |
+| D17 | **레이아웃이 본문 높이를 소유하지 않는다.** `content`는 위에서부터 쌓기만 해서 10장 중 5장의 아래 40%가 비었다. 세로 리듬은 저자가 `<col h="fill" justify="between">` 랩퍼로 슬라이드마다 손수 만든다 (랩퍼 없음·`justify="center"`·`between` 셋 다 재봤다) | **높음** | P1.4 | **닫힘** (ADR 0044) |
 | D18 | 같은 뜻의 이름이 갈린다: 컨테이너는 `justify`/`align`, 도형은 `anchor`다. 첫 시도가 `<col>에 알 수 없는 속성 anchor`로 죽었다 | 낮음 | P5.2 | 열림 |
 | D19 | **저자가 처음 읽는 페이지가 틀렸다.** `slide.md`는 "`layout` 어휘는 2종"이라고 했고 `reference/index.md`는 `layouts.md`가 "Iteration 10에서 생긴다"고 했다 — 11종이 다 살아 있고 그 페이지도 이미 있다 | **높음** | P5.2 | 닫힘 |
 | D20 | 도형으로 흉낸 표는 **머리행 아래 선이 없고** 본문 셀 테두리가 이웃과 2px로 겹친다. `border-collapse`를 흉낼 방법이 없다 | 중간 | P2.1 | 열림 |
@@ -57,6 +57,8 @@
 | P0.3 목록에 외관 속성 (D6) | `ul`/`ol`에 외관 4종, `li`는 상속만. 리뷰가 웹 마커 정렬 버그까지 잡았다 | [ADR 0038](docs/decisions/0038-list-containers-take-appearance.md), `02_text_subset/007` |
 | P1.1 오버플로 · 이탈 진단 (D9) | 박스 포함 관계 + 줄 박스 가로 이탈 판정, `--check-layout` 경고 · `--strict` 승격. 클리핑 판정은 거짓 양성으로 버렸다 | [ADR 0039](docs/decisions/0039-overflow-warnings-use-measured-boxes.md), `render/geom/layout_test.go`, `docs/guides/layout-warnings.md` |
 | P1.2 도형 프리셋의 텍스트 영역 (D5) | 프리셋 12종의 텍스트 영역을 `render/web` 기하표의 `TextRect` 열로. chevron은 음수 `bodyPr` 인셋으로 되돌린다 | ADR [0040](docs/decisions/0040-preset-text-rect-lives-in-the-web-geometry-table.md)·[0041](docs/decisions/0041-chevron-cancels-its-text-rect.md)·[0042](docs/decisions/0042-chevron-labels-stay-outside-the-shape.md), `04_shape/009`·`010` |
+| P1.3 정렬과 텍스트 박스의 소유권 (D4 · D14) | 슬롯 모드가 세 번째 폭 리셋 문맥 + `<text>`에 가로 크기 3종. PPTX 렌더러는 손대지 않았다 | [ADR 0043](docs/decisions/0043-explicit-width-belongs-to-the-placement-context.md), `08_slots/004`(자식에 `align`이 없다), `06_stack/011` |
+| P1.4 슬롯의 테마 구멍과 세로 리듬 (D3 · D17) | minimal이 슬롯 10종 전부에 `*.slots.css`를 갖고, 테마가 못 받는 슬롯은 **값 층에서 경고 + 미탑재**(두 렌더러가 한 입력을 읽는다). 세로 리듬은 `<slide justify>`가 소유한다 | [ADR 0044](docs/decisions/0044-slots-need-a-theme-and-vertical-rhythm-needs-an-owner.md), `render/pptx/placeholder_test.go`(두 타깃 모드 합의) · `core/theme_package_test.go`(카탈로그 ↔ 테마 대조), `03_layout/008` · `08_slots/005` |
 | D19 문서가 어휘를 숨긴다 | `slide.md`(11종 표 + 실제 진단 문구) · `reference/index.md`(`layouts.md`는 구현됨) · `text.md`(속성 목록 + `<text>`에 `w`/`h`가 없다는 것) | `make docs --strict`, 커밋 `cc8239f` |
 
 ---
@@ -108,21 +110,42 @@
 - [x] DOC: `layouts.md` "정렬은 누가 소유하는가" 절(두 채널 + 문맥별 폭 표) + `text.md` 속성 표·
       진단 문자열 · `text-subset.md` · `index.md`.
 
-### P1.4 슬롯: 카탈로그·테마의 구멍과 본문 높이 (D3 · D17) ← **지금 여기** · **가장 조용히 위험한 것**
+### P1.4 슬롯: 카탈로그·테마의 구멍과 본문 높이 (D3 · D17) — **닫힘** (ADR 0044)
 웹은 무효, PPTX는 플레이스홀더 발행. 두 타깃이 갈리는 것은 이 제품에서 가장 비싼 버그다.
-- [ ] RED: 슬롯 카탈로그(11종)와 테마 `*.slots.css` 목록을 **대조하는 테스트** — 테마가 못 받는
-      슬롯을 쓴 슬라이드는 경고, 그리고 **웹 슬롯 모드 판정과 PPTX 플레이스홀더 판정이 같은
-      입력을 쓰는지** 어서션(지금은 각각 `Theme.SlotLayouts`와 `soml.LayoutSlots`를 본다).
-- [ ] GREEN (택1을 ADR로): (a) minimal에 남은 8종 `*.slots.css`를 채운다, (b) 테마가 못 받는
-      슬롯은 두 타깃 모두에서 무효 + 경고. **권장은 (a) + (b) 둘 다.**
-- [ ] **D17**: 레이아웃이 **본문 높이를 소유**하는지 정한다 — (a) 본문 영역이 남은 높이를 갖게,
-      (b) 슬라이드 루트에 `justify`를 열기, (c) 지금처럼 저자의 랩퍼로 두고 관용으로 문서화.
-      판정 기준도 PPTX 좌표다(본문이 늘면 `p:ph` 박스도 늘어야 한다).
-- [ ] REVIEW: 11종 레이아웃 × 슬롯 덱 하나를 웹/PPTX 양쪽에서 열어 같은 자리인지.
-      D17은 `incident-postmortem` 002·003·004에서 랩퍼를 **지우고도** 같은 리듬인지.
-- [ ] DOC: `docs/reference/layouts.md` 슬롯 표에 "테마가 받아야 뜻이 있다" 명시.
+- [x] **선결정 ADR** 0044: D3은 **(a)+(b) 둘 다** — minimal의 빈 7종을 채우고, 테마가 못 받는
+      슬롯은 **값 층에서 경고 + 미탑재**(확정 모델에 싣지 않으면 두 렌더러가 `Appearance.Slot`
+      하나를 읽는다). D17은 **(b)** — `<slide>`에 `justify`를 연다 (`gap`·`align`은 닫아 둔다).
+- [x] RED: `render/pptx/placeholder_test.go`(웹 스테이지 클래스 ↔ `<p:ph>` 발행이 **같은 입력**을
+      쓰는지 — 판정을 문서 전체 substring이 아니라 스테이지의 class 목록에서 읽는다) ·
+      `core/theme_package_test.go`(슬롯 카탈로그 11종 ↔ 테마 `*.slots.css` 대조) ·
+      `core/slot_test.go`(테마에 영역이 없으면 경고 + 미탑재).
+- [x] GREEN (a): minimal에 `section-divider`·`quote`·`code`·`image-text`·`image-full`·`stat`·
+      `end` 7종 `*.slots.css`. 표지 계열은 `justify-items: center`, 인용·구분선은 **가로 정렬을
+      저자에게 남긴다**(`align="end"`가 뜻을 가져야 한다 — ADR 0043의 두 채널).
+      `image-full.slots.css`는 `padding: 0`을 **다시 쓴다**: 흐름 규칙이 `:not(.balpyo-slots)`라
+      물려받지 못하므로, 빠뜨리면 전면 그림이 조용히 64px 액자를 얻는다.
+- [x] GREEN (b): `core.resolveSlot`이 테마의 슬롯 영역 유무를 보고 경고 + 미탑재.
+      `render/web`은 `Theme.SlotLayouts` 조건을 **버렸고** `render/pptx`는 손대지 않았다 —
+      두 렌더러가 읽는 입력이 하나가 됐다 (ADR 0044의 예측대로).
+- [x] **D17**: `<slide justify>` — 파서 어휘 → 파이프라인 → 값 층(컨테이너와 **같은 6종**,
+      슬롯 모드에서는 에러) → 웹 스테이지 인라인 `justify-content`. 픽스처 `03_layout/008`의
+      잰 좌표가 64(위 끝)–656(아래 끝)이고 그 좌표가 그대로 PPTX `a:off`다.
+- [x] REVIEW: 슬롯 10종을 한 장씩(슬롯 28개 전부 채움) 두 타깃으로 빌드해 견줬다 — 웹은 10장
+      모두 `.balpyo-slots` + `grid-area` 28개, PPTX는 같은 28개가 `<p:ph>`로 나갔고 잰 좌표가
+      영역과 맞는다 (`two-column` 564px 두 열 + 24px 간격 · `quote`·`stat`·`end` 블록 중심
+      360px · `code` 캡션 620–656 · `image-full` 미디어 (0,0 1280×240) 전면). 이 리뷰가 **버그
+      둘을 잡았다**: (1) `slot=`을 쓴 `<shape>`/`<image>`가 "엔진 버그" 진단으로 빌드를 멈췄다
+      (`shapeAttrs`·`imageAttrs`의 exhaustive 검사가 슬롯을 면제하지 않았다 — media 슬롯을 가진
+      두 레이아웃을 **저작할 수 없었다**), (2) 콘텐츠 박스 이탈 판정이 여백을 상수로 계산해
+      전면 배치 레이아웃(`image-full`, 흐름 모드까지)에서 저자가 고칠 수 없는 경고를 냈다 —
+      이제 스테이지의 패딩을 **재서** 판정한다 (`Geometry.Content`).
+      D17은 `incident-postmortem` 002·003·004에서 `<col h="fill" justify="between">` 랩퍼를
+      지우고 `<slide justify="between">` 한 선언으로 바꿨고, 세 장 모두 64–656 그대로다.
+- [x] DOC: `layouts.md`("테마가 받아야 뜻이 있다" + "세로 리듬은 누가 소유하는가" 절 +
+      minimal이 10종 전부를 갖는다) · `soml/slide.md`(`justify` 속성 절·진단 문자열 6줄) ·
+      `reference/index.md` · `guides/layout-warnings.md`(콘텐츠 박스는 잰 값이다).
 
-### P1.5 LibreOffice 문장부호 간격 조사 (D11)
+### P1.5 LibreOffice 문장부호 간격 조사 (D11) ← **지금 여기**
 20장을 견줘 남은 **유일한** 두 타깃 차이다. 원인을 모르면 "두 타깃이 같다"를 말할 수 없다.
 - [ ] 조사: 같은 문장을 (1) 런 하나, (2) 지금처럼 분할된 런으로 내보내 LibreOffice 렌더를 비교.
       원인이 런 분할이면 **인접 런 병합**(같은 `rPr`이면 하나로), CJK 텍스트 레이아웃이면
@@ -253,7 +276,8 @@
 - [ ] **손으로 짜는 것이 없다**: 표를 도형으로, 차트를 좌표로, 라벨을 빈 도형으로 흉내지
       않는다 (P2.1, P2.5, P1.3)
 - [ ] **두 타깃이 갈리지 않는다**: 슬롯·정렬·문장부호가 웹과 PPTX에서 같은 그림 (P1.3–P1.5)
-- [ ] **세로 공간을 저자가 손으로 만들지 않는다**: 레이아웃이 본문 높이를 소유한다 (P1.4)
+- [x] **세로 공간을 저자가 손으로 만들지 않는다**: 슬롯 모드는 테마가, 흐름 모드는
+      `<slide justify>` 한 선언이 세로 리듬을 소유한다 (P1.4)
 - [ ] **한 명령으로 검수한다**: `balpyo watch` + `balpyo preview --target pptx` (P3.1, P3.2)
 - [ ] **덱이 덱처럼 생겼다**: 페이지 번호·푸터·색 위계 (P2.2, P4.1)
 - [ ] **예제가 썩지 않는다**: CI가 모든 예제를 경고 0으로 빌드한다 (P5.1)
@@ -270,7 +294,7 @@
 | 오버플로 판정 기준과 경고/에러 승격 | P1.1 | ADR 0039 |
 | 프리셋별 텍스트 영역 표(웹 인셋 ↔ `bodyPr`) | P1.2 | ADR 0040 (0041·0042가 chevron을 고쳤다) |
 | 정렬 소유권 (base `width: 100%`) + `<text>`의 박스 속성 | P1.3 | ADR 0043 |
-| 슬롯 구멍: 테마가 채우기 vs 경고 · 본문 높이의 소유자 | P1.4 | **다음 ADR (0044)** |
+| 슬롯 구멍: 테마가 채우기 vs 경고 · 본문 높이의 소유자 | P1.4 | ADR 0044 (둘 다 — 테마를 채우고, 못 받는 슬롯은 값 층에서 경고 + 미탑재) |
 | 덱 크롬 어휘와 `a:fld` 매핑 | P2.2 | 대기 |
 | 도형이 컨테이너를 자식으로 받을 때의 좌표·매핑 | P2.3 | 대기 |
 | 코드 하이라이팅 토크나이저와 색 토큰 · 탭 처리 · "예정된 속성" 진단 | P2.4 | 대기 |
