@@ -60,6 +60,7 @@
 | [0052](0052-theme-selection-is-a-deck-request-and-there-is-no-fallback-theme.md) | 테마 선택은 덱의 요청이고, 폴백 테마는 없다 (내장 테마 셋) | P4.2 | 확정 |
 | [0053](0053-a-theme-takes-the-horizontal-channel-only-to-center.md) | 테마가 가로 채널을 가져가는 것은 가운데 정렬뿐이다 (왼쪽은 선언하지 않는다) | P4.2 | 확정 |
 | [0054](0054-an-external-theme-is-a-name-inside-the-project-and-extends-overrides-by-name.md) | 외부 테마는 프로젝트 안의 이름이고, `extends`는 이름 단위 덮어쓰기다 | P4.3 | 확정 |
+| [0055](0055-a-child-theme-recolors-by-name-because-color-tokens-are-bounded-by-the-clrscheme.md) | 자식 테마는 색을 갈아 끼운다 — 색 토큰 표는 `clrScheme` 자리에 묶여 있다 | P4.3 | 확정 |
 
 PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다. 그 결정들의
 색인은 PRD에 있고, 이 표는 **그 이후 구현 중에 새로 확정한 것**만 담는다.
