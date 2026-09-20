@@ -121,6 +121,15 @@ CI에서는 경고를 통과시키지 않는다.
 ./balpyo build --project my-talk --target html,pptx --strict
 ```
 
+두 산출물이 같은지 **눈으로** 보려면 검수 갤러리를 만든다 — 슬라이드마다 웹 스크린샷과 PPTX
+렌더가 나란히 놓이고 다른 픽셀이 마젠타로 칠해진다. PPTX를 그림으로 되돌리는 데 LibreOffice와
+`pdftoppm`이 필요하며, 없으면 시작하기 전에 그렇게 말한다
+([`balpyo preview`](../reference/cli.md#balpyo-preview)).
+
+```bash
+./balpyo preview --project my-talk   # → my-talk/preview/index.html
+```
+
 ## 6. 발표
 
 `dist/index.html`을 브라우저로 연다.
@@ -133,6 +142,6 @@ CI에서는 경고를 통과시키지 않는다.
 
 ## 다음
 
-- [CLI](../reference/cli.md) — `build`·`watch`의 옵션과 종료 코드
+- [CLI](../reference/cli.md) — `build`·`watch`·`preview`의 옵션과 종료 코드
 - [테마 패키지](../reference/theme.md) — 토큰·컴포넌트·레이아웃과 덱 크롬(페이지 번호·푸터)
 - [외관 속성](../reference/appearance.md) — 색·크기·간격의 캐스케이드와 탈출구

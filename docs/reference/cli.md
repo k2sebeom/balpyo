@@ -1,8 +1,8 @@
 # CLI
 
 바이너리 하나가 모든 서브커맨드를 담는다 (PRD §10). 지금 구현된 표면은 `build`·`watch`·
-`version`이다 — `init`/`check`/`format`/`lsp`는 Phase 2에서 열리며, 그때 이 문서에 함께
-실린다.
+`preview`·`version`이다 — `init`/`check`/`format`/`lsp`는 Phase 2에서 열리며, 그때 이 문서에
+함께 실린다.
 
 ## `balpyo build`
 
@@ -217,6 +217,93 @@ Ctrl+C로 끝낸다 — 웜 브라우저를 닫고 서버를 내린 뒤 코드 0
 페이지를 **통째로** 새로고침한다 (부분 갱신 HMR이 아니다 — 화면이 파일과 같다는 보장을 잃지
 않는 쪽을 골랐다). 근거는
 [ADR 0046](../decisions/0046-watch-polls-the-project-and-injects-its-reload-client.md)에 있다.
+
+## `balpyo preview`
+
+웹과 PPTX를 나란히 놓은 **검수 갤러리**를 만든다 — 두 타깃이 같은지 눈으로 보는 명령이다.
+
+```bash
+balpyo preview --project testdata/fixtures/04_shape
+```
+
+```
+  #1 shape-types: 다른 픽셀 22589/921600 (2.451%), 최대 채널 차 229
+  #2 shape-token-colors: 다른 픽셀 25020/921600 (2.715%), 최대 채널 차 240
+  …
+슬라이드 10장 → /path/to/preview/index.html
+허용 오차(2.5%)를 넘은 슬라이드 4장 — 눈으로 볼 자리라는 표시이고 실패가 아니다
+PPTX는 PowerPoint·Keynote로 직접 열어 확인한다: /path/to/dist
+```
+
+`preview/index.html`을 브라우저로 열면 슬라이드마다 세 칸이 나란히 있다: 웹 스크린샷,
+LibreOffice로 되돌린 PPTX, 그리고 다른 픽셀을 마젠타로 칠한 diff. 산출물(`*.pptx`·
+`index.html`)도 갤러리 옆에 복사되므로 PPTX를 그 자리에서 PowerPoint·Keynote로 열 수 있다.
+
+### 옵션
+
+`build`의 옵션을 같은 뜻으로 받고(`--project`·`--target`·`--out`·`--strict`) 하나가 더 있다.
+`--out`은 여기서도 **빌드 산출물**이 가는 곳이고, 갤러리는 `--gallery`가 정한다.
+
+| 옵션 | 기본값 | 뜻 |
+|---|---|---|
+| `--target <목록>` | `html,pptx` | 갤러리에 나란히 놓을 렌더. 하나만 주면 갤러리가 한 열이 된다 |
+| `--gallery <dir>` | `<프로젝트>/preview` | 검수 갤러리 디렉토리. 실행마다 비우고 다시 쓴다 |
+
+기본 `--target`이 `build`와 다른 이유는 이 명령의 존재 이유가 **두 타깃을 비교하는 것**이라는
+것이다. 배치 검사는 항상 켜져 있다 — 눈으로 볼 자리를 찾으러 온 사람에게 이미 숫자로 아는
+넘침·이탈을 말하지 않을 이유가 없다 (브라우저는 어차피 떠 있다).
+
+갤러리 디렉토리는 실행마다 **비운다**: 앞선 실행이 남긴 슬라이드가 섞이면 사람이 지금 없는
+결과를 보고 판단한다. 산출물 디렉토리(`dist/`) 안에 두지 않는 이유는 검수 산출물이 배포물이
+아니라는 것이다 — `dist/`를 그대로 올리는 사람이 스크린샷 수십 장을 함께 올리게 된다.
+`.gitignore`에 `preview/`를 넣어 두면 좋다.
+
+### PPTX 검수는 도구 둘이 필요하다
+
+`--target`에 `pptx`가 있으면 PPTX를 그림으로 되돌리기 위해 **LibreOffice(`soffice`)**와
+**`pdftoppm`(poppler-utils)**이 필요하다. 이 둘은 balpyo가 산출물을 만드는 데 쓰는 도구가
+아니라 **만든 산출물을 다시 그림으로 보는** 데만 쓰는 도구다 — 빌드는 여전히 바이너리 하나로
+끝난다 (PRD §10).
+
+도구를 못 찾으면 **빌드를 시작하기 전에** 멈춘다. 여섯 장을 빌드하고 브라우저까지 띄운 뒤에
+알려 주는 것은 시간 낭비이고, 조용히 웹 열만 있는 갤러리를 내면 사람은 두 타깃이 같다고
+읽는다. 길은 셋이다:
+
+```bash
+# 1. 설치한다 (macOS: brew install --cask libreoffice; brew install poppler)
+# 2. 경로를 준다
+BALPYO_SOFFICE=/path/to/soffice BALPYO_PDFTOPPM=/path/to/pdftoppm balpyo preview
+# 3. 테스트 이미지 안에서 돈다 — 저장소에는 둘이 설치된 이미지가 있다
+make shell
+```
+
+웹만 보는 검수(`--target html`)는 이 도구들을 찾지 않는다. 브라우저(Chromium/Chrome)는
+어느 조합에서든 필요하다 — 웹 스크린샷과 PPTX 좌표가 모두 거기서 나온다.
+
+### 게이트가 아니다
+
+허용 오차를 넘은 슬라이드가 있어도 **종료 코드는 0이다**.
+
+| 코드 | 뜻 |
+|---|---|
+| 0 | 갤러리를 만들었다 — 허용 오차를 넘은 슬라이드가 있어도 0이다 |
+| 1 | 검수할 것이 만들어지지 않았다 — 빌드 실패, 도구 없음, 산출물이 덱과 맞지 않음 |
+
+두 렌더가 **달라야 정답인** 슬라이드가 있기 때문이다: `style`에 쓴 외관은 웹에만 적용되고
+PPTX로 이식되지 않는 것이 계약이다([외관 속성](appearance.md)). 저장소의 테스트는 픽스처마다
+조정한 허용 오차로 그 차이를 판정하지만(2.5%~7%, 그 표에는 "이 슬라이드는 달라야 한다"까지
+들어 있다), 그것은 **테스트 정책**이지 사용자 덱의 기준이 아니다. 그래서 이 명령은 숫자를
+보여 주고 판단은 사람에게 남긴다. 표시된 2.5%는 기본 허용 오차이며, 근거는
+[ADR 0047](../decisions/0047-review-gallery-lives-in-internal-preview.md)에 있다.
+
+LibreOffice가 파일을 열며 경고나 복구를 냈다면 그 출력도 그대로 보여 준다 — 복구가
+일어났다면 사용자도 파일을 열 때마다 같은 경고를 본다.
+
+### 아직 아닌 것
+
+갤러리를 감시하지 않고(고치면 `preview`를 다시 돈다), PDF 타깃과 슬라이드 범위 지정, 허용
+오차 플래그, 브라우저 자동 열기는 열지 않았다. 근거는
+[ADR 0047](../decisions/0047-review-gallery-lives-in-internal-preview.md)에 있다.
 
 ## `balpyo version`
 

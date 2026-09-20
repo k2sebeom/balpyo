@@ -328,6 +328,8 @@ bin/
 ### balpyo ###
 # 시각 리뷰 산출물 (`make review`) — 커밋하는 스냅샷은 픽스처의 golden/ 뿐이다.
 review/
+# `balpyo preview`의 검수 갤러리 (프로젝트 루트 기준 기본값)
+preview/
 # 테스트 이미지 빌드 스탬프
 .make/
 # 항목 러너(run.sh)의 세션 로그. 러너는 커밋 후 트리가 깨끗한지로 항목을 판정하므로
