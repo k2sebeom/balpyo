@@ -342,6 +342,14 @@ func Build(opts Options) (*Result, error) {
 	return result, nil
 }
 
+// OutDir은 이 옵션이 산출물을 쓸 디렉토리를 정하고 만든다.
+//
+// 빌드보다 **먼저** 물을 수 있어야 하는 호출자가 있어서 공개한다: `balpyo watch`는 그 디렉토리를
+// 서브하고 감시 대상에서 빼야 하는데, 첫 빌드는 실패할 수 있다 (그때도 서버는 떠 있어야 한다).
+func OutDir(opts Options) (string, error) {
+	return resolveOutDir(opts)
+}
+
 // resolveOutDir은 출력 디렉토리 절대 경로를 정하고 만든다.
 func resolveOutDir(opts Options) (string, error) {
 	projectDir := opts.ProjectDir
