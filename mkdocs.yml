@@ -36,6 +36,7 @@ nav:
       - CLI: reference/cli.md
   - 가이드:
       - guides/index.md
+      - 배치 경고 읽기: guides/layout-warnings.md
   - 내부 구조:
       - 아키텍처: internals/architecture.md
       - 지오메트리 패스: internals/geometry-pass.md

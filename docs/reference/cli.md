@@ -26,6 +26,7 @@ balpyo build --project testdata/fixtures/01_text --target html,pptx
 | `--target <목록>` | `html` | 렌더 타깃. 쉼표로 여러 개: `html,pptx` |
 | `--out <dir>` | `balpyo.json`의 `outDir` (기본 `dist`) | 출력 디렉토리. 상대 경로는 프로젝트 루트 기준 |
 | `--strict` | 꺼짐 | 경고를 에러로 승격한다 |
+| `--check-layout` | 꺼짐 | 배치를 검사한다 (넘침·스테이지 이탈·겹침). 브라우저를 띄운다 |
 
 값 우선순위는 **CLI 플래그 > `balpyo.json` > 기본값**이다. `balpyo.json`은 선택이다 —
 없으면 기본값을 쓰고 덱 제목은 디렉토리 이름에서 유도한다.
@@ -33,7 +34,8 @@ balpyo build --project testdata/fixtures/01_text --target html,pptx
 `--target html,pptx`처럼 PPTX가 포함되고 덱에 좌표가 필요한 요소가 있으면 빌드가
 지오메트리 패스를 위해 시스템 브라우저(Chromium/Chrome)를 띄운다 —
 [지오메트리 패스](../internals/geometry-pass.md) 참조. `--target html`만 쓰는 저작
-루프는 브라우저 비용을 내지 않는다.
+루프는 브라우저 비용을 내지 않는다. `--check-layout`은 그 루프에서도 측정을 켜는
+플래그다 (아래 배치 경고).
 
 ### 웹 산출물에서의 발표 조작
 
@@ -73,8 +75,8 @@ slides/002_overview.slide:3:9: error: 알 수 없는 role "heding" (쓸 수 있�
 한 줄씩 나온 뒤 마지막에 개수 요약 한 줄(`빌드 실패: 에러 N건`)이 붙는다 — 같은 진단을
 통째로 다시 찍지 않는다. 설정·파일 같은 진단 아닌 에러는 그 에러 메시지가 그대로 나온다.
 
-지금 어휘에서 경고가 나오는 곳은 테마에 없는 `variant`다 (폴백 규칙은
-[외관 속성](appearance.md)의 캐스케이드 절):
+지금 어휘에서 경고가 나오는 곳은 테마에 없는 `variant`와 **배치**다. variant 폴백 규칙은
+[외관 속성](appearance.md)의 캐스케이드 절에 있다:
 
 ```
 slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: kicker, lead)
@@ -82,6 +84,36 @@ slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — �
 
 이 빌드는 코드 0으로 통과하고 산출물이 쓰인다. `--strict`를 켜면 같은 진단이 에러가
 되어 빌드가 실패한다 — 테마 어휘 밖의 variant를 잡고 싶은 CI에서 쓴다.
+
+### 배치 경고
+
+빌드가 좌표를 재면(`--target`에 `pptx`가 있거나 `--check-layout`) 잰 박스에서 배치 사고를
+찾아 경고한다. 네 가지를 보고, 넘친 양을 논리 px로 말한다:
+
+| 경고 | 판정 |
+|---|---|
+| 스테이지 이탈 | 박스가 논리 스테이지(1280×720) 밖으로 나갔다 |
+| 부모 박스 이탈 | 박스가 부모 박스를 넘쳤다 — 크기를 정한 도형에 내용이 담기지 않은 모양이다 |
+| 콘텐츠 박스 이탈 | 슬라이드 직계 박스가 스테이지 여백(64px)을 침범했다 |
+| 형제 겹침 | 같은 부모의 두 박스가 서로 겹쳤다 |
+
+```
+slides/003_kpis.slide:7:6: warning: <p>가 부모 <shape>를 아래로 34px 넘친다 — 부모 박스 크기가 내용을 담기에 모자란다
+```
+
+의도한 겹침과 의도한 이탈은 묻지 않는다: `at`·`x`·`y`를 쓴 요소(와 그 자손), `layout="canvas"`
+슬라이드의 요소는 부모 변과 여백을 넘어도 조용하고, `<stack>`·canvas의 겹침도 조용하다.
+스테이지 이탈만은 예외가 없다 — 화면 밖은 웹에서 잘리고 PPTX에서는 슬라이드 밖에 놓인다.
+판정의 근거와 한계는 [ADR 0039](../decisions/0039-layout-warnings-are-box-containment.md)에
+있고, 경고를 읽고 고치는 순서는 [배치 경고 읽기](../guides/layout-warnings.md)에 있다.
+
+```bash
+# 저작 루프에서 한 번 확인한다 (브라우저를 띄운다)
+balpyo build --check-layout
+
+# CI: 넘친 덱을 통과시키지 않는다
+balpyo build --target html,pptx --strict
+```
 
 ## `balpyo version`
 
