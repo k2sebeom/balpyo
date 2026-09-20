@@ -43,5 +43,18 @@
     "cell":   { "border": "1 solid muted" },
     "header": { "fill": "accent1", "color": "bg", "weight": 700 },
     "stripe": "surface"
+  },
+
+  "code": {
+    "$comment": "코드 블록 (ADR 0051). tabSize는 값 층이 탭을 펼 때의 칼럼 간격이다 — 슬라이드는 폭이 좁아 4칸이면 세 번째 중첩이 화면을 벗어난다. tokens는 종류 → 색 토큰의 **부분 패치**다: 적지 않은 종류(punct)는 색이 없어 pre의 확정 색을 물려받는다. 대응은 번호 순서가 아니라 눈으로 고른 것이다 (accent 번호는 위계가 아니다 — ADR 0050): 주석은 muted로 물러나고, 이름·속성·문자열·숫자가 색상환에서 서로 떨어진 넷을 갖는다.",
+    "tabSize": 2,
+    "tokens": [
+      { "class": "keyword", "color": "accent6" },
+      { "class": "name",    "color": "accent1" },
+      { "class": "attr",    "color": "accent2" },
+      { "class": "string",  "color": "accent3" },
+      { "class": "number",  "color": "accent4" },
+      { "class": "comment", "color": "muted" }
+    ]
   }
 }

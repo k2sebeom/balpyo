@@ -218,6 +218,12 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 	}
 	if role, ok := r.textRole(elem); ok {
 		r.resolveText(elem, role, textPatch{})
+		if elem.Name == soml.PreElement {
+			// 일곱 번째 갈래다 (ADR 0051). `<pre>`의 문자 데이터는 탭이 펴지고, `lang`이 있으면
+			// **합성 인라인 런**이 된다 — 확정 스타일이 채워진 뒤이므로 합성 런은 그것을 부모로
+			// 상속하고(아래 resolveInlines), 색만 다른 조각이 된다. 렌더러는 손대지 않는다.
+			r.resolveCode(elem)
+		}
 		// 텍스트 역할 요소의 자식은 문자 데이터와 인라인 태그뿐이다 (파서의 modelInline) —
 		// 인라인 런 스타일은 블록의 확정 스타일에서 상속하므로 여기서 트리 순회가 끝난다.
 		r.resolveInlines(elem, elem.Appearance.Text)

@@ -13,16 +13,17 @@ import (
 //
 // 렌더러를 손대지 않는 것이 이 설계의 값이므로 여기서 못 박는 모양이 곧 두 산출물의 입력이다.
 
-// codeRuns는 `<pre>`의 자식을 (종류, 글자) 목록으로 눕힌다 — 색 있는 조각은 합성 `<span>`,
-// plain은 문자 데이터다. 색은 토큰 이름으로 돌려준다 (리터럴 RGB로 눕히면 schemeClr 참조가
-// 끊긴 것을 이 테스트가 못 본다).
+// codeRuns는 `<pre>`의 자식을 `"<색 토큰 또는 plain>|<글자>"` 목록으로 눕힌다 — 색 있는
+// 조각은 합성 `<span>`, plain은 문자 데이터다. 색을 토큰 이름으로 돌려주는 이유: 리터럴 RGB로
+// 눕히면 schemeClr 참조가 끊긴 것을 이 테스트가 못 본다. 구분자가 공백이 아니라 `|`인 이유는
+// 런 대부분이 공백으로 시작하거나 끝난다는 것이다 — 기댓값에서 그 공백이 보여야 한다.
 func codeRuns(t *testing.T, pre *soml.Element) []string {
 	t.Helper()
 	var runs []string
 	for _, child := range pre.Children {
 		switch node := child.(type) {
 		case *soml.Text:
-			runs = append(runs, "plain "+node.Value)
+			runs = append(runs, "plain|"+node.Value)
 		case *soml.Element:
 			if node.Name != "span" {
 				t.Fatalf("합성 자식이 <span>이 아니다: <%s>", node.Name)
@@ -34,7 +35,7 @@ func codeRuns(t *testing.T, pre *soml.Element) []string {
 			if style.Color.Token == "" {
 				t.Fatalf("합성 런의 색이 토큰 참조가 아니다: %#v", style.Color)
 			}
-			runs = append(runs, style.Color.Token+" "+node.TextContent())
+			runs = append(runs, style.Color.Token+"|"+node.TextContent())
 		default:
 			t.Fatalf("알 수 없는 노드 %T", child)
 		}
@@ -61,15 +62,16 @@ func TestHighlightCoalescesAdjacentClasses(t *testing.T) {
 }</pre></slide>`)
 	runs := codeRuns(t, pre)
 
-	// 첫 세 런: 키워드 · plain 공백 · 함수 이름. 그 뒤 괄호는 punct(색 없음)이므로 plain과
-	// 합쳐지지 않고 **따로** 남는다 — punct를 표에 적지 않은 것이 minimal의 선택이다.
-	want := []string{"accent6 func", "plain ", "accent1 warm"}
+	// 첫 세 런: 키워드 · plain 공백 · 함수 이름. 그 뒤 `(ids []`가 한 런인 것이 합치기 규칙의
+	// 요령이다 — 경계는 **종류**가 아니라 **색**이다: minimal이 punct를 표에 적지 않았으므로
+	// 괄호는 plain과 같은 색이고, 끊을 이유가 없다 (표는 부분 패치다).
+	want := []string{"accent6|func", "plain| ", "accent1|warm"}
 	for i, w := range want {
 		if i >= len(runs) || runs[i] != w {
 			t.Fatalf("런[%d] = %q, want %q\n전체: %q", i, runAt(runs, i), w, runs)
 		}
 	}
-	for _, w := range []string{"accent4 42", "muted // 예열", "accent6 return"} {
+	for _, w := range []string{"accent4|42", "muted|// 예열", "accent6|return"} {
 		if !hasRun(runs, w) {
 			t.Errorf("런 %q가 없다\n전체: %q", w, runs)
 		}
@@ -93,10 +95,10 @@ func TestHighlightUsesThemeTokenTable(t *testing.T) {
 </slide>]]></pre></slide>`)
 	runs := codeRuns(t, pre)
 	for _, want := range []string{
-		"accent1 <slide",      // NameTag → name
-		"accent2 layout=",     // NameAttribute → attr
-		`accent3 "content"`,   // LiteralString → string
-		"muted <!-- 주석 -->", // Comment → comment (인접 합치기가 셋을 하나로 만든다)
+		"accent1|<slide",      // NameTag → name
+		"accent2|layout=",     // NameAttribute → attr
+		`accent3|"content"`,   // LiteralString → string
+		"muted|<!-- 주석 -->", // Comment → comment (인접 합치기가 셋을 하나로 만든다)
 	} {
 		if !hasRun(runs, want) {
 			t.Errorf("런 %q가 없다\n전체: %q", want, runs)
@@ -176,9 +178,11 @@ func TestHighlightLangVocabulary(t *testing.T) {
 			want: "lang 속성에는 값이 필요하다",
 		},
 		{
+			// 값 없음·빈 값의 문구는 hasValue가 소유한다 — 외관 속성과 같은 자리에서 같은
+			// 문장을 쓴다 (같은 규칙이 두 벌이 되면 진단이 속성마다 갈라진다).
 			name: "빈 lang",
 			src:  `<slide><pre lang="">x</pre></slide>`,
-			want: "lang이 비어 있다",
+			want: "lang 속성이 비어 있다",
 		},
 	}
 	for _, tc := range tests {
@@ -202,7 +206,7 @@ func TestHighlightLangVocabulary(t *testing.T) {
 func TestHighlightSomlIsAliasOfXML(t *testing.T) {
 	pre := preOf(t, `<slide><pre lang="soml"><![CDATA[<text role="title">제목</text>]]></pre></slide>`)
 	runs := codeRuns(t, pre)
-	for _, want := range []string{"accent1 <text", "accent2 role=", `accent3 "title"`} {
+	for _, want := range []string{"accent1|<text", "accent2|role=", `accent3|"title"`} {
 		if !hasRun(runs, want) {
 			t.Errorf("런 %q가 없다\n전체: %q", want, runs)
 		}

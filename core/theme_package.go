@@ -227,6 +227,24 @@ type componentsFile struct {
 	Shape   shapeComponentsFile `json:"shape"`
 	Image   imageComponentsFile `json:"image"`
 	Table   tableComponentsFile `json:"table"`
+	Code    codeComponentsFile  `json:"code"`
+}
+
+// codeComponentsFile은 코드 블록의 테마 절이다 (ADR 0051). 표가 **종류 → 색 토큰**이고,
+// `tabSize`는 값 층이 탭을 펼 때 쓰는 칼럼 간격이다 — 둘 다 테마의 것이다: 코드의 색은
+// 팔레트의 일부이고, 탭 폭은 코드 슬라이드의 리듬이다.
+type codeComponentsFile struct {
+	// Comment는 문서용 $comment 자리다 (componentsFile.Comment와 같은 이유).
+	Comment string          `json:"$comment"`
+	TabSize int             `json:"tabSize"`
+	Tokens  []codeTokenFile `json:"tokens"`
+}
+
+// codeTokenFile은 종류 하나의 색이다. 색은 **토큰 이름**만 받는다 (리터럴 hex는 에러 —
+// 참조가 끊기면 PowerPoint의 테마 색 편집이 코드 블록만 두고 간다).
+type codeTokenFile struct {
+	Class string `json:"class"`
+	Color string `json:"color"`
 }
 
 type textComponentsFile struct {
@@ -329,6 +347,7 @@ type components struct {
 	imageDefault          imagePatch
 	imageVariants         []imageVariant
 	table                 tableComponents
+	code                  codeComponents
 }
 
 // tableComponents는 변환된 표 셀 외관 표다 (캐스케이드 내부 타입). shape/image의 default·
@@ -615,6 +634,12 @@ func loadComponents(fsys fs.FS, dir string, theme soml.Theme) (components, error
 		return comps, fmt.Errorf("table: %w", err)
 	}
 	comps.table = table
+
+	code, err := codeComponentsFromFile(file.Code, theme)
+	if err != nil {
+		return comps, fmt.Errorf("code: %w", err)
+	}
+	comps.code = code
 
 	return comps, nil
 }
