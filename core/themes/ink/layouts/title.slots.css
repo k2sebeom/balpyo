@@ -1,8 +1,12 @@
 /* title 슬롯 영역 — 제목 그룹(kicker·title·subtitle)은 세로 가운데, 저자·날짜는 바닥에
    붙인다: 위아래 1fr 두 개가 제목 묶음을 가운데로 밀고, 마지막 두 auto 행이 아래에 남는다.
-   가로는 전부 왼쪽이다 (minimal은 둘 다 가운데) — 흐름 title과 같은 뜻을 슬롯으로 적은 것이다. */
+   가로는 전부 왼쪽이다 (minimal은 둘 다 가운데) — 흐름 title과 같은 뜻을 슬롯으로 적은 것이다.
+
+   왼쪽은 기본값이므로 `justify-items`를 선언하지 않는다 (ADR 0053): `start`를 쓰면 grid 항목이
+   내용 폭으로 줄어 저자의 `align`이 움직일 폭이 없어지고(ADR 0043), 무엇보다 텍스트 박스의
+   여유 폭이 0이 되어 PPTX에서 글줄이 접힌다 — 이 픽스처의 부제가 그것을 잡았다
+   (testdata/fixtures/14_theme/slides/001_title.slide). */
 display: grid;
 grid-template-columns: 1fr;
 grid-template-rows: 1fr auto auto auto 1fr auto auto;
 grid-template-areas: "." "kicker" "title" "subtitle" "." "author" "date";
-justify-items: start;

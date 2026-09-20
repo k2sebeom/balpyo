@@ -1,6 +1,11 @@
 /* title(표지) 슬롯 영역 (ADR 0035) — 제목 그룹을 스테이지 세로 가운데에 둔다 (흐름 title과
    같은 뜻). 위에서부터 kicker·title·subtitle, 아래쪽에 author·date. 가운데 빈 행(1fr)이
-   위 제목 그룹과 아래 저자 그룹을 벌린다 (`.`은 이름 없는 빈 셀이다). */
+   위 제목 그룹과 아래 저자 그룹을 벌린다 (`.`은 이름 없는 빈 셀이다).
+
+   가운데는 대가를 치른다 (ADR 0053): grid가 항목을 내용 폭으로 줄이므로 텍스트 박스의
+   여유 폭이 0이고, 한글 사이 문장부호가 있는 줄은 PPTX에서 접힐 수 있다
+   (docs/guides/known-differences.md). 가운데가 곧 뜻인 자리에서만 그 값을 낸다 — 왼쪽은
+   기본값이므로 선언하지 않는다. */
 display: grid;
 grid-template-columns: 1fr;
 grid-template-rows: auto auto auto 1fr auto auto;

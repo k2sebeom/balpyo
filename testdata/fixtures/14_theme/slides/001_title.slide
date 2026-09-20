@@ -9,18 +9,16 @@
      이름은 같은데 자리가 다르므로, 같은 원문이 테마마다 다른 좌표를 얻는다 — 그 좌표가
      PPTX에 구워지는지는 TestFixtureCoordinatesMatchGeometry가 0 오차로 본다.
 
-     슬롯 글줄에 **쉼표와 라틴 글자를 섞지 않은** 이유 (첫 판에서 실제로 갈라졌다): 슬롯
-     영역은 `justify-items`로 자식을 왼쪽에 붙이므로 텍스트 박스가 내용 폭으로 줄어든다 —
-     여유 폭(Slack)이 0이라는 뜻이고, 그러면 LibreOffice가 한글 사이 문장부호에 넣는
-     스크립트 간격(docs/guides/known-differences.md) 한 곳만으로도 줄이 하나 늘어난다
-     (측정: `같은 원문, 다른 테마`가 PPTX에서 두 줄이 됐다 — 안전 여유 4%보다 큰 오차다).
-     그 갈라짐은 테마의 것이 아니라 렌더 엔진의 것이므로 이 픽스처의 골든이 붙들 대상이
-     아니다 — 문장부호 오차는 여유가 큰 본문 박스에서 재는 것이 맞고, 다음 슬라이드가
-     (폭 100%의 content 슬롯) 그 자리다. -->
+     부제에 **쉼표가 있는** 이유는 ADR 0053이다 (이 슬라이드가 그 결정의 증인이다): 첫 판의
+     ink는 슬롯 영역에 `justify-items: start`를 써서 텍스트 박스를 내용 폭으로 줄였고, 여유
+     폭이 0이라 LibreOffice가 한글 사이 문장부호에 넣는 간격 한 곳만으로 `같은 원문, 다른 테마`가
+     PPTX에서 두 줄이 됐다 (안전 여유 4%보다 큰 오차 — docs/guides/known-differences.md).
+     왼쪽 정렬은 기본값이므로 그 선언을 뺐고, 자식이 슬롯 영역 폭까지 늘어나 여유가 돌아왔다.
+     이 쉼표를 지우면 그 회귀를 잡을 검사가 사라진다. -->
 <slide id="theme-title" layout="title">
   <text slot="kicker" variant="kicker">P4.2</text>
   <text slot="title" role="title">어두운 테마</text>
-  <text slot="subtitle" role="body" color="muted">같은 원문을 다른 테마로 본다</text>
+  <text slot="subtitle" role="body" color="muted">같은 원문, 다른 테마</text>
   <text slot="author" role="caption">balpyo</text>
   <text slot="date" role="caption">2026-09</text>
   <note>테마는 덱의 요청이고 결과는 토큰 표다 — 폴백 테마는 없다.</note>

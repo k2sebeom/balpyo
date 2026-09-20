@@ -1,8 +1,7 @@
 /* end 슬롯 영역 — 인사와 연락처를 세로 가운데, 가로는 왼쪽에 쌓는다 (title.slots.css와 같은
-   왼쪽 기준선 — minimal은 가운데다). */
+   왼쪽 기준선 — minimal은 가운데다). 왼쪽은 기본값이라 선언하지 않는다 (ADR 0053). */
 display: grid;
 grid-template-columns: 1fr;
 grid-template-rows: auto auto;
 grid-template-areas: "title" "contact";
 align-content: center;
-justify-items: start;
