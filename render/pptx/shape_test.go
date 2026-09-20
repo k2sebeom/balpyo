@@ -406,3 +406,34 @@ func TestTextBoxRect(t *testing.T) {
 		}
 	}
 }
+
+// renderedKinds는 이 렌더러가 다루는 종류의 얼굴이고(RenderedKinds — render 패키지의 대조가
+// 읽는다) shapeWriterFor는 그중 **도형이 되는** 종류의 실제 동작이다. 둘의 관계는 웹과
+// 다르다: 포함이지 일치가 아니다 — `<li>`와 인라인은 부모 도형에 흡수되고 레이아웃
+// 컨테이너·`<spacer/>`는 사라진다. 그 비대칭이 의도라는 것을 여기서 고정한다 (TASKS P0.2).
+func TestRenderedKindsMatchShapeDispatch(t *testing.T) {
+	listed := make(map[soml.ElementKind]bool, len(renderedKinds))
+	for _, kind := range RenderedKinds() {
+		listed[kind] = true
+	}
+	// 도형이 되는 종류는 정확히 넷이다 — 이 목록이 늘어나는 것이 새 산출 요소가 생겼다는 뜻이다.
+	shapeKinds := map[soml.ElementKind]bool{
+		soml.KindBlock:         true,
+		soml.KindListContainer: true,
+		soml.KindShape:         true,
+		soml.KindImage:         true,
+	}
+	for _, kind := range soml.ElementKinds() {
+		if got, want := shapeWriterFor(kind) != nil, shapeKinds[kind]; got != want {
+			t.Errorf("%v: shapeWriterFor 있음=%v, want %v", kind, got, want)
+		}
+		if shapeKinds[kind] && !listed[kind] {
+			t.Errorf("%v는 도형이 되는데 renderedKinds 목록에 없다", kind)
+		}
+	}
+	// `<text>`는 카탈로그 밖이지만 블록과 같은 텍스트 박스가 된다 (writeShapeNode) —
+	// 이름으로 다루므로 종류 표에는 자기 자리가 없다.
+	if shapeWriterFor(soml.KindOf(soml.TextElement)) != nil {
+		t.Error("shapeWriterFor(KindNone)이 함수를 준다 — <text>는 writeShapeNode가 이름으로 다룬다")
+	}
+}

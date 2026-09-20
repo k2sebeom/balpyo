@@ -140,6 +140,53 @@ func (r *slideRels) mediaID(target string) string {
 	return r.relID(imageRelType, target, "")
 }
 
+// shapeWriter는 **도형 하나가 되는** 종류를 쓰는 함수다. 네 함수가 같은 서명을 갖는 것이
+// 아래 표가 성립하는 근거다 — 도형이 되는 종류는 전부 (요소, id, 도형 번호, 지오메트리,
+// 관계)만으로 자기 몫을 쓴다.
+type shapeWriter func(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, rels *slideRels) error
+
+// renderedKinds는 이 렌더러가 다루는 요소 종류의 **명시 목록**이다 (soml 카탈로그와 대조하는
+// 짝은 render 패키지의 테스트다 — TASKS P0.2: `<table>`이 파싱·검증을 통과한 뒤 렌더에서
+// 빌드를 죽인 사고).
+//
+// 목록에 **어디서 다루는지**를 함께 적는 이유: 이 렌더러의 디스패치는 세 자리로 갈라져 있다.
+// 도형이 되는 종류는 shapeWriterFor가, 부모 도형에 흡수되는 종류는 그 부모가 쓴다 — "다룬다"의
+// 뜻이 종류마다 다르므로 목록만 보고 도형 수를 세면 틀린다 (writeShapeNode 주석의 대비).
+var renderedKinds = []soml.ElementKind{
+	soml.KindBlock,           // 도형 하나       (writeTextShape — `<text>`도 같은 자리다)
+	soml.KindListContainer,   // 도형 하나       (writeListShape: 불릿 문단이 한 박스에 산다)
+	soml.KindShape,           // 도형 하나+흡수  (writeShapeSp)
+	soml.KindImage,           // 도형 하나       (writePicShape — p:sp가 아니라 p:pic)
+	soml.KindListItem,        // 도형 0개        (writeListItem: 리스트 도형의 문단이 된다)
+	soml.KindInline,          // 도형 0개        (writeRuns: 문단의 런이 된다)
+	soml.KindLayoutContainer, // 도형 0개        (자식으로 내려간다 — 좌표만 남는다)
+	soml.KindSpacer,          // 도형 0개        (공간은 이미 이웃 도형의 좌표에 들어갔다)
+}
+
+// RenderedKinds는 이 렌더러가 다루는 종류다 (선언 순서). soml 카탈로그와 대조하는 테스트가
+// 쓴다 — 렌더러 바깥에서 "무엇을 그릴 수 있는가"를 물을 수 있는 유일한 창구다
+// (render/web.RenderedKinds와 같은 계약).
+func RenderedKinds() []soml.ElementKind {
+	return append([]soml.ElementKind(nil), renderedKinds...)
+}
+
+// shapeWriterFor는 도형 하나가 되는 종류의 writer다. 흡수되거나 사라지는 종류는 nil이다 —
+// nil이 곧 "여기서 도형 번호를 쓰지 않는다"는 뜻이고, 그 판정을 한 곳에 모은 것이
+// writeShapeNode에서 번호가 뛰지 않는 근거다.
+func shapeWriterFor(kind soml.ElementKind) shapeWriter {
+	switch kind {
+	case soml.KindBlock:
+		return writeTextShape
+	case soml.KindListContainer:
+		return writeListShape
+	case soml.KindShape:
+		return writeShapeSp
+	case soml.KindImage:
+		return writePicShape
+	}
+	return nil
+}
+
 // writeShapeNode는 콘텐츠 노드 하나를 도형으로 쓴다 — 자기 도형을 갖지 않는 노드는 자식으로
 // 내려가거나(레이아웃 컨테이너) 아무것도 내지 않는다(`<spacer/>`).
 //
@@ -185,9 +232,16 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 	// 렌더러가 이름 목록을 따로 들지 않는 이유는 웹과 같다).
 	id := web.ElementID(slide.Index, path)
 	kind := soml.KindOf(elem.Name)
-	switch {
-	case elem.Name == soml.TextElement || kind == soml.KindBlock:
-		if err := writeTextShape(b, deck, slide, elem, id, *shapeID, g, rels); err != nil {
+	if elem.Name == soml.TextElement {
+		// `<text>`는 카탈로그 밖(KindNone)이지만 블록과 **같은** 텍스트 박스가 된다 —
+		// PRD §7.7의 등가 표(`<p>` ≡ `<text role="body">`)가 산출물에서도 등가라는 뜻이다.
+		kind = soml.KindBlock
+	}
+	if write := shapeWriterFor(kind); write != nil {
+		// 도형 하나가 되는 종류는 전부 이 한 자리를 지난다 (`<shape>`는 자식을 흡수하므로
+		// 자식으로 내려가지 않고, 그림은 p:sp가 아니라 p:pic이지만 — 도형 번호를 하나
+		// 쓴다는 점은 같다: `p:sp`와 `p:pic`의 id가 겹치면 PowerPoint가 파일을 복구한다).
+		if err := write(b, deck, slide, elem, id, *shapeID, g, rels); err != nil {
 			return err
 		}
 		// 도형 id는 **도형을 실제로 낸 자리에서만** 오른다 (컨테이너는 id를 소비하지
@@ -195,27 +249,10 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 		// `<row>` 하나를 더한 커밋의 diff에 도형 번호 전부가 잡음으로 실린다 — 노트가
 		// 없어도 rId2를 예약한 것과 같은 태도다 (slideRelBase).
 		*shapeID++
-	case kind == soml.KindListContainer:
-		if err := writeListShape(b, deck, slide, elem, id, *shapeID, g, rels); err != nil {
-			return err
-		}
-		*shapeID++
-	case kind == soml.KindShape:
-		if err := writeShapeSp(b, deck, slide, elem, id, *shapeID, g, rels); err != nil {
-			return err
-		}
-		// 자식으로 내려가지 않는다 (위 주석) — 자식 텍스트는 이 도형의 txBody가 되었고
-		// 자기 도형도 id도 갖지 않는다.
-		*shapeID++
-	case kind == soml.KindImage:
-		// 그림은 **재고 도형이 되는** 두 번째 종류다 (`<shape>`가 첫째다) — 다만 요소가
-		// `p:sp`가 아니라 `p:pic`이다. 도형 id는 한 공간을 나눠 쓴다: `p:sp`와 `p:pic`의
-		// id가 겹치면 PowerPoint가 파일을 복구한다 (spTree 안에서 유일해야 한다).
-		if err := writePicShape(b, deck, slide, elem, id, *shapeID, g, rels); err != nil {
-			return err
-		}
-		*shapeID++
-	case kind == soml.KindLayoutContainer:
+		return nil
+	}
+	switch kind {
+	case soml.KindLayoutContainer:
 		// 컨테이너 자신은 도형이 되지 않고 자식으로 내려간다. 빈 컨테이너(`<row></row>`)는
 		// 자식이 없으니 도형 0개다 — 대비되는 선례는 빈 `<text>`가 도형을 내는 것이고
 		// (writeTextShape), 차이는 `<text>`가 저자의 콘텐츠라는 것이다.
@@ -228,7 +265,7 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 				return err
 			}
 		}
-	case kind == soml.KindSpacer:
+	case soml.KindSpacer:
 		// `<spacer/>`는 도형을 내지 않는다. 빈 박스이고 뜻은 "여기에 공간이 있다"이며, 그
 		// 공간은 이미 이웃 도형의 좌표에 들어가 있다 — 밀어내기의 결과가 형제의 rect다.
 		// 도형을 내면 PowerPoint의 선택 창에 뜻 없는 빈 텍스트 박스가 남는다 (빈 `<text>`와

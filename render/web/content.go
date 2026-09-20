@@ -159,6 +159,66 @@ func slideUsesSlots(slide *soml.Slide) bool {
 	return false
 }
 
+// nodeWriter는 요소 종류 하나를 웹으로 쓰는 함수다.
+type nodeWriter func(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, path []int) error
+
+// renderedKinds는 이 렌더러가 다루는 요소 종류의 **명시 목록**이다 (writerFor의 짝).
+//
+// switch 하나로 끝내지 않고 목록을 함께 두는 이유는 soml이 카탈로그를 목록으로 둔 이유와
+// 같다: 어휘가 층마다 다른 속도로 자라므로 **대조할 수 있어야** 한다. `soml.KindRendered`가
+// 참인 종류는 전부 여기 있어야 하고 거짓인 종류는 없어야 한다 — 그 대조는 render 패키지의
+// 테스트가 하고, 목록과 writerFor가 어긋나지 않는지는 이 패키지의 테스트가 본다
+// (TASKS P0.2: `<table>`이 파싱·검증을 통과한 뒤 렌더에서 빌드를 죽인 사고).
+// `soml.KindNone`(`<slide>`·`<text>`·`<note>`)은 카탈로그 밖이라 여기 없다 — writeNode와
+// writeStage가 이름으로 직접 다룬다.
+var renderedKinds = []soml.ElementKind{
+	soml.KindBlock,
+	soml.KindListItem,
+	soml.KindListContainer,
+	soml.KindLayoutContainer,
+	soml.KindShape,
+	soml.KindImage,
+	soml.KindSpacer,
+	soml.KindInline,
+}
+
+// RenderedKinds는 이 렌더러가 다루는 종류다 (선언 순서). soml 카탈로그와 대조하는 테스트가
+// 쓴다 — 렌더러 바깥에서 "무엇을 그릴 수 있는가"를 물을 수 있는 유일한 창구다.
+func RenderedKinds() []soml.ElementKind {
+	return append([]soml.ElementKind(nil), renderedKinds...)
+}
+
+// writerFor는 종류 하나를 쓰는 함수다. 목록 밖의 종류는 nil이다.
+func writerFor(kind soml.ElementKind) nodeWriter {
+	switch kind {
+	// 블록과 li는 저자가 쓴 이름 그대로 시맨틱 태그로 낸다 (근거는 writeBlock).
+	case soml.KindBlock, soml.KindListItem:
+		return writeNamedBlock
+	case soml.KindListContainer:
+		return writeList
+	case soml.KindLayoutContainer:
+		return writeContainer
+	case soml.KindShape:
+		return writeShape
+	case soml.KindImage:
+		return writeImage
+	case soml.KindSpacer:
+		return func(b *strings.Builder, _ *soml.Deck, slide *soml.Slide, elem *soml.Element, path []int) error {
+			return writeSpacer(b, slide, elem, path)
+		}
+	case soml.KindInline:
+		return func(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, _ []int) error {
+			return writeInline(b, deck, slide, elem)
+		}
+	}
+	return nil
+}
+
+// writeNamedBlock은 요소 이름을 그대로 출력 태그로 쓰는 블록이다 (블록 종류와 `<li>`).
+func writeNamedBlock(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, path []int) error {
+	return writeBlock(b, deck, slide, elem, path, elem.Name)
+}
+
 // writeNode는 콘텐츠 노드 하나를 쓴다. path는 슬라이드 콘텐츠부터 이 노드까지의 자식
 // 인덱스 경로다 (ElementID의 입력).
 func writeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node soml.Node, path []int) error {
@@ -175,25 +235,13 @@ func writeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node soml
 		// 태그 종류의 판정은 soml의 카탈로그 한 곳에서 나온다 (soml.KindOf) — 렌더러가
 		// 이름 목록을 따로 들면 태그 하나를 추가할 때 한 곳을 빼먹는 것이 곧 "좌표가
 		// 엉뚱한 요소에 붙는" 실패다.
-		switch soml.KindOf(node.Name) {
-		case soml.KindBlock, soml.KindListItem:
-			// 블록과 li는 저자가 쓴 이름 그대로 시맨틱 태그로 낸다 (근거는 writeBlock).
-			return writeBlock(b, deck, slide, node, path, node.Name)
-		case soml.KindListContainer:
-			return writeList(b, deck, slide, node, path)
-		case soml.KindLayoutContainer:
-			return writeContainer(b, deck, slide, node, path)
-		case soml.KindShape:
-			return writeShape(b, deck, slide, node, path)
-		case soml.KindImage:
-			return writeImage(b, deck, slide, node, path)
-		case soml.KindSpacer:
-			return writeSpacer(b, slide, node, path)
-		case soml.KindInline:
-			return writeInline(b, deck, slide, node)
+		if write := writerFor(soml.KindOf(node.Name)); write != nil {
+			return write(b, deck, slide, node, path)
 		}
 		// 닫힌 어휘에 태그를 추가하고 렌더 매핑을 잊으면 "파싱은 되는데 그려지지 않는"
 		// 상태가 된다 — 닫힌 어휘로 막으려던 바로 그 조용한 실패다. 여기서 멈춘다.
+		// (파서가 이미 같은 사실을 진단하므로 여기까지 오는 것은 파서를 거치지 않은 덱뿐이다 —
+		// soml.KindRendered와 renderedKinds를 대조하는 테스트가 그 계약을 지킨다.)
 		return fmt.Errorf("%s:%s <%s>를 웹으로 렌더하는 매핑이 없다", slide.Source, node.Span, node.Name)
 	default:
 		return fmt.Errorf("%s: 알 수 없는 노드 종류 %T", slide.Source, node)
