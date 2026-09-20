@@ -1,0 +1,22 @@
+<!-- 줄무늬 변형 + 셀 오버라이드 — 테마가 주는 것과 저자가 정하는 것이 한 표에서 만나는 자리다.
+
+     `variant="striped"`는 **프레임**에만 붙는다 (셀에는 variant가 없다 — soml/table.go). 줄무늬
+     색은 값 층이 홀수 본문 행의 비헤더 셀 채움으로 **구워** 놓으므로(core.resolveTable), 두
+     타깃 모두 셀 채움이다: 웹은 인라인 `background-color`, PPTX는 `a:tcPr > a:solidFill`이다.
+     `a:tblPr@bandRow`를 켜지 않는 이유가 여기 있다 — 힌트까지 켜면 뷰어에서 표 스타일을 바꾼
+     순간 줄무늬가 두 벌로 겹친다.
+
+     오버라이드 셋이 캐스케이드 최상단을 시험한다: `fill`+`color`(진행 셀 — 테마 줄무늬를
+     이긴다), `border="none"`(보류 셀 — 테마 셀 테두리를 지운다: 선언을 내지 않는 것이 아니라
+     웹 `border-style: none` · PPTX 네 변 `noFill`로 **명시**한다), `anchor="bottom"`(같은 셀 —
+     세로 앵커는 웹 `vertical-align`, PPTX `a:tcPr@anchor`다). 금액 열의 `align="end"`는 셀
+     텍스트의 가로 정렬이 문단 조립기를 지나는 것을 보인다 (웹 `text-align`, PPTX `a:pPr@algn`). -->
+<slide id="table-striped">
+  <h2>줄무늬 표와 셀 오버라이드</h2>
+  <table variant="striped">
+    <tr><th>항목</th><th align="center">상태</th><th align="end">예산</th></tr>
+    <tr><td>서버 증설</td><td align="center" fill="accent1" color="bg">진행</td><td align="end">2.4억</td></tr>
+    <tr><td>보안 감사</td><td align="center">대기</td><td align="end">0.8억</td></tr>
+    <tr><td>계약 갱신</td><td align="center" border="none" anchor="bottom">보류</td><td align="end">1.2억</td></tr>
+  </table>
+</slide>

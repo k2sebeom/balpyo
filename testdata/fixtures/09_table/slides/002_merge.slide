@@ -1,0 +1,25 @@
+<!-- 병합 격자 — `colspan`/`rowspan`이 두 타깃에서 같은 격자가 되는가 (ADR 0036).
+
+     웹은 HTML 속성 그대로(`colspan`/`rowspan`) 내고 브라우저가 격자를 짠다. PPTX는 그
+     격자를 **펼쳐서** 낸다: 병합 셀은 `gridSpan`/`rowSpan`을 갖고, 병합에 덮인 자리마다
+     `hMerge`/`vMerge` 빈 `a:tc`가 선다 — `a:tbl`은 행마다 열 수만큼의 `a:tc`를 요구하므로
+     그 빈 칸이 없으면 PowerPoint가 복구를 묻는다.
+
+     격자는 5열이다: 머리행이 `구분`(rowspan 2) + `상반기`(colspan 2) + `하반기`(colspan 2)로
+     열 수를 정하고, 둘째 머리행은 rowspan이 덮은 첫 칸을 건너뛰어 네 칸을 채운다. 본문의
+     `기타`(rowspan 2)가 세로 병합을 본문 행에서도 시험한다 — 머리행에만 병합이 있으면
+     `vMerge`가 머리행 전용이라는 착각이 골든에 남는다.
+
+     가려진 열 경계가 없는 표다 (모든 열의 좌우 경계를 어느 행이든 말해 준다) — 경계를 아무도
+     말하지 않는 경우의 균등 분할은 단위 테스트가 본다 (render/pptx.TestRenderTableHiddenColumnEdge). -->
+<slide id="table-merge">
+  <h2>반기별 매출 (병합 머리행)</h2>
+  <table>
+    <tr><th rowspan="2">구분</th><th colspan="2">상반기</th><th colspan="2">하반기</th></tr>
+    <tr><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th></tr>
+    <tr><td>서울</td><td>12.4</td><td>14.1</td><td>15.0</td><td>16.2</td></tr>
+    <tr><td>부산</td><td>6.8</td><td>7.2</td><td>7.4</td><td>7.9</td></tr>
+    <tr><td rowspan="2">기타</td><td>1.0</td><td>1.1</td><td>1.3</td><td>1.4</td></tr>
+    <tr><td>0.9</td><td>1.0</td><td>1.1</td><td>1.2</td></tr>
+  </table>
+</slide>

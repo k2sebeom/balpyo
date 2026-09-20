@@ -1,0 +1,19 @@
+<!-- 표가 슬롯을 채운다 (ADR 0035 + ADR 0036) — 표는 도형 하나이므로 슬롯의 주인이 될 수 있다.
+
+     `slot="body"`를 받은 표는 웹에서 레이아웃의 grid-area에 앉고, PPTX에서는 `p:graphicFrame`의
+     `p:nvPr`에 진짜 `<p:ph type="body" idx="…"/>`가 실린다 — 플레이스홀더를 싣는 코드가 도형·
+     그림과 **같은 자리**라는 것이 이 슬라이드의 증거다 (pptx.slotPlaceholder). 좌표는 여전히
+     잰 박스가 소유한다: 플레이스홀더가 레이아웃의 좌표를 상속하지 않고 `p:xfrm`이 그대로 실린다.
+
+     표는 **슬롯 영역을 채운다** — 프레임에 w/h 어휘가 없으므로 크기는 전부 잰 값이고, 슬롯의
+     그리드 영역이 늘려 놓은 폭·높이가 그 값이다 (CSS 표는 늘어난 높이를 행들이 나눠 갖는다:
+     여기서는 세 행이 각각 167px이 된다 — 내용만큼만 높은 표는 앞 슬라이드들이 보인다).
+     PPTX에서 그 높이가 `a:tr@h`로 그대로 실리므로 두 타깃의 격자는 여전히 같은 격자다. -->
+<slide id="table-slots" layout="content">
+  <h1 slot="title">SLA 달성률</h1>
+  <table slot="body">
+    <tr><th>서비스</th><th>목표</th><th>실적</th></tr>
+    <tr><td>API</td><td>99.9%</td><td>99.95%</td></tr>
+    <tr><td>웹</td><td>99.5%</td><td>99.70%</td></tr>
+  </table>
+</slide>
