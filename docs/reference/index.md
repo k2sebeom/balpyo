@@ -18,7 +18,8 @@
 지금 구현된 어휘와 표면:
 
 - 태그: [`<slide>`](soml/slide.md) (`layout`·`id`·`skip`), [`<text>`](soml/text.md)
-  (`role`·`variant`·`size`·`color`·`align`·`anchor` + 배치 속성), [`<note>`](soml/note.md),
+  (`role`·`variant`·`size`·`color`·`align`·`anchor` + 가로 크기 `w`·`min-w`·`max-w` +
+  배치 속성), [`<note>`](soml/note.md),
   [텍스트 서브셋](soml/text-subset.md) (`h1`~`h3`, `p`, `ul`/`ol`/`li`, `blockquote`,
   `pre`, `strong`, `em`, `code`, `a`, `br`, `span`),
   [레이아웃 태그](soml/layout.md) (`row`/`col`/`grid`/`spacer` + 컨테이너·자식 속성과

@@ -14,6 +14,9 @@
 | `color` | 색 토큰 이름 · `#RRGGBB` · `#RGB` | 역할 기본값 | 글자색 |
 | `align` | `start` `center` `end` `justify` | `start` | 문단 정렬 — 논리 이름이다 (`left`/`right` 아님) |
 | `anchor` | `top` `center` `bottom` | 없음 | 박스 안 **세로** 정렬 — 뜻이 보이는 자리는 [도형 안](shape.md)뿐이다 |
+| `w` | 단위 없는 수치 (논리 px) · `%` · `fill` | 내용·문맥이 정한다 | 텍스트 박스의 **가로** 크기 |
+| `min-w` | 같음 | 없음 | 최소 가로 크기 |
+| `max-w` | 같음 | 없음 | 최대 가로 크기 — 줄바꿈 자리를 정한다 |
 
 역할 5종의 기본값 (내장 `minimal` 테마):
 
@@ -44,6 +47,19 @@
   (`<li>` ≡ body), 번들을 상속시키면 항목들의 역할이 바뀐다
   ([텍스트 서브셋](text-subset.md),
   [ADR 0038](../../decisions/0038-list-appearance-lives-on-the-container.md)).
+- **크기 속성은 가로 축만 있다** (`w`·`min-w`·`max-w`) — 세로 축(`h`·`min-h`·`max-h`)과
+  `pad`·`ratio`는 [컨테이너](layout.md)·[도형](shape.md)의 것이다
+  ([ADR 0043](../../decisions/0043-explicit-width-belongs-to-the-placement-context.md)).
+  근거는 `anchor`와 같다: 텍스트 박스의 높이는 글줄 수가 정하고, 저자가 만든 세로 여백 안에서
+  글을 움직이는 채널(`anchor`)은 도형 안에서만 뜻을 갖는다 — 높이만 열면 닿을 수 없는 공간이
+  생긴다. 가로 세로를 다 정하고 싶으면 `<shape>`나 컨테이너로 감싼다.
+  값 문법은 컨테이너·도형과 같다: 단위 없는 px, `%`(부모 기준), `fill`(= 100%). 공간
+  토큰(`md`·`xl`)은 `gap`·`pad` 전용이라 크기에는 쓸 수 없다.
+- **폭을 안 쓰면 문맥이 정한다**: 흐름 모드 슬라이드에서는 콘텐츠 박스 폭 전체
+  (`width: 100%`)라 `align`이 그 폭 안에서 문단을 움직인다. [슬롯 모드](../layouts.md)와
+  레이아웃 컨테이너(`<row>`·`<col>`·`<grid>`·`<stack>`)·canvas 안에서는 `auto`로 돌아가
+  배치가 폭을 소유한다 — 그래서 슬롯 자식에는 `align="center"`를 달지 않는다
+  (테마의 `justify-items`가 이미 가운데로 둔다).
 - 도형 하나에 자식이 여럿이면 **첫 자식의 앵커**가 도형의 앵커다 — 웹의 flex 정렬과 OOXML
   `bodyPr@anchor`가 둘 다 박스에 하나뿐이라, 뒤 자식의 다른 앵커는 조용히 버려진다.
 - 원문 개행과 들여쓰기는 파서가 접는다 — ASCII 공백 런은 한 칸이 되고 양 끝은 잘린다.
@@ -74,12 +90,15 @@ CSS 선언(`font-family` `font-size` `font-weight` `line-height` `color` `text-a
 나간다 ([ADR 0003](../../decisions/0003-inline-style-appearance.md)). 색·폰트 값은
 리터럴이 아니라 테마 변수 참조다 — `color="accent1"`은
 `color: var(--balpyo-color-accent1)`이 된다. 요소에는 `data-balpyo-id`(지오메트리
-식별자)와 `data-balpyo-el="text"`가 붙는다.
+식별자)와 `data-balpyo-el="text"`가 붙는다. 크기 속성은 같은 인라인 style의
+`width`/`min-width`/`max-width`로 나가고, 컨테이너·도형과 **같은 값 컴파일**을 쓴다
+(`w="140"` → `width: 140px`, `w="fill"` → `width: 100%`).
 
 **PPTX** — `p:sp` 텍스트 박스 하나가 된다 (`p:cNvSpPr@txBox="1"`, 프리셋 `rect`,
 채움·선 없음). 좌표(`a:xfrm`)는 지오메트리 패스가 브라우저에서 잰 박스에 안전 여유
 (폭 +4%)를 더한 값이고, autofit은 꺼진다 (`a:noAutofit` — 박스 고정 + 오버플로 허용,
-PRD §13-1). 외관 매핑:
+PRD §13-1). `w`로 폭을 정하면 그 폭이 잰 박스가 되어 `a:ext@cx`로 실린다 — 안전 여유는
+`align="center"`에서 양쪽으로 반씩 늘어나므로 요청한 자리에 가운데가 유지된다. 외관 매핑:
 
 | 확정 값 | OOXML |
 |---|---|
@@ -101,17 +120,17 @@ PRD §13-1). 외관 매핑:
 | 조건 | 진단 메시지 |
 |---|---|
 | 자식으로 블록·리스트 요소를 썼다 | `<text> 안에는 문자 데이터와 인라인 태그만 올 수 있다 (<…>는 쓸 수 없다)` |
-| 어휘 밖의 속성 | `<text>에 알 수 없는 속성 … (쓸 수 있는 속성: role, variant, size, color, align, anchor, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| 어휘 밖의 속성 | `<text>에 알 수 없는 속성 … (쓸 수 있는 속성: role, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
 
 속성 목록의 뒤쪽 열한 개는 [자식 배치 속성](layout.md)과 슬롯 배정이다 — `<text>`는 레이아웃
 컨테이너의 자식이 될 수 있으므로 `<row><text grow="1">`이 유효하고, `at`·`x`/`y`는
 [`<stack>`](stack.md)의 자식이나 `layout="canvas"` 슬라이드의 직속 자식에서,
 `slot`은 슬라이드 직계 자식에서 뜻을 갖는다 ([레이아웃과 슬롯](../layouts.md)).
 
-- **`<text>`에는 박스 크기 속성(`w`/`h`·`min-*`/`max-*`)이 없다.** 텍스트는 자기 내용만큼의
-  박스라서 `align="center"`가 기댈 폭이 따로 없다 — canvas에서 특정 폭 안에 라벨을 가운데
-  두려면 그 폭을 가진 부모가 필요하다 (`<shape fill="none" border="none" w="140">`으로 감싸거나
-  `<stack>` 안에 둔다). 예: `examples/incident-postmortem/slides/008_detection.slide`.
+- canvas에서 특정 폭 안에 라벨을 가운데 두려면 그 폭을 텍스트에 직접 준다
+  (`<text w="140" align="center" x="106" y="216">`) — 예:
+  `examples/incident-postmortem/slides/008_detection.slide`. 세로 크기까지 정해야 하면
+  `<shape>`로 감싼다.
 
 외관 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다:
 

@@ -87,3 +87,29 @@
 
 `idx`가 없는 행(`title`·`ctrTitle`)은 `p:ph`에 `idx` 속성을 내지 않는다 (제목류의 관례).
 `layout="canvas"`처럼 슬롯이 없는 레이아웃에 `slot=`을 쓰면 빌드 에러다.
+
+## 정렬은 누가 소유하는가
+
+가로 정렬에는 채널이 둘 있고, **어느 쪽이 이기는지는 폭을 누가 정했는지가 결정한다**
+([ADR 0043](../decisions/0043-explicit-width-belongs-to-the-placement-context.md)):
+
+- `align`(저자·테마의 외관)은 **박스 안에서 문단을 움직인다** (`text-align`/`a:pPr@algn`).
+- `justify-items`·`justify-content`·`place-self`(테마의 배치 CSS)는 **박스 자체를 움직인다** —
+  박스가 영역보다 좁을 때만 움직일 여지가 있다.
+
+그래서 텍스트 박스의 폭이 문맥마다 다르다:
+
+| 문맥 | 텍스트 박스 폭 | 가운데로 두는 방법 |
+|---|---|---|
+| 흐름 모드 슬라이드 직계 | 콘텐츠 박스 전체 (`width: 100%`) | 저자가 `align="center"` |
+| 슬롯 영역 안 | `auto` (내용만큼) | **테마**가 `justify-items: center` |
+| `<row>`·`<col>`·`<grid>` 자식 | `auto` | 컨테이너의 `justify`·`align` |
+| `<stack>`·canvas 자식 | `auto` | 자식의 `at`, 또는 `w=` + `align=` |
+
+세 문맥이 `width: 100%`를 `auto`로 되돌린다 — 그 리셋이 없으면 테마가 `*.slots.css`에 쓴
+`justify-items`가 아무것도 하지 못하고, 저자가 슬롯 자식마다 `align="center"`를 손으로 달게
+된다. 표지 예제(`examples/balpyo-intro/slides/001_cover.slide`)에 `align`이 한 줄도 없는
+이유가 그것이다.
+
+폭이 `auto`인 문맥에서 특정 폭 안에 글을 가운데 두려면 그 폭을 텍스트에 직접 준다
+([`<text w="140" align="center">`](soml/text.md)) — 두 채널을 함께 쓰는 자리다.
