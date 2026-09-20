@@ -98,6 +98,7 @@ nav:
       - 0049 배치를 담은 도형은 배경이 된다: decisions/0049-a-shape-that-holds-layout-becomes-a-backdrop.md
       - 0050 강조색 여섯은 재서 고른 팔레트다: decisions/0050-six-accents-are-a-measured-palette-not-a-ranking.md
       - 0051 하이라이팅은 토큰 스트림이다: decisions/0051-highlighting-is-a-token-stream-compiled-to-runs.md
+      - 0052 테마 선택은 덱의 요청이다: decisions/0052-theme-selection-is-a-deck-request-and-there-is-no-fallback-theme.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |
