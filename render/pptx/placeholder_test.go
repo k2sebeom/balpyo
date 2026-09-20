@@ -4,7 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k2sebeom/balpyo/core"
 	"github.com/k2sebeom/balpyo/render/geom"
+	"github.com/k2sebeom/balpyo/soml"
 )
 
 // 슬롯을 채운 슬라이드 직계 자식은 `<p:nvPr>` 안에 `<p:ph>`를 얻는다 (ADR 0035 선택지 3).
@@ -150,4 +152,83 @@ func TestRenderNoSlotKeepsSingleBlankLayout(t *testing.T) {
 	if !strings.Contains(parts[slideRelsPart(1)], `Target="../slideLayouts/slideLayout1.xml"`) {
 		t.Errorf("슬롯 없는 슬라이드가 blank 레이아웃을 가리키지 않는다: %q", parts[slideRelsPart(1)])
 	}
+}
+
+// layoutSlotDeck은 지정한 레이아웃을 실은 슬라이드 하나의 덱이다 — resolvedDeck은 `layout`을
+// 옮기지 않으므로(언제나 기본 content) 레이아웃별 슬롯을 보는 테스트가 쓸 경로가 따로 필요하다
+// (render/web의 layoutDeck과 같은 조립).
+func layoutSlotDeck(t *testing.T, layout soml.SlideLayout, body string) *soml.Deck {
+	t.Helper()
+	const source = "slides/001_slots.slide"
+	doc, diags := soml.Parse(source, `<slide id="s" layout="`+string(layout)+`">`+"\n"+body+"\n</slide>\n")
+	if err := diags.Err(); err != nil {
+		t.Fatalf("파싱 실패: %v", err)
+	}
+	stage, err := soml.Aspect16x9.Stage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	deck := &soml.Deck{
+		Title: "슬롯", Lang: "ko", Aspect: soml.Aspect16x9, Stage: stage,
+		Slides: []*soml.Slide{{
+			Index: 0, ID: "s", Source: source,
+			Layout: soml.SlideLayout(doc.Layout), LayoutSpan: doc.LayoutSpan,
+			Notes: doc.Notes, Content: doc.Content,
+		}},
+	}
+	if err := core.Resolve(deck).Err(); err != nil {
+		t.Fatalf("외관 해석 실패: %v", err)
+	}
+	return deck
+}
+
+// **슬롯 모드 판정이 두 타깃에서 같은 결론에 이른다** (도그푸딩 D3 · ADR 0044).
+//
+// 이 테스트가 있는 이유는 사고 하나다: 웹은 테마에 `<이름>.slots.css`가 있을 때만 슬롯
+// 모드를 켜고(`render/web.writeStage`) PPTX는 자식이 슬롯을 썼는지만 봤다. minimal이
+// 슬롯 영역 CSS를 3종만 갖고 있었으므로 `layout="quote"` + `slot="quote"`가 **웹에서는
+// 조용히 무효, PPTX에서는 플레이스홀더 발행**이 됐다 — 한 소스가 두 산출물에서 다른 그림이
+// 되는 것은 이 제품에서 가장 비싼 버그다.
+//
+// 대조는 두 렌더러의 **결론**으로 한다 (스테이지의 `balpyo-slots` 모디파이어 ↔ `<p:ph>`):
+// 판정 입력이 하나뿐이라는 계약을 코드가 아니라 산출물에서 본다. 이 자리가 성립하는 이유는
+// render/pptx의 테스트가 이미 두 렌더러를 함께 부르기 때문이다 (renderWebString).
+func TestSlotModeAgreesAcrossTargets(t *testing.T) {
+	for _, layout := range soml.SlideLayouts() {
+		slots := soml.LayoutSlots(layout)
+		if len(slots) == 0 {
+			continue // canvas — 슬롯 어휘가 비어 있다 (slot=은 빌드 에러다)
+		}
+		t.Run(string(layout), func(t *testing.T) {
+			deck := layoutSlotDeck(t, layout, `<p slot="`+slots[0].Name+`">본문</p>`)
+			g := measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 1152, H: 36})
+
+			webSlotMode := strings.Contains(stageClassOf(t, renderWebString(t, deck)), "balpyo-slots")
+			pptxPlaceholder := strings.Contains(slideXML(t, deck, g), "<p:ph")
+			if webSlotMode != pptxPlaceholder {
+				t.Errorf("슬롯 %q: 웹 슬롯 모드=%v, PPTX 플레이스홀더=%v — 같은 소스가 두 타깃에서 갈렸다",
+					slots[0].Name, webSlotMode, pptxPlaceholder)
+			}
+		})
+	}
+}
+
+// stageClassOf는 첫 스테이지의 class 속성 값이다.
+//
+// 문서 전체를 substring으로 보면 안 되는 이유가 있다: 흐름 배치 규칙의 선택자가
+// `:not(.balpyo-slots)`라서(layoutStagesCSS) 슬롯 모드가 **꺼진** 덱의 CSS에도
+// `balpyo-slots`라는 글자가 들어 있다. 판정은 스테이지 요소의 클래스 목록에서만 읽는다.
+func stageClassOf(t *testing.T, out string) string {
+	t.Helper()
+	const open = `<div class="balpyo-stage`
+	i := strings.Index(out, open)
+	if i < 0 {
+		t.Fatalf("스테이지 여는 태그를 찾지 못했다\n%s", out)
+	}
+	rest := out[i+len(`<div class="`):]
+	end := strings.IndexByte(rest, '"')
+	if end < 0 {
+		t.Fatalf("스테이지 class 속성이 닫히지 않았다: %q", rest)
+	}
+	return rest[:end]
 }
