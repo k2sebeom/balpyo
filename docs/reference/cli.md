@@ -50,9 +50,11 @@ balpyo init my-talk --author "이세범"
 | `--aspect <비율>` | `16:9` | 종횡비 (`16:9`·`4:3`) |
 | `--lang <코드>` | `ko` | 덱 언어 (`index.html`의 `lang`) |
 
-`--theme`가 내장 테마만 받는 이유는 지금 빌드가 내장 테마만 해석하기 때문이다 —
-`balpyo.json`에 읽히지 않는 이름을 써 두면 그 파일이 조용한 거짓말이 된다. 외부 테마 패키지는
-아직 열리지 않았다.
+`init`의 `--theme`만 내장 테마로 **제한**된다 (`build`·`check`·`watch`·`preview`는 로컬 테마
+이름도 받는다): 이 명령은 프로젝트를 **만드는** 명령이라 `themes/`가 아직 없고, 읽히지 않는 이름을
+`balpyo.json`에 써 두면 그 파일이 조용한 거짓말이 된다. 자기 테마는 프로젝트를 만든 뒤
+`themes/<이름>/`에 두고 `balpyo.json`의 `theme`를 고친다
+([자기 테마 만들기](../guides/theming.md)).
 
 ### 덮어쓰지 않는다
 
@@ -93,7 +95,7 @@ balpyo build --project testdata/fixtures/01_text --target html,pptx
 | `--project <dir>` | `.` | 프로젝트 루트 — `balpyo.json`과 `slides/`가 있는 곳 |
 | `--target <목록>` | `html` | 렌더 타깃. 쉼표로 여러 개: `html,pptx` |
 | `--out <dir>` | `balpyo.json`의 `outDir` (기본 `dist`) | 출력 디렉토리. 상대 경로는 프로젝트 루트 기준 |
-| `--theme <이름>` | `balpyo.json`의 `theme` (기본 `minimal`) | 테마. **내장 테마만** 받는다 (`minimal`·`editorial`·`ink`) |
+| `--theme <이름>` | `balpyo.json`의 `theme` (기본 `minimal`) | 테마 **이름**. 내장 셋(`minimal`·`editorial`·`ink`) ∪ 이 프로젝트의 `themes/<이름>/` |
 | `--strict` | 꺼짐 | 경고를 에러로 승격한다 |
 | `--check-layout` | 꺼짐 | 배치를 검사한다 (넘침·스테이지 이탈·겹침). 브라우저를 띄운다 |
 
@@ -102,7 +104,9 @@ balpyo build --project testdata/fixtures/01_text --target html,pptx
 
 `--theme`가 플래그인 이유는 테마를 고르는 방법이 **같은 덱을 두 테마로 내서 견주는 것**이라는
 것이다 (자세히는 [테마 고르기·만들기](../guides/theming.md)). `balpyo.json`을 고쳐서 하면
-되돌리기를 잊는다. 없는 이름은 렌더 전에 멈춘다 — 쓸 수 있는 이름을 함께 나열한다.
+되돌리기를 잊는다. 없는 이름은 렌더 전에 멈춘다 — 쓸 수 있는 이름을 함께 나열하고, 그 목록에는
+이 프로젝트의 로컬 테마가 함께 들어간다 (`themes/<이름>/` —
+[외부 테마](theme.md)). **경로는 받지 않는다**: 값은 언제나 이름이다.
 
 `--target html,pptx`처럼 PPTX가 포함되고 덱에 좌표가 필요한 요소가 있으면 빌드가
 지오메트리 패스를 위해 시스템 브라우저(Chromium/Chrome)를 띄운다 —

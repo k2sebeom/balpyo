@@ -44,6 +44,7 @@
   나눠 갖는 것, 그리고 **덱 크롬**(페이지 번호·푸터): 내용과 켜짐은 `balpyo.json`의
   `footer`·`pageNumber`가, 자리·정렬·역할·제외 규칙은 테마의 `chrome` 선언이 소유한다.
 
-지금 테마는 내장 셋이다 (`minimal`·`editorial`·`ink`) — 고르는 방법과 세 테마의 성격은
-[테마 고르기·만들기](../guides/theming.md)에 있고, 외부 패키지 로딩과 `extends` 상속은 아직
-없다. 구조와 파이프라인은 [내부 구조](../internals/architecture.md)에 있다.
+테마 이름의 어휘는 **내장 셋(`minimal`·`editorial`·`ink`) ∪ 이 프로젝트의 `themes/<이름>/`**이다
+— 고르는 방법과 세 테마의 성격, 자기 테마를 `extends`로 물려받아 만드는 흐름은
+[테마 고르기·만들기](../guides/theming.md)에 있다. 원격 테마(`balpyo theme get`)와 테마를 가리키는
+경로 문법은 아직 없다. 구조와 파이프라인은 [내부 구조](../internals/architecture.md)에 있다.

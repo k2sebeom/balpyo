@@ -90,6 +90,7 @@ go run ./cmd/balpyo build --project testdata/fixtures/00_empty --target html,ppt
 ├── balpyo.json          # 덱 설정 (없으면 기본값)
 ├── slides/*.slide       # 입력
 ├── assets/*.png         # 그림 입력 (그림이 있는 픽스처만 — 05_image)
+├── themes/<이름>/       # 프로젝트 로컬 테마 입력 (15_local_theme)
 └── golden/              # 산출물 스냅샷 (사람이 커밋한다)
     ├── index.html       #   웹 타깃
     ├── assets/**        #   웹이 낸 에셋 바이트 (입력과 같아야 한다)
@@ -100,6 +101,9 @@ go run ./cmd/balpyo build --project testdata/fixtures/00_empty --target html,ppt
 - 접두 숫자는 iteration 순서이자 스위트 실행 순서다.
 - `_`로 시작하는 디렉토리는 수집되지 않는다 (작업 중 픽스처). 슬라이드 수집 규칙과 같은 관례다.
 - 빌드 산출물은 임시 디렉토리에 쓴다 — 픽스처 디렉토리에는 **입력과 골든만** 남는다.
+- 픽스처는 **자기 프로젝트의 것만** 쓴다. `15_local_theme`이 그 성질의 증인이다: 바이너리에 없는
+  테마 이름(`corp`)이 `themes/corp/`에서 풀리고, 그래서 이 픽스처는 `core/themes/`를 고치지 않고
+  테마 상속을 끝까지 시험한다 (ADR 0054).
 
 ## 골든
 

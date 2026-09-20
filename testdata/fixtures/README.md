@@ -9,6 +9,7 @@
 ├── balpyo.json          # 덱 설정 (없으면 기본값)
 ├── slides/*.slide       # 입력
 ├── assets/*             # 입력 (그림 — 05_image부터)
+├── themes/<이름>/       # 입력 (프로젝트 로컬 테마 — 15_local_theme부터)
 └── golden/              # 산출물 스냅샷 (사람이 커밋한다)
     ├── index.html       #   웹 타깃
     ├── assets/*         #   웹 타깃이 복사한 그림 (바이트가 입력과 같다)

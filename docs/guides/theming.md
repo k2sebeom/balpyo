@@ -74,23 +74,71 @@ balpyo check --theme ink --check-layout --strict
 접힐 수 있다 — 그 자리의 한 줄은 짧게 쓴다
 ([알려진 차이](known-differences.md)의 "가운데 정렬 슬롯은 여유가 없다").
 
-## 새 테마를 만들 때
+## 자기 테마 만들기 — 프로젝트 안에서
 
-지금 테마는 저장소 안의 `core/themes/<이름>/`에 산다 (외부 패키지 경로는 아직 열리지 않았다).
-디렉토리 하나를 더하면 `BuiltinThemes()`가 그것을 돌려주므로 `--theme`과 `init --theme`의
-어휘가 함께 열린다.
+자기 테마는 **프로젝트 안에** 둔다. 이 저장소를 고치거나 다시 빌드하지 않고, 디렉토리 이름으로
+`balpyo.json`이 가리킨다 ([ADR 0054](../decisions/0054-an-external-theme-is-a-name-inside-the-project-and-extends-overrides-by-name.md)).
 
 ```text
-core/themes/<이름>/
-├── theme.json        # 이름 · 레이아웃 11종 선언 · 덱 크롬 선언
-├── tokens.json       # 색 10 · 폰트 3 · space 6 · radius 3 · shadow 1
-├── components.json   # 역할 5종 · 태그 기본값 · variant · 표 · 코드 토큰
-└── layouts/          # 레이아웃 11개 CSS + 슬롯 영역 10개 CSS
+my-deck/
+├── balpyo.json       # { "theme": "corp" }
+├── slides/
+└── themes/
+    └── corp/         # ← 디렉토리 이름이 테마 이름이다 (theme.json의 name과 같아야 한다)
+        ├── theme.json
+        ├── tokens.json         # 부분이어도 된다 (상속할 때)
+        ├── components.json     #   "
+        └── layouts/            #   갈아 끼울 파일만 둔다
 ```
 
-가장 빠른 출발점은 가까운 테마를 베끼는 것이다 — `extends` 상속이 아직 없으므로 레이아웃 CSS는
-실제로 세 벌 존재한다. 그 중복은 의도된 것이다: 무엇이 정말 갈라지는지 본 뒤에 병합 규칙을
-정한다(P4.3).
+가장 빠른 길은 **가까운 내장 테마를 물려받는 것**이다. 파일 넷을 다 채우지 않고, 바꿀 것만 적는다.
+
+`themes/corp/theme.json`:
+
+```json
+{
+  "name": "corp",
+  "extends": "minimal",
+  "chrome": [
+    { "kind": "footer", "align": "center", "role": "caption", "skipLayouts": ["title"] }
+  ]
+}
+```
+
+`themes/corp/tokens.json` — 색은 갈아 끼우고, 나머지는 더한다:
+
+```json
+{
+  "color":  [{ "name": "accent1", "rgb": "7C3AED", "slot": "accent1", "ref": "accent1" }],
+  "font":   [{ "name": "heading", "latin": "Noto Serif", "ea": "Noto Serif CJK KR",
+               "generic": "serif", "scheme": "major" }],
+  "radius": [{ "name": "xl", "px": 36 }]
+}
+```
+
+병합 규칙은 한 문장이다 — **이름이 같으면 자식이 이기고, 없던 이름은 부모 순서 뒤에 붙는다**
+(자세히: [테마 패키지](../reference/theme.md)). 세 줄만 외우면 된다.
+
+- **색은 갈아 끼운다.** 새 색 **이름**을 더하려면 남은 `clrScheme` 슬롯이 있어야 하고, 내장
+  테마가 열둘 중 열을 쓴다
+  ([ADR 0055](../decisions/0055-a-child-theme-recolors-by-name-because-color-tokens-are-bounded-by-the-clrscheme.md)).
+  반경·공간·그림자·폰트에는 그 상한이 없다.
+- **역할과 `variant`는 한 벌 통째로** 갈린다 (`title`을 다시 적었으면 그 역할의 크기·색·정렬을
+  전부 자기가 정한 것이다). `shape.default` 같은 이름 없는 절만 필드 단위다.
+- **레이아웃 CSS는 파일 단위**다. `layouts/title.slots.css` 하나만 두면 표지 배치만 갈리고 나머지
+  열은 부모 것이 그대로 실린다. `layouts` 선언도 물려받으므로 11종을 다시 적지 않는다.
+
+끝까지 한 번 돌려 보는 증인이 저장소에 있다 — `testdata/fixtures/15_local_theme`가 `themes/corp/`
+파일 넷으로 `minimal`을 물려받는 3장 덱이다.
+
+### 내장 테마를 하나 더 만들 때
+
+제품에 실리는 테마는 `core/themes/<이름>/`에 산다 — 디렉토리를 더하면 `BuiltinThemes()`가 그것을
+돌려주므로 `--theme`과 `init --theme`의 어휘가 함께 열린다 (`init`은 프로젝트를 **만드는** 명령
+이라 로컬 테마를 받지 않는다). 내장 테마는 `extends`를 쓰지 않는다: 셋이 서로 독립이어야 "무엇이
+테마의 것인가"를 비교로 답할 수 있고, 아래 전수 테스트가 셋 모두에 같은 조건을 요구한다. 그래서
+파일 넷이 전부 필요하다 (색 10 · 폰트 3 · space 6 · radius 3 · shadow 1 · 역할 5종 · 레이아웃
+11개 CSS + 슬롯 영역 10개 CSS).
 
 ### 로더가 요구하는 것 (없으면 빌드가 멈춘다)
 
@@ -133,6 +181,8 @@ core/themes/<이름>/
 
 ## 아직 아닌 것
 
-`extends` 상속, 프로젝트 로컬·원격 테마 경로, 슬라이드마다 다른 테마, 시스템 다크 모드 자동
-전환, 테마가 폰트 파일을 번들하는 것은 열지 않았다. 스테이지 여백 64px과 기본 간격 24px은
-테마가 아니라 **엔진**의 값이다.
+원격 테마(`balpyo theme get`), 테마를 가리키는 **경로** 문법, 슬라이드마다 다른 테마, 시스템 다크
+모드 자동 전환, 테마가 폰트 파일을 번들하는 것은 열지 않았다. 팀에서 테마를 나누려면
+`themes/<이름>/`을 복사하거나 git 서브모듈로 둔다 — 포맷이 데이터 전용(JSON + CSS)이라 받은
+테마가 코드를 실행하는 길은 없다. 스테이지 여백 64px과 기본 간격 24px은 테마가 아니라 **엔진**의
+값이다.
