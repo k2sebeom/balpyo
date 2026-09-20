@@ -46,8 +46,14 @@ func ElementSelector() string { return "[" + IDAttr + "]" }
 
 // 스테이지 여백과 스택 간격이다 (논리 px). 간격 24px은 본문 크기와 같아 한 글자 높이만큼
 // 벌어진 리듬이 된다 — 역할 기본값의 수직 리듬(core/theme.go)과 같은 근거다.
+//
+// StagePadding을 export하는 이유는 ListTextIndent와 같다: 콘텐츠 박스(스테이지에서 이 여백을
+// 뺀 사각형)를 배치 진단이 판정 기준으로 쓴다 (render/geom의 ContentBox — ADR 0039). 값이 두
+// 벌이 되면 "여백을 침범했다"는 진단이 실제 여백과 어긋난 채 나가고, 그 어긋남은 진단을
+// 믿지 못하게 만든다.
 const (
-	stagePadding = 64
+	// StagePadding은 스테이지 네 변의 여백이다 (논리 px).
+	StagePadding = 64
 	stackGap     = 24
 )
 
@@ -474,7 +480,7 @@ func contentCSS(feat features) string {
     width: 100%%;
     flex: 0 0 auto;
   }
-`, stagePadding, stackGap)
+`, StagePadding, stackGap)
 	if feat.lists {
 		css += listCSS()
 	}
