@@ -10,15 +10,15 @@
   형식을 따른다: 속성 표 → SOML 예제 → 웹/PPTX 각각의 렌더 결과 → 빌드 에러가 나는 조건.
 - `appearance.md` — 외관 속성 전체와 타깃별 컴파일 매핑 표.
 - `layouts.md` — 표준 레이아웃 카탈로그와 슬롯 목록.
-- `theme.md` — 테마 패키지 포맷.
+- `theme.md` — 테마 패키지 포맷 (**아직 없다** — 외부 테마 패키지와 함께 생긴다).
 - `cli.md` — 서브커맨드 레퍼런스.
 
 ## 현재 상태
 
-Iteration 6까지 구현된 어휘와 표면:
+지금 구현된 어휘와 표면:
 
 - 태그: [`<slide>`](soml/slide.md) (`layout`·`id`·`skip`), [`<text>`](soml/text.md)
-  (`role`·`variant`·`size`·`color`·`align`·`anchor`), [`<note>`](soml/note.md),
+  (`role`·`variant`·`size`·`color`·`align`·`anchor` + 배치 속성), [`<note>`](soml/note.md),
   [텍스트 서브셋](soml/text-subset.md) (`h1`~`h3`, `p`, `ul`/`ol`/`li`, `blockquote`,
   `pre`, `strong`, `em`, `code`, `a`, `br`, `span`),
   [레이아웃 태그](soml/layout.md) (`row`/`col`/`grid`/`spacer` + 컨테이너·자식 속성과
@@ -32,8 +32,11 @@ Iteration 6까지 구현된 어휘와 표면:
   보존 계약, 공간·반경·그림자 토큰
 - [CLI](cli.md) — `build`(`--strict` 포함)와 `version`
 
-`layouts.md`(표준 레이아웃 카탈로그)와 `theme.md`(테마 패키지 포맷)는 Iteration 10에서
-생긴다 — 지금의 레이아웃은 2층 배치 태그이고, 1층 레이아웃과 슬롯은 아직 없다. 슬라이드의
-`layout` 속성(`content`·`canvas` 2종)은 그때까지 [`<slide>`](soml/slide.md)가 레퍼런스를
-갖고, Iteration 10이 카탈로그 페이지를 만들 때 링크를 그리로 옮긴다. 구조와 파이프라인은
+- [레이아웃과 슬롯](layouts.md) — 표준 카탈로그 **11종**(`content`·`title`·`section-divider`·
+  `two-column`·`image-full`·`image-text`·`quote`·`code`·`stat`·`canvas`·`end`)과 레이아웃별
+  슬롯 목록, 배치 CSS의 경계. 배치의 실체는 테마의 `layouts/<이름>.css`가 소유하고, 슬롯은
+  웹의 `grid-area`와 PPTX의 `p:ph`가 **같은 카탈로그**에서 나온다.
+
+`theme.md`(테마 패키지 포맷)는 아직 없다 — 지금 테마는 내장 `minimal` 하나이고, 외부 테마
+패키지(`extends`·`chrome`)와 함께 페이지가 생긴다. 구조와 파이프라인은
 [내부 구조](../internals/architecture.md)에 있다.

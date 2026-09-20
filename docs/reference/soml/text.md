@@ -101,10 +101,17 @@ PRD §13-1). 외관 매핑:
 | 조건 | 진단 메시지 |
 |---|---|
 | 자식으로 블록·리스트 요소를 썼다 | `<text> 안에는 문자 데이터와 인라인 태그만 올 수 있다 (<…>는 쓸 수 없다)` |
-| 어휘 밖의 속성 | `<text>에 알 수 없는 속성 … (쓸 수 있는 속성: role, variant, size, color, align, anchor, grow, shrink, basis, span, self, order, style)` |
+| 어휘 밖의 속성 | `<text>에 알 수 없는 속성 … (쓸 수 있는 속성: role, variant, size, color, align, anchor, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
 
-속성 목록의 뒤쪽 일곱 개는 [자식 배치 속성](layout.md)이다 — `<text>`는 레이아웃
-컨테이너의 자식이 될 수 있으므로 `<row><text grow="1">`이 유효하다.
+속성 목록의 뒤쪽 열한 개는 [자식 배치 속성](layout.md)과 슬롯 배정이다 — `<text>`는 레이아웃
+컨테이너의 자식이 될 수 있으므로 `<row><text grow="1">`이 유효하고, `at`·`x`/`y`는
+[`<stack>`](stack.md)의 자식이나 `layout="canvas"` 슬라이드의 직속 자식에서,
+`slot`은 슬라이드 직계 자식에서 뜻을 갖는다 ([레이아웃과 슬롯](../layouts.md)).
+
+- **`<text>`에는 박스 크기 속성(`w`/`h`·`min-*`/`max-*`)이 없다.** 텍스트는 자기 내용만큼의
+  박스라서 `align="center"`가 기댈 폭이 따로 없다 — canvas에서 특정 폭 안에 라벨을 가운데
+  두려면 그 폭을 가진 부모가 필요하다 (`<shape fill="none" border="none" w="140">`으로 감싸거나
+  `<stack>` 안에 둔다). 예: `examples/incident-postmortem/slides/008_detection.slide`.
 
 외관 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다:
 

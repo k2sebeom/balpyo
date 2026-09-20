@@ -7,7 +7,7 @@
 
 | 속성 | 값 | 기본값 | 뜻 |
 |---|---|---|---|
-| `layout` | `content` · `canvas` | `content` | 슬라이드의 배치 레이아웃 (아래) |
+| `layout` | 표준 카탈로그 11종 | `content` | 슬라이드의 배치 레이아웃 (아래) |
 | `id` | 문자열 | 파일명에서 유도 | 딥링크 앵커. 덱 전체에서 유일해야 한다 |
 | `skip` | 없음 · `true` · `false` | `false` | 참이면 이 슬라이드를 렌더에서 뺀다 |
 
@@ -19,19 +19,26 @@
 
 ## `layout` 속성
 
-`layout`은 슬라이드의 **배치 레이아웃**이다 (PRD §7.3). 지금 어휘는 2종이다:
+`layout`은 슬라이드의 **배치 레이아웃**이다 (PRD §7.3). 어휘는 표준 카탈로그 11종으로 닫혀
+있고, **카탈로그와 슬롯의 레퍼런스는 [`layout=` 페이지](../layouts.md)에 있다** — 여기서는
+`<slide>`가 그 값을 어떻게 받는지만 본다.
 
 | 값 | 뜻 |
 |---|---|
 | `content` (기본값) | 콘텐츠 자식을 **문서 순서의 세로 스택**으로 쌓는다 — 여백 64px, 간격 24px |
 | `canvas` | 자식을 쌓지 않고 자식이 `x`/`y`·`at`으로 **자기 자리를 정한다** (자유 배치) |
+| 나머지 9종 | `title` · `section-divider` · `two-column` · `image-full` · `image-text` · `quote` · `code` · `stat` · `end` — 배치는 테마의 `layouts/<이름>.css`가 소유한다 ([카탈로그](../layouts.md)) |
 
 - **`content`는 `layout`을 생략한 슬라이드의 기본값이자 정당한 명시 표기다.** 구현된
   동작(세로 스택)에 이름이 있으므로 `layout="content"`가 에러가 아니고, 그 산출물은
   `layout` 없는 같은 슬라이드와 **바이트가 같다** (기본값과 명시가 같은 이름이다).
-- **나머지 9종(`title`·`section`·`image-full` …)은 아직 어휘 밖이다** — 표준 레이아웃
-  카탈로그와 슬롯은 [Iteration 10](../index.md)이다. 그때까지 `layout="title"` 같은 값은
-  진단으로 막힌다 (오타가 조용히 기본 레이아웃으로 렌더되지 않게).
+- **어휘 밖 값은 빌드 에러다** — 오타가 조용히 기본 레이아웃으로 렌더되지 않게 막는다:
+  `알 수 없는 layout "titel" (쓸 수 있는 layout: title, section-divider, content, two-column,
+  image-full, image-text, quote, code, stat, canvas, end)`. 나열 순서는 카탈로그 순서
+  (표지에서 마무리로)이고, 진단·문서·`soml.SlideLayouts()`가 같은 순서를 쓴다.
+- **슬롯은 레이아웃이 정한다** — 직계 자식의 `slot="title"` 같은 배정은 레이아웃마다 허용
+  이름이 다르고, 그 표도 [`layout=` 페이지](../layouts.md)에 있다. 슬롯을 하나도 쓰지 않으면
+  슬라이드는 흐름 모드로 남는다 (슬롯 모드는 슬라이드마다, 덧붙는 방식이다).
 - **렌더러는 문자열이 아니라 확정된 레이아웃 값을 소비한다** — `"canvas"`가 세 렌더러에
   흩어지지 않게 core가 어휘를 확정해 덱 모델(`Slide.Layout`)에 싣는다. 값 어휘는 파서가 아니라
   값 층이 보고, 값과 함께 구간(`LayoutSpan`)을 실어 진단이 `line:col`을 가리킨다
@@ -125,5 +132,6 @@
 
 | 조건 | 진단 메시지 |
 |---|---|
-| 어휘 밖의 `layout` 값 | `알 수 없는 layout "titel" (쓸 수 있는 layout: content, canvas)` |
+| 어휘 밖의 `layout` 값 | `알 수 없는 layout "titel" (쓸 수 있는 layout: title, section-divider, content, two-column, image-full, image-text, quote, code, stat, canvas, end)` |
+| 레이아웃에 없는 `slot` 이름 | 레이아웃마다 허용 슬롯이 다르다 — [`layout=` 페이지](../layouts.md)의 슬롯 표 |
 | 두 슬라이드의 ID가 같다 | `슬라이드 ID "…"가 …와 충돌한다 (id 속성으로 구분한다)` |
