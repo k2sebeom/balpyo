@@ -50,8 +50,8 @@ func wantShapeStyle(delta soml.ShapeStyle) soml.ShapeStyle {
 	}
 	mergeShape(&style, shapePatch{fill: delta.Fill, border: delta.Border, radius: delta.Radius,
 		shadow: delta.Shadow, opacity: delta.Opacity, rotate: delta.Rotate, flip: flip})
-	// 식별자와 박스는 캐스케이드 밖이라 병합이 다루지 않는다 (shapePatch의 근거).
-	style.ID, style.Box = delta.ID, delta.Box
+	// 식별자·대체 텍스트·박스는 캐스케이드 밖이라 병합이 다루지 않는다 (shapePatch의 근거).
+	style.ID, style.Alt, style.Box = delta.ID, delta.Alt, delta.Box
 	return style
 }
 
@@ -73,6 +73,10 @@ func TestResolveShapeStyle(t *testing.T) {
 		// 참조(Iteration 7)의 이름이라 확정 값에 남는다.
 		{"type", "type", `type="ellipse"`, soml.ShapeStyle{Type: "ellipse"}},
 		{"id", "id", `type="rect" id="db"`, soml.ShapeStyle{Type: "rect", ID: "db"}},
+		// alt은 **그림의 이름**이고 안의 글을 대체하지 않는다 (ADR 0058) — 빈 값의 뜻은
+		// alt_test.go가 따로 못 박는다.
+		{"alt", "alt", `type="arrow-right" alt="배포 흐름의 마지막 단계"`,
+			soml.ShapeStyle{Type: "arrow-right", Alt: "배포 흐름의 마지막 단계"}},
 
 		// variant는 테마의 외관 번들이다 — 캐스케이드 둘째 단이므로 확정 값이 표의 값과
 		// **다른 자리**에서 온다 (여기서는 card가 정하는 두 필드만 델타로 적는다).

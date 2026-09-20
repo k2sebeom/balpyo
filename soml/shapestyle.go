@@ -42,6 +42,12 @@ type ShapeStyle struct {
 	Rotate *float64
 	// Flip은 대칭이다 (닫힌 어휘 — Flips).
 	Flip Flip
+	// Alt은 도형 **그림**의 대체 텍스트다 (웹은 잉크 `<svg>`의 `role="img" aria-label`,
+	// PPTX는 `p:cNvPr@descr`). 빈 값은 "이름 없음"이고 그때 산출물은 이 속성이 없던 때와
+	// 한 바이트도 다르지 않다 — 그림의 기본은 장식이다 (ADR 0058).
+	//
+	// 외관이 아니라 저자의 내용이므로 캐스케이드를 타지 않는다 (ImageStyle.Alt와 같은 자리).
+	Alt string
 	// Box는 도형 자신의 박스다 — 안쪽 여백·크기·비율. 레이아웃 컨테이너와 **같은
 	// 구조체**를 공유한다 (Box의 주석).
 	Box

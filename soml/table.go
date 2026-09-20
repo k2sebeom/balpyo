@@ -42,7 +42,11 @@ var (
 	// 크기 속성(w/h)을 열지 않는 이유는 리스트(`<ul>`)와 같다: 표는 잰 내용이 곧 크기다.
 	// 프레임 `xfrm`은 지오메트리 패스가 잰 `<table>` 박스에서, 열 너비·행 높이는 잰 셀
 	// 박스에서 온다 — 저자가 EMU를 손으로 적을 자리가 아니다.
-	tableOwnAttrs = []string{"variant"}
+	//
+	// `alt`은 **표의 이름**이다 (ADR 0058) — 웹은 `<table aria-label>`, PPTX는
+	// `p:graphicFrame`의 `p:cNvPr@descr`이다. 셀은 두 타깃 모두 항해 가능한 채로 남으므로
+	// 이 이름은 내용을 대체하지 않고 더한다.
+	tableOwnAttrs = []string{"alt", "variant"}
 	// tableCellMergeAttrs는 셀 병합 속성이다 (HTML식). `colspan`→OOXML `gridSpan`,
 	// `rowspan`→`rowSpan`. 병합에 덮이는 격자 셀은 렌더러가 `hMerge`/`vMerge` 빈 `a:tc`로
 	// 낸다 (OOXML 요구사항) — 저자가 쓰는 것은 span 두 개뿐이다. 값(정수·격자 초과)은 값

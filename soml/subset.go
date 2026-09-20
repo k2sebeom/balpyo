@@ -178,10 +178,10 @@ type plannedAttr struct {
 // 이 줄을 적고 같은 항목이 지웠다.
 //
 // 목록이 비는 날에도 관문은 목록을 잠시 세워 보는 테스트가 지킨다 (withPlannedAttrs).
-var plannedAttrs = []plannedAttr{
-	{Tag: ShapeElement, Name: "alt", Opens: "P5.3 접근성"},
-	{Tag: TableElement, Name: "alt", Opens: "P5.3 접근성"},
-}
+// 지금 이 목록은 **비어 있다** — 적혀 있던 세 줄(`<pre lang>`·`<shape alt>`·`<table alt>`)을
+// 각각 P2.4와 P5.3이 구현하며 지웠다. 그것이 이 장치의 정상 상태다: 목록은 약속이고 약속은
+// 갚으면 사라진다.
+var plannedAttrs = []plannedAttr{}
 
 // KindRendered는 두 렌더러가 이 종류를 그릴 수 있는지 보고한다. KindNone(카탈로그 밖 —
 // `<slide>`·`<text>`·`<note>`)은 각자의 규칙을 따르므로 참이다.

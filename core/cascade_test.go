@@ -245,7 +245,7 @@ func TestMergeShapeAppliesOnlySetFields(t *testing.T) {
 	value := reflect.ValueOf(got)
 	for i := 0; i < value.NumField(); i++ {
 		switch name := value.Type().Field(i).Name; name {
-		case "Type", "ID", "Box":
+		case "Type", "ID", "Alt", "Box":
 			// 캐스케이드 밖이다 — 테마가 정할 수 없는 값이라 패치에 필드가 없다.
 		default:
 			if value.Field(i).IsZero() {

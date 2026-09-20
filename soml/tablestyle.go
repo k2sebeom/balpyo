@@ -20,6 +20,9 @@ type TableStyle struct {
 	// 이 이름으로 CSS 훅을 낼 수 있고, PPTX는 읽지 않는다 — 명시 tcPr이 외관을 소유하므로
 	// 셀 채움이 이미 줄무늬를 담고 있다.
 	Variant string
+	// Alt은 표 전체의 대체 텍스트다 (웹 `<table aria-label>`, PPTX `p:cNvPr@descr`). 셀의
+	// 글은 두 타깃 모두 그대로 읽히므로 이 이름은 내용을 대체하지 않는다 (ADR 0058).
+	Alt string
 }
 
 // CellStyle은 확정된 셀 외관이다 (`<th>`/`<td>`). 박스(채움·테두리)와 텍스트를 함께 담는다 —

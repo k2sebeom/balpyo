@@ -37,6 +37,13 @@ func tableVariantNames() []string { return []string{tableStripedVariant} }
 // 콘텐츠의 테마 간 이식성, PRD §13-6).
 func (r *resolver) resolveTable(elem *soml.Element) {
 	style := soml.TableStyle{}
+	if attr, ok := elem.Attr("alt"); ok {
+		// 프레임 속성 순회가 따로 없는 이유는 프레임의 어휘가 둘뿐이기 때문이다 (soml.tableOwnAttrs).
+		// `alt`은 캐스케이드 밖이라 확정 값에 바로 앉는다 (도형과 같은 자리 — alt.go).
+		if alt, ok := r.altName(attr); ok {
+			style.Alt = alt
+		}
+	}
 	striped := false
 	if attr, ok := r.variantAttr(elem); ok {
 		if attr.Value == tableStripedVariant {

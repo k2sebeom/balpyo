@@ -117,7 +117,12 @@ var (
 	// `id`는 산출물에 아무것도 그리지 않는다 — 그것이 정상이고 `<slide id>`의 선례가 이미
 	// 그렇다 (파일명 정렬·진단에만 쓰인다). 도형 `id`는 `<arrow from="db">`의 **참조 대상
 	// 이름**이며 참조 해석은 Iteration 7이다.
-	shapeOwnAttrs = []string{"type", "id"}
+	//
+	// `alt`은 **그림의 이름**이다 (ADR 0058) — 도형 안 글을 대체하지 않는다. 그림 쪽 선례와
+	// 같은 기준으로 열었다: 양 타깃에 실을 자리가 있다 (웹은 잉크 `<svg role="img">`,
+	// PPTX는 `p:cNvPr@descr`). 외관이 아니므로 외관 목록이 아니라 여기 있다 — 테마도
+	// `variant`도 얹지 않는다.
+	shapeOwnAttrs = []string{"type", "id", "alt"}
 	// shapeAppearanceAttrs는 외관 채널이다 (PRD §7.6). `stroke`/`cap`/`dash`는 line·arrow의
 	// 것이라 열지 않는다 — 도형에 받아 놓고 버리는 선언이 되고, 그 침묵이 닫힌 어휘가
 	// 막으려던 실패다.

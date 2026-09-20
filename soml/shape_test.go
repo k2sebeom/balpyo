@@ -253,7 +253,7 @@ func TestParseShapeErrors(t *testing.T) {
 			// 놓고 버리지 않는다. 진단이 도형의 속성 표 전체를 순서대로 싣는다.
 			name: "도형에 stroke는 없다",
 			src:  `<slide><shape type="rect" stroke="2 accent1"/></slide>`,
-			want: []string{`1:27 <shape>에 알 수 없는 속성 stroke (쓸 수 있는 속성: type, id, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)`},
+			want: []string{`1:27 <shape>에 알 수 없는 속성 stroke (쓸 수 있는 속성: type, id, alt, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)`},
 		},
 		{
 			name: "도형에 dash는 없다",
@@ -541,7 +541,7 @@ func TestBoxAttrsSharedWithContainers(t *testing.T) {
 		t.Errorf("BoxAttrs() = %q, want %q", got, want)
 	}
 	shape := elementSpecs[ShapeElement].attrs
-	want := strings.Join(append(append([]string{"type", "id"}, ShapeAppearanceAttrs()...),
+	want := strings.Join(append(append([]string{"type", "id", "alt"}, ShapeAppearanceAttrs()...),
 		append(append(BoxAttrs(), ChildPlacementAttrs()...), SlotAttr)...), " ")
 	if got := strings.Join(shape, " "); got != want {
 		t.Errorf("<shape> 속성 = %q\nwant %q", got, want)

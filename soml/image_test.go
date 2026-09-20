@@ -388,20 +388,30 @@ func TestImageAttrs(t *testing.T) {
 			t.Errorf("<%s>에 %s가 열려 있다", ImageElement, attr)
 		}
 	}
-	// 이미지 고유 속성은 다른 태그에 새지 않았다.
+	// 이미지 고유 속성은 다른 태그에 새지 않았다 — `alt`은 고유가 아니다 (아래).
 	for name, spec := range elementSpecs {
 		if name == ImageElement {
 			continue
 		}
-		for _, attr := range []string{"src", "fit", "alt"} {
+		for _, attr := range []string{"src", "fit"} {
 			if hasAttr(spec.attrs, attr) {
 				t.Errorf("<%s>에 이미지 고유 속성 %s가 열려 있다", name, attr)
 			}
 		}
 	}
-	// 도형의 속성 표는 한 비트도 움직이지 않았다 — 진단 메시지가 그 순서를 싣는다.
+	// `alt`이 열린 자리는 **그림·도형·표 셋뿐이다** (ADR 0058) — 그 셋이 양 타깃에 이름을 실을
+	// 자리를 가진 요소다 (`<img alt>`·`p:sp`·`p:graphicFrame`의 `descr`). 텍스트 요소와 레이아웃
+	// 컨테이너에 새면 한 타깃에만 나가는 속성이 된다 (앞쪽은 내용이 이미 글이고, 뒤쪽은 PPTX에
+	// 도형이 없다 — ADR 0011).
+	for name, spec := range elementSpecs {
+		want := name == ImageElement || name == ShapeElement || name == TableElement
+		if got := hasAttr(spec.attrs, "alt"); got != want {
+			t.Errorf("<%s>의 alt = %v, want %v", name, got, want)
+		}
+	}
+	// 도형의 속성 표는 `alt` 한 줄만 늘었다 — 진단 메시지가 그 순서를 싣는다.
 	if got, want := strings.Join(ShapeAttrs(), " "),
-		"type id variant fill border radius shadow opacity rotate flip pad w h min-w min-h max-w max-h ratio"; got != want {
+		"type id alt variant fill border radius shadow opacity rotate flip pad w h min-w min-h max-w max-h ratio"; got != want {
 		t.Errorf("ShapeAttrs() = %q\nwant %q", got, want)
 	}
 }

@@ -149,6 +149,11 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 			if id, ok := r.shapeID(attr); ok {
 				style.ID = id
 			}
+		case "alt":
+			// 캐스케이드 밖이다 — 저자의 내용이므로 테마도 variant도 얹지 않는다 (alt.go).
+			if alt, ok := r.altName(attr); ok {
+				style.Alt = alt
+			}
 		case "variant":
 			// 캐스케이드 둘째 단이라 shapeVariant가 소유한다 — 여기서 또 보면 모르는 variant
 			// 경고가 두 번 난다.
