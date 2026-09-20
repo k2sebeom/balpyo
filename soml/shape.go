@@ -36,6 +36,34 @@ func ShapeTypes() []string {
 	return types
 }
 
+// shapeInsetTextTypes는 **텍스트 영역이 박스보다 좁은** 프리셋 8종이다 (ADR 0040) — 뷰어가
+// `prstGeom`마다 들고 있는 본문 사각형이 실루엣 안쪽으로 백분율만큼 들어와 있는 종류다.
+// 나머지 넷은 영역이 곧 박스이거나(rect·chevron·callout) 인셋이 px이다(rounded-rect).
+//
+// 수치가 아니라 **이름만** 여기 있는 이유는 층의 소유다: 백분율 수치는 기하 유도표의 한
+// 열이고(render/web의 shapeGeometries — 우리가 그린 실루엣과 짝이어야 한다), 값 층이 알아야
+// 하는 것은 수치가 아니라 "이 프리셋은 자기 박스를 기준으로 삼는다"는 사실 하나다. 값 층이
+// 렌더러를 import하면 층이 뒤집히므로(core는 soml만 본다) 사실은 어휘 카탈로그에 둔다.
+//
+// 두 곳이 갈라지는 위험은 테스트가 막는다 — render/web이 이 목록과 자기 표의
+// `TextRect.HasPercent()`가 같은지 단정한다 (프리셋을 더할 때 한쪽만 고치면 멈춘다).
+var shapeInsetTextTypes = []string{
+	"ellipse", "diamond", "cylinder", "arrow-right", "hexagon", "parallelogram", "star", "cloud",
+}
+
+// ShapeInsetText는 이 프리셋의 텍스트 영역이 박스보다 좁은지다 (shapeInsetTextTypes).
+//
+// 값 층은 이 사실로 **확정 높이를 요구한다** (ADR 0040): 백분율 인셋은 자기 박스 높이를
+// 기준으로 하므로 내용이 높이를 정하는 도형에서는 기준이 순환한다.
+func ShapeInsetText(shapeType string) bool {
+	for _, name := range shapeInsetTextTypes {
+		if name == shapeType {
+			return true
+		}
+	}
+	return false
+}
+
 // BorderStyle은 `border` 축약의 스타일 조각이다 (PRD §8.3의 `"1 solid muted"`).
 //
 // **이름은 CSS 쪽이다** (`dashed`/`dotted`, OOXML의 `dash`/`dot`이 아니다). 근거는 축약

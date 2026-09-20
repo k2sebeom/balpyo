@@ -408,6 +408,46 @@ func TestResolveShapeRadiusNeedsRoundedRect(t *testing.T) {
 	}
 }
 
+// 텍스트 영역이 박스보다 좁은 프리셋(soml.ShapeInsetText)은 **내용을 담을 때** 확정 높이를
+// 요구한다 (ADR 0040) — 프리셋 12종을 전수로 지나며 요구하는 쪽과 요구하지 않는 쪽을 함께
+// 못 박는다. 규칙이 넓어지면(예: rounded-rect까지) 내용이 높이를 정하는 카드가 죽는다.
+func TestResolveShapeInsetTextNeedsDefiniteHeight(t *testing.T) {
+	shapeWith := func(attrs, children string) string {
+		return "<slide id=\"shape\">\n  <shape " + attrs + ">" + children + "</shape>\n</slide>\n"
+	}
+	for _, shapeType := range soml.ShapeTypes() {
+		t.Run(shapeType, func(t *testing.T) {
+			attrs := `type="` + shapeType + `"`
+			_, diags := resolveSlide(t, shapeWith(attrs, "<p>라벨</p>"))
+			if !soml.ShapeInsetText(shapeType) {
+				if len(diags) != 0 {
+					t.Fatalf("진단 %d개, want 0개 (이 프리셋의 텍스트 영역은 박스다): %v", len(diags), diags)
+				}
+				return
+			}
+			if len(diags) != 1 {
+				t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+			}
+			// 진단은 **요소 이름**을 가리킨다 — 고칠 것이 어느 속성의 값이 아니라 없는 속성이다
+			// (type 누락 진단과 같은 자리).
+			assertShapeDiag(t, diags[0], 4, "h나 ratio가 필요하다", shapeType, "기준이 순환한다")
+
+			// 높이가 확정이면(h·ratio) 조용하고, 내용이 없으면 애초에 규칙이 걸리지 않는다 —
+			// 텍스트 없는 도형은 영역을 쓰지 않으므로 높이를 요구할 근거가 없다.
+			for _, quiet := range []string{
+				shapeWith(attrs+` h="120"`, "<p>라벨</p>"),
+				shapeWith(attrs+` h="fill"`, "<p>라벨</p>"),
+				shapeWith(attrs+` ratio="1:1"`, "<p>라벨</p>"),
+				shapeWith(attrs, "\n  "),
+			} {
+				if _, diags := resolveSlide(t, quiet); len(diags) != 0 {
+					t.Errorf("진단 %d개, want 0개 (%s): %v", len(diags), quiet, diags)
+				}
+			}
+		})
+	}
+}
+
 // 나머지 값 문법의 위반 전수 — 각 진단이 **고치는 방법**을 담고 있어야 한다.
 func TestResolveShapeValueErrors(t *testing.T) {
 	cases := []struct {

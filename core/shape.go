@@ -44,6 +44,35 @@ func (r *resolver) resolveShape(elem *soml.Element) {
 	mergeShape(&style, themeShapePatch(r.shapeVariant(elem), style.Type))
 	mergeShape(&style, inline)
 	elemAppearance(elem).Shape = &style
+	r.shapeInsetTextHeight(elem, &style)
+}
+
+// shapeInsetTextHeight는 **텍스트 영역이 박스보다 좁은 프리셋**(soml.ShapeInsetText)이 내용을
+// 담으면 확정 높이를 요구한다 (ADR 0040).
+//
+// 근거는 기준의 순환이다: 그 여덟 프리셋의 텍스트 영역은 자기 박스에 대한 **백분율**이므로
+// (render/web의 TextRect) 영역을 잡으려면 높이가 먼저 정해져 있어야 하는데, 내용이 높이를
+// 정하는 도형에서는 내용을 놓을 자리가 내용의 크기에 달리게 된다. 웹은 그 영역을 절대 배치
+// 래퍼로 잡으므로 높이가 없으면 도형이 납작해지고 — 진단하지 않으면 그 납작함이 저자에게는
+// "글자가 사라졌다"로 보인다.
+//
+// 진단하는 층이 값 층인 이유는 **고칠 사람이 저자**라는 것이다: 렌더러가 멈추면 어느
+// 타깃에서 무엇이 잘못됐는지가 산출물 쪽 말로 나오고, 웹·PPTX가 각자 같은 규칙을 들게 된다.
+// rounded-rect가 여기 걸리지 않는 것이 이 규칙의 좁음을 말해 준다 — 인셋이 px이라 패딩으로
+// 받으므로 내용이 높이를 정하는 카드가 그대로 산다.
+func (r *resolver) shapeInsetTextHeight(elem *soml.Element, style *soml.ShapeStyle) {
+	if !soml.ShapeInsetText(style.Type) || style.Box.Height != nil || style.Box.Ratio != nil {
+		return
+	}
+	for _, child := range elem.Children {
+		if _, ok := child.(*soml.Element); !ok {
+			// 문자 데이터는 파서가 이미 막았다 (도형의 내용 모델은 블록이다).
+			continue
+		}
+		r.errorf(elem.NameSpan, "type=%q 도형이 내용을 담으면 h나 ratio가 필요하다 (예: h=\"120\") — 이 프리셋의 텍스트 영역은 박스 높이의 백분율이라 내용이 높이를 정하면 기준이 순환한다",
+			style.Type)
+		return
+	}
 }
 
 // themeShapePatch는 테마 단(컴포넌트 기본값·variant)의 패치를 이 도형에 맞게 다듬는다 —
