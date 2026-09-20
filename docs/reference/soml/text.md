@@ -141,7 +141,7 @@ PRD §13-1). `w`로 폭을 정하면 그 폭이 잰 박스가 되어 `a:ext@cx`�
 | `size`에 `%`를 썼다 | `size에 %는 쓸 수 없다 (…) — PPTX 폰트 크기는 절대값이라 상대 크기를 번역할 곳이 없다. 논리 px 수치나 role을 쓴다` |
 | `size`가 수치가 아니다 | `size 값이 수치가 아니다 (…)` |
 | `size`가 0 이하 | `size는 0보다 커야 한다 (…)` |
-| 테마에 없는 색 토큰 | `color의 색 토큰 "…"가 테마에 없다 (쓸 수 있는 토큰: fg, bg, muted, surface, accent1, 또는 #RRGGBB 리터럴)` |
+| 테마에 없는 색 토큰 | `color의 색 토큰 "…"가 테마에 없다 (쓸 수 있는 토큰: fg, bg, muted, surface, accent1, accent2, accent3, accent4, accent5, accent6, 또는 #RRGGBB 리터럴)` |
 | 색 리터럴 형식 오류 | `색 리터럴은 #RRGGBB 또는 #RGB 형태다 (…)` |
 | 색 함수를 썼다 | `색 함수 …(…)는 아직 쓸 수 없다 (gradient·shade·tint·alpha는 Iteration 8) — 토큰 이름이나 #RRGGBB 리터럴을 쓴다` |
 | 물리 정렬 이름 | `align은 논리 이름을 쓴다 — "left" 대신 "start" (RTL에서도 뜻이 유지된다)` |

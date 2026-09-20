@@ -428,7 +428,7 @@ PPTX는 **같은 도형의 본문**(`txBody`)이다. 그래서 도형 안 텍스
 | `type`이 없다 | `<shape>에 type이 필요하다 (쓸 수 있는 종류: rect, rounded-rect, ellipse, diamond, cylinder, chevron, arrow-right, hexagon, parallelogram, callout, star, cloud) — 도형의 종류는 추측할 수 없다` |
 | `type`이 12종 밖이다 | `알 수 없는 도형 type "elipse" (쓸 수 있는 종류: …)` |
 | 같은 슬라이드에 `id`가 둘 | `id "db"가 이 슬라이드에 이미 있다 (…) — 참조가 어느 도형인지 정할 수 없다` |
-| 테마에 없는 색 토큰 | `fill의 색 토큰 "brand"가 테마에 없다 (쓸 수 있는 토큰: fg, bg, muted, surface, accent1, 또는 #RRGGBB 리터럴)` |
+| 테마에 없는 색 토큰 | `fill의 색 토큰 "brand"가 테마에 없다 (쓸 수 있는 토큰: fg, bg, muted, surface, accent1, accent2, accent3, accent4, accent5, accent6, 또는 #RRGGBB 리터럴)` |
 | **`gradient(…)`를 썼다** | `색 함수 gradient(…)는 아직 쓸 수 없다 (gradient·shade·tint·alpha는 Iteration 8) — 토큰 이름이나 #RRGGBB 리터럴을 쓴다` |
 | `border` 조각 수가 3이 아니다 | `border는 \`<굵기> <스타일> <색>\` 3조각이다 ("solid muted"는 2조각) — 예: "1 solid muted", 또는 "none"` |
 | `border` 굵기가 0 이하 | `border의 굵기는 0보다 커야 한다 ("0") — 테두리를 지우려면 border="none"을 쓴다` |

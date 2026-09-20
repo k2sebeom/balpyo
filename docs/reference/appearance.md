@@ -154,8 +154,8 @@ slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — �
 
 ## 텍스트 역할 5종
 
-역할은 캐스케이드의 바닥이다 — 크기·굵기·줄높이·색·폰트 기본값의 묶음. 값의 출처는
-`core/theme.go`의 하드코딩 표다 (테마 패키지 포맷은 Iteration 10):
+역할은 캐스케이드의 바닥이다 — 크기·굵기·줄높이·색·폰트 기본값의 묶음. 값의 출처는 테마
+패키지의 `components.json`이다 ([테마 패키지](theme.md)):
 
 | 역할 | 크기(px) | 굵기 | 줄높이 | 색 | 폰트 토큰 | 대응 블록 태그 |
 |---|---|---|---|---|---|---|
@@ -402,17 +402,33 @@ PowerPoint에서 확인한다** — 각 iteration의 리뷰 단계가 그 자리
 
 ## 내장 테마 `minimal`의 토큰
 
-테마 패키지 포맷은 Iteration 10이다 — 지금은 하드코딩된 최소 표가 두 렌더러의 공급원이다.
+이 절은 **`minimal`의 값**이다. 이 표가 어느 파일에서 오고 새 테마가 무엇을 채워야 하는지는
+[테마 패키지](theme.md)에 있다 (`tokens.json` — 표준 토큰 어휘).
 
 색 토큰 (`--balpyo-color-*` ↔ clrScheme 슬롯):
 
-| 토큰 | RGB | clrScheme 슬롯 | schemeClr 참조 |
-|---|---|---|---|
-| `fg` | `1A1A1A` | `dk1` | `tx1` |
-| `bg` | `FFFFFF` | `lt1` | `bg1` |
-| `muted` | `6B7280` | `dk2` | `tx2` |
-| `surface` | `F3F4F6` | `lt2` | `bg2` |
-| `accent1` | `0F65F9` | `accent1` | `accent1` |
+| 토큰 | RGB | clrScheme 슬롯 | schemeClr 참조 | 흰 바탕 대비 |
+|---|---|---|---|---|
+| `fg` | `1A1A1A` | `dk1` | `tx1` | 17.4:1 |
+| `bg` | `FFFFFF` | `lt1` | `bg1` | — |
+| `muted` | `6B7280` | `dk2` | `tx2` | 4.83:1 |
+| `surface` | `F3F4F6` | `lt2` | `bg2` | — (면색) |
+| `accent1` | `0F65F9` | `accent1` | `accent1` | 4.94:1 |
+| `accent2` | `0E8174` | `accent2` | `accent2` | 4.76:1 |
+| `accent3` | `15803D` | `accent3` | `accent3` | 5.02:1 |
+| `accent4` | `B45309` | `accent4` | `accent4` | 5.02:1 |
+| `accent5` | `DC2626` | `accent5` | `accent5` | 4.83:1 |
+| `accent6` | `9333EA` | `accent6` | `accent6` | 5.38:1 |
+
+강조색 여섯의 **번호는 위계가 아니다** — 색상환의 이웃 순서이고(파랑 → 청록 → 초록 → 호박 →
+빨강 → 보라), 여섯이 한 휘도 띠에 있어 서로 강약이 없다. 위계는 덱이 정한다: 색을 둘이나 셋만
+쓰고 각 색에 뜻을 하나씩 준다 (`examples/incident-postmortem`의 표지 주석이 그 예다 —
+`accent5`=피해, `accent4`=우리가 늦은 곳, `accent3`=대응). 고른 규칙과 그것을 지키는 테스트는
+[테마 패키지](theme.md)의 "강조색 여섯의 규칙"과 [ADR 0050](../decisions/0050-six-accents-are-a-measured-palette-not-a-ranking.md)에 있다.
+
+`surface`(`F3F4F6`) 위에서는 같은 여섯의 대비가 4.33~4.89로 내려가고 `accent1`은 4.49로
+4.5:1을 아주 조금 밑돈다 — 카드 위의 **작은** 글자를 강조색으로 쓸 때 알고 써야 하는 수치다
+(큰 제목은 3:1이 기준이므로 여유가 있다).
 
 슬라이드 바탕도 `bg` 토큰에서 나온다 (웹은 `.balpyo-slide { background: var(--balpyo-color-bg) }`,
 PPTX는 마스터 배경의 `bg1` 참조).

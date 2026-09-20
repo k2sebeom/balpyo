@@ -28,7 +28,7 @@ minimal/
 | 파일 | 소유하는 것 | 자세히 |
 |---|---|---|
 | `theme.json` | 이 테마의 정체 — 이름, 구현하는 레이아웃 목록, 덱 크롬 선언 | 아래 |
-| `tokens.json` | **값의 이름표** — `accent1`·`md`·`heading`이 무슨 값인가 | [외관 속성](appearance.md) |
+| `tokens.json` | **값의 이름표** — `accent1`·`md`·`heading`이 무슨 값인가 | 아래 (값은 [외관 속성](appearance.md)) |
 | `components.json` | **역할과 variant의 외관** — `role="body"`가 몇 px인가 | [외관 속성](appearance.md) |
 | `layouts/*.css` | **자리** — 레이아웃 하나가 자식을 어떻게 놓는가 | [레이아웃과 슬롯](layouts.md) |
 
@@ -70,6 +70,72 @@ minimal/
 
 `minimal`이 11종을 전부 구현하는 이유는 그것이 **폴백 기준**이라는 것이다: 다른 테마가 레이아웃
 하나를 빼먹어도 덱은 렌더되어야 하고, 그때 쓰이는 구현이 여기다.
+
+## `tokens.json` — 표준 토큰 어휘
+
+토큰은 **저자가 속성에 쓰는 이름의 집합**이다. `color="accent3"`·`gap="md"`·`radius="lg"`가
+해석되는 자리가 이 파일이고, 이름이 여기 없으면 빌드가 멈춘다 — 쓸 수 있는 이름 목록을 진단이
+함께 적는다 (`색 토큰 "brand"가 테마에 없다 (쓸 수 있는 토큰: fg, bg, muted, surface,
+accent1, …)`). 그래서 **토큰 이름은 테마가 소유하는 어휘**다: 새 테마는 값을 갈 수 있지만
+이름을 빼면 그 이름을 쓴 덱이 빌드되지 않는다.
+
+```json
+{
+  "color":  [{ "name": "accent3", "rgb": "15803D", "slot": "accent3", "ref": "accent3" }],
+  "font":   [{ "name": "body", "latin": "Noto Sans", "ea": "Noto Sans CJK KR",
+               "generic": "sans-serif", "scheme": "minor" }],
+  "space":  [{ "name": "md", "px": 24 }],
+  "radius": [{ "name": "md", "px": 12 }],
+  "shadow": [{ "name": "soft", "dist": 4, "dir": 90, "blur": 16,
+               "color": "fg", "alpha": 0.15 }]
+}
+```
+
+다섯 범주는 모두 **순서 있는 배열**이다 (JSON 객체의 키 순서에 기대지 않는다) — 그 순서가 CSS
+변수 선언 순서와 `clrScheme` 조립, 진단 메시지의 목록 순서를 결정적으로 만든다.
+
+| 범주 | 채워야 하는 이름 | 쓰이는 자리 | PPTX 테마 슬롯 |
+|---|---|---|---|
+| `color` | `fg` · `bg` · `muted` · `surface` · `accent1`~`accent6` | `color` · `fill` · `border` · 그라디언트 스톱 · 색 변형의 밑색 | `clrScheme` 12자리 (`slot`) |
+| `font` | `heading` · `body` · `mono` | `font` | `fontScheme` major/minor (`scheme`) |
+| `space` | `xs` · `sm` · `md` · `lg` · `xl` · `2xl` | `gap` · `pad` | **없음** ([ADR 0012](../decisions/0012-space-tokens-have-no-theme-slot.md)) |
+| `radius` | `sm` · `md` · `lg` | `radius` | **없음** (OOXML에 반경 개념이 없다) |
+| `shadow` | `soft` | `shadow` | 없음 (도형마다 `outerShdw`를 굽고 **색만** 참조로 남는다) |
+
+`minimal`의 실제 값과 각 수치의 근거(수직 리듬·대비·극좌표 그림자)는
+[외관 속성](appearance.md)의 "내장 테마 `minimal`의 토큰" 절에 있다.
+
+**색 토큰의 네 필드**가 토큰 색 보존 계약의 배선이다: `name`은 저자가 쓰는 이름,
+`rgb`는 실제 색, `slot`은 이 색이 앉는 `clrScheme` 자리, `ref`는 도형·런이 그 자리를 가리킬 때
+쓰는 `schemeClr` 값이다 (`dk1` 슬롯의 참조 이름이 `tx1`인 것처럼 둘이 다를 수 있다 — OOXML의
+이름이 자리와 참조에서 갈린다). 슬롯이 **없는** 색 토큰이나 **겹치는** 슬롯은 에러다: 슬롯이
+없으면 그 색은 PowerPoint의 테마 색 편집을 따라가지 못하고, 겹치면 어느 색이 그 자리를
+차지하는지 정할 수 없다. `clrScheme`의 12자리 중 표가 채우지 않은 자리는 가장 가까운 토큰에서
+값을 **빌린다** (`accent2`~`accent6` → `accent1`, `hlink`/`folHlink` → `accent1`) — 자리를 비울
+수 없고, Office 기본 색으로 채우면 사용자가 편집 UI에서 그 자리를 골랐을 때 테마와 무관한
+색이 나온다. `minimal`은 강조색 여섯을 다 가지므로 빌리는 자리가 링크 둘뿐이다.
+
+### 강조색 여섯의 규칙
+
+강조색은 눈으로 고른 값이 아니라 **세 수치를 만족하는** 여섯이다
+([ADR 0050](../decisions/0050-six-accents-are-a-measured-palette-not-a-ranking.md)).
+
+| 규칙 | 수치 | 막는 실패 | `minimal` 실측 |
+|---|---|---|---|
+| `bg` 대비 | 4.5:1 이상 | 못 읽는 색. 대비율은 대칭이라 이 하나가 *흰 바탕의 강조색 글자*와 *강조색 면 위의 흰 글자*를 함께 보장한다 | 4.76 ~ 5.38 |
+| 서로의 색상(hue) 간격 | 25° 이상 | 구별 안 되는 두 색 (프로젝터·색각 이상에서 먼저 무너진다) | 최소 26° |
+| 상대 휘도 띠 | 최대/최소 1.25 이하 | 한 색만 튀어서 **번호가 아닌 밝기가** 위계를 만드는 것 | 1.18 |
+
+이 규칙은 주석이 아니라 테스트가 소유한다 — `core/palette_test.go`의
+`TestMinimalAccentPalette`가 WCAG 2.1 상대 휘도를 직접 계산해 전수로 판정하므로, 팔레트를
+바꾸는 사람은 값과 규칙을 함께 읽는다. 노랑이 팔레트에 없는 이유도 여기서 나온다: 흰 바탕에서
+4.5:1을 만족하는 노랑은 이미 갈색이다.
+
+**번호는 위계가 아니다.** `accent2`는 `accent1`의 "두 번째로 중요한 색"이 아니라 색상환의
+**옆 색**이고, 여섯이 한 휘도 띠에 있으므로 번호 사이에 강약이 없다. 위계는 **덱**이 만든다 —
+한 덱에서 강조색을 둘이나 셋만 쓰고 각 색에 뜻을 하나씩 준다. 의미 이름 토큰(`danger`·`warn`)
+을 어휘에 넣지 않은 이유는 뜻이 덱마다 다르기 때문이다 (회고 덱의 빨강은 "피해"지만 매출 덱의
+빨강은 "경쟁사"다).
 
 ## 덱 크롬 — `chrome`
 
