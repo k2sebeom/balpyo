@@ -18,6 +18,13 @@ import (
 // ConfigFile은 덱 설정 파일 이름이다.
 const ConfigFile = "balpyo.json"
 
+// DefaultTheme는 테마를 말하지 않은 덱이 받는 내장 테마다 (ADR 0052).
+//
+// 상수로 두는 이유는 기본값을 아는 자리가 셋이라는 것이다: 설정 기본값(DefaultConfig), 값
+// 층(Resolve — ThemeName이 빈 덱), `balpyo init`의 스캐폴드. 세 곳이 각자 문자열을 적으면
+// 기본 테마를 갈 때 한 곳이 남는다.
+const DefaultTheme = "minimal"
+
 // Config는 덱 설정이다 (`balpyo.json`). 우선순위는 CLI 플래그 > balpyo.json > 기본값이며,
 // 플래그 적용은 CLI가 이 구조체를 덮어써서 수행한다.
 //
@@ -66,7 +73,7 @@ const (
 // DefaultConfig는 balpyo.json이 없거나 필드가 비었을 때 쓰는 기본값이다.
 func DefaultConfig() Config {
 	return Config{
-		Theme:     "minimal",
+		Theme:     DefaultTheme,
 		Aspect:    soml.DefaultAspect,
 		Lang:      "en",
 		SlidesDir: "slides",
@@ -127,6 +134,15 @@ func (c *Config) Validate() error {
 
 	if _, err := c.Aspect.Stage(); err != nil {
 		return fmt.Errorf("aspect: %w", err)
+	}
+	// 테마 이름은 **내장 어휘**와 대조한다 (ADR 0052). 값 층도 같은 판정을 하지만(Resolve)
+	// 여기서 먼저 멈추는 이유는 에러의 질이다: 파일을 가리키고 쓸 수 있는 이름을 나열한다.
+	// 폴백하지 않는 이유는 모르는 variant와 갈라지는 자리다 — variant 어휘는 테마의
+	// 사유물이지만 테마 **이름**의 어휘는 엔진이 소유하므로, 목록 밖 이름은 오타이거나 설치되지
+	// 않은 테마이고 둘 다 저자가 즉시 고칠 수 있다.
+	if !IsBuiltinTheme(c.Theme) {
+		return fmt.Errorf("theme: 알 수 없는 테마 %q (쓸 수 있는 테마: %s)",
+			c.Theme, strings.Join(BuiltinThemes(), ", "))
 	}
 	switch c.Targets.PPTX.Mode {
 	case PPTXNative, PPTXImage:

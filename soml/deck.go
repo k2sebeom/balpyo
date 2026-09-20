@@ -51,9 +51,9 @@ func (a Aspect) Stage() (Stage, error) {
 // 아니다. 외관 어휘(role·align)가 테마와 함께 자라 appearance.go에 있는 것과 갈라진다 —
 // 표준 레이아웃 카탈로그의 **이름**은 엔진이 소유하고(이 목록이 닫힌 어휘다), 테마가 더하는
 // 것은 그 위에 얹는 자체 레이아웃(`layout="corp-hero"`)이다. 표준 이름의 **배치 구현**은
-// 테마가 소유하며(layouts/*.css), 테마가 구현하지 않은 표준 레이아웃은 기본 테마(minimal)
-// 구현으로 폴백하고 경고한다 (core.slideLayout) — 어휘 밖 이름(오타·테마에도 없는 이름)은
-// 폴백이 아니라 빌드 에러다.
+// 테마가 소유하며(layouts/*.css), 테마는 11종을 **전부** 구현해야 한다 — 빠뜨린 레이아웃을
+// 다른 테마로 폴백하지 않는 이유는 ADR 0052에 있다(한 덱이 두 디자인 시스템으로 나온다).
+// 어휘 밖 이름(오타·테마에도 없는 이름)은 빌드 에러다.
 type SlideLayout string
 
 const (
@@ -87,8 +87,7 @@ const (
 
 // DefaultSlideLayout은 `layout`을 생략한 슬라이드의 레이아웃이다 — 속성이 없을 때의 기본값과
 // 저자가 명시한 `layout="content"`가 같은 이름을 갖는다 (그래서 둘의 산출물이 바이트가 같다).
-// **폴백 기준**이기도 하다: 테마가 구현하지 않은 표준 레이아웃은 minimal의 이 레이아웃 구현이
-// 아니라 각 표준 레이아웃의 minimal 구현으로 폴백한다 (minimal이 11종을 전부 구현하므로).
+// 어휘 밖 layout 값의 **폴백 기준**이기도 하다 (core.slideLayout의 진단).
 const DefaultSlideLayout = LayoutContent
 
 // SlideLayouts는 표준 레이아웃 어휘 전체다 (PRD §7.3 카탈로그 순서). 순서가 진단 메시지에
@@ -121,8 +120,17 @@ type Deck struct {
 	Lang   string
 	Aspect Aspect
 	Stage  Stage
+	// ThemeName은 **테마 요청**이다 (`balpyo.json`의 theme 또는 CLI의 -theme — ADR 0052).
+	// 파이프라인이 설정에서 옮기고 core.Resolve가 이 이름으로 테마 패키지를 로드한다.
+	//
+	// 아래 Theme(결과)의 형제이고, 둘이 나란히 있는 모양은 크롬과 같다 (Chrome 요청 →
+	// Slide.Chrome 결과): 읽는 사람이 "무엇이 입력이고 무엇이 파생인가"를 구조체 하나에서 본다.
+	// 빈 문자열은 기본 테마다 — 설정 없이 Deck을 만드는 길(테스트·프리뷰)이 있으므로 빈 값이
+	// 에러가 아니고, 어휘 밖 **이름**은 에러다 (폴백 테마는 없다).
+	ThemeName string
 	// Theme는 해석된 외관의 색·폰트 참조가 가리키는 토큰 표다 (appearance.go). core.Resolve가
-	// 채우고, 두 렌더러가 이 한 표에서 CSS 변수와 PPTX 테마 파트를 만든다.
+	// ThemeName이 가리킨 패키지에서 채우고, 두 렌더러가 이 한 표에서 CSS 변수와 PPTX 테마
+	// 파트를 만든다.
 	Theme Theme
 	// Assets는 `<image src>`가 가리킨 파일의 바이트·포맷·고유 크기다 (asset.go).
 	// core.ResolveAssets가 채우고 두 렌더러가 읽는다 — **Theme의 형제**다: 파생 데이터가

@@ -18,7 +18,8 @@ import (
 // 역할 기본값이 완전한 외관을 깔고 위 세 단이 부분 패치로 얹힌다 — 병합은 mergeText
 // (cascade.go) 한 곳에서만 일어난다. 도형 외관도 **같은 기계의 복제**를 쓴다 (mergeShape) —
 // 도형에는 역할이 없어 컴포넌트 기본값이 가장 아래 단이라는 점만 갈라진다 (resolveShape).
-// variant 표는 아직 하드코딩 테마 안이다 (theme.go — 테마 패키지 포맷은 Iteration 10).
+// 역할 기본값·컴포넌트 기본값·variant 표는 전부 **활성 테마의 components.json**에서 온다
+// (theme_package.go) — 엔진에는 어떤 외관 값도 하드코딩되어 있지 않다 (ADR 0052).
 //
 // 이 순서를 렌더러가 아니라 여기서 한 번만 적용하기 때문에 웹과 PPTX가 같은 외관을 본다.
 // computed-style 역추론은 없다 — 외관은 스키마에서 양 타깃으로 순방향 컴파일된다.
@@ -30,9 +31,23 @@ func Resolve(deck *soml.Deck) soml.Diagnostics {
 	if deck == nil {
 		return nil
 	}
-	// 테마는 지금 내장 minimal 하나다. Iteration 10에서 프로젝트 설정의 theme 필드가 이
-	// 선택을 대체한다. 토큰과 컴포넌트 외관 표를 한 번에 로드해 slide 루프에 나른다.
-	pkg := loadBuiltinTheme("minimal")
+	// 테마 선택은 **덱의 요청**이다 (ADR 0052): `balpyo.json`의 theme(또는 CLI의 -theme)가
+	// deck.ThemeName으로 실려 오고, 이 줄이 그 이름으로 패키지를 로드한다. 빈 이름은 기본
+	// 테마다 — 설정 없이 Deck을 만드는 길이 있다.
+	//
+	// 어휘 밖 이름은 **에러 + 해석 중단**이다. 폴백 테마로 계속하면 산출물이 저자가 고르지 않은
+	// 테마로 나가고, 그 사실은 슬라이드를 열어야 드러난다. 진단이 `balpyo.json`을 가리키는
+	// 이유는 고칠 자리가 거기라는 것이다 (테마를 선언하지 않은 크롬 경고와 같은 태도).
+	name := deck.ThemeName
+	if name == "" {
+		name = DefaultTheme
+	}
+	if !IsBuiltinTheme(name) {
+		return soml.Diagnostics{soml.Errorf(ConfigFile, soml.Span{},
+			"알 수 없는 테마 %q (쓸 수 있는 테마: %s)", name, strings.Join(BuiltinThemes(), ", "))}
+	}
+	// 토큰과 컴포넌트 외관 표를 한 번에 로드해 slide 루프에 나른다.
+	pkg := loadBuiltinTheme(name)
 	deck.Theme = pkg.tokens
 	// 레이아웃 배치 CSS도 토큰 표에 싣는다 — 웹 스테이지 CSS와 지오메트리 패스가 재는 박스가
 	// 같은 한 표에서 나와야 두 타깃의 배치가 갈라지지 않는다 (soml.Theme.Layouts).

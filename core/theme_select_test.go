@@ -241,7 +241,8 @@ const fullComponents = `{
     {"name":"caption","font":"body","size":18,"weight":400,"lineHeight":1.4,"color":"muted","align":"start"},
     {"name":"code","font":"mono","size":20,"weight":400,"lineHeight":1.5,"color":"fg","align":"start"}
   ]},
-  "shape": { "default": {"fill":"surface","border":"1 solid muted","radius":"md"} }
+  "shape": { "default": {"fill":"surface","border":"1 solid muted","radius":"md"} },
+  "code": {"tabSize":2,"tokens":[{"class":"keyword","color":"accent6"}]}
 }`
 
 // memTheme는 메모리 위의 테마 패키지 하나다 — 로더는 fs.FS 위에서 도므로 내장 테마와 같은
@@ -269,8 +270,10 @@ func TestLoadThemeAcceptsCompletePackage(t *testing.T) {
 func TestLoadThemeRequiresTokenVocabulary(t *testing.T) {
 	cases := []struct{ name, drop, want string }{
 		{"색 fg", `{"name":"fg","rgb":"000000","slot":"dk1","ref":"tx1"},`, "fg"},
-		{"색 accent6", `{"name":"accent6","rgb":"9333EA","slot":"accent6","ref":"accent6"}`, "accent6"},
-		{"폰트 mono", `{"name":"mono","latin":"Noto Sans Mono","ea":"Noto Sans Mono CJK KR","generic":"monospace"}`, "mono"},
+		{"색 accent6", `,
+    {"name":"accent6","rgb":"9333EA","slot":"accent6","ref":"accent6"}`, "accent6"},
+		{"폰트 mono", `,
+    {"name":"mono","latin":"Noto Sans Mono","ea":"Noto Sans Mono CJK KR","generic":"monospace"}`, "mono"},
 		{"공간 md", `{"name":"md","px":24},`, "md"},
 		{"반경 lg", `,{"name":"lg","px":24}`, "lg"},
 		{"그림자 soft", `{"name":"soft","dist":4,"dir":90,"blur":16,"color":"fg","alpha":0.15}`, "soft"},
