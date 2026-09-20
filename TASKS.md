@@ -63,6 +63,7 @@
 | P2.2 덱 크롬: 페이지 번호 · 푸터 (D10) | 어휘를 **나눠 갖는다**: 내용·켜짐은 `balpyo.json`(`footer`·`pageNumber`, 둘 다 기본 꺼짐), 자리·정렬·역할·제외는 테마 `chrome` 선언. 제외 규칙은 값 층이 적용해 두 렌더러가 확정 모델 하나를 읽는다. 번호는 `a:fld type="slidenum"`(캐시 숫자 동봉)이라 뷰어가 다시 센다 — `p:ph`도 `p:hf`도 쓰지 않았다 | [ADR 0045](docs/decisions/0045-deck-chrome-is-config-text-in-a-theme-declared-band.md), `10_chrome`(4장) · `internal/testkit/chrome_fixture_test.go`(잰 rect ↔ 골든 EMU 0 오차 · 다른 픽스처 골든에 크롬 0조각), LibreOffice flat ODF 왕복(`<text:page-number>`가 포함된 두 장에만 · 장을 끼우면 1/3/5로 따라온다), `docs/reference/theme.md` |
 | P3.1 `balpyo watch` — 핫 리로드 (D8) | 폴링(250ms) + "스캔이 같아진 뒤 빌드"로 저장 한 번 = 빌드 한 번. `build`와 **같은 파이프라인·같은 출력 디렉토리**를 쓰고 리로드 클라이언트는 **응답 바이트에만** 주입한다(디스크는 배포본 그대로). 실패한 빌드는 산출물을 건드리지 않아 마지막 성공본 위에 진단 오버레이가 뜨고, 터미널에는 `build`와 같은 규칙으로 요약 한 줄이 간다. 측정이 필요한 감시는 브라우저 **하나**를 계속 쓴다 | [ADR 0046](docs/decisions/0046-watch-polls-the-project-and-injects-its-reload-client.md), `internal/watch`(스캐너·서버·루프) · `cmd/balpyo/watch_test.go`(응답에 있고 디스크에 없다) · `TestRunnerReusesOneWarmBrowser`(세션 동일성 · 0.61초), `docs/reference/cli.md#balpyo-watch` · `docs/guides/getting-started.md` |
 | P3.2 `balpyo preview` — 검수 갤러리 (D8) | 래스터화(PPTX → PDF → PNG)·픽셀 diff·갤러리 문서를 `internal/preview`가 소유하고 `make review`와 사용자 명령이 **그것을 함께 쓴다** (테스트가 보는 그림과 사람이 보는 그림이 달라지지 않는다). 하네스에 남는 것은 **테스트 정책**뿐이다 — 건너뛰기/실패, 픽스처별 오차 조정표("이 슬라이드는 달라야 정답이다"까지 든 표). 그 표가 사용자 덱에는 없으므로 `preview`는 **게이트가 아니다**: 오차를 넘어도 코드 0이고, 1은 검수할 것이 안 만들어졌을 때만이다. 도구가 없으면 빌드 전에 멈춘다 | [ADR 0047](docs/decisions/0047-review-gallery-lives-in-internal-preview.md), `internal/preview`(`Run`·래스터라이저·갤러리) · `raster_pptx_test.go`(장수 · 스테이지 크기 · 재실행 0 픽셀 차) · `cmd/balpyo/preview_test.go`(경로를 찍는다 · 한 열 갤러리 · 도구 없음은 빌드 전에), `04_shape` 실물 확인(슬라이드 4장이 기본 2.5% 초과, 종료 코드 0), `docs/reference/cli.md#balpyo-preview` |
+| P3.3 `balpyo init` · `balpyo check` — 첫 덱과 CI 입구 | `init`은 자기 덱을 **소유한다**(`internal/scaffold`의 임베드 템플릿 3장) — `examples/`는 마찰점을 일부러 밟는 회귀 테스트라 출발점이 못 된다. 계약은 파일 목록이 아니라 **다음 명령의 성공**이다: 스캐폴딩 덱이 `build --target html,pptx --check-layout --strict`를 경고 0으로 통과한다. `--force`는 없고(덮어쓸 대상이 저자의 원고다) 내장 아닌 `--theme`은 거부한다(`balpyo.json`의 `theme`을 아직 아무도 읽지 않는다 — P4.2). `check`는 **쓰지 않는 `build`**다: 같은 코드로 판정하고, 종료 코드도 같고(경고는 0을 타고 나간다), 출력 디렉토리를 만들지도 않는다 | [ADR 0048](docs/decisions/0048-init-owns-its-deck-and-check-is-build-without-writing.md), `core.BuiltinThemes`(어휘 단일 출처) · `internal/scaffold` · `pipeline.Check` · `cmd/balpyo/init_test.go`(`init`→`--strict` 빌드) · `check_test.go`(디렉토리 목록이 그대로 · `dist/`가 생기지도 않는다), 스캐폴딩 덱 `preview` 실물 확인(3장 0.625%/1.772%/0.581%), `docs/reference/cli.md#balpyo-init` · `#balpyo-check` · `docs/guides/getting-started.md` |
 | D19 문서가 어휘를 숨긴다 | `slide.md`(11종 표 + 실제 진단 문구) · `reference/index.md`(`layouts.md`는 구현됨) · `text.md`(속성 목록 + `<text>`에 `w`/`h`가 없다는 것) | `make docs --strict`, 커밋 `cc8239f` |
 
 ---
@@ -263,12 +264,37 @@
       계약(PRD §10)까지 흐려지므로 셋을 나란히 적었다. `docs/internals/testing.md`의 시각 리뷰
       절도 엔진의 새 주인을 가리킨다.
 
-### P3.3 `balpyo init` · `balpyo check` ← **지금 여기**
-- [ ] `init`: 스캐폴딩(테마 선택 포함). 첫 덱까지 걸리는 시간이 채택을 정한다.
-- [ ] `check`: 빌드 없이 진단만(P1.1의 경고를 CI에서 쓰는 입구). 종료 코드 규약을 문서화.
-- [ ] DOC: `docs/reference/cli.md`.
+### P3.3 `balpyo init` · `balpyo check`
+- [x] `init`: 스캐폴딩(테마 선택 포함). 첫 덱까지 걸리는 시간이 채택을 정한다.
+      **선결정 ADR** [0048](docs/decisions/0048-init-owns-its-deck-and-check-is-build-without-writing.md)
+      (`788196b`) → `ee1a632`(`core.BuiltinThemes` — `--theme` 어휘의 단일 출처) ·
+      `40dc7fa`(`internal/scaffold` + 임베드 템플릿) · `3606cea`(서브커맨드).
+      계약을 **파일 목록이 아니라 다음 명령의 성공**으로 못 박았다:
+      `TestInitScaffoldBuildsCleanly`이 `init` → `build --target html,pptx --check-layout
+      --strict`를 경고 0으로 통과시킨다 — 어휘나 배치가 퇴행하면 첫 사용자가 아니라 이
+      테스트가 먼저 깨진다. `examples/`를 복사하지 않은 이유는 그쪽이 마찰점을 일부러 밟는
+      회귀 테스트라는 것이고, `--force`가 없는 이유는 덮어쓸 대상이 저자의 원고라는 것이다.
+      내장 아닌 `--theme`는 거부한다 — `core.Resolve`가 아직 `balpyo.json`의 `theme`을 읽지
+      않으므로(P4.2) 쓰면 조용한 거짓말이 된다.
+- [x] `check`: 빌드 없이 진단만(P1.1의 경고를 CI에서 쓰는 입구). 종료 코드 규약을 문서화.
+      `21d9a08`(`pipeline.Check`) · `3606cea`(서브커맨드). 판정은 `Build`와 **같은 코드**다
+      (`LoadDeck` + `needsGeometry`/`measure` + `geom.Diagnose`) — 파싱까지만 보는 빠른 길로
+      가면 "check는 통과했는데 build가 실패한다"가 가능해지고 그 순간 이 명령이 쓸모를 잃는다.
+      "쓰지 않는다"도 단정한다: `TestCheckWritesNothing`이 프로젝트 디렉토리 목록이 그대로임을,
+      배치 테스트가 `dist/`가 **생기지도** 않았음을 확인한다. 종료 코드는 `build`와 같다 —
+      경고는 0을 타고 나가고 `--strict`가 1로 바꾼다.
+- [x] DOC: `docs/reference/cli.md`. `f29869a`. 두 명령의 옵션·실제 출력·종료 코드 표를 싣고,
+      `check`의 표는 `build`의 표와 **같다는 사실 자체**를 문장으로 적었다(CI가 한쪽을 다른
+      쪽으로 바꿔 쓸 수 있는 근거다). `docs/guides/getting-started.md`의 출발점이 예제 복사에서
+      `balpyo init my-talk`로 바뀌고 "`init`은 아직 없다" 안내가 사라졌다 — P3.1의 DOC 항목이
+      남긴 부채를 여기서 갚는다.
+- [x] REVIEW: 스캐폴딩 덱을 `balpyo preview`로 검수. 웹↔PPTX 차이는 #1 cover 0.625% ·
+      #2 what 1.772% · #3 end 0.581%로 셋 다 기본 오차(2.5%) 아래이고, 남은 차이는
+      LibreOffice의 문장부호 앞뒤 틈과 ~4px 베이스라인뿐이다(알려진 차이). 세 장이 각각
+      가르치는 것을 눈으로 확인했다: 표지는 테마 슬롯이 자리를 정하고(자식에 `align`이 없다),
+      2장은 `row`/`col`/`shape`로 칸을 나누고, 3장은 `layout`이 정렬을 바꾼다.
 
-### P2.3 `<shape>` 안에 레이아웃 컨테이너 (D7)
+### P2.3 `<shape>` 안에 레이아웃 컨테이너 (D7) ← **지금 여기**
 - [ ] **선결정 ADR**: 도형은 배경, 내부 배치는 자식 좌표 — 도형이 `row`/`col`/`grid`/`stack`을
       자식으로 받을 때의 측정·PPTX 매핑(도형 `p:sp` 1개 + 자식은 절대 좌표 형제)을 확정.
 - [ ] RED: `<shape><col>…</col></shape>` 픽스처(카드 헤더/본문/푸터), 내부 좌표 스냅샷, 픽셀 비교.
@@ -379,6 +405,7 @@
 | 덱 크롬 어휘와 `a:fld` 매핑 | P2.2 | ADR 0045 (설정이 내용을, 테마가 자리를, `a:fld`가 번호를) |
 | 감시가 변경을 보는 법 · 리로드 클라이언트가 사는 곳 | P3.1 | ADR 0046 (폴링 + 스캔 안정화, 주입은 응답에만) |
 | 검수 갤러리의 소유자 · `preview`가 게이트가 아닌 이유 | P3.2 | ADR 0047 (엔진은 `internal/preview`, 오차 표는 테스트 정책 — 그래서 코드 0) |
+| `init`이 쓰는 덱의 소유자 · `check`가 얼마나 `build`여야 하는가 | P3.3 | ADR 0048 (덱은 `internal/scaffold`가 소유하고 3장, 덮어쓰지 않는다 · `check`는 쓰지 않는 `build`이고 종료 코드가 같다) |
 | 도형이 컨테이너를 자식으로 받을 때의 좌표·매핑 | P2.3 | 대기 |
 | 코드 하이라이팅 토크나이저와 색 토큰 · 탭 처리 · "예정된 속성" 진단 | P2.4 | 대기 |
 | 차트: 네이티브 `c:chart` vs 도형 합성 | P2.5 | 대기 |
