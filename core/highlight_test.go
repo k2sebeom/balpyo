@@ -257,17 +257,12 @@ func TestCodeComponentsAreValidated(t *testing.T) {
 	}
 }
 
-// themeFSWithCode는 `code` 절만 다른 최소 테마 패키지다 (themeFSWithChrome의 code 판).
-// 색 토큰은 하나만 둔다 — "테마에 없는 색 토큰"을 판정하려면 있는 이름과 없는 이름이
-// 갈려야 한다.
+// themeFSWithCode는 `code` 절만 다른 테마 패키지다 (themeFSWithChrome의 code 판). 토큰·역할은
+// 완전한 표를 쓴다 (theme_select_test의 fullTokens·componentsWithCode) — 로더가 완전성을
+// 요구하므로(ADR 0052) 빈 역할 표로는 code 절까지 도달하지 못한다. "테마에 없는 색 토큰"을
+// 판정하는 이름(`brand`)은 그 완전한 팔레트에도 없으므로 이 표에서도 갈린다.
 func themeFSWithCode(code string) fstest.MapFS {
-	return fstest.MapFS{
-		"t/theme.json":  {Data: []byte(`{"name":"t","layouts":["content"]}`)},
-		"t/tokens.json": {Data: []byte(`{"color":[{"name":"accent6","rgb":"9333EA","slot":"accent6","ref":"accent6"}],"font":[],"space":[],"radius":[],"shadow":[]}`)},
-		"t/components.json": {Data: []byte(
-			`{"text":{"roles":[]},"code":` + code + `}`)},
-		"t/layouts/content.css": {Data: []byte("")},
-	}
+	return memTheme(fullTokens, componentsWithCode(code))
 }
 
 func runAt(runs []string, i int) string {

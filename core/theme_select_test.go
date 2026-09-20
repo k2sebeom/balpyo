@@ -232,8 +232,23 @@ const fullTokens = `{
   "shadow": [{"name":"soft","dist":4,"dir":90,"blur":16,"color":"fg","alpha":0.15}]
 }`
 
-// fullComponents는 완전한 components.json이다 (역할 5종 + 최소 도형 기본값).
-const fullComponents = `{
+// fullComponents는 완전한 components.json이다 (역할 5종 + 최소 도형 기본값 + code 절).
+//
+// 조각으로 쪼개 둔 이유는 **code 절만 겨누는 테스트**가 있다는 것이다 (highlight_test의
+// themeFSWithCode): 완전성 검사를 통과해야 로더가 code 절까지 도달하므로, 그 테스트도 완전한
+// 역할 표를 써야 하고 그 표를 두 번 적을 이유는 없다.
+const fullComponents = "{" + fullRolesAndShape + `,
+  "code": ` + fullCode + "\n}"
+
+// componentsWithCode는 완전한 컴포넌트 표에서 code 절만 갈아 끼운다.
+func componentsWithCode(code string) string {
+	return "{" + fullRolesAndShape + `,
+  "code": ` + code + "\n}"
+}
+
+const fullCode = `{"tabSize":2,"tokens":[{"class":"keyword","color":"accent6"}]}`
+
+const fullRolesAndShape = `
   "text": { "roles": [
     {"name":"title","font":"heading","size":56,"weight":700,"lineHeight":1.2,"color":"fg","align":"start"},
     {"name":"heading","font":"heading","size":36,"weight":700,"lineHeight":1.3,"color":"fg","align":"start"},
@@ -241,9 +256,7 @@ const fullComponents = `{
     {"name":"caption","font":"body","size":18,"weight":400,"lineHeight":1.4,"color":"muted","align":"start"},
     {"name":"code","font":"mono","size":20,"weight":400,"lineHeight":1.5,"color":"fg","align":"start"}
   ]},
-  "shape": { "default": {"fill":"surface","border":"1 solid muted","radius":"md"} },
-  "code": {"tabSize":2,"tokens":[{"class":"keyword","color":"accent6"}]}
-}`
+  "shape": { "default": {"fill":"surface","border":"1 solid muted","radius":"md"} }`
 
 // memTheme는 메모리 위의 테마 패키지 하나다 — 로더는 fs.FS 위에서 도므로 내장 테마와 같은
 // 코드를 지난다 (theme_package.go의 계약).

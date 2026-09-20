@@ -396,10 +396,19 @@ func loadTheme(fsys fs.FS, dir string) (themePackage, error) {
 	if err != nil {
 		return pkg, err
 	}
+	// 완전성 검사는 파싱 **직후**다 (ADR 0052의 결정 3): 폴백 테마가 없으므로 빠진 토큰은
+	// 산출물에서 영 값으로 나타난다 — 근거는 theme_require.go의 패키지 주석에 있다. 컴포넌트
+	// 표보다 먼저 보는 이유는 역할 검사가 이 표를 참조로 쓴다는 것이다.
+	if err := requireTokens(tokens); err != nil {
+		return pkg, err
+	}
 	pkg.tokens = tokens
 
 	comps, err := loadComponents(fsys, dir, tokens)
 	if err != nil {
+		return pkg, err
+	}
+	if err := requireComponents(tokens, comps); err != nil {
 		return pkg, err
 	}
 	pkg.components = comps
