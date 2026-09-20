@@ -148,7 +148,7 @@ accent1, …)`). 그래서 **토큰 이름은 테마가 소유하는 어휘**다
 
 | 범주 | 채워야 하는 이름 | 쓰이는 자리 | PPTX 테마 슬롯 |
 |---|---|---|---|
-| `color` | `fg` · `bg` · `muted` · `surface` · `accent1`~`accent6` | `color` · `fill` · `border` · 그라디언트 스톱 · 색 변형의 밑색 | `clrScheme` 12자리 (`slot`) |
+| `color` | `fg` · `bg` · `muted` · `surface` · `accent1` · `accent2` · `accent3` · `accent4` · `accent5` · `accent6` | `color` · `fill` · `border` · 그라디언트 스톱 · 색 변형의 밑색 | `clrScheme` 12자리 (`slot`) |
 | `font` | `heading` · `body` · `mono` | `font` · 코드 블록 | `fontScheme` major/minor (`scheme`) |
 | `space` | `xs` · `sm` · `md` · `lg` · `xl` · `2xl` | `gap` · `pad` | **없음** ([ADR 0012](../decisions/0012-space-tokens-have-no-theme-slot.md)) |
 | `radius` | `sm` · `md` · `lg` | `radius` | **없음** (OOXML에 반경 개념이 없다) |
