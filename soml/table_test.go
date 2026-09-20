@@ -142,6 +142,18 @@ func TestParseTablePlacementErrors(t *testing.T) {
 			src:  `<slide><table><tr><td><p>본문</p></td></tr></table></slide>`,
 			want: []string{"1:24 <td> 안에 블록 태그 <p>는 올 수 없다"},
 		},
+		// 문자 데이터의 조언은 **부모가** 정한다 — `<text>로 감싼다`는 표 안에서 따를 수 없는
+		// 말이다 (`<table>`의 자식은 행뿐이고 `<tr>`의 자식은 셀뿐이다).
+		{
+			name: "table 안의 문자 데이터는 행으로 감싸라고 말한다",
+			src:  `<slide><table>지역</table></slide>`,
+			want: []string{"1:15 <table> 안에 문자 데이터를 직접 쓸 수 없다 (<tr>로 감싼다)"},
+		},
+		{
+			name: "tr 안의 문자 데이터는 셀로 감싸라고 말한다",
+			src:  `<slide><table><tr>지역</tr></table></slide>`,
+			want: []string{"1:19 <tr> 안에 문자 데이터를 직접 쓸 수 없다 (<td>로 감싼다)"},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

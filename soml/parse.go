@@ -427,11 +427,19 @@ func (p *parser) charData(tok Token, parent *Element) {
 		p.errorf(dataSpan(tok), "요소 밖에 문자 데이터가 있다 (내용은 <%s> 안에 쓴다)", RootElement)
 		return
 	}
-	if KindOf(parent.Name) == KindListContainer {
+	// 고칠 방법은 **부모가** 정한다: 글자를 담을 수 있는 자식이 부모마다 다르기 때문이다.
+	// `<text>로 감싼다`를 모든 부모에게 말하면 표 안에서는 따를 수 없는 조언이 된다
+	// (`<table>`의 자식은 행뿐이고 `<tr>`의 자식은 셀뿐이다 — tableChildren·tableRowChildren).
+	switch KindOf(parent.Name) {
+	case KindListContainer:
 		p.errorf(dataSpan(tok), "<%s> 안에 문자 데이터를 직접 쓸 수 없다 (<%s>로 감싼다)", parent.Name, ListItemElement)
-		return
+	case KindTable:
+		p.errorf(dataSpan(tok), "<%s> 안에 문자 데이터를 직접 쓸 수 없다 (<%s>로 감싼다)", parent.Name, TableRowElement)
+	case KindTableRow:
+		p.errorf(dataSpan(tok), "<%s> 안에 문자 데이터를 직접 쓸 수 없다 (<%s>로 감싼다)", parent.Name, TableDataCellElement)
+	default:
+		p.errorf(dataSpan(tok), "<%s> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)", parent.Name)
 	}
-	p.errorf(dataSpan(tok), "<%s> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)", parent.Name)
 }
 
 // charDataValue는 문자 데이터 토큰이 모델에 싣는 값이다 (ADR 0037).
