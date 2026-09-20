@@ -135,13 +135,27 @@ func writeStage(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 	if slotMode {
 		stageClass += " balpyo-slots"
 	}
+	// 슬라이드의 세로 분배는 스테이지의 인라인 선언이다 (`<slide justify>`, ADR 0044 D17).
+	// 흐름 스테이지는 세로 flex이므로(base 층의 `.balpyo-stage`) `justify-content`가 그대로
+	// 세로 분배다. 인라인인 이유는 요소마다 다른 값이라는 것이다 — 테마 층 CSS는 레이아웃마다
+	// 고정인 배치를 담고(layoutStagesCSS), 슬라이드 하나의 선택은 그 요소에 실린다
+	// (컨테이너의 gap·align이 인라인으로 나가는 것과 같은 경계). 슬롯 모드에서는 core가 이미
+	// 에러로 막았으므로(세로 리듬은 테마의 몫) 이 값이 있으면 흐름 모드다.
+	var stageStyle string
+	if slide.Justify != "" {
+		value, err := boxJustifyValue(slide.Justify)
+		if err != nil {
+			return fmt.Errorf("%s: %w", slide.Source, err)
+		}
+		stageStyle = styleAttr([]string{"justify-content: " + value})
+	}
 	if len(slide.Content) == 0 {
 		// 빈 스테이지는 빈 요소 하나다 — 콘텐츠가 없는 슬라이드의 산출물이 콘텐츠 렌더가
 		// 붙었다는 이유로 달라지면 골든 diff가 무엇이 움직였는지 말해 주지 못한다.
-		fmt.Fprintf(b, "<div class=%q></div>\n", stageClass)
+		fmt.Fprintf(b, "<div class=%q%s></div>\n", stageClass, stageStyle)
 		return nil
 	}
-	fmt.Fprintf(b, "<div class=%q>\n", stageClass)
+	fmt.Fprintf(b, "<div class=%q%s>\n", stageClass, stageStyle)
 	for i, node := range slide.Content {
 		if err := writeNode(b, deck, slide, node, []int{i}); err != nil {
 			return err

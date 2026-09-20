@@ -56,6 +56,10 @@ func Resolve(deck *soml.Deck) soml.Diagnostics {
 			// resolveLayout의 주석에 있다 (span은 <grid>의 자식에서만 뜻이 있다).
 			r.node(node, nil)
 		}
+		// 슬라이드 수준 justify는 콘텐츠 **다음**이다 — 슬롯 모드인지는 자식의 확정 슬롯이
+		// 정하고(slideUsesSlots), 테마가 못 받는 슬롯은 실리지 않으므로(resolveSlot) 그
+		// 슬라이드는 흐름 모드로 판정되어 justify가 유효해진다 (ADR 0044).
+		r.slideJustify(slide)
 		// 진단은 파일 안에서 소스 순서로 낸다 — 저자가 위에서 아래로 고칠 수 있게. 역할을
 		// 먼저 해석하고 나머지 속성을 훑기 때문에 발견 순서가 소스 순서와 어긋난다.
 		sort.SliceStable(r.diags, func(i, j int) bool {
@@ -116,6 +120,53 @@ func (r *resolver) slideLayout(slide *soml.Slide) {
 	}
 	r.errorf(slide.LayoutSpan, "알 수 없는 layout %q (쓸 수 있는 layout: %s)", string(slide.Layout), layoutList())
 	slide.Layout = soml.DefaultSlideLayout
+}
+
+// slideJustify는 슬라이드 스테이지의 세로 분배를 확정한다 (`<slide justify>`, ADR 0044 D17).
+//
+// 어휘는 컨테이너의 `justify`와 **같은 6종**이고 진단도 같은 함수(boxJustify)에서 나온다 —
+// 같은 뜻에 두 이름·두 메시지를 두지 않는다. 그래서 값 하나를 Attr로 감싸 넘긴다: 슬라이드
+// 모델에는 요소 참조가 없으므로(해석이 끝난 값이다) 값과 구간을 Attr 모양으로 되돌린다.
+//
+// **슬롯 모드에서는 에러다.** 두 근거가 겹친다: 그 문맥의 세로 리듬은 테마의 `*.slots.css`가
+// 소유하고(`align-content`), grid에서 `justify-content`는 **가로 축**이라 같은 표기가 문맥마다
+// 다른 축을 뜻하게 된다. 조용히 무시하면 저자는 아무 일도 일어나지 않는 이유를 알 수 없다.
+//
+// 슬롯 판정이 콘텐츠 순회 **다음**이어야 하는 이유: 테마가 못 받는 슬롯은 확정 모델에 실리지
+// 않으므로(resolveSlot) 그 슬라이드는 실제로 흐름 모드가 되고, 거기서는 justify가 유효하다.
+func (r *resolver) slideJustify(slide *soml.Slide) {
+	if slide.Justify == "" {
+		return
+	}
+	if slideUsesSlots(slide) {
+		r.errorf(slide.JustifySpan,
+			"슬롯 모드 슬라이드에는 justify를 쓸 수 없다 (세로 리듬은 테마의 %s.slots.css가 소유한다) — 슬롯을 쓰지 않는 슬라이드에서 쓴다",
+			string(slide.Layout))
+		slide.Justify = ""
+		return
+	}
+	justify, ok := r.boxJustify(soml.Attr{
+		Name:      "justify",
+		Value:     string(slide.Justify),
+		ValueSpan: slide.JustifySpan,
+		HasValue:  true,
+	})
+	if !ok {
+		slide.Justify = ""
+		return
+	}
+	slide.Justify = justify
+}
+
+// slideUsesSlots는 이 슬라이드의 직계 자식 중 슬롯이 **확정된** 요소가 있는지다 — 슬롯 모드의
+// 정의이고, render/web의 같은 이름 함수와 같은 한 줄을 본다 (ADR 0044: 판정 입력은 하나다).
+func slideUsesSlots(slide *soml.Slide) bool {
+	for _, node := range slide.Content {
+		if elem, ok := node.(*soml.Element); ok && elem.Appearance != nil && elem.Appearance.Slot != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // node는 콘텐츠 트리를 훑는다. 외관을 갖는 요소만 외관을 해석하고, **배치는 요소 종류와

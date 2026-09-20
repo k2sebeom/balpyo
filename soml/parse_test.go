@@ -516,3 +516,46 @@ func TestParseDiagnosticCarriesFile(t *testing.T) {
 		t.Errorf("진단 = %q, want %q로 시작", got, want)
 	}
 }
+
+// `<slide justify>`는 흐름 모드 슬라이드의 **세로 분배**다 (ADR 0044 D17). 파서는 layout과
+// 같은 경계를 지킨다: 문법(값 있음·비지 않음)만 보고 어휘 6종은 core가 본다 — 값과 구간을
+// 원문 그대로 나른다.
+func TestParseSlideJustify(t *testing.T) {
+	doc, diags := Parse("slides/001.slide", `<slide justify="between"><p>x</p></slide>`)
+	if len(diags) != 0 {
+		t.Fatalf("진단이 없어야 한다: %v", diags)
+	}
+	if doc.Justify != "between" {
+		t.Errorf("Justify = %q, want \"between\"", doc.Justify)
+	}
+	// 구간은 **값**을 가리킨다 — core의 어휘 진단이 부호가 아니라 값에 밑줄을 긋는다.
+	// `<slide justify="` 다음이 17칸이다.
+	if got := doc.JustifySpan.Start; !got.IsValid() || got.Line != 1 || got.Col != 17 {
+		t.Errorf("JustifySpan.Start = %s, want 1:17", got)
+	}
+	// 속성이 없으면 빈 문자열이다 (기본값은 core·렌더러가 소유한다 — 선언이 없으면 흐름 그대로).
+	plain, diags := Parse("slides/002.slide", `<slide><p>x</p></slide>`)
+	if len(diags) != 0 {
+		t.Fatalf("진단이 없어야 한다: %v", diags)
+	}
+	if plain.Justify != "" {
+		t.Errorf("justify 없는 슬라이드의 Justify = %q, want \"\"", plain.Justify)
+	}
+}
+
+// 문법 진단은 layout과 같은 두 형태다 (값 없음·빈 값).
+func TestParseSlideJustifySyntax(t *testing.T) {
+	tests := []struct {
+		src  string
+		want string
+	}{
+		{`<slide justify></slide>`, "1:8: error: justify 속성에는 값이 필요하다"},
+		{`<slide justify=""></slide>`, "1:17: error: justify 속성이 비어 있다"},
+	}
+	for _, tc := range tests {
+		_, diags := Parse("slides/001.slide", tc.src)
+		if len(diags) != 1 || !strings.Contains(diags[0].String(), tc.want) {
+			t.Errorf("%s → %v, want %q", tc.src, diags, tc.want)
+		}
+	}
+}

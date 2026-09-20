@@ -152,6 +152,14 @@ type Slide struct {
 	// 한다. Slide에 루트 요소 참조가 없으므로(덱 모델은 해석이 끝난 값이다) 값과 함께
 	// 구간을 나른다.
 	LayoutSpan Span
+	// Justify는 **흐름 모드** 스테이지의 세로 분배다 (`<slide justify>`, ADR 0044 D17).
+	// 파이프라인이 원문을 옮기고 core.Resolve가 6종 어휘를 확정한다 (컨테이너의 justify와
+	// 같은 어휘 — BoxJustifies). 빈 값은 "선언 없음"이고 그때 스테이지는 위에서부터 쌓는다.
+	// 슬롯 모드 슬라이드에서는 에러이므로(세로 리듬은 테마의 `*.slots.css`가 소유한다)
+	// 렌더러는 이 값이 있으면 흐름 모드라고 믿을 수 있다.
+	Justify BoxJustify
+	// JustifySpan은 justify 값 구간이다 (LayoutSpan과 같은 근거).
+	JustifySpan Span
 	// Notes는 발표자 노트다 (`<note>`). PPTX에서는 노트 슬라이드가 된다.
 	Notes string
 	// Content는 슬라이드 콘텐츠 트리다 (`<note>`는 여기 없다 — Notes로 간다).

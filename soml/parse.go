@@ -33,7 +33,10 @@ func buildElementSpecs() map[string]elementSpec {
 			// `layout`은 슬라이드 수준 속성 중 **렌더러의 배치를 바꾸는 첫 속성**이다
 			// (id는 딥링크, skip은 덱에서 빠진다). 값 어휘(content·canvas)는 core가 본다 —
 			// fillSlide가 문법만 보는 이유와 같다.
-			attrs: []string{"layout", "id", "skip"},
+			// `justify`는 **흐름 모드 슬라이드의 세로 분배**다 (ADR 0044 D17) — 저자에게
+			// 세로 리듬 채널이 없어서 `<col h="fill" justify="between">` 랩퍼가 그 자리를
+			// 대신하고 있었다. 값 어휘는 컨테이너와 같은 6종이고 검사는 core다.
+			attrs: []string{"layout", "id", "skip", "justify"},
 			model: modelElements,
 			// PRD §7.7의 `reveal` 속성은 열지 않는다 — 웹 런타임의 reveal은 Phase 2이고,
 			// 렌더가 없는 속성을 어휘에 열면 닫힌 어휘가 막으려던 조용한 무시가 된다.
@@ -235,6 +238,11 @@ type SlideDoc struct {
 	Layout string
 	// LayoutSpan은 layout 값 구간이다 — core의 어휘 진단이 값에 밑줄을 긋게 한다.
 	LayoutSpan Span
+	// Justify는 `<slide justify>`의 값이다 (원문 그대로, 속성이 없으면 빈 문자열). 어휘
+	// 6종과 "슬롯 모드에서는 에러"는 core가 본다 — layout과 같은 경계다 (ADR 0044).
+	Justify string
+	// JustifySpan은 justify 값 구간이다 (LayoutSpan과 같은 근거).
+	JustifySpan Span
 	// Notes는 `<note>`의 텍스트다.
 	Notes string
 	// Content는 `<slide>`의 콘텐츠 자식이다 (`<note>` 제외).
@@ -782,6 +790,18 @@ func (p *parser) fillSlide(doc *SlideDoc) {
 		default:
 			doc.Layout = attr.Value
 			doc.LayoutSpan = attr.ValueSpan
+		}
+	}
+	if attr, ok := root.Attr("justify"); ok {
+		// layout과 같은 경계다 — 문법(값 있음·비지 않음)만 보고 어휘 6종은 core가 본다.
+		switch {
+		case !attr.HasValue:
+			p.errorf(attr.NameSpan, "justify 속성에는 값이 필요하다 (justify=\"between\")")
+		case attr.Value == "":
+			p.errorf(attr.ValueSpan, "justify 속성이 비어 있다 (지우면 위에서부터 쌓는다)")
+		default:
+			doc.Justify = attr.Value
+			doc.JustifySpan = attr.ValueSpan
 		}
 	}
 

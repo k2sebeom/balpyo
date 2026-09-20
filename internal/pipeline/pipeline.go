@@ -129,9 +129,12 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 			Chapter:    file.Chapter,
 			Layout:     soml.SlideLayout(doc.Layout),
 			LayoutSpan: doc.LayoutSpan,
-			Notes:      doc.Notes,
-			Content:    doc.Content,
-			Tokens:     doc.Tokens,
+			// justify도 layout처럼 원문·구간을 함께 옮긴다 — 어휘 검사는 core다 (ADR 0044).
+			Justify:     soml.BoxJustify(doc.Justify),
+			JustifySpan: doc.JustifySpan,
+			Notes:       doc.Notes,
+			Content:     doc.Content,
+			Tokens:      doc.Tokens,
 		})
 	}
 

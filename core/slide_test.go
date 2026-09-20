@@ -119,3 +119,70 @@ func TestSlideLayoutVocabulary(t *testing.T) {
 		t.Errorf("DefaultSlideLayout = %q, want content", soml.DefaultSlideLayout)
 	}
 }
+
+// `<slide justify>`는 흐름 모드 슬라이드의 세로 분배를 저자에게 주는 채널이다 (ADR 0044 D17).
+// 어휘는 컨테이너와 **같은 6종**이다 — 같은 뜻에 두 이름을 두지 않는다 (soml.BoxJustifies).
+func TestResolveSlideJustify(t *testing.T) {
+	for _, want := range soml.BoxJustifies() {
+		deck, diags := resolveSlide(t, `<slide justify="`+string(want)+`"><p>x</p></slide>`)
+		if len(diags) != 0 {
+			t.Fatalf("justify=%q에 진단이 났다: %v", want, diags)
+		}
+		if got := deck.Slides[0].Justify; got != want {
+			t.Errorf("Justify = %q, want %q", got, want)
+		}
+	}
+	// 속성이 없으면 빈 값이다 — 선언이 없는 슬라이드의 산출물이 이 기능 때문에 움직이지 않는다.
+	deck, diags := resolveSlide(t, `<slide><p>x</p></slide>`)
+	if len(diags) != 0 {
+		t.Fatalf("진단이 없어야 한다: %v", diags)
+	}
+	if got := deck.Slides[0].Justify; got != "" {
+		t.Errorf("justify 없는 슬라이드의 Justify = %q, want \"\"", got)
+	}
+}
+
+// 어휘 밖 값과 `space-` 접두는 컨테이너의 justify와 **같은 진단**을 받는다 — 두 자리가 같은
+// 어휘를 쓰므로 진단도 같아야 저자가 한 번 배운 것을 다시 배우지 않는다.
+func TestResolveSlideJustifyUnknown(t *testing.T) {
+	_, diags := resolveSlide(t, `<slide justify="middle"><p>x</p></slide>`)
+	if len(diags) != 1 {
+		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+	}
+	if diags[0].Severity != soml.SeverityError || !strings.Contains(diags[0].Message, "알 수 없는 justify") {
+		t.Errorf("진단 = %q, want '알 수 없는 justify' 에러", diags[0].String())
+	}
+	if !strings.Contains(diags[0].Message, "between") {
+		t.Errorf("메시지에 어휘 목록이 없다: %q", diags[0].Message)
+	}
+	// `space-` 접두는 접두 없는 이름을 짚어 준다.
+	_, diags = resolveSlide(t, `<slide justify="space-between"><p>x</p></slide>`)
+	if len(diags) != 1 || !strings.Contains(diags[0].Message, "접두 없는 이름") {
+		t.Errorf("진단 = %v, want '접두 없는 이름'", diags)
+	}
+}
+
+// **슬롯 모드 슬라이드의 justify는 에러다** (ADR 0044 D17). 두 근거가 겹친다: 그 문맥의 세로
+// 리듬은 테마의 `*.slots.css`가 소유하고(align-content), grid에서 `justify-content`는 **가로
+// 축**이라 같은 표기가 문맥마다 다른 축을 뜻하게 된다. 조용히 무시하면 저자는 왜 아무 일도
+// 일어나지 않는지(또는 왜 가로로 움직이는지) 알 수 없다.
+func TestResolveSlideJustifyInSlotMode(t *testing.T) {
+	deck, diags := resolveSlide(t, `<slide layout="content" justify="between"><h1 slot="title">T</h1><p slot="body">x</p></slide>`)
+	if len(diags) != 1 {
+		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+	}
+	diag := diags[0]
+	if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "슬롯") {
+		t.Errorf("진단 = %q, want 슬롯 모드 에러", diag.String())
+	}
+	if !diag.Span.Start.IsValid() {
+		t.Error("진단에 위치가 없다")
+	}
+	if got := deck.Slides[0].Justify; got != "" {
+		t.Errorf("슬롯 모드의 Justify = %q, want \"\" (테마가 소유한다)", got)
+	}
+	// 슬롯 자체는 그대로 확정된다 — justify 하나 때문에 슬라이드 전체가 흐름으로 떨어지지 않는다.
+	if got := slotOf(t, deck, "h1"); got != "title" {
+		t.Errorf("슬롯 = %q, want \"title\"", got)
+	}
+}

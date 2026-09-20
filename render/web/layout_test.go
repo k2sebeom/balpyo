@@ -688,8 +688,15 @@ func canvasDeck(t *testing.T, body string) *soml.Deck {
 // deck.Theme.Layouts로 나른다.
 func layoutDeck(t *testing.T, layout, body string) *soml.Deck {
 	t.Helper()
+	return slideAttrDeck(t, `layout="`+layout+`"`, body)
+}
+
+// slideAttrDeck은 슬라이드 수준 속성을 원문으로 받아 파이프라인처럼 덱을 만든다 — 슬라이드
+// 수준 어휘가 layout 하나가 아니게 되어(ADR 0044의 `justify`) 속성마다 조립을 복제하지 않는다.
+func slideAttrDeck(t *testing.T, attrs, body string) *soml.Deck {
+	t.Helper()
 	const source = "slides/001_layout.slide"
-	doc, diags := soml.Parse(source, `<slide id="l" layout="`+layout+`">`+"\n"+body+"\n</slide>\n")
+	doc, diags := soml.Parse(source, `<slide id="l" `+attrs+`>`+"\n"+body+"\n</slide>\n")
 	if err := diags.Err(); err != nil {
 		t.Fatalf("파싱 실패: %v", err)
 	}
@@ -702,6 +709,7 @@ func layoutDeck(t *testing.T, layout, body string) *soml.Deck {
 		Slides: []*soml.Slide{{
 			Index: 0, ID: "l", Source: source,
 			Layout: soml.SlideLayout(doc.Layout), LayoutSpan: doc.LayoutSpan,
+			Justify: soml.BoxJustify(doc.Justify), JustifySpan: doc.JustifySpan,
 			Notes: doc.Notes, Content: doc.Content,
 		}},
 	}
@@ -709,6 +717,21 @@ func layoutDeck(t *testing.T, layout, body string) *soml.Deck {
 		t.Fatalf("외관 해석 실패: %v", err)
 	}
 	return deck
+}
+
+// 슬라이드의 `justify`는 스테이지의 인라인 `justify-content`가 된다 (ADR 0044 D17) — 흐름
+// 스테이지가 세로 flex이므로 그 한 선언이 세로 분배다. `space-` 접두를 다시 붙이는 자리는
+// 컨테이너와 같은 함수다 (boxJustifyValue).
+func TestSlideJustifyStageStyle(t *testing.T) {
+	out := renderString(t, slideAttrDeck(t, `justify="between"`, `<p>위</p><p>아래</p>`))
+	if !strings.Contains(out, `<div class="balpyo-stage" style="justify-content: space-between">`) {
+		t.Errorf("스테이지에 justify-content: space-between이 없다:\n%s", out)
+	}
+	// 선언이 없는 슬라이드의 스테이지는 예전 그대로다 (골든 불변).
+	plain := renderString(t, slideAttrDeck(t, `layout="content"`, `<p>위</p>`))
+	if !strings.Contains(plain, `<div class="balpyo-stage">`) {
+		t.Errorf("justify 없는 스테이지가 달라졌다:\n%s", plain)
+	}
 }
 
 // TestLayoutPlacementCSS는 배치 CSS가 있는 레이아웃(title)이 스테이지에 레이아웃 클래스를
