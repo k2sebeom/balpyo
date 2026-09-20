@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
@@ -38,13 +39,19 @@ import (
 //go:embed themes
 var builtinThemes embed.FS
 
+// themeDir는 테마 패키지들이 사는 디렉토리 이름이다 — 임베드 FS와 **프로젝트 루트에서 같다**
+// (ADR 0054): 구조가 같아야 외부 테마의 설명이 "이 디렉토리를 프로젝트로 옮긴다"로 끝나고,
+// 로더가 두 출처에서 같은 코드를 지난다. (`//go:embed`는 리터럴만 받으므로 위 지시문은 이
+// 상수를 쓸 수 없다 — 둘이 갈리면 BuiltinThemes가 즉시 panic한다.)
+const themeDir = "themes"
+
 // BuiltinThemes는 내장 테마 이름 목록이다 (알파벳 정렬: editorial·ink·minimal).
 //
 // 공개하는 이유는 **어휘의 단일 출처**다 (ADR 0048): `balpyo init --theme`이 받을 수 있는
 // 이름이 곧 이 목록이어야 하고, 목록을 CLI에 적어 두면 내장 테마를 늘릴 때(P4.2) 두 곳이
 // 갈라져 사용자가 값 층이 읽지 않는 이름을 `balpyo.json`에 갖게 된다.
 func BuiltinThemes() []string {
-	entries, err := fs.ReadDir(builtinThemes, "themes")
+	entries, err := fs.ReadDir(builtinThemes, themeDir)
 	if err != nil {
 		// 내장 파일은 빌드 시점에 고정이다 — 읽히지 않으면 프로그래머 오류다
 		// (loadBuiltinTheme의 panic과 같은 자리).
@@ -73,13 +80,15 @@ func IsBuiltinTheme(name string) bool {
 // themeManifest는 theme.json의 파싱 결과다 (PRD §8.2).
 type themeManifest struct {
 	Name string `json:"name"`
-	// Extends는 상속할 테마 이름이다 (PRD §8.5) — v1 minimal에서는 비어 있다. 상속 병합은
-	// 아직 구현하지 않으므로 비지 않은 값은 로더가 진단한다 (미구현을 조용히 무시하지 않는다).
+	// Extends는 상속할 테마 이름이다 (PRD §8.5 · ADR 0054) — 내장 테마에서는 비어 있다.
+	// 이름은 **프로젝트의 어휘**(내장 ∪ `themes/<이름>/`)에서 풀리므로 그 어휘를 모르는 loadTheme은
+	// 비지 않은 값을 진단한다: 상속을 푸는 자리는 loadThemeNamed 하나다.
 	Extends string `json:"extends"`
 	// Layouts는 이 테마가 구현하는 표준 레이아웃 이름 목록이다. 테마는 표준 카탈로그 11종을
 	// **전부** 선언해야 한다 — 빠뜨린 레이아웃을 다른 테마로 폴백하지 않는 근거는 ADR 0052에
 	// 있고, 그 계약은 TestBuiltinThemesImplementEveryStandardLayout이 지킨다. 테마 자체
-	// 레이아웃(`corp-hero`)도 여기 실려 어휘가 된다.
+	// 레이아웃은 **없다**: `<slide layout>`의 어휘는 soml.SlideLayouts() 11종으로 닫혀 있어
+	// (resolver.slideLayout) 목록에 더한 이름은 어떤 슬라이드도 요청할 수 없다 (ADR 0054의 결정 10).
 	Layouts []string `json:"layouts"`
 	// Chrome은 덱 크롬(페이지 번호·푸터) 선언이다 (PRD §8.1·§8.4 · ADR 0045).
 	//
@@ -391,26 +400,76 @@ type tableComponents struct {
 	stripe *soml.Fill
 }
 
-// loadTheme는 fsys의 dir/ 아래 테마 패키지를 읽는다. dir은 fs 경로다 (내장은
+// rawTheme는 테마 하나의 **원문 선언**이다 — 변환도 검사도 하기 전 상태다. 상속 병합이 이
+// 층에서 일어나기 때문에 있는 타입이다 (ADR 0054의 결정 8): 파일 스키마의 모양(이름 붙은 배열
+// 몇 개와 싱글톤 절 몇 개) 그대로 병합하면 규칙이 한 문장이고, 변환·완전성 검사는 병합
+// **결과**에 한 번만 돈다 — 부모를 따로 완전하게 만들지 않아도 되고 자식의 부분 파일이 홀로
+// requireTokens를 통과해야 하는 이상한 계약이 생기지 않는다.
+type rawTheme struct {
+	manifest   themeManifest
+	tokens     tokensFile
+	components componentsFile
+	// layouts·slotLayouts는 레이아웃 이름 → CSS 원문이다 (파일 단위 병합의 단위 — ADR 0054의
+	// 결정 9). 파싱하지 않고 문자열로 나르는 이유는 병합이 파일을 통째로 갈아 끼우기 때문이다.
+	layouts     map[string]string
+	slotLayouts map[string]string
+}
+
+// loadTheme는 fsys의 dir/ 아래 테마 패키지를 **상속 없이** 읽는다. dir은 fs 경로다 (내장은
 // "themes/minimal", 로컬은 프로젝트 상대 경로). 이름은 매니페스트가 소유한다.
+//
+// 상속을 여기서 풀지 않는 이유는 부모를 찾을 **이름 어휘**가 이 함수에 없다는 것이다 (어휘는
+// 내장 ∪ 프로젝트 로컬이고 그것을 아는 자리는 loadThemeNamed다 — ADR 0054).
 func loadTheme(fsys fs.FS, dir string) (themePackage, error) {
-	var pkg themePackage
+	raw, err := readRawTheme(fsys, dir)
+	if err != nil {
+		return themePackage{}, err
+	}
+	if raw.manifest.Extends != "" {
+		return themePackage{}, fmt.Errorf(
+			"theme.json의 extends(%q)는 이름 어휘가 있는 자리에서만 풀린다", raw.manifest.Extends)
+	}
+	return buildThemePackage(raw)
+}
+
+// readRawTheme는 dir/ 아래 파일을 **그대로** 읽는다 — 변환도 검사도 하지 않는다.
+//
+// 상속하는 테마의 파일은 **부분 파일**이어도 되고 아예 없어도 된다 (부모가 바닥을 깐다).
+// 상속하지 않는 테마에서는 tokens.json·components.json·layouts/가 모두 있어야 한다 — 내장
+// 테마가 받는 조건 그대로이고, 없는 파일을 빈 선언으로 읽으면 진단이 "fg 토큰이 없다"로
+// 멀어진다.
+func readRawTheme(fsys fs.FS, dir string) (rawTheme, error) {
+	var raw rawTheme
 
 	manifestBytes, err := fs.ReadFile(fsys, path.Join(dir, "theme.json"))
 	if err != nil {
-		return pkg, fmt.Errorf("theme.json을 읽을 수 없다: %w", err)
+		return raw, fmt.Errorf("theme.json을 읽을 수 없다: %w", err)
 	}
-	if err := json.Unmarshal(manifestBytes, &pkg.manifest); err != nil {
-		return pkg, fmt.Errorf("theme.json 파싱 실패: %w", err)
+	if err := json.Unmarshal(manifestBytes, &raw.manifest); err != nil {
+		return raw, fmt.Errorf("theme.json 파싱 실패: %w", err)
 	}
-	if pkg.manifest.Name == "" {
-		return pkg, fmt.Errorf("theme.json에 name이 없다")
+	if raw.manifest.Name == "" {
+		return raw, fmt.Errorf("theme.json에 name이 없다")
 	}
-	if pkg.manifest.Extends != "" {
-		// 상속 병합은 아직 구현하지 않았다 — 조용히 무시하면 저자가 오버라이드가 먹었다고
-		// 착각한다 (닫힌 어휘가 막으려던 조용한 실패의 변종).
-		return pkg, fmt.Errorf("theme.json의 extends는 아직 지원하지 않는다 (%q)", pkg.manifest.Extends)
+	optional := raw.manifest.Extends != ""
+
+	if raw.tokens, err = readTokensFile(fsys, dir, optional); err != nil {
+		return raw, err
 	}
+	if raw.components, err = readComponentsFile(fsys, dir, optional); err != nil {
+		return raw, err
+	}
+	if raw.layouts, raw.slotLayouts, err = readLayoutCSS(fsys, dir, optional); err != nil {
+		return raw, err
+	}
+	return raw, nil
+}
+
+// buildThemePackage는 원문 선언 한 벌을 **변환·검사**해 패키지로 만든다 (상속 병합이 끝난
+// 뒤의 한 번 — ADR 0054의 결정 8·12).
+func buildThemePackage(raw rawTheme) (themePackage, error) {
+	var pkg themePackage
+	pkg.manifest = raw.manifest
 
 	// 크롬 선언은 토큰·컴포넌트보다 **먼저** 검사한다 — 선언만으로 판정할 수 있는 값 어휘이고,
 	// 먼저 멈추면 "테마의 오타"와 "토큰 표의 문제"가 한 메시지에 섞이지 않는다.
@@ -420,11 +479,8 @@ func loadTheme(fsys fs.FS, dir string) (themePackage, error) {
 	}
 	pkg.chrome = chrome
 
-	tokens, err := loadTokens(fsys, dir, pkg.manifest.Name)
-	if err != nil {
-		return pkg, err
-	}
-	// 완전성 검사는 파싱 **직후**다 (ADR 0052의 결정 3): 폴백 테마가 없으므로 빠진 토큰은
+	tokens := tokensFromFile(raw.tokens, pkg.manifest.Name)
+	// 완전성 검사는 변환 **직후**다 (ADR 0052의 결정 3): 폴백 테마가 없으므로 빠진 토큰은
 	// 산출물에서 영 값으로 나타난다 — 근거는 theme_require.go의 패키지 주석에 있다. 컴포넌트
 	// 표보다 먼저 보는 이유는 역할 검사가 이 표를 참조로 쓴다는 것이다.
 	if err := requireTokens(tokens); err != nil {
@@ -432,7 +488,7 @@ func loadTheme(fsys fs.FS, dir string) (themePackage, error) {
 	}
 	pkg.tokens = tokens
 
-	comps, err := loadComponents(fsys, dir, tokens)
+	comps, err := componentsFromFile(raw.components, tokens)
 	if err != nil {
 		return pkg, err
 	}
@@ -441,17 +497,11 @@ func loadTheme(fsys fs.FS, dir string) (themePackage, error) {
 	}
 	pkg.components = comps
 
-	layouts, err := loadLayouts(fsys, dir, pkg.manifest)
-	if err != nil {
+	if err := checkLayoutFiles(pkg.manifest, raw.layouts, raw.slotLayouts); err != nil {
 		return pkg, err
 	}
-	pkg.layouts = layouts
-
-	slotLayouts, err := loadSlotLayouts(fsys, dir, pkg.manifest)
-	if err != nil {
-		return pkg, err
-	}
-	pkg.slotLayouts = slotLayouts
+	pkg.layouts = raw.layouts
+	pkg.slotLayouts = raw.slotLayouts
 	return pkg, nil
 }
 
@@ -552,19 +602,27 @@ func sortedKeys(set map[string]bool) []string {
 	return names
 }
 
-// loadTokens는 tokens.json을 soml.Theme로 읽는다. 배열 순서를 그대로 옮겨 byte 동일성을
-// 지킨다.
-func loadTokens(fsys fs.FS, dir, name string) (soml.Theme, error) {
-	var theme soml.Theme
+// readTokensFile은 tokens.json을 원문 선언으로 읽는다. optional이면 파일이 없어도 된다
+// (상속하는 테마 — 부모의 표가 바닥이다).
+func readTokensFile(fsys fs.FS, dir string, optional bool) (tokensFile, error) {
+	var file tokensFile
 	raw, err := fs.ReadFile(fsys, path.Join(dir, "tokens.json"))
 	if err != nil {
-		return theme, fmt.Errorf("tokens.json을 읽을 수 없다: %w", err)
+		if optional && errors.Is(err, fs.ErrNotExist) {
+			return file, nil
+		}
+		return file, fmt.Errorf("tokens.json을 읽을 수 없다: %w", err)
 	}
-	var file tokensFile
 	if err := json.Unmarshal(raw, &file); err != nil {
-		return theme, fmt.Errorf("tokens.json 파싱 실패: %w", err)
+		return file, fmt.Errorf("tokens.json 파싱 실패: %w", err)
 	}
+	return file, nil
+}
 
+// tokensFromFile은 원문 토큰 선언을 soml.Theme로 눕힌다. 배열 순서를 그대로 옮겨 byte
+// 동일성을 지킨다.
+func tokensFromFile(file tokensFile, name string) soml.Theme {
+	var theme soml.Theme
 	theme.Name = name
 	for _, c := range file.Color {
 		theme.Colors = append(theme.Colors, soml.ColorToken{Name: c.Name, RGB: c.RGB, Slot: c.Slot, Ref: c.Ref})
@@ -588,25 +646,33 @@ func loadTokens(fsys fs.FS, dir, name string) (soml.Theme, error) {
 			Color: soml.TokenColor(s.Color), Alpha: s.Alpha,
 		})
 	}
-	return theme, nil
+	return theme
 }
 
-// loadComponents는 components.json을 캐스케이드 내부 표로 읽는다. theme는 radius·shadow 토큰을
-// 해석하려고 받는다 (loadTokens가 먼저 채운 표). 미지원 키는 DisallowUnknownFields가 진단한다
-// — 조용히 무시하면 저자가 오버라이드가 먹었다고 착각한다 (닫힌 어휘, manifest.Extends와 같은 태도).
-func loadComponents(fsys fs.FS, dir string, theme soml.Theme) (components, error) {
-	var comps components
+// readComponentsFile은 components.json을 원문 선언으로 읽는다. 미지원 키는
+// DisallowUnknownFields가 진단한다 — 조용히 무시하면 저자가 오버라이드가 먹었다고 착각한다
+// (닫힌 어휘). optional이면 파일이 없어도 된다 (readTokensFile과 같은 계약).
+func readComponentsFile(fsys fs.FS, dir string, optional bool) (componentsFile, error) {
+	var file componentsFile
 	raw, err := fs.ReadFile(fsys, path.Join(dir, "components.json"))
 	if err != nil {
-		return comps, fmt.Errorf("components.json을 읽을 수 없다: %w", err)
+		if optional && errors.Is(err, fs.ErrNotExist) {
+			return file, nil
+		}
+		return file, fmt.Errorf("components.json을 읽을 수 없다: %w", err)
 	}
-	var file componentsFile
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&file); err != nil {
-		return comps, fmt.Errorf("components.json 파싱 실패: %w", err)
+		return file, fmt.Errorf("components.json 파싱 실패: %w", err)
 	}
+	return file, nil
+}
 
+// componentsFromFile은 원문 컴포넌트 선언을 캐스케이드 내부 표로 눕힌다. theme는 radius·shadow
+// 토큰을 해석하려고 받는다 (tokensFromFile이 먼저 채운 표).
+func componentsFromFile(file componentsFile, theme soml.Theme) (components, error) {
+	var comps components
 	comps.textRoles = map[soml.TextRole]soml.TextStyle{}
 	for _, r := range file.Text.Roles {
 		comps.textRoles[soml.TextRole(r.Name)] = soml.TextStyle{
@@ -867,105 +933,91 @@ func borderFromString(s string) (*soml.Border, error) {
 	return &soml.Border{Width: width, Style: style, Color: soml.TokenColor(fields[2])}, nil
 }
 
-// loadLayouts는 dir/layouts/ 아래 *.css를 레이아웃 이름→CSS 원문 맵으로 읽고, 그 키 집합이
-// manifest.Layouts 선언과 정확히 일치하는지 **양방향으로** 대조한다. 선언과 파일이 어긋나면
-// 저자가 오버라이드/구현이 먹었다고 착각하므로 조용히 넘기지 않고 에러다 (닫힌 어휘,
-// manifest.Extends·components.json과 같은 태도). CSS 내용은 여기서 보지 않는다 — 배치·외관
-// 경계 검사는 theme_lint.go의 몫이다. 빈(주석만) CSS는 허용한다 (스텁, 실체는 10/06).
-func loadLayouts(fsys fs.FS, dir string, manifest themeManifest) (map[string]string, error) {
+// readLayoutCSS는 dir/layouts/ 아래 CSS를 두 맵으로 읽는다 — 흐름 배치(`<이름>.css`)와 슬롯
+// 영역(`<이름>.slots.css`, ADR 0035). 키는 접미를 뗀 레이아웃 이름이다.
+//
+// 두 맵을 한 번에 읽는 이유는 디렉토리를 한 번만 훑기 때문이고, 파일 내용을 문자열로 나르는
+// 이유는 병합의 단위가 **파일**이라는 것이다 (ADR 0054의 결정 9). 선언과의 대조는 병합 뒤에
+// 도는 checkLayoutFiles의 몫이다 — 자식의 `layouts/`만으로는 대조가 성립하지 않는다.
+// optional이면 `layouts/`가 없어도 된다 (상속하는 테마 — 부모의 파일이 바닥이다).
+func readLayoutCSS(fsys fs.FS, dir string, optional bool) (layouts, slots map[string]string, err error) {
 	entries, err := fs.ReadDir(fsys, path.Join(dir, "layouts"))
 	if err != nil {
-		return nil, fmt.Errorf("layouts/를 읽을 수 없다: %w", err)
+		if optional && errors.Is(err, fs.ErrNotExist) {
+			return map[string]string{}, map[string]string{}, nil
+		}
+		return nil, nil, fmt.Errorf("layouts/를 읽을 수 없다: %w", err)
 	}
-	files := map[string]string{}
+	layouts, slots = map[string]string{}, map[string]string{}
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".css") {
 			continue
 		}
-		// 슬롯 영역 파일(`<이름>.slots.css`)은 loadSlotLayouts의 몫이다 — 여기서 걸러내지
-		// 않으면 `title.slots`라는 존재하지 않는 흐름 레이아웃으로 오인해 "선언에 없다"
-		// 에러가 난다 (양방향 대조가 슬롯 파일을 미선언 흐름 파일로 읽는다).
-		if strings.HasSuffix(e.Name(), ".slots.css") {
-			continue
-		}
 		raw, err := fs.ReadFile(fsys, path.Join(dir, "layouts", e.Name()))
 		if err != nil {
-			return nil, fmt.Errorf("layouts/%s를 읽을 수 없다: %w", e.Name(), err)
+			return nil, nil, fmt.Errorf("layouts/%s를 읽을 수 없다: %w", e.Name(), err)
 		}
-		files[strings.TrimSuffix(e.Name(), ".css")] = string(raw)
+		// 슬롯 영역 파일을 먼저 가른다 — 흐름 맵에 실으면 `title.slots`라는 존재하지 않는
+		// 레이아웃으로 오인해 "선언에 없다" 에러가 난다.
+		if name, ok := strings.CutSuffix(e.Name(), ".slots.css"); ok {
+			slots[name] = string(raw)
+			continue
+		}
+		layouts[strings.TrimSuffix(e.Name(), ".css")] = string(raw)
 	}
+	return layouts, slots, nil
+}
 
+// checkLayoutFiles는 CSS 파일 집합이 manifest.Layouts 선언과 맞는지 대조한다. 선언과 파일이
+// 어긋나면 저자가 오버라이드/구현이 먹었다고 착각하므로 조용히 넘기지 않고 에러다 (닫힌 어휘,
+// components.json과 같은 태도). CSS 내용은 여기서 보지 않는다 — 배치·외관 경계 검사는
+// theme_lint.go의 몫이고, 빈(주석만) CSS는 허용한다.
+//
+// 흐름 배치는 **양방향** 대조다 (선언에 있으면 파일이 있어야 하고, 파일이 있으면 선언에
+// 있어야 한다). 슬롯 영역은 **단방향**이다 — 슬롯 영역 파일은 선택이므로(슬롯이 없는 canvas는
+// 파일이 없어도 된다) "선언됐는데 파일이 없다"는 에러가 아니다. 반대로 선언되지 않은
+// 레이아웃의 슬롯 파일(`corp-hero.slots.css`인데 layouts에 corp-hero가 없음)은 오타이므로
+// 에러다.
+func checkLayoutFiles(manifest themeManifest, layouts, slots map[string]string) error {
 	// 선언 → 파일: manifest.Layouts는 순서 있는 슬라이스라 순회가 이미 결정적이다.
 	declared := map[string]bool{}
 	for _, name := range manifest.Layouts {
 		declared[name] = true
-		if _, ok := files[name]; !ok {
-			return nil, fmt.Errorf("theme.json의 layouts에 %q가 있지만 layouts/%s.css가 없다", name, name)
+		if _, ok := layouts[name]; !ok {
+			return fmt.Errorf("theme.json의 layouts에 %q가 있지만 layouts/%s.css가 없다", name, name)
 		}
 	}
-	// 파일 → 선언: files는 맵이라 순서가 없으므로 정렬해 진단이 결정적이게 한다.
+	// 파일 → 선언: 맵은 순서가 없으므로 정렬해 진단이 결정적이게 한다.
 	var undeclared []string
-	for name := range files {
+	for name := range layouts {
 		if !declared[name] {
 			undeclared = append(undeclared, name)
 		}
 	}
 	sort.Strings(undeclared)
 	if len(undeclared) > 0 {
-		return nil, fmt.Errorf("layouts/%s.css가 있지만 theme.json의 layouts 선언에 없다", undeclared[0])
+		return fmt.Errorf("layouts/%s.css가 있지만 theme.json의 layouts 선언에 없다", undeclared[0])
 	}
-	return files, nil
-}
-
-// loadSlotLayouts는 dir/layouts/ 아래 `*.slots.css`를 레이아웃 이름→슬롯 영역 CSS 원문 맵으로
-// 읽는다 (ADR 0035). 키는 `.slots.css` 앞부분이다 (`title.slots.css` → `title`).
-//
-// loadLayouts와 달리 대조는 **단방향**이다 — 슬롯 영역 파일은 선택이므로(슬롯이 없는 canvas는
-// 파일이 없어도 된다) "선언됐는데 파일이 없다"는 에러가 아니다. 반대로 선언되지 않은
-// 레이아웃의 슬롯 파일(`corp-hero.slots.css`인데 layouts에 corp-hero가 없음)은 저자가 오타를
-// 냈거나 흐름 레이아웃 선언을 빠뜨린 것이므로 에러다 (loadLayouts의 미선언 파일과 같은 태도).
-// CSS 내용은 여기서 보지 않는다 — 배치·외관 경계 검사는 theme_lint.go의 몫이다.
-func loadSlotLayouts(fsys fs.FS, dir string, manifest themeManifest) (map[string]string, error) {
-	entries, err := fs.ReadDir(fsys, path.Join(dir, "layouts"))
-	if err != nil {
-		return nil, fmt.Errorf("layouts/를 읽을 수 없다: %w", err)
-	}
-	declared := map[string]bool{}
-	for _, name := range manifest.Layouts {
-		declared[name] = true
-	}
-	files := map[string]string{}
-	var undeclared []string
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".slots.css") {
-			continue
-		}
-		name := strings.TrimSuffix(e.Name(), ".slots.css")
+	undeclared = nil
+	for name := range slots {
 		if !declared[name] {
 			undeclared = append(undeclared, name)
-			continue
 		}
-		raw, err := fs.ReadFile(fsys, path.Join(dir, "layouts", e.Name()))
-		if err != nil {
-			return nil, fmt.Errorf("layouts/%s를 읽을 수 없다: %w", e.Name(), err)
-		}
-		files[name] = string(raw)
 	}
-	// files는 맵이라 순서가 없으므로 정렬해 진단이 결정적이게 한다 (loadLayouts와 같은 태도).
 	sort.Strings(undeclared)
 	if len(undeclared) > 0 {
-		return nil, fmt.Errorf("layouts/%s.slots.css가 있지만 theme.json의 layouts 선언에 %q가 없다", undeclared[0], undeclared[0])
+		return fmt.Errorf("layouts/%s.slots.css가 있지만 theme.json의 layouts 선언에 %q가 없다",
+			undeclared[0], undeclared[0])
 	}
-	return files, nil
+	return nil
 }
 
 // loadBuiltinTheme는 내장 테마를 이름으로 읽는다. 내장 파일은 빌드 시점에 고정되므로 로드
-// 실패는 프로그래머 오류다 (regexp.MustCompile과 같은 자리) — 호출자(core.Resolve)가 에러를
-// 다룰 자리가 없고, TestBuiltinThemesAreLoadable이 이 불변을 전 테마에서 못 박는다. **이름이
-// 어휘 안인지는 호출자가 먼저 본다** (IsBuiltinTheme): 저자가 쓴 이름은 진단이 되어야 하고
-// panic이 되면 안 된다.
+// 실패는 프로그래머 오류다 (regexp.MustCompile과 같은 자리) — 호출자가 에러를 다룰 자리가 없고,
+// TestBuiltinThemesAreLoadable이 이 불변을 전 테마에서 못 박는다. **이름이 어휘 안인지는
+// 호출자가 먼저 본다** (IsBuiltinTheme): 저자가 쓴 이름은 진단이 되어야 하고 panic이 되면 안 된다.
 func loadBuiltinTheme(name string) themePackage {
-	pkg, err := loadTheme(builtinThemes, path.Join("themes", name))
+	pkg, err := loadTheme(builtinThemes, path.Join(themeDir, name))
 	if err != nil {
 		panic(fmt.Sprintf("내장 테마 %q 로드 실패: %v", name, err))
 	}

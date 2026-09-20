@@ -1,6 +1,7 @@
 package core
 
 import (
+	"io/fs"
 	"path"
 	"reflect"
 	"sort"
@@ -184,12 +185,13 @@ func TestLoadBuiltinComponentsPreservesVariantOrder(t *testing.T) {
 }
 
 // TestLoadComponentsRejectsUnknownField는 미지원/오타 키를 조용히 무시하지 않고 진단함을 못 박는다
-// (닫힌 어휘). extends는 아직 구현하지 않은 상속 키의 예다.
+// (닫힌 어휘). `extends`가 예인 이유는 상속이 **theme.json 한 곳에서만** 선언된다는 것이다
+// (ADR 0054) — 파일마다 부모를 따로 적을 수 있으면 한 테마가 여러 부모를 갖는다.
 func TestLoadComponentsRejectsUnknownField(t *testing.T) {
 	fsys := fstest.MapFS{
 		"t/components.json": {Data: []byte(`{"extends":"base","text":{"roles":[]}}`)},
 	}
-	if _, err := loadComponents(fsys, "t", soml.Theme{}); err == nil {
+	if _, err := readComponentsFile(fsys, "t", false); err == nil {
 		t.Fatal("미지원 필드 extends가 진단되지 않았다 (조용히 무시됨)")
 	}
 }
@@ -208,7 +210,7 @@ func TestLoadComponentsAllowsCommentPerCategory(t *testing.T) {
 		  "code":  {"$comment": "코드 주석", "tabSize": 2}
 		}`)},
 	}
-	if _, err := loadComponents(fsys, "t", soml.Theme{}); err != nil {
+	if _, err := readComponentsFile(fsys, "t", false); err != nil {
 		t.Fatalf("범주 주석이 진단됐다: %v", err)
 	}
 }
@@ -249,7 +251,7 @@ func TestLoadLayoutsMismatch(t *testing.T) {
 	missing := fstest.MapFS{
 		"t/layouts/a.css": {Data: []byte("/* a */")},
 	}
-	if _, err := loadLayouts(missing, "t", themeManifest{Layouts: []string{"a", "b"}}); err == nil {
+	if _, err := loadLayoutsForTest(missing, "t", themeManifest{Layouts: []string{"a", "b"}}); err == nil {
 		t.Error("선언한 b의 파일이 없는데 진단되지 않았다")
 	}
 	// 파일이 있는데 선언에 없음.
@@ -257,7 +259,7 @@ func TestLoadLayoutsMismatch(t *testing.T) {
 		"t/layouts/a.css":     {Data: []byte("/* a */")},
 		"t/layouts/extra.css": {Data: []byte("/* extra */")},
 	}
-	if _, err := loadLayouts(extra, "t", themeManifest{Layouts: []string{"a"}}); err == nil {
+	if _, err := loadLayoutsForTest(extra, "t", themeManifest{Layouts: []string{"a"}}); err == nil {
 		t.Error("선언에 없는 extra.css가 진단되지 않았다")
 	}
 	// 선언과 파일이 정확히 일치하면 에러 없이 맵을 준다.
@@ -265,13 +267,28 @@ func TestLoadLayoutsMismatch(t *testing.T) {
 		"t/layouts/a.css": {Data: []byte("/* a */")},
 		"t/layouts/b.css": {Data: []byte("")},
 	}
-	got, err := loadLayouts(ok, "t", themeManifest{Layouts: []string{"a", "b"}})
+	got, err := loadLayoutsForTest(ok, "t", themeManifest{Layouts: []string{"a", "b"}})
 	if err != nil {
 		t.Fatalf("일치하는데 에러가 났다: %v", err)
 	}
 	if len(got) != 2 {
 		t.Errorf("맵 크기 = %d, want 2", len(got))
 	}
+}
+
+// loadLayoutsForTest는 읽기(readLayoutCSS)와 검사(checkLayoutFiles)를 다시 붙인다 — 상속이
+// 들어오면서 로더가 둘로 갈렸지만(ADR 0054: 병합 결과에 검사를 **한 번** 돈다) 이 테스트가 못
+// 박는 계약은 여전히 "선언과 파일이 양방향으로 맞아야 한다" 하나이므로, 그 한 문장을 한 호출로
+// 묻는다.
+func loadLayoutsForTest(fsys fs.FS, dir string, manifest themeManifest) (map[string]string, error) {
+	layouts, slots, err := readLayoutCSS(fsys, dir, false)
+	if err != nil {
+		return nil, err
+	}
+	if err := checkLayoutFiles(manifest, layouts, slots); err != nil {
+		return nil, err
+	}
+	return layouts, nil
 }
 
 // TestMinimalLayoutStyles는 minimal 테마의 배치 CSS가 실체를 담고(빈 스텁이 아니고),
