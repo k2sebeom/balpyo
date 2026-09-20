@@ -43,6 +43,8 @@ func run(args []string, stdout, stderr io.Writer) error {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 		return runWatch(ctx, args[1:], stdout, stderr)
+	case "preview":
+		return runPreview(args[1:], stdout, stderr)
 	case "version":
 		fmt.Fprintln(stdout, versionString())
 		return nil
@@ -61,6 +63,7 @@ func usage(w io.Writer) {
 사용법:
   balpyo build [옵션]   슬라이드를 빌드한다
   balpyo watch [옵션]   고치면 다시 빌드하고 브라우저를 새로고침한다
+  balpyo preview [옵션] 웹과 PPTX를 나란히 놓은 검수 갤러리를 만든다
   balpyo version        버전을 출력한다
 
 build 옵션:
@@ -73,6 +76,15 @@ build 옵션:
 watch 옵션:
   build의 옵션 전부 (html 타깃은 필수) 그리고
   --addr 127.0.0.1:4600 감시 서버 주소
+
+preview 옵션:
+  --target html,pptx    검수할 렌더 (기본 html,pptx)
+  --out dist            빌드 출력 디렉토리 (기본 balpyo.json의 outDir)
+  --project .           프로젝트 루트
+  --gallery preview     검수 갤러리 디렉토리
+  --strict              경고를 에러로 승격한다
+
+  pptx를 검수하려면 LibreOffice(soffice)와 pdftoppm(poppler-utils)이 필요하다.
 `)
 }
 
@@ -128,12 +140,18 @@ func runBuild(args []string, stdout, stderr io.Writer) error {
 	return nil
 }
 
-// printDiagnostics는 진단을 사람이 읽을 순서로 찍는다.
+// printDiagnostics는 빌드 결과의 진단을 찍는다.
 func printDiagnostics(w io.Writer, result *pipeline.Result) {
 	if result == nil {
 		return
 	}
-	for _, d := range result.Diagnostics {
+	printDiags(w, result.Diagnostics)
+}
+
+// printDiags는 진단을 사람이 읽을 순서로 찍는다. 빌드 결과를 들고 있지 않은 호출자
+// (`balpyo preview`)도 같은 모양으로 찍어야 하므로 갈라 둔다.
+func printDiags(w io.Writer, diags soml.Diagnostics) {
+	for _, d := range diags {
 		fmt.Fprintln(w, d.String())
 	}
 }
