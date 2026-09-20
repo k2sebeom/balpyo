@@ -262,7 +262,12 @@ func TestResolveStripedHeaderCellUnaffected(t *testing.T) {
 // TestResolveCellSpan은 병합 칸 수가 확정 CellStyle에 도달하고, 1 미만이 에러인지 못 박는다.
 // span은 외관 값이 아니라 격자 구조라 CellStyle에 직접 실린다 (cellPatch에 없는 근거).
 func TestResolveCellSpan(t *testing.T) {
-	cell := resolvedCells(t, "", `<tr><td colspan="2" rowspan="3">x</td></tr>`)[0]
+	// 격자가 맞는 2×3 병합 — 첫 행이 열 3칸을 정하고, 병합 셀이 아래 두 행의 두 칸을 덮는다
+	// (격자 검증이 있으므로 병합 테스트도 진짜 격자여야 한다 — checkTableGrid).
+	inner := "<tr><td colspan=\"2\" rowspan=\"3\">x</td><td>a</td></tr>" +
+		"<tr><td>b</td></tr>" +
+		"<tr><td>c</td></tr>"
+	cell := resolvedCells(t, "", inner)[0]
 	if cell.ColSpan != 2 || cell.RowSpan != 3 {
 		t.Errorf("병합 칸 = %d×%d, want 2×3", cell.ColSpan, cell.RowSpan)
 	}
@@ -304,28 +309,119 @@ func TestResolveCellInlineRunsInherit(t *testing.T) {
 	}
 }
 
+// TestResolveTableGridIsRectangular는 격자 검증을 못 박는다 — 행마다 칸 수가 맞고 병합이
+// 겹치지 않고 rowspan이 마지막 행을 넘지 않아야 한다 (ADR 0036: 병합 검증은 값 층의 일).
+//
+// 이 검증이 필요한 이유는 두 타깃이 **다르게 복구하기** 때문이다: 웹 `<table>`은 칸이 남으면
+// 조용히 비우고 넘치면 열을 늘리지만, PPTX `a:tbl`은 `a:tblGrid`의 열 수와 `a:tc` 수가 정확히
+// 맞아야 열린다. 여기서 막지 않으면 저자가 웹만 보고 "됐다"고 판단한 표가 PowerPoint에서
+// 복구 대화상자를 띄운다.
+func TestResolveTableGridIsRectangular(t *testing.T) {
+	// 병합이 든 진짜 격자는 진단이 없다 — 첫 행이 열 3칸을 정하고, rowspan이 다음 행의 첫 칸을
+	// 덮으므로 그 행은 셀 2개로 3칸을 채운다.
+	valid := "<tr><th>h0</th><th>h1</th><th>h2</th></tr>" +
+		`<tr><td rowspan="2">a</td><td colspan="2">b</td></tr>` +
+		"<tr><td>c</td><td>d</td></tr>"
+	if _, diags := resolveSlide(t, tableSlide("", valid)); len(diags) != 0 {
+		t.Fatalf("격자가 맞는 표에 진단이 났다: %v", diags)
+	}
+
+	for _, tc := range []struct {
+		name  string
+		inner string
+		want  []string // 에러 문구에 있어야 하는 조각
+	}{
+		{
+			name:  "행이 좁다",
+			inner: "<tr><td>a</td><td>b</td></tr><tr><td>c</td></tr>",
+			want:  []string{"1칸", "열은 2칸"},
+		},
+		{
+			name:  "행이 넓다",
+			inner: "<tr><td>a</td></tr><tr><td>b</td><td>c</td></tr>",
+			want:  []string{"2칸", "열은 1칸"},
+		},
+		{
+			name:  "rowspan이 마지막 행을 넘는다",
+			inner: `<tr><td rowspan="2">a</td></tr>`,
+			want:  []string{"rowspan 2", "마지막 행"},
+		},
+		{
+			name: "병합이 겹친다",
+			// 열 4칸. 2행의 rowspan이 2열을 아래로 덮는데, 3행의 colspan="2"가 그 칸을
+			// 지나간다 — 칸 수(1+2+1=4)는 맞고 자리만 겹치는 경우다.
+			inner: "<tr><td>a</td><td>b</td><td>c</td><td>d</td></tr>" +
+				`<tr><td>e</td><td rowspan="2">f</td><td>g</td><td>h</td></tr>` +
+				`<tr><td colspan="2">i</td><td>j</td></tr>`,
+			want: []string{"겹친다", "2번째 열"},
+		},
+		{
+			name:  "첫 행이 비었다",
+			inner: "<tr></tr><tr><td>a</td></tr>",
+			want:  []string{"첫 행", "열 수"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, diags := resolveSlide(t, tableSlide("", tc.inner))
+			if len(diags) != 1 {
+				t.Fatalf("진단 %d개, want 1개 (연쇄 진단은 저자를 헷갈리게 한다): %v", len(diags), diags)
+			}
+			if diags[0].Severity != soml.SeverityError {
+				t.Errorf("severity = %s, want error — 격자가 깨진 표는 PPTX가 열리지 않는다", diags[0].Severity)
+			}
+			for _, want := range tc.want {
+				if !strings.Contains(diags[0].Message, want) {
+					t.Errorf("진단 = %q, want %q 포함", diags[0].Message, want)
+				}
+			}
+		})
+	}
+}
+
+// TestResolveTableGridSkipsBrokenSpans는 span 값 자체가 틀린 표에서 격자 진단이 **덧붙지
+// 않는지** 못 박는다 — `colspan="0"`은 이미 에러이고, 그 자리에 "행이 좁다"까지 얹으면 저자는
+// 고칠 곳이 둘이라고 읽는다 (진단 하나에 원인 하나).
+func TestResolveTableGridSkipsBrokenSpans(t *testing.T) {
+	// colspan이 에러라 열 수를 셀 수 없다: 첫 행은 1칸으로 폴백되고 둘째 행은 2칸이지만,
+	// 격자 검증은 건너뛴다.
+	inner := `<tr><td colspan="0">a</td></tr><tr><td>b</td><td>c</td></tr>`
+	_, diags := resolveSlide(t, tableSlide("", inner))
+	if len(diags) != 1 {
+		t.Fatalf("진단 %d개, want 1개(span 에러만): %v", len(diags), diags)
+	}
+	if !strings.Contains(diags[0].Message, "1 이상 정수") {
+		t.Errorf("진단 = %q, want span 에러 하나", diags[0].Message)
+	}
+}
+
 // TestResolveTableCellAttrCoverage는 값 층이 셀 속성 카탈로그(soml.TableCellAttrs) 전체를
 // 덮는지 못 박는다 — 파서가 연 속성을 값 층이 해석하지 않으면 저자가 쓴 외관이 조용히
 // 사라진다 (도형 속성 커버리지 테스트와 같은 장치).
 func TestResolveTableCellAttrCoverage(t *testing.T) {
 	// 각 속성에 유효한 값을 하나씩 실어, 진단 없이 확정 외관에 흔적을 남기는지 본다.
 	values := map[string]string{
-		"colspan": "2",
-		"rowspan": "2",
-		"fill":    "surface",
-		"border":  "2 solid fg",
-		"color":   "accent1",
-		"align":   "center",
-		"anchor":  "bottom",
+		"fill":   "surface",
+		"border": "2 solid fg",
+		"color":  "accent1",
+		"align":  "center",
+		"anchor": "bottom",
+	}
+	// 병합 속성은 값만으로 쓸 수 없다 — 격자가 맞아야 하므로(checkTableGrid) 표 전체를 준다.
+	grids := map[string]string{
+		"colspan": `<tr><td colspan="2">x</td></tr><tr><td>a</td><td>b</td></tr>`,
+		"rowspan": `<tr><td rowspan="2">x</td><td>a</td></tr><tr><td>b</td></tr>`,
 	}
 	for _, attr := range soml.TableCellAttrs() {
-		value, ok := values[attr]
+		inner, ok := grids[attr]
 		if !ok {
-			t.Errorf("셀 속성 %q의 해석 테스트가 없다", attr)
-			continue
+			value, found := values[attr]
+			if !found {
+				t.Errorf("셀 속성 %q의 해석 테스트가 없다", attr)
+				continue
+			}
+			inner = "<tr><td " + attr + `="` + value + `">x</td></tr>`
 		}
 		t.Run(attr, func(t *testing.T) {
-			inner := "<tr><td " + attr + `="` + value + `">x</td></tr>`
 			if _, diags := resolveSlide(t, tableSlide("", inner)); len(diags) != 0 {
 				t.Errorf("%q 해석에 진단이 났다: %v", attr, diags)
 			}
