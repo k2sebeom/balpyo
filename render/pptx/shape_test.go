@@ -232,6 +232,24 @@ func TestRenderTextEscapesXML(t *testing.T) {
 	}
 }
 
+// 원문의 문자 참조는 해석된 뒤 `a:t`에서 **한 번** XML 이스케이프된다 (ADR 0037) —
+// `&lt;`(원문) → `<`(모델) → `&lt;`(a:t). 두 번 이스케이프되면 PowerPoint에 `&lt;`가 보인다.
+func TestRenderCharRefsEscapeOnceInPPTX(t *testing.T) {
+	deck := resolvedDeck(t, `<slide>
+  <text>&lt;slide id=&quot;x&quot;&gt; &amp; a &lt; b</text>
+</slide>`)
+	g := measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 1152, H: 36})
+	xml := slideXML(t, deck, g)
+
+	want := `<a:t>&lt;slide id=&quot;x&quot;&gt; &amp; a &lt; b</a:t>`
+	if !strings.Contains(xml, want) {
+		t.Errorf("slide1.xml에 %q가 없다\n%s", want, xml)
+	}
+	if strings.Contains(xml, "&amp;lt;") {
+		t.Errorf("문자 참조가 두 번 이스케이프됐다\n%s", xml)
+	}
+}
+
 // 원문 개행은 파서가 공백으로 접는다 — 웹과 PPTX가 **같은 문자열**을 받아야 줄 수가
 // 갈라지지 않는다 (픽스처 002의 본문이 이 경우다). 한쪽이 a:br을 내고 다른 쪽이 접으면
 // 두 타깃의 줄바꿈이 달라진다.

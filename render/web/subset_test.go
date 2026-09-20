@@ -242,8 +242,31 @@ func TestRenderPreProtectsLeadingNewline(t *testing.T) {
 	}
 }
 
+// 원문의 문자 참조는 **한 번만** 이스케이프되어 나간다 (ADR 0037): `&lt;`(원문) →
+// `<`(모델) → `&lt;`(HTML). 두 번 이스케이프되면 화면에 `&lt;`가 그대로 보인다 — 도그푸딩
+// 덱이 자기 문법을 못 띄운 D1이 정확히 그 증상이었다.
+func TestRenderCharRefsEscapeOnce(t *testing.T) {
+	out := renderString(t, subsetDeck(t, `
+  <p>&lt;slide id=&quot;x&quot;&gt; &amp; a &lt; b</p>
+  <pre><![CDATA[<text role="title">제목</text>]]></pre>
+  <p>비교: a &lt; b, 리터럴: R&D</p>`))
+	for _, want := range []string{
+		`&lt;slide id=&#34;x&#34;&gt; &amp; a &lt; b`,
+		`&lt;text role=&#34;title&#34;&gt;제목&lt;/text&gt;`,
+		`비교: a &lt; b, 리터럴: R&amp;D`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("%q가 없다:\n%s", want, stageOf(t, out))
+		}
+	}
+	if strings.Contains(out, "&amp;lt;") {
+		t.Errorf("문자 참조가 두 번 이스케이프됐다:\n%s", stageOf(t, out))
+	}
+}
+
 // 리스트·인라인이 섞인 텍스트도 이스케이프된다 — 저자 텍스트가 태그로 새면 안 된다.
-// (SOML은 엔티티를 해석하지 않으므로 원문에 `<`를 실을 수 없다 — 트리를 손으로 만든다.)
+// (트리를 손으로 만들어 해석되지 않은 원문 문자가 그대로 온 경우를 본다 — 참조 경로는
+// TestRenderCharRefsEscapeOnce가 본다.)
 func TestRenderEscapesSubsetText(t *testing.T) {
 	deck := contentDeck()
 	style := bodyStyle()
