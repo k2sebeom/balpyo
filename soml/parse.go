@@ -322,6 +322,7 @@ func (p *parser) parseDocument() *Element {
 			}
 			parent := parentOf(stack)
 			p.checkPlacement(elem, stack, root)
+			p.checkRendered(elem, stack)
 			switch {
 			case parent != nil:
 				parent.Children = append(parent.Children, elem)
@@ -666,6 +667,33 @@ func (p *parser) checkPlacement(elem *Element, stack []*Element, root *Element) 
 	}
 	p.errorf(elem.NameSpan, "<%s>의 자식으로 <%s>는 올 수 없다 (쓸 수 있는 태그: %s)",
 		parent.Name, elem.Name, tagList(spec.children))
+}
+
+// UnrenderedVocabMessage는 "렌더러가 아직 그리지 못하는 어휘" 진단의 핵 문구다. 상수로
+// 두는 이유는 진단을 내는 곳과 걸러 보는 곳(파서·값 층의 테스트 — 표 어휘는 이 두 층까지
+// 열려 있다)이 같은 문자열을 쓰게 하는 것이다.
+const UnrenderedVocabMessage = "아직 구현되지 않은 어휘다"
+
+// checkRendered는 렌더러가 아직 그리지 못하는 어휘를 **파스 시점에** 막는다.
+//
+// 표를 다 쓴 뒤 렌더 단계에서 빌드가 죽는 것은 진단의 실패였다 (TASKS P0.2의 D2): 저자는
+// 자기 문서가 유효한 줄 알고 30줄을 썼고, 실패는 파일 이름도 줄 번호도 없는 렌더 에러로
+// 왔다. 어휘 카탈로그(KindRendered)가 그 사실을 이미 알고 있으므로 태그가 있는 자리에서
+// 말한다 — 같은 목록을 렌더러 디스패치와 대조하는 테스트가 카탈로그와 렌더러가 갈라지는
+// 것을 막는다 (render 패키지).
+func (p *parser) checkRendered(elem *Element, stack []*Element) {
+	if KindRendered(KindOf(elem.Name)) {
+		return
+	}
+	// 표 하나가 진단 여럿이 되지 않게 **가장 바깥 요소에서만** 말한다 — `<table>` 안의
+	// `<tr>`·`<td>`는 같은 사실의 반복이고, 저자가 고칠 것은 하나다.
+	for _, open := range stack {
+		if !KindRendered(KindOf(open.Name)) {
+			return
+		}
+	}
+	p.errorf(elem.NameSpan, "<%s>는 %s — 파서와 값 층은 알지만 웹·PPTX 렌더러가 아직 그리지 못한다 (렌더 중에 죽지 않게 여기서 막는다)",
+		elem.Name, UnrenderedVocabMessage)
 }
 
 // checkAttrName은 속성 이름이 태그의 닫힌 어휘 안에 있는지 본다. 값은 보지 않는다.
