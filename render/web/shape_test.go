@@ -2,6 +2,7 @@ package web
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 
@@ -232,6 +233,92 @@ func TestShapeAdjustSpecsMatchStretchedGeometry(t *testing.T) {
 		// 빈 목록(조정값 없는 프리셋)과 구별되어야 PPTX가 "어휘에 있는데 표에 없는 프리셋"에서
 		// 멈출 수 있다.
 		t.Error("어휘 밖 type에 조정값 명세가 있다")
+	}
+}
+
+// 텍스트 영역 표는 **프리셋 정의의 `<rect>`**이고 웹만 읽는다 (ADR 0040).
+//
+// 표를 두 벌로 적는 이유는 조정값 명세와 같다: 인셋이 틀려도 **파일은 열리고** 도형도 그려진다 —
+// 글자가 실루엣을 가로지르거나 LibreOffice와 다른 자리에 앉는 것으로만 드러나고, 그 판정은
+// 브라우저와 LibreOffice가 함께 필요한 픽셀 테스트에만 있다 (internal/testkit).
+func TestShapeTextRectsMatchPresetDefinitions(t *testing.T) {
+	roundRect := 1 - math.Sqrt2/2
+	want := map[string]ShapeInsets{
+		"rect":          {},
+		"rounded-rect":  {Radius: roundRect},
+		"ellipse":       {L: 14.6447, T: 14.6447, R: 14.6447, B: 14.6447},
+		"diamond":       {L: 25, T: 25, R: 25, B: 25},
+		"cylinder":      {T: 25, B: 12.5},
+		"chevron":       {},
+		"arrow-right":   {T: 25, R: 25, B: 25},
+		"hexagon":       {L: 16.6667, T: 16.6667, R: 16.6667, B: 16.6667},
+		"parallelogram": {L: 18.75, T: 18.75, R: 18.75, B: 18.75},
+		"callout":       {},
+		"star":          {L: 30.902, T: 38.1968, R: 30.902, B: 23.6073},
+		"cloud":         {L: 13.7824, T: 15.1019, R: 20.8935, B: 19.7361},
+	}
+	for _, geom := range shapeGeometries() {
+		insets, ok := ShapeTextRect(geom.Type)
+		if !ok {
+			t.Fatalf("ShapeTextRect(%q)가 표에 없다", geom.Type)
+		}
+		if insets != want[geom.Type] {
+			t.Errorf("%q의 텍스트 영역 = %+v, want %+v", geom.Type, insets, want[geom.Type])
+		}
+		if insets != geom.TextRect {
+			t.Errorf("%q: 내보낸 인셋이 표의 열과 다르다", geom.Type)
+		}
+		// 반경 비례 인셋은 반경을 받는 프리셋에만 있다 — 갈라지면 반경이 없는 도형에서 0이
+		// 곱해져 조용히 사라지거나, 반경이 있는데 인셋이 없어 웹만 글자가 모서리에 붙는다.
+		if (insets.Radius != 0) != geom.Rounded {
+			t.Errorf("%q: 반경 비례 인셋 = %v인데 Rounded = %v", geom.Type, insets.Radius != 0, geom.Rounded)
+		}
+		if insets.HasPercent() != (insets.L != 0 || insets.T != 0 || insets.R != 0 || insets.B != 0) {
+			t.Errorf("%q: HasPercent가 백분율 인셋과 어긋난다 (%+v)", geom.Type, insets)
+		}
+	}
+	if _, ok := ShapeTextRect("triangle"); ok {
+		t.Error("어휘 밖 type에 텍스트 영역이 있다")
+	}
+}
+
+// Px는 백분율을 **잰 박스** 기준으로 푼다 — 그 기준이 CSS(절대 배치)와 테스트(잰 rect)에
+// 한 번만 적혀야 두 소비자가 같은 사각형을 본다.
+func TestShapeInsetsPxResolvesAgainstTheBox(t *testing.T) {
+	insets := ShapeInsets{L: 25, T: 10, R: 50, B: 5, Radius: 0.5}
+	left, top, right, bottom := insets.Px(200, 100, 8)
+	// 가로는 폭, 세로는 높이 기준이고 반경 몫(0.5×8 = 4px)이 네 변에 같이 더해진다.
+	if left != 54 || top != 14 || right != 104 || bottom != 9 {
+		t.Errorf("Px = %v %v %v %v, want 54 14 104 9", left, top, right, bottom)
+	}
+	if (ShapeInsets{}).HasPercent() {
+		t.Error("빈 인셋이 백분율을 가진다고 한다")
+	}
+}
+
+// 텍스트 영역은 **박스 안**에 있다 (인셋이 음수가 아니고 마주 보는 두 인셋의 합이 100% 미만).
+//
+// 왜 이것만 단정하는가: "네 꼭짓점이 실루엣 안에 있다"는 더 강한 성질은 **프리셋 정의에서
+// 성립하지 않는다** — parallelogram의 rect는 사선을 1.6%p 넘어가고(18.75% 대 접점 20.31%),
+// diamond·arrow-right·chevron·callout의 변은 실루엣에 정확히 닿는다. 프리셋의 rect는 실루엣의
+// 내접 사각형이 아니라 **PowerPoint가 정한 본문 영역**이고, 우리 일은 그것을 웹에서 같게
+// 재현하는 것이다 (그래서 이 열은 유도가 아니라 정의를 옮긴 것이고, 실측이 그 짝을 확인한다).
+func TestShapeTextRectsStayInsideTheBox(t *testing.T) {
+	for _, geom := range shapeGeometries() {
+		in := geom.TextRect
+		for name, value := range map[string]float64{"l": in.L, "t": in.T, "r": in.R, "b": in.B} {
+			if value < 0 {
+				t.Errorf("%s: %s 인셋이 음수다 (%v) — 텍스트 영역이 박스 밖으로 나간다", geom.Type, name, value)
+			}
+		}
+		if in.L+in.R >= 100 || in.T+in.B >= 100 {
+			t.Errorf("%s: 마주 보는 인셋의 합이 100%%를 넘는다 (%+v) — 텍스트 영역이 뒤집힌다", geom.Type, in)
+		}
+		// 반경 비례가 0.5를 넘으면 반경이 짧은 변의 절반일 때(완전한 반원) 인셋이 변의 절반을
+		// 넘어 영역이 사라진다.
+		if in.Radius < 0 || in.Radius > 0.5 {
+			t.Errorf("%s: 반경 비례 %v가 0~0.5 밖이다", geom.Type, in.Radius)
+		}
 	}
 }
 

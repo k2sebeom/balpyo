@@ -169,6 +169,8 @@ type shapeGeometry struct {
 	// 보정이 한곳에 있어야 나중에 한쪽만 바뀌지 않기 때문이다 — 평가는 PPTX 렌더러가 잰
 	// 박스로 한다 (ShapeAdjusts → render/pptx.AdjustValue).
 	Adjust []ShapeAdjust
+	// TextRect는 프리셋의 **텍스트 영역**이다 (ADR 0040) — 비어 있으면 박스 전체다.
+	TextRect ShapeInsets
 }
 
 // ShapeAdjustAxis는 조정값 비율의 분자다 — 늘린 정규 공간을 되돌리는 값의 출처.
@@ -208,15 +210,72 @@ type ShapeAdjust struct {
 	Max float64
 }
 
+// ShapeInsets는 프리셋의 텍스트 영역이다 — 도형 박스에서 **글자가 쓸 수 있는 사각형**
+// (OOXML 프리셋 정의의 `<rect>`, ADR 0040).
+//
+// 왜 필요한가: PowerPoint·LibreOffice는 프리셋마다 이 사각형을 갖고 있고 우리가 끄거나 바꿀
+// 수단이 없다. 웹이 박스 전체에 글을 흘리면 같은 SOML에서 줄바꿈 위치와 줄 수가 갈라진다
+// (`diamond`는 박스의 절반이 텍스트 영역이다). 그래서 **웹이 이 표를 읽어 맞추고 PPTX는
+// 아무것도 하지 않는다** — 두 번 들어가는 것을 막는 유일한 길이고, 대신 프리셋 12종의 잉크를
+// 두 타깃에서 견주는 픽셀 테스트가 그 짝을 지킨다 (testkit).
+//
+// 백분율인 이유는 조정값 보정(ShapeAdjust) 덕분에 실루엣이 어느 종횡비에서도 박스를 같은
+// 비율로 나누기 때문이다 — 실측이 400×400·560×320·320×560에서 ±0.3% 안으로 일치한다.
+type ShapeInsets struct {
+	// L·T·R·B는 도형 박스에 대한 **백분율** 인셋이다 (0이면 그 변이 곧 박스 변이다).
+	L, T, R, B float64
+	// Radius는 `radius` px에 곱해 네 변에 더하는 비율이다 (rounded-rect 하나).
+	//
+	// 백분율과 갈라지는 이유는 `radius`가 px이기 때문이고(ADR 0019·0017 — 반경은 늘림 없는 px
+	// 공간에 산다), 그 덕분에 rounded-rect는 인셋을 **패딩**으로 받을 수 있다: 내용이 높이를
+	// 정하는 카드가 그대로 산다. 백분율 인셋은 자기 박스 높이를 참조해야 하므로 그럴 수 없다.
+	Radius float64
+}
+
+// HasPercent는 백분율 인셋이 하나라도 있는지다 — 웹이 절대 배치 래퍼를 쓰는 조건이고
+// (백분율은 패딩으로 표현할 수 없다: CSS padding 백분율은 네 변 모두 **부모 폭** 기준이다),
+// 값 층이 도형에 확정 크기를 요구하는 조건이다.
+func (in ShapeInsets) HasPercent() bool {
+	return in.L != 0 || in.T != 0 || in.R != 0 || in.B != 0
+}
+
+// Px는 잰 박스와 반경으로 네 변의 px 인셋을 구한다 (왼·위·오른·아래 순서).
+//
+// 여기 두는 이유는 백분율의 **기준**(도형 박스 = 테두리 상자)이 한 곳에만 적혀야 하기
+// 때문이다 — CSS는 절대 배치로, 테스트는 잰 rect로 같은 사각형을 구하고, 두 식이 갈라지면
+// 테스트가 자기 구현을 확인하게 된다.
+func (in ShapeInsets) Px(w, h, radius float64) (left, top, right, bottom float64) {
+	edge := in.Radius * radius
+	return in.L*w/100 + edge, in.T*h/100 + edge, in.R*w/100 + edge, in.B*h/100 + edge
+}
+
+// ShapeTextRect는 프리셋의 텍스트 영역이다 — ok=false는 모르는 `type`이다 (ShapeAdjusts와
+// 같은 계약: 빈 인셋(= 박스 전체)과 구별되어야 소비자가 "어휘에 있는데 표에 없는 프리셋"에서
+// 멈출 수 있다).
+func ShapeTextRect(shapeType string) (ShapeInsets, bool) {
+	geom, err := shapeGeometryOf(shapeType)
+	if err != nil {
+		return ShapeInsets{}, false
+	}
+	return geom.TextRect, true
+}
+
 // shapeGeometries는 12종의 기하 유도표다 (순서 = soml.ShapeTypes의 순서 = PRD §7.5 표 순서).
 //
 // 각 행의 수치는 ECMA-376 `presetShapeDefinitions.xml`의 해당 프리셋을 **기본 조정값으로,
 // 정사각형(w = h = ss = 100)에서** 평가한 것이다. 주석에 어느 `gd`에서 왔는지 적었다 —
 // 그 줄이 없으면 다음 사람이 수치를 눈대중으로 고치게 된다.
+//
+// TextRect(텍스트 영역)는 같은 프리셋 정의의 `<rect>`에서 오고, 각 행 주석의 **실측**은
+// LibreOffice 렌더의 글자 위치에서 잰 값이다 (같은 도형 둘을 나란히 두고 한쪽은 왼·위,
+// 다른 쪽은 오른·아래로 글자 하나를 밀어 네 변을 각각 잰다 — 400×400 도형에서 px).
+// 유도와 실측을 함께 적는 이유는 이 열이 **우리가 그린 실루엣**과 프리셋 정의 양쪽에 맞아야
+// 하기 때문이다: 한쪽만 맞으면 두 타깃의 글자가 갈라진다 (ADR 0040).
 func shapeGeometries() []shapeGeometry {
 	return []shapeGeometry{
 		{
 			// rect: 경로가 곧 박스다 (l,t → r,t → r,b → l,b).
+			// 텍스트 영역: 프리셋의 rect가 박스 전체다 (실측 네 변 0).
 			Type: "rect", Preset: "rect", Space: spacePixel,
 			Element: "rect", Attrs: `width="100%" height="100%"`,
 		},
@@ -228,18 +287,28 @@ func shapeGeometries() []shapeGeometry {
 			// adj를 `pin 0 adj 50000`으로 자르는 지점이고(짧은 변의 절반 = 완전한 반원),
 			// 브라우저가 `rx`를 박스 절반으로 자르는 것과 같은 규칙이다.
 			Type: "rounded-rect", Preset: "roundRect", Space: spacePixel,
+			// 텍스트 영역: 모서리 원호에 내접하는 사각형이라 네 변이 `r − r/√2 = 0.29289r` **px**이다
+			// (백분율이 아니다 — 반경이 px이므로). 실측 radius=12에서 3~4px(예측 3.51), radius=32에서
+			// 9~10px(예측 9.37). px이라 패딩으로 받을 수 있고, 그래서 내용이 높이를 정하는 카드가
+			// 그대로 산다 — 백분율 인셋 프리셋은 자기 박스 높이를 참조해야 해서 그럴 수 없다.
 			Element: "rect", Attrs: `width="100%" height="100%"`, Rounded: true,
-			Adjust: []ShapeAdjust{RoundRectAdjust()},
+			TextRect: ShapeInsets{Radius: 1 - math.Sqrt2/2},
+			Adjust:   []ShapeAdjust{RoundRectAdjust()},
 		},
 		{
 			// ellipse: 프리셋은 wR = wd2, hR = hd2의 원호 넷 — 박스에 내접하는 타원이다.
+			// 텍스트 영역: 그 타원에 내접하는 사각형이라 네 변이 `(1 − √2/2)/2` = 14.6447%다
+			// (실측 58~59px / 400 = 14.5~14.8%).
 			Type: "ellipse", Preset: "ellipse", Space: spacePixel,
 			Element: "ellipse", Attrs: `cx="50%" cy="50%" rx="50%" ry="50%"`,
+			TextRect: ShapeInsets{L: 14.6447, T: 14.6447, R: 14.6447, B: 14.6447},
 		},
 		{
 			// diamond: (l,vc) → (hc,t) → (r,vc) → (hc,b). 조정값이 없다 (순수 비율).
+			// 텍스트 영역: 변의 중점 넷을 이은 내접 사각형 = 안쪽 절반 (실측 100~101px = 25.0%).
 			Type: "diamond", Preset: "diamond", Space: spaceNormalized,
-			Paths: []shapePath{{D: "M0,50 L50,0 L100,50 L50,100 Z"}},
+			Paths:    []shapePath{{D: "M0,50 L50,0 L100,50 L50,100 Z"}},
+			TextRect: ShapeInsets{L: 25, T: 25, R: 25, B: 25},
 		},
 		{
 			// can: `adj=25000` → `y1 = ss·adj/200000` = 12.5가 뚜껑 타원의 세로 반지름이고
@@ -254,13 +323,20 @@ func shapeGeometries() []shapeGeometry {
 				{D: "M0,12.5 A50,12.5 0 0 1 100,12.5 L100,87.5 A50,12.5 0 0 1 0,87.5 Z"},
 				{D: "M100,12.5 A50,12.5 0 0 1 0,12.5 A50,12.5 0 0 1 100,12.5", Overlay: true},
 			},
-			Adjust: []ShapeAdjust{{Name: "adj", Base: 25000, Axis: AdjustAxisHeight}},
+			// 텍스트 영역: 위는 뚜껑 타원 **전체**(2·y1 = 25%) 아래, 아래는 바닥 반타원(y1 = 12.5%)
+			// 위다 — 좌우는 변이 곧 박스다 (실측 t 100px = 25.0% · b 50px = 12.5% · l/r 0). 세
+			// 종횡비에서 같은 비율이다 (h=320에서 80/40px, h=560에서 140/70px).
+			Adjust:   []ShapeAdjust{{Name: "adj", Base: 25000, Axis: AdjustAxisHeight}},
+			TextRect: ShapeInsets{T: 25, B: 12.5},
 		},
 		{
 			// chevron: `adj=50000` → `x1 = ss·adj/100000` = 50(노치 깊이), `x2 = r - x1`.
 			// 경로는 (l,t) → (x2,t) → (r,vc) → (x2,b) → (l,b) → (x1,vc).
 			// Adjust: adj = 50000·w/ss (프리셋의 maxAdj = 100000·w/ss라 언제나 그 절반이다).
 			Type: "chevron", Preset: "chevron", Space: spaceNormalized,
+			// 텍스트 영역: **박스 전체**다. 프리셋의 rect는 `x1`~`x2`인데 우리가 내는 조정값
+			// (adj = 50000·w/ss)은 가로 도형에서 maxAdj에 걸려 `x1 = x2`가 되고, 폭 0인 rect를 만난
+			// 뷰어는 박스로 되돌린다 (실측이 rect 행과 같은 값을 준다 — ADR 0040).
 			Paths:  []shapePath{{D: "M0,0 L50,0 L100,50 L50,100 L0,100 L50,50 Z"}},
 			Adjust: []ShapeAdjust{{Name: "adj", Base: 50000, Axis: AdjustAxisWidth}},
 		},
@@ -271,8 +347,11 @@ func shapeGeometries() []shapeGeometry {
 			// Adjust: adj1은 h 기준이라 프리셋 기본값 그대로 두고(avLst에 적지 않으면 기본값이
 			// 산다), adj2 = 50000·w/ss만 싣는다.
 			Type: "arrow-right", Preset: "rightArrow", Space: spaceNormalized,
-			Paths:  []shapePath{{D: "M0,25 L50,25 L50,0 L100,50 L50,100 L50,75 L0,75 Z"}},
-			Adjust: []ShapeAdjust{{Name: "adj2", Base: 50000, Axis: AdjustAxisWidth}},
+			// 텍스트 영역: 축 띠(`y1`~`y2` = 위아래 25%)이고 오른쪽은 머리가 시작하는 `x1`(= 75%w)이다
+			// — 왼쪽은 변이 곧 박스다 (실측 t/b 100·95px ≈ 25% · r 101px = 25.2%).
+			Paths:    []shapePath{{D: "M0,25 L50,25 L50,0 L100,50 L50,100 L50,75 L0,75 Z"}},
+			Adjust:   []ShapeAdjust{{Name: "adj2", Base: 50000, Axis: AdjustAxisWidth}},
+			TextRect: ShapeInsets{T: 25, R: 25, B: 25},
 		},
 		{
 			// hexagon: `adj=25000` → `x1 = ss·adj/100000` = 25, `x2 = r - x1`.
@@ -280,16 +359,25 @@ func shapeGeometries() []shapeGeometry {
 			// 같아져 `y1 = t`·`y2 = b`가 된다 (기본 육각형은 박스 높이를 꽉 채운다).
 			// Adjust: adj = 25000·w/ss (프리셋의 maxAdj = 50000·w/ss 안이다).
 			Type: "hexagon", Preset: "hexagon", Space: spaceNormalized,
-			Paths:  []shapePath{{D: "M0,50 L25,0 L75,0 L100,50 L75,100 L25,100 Z"}},
-			Adjust: []ShapeAdjust{{Name: "adj", Base: 25000, Axis: AdjustAxisWidth}},
+			// 텍스트 영역: 왼위 사선을 비율 좌표로 쓰면 `u = ¼(1 − 2v)`이고, 네 변이 같은 비율 d로
+			// 들어오는 점은 `d = ¼ − ½d` → `d = ⅙` = 16.6667%다 (비율 공간의 식이라 종횡비에
+			// 무관하다 — 실측 66~67px = 16.5~16.8%).
+			Paths:    []shapePath{{D: "M0,50 L25,0 L75,0 L100,50 L75,100 L25,100 Z"}},
+			Adjust:   []ShapeAdjust{{Name: "adj", Base: 25000, Axis: AdjustAxisWidth}},
+			TextRect: ShapeInsets{L: 16.6667, T: 16.6667, R: 16.6667, B: 16.6667},
 		},
 		{
 			// parallelogram: `adj=25000` → `x2 = ss·adj/100000` = 25(기울기), `x5 = r - x2`.
 			// 경로는 (l,b) → (x2,t) → (r,t) → (x5,b).
 			// Adjust: adj = 25000·w/ss (프리셋의 maxAdj = 100000·w/ss 안이다).
 			Type: "parallelogram", Preset: "parallelogram", Space: spaceNormalized,
-			Paths:  []shapePath{{D: "M0,100 L25,0 L100,0 L75,100 Z"}},
-			Adjust: []ShapeAdjust{{Name: "adj", Base: 25000, Axis: AdjustAxisWidth}},
+			// 텍스트 영역: 기울기 `x2`(25%)의 ¾ = 18.75%가 네 변이다 (실측 74~76px = 18.5~19.0%).
+			// 사선에 **닿지 않는다** — 왼위 사선은 `u = ¼(1 − v)`이라 v = 18.75%에서 u = 20.31%이고,
+			// 그래서 이 rect의 두 꼭짓점은 실루엣을 1.6%p 넘어간다. 프리셋의 rect는 내접 사각형이
+			// 아니라 PowerPoint가 정한 본문 영역이라는 증거다 (테스트가 그 성질을 단정한다).
+			Paths:    []shapePath{{D: "M0,100 L25,0 L100,0 L75,100 Z"}},
+			Adjust:   []ShapeAdjust{{Name: "adj", Base: 25000, Axis: AdjustAxisWidth}},
+			TextRect: ShapeInsets{L: 18.75, T: 18.75, R: 18.75, B: 18.75},
 		},
 		{
 			// wedgeRectCallout: `adj1=-20833`·`adj2=62500` → 꼬리 끝이
@@ -297,6 +385,7 @@ func shapeGeometries() []shapeGeometry {
 			// 아래 변의 `2w/12`~`5w/12`다 (`dxPos<0`·`dyPos>0`·`dz>0`에서 고른 xg/yg 조건).
 			// 나머지 꼭짓점은 사각형 변 위에서 겹쳐 사라진다 (프리셋의 16점 중 7점만 남는다).
 			// 꼬리 끝이 박스 아래로 12.5% 나가므로 svg가 `overflow: visible`이어야 한다.
+			// 텍스트 영역: 본문은 사각형 전체다 — 꼬리는 박스 밖이므로 인셋이 없다 (실측이 rect 행과 같다).
 			Type: "callout", Preset: "wedgeRectCallout", Space: spaceNormalized,
 			Paths: []shapePath{{D: "M0,0 L100,0 L100,100 L41.6667,100 L29.167,112.5 L16.6667,100 L0,100 Z"}},
 		},
@@ -305,9 +394,14 @@ func shapeGeometries() []shapeGeometry {
 			// 꼭짓점은 `dx1 = swd2·cos18°`·`dy1 = shd2·sin18°`, 안쪽 점은
 			// `iwd2 = swd2·adj/50000`에서 나온다 — 0.0001이 남는 것은 프리셋 계수가 정확한
 			// 별 비율의 근사값이기 때문이고, 그 잔차가 이 수치의 출처를 증명한다.
+			// 텍스트 영역: 안쪽 오각형의 bbox다 — 위 두 안쪽 점(38.1968), 아래 점(76.3927), 좌우 안쪽
+			// 점(30.902·69.098)이 곧 네 변이라 이 행의 경로 좌표를 그대로 읽는다 (실측 l/r 123~124px =
+			// 30.8~31.0% · t 153px = 38.25% · b 95px = 23.75%). bbox의 아래 두 꼭짓점은 오각형 밖이지만
+			// **별 안쪽**이다 (아래 팔이 덮는다).
 			Type: "star", Preset: "star5", Space: spaceNormalized,
 			Paths: []shapePath{{D: "M0.0001,38.1965 L38.1968,38.1968 L50,0 L61.8032,38.1968 " +
 				"L99.9999,38.1965 L69.098,61.8031 L80.9016,99.9997 L50,76.3927 L19.0984,99.9997 L30.902,61.8031 Z"}},
+			TextRect: ShapeInsets{L: 30.902, T: 38.1968, R: 30.902, B: 23.6073},
 		},
 		{
 			// cloud: 프리셋은 43200×43200 경로 공간의 원호 11개다 (조정값 없음) — 좌표와
@@ -318,6 +412,10 @@ func shapeGeometries() []shapeGeometry {
 			// 마지막 원호가 시작점으로 정확히 돌아오지 않는 것은 프리셋 자체의 성질이고
 			// (`close`가 짧은 직선을 그린다) PowerPoint도 같은 자리를 같게 그린다.
 			// 둘째 경로는 프리셋의 `fill="none"` 경로 — 구름 안쪽 선이다.
+			// 텍스트 영역: 프리셋의 rect가 경로와 같은 21600 공간의 유리수로 적혀 있다 (l 2977 ·
+			// t 3262 · r 17087 · b 17337 → 아래 백분율). 구름은 원호 열하나라 기하로 유도할 형태가
+			// 없고, 실측이 세 종횡비에서 이 값과 0.3% 안으로 맞는다 (400×400에서 l 55 · t 60 · r 83 ·
+			// b 79px).
 			Type: "cloud", Preset: "cloud", Space: spaceNormalized,
 			Paths: []shapePath{
 				{D: "M9.0278,33.2639 A15.6319,21.2731 0 0 1 30.58,9.8525 A12.3449,16.8218 0 0 1 47.8089,6.0796 " +
@@ -338,6 +436,7 @@ func shapeGeometries() []shapeGeometry {
 					"M32.4074,12.0185 A15.6319,21.2731 0 0 1 35.3285,14.2633 " +
 					"M9.5532,36.5486 A15.6319,21.2731 0 0 1 8.6405,32.3329", Overlay: true},
 			},
+			TextRect: ShapeInsets{L: 13.7824, T: 15.1019, R: 20.8935, B: 19.7361},
 		},
 	}
 }
