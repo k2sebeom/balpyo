@@ -126,6 +126,41 @@ func TestLibreOfficeScriptSpacingIsQuarterEmPerBoundary(t *testing.T) {
 	}
 }
 
+// 웹이 스크립트 간격을 **끈 상태로** 잰다는 계약 (render/web의 `.balpyo-stage`).
+//
+// 선언이 산출물에 있는지는 단위 테스트가 보고(TestRenderStagePinsScriptSpacing), 여기서는
+// **브라우저가 그것을 받았는지**를 본다: 오타나 뒤 층의 재정의로 값이 죽으면 CSS 문자열
+// 검사는 통과하고 잰 폭만 조용히 움직인다. 지금 브라우저는 속성을 파싱하지만 간격을 넣지
+// 않으므로(측정: `normal`과 `no-autospace`의 폭이 같다) 이 테스트는 오늘의 그림을 지키는
+// 것이 아니라 **내일 브라우저가 기본값을 켤 때** 잰 폭이 움직이지 않게 못 박는다.
+func TestBrowserHonorsTheScriptSpacingPin(t *testing.T) {
+	RequireChromium(t)
+	result := buildScriptSpacingProbe(t)
+
+	browser := NewBrowser(t)
+	browser.Load(t, filepath.Join(result.OutDir, web.IndexFile))
+	var got struct {
+		Supported bool   `json:"supported"`
+		Value     string `json:"value"`
+	}
+	browser.Eval(t, fmt.Sprintf(`(() => {
+  const stage = document.querySelector(%q);
+  return {supported: CSS.supports("text-autospace", "no-autospace"),
+          value: getComputedStyle(stage).textAutospace ?? ""};
+})()`, web.StageSelector()), &got)
+
+	if !got.Supported {
+		// 속성을 모르는 브라우저는 간격도 넣지 않는다 — 고정할 것이 아직 없다는 뜻이고,
+		// 속성이 생기는 버전에서 이 테스트가 판정을 시작한다.
+		t.Logf("브라우저가 text-autospace를 모른다 — 고정이 아직 뜻을 갖지 않는다")
+		return
+	}
+	if got.Value != "no-autospace" {
+		t.Errorf("스테이지의 text-autospace = %q, want %q — 잰 폭이 브라우저 기본값에 실려 있다",
+			got.Value, "no-autospace")
+	}
+}
+
 // buildScriptSpacingProbe는 탐침 프로젝트를 임시 디렉토리에 만들어 두 타깃으로 빌드한다.
 //
 // 픽스처로 두지 않는 이유: 이 슬라이드는 저작 어휘를 보여 주지 않고 **뷰어를 재는 계측기**다

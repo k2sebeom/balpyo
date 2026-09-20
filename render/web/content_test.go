@@ -201,6 +201,17 @@ func TestRenderStageStacksChildren(t *testing.T) {
 	}
 }
 
+// 잰 폭은 브라우저의 기본값에 기대지 않는다 — 스테이지가 스크립트 간격을 **끈 상태로**
+// 못 박는다. 이 한 선언이 없으면 브라우저가 한글↔라틴 경계에 1/4 em을 넣기 시작하는 날
+// (CSS Text 4의 `text-autospace`) 모든 줄의 잰 폭이 움직이고, 그 폭이 곧 PPTX 좌표라
+// 산출물이 조용히 다시 접힌다 (D11 — docs/guides/known-differences.md).
+func TestRenderStagePinsScriptSpacing(t *testing.T) {
+	css := between(t, renderString(t, contentDeck()), "<style>", "</style>")
+	if !strings.Contains(css, "text-autospace: no-autospace;") {
+		t.Errorf("스테이지 CSS에 스크립트 간격 고정이 없다:\n%s", css)
+	}
+}
+
 // stageOf는 첫 슬라이드의 스테이지 안쪽 HTML이다. 스테이지 닫는 태그는 그 자체로 한 줄이고
 // 텍스트 블록은 내용까지 한 줄에 담기므로 줄 단위로 구간을 잘라낼 수 있다.
 func stageOf(t *testing.T, out string) string {
