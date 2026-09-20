@@ -226,7 +226,7 @@ func Render(deck *soml.Deck, opts Options) (map[render.Target]render.Files, *geo
 // 판정을 pptx 렌더러와 같은 기준(geom.Refs가 비었는가)으로 두는 이유: 여기서는 재지 않기로
 // 했는데 렌더러는 좌표를 요구하면 빈 슬라이드 프로젝트가 브라우저 없이 못 돌아간다.
 func needsGeometry(deck *soml.Deck, targets []render.Target, checkLayout bool) bool {
-	if len(geom.Refs(deck)) == 0 {
+	if len(geom.Refs(deck)) == 0 && !deckHasChrome(deck) {
 		return false
 	}
 	if checkLayout {
@@ -234,6 +234,19 @@ func needsGeometry(deck *soml.Deck, targets []render.Target, checkLayout bool) b
 	}
 	for _, target := range targets {
 		if target == render.TargetPPTX {
+			return true
+		}
+	}
+	return false
+}
+
+// deckHasChrome은 확정된 덱 크롬이 실린 슬라이드가 있는지다 (ADR 0045).
+//
+// 크롬도 잰 좌표를 쓰므로(PPTX가 rect에 도형을 놓는다) 콘텐츠가 없는 슬라이드만 있는 덱도
+// 크롬을 켜면 측정이 필요하다 — 판정을 pptx.checkGeometry와 같은 기준으로 둔다.
+func deckHasChrome(deck *soml.Deck) bool {
+	for _, slide := range deck.Slides {
+		if len(slide.Chrome) > 0 {
 			return true
 		}
 	}

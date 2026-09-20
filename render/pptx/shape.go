@@ -85,6 +85,11 @@ func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, *s
 			return "", nil, err
 		}
 	}
+	// 덱 크롬은 콘텐츠 뒤다 (ADR 0045) — 확정 모델이 비어 있으면 아무것도 나가지 않으므로
+	// 크롬을 켜지 않은 덱의 바이트가 움직이지 않는다 (chrome.go).
+	if err := writeChromeShapes(&b, deck, slide, &id, g); err != nil {
+		return "", nil, err
+	}
 	return b.String(), rels, nil
 }
 

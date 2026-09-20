@@ -92,12 +92,23 @@ func (r *Renderer) Render(deck *soml.Deck) (render.Files, error) {
 // 빈 슬라이드 픽스처는 브라우저 없이 돈다 (internal/pipeline이 같은 판정을 쓴다).
 func (r *Renderer) checkGeometry(deck *soml.Deck) error {
 	refs := geom.Refs(deck)
-	if len(refs) == 0 {
+	// 덱 크롬도 잰 좌표를 쓴다 (ADR 0045) — 콘텐츠가 없는 슬라이드만 있는 덱도 크롬을 켜면
+	// 측정이 필요하다. 여기서 세지 않으면 그 덱이 "좌표가 없다"가 아니라 "크롬 rect가 없다"로
+	// 늦게 멈추고, 그 문장은 저자에게 무엇을 하라는 것인지 말해 주지 않는다.
+	chrome := 0
+	for _, slide := range deck.Slides {
+		chrome += len(slide.Chrome)
+	}
+	if len(refs) == 0 && chrome == 0 {
 		return nil
 	}
 	if r.geometry == nil {
-		return fmt.Errorf("좌표가 필요한 요소가 %d개인데 지오메트리가 없다 (%s) — 지오메트리 패스를 거치지 않았다",
-			len(refs), refs[0].Source)
+		source := deck.Slides[0].Source
+		if len(refs) > 0 {
+			source = refs[0].Source
+		}
+		return fmt.Errorf("좌표가 필요한 요소가 %d개(덱 크롬 %d개)인데 지오메트리가 없다 (%s) — 지오메트리 패스를 거치지 않았다",
+			len(refs), chrome, source)
 	}
 	// 잰 덱과 조립하는 덱이 다르면 좌표가 전부 엉뚱한 요소로 간다.
 	return r.geometry.Verify(deck)
