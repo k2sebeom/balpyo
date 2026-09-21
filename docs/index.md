@@ -117,7 +117,7 @@ my-talk/
 
 우선순위: **CLI 플래그 > `balpyo.json` > 기본값.**
 
-`footer`·`pageNumber`는 [덱 크롬](reference/theme.md#chrome)을 켠다 — 둘 다 기본은
+`footer`·`pageNumber`는 [덱 크롬](reference/theme.md#덱-크롬-chrome)을 켠다 — 둘 다 기본은
 꺼짐이고, 그 글자가 어디에 어떤 크기로 앉는지는 테마가 정한다.
 
 ---

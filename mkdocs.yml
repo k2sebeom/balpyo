@@ -126,6 +126,10 @@ markdown_extensions:
   - tables
   - toc:
       permalink: true
+      # 이 문서는 한국어라 기본 슬러그(비ASCII를 버린다)로는 제목 대부분의 앵커가 `_1`,
+      # `_2`가 된다 — 독자가 복사하는 퍼머링크가 뜻을 갖지 않고 제목을 하나 끼워 넣으면
+      # 번호가 밀린다. 유니코드 슬러그는 제목 글자를 그대로 앵커로 쓴다.
+      slugify: !!python/name:markdown.extensions.toc.slugify_unicode
   # 하이라이팅은 readthedocs 테마의 highlight.js 가 담당한다.
   # codehilite(Pygments)를 켜면 테마에 토큰 CSS가 없어 색이 죽고, 두 번 하이라이팅된다.
   - fenced_code
@@ -134,3 +138,7 @@ validation:
   omitted_files: warn
   absolute_links: warn
   unrecognized_links: warn
+  # 앵커가 틀린 링크도 게이트다 — 페이지는 열리면서 절만 못 찾는 링크는 사람이 눌러 보지
+  # 않으면 드러나지 않는다 (--strict가 경고를 에러로 올린다).
+  links:
+    anchors: warn
