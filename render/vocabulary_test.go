@@ -22,18 +22,29 @@ import (
 //
 //	KindRendered(k) 참  ⇒ 두 렌더러 **모두** k를 다룬다      (빠뜨림: 렌더에서 죽는다)
 //	KindRendered(k) 거짓 ⇒ 두 렌더러 **모두** k를 다루지 않는다 (구현했는데 파서가 막는다)
+//
+// 여기에 **셋째 갈래**가 있다 (ADR 0059): 값 층이 펼치는 종류(`<chart>`·`<point>`)는 카탈로그에
+// 있고 파서가 통과시키지만 렌더러에는 닿지 않는다 — 확정 트리에 남는 것이 도형과 텍스트뿐이기
+// 때문이다. 그래서 그 종류는 렌더러가 다루면 **실패**다: 다룰 수 있다는 것은 펼침을 지나치는
+// 길이 열려 있다는 뜻이고, 그러면 같은 데이터에서 두 그림이 나올 수 있다.
+//
+//	KindDesugared(k) 참  ⇒ 두 렌더러 **모두** k를 다루지 않는다 (값 층이 펼친다)
 func TestRenderersCoverCatalog(t *testing.T) {
 	handlers := map[string]map[soml.ElementKind]bool{
 		"web":  kindSet(web.RenderedKinds()),
 		"pptx": kindSet(pptx.RenderedKinds()),
 	}
 	for _, kind := range soml.ElementKinds() {
-		want := soml.KindRendered(kind)
+		want := soml.KindRendered(kind) && !soml.KindDesugared(kind)
 		for target, handled := range handlers {
 			switch {
 			case want && !handled[kind]:
 				t.Errorf("%s 렌더러가 %v를 다루지 않는다 (%v) — 카탈로그에 있고 파서가 통과시키는 종류는 "+
 					"전부 그려져야 한다. 렌더러 표를 늘리거나 soml.unrenderedKinds에 적어라",
+					target, kind, soml.ElementNamesOf(kind))
+			case !want && handled[kind] && soml.KindDesugared(kind):
+				t.Errorf("%s 렌더러가 %v를 다룬다 (%v) — 이 종류는 값 층이 도형·텍스트로 펼치므로 "+
+					"렌더러에 닿지 않는다 (ADR 0059). 렌더러 표에서 그 줄을 지워라",
 					target, kind, soml.ElementNamesOf(kind))
 			case !want && handled[kind]:
 				t.Errorf("%s 렌더러가 %v를 다루는데 soml.unrenderedKinds에 남아 있다 (%v) — "+
