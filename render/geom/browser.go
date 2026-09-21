@@ -235,6 +235,28 @@ func (s *Session) Eval(expr string, out any) error {
 	return nil
 }
 
+// Print는 지금 열려 있는 문서를 PDF로 인쇄한다 (사람이 Cmd+P를 누르는 것과 같은 경로).
+//
+// 종이 크기는 **문서가 정한다**: PreferCSSPageSize가 CSS의 `@page { size }`를 따르게 하므로
+// 한 장이 한 페이지를 꽉 채운다 (web.printPageCSS, ADR 0062). Go에서 크기를 넘기면 인쇄 CSS가
+// 틀렸을 때도 종이는 맞게 나와 게이트가 아무것도 판정하지 못한다.
+//
+// 배경은 함께 찍는다 — 슬라이드의 바탕색·배경 이미지는 장식이 아니라 내용이고, 브라우저
+// 기본값(배경 없음)으로 인쇄하면 덱이 흰 종이에 검은 글자로만 나온다.
+func (s *Session) Print() ([]byte, error) {
+	var buf []byte
+	if err := s.run(chromedp.ActionFunc(func(ctx context.Context) error {
+		var err error
+		buf, _, err = page.PrintToPDF().
+			WithPreferCSSPageSize(true).
+			WithPrintBackground(true).Do(ctx)
+		return err
+	})); err != nil {
+		return nil, fmt.Errorf("인쇄 실패: %w", err)
+	}
+	return buf, nil
+}
+
 // rectScript는 요소 사각형을 **문서 좌표**로 읽는 스니펫이다.
 //
 // **문자열 하나로 두는 이유**: 요소 스크린샷의 잘라낼 영역(Session.Clip)과 Iteration 7의 앵커

@@ -89,17 +89,28 @@ func (r *Rasterizer) Pages(pdfPath string, size image.Point, workDir string) ([]
 	if size.X <= 0 || size.Y <= 0 {
 		return nil, fmt.Errorf("렌더 크기가 유효하지 않다: %dx%d", size.X, size.Y)
 	}
-	outDir := filepath.Join(workDir, "png")
+	return r.render(pdfPath, filepath.Join(workDir, "png"),
+		"-scale-to-x", fmt.Sprint(size.X), "-scale-to-y", fmt.Sprint(size.Y))
+}
+
+// PagesAtPointScale은 PDF를 **종이 크기 그대로** 페이지별 PNG로 렌더한다 — 1pt이 1px이다.
+//
+// 목표 크기를 아는 Pages와 다른 이유는 판정이 다르기 때문이다: 인쇄 게이트는 그림을 대조하는
+// 것이 아니라 **종이 크기**를 본다 (한 장이 한 페이지인지, ADR 0062). 크기를 주고 렌더하면
+// 페이지가 letter로 나왔어도 PNG는 원하는 크기가 되어 그 실패가 사라진다. 72dpi를 주면
+// PNG의 픽셀 수가 곧 페이지의 pt 크기다 (실측 — pdftoppm -r 72는 1pt를 1px로 낸다).
+func (r *Rasterizer) PagesAtPointScale(pdfPath, workDir string) ([]image.Image, error) {
+	return r.render(pdfPath, filepath.Join(workDir, "png-pt"), "-r", "72")
+}
+
+// render는 pdftoppm을 돌리고 나온 PNG를 페이지 순서로 읽는다 (크기 인자는 호출자가 준다).
+func (r *Rasterizer) render(pdfPath, outDir string, scale ...string) ([]image.Image, error) {
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return nil, fmt.Errorf("렌더 디렉토리를 만들 수 없다: %w", err)
 	}
 	prefix := filepath.Join(outDir, "page")
-	stdout, stderr, err := runTool(r.Pdftoppm,
-		"-png",
-		"-scale-to-x", fmt.Sprint(size.X),
-		"-scale-to-y", fmt.Sprint(size.Y),
-		pdfPath, prefix,
-	)
+	args := append([]string{"-png"}, scale...)
+	stdout, stderr, err := runTool(r.Pdftoppm, append(args, pdfPath, prefix)...)
 	if err != nil {
 		return nil, fmt.Errorf("pdftoppm 실패: %w\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}

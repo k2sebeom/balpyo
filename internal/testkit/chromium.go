@@ -2,6 +2,8 @@ package testkit
 
 import (
 	"image"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/k2sebeom/balpyo/render/geom"
@@ -72,6 +74,25 @@ func (b *Browser) ScreenshotElement(t testing.TB, selector string) image.Image {
 		t.Fatalf("%s: %v", selector, err)
 	}
 	return img
+}
+
+// PrintPDF는 지금 열려 있는 문서를 인쇄해 PDF 파일 경로를 돌려준다 (사람이 Cmd+P를 누르는
+// 것과 같은 경로, geom.Session.Print).
+//
+// 바이트가 아니라 경로인 이유: 판정은 렌더한 페이지로 하고(RenderPDFPoints), 렌더 도구는
+// 파일을 받는다. 호출마다 새 임시 디렉토리에 쓰므로 한 테스트가 두 번 인쇄해도 앞의 결과를
+// 다시 읽지 않는다.
+func (b *Browser) PrintPDF(t testing.TB) string {
+	t.Helper()
+	buf, err := b.session.Print()
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "print.pdf")
+	if err := os.WriteFile(path, buf, 0o644); err != nil {
+		t.Fatalf("인쇄 결과를 쓸 수 없다: %v", err)
+	}
+	return path
 }
 
 // Rects는 선택자에 맞는 모든 요소의 문서 좌표 사각형을 문서 순서로 읽는다.
