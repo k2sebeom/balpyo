@@ -48,7 +48,31 @@
     root.style.setProperty("--balpyo-view-scale", String(scale));
   };
 
-  const show = (index, writeHash) => {
+  // ── 순차 등장 ──
+  //
+  // 지금 스텝은 런타임의 것이다 (ADR 0063 결정 5): 마크업은 항목마다 번호를 나르고, CSS는
+  // "번호를 가진 항목"까지만 겨눌 수 있어(수를 비교할 수 없다) 번호 ≤ 지금 스텝의 판정은
+  // 여기서 한다. 스텝은 슬라이드를 옮길 때마다 새로 정해지므로 상태는 수 하나면 된다.
+  const REVEAL_ATTR = "data-balpyo-reveal";
+  const REVEALED_CLASS = "balpyo-viewer-revealed";
+  let step = 0;
+
+  const revealItems = (slide) => Array.from(slide.querySelectorAll("[" + REVEAL_ATTR + "]"));
+  const stepOf = (el) => Number(el.getAttribute(REVEAL_ATTR)) || 0;
+  const lastStep = (slide) => revealItems(slide).reduce((max, el) => Math.max(max, stepOf(el)), 0);
+
+  // 표식은 지금 슬라이드에만 다시 칠한다 — 떠난 슬라이드의 표식은 그대로 남지만 CSS가
+  // 활성 슬라이드 안에서만 그것을 보므로(viewer.css) 겹쳐 둔 다른 장의 항목이 새지 않는다.
+  // 컨트롤 바의 활성 상태도 여기서 정한다: 스텝이 남아 있으면 마지막 장에서도 다음이 살아
+  // 있어야 하고, 스텝을 먹은 첫 장에서는 이전이 되감을 자리가 된다.
+  const applyReveal = () => {
+    const slide = slides[current];
+    revealItems(slide).forEach((el) => el.classList.toggle(REVEALED_CLASS, stepOf(el) <= step));
+    prev.disabled = current === 0 && step === 0;
+    next.disabled = current === slides.length - 1 && step === lastStep(slide);
+  };
+
+  const show = (index, writeHash, revealed) => {
     const target = Math.min(Math.max(index, 0), slides.length - 1);
     if (target === current) return;
     if (current >= 0) slides[current].classList.remove("balpyo-viewer-active");
@@ -56,8 +80,10 @@
     const slide = slides[current];
     slide.classList.add("balpyo-viewer-active");
     counter.textContent = (current + 1) + " / " + slides.length;
-    prev.disabled = current === 0;
-    next.disabled = current === slides.length - 1;
+    // 들어가는 장의 스텝은 0이다 — 딥링크·오버뷰 타일·Home/End로 **곧장** 들어간 장은 아직
+    // 말하지 않은 장이다 (뒤로 들어온 장만 전개된 상태로 온다).
+    step = revealed ? lastStep(slide) : 0;
+    applyReveal();
     const note = slide.querySelector(".balpyo-notes");
     notes.textContent = note ? note.textContent : "No notes for this slide.";
     notes.classList.toggle("balpyo-viewer-empty", !note);
@@ -66,6 +92,18 @@
       // 떠나는 길이 없어진다. file://에서 막는 브라우저가 있어도 조용히 넘어간다.
       try { history.replaceState(null, "", "#/" + encodeURIComponent(slide.id)); } catch (e) {}
     }
+  };
+
+  // 다음은 스텝을 **먼저** 먹고 그 다음에 슬라이드를 넘긴다. 뒤로는 스텝을 하나 되감고,
+  // 스텝이 없으면 앞 슬라이드로 가되 그 장은 **전부 전개된** 상태로 들어간다 (결정 6):
+  // 이미 말한 장을 다시 한 단계씩 누르게 만들지 않는다.
+  const forward = () => {
+    if (step < lastStep(slides[current])) { step++; applyReveal(); return; }
+    show(current + 1, true);
+  };
+  const backward = () => {
+    if (step > 0) { step--; applyReveal(); return; }
+    show(current - 1, true, true);
   };
 
   // ── 오버뷰 ──
@@ -112,8 +150,10 @@
     return 0;
   };
 
-  prev.addEventListener("click", () => show(current - 1, true));
-  next.addEventListener("click", () => show(current + 1, true));
+  // 버튼과 키는 **같은 동작**이다 (스텝을 먼저 먹는다) — 둘이 갈라지면 마우스로 넘긴
+  // 사람만 순차 등장을 건너뛴다.
+  prev.addEventListener("click", () => backward());
+  next.addEventListener("click", () => forward());
   notesToggle.addEventListener("click", () => {
     notes.hidden = !notes.hidden;
     notesToggle.setAttribute("aria-pressed", String(!notes.hidden));
@@ -137,9 +177,9 @@
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     switch (e.key) {
     case "ArrowRight": case "ArrowDown": case "PageDown": case " ":
-      e.preventDefault(); show(current + 1, true); break;
+      e.preventDefault(); forward(); break;
     case "ArrowLeft": case "ArrowUp": case "PageUp":
-      e.preventDefault(); show(current - 1, true); break;
+      e.preventDefault(); backward(); break;
     case "Home": e.preventDefault(); show(0, true); break;
     case "End": e.preventDefault(); show(slides.length - 1, true); break;
     case "n": case "N": notesToggle.click(); break;

@@ -46,7 +46,7 @@ func liSteps(t *testing.T, out string) []string {
 	}
 	steps := make([]string, len(tags))
 	for i, tag := range tags {
-		if m := regexp.MustCompile(`data-balpyo-reveal="([^"]*)"`).FindStringSubmatch(tag); m != nil {
+		if m := regexp.MustCompile(RevealAttr + `="([^"]*)"`).FindStringSubmatch(tag); m != nil {
 			steps[i] = m[1]
 		}
 	}
@@ -97,8 +97,12 @@ func TestRevealAbsentLeavesMarkupAlone(t *testing.T) {
     <li>하나</li>
     <li>둘</li>
   </ul>`))
-	if strings.Contains(out, "data-balpyo-reveal") {
-		t.Error("reveal 없는 덱의 산출물에 스텝 속성이 실렸다")
+	// 여는 태그 전부를 훑는다 — 문서 어디든(다른 태그에라도) 스텝 속성이 실리면 마크업이
+	// 이전과 같지 않다. 뷰어 CSS는 이 속성 이름을 늘 담으므로 문서 전체 검색은 쓸 수 없다.
+	for _, tag := range regexp.MustCompile(`<[a-z][a-z0-9]* [^>]*>`).FindAllString(out, -1) {
+		if strings.Contains(tag, RevealAttr) {
+			t.Errorf("reveal 없는 덱의 산출물에 스텝 속성이 실렸다: %s", tag)
+		}
 	}
 	if got := liSteps(t, out); !equalStrings(got, []string{"", ""}) {
 		t.Errorf("스텝 = %v, want 둘 다 없음", got)
@@ -196,7 +200,7 @@ func TestPrintShowsEveryRevealStep(t *testing.T) {
 
 // 지금 스텝의 판정은 런타임의 것이다 (ADR 0063 결정 5) — CSS는 수를 비교할 수 없다.
 func TestRuntimeDrivesRevealSteps(t *testing.T) {
-	for _, want := range []string{"data-balpyo-reveal", "balpyo-viewer-revealed"} {
+	for _, want := range []string{RevealAttr, viewerRevealedClass} {
 		if !strings.Contains(runtimeJS, want) {
 			t.Errorf("런타임 JS에 계약 문자열 %q가 없다", want)
 		}

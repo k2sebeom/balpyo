@@ -90,6 +90,11 @@ const (
 	viewerActiveClass = "balpyo-viewer-active"
 	// viewerEmptyClass는 노트가 없는 슬라이드에서 패널이 갖는 표식이다.
 	viewerEmptyClass = "balpyo-viewer-empty"
+	// viewerRevealedClass는 **이미 나타난** 순차 등장 항목의 표식이다 (런타임이 지금 스텝에
+	// 맞춰 토글한다 — ADR 0063 결정 5). Go 코드가 쓰지 않는 유일한 이 목록의 이름이지만
+	// 여기 적는다: 계약 문자열의 목록이 한 곳에 있어야 자산(runtime.js·viewer.css) 두 벌이
+	// 어긋난 것을 사람이 셀 필요가 없다.
+	viewerRevealedClass = "balpyo-viewer-revealed"
 )
 
 // PresenterViewExpr는 발표자 뷰를 켜는 JS 표현식이다 — 런타임이 로드 시 하는 일과 같다.

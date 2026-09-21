@@ -19,6 +19,15 @@ const IDAttr = "data-balpyo-id"
 // 더/덜 내는 경우) 좌표가 엉뚱한 요소에 붙는 대신 소리를 낸다.
 const ElAttr = "data-balpyo-el"
 
+// RevealAttr은 리스트 항목이 나타나는 스텝 번호다 (`<li reveal>`의 확정 값 — ADR 0063
+// 결정 5). 속성을 쓰지 않은 항목에는 **실리지 않는다**: 없음이 곧 "처음부터 보인다"라,
+// reveal을 쓰지 않은 덱의 마크업이 이 기능 전과 같다.
+//
+// 스텝이 클래스가 아니라 속성인 이유는 판정의 주인이 둘이라는 것이다 — CSS는 "스텝을 가진
+// 항목"까지만 겨눌 수 있고(수를 비교할 수 없다) 지금 스텝 이하인지는 런타임이 정해
+// RevealedClass로 말한다.
+const RevealAttr = "data-balpyo-reveal"
+
 // 이 셋을 export하는 이유: 계약의 **양쪽**이 같은 문자열을 써야 한다. 지오메트리 패스는
 // 이 선택자로 요소를 집고(render/geom), 테스트 하네스는 같은 선택자로 슬라이드를 찍는다
 // (internal/testkit). 선택자 문자열이 세 곳에 흩어지면 클래스 이름을 바꾼 순간 한 곳만
@@ -343,8 +352,8 @@ func writeBlock(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	fmt.Fprintf(b, "<%s class=\"balpyo-text\" %s=%q %s=%q%s>",
-		tag, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, styleAttr(decls))
+	fmt.Fprintf(b, "<%s class=\"balpyo-text\" %s=%q %s=%q%s%s>",
+		tag, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, revealAttr(elem), styleAttr(decls))
 	if elem.Name == "pre" {
 		if first, ok := firstText(elem); ok && strings.HasPrefix(first, "\n") {
 			// 파서가 양 끝 개행을 하나씩 벗겼으므로 남은 선두 개행은 내용이다. 그런데 HTML
@@ -360,6 +369,16 @@ func writeBlock(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	}
 	fmt.Fprintf(b, "</%s>\n", tag)
 	return nil
+}
+
+// revealAttr는 순차 등장 스텝 속성이다 (스텝이 없으면 속성 자체가 없다 — styleAttr와 같은
+// 태도). 웹이 이 값을 나르는 **유일한** 타깃이다: PPTX·인쇄는 Appearance.Reveal을 보지
+// 않는 것으로 평탄화를 구현한다 (ADR 0063 결정 3).
+func revealAttr(elem *soml.Element) string {
+	if elem.Appearance == nil || elem.Appearance.Reveal == 0 {
+		return ""
+	}
+	return fmt.Sprintf(" %s=%q", RevealAttr, strconv.Itoa(elem.Appearance.Reveal))
 }
 
 // firstText는 요소의 첫 문자 데이터 자식이다.
