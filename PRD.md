@@ -459,7 +459,7 @@ balpyo build --target pptx     # 네이티브 PPTX
 | `<group>` | (레이아웃 속성) | div | 그룹 (`grpSp`) |
 | `<icon>` (P1) | src(svg), size | 인라인 SVG | **SVG 패스 → `custGeom` 도형 (편집 가능)**, 실패 시 이미지 폴백 |
 | `<table>` (P1) | header-row, banding, cols | table | 테이블 (`graphicFrame`+`tbl`) |
-| `<chart>` (P2) | type, data | 차트 렌더 | 네이티브 차트 또는 이미지 폴백 |
+| `<chart>` (P2) | type, unit, max + `<point>` 자식 | 도형 + 텍스트 (값 층의 펼침) | 프리셋 도형 + 텍스트 박스 — **네이티브 차트도 이미지 폴백도 아니다** (ADR 0059) |
 
 - **`<shape type>` v1 어휘 (12종)**: `rect`, `rounded-rect`, `ellipse`, `diamond`,
   `cylinder`, `chevron`, `arrow-right`, `hexagon`, `parallelogram`, `callout`,
@@ -830,8 +830,10 @@ deck.pptx (PowerPoint/Keynote에서 열어 편집 가능)
 **지오메트리 백엔드**: 시스템 브라우저(Chrome/Edge 자동 감지)를 **CDP로 직접 제어**한다
 (Go: `chromedp`/`go-rod`). 브라우저 다운로드 없음, 콜드 스타트 ~0.6초, 슬라이드당
 ~1.5ms — 빌드 성능 병목이 아니다. 브라우저 의존은 지오메트리만의 문제가 아니라
-PDF 인쇄(`Page.printToPDF`)와 `<raw>`/`<chart>` 래스터화(`Page.captureScreenshot`)가
-같은 CDP 세션을 재사용하므로, 세 기능이 하나의 의존성으로 해결된다. 시스템 브라우저가
+PDF 인쇄(`Page.printToPDF`)와 `<raw>` 래스터화(`Page.captureScreenshot`)가
+같은 CDP 세션을 재사용하므로, 세 기능이 하나의 의존성으로 해결된다
+(`<chart>`는 래스터화하지 않는다 — 값 층이 도형·텍스트로 펼치므로 지오메트리 패스가
+그 도형들을 그대로 잰다: ADR 0059). 시스템 브라우저가
 없는 환경에는 Chromium 내려받기를 opt-in으로 안내한다. 백엔드는
 `(스타일된 슬라이드 트리) → 좌표` 인터페이스로 **플러그블**하게 설계한다 (§13-8).
 
@@ -971,7 +973,8 @@ balpyo lsp                             # 에디터용 언어 서버 (stdio)
 
 ### P2 — 생태계
 
-- [ ] `<chart>` (웹: 차트 렌더 / PPTX: 네이티브 차트 검토, 초기엔 이미지)
+- [ ] `<chart>` — 값 층이 도형·텍스트로 펼친다 (양 타깃 같은 선언에서 나온다 — ADR 0059가
+  "네이티브 차트 검토, 초기엔 이미지"를 갈랐다)
 - [ ] `reveal` → PPTX 진입 애니메이션 매핑
 - [ ] 데이터 주도 덱 생성 (`slides = f(data)`) 공식 지원 + 템플릿 문법 검토
 - [ ] **언어 래퍼**: npm/pip 패키지가 바이너리를 내려받아 감싸는 얇은 층
