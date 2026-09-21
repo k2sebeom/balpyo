@@ -300,12 +300,13 @@
   html[data-balpyo-view="overview"] .balpyo-slide {
     zoom: var(--balpyo-overview-zoom, 0.2);
     cursor: pointer;
-    outline: 4px solid transparent;
+    outline: 12px solid transparent;
   }
   /* 활성 슬라이드는 **나갈 자리**다 (오버뷰는 이동이 아니라 보기다) — 테두리로 표시한다.
-     테두리도 zoom을 받으므로 4px은 화면에서 1px 남짓이다. */
+     테두리도 zoom을 받으므로 12px은 화면에서 3px 남짓이고, 흰 슬라이드와 어두운 바탕 **양쪽**에
+     보이는 색이어야 한다 (흰 테두리는 밝은 슬라이드에 묻힌다 — 실물에서 보이지 않았다). */
   html[data-balpyo-view="overview"] .balpyo-slide.balpyo-viewer-active {
-    outline-color: #fff;
+    outline-color: #4c8dff;
   }
 
   /* ── 인쇄 ── 어느 뷰에서 눌러도 문서 뷰의 그림이 나온다 (ADR 0062).
