@@ -278,8 +278,10 @@ func extractTarGz(t *testing.T, path string) ([]string, []byte) {
 			t.Fatal(err)
 		}
 		names = append(names, header.Name)
-		if !header.ModTime.IsZero() {
-			t.Errorf("tar 헤더의 시각이 %v다 — 재현 가능한 아카이브는 0을 쓴다", header.ModTime)
+		// tar는 시각을 epoch 오프셋으로 적으므로 "없음"을 적을 자리가 없다 — 0(1970-01-01)이
+		// 우리가 쓸 수 있는 "빌드한 시각을 담지 않았다"다 (읽어 오면 IsZero가 아니라 Unix()==0이다).
+		if header.ModTime.Unix() != 0 {
+			t.Errorf("tar 헤더의 시각이 %v다 — 재현 가능한 아카이브는 epoch 0을 쓴다", header.ModTime)
 		}
 		if header.Uid != 0 || header.Gid != 0 || header.Uname != "" || header.Gname != "" {
 			t.Errorf("tar 헤더에 빌드한 사람이 남아 있다: uid=%d gid=%d uname=%q gname=%q",
