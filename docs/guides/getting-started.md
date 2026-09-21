@@ -5,13 +5,39 @@
 
 ## 1. 바이너리
 
-런타임 의존은 없다. Go 툴체인이 있으면 저장소에서 직접 만든다.
+런타임 의존은 없다 — 바이너리 하나가 모든 서브커맨드를 담는다. Go 툴체인이 있으면 저장소에서
+직접 만든다.
 
 ```bash
 git clone https://github.com/k2sebeom/balpyo && cd balpyo
 go build -o balpyo ./cmd/balpyo
 ./balpyo version
 ```
+
+`go build`만으로도 그 바이너리는 자기 커밋을 안다 (툴체인이 박는다 — 위 `version`이 세 줄을
+찍는다). 버그 리포트에는 그 세 줄을 그대로 붙인다:
+[`balpyo version`](../reference/cli.md#balpyo-version).
+
+### 태그된 릴리스에서 받기
+
+`v*` 태그마다 네 플랫폼(`darwin/arm64`·`darwin/amd64`·`linux/amd64`·`linux/arm64`)의 아카이브와
+체크섬 한 파일이 GitHub Releases에 올라간다. 받은 뒤 체크섬을 맞추고 압축을 풀면 그 안에는
+바이너리 하나뿐이다:
+
+```bash
+tar xzf balpyo_v0.3.0_darwin_arm64.tar.gz     # → balpyo
+sha256sum -c SHA256SUMS                        # 같은 디렉토리에 두고 돌린다
+```
+
+Homebrew tap(`brew install k2sebeom/balpyo/balpyo`)의 포뮬러도 릴리스마다 생성된다 — 아카이브를
+만들고 발행하는 절차는 [릴리스](../internals/release.md)에 있다.
+
+!!! note "아직 첫 태그가 없다"
+
+    이 저장소에는 아직 `v*` 태그가 없으므로 위 두 경로(아카이브·tap)는 **첫 릴리스부터**
+    열린다. 그때까지는 위의 `go build`가 유일한 길이다. 윈도우 아카이브는 없다 — 그 플랫폼을
+    한 번도 측정하지 않았으므로 놓지 않는다
+    ([ADR 0061](../decisions/0061-release-is-built-by-make-and-the-go-toolchain-and-the-version-belongs-to-the-tag.md)).
 
 PPTX 타깃과 `--check-layout`은 시스템 브라우저(Chromium/Chrome)를 하나 띄운다 —
 [지오메트리 패스](../internals/geometry-pass.md)가 배치를 그 브라우저로 잰다. 웹 타깃만 쓰면

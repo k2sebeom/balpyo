@@ -6,7 +6,8 @@
 - 관련: PRD §10(바이너리 하나가 모든 서브커맨드를 담는다), ADR 0048(`init`은 자기 덱을 소유하고
   `check`는 쓰지 않는 `build`다), ADR 0056(게이트는 잡이 아니라 **테스트**로 늘린다),
   ADR 0047(리뷰 갤러리는 `internal/preview`가 소유하고 명령과 테스트가 그것을 함께 쓴다),
-  [CLI](../reference/cli.md), [테스트 전략](../internals/testing.md)
+  [릴리스](../internals/release.md), [CLI](../reference/cli.md),
+  [테스트 전략](../internals/testing.md)
 
 ## 맥락
 

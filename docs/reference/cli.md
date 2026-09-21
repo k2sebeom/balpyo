@@ -460,8 +460,32 @@ LibreOffice가 파일을 열며 경고나 복구를 냈다면 그 출력도 그�
 
 ## `balpyo version`
 
-버전을 출력한다. 릴리스 빌드는 주입된 버전을, 개발 빌드는 Go 모듈 정보를 쓴다
-(`balpyo (devel)`).
+버그 리포트에 그대로 붙일 수 있는 **세 줄**을 출력한다 — 어느 버전인지, 어느 커밋인지(그리고
+그 나무가 깨끗했는지), 어디서 돈 바이너리인지:
+
+```
+$ balpyo version
+balpyo v0.3.0
+커밋 feda13c (2026-09-21T01:27:36Z)
+linux/amd64 · go1.26
+```
+
+| 줄 | 사실 | 출처 |
+| --- | --- | --- |
+| `balpyo v0.3.0` | 릴리스 태그 | 릴리스 빌드가 주입한다 (`-X main.version=`) |
+| `커밋 feda13c (…)` | 커밋과 그 커밋의 시각 | Go 툴체인이 박는 `vcs.revision`·`vcs.time` |
+| `linux/amd64 · go1.26` | OS/아키텍처와 툴체인 | 실행 중인 런타임 |
+
+- **커밋은 주입하지 않는다.** 툴체인이 박고 `-trimpath`도 그것을 지우지 않으므로,
+  `go install`로 받은 바이너리도 자기 커밋을 안다. 같은 사실의 두 번째 출처를 만들면 릴리스
+  스크립트를 거치지 않은 빌드에서 그 자리가 조용히 빈다
+  ([ADR 0061](../decisions/0061-release-is-built-by-make-and-the-go-toolchain-and-the-version-belongs-to-the-tag.md)).
+- **커밋되지 않은 트리에서 빌드하면 그렇게 말한다**: `커밋 feda13c+dirty (…)`.
+- **아는 것만 적는다.** 태그도 모듈 버전도 없으면 첫 줄이 `balpyo (devel)`이고, 커밋을 모르는
+  빌드(예: `go build`로 만든 저장소 밖의 사본)는 **그 줄이 없다** — `알 수 없음`을 찍으면
+  리포트에 쓸모없는 줄이 하나 늘 뿐이다. 마지막 줄은 언제나 있다.
+
+릴리스 아카이브를 만드는 쪽은 [릴리스](../internals/release.md)에 있다.
 
 ## `balpyo help`
 

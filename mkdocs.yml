@@ -47,6 +47,7 @@ nav:
       - 아키텍처: internals/architecture.md
       - 지오메트리 패스: internals/geometry-pass.md
       - 테스트 환경: internals/testing.md
+      - 릴리스: internals/release.md
   - 설계 결정:
       - decisions/index.md
       - 0001 파서 트리비아: decisions/0001-parser-trivia.md
