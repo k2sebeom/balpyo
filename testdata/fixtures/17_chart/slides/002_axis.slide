@@ -6,11 +6,15 @@
        아니므로 선언을 내지 않는다. 라벨은 남는다: "0"이 데이터다.
 
      차트가 컨테이너의 자식이라는 것도 이 슬라이드가 담는다 (`<row>` 안의 두 열) — 펼침의 뿌리가
-     도형이므로 배치는 도형과 같은 한 벌을 받는다. -->
+     도형이므로 배치는 도형과 같은 한 벌을 받는다.
+
+     계열색(`series="accent2"`)이 골든에 있는 자리도 여기다 (ADR 0060): **막대만** 그 색이고
+     라벨은 캡션 색 그대로여야 한다. 면의 색이 글에 새면 두 산출물이 함께 새므로 픽셀 비교가
+     그것을 잡는다 — 첫 슬라이드는 기본 계열색이라 두 갈래가 모두 골든에 남는다. -->
 <slide id="chart-axis">
   <h2>축은 저자가 정할 수 있다</h2>
   <row gap="lg" align="stretch">
-    <chart type="bar" unit="%" max="100" alt="지역별 도입률" grow="1" basis="0" h="300">
+    <chart type="bar" unit="%" max="100" series="accent2" alt="지역별 도입률" grow="1" basis="0" h="300">
       <point label="서울" value="62"/>
       <point label="부산" value="41"/>
       <point label="대전" value="0"/>
