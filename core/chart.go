@@ -39,8 +39,8 @@ const (
 	// 균등 분배하므로 막대 사이 간격은 이 백분율의 나머지다 — 간격을 따로 세지 않는다.
 	// 70%는 008이 손으로 쓰던 140/200과 같은 리듬이다.
 	chartBarWidth = "70%"
-	// chartSeriesFill은 기본 계열색이다. 단일 계열이므로 색 하나면 충분하고, 강조는 점의
-	// `fill`이 소유한다 (ADR 0059의 결정 8).
+	// chartSeriesFill은 **기본** 계열색이다 — 저자가 `series`를 쓰면 그 색이 이긴다 (ADR 0060).
+	// 단일 계열이므로 색 하나면 충분하고, 계열에서 벗어난 한 점의 강조는 점의 `fill`이 갖는다.
 	chartSeriesFill = "accent1"
 	// chartBaselineFill·chartBaselineHeight는 범주 칸의 바닥선이다. 칸마다 1px 도형을 두고
 	// `gap="0"`으로 붙이면 선이 이어져 축이 된다 — 축 도형 하나를 따로 놓으면 막대의 기준선과
@@ -72,20 +72,32 @@ const (
 func (r *resolver) resolveChart(elem *soml.Element) {
 	r.chartType(elem)
 	r.chartFrameHeight(elem)
-	unit := r.chartUnit(elem)
+	spec := chartSpec{unit: r.chartUnit(elem), series: r.chartSeries(elem)}
 	data, hasPoints := r.chartData(elem)
 	axis, axisOK := r.chartAxis(elem, data)
+	spec.axis = axis
 
 	elem.Name = soml.ShapeElement
 	elem.Attrs = chartRootAttrs(elem)
 	elem.Children = nil
 	if hasPoints && axisOK && len(data) > 0 {
-		elem.Children = []soml.Node{chartPlot(data, axis, unit)}
+		elem.Children = []soml.Node{chartPlot(data, spec)}
 	}
 }
 
+// chartSpec은 펼침이 **데이터 밖에서** 쓰는 값 셋이다 — 축·단위·계열색. 점마다 같은 값이므로
+// 트리 빌더에 인자 셋으로 흘리지 않고 하나로 묶는다 (계열이 여럿이 되는 날 이 구조체가 자란다).
+type chartSpec struct {
+	// axis는 값축의 최대다 — 막대 높이의 분모.
+	axis float64
+	// unit은 값 라벨의 꼬리다 ("22" + "분").
+	unit string
+	// series는 모든 막대의 색이다 — 점의 강조색이 있으면 그 점만 이 색에서 벗어난다.
+	series string
+}
+
 // chartRootAttrs는 뿌리 도형의 속성이다 — 저자의 박스·배치·슬롯·`alt`을 그대로 물려받고
-// 차트 고유 속성(`type`·`unit`·`max`)은 소비되어 사라진다.
+// 차트 고유 속성(`type`·`unit`·`max`·`series`)은 소비되어 사라진다.
 //
 // 뿌리가 **배경**인 것이 이 표의 결정이다 (`fill="none" border="none"` — ADR 0049): 차트가
 // 상자에 담기면 저자가 지울 수 없는 테두리가 생긴다. 배경을 원하면 저자가 `<shape>`로 감싼다.
@@ -103,7 +115,7 @@ func chartRootAttrs(elem *soml.Element) []soml.Attr {
 	}
 	for _, attr := range elem.Attrs {
 		switch attr.Name {
-		case "type", "unit", "max":
+		case "type", "unit", "max", "series":
 			continue // 차트가 소비한다 — 도형의 어휘에는 없는 이름이다.
 		}
 		attrs = append(attrs, attr)
@@ -169,6 +181,49 @@ func (r *resolver) chartUnit(elem *soml.Element) string {
 	return attr.Value
 }
 
+// chartSeries는 계열색이다 — **모든 막대**의 색이고, 생략하면 기본 계열색이다 (ADR 0060).
+//
+// 이 속성이 생긴 자리는 리뷰다: 008은 `surface` 막대와 `muted` 라벨을 함께 요구하고, 점의
+// `fill` 하나로는 그 그림을 쓸 수 없었다 (그 채널은 막대와 라벨을 함께 칠한다). 그래서 계열색은
+// 프레임이 갖고 **라벨에 오지 않는다** — 면의 색과 글의 색은 대비 요구가 다르다 (`surface`
+// 글자는 흰 배경에서 1.06:1이다).
+//
+// 이름이 `fill`이 아닌 근거도 같은 ADR에 있다: 뿌리 도형은 계약상 배경이므로(`fill="none"`)
+// 같은 이름을 쓰면 저자가 막대를 칠하려다 회색 상자를 받는다.
+func (r *resolver) chartSeries(elem *soml.Element) string {
+	attr, ok := elem.Attr("series")
+	if !ok {
+		return chartSeriesFill
+	}
+	if color, ok := r.chartColor(attr); ok {
+		return color
+	}
+	return chartSeriesFill // 진단은 이미 냈다 — 껍데기 트리의 색은 아무도 보지 않는다.
+}
+
+// chartColor는 차트의 채움 값 하나를 검증하고 **저자의 표기 그대로** 돌려준다 (`series`와
+// `<point fill>`이 공유한다). 문자열로 도는 이유는 펼침의 계약이다: 합성 노드가 저자가 쓸 수
+// 있는 표기를 그대로 실어야 손으로 쓴 덱과 같은 트리가 된다.
+//
+// 도형의 `fill`과 갈라지는 자리가 하나다 — **`none`을 받지 않는다** (ADR 0060의 결정 6).
+// 근거는 둘이다: 그리지 않는 막대는 데이터가 아니라 빠뜨린 점이고(높이 0을 원하면 `value="0"`이
+// 그 표기다), 이 값은 라벨의 `color`로도 흐르므로 `none`을 통과시키면 저자가 쓰지 않은 이름으로
+// 진단이 난다 — 리뷰에서 실측한 모양이 그것이었다 ("color의 색 토큰 none이 테마에 없다" 둘).
+func (r *resolver) chartColor(attr soml.Attr) (string, bool) {
+	if !r.hasValue(attr) {
+		return "", false
+	}
+	if attr.Value == noneValue {
+		r.errorf(attr.ValueSpan, "%s에 %s을 쓸 수 없다 — 그리지 않는 막대는 데이터가 아니다 (빈 막대는 value=\"0\"이다)",
+			attr.Name, noneValue)
+		return "", false
+	}
+	if _, ok := r.colorValue(attr.Name, attr.Value, attr.ValueSpan); !ok {
+		return "", false
+	}
+	return attr.Value, true
+}
+
 // chartDatum은 검증을 통과한 점 하나다. `raw`를 함께 드는 이유는 라벨이 **저자가 적은 표기
 // 그대로**여야 한다는 것이다 — `19.5`를 다시 포맷하면 소스와 슬라이드가 갈라진다.
 type chartDatum struct {
@@ -205,7 +260,8 @@ func (r *resolver) chartData(elem *soml.Element) ([]chartDatum, bool) {
 	return data, true
 }
 
-// chartPoint는 점 하나를 검증한다 — 라벨·값은 필수이고 강조색은 도형의 `fill`과 같은 어휘다.
+// chartPoint는 점 하나를 검증한다 — 라벨·값은 필수이고 강조색은 계열색과 같은 어휘다
+// (chartColor).
 //
 // 색을 여기서 **한 번** 검증하는 이유는 진단의 수다: 같은 값이 막대와 두 라벨에 실리므로
 // 합성 노드에 맡기면 오타 하나가 진단 셋이 된다. 실패하면 색을 버린다 (계열색으로 그려진다 —
@@ -217,8 +273,8 @@ func (r *resolver) chartPoint(point *soml.Element) (chartDatum, bool) {
 	value, raw, valueOK := r.chartValue(point)
 	datum.value, datum.raw = value, raw
 	if attr, ok := point.Attr("fill"); ok {
-		if _, fillOK := r.fill(attr); fillOK {
-			datum.fill = attr.Value
+		if color, fillOK := r.chartColor(attr); fillOK {
+			datum.fill = color
 		}
 	}
 	return datum, labelOK && valueOK
@@ -322,13 +378,13 @@ func (r *resolver) chartAxis(elem *soml.Element, data []chartDatum) (float64, bo
 // `align="stretch" h="fill"`이 칸을 프레임 높이까지 늘리고, 그 안에서 플롯 밴드가 `grow="1"`로
 // 남은 높이를 전부 먹는다 — 그래서 막대의 백분율 높이가 **밴드**에 대한 비율이 되고 범주
 // 라벨·기준선 높이는 거기서 빠진다.
-func chartPlot(data []chartDatum, axis float64, unit string) *soml.Element {
+func chartPlot(data []chartDatum, spec chartSpec) *soml.Element {
 	row := chartNode(soml.RowElement, data[0].span,
 		"gap", "0",
 		"align", string(soml.BoxAlignStretch),
 		"h", chartFillAxis)
 	for _, datum := range data {
-		row.Children = append(row.Children, chartColumn(datum, axis, unit))
+		row.Children = append(row.Children, chartColumn(datum, spec))
 	}
 	return row
 }
@@ -338,7 +394,7 @@ func chartPlot(data []chartDatum, axis float64, unit string) *soml.Element {
 // 기준선이 칸마다 있는 이유는 chartBaselineFill의 주석에 있다 (`gap="0"`으로 이어 붙는다).
 // 읽기 순서가 값 → 범주인 것은 문서 순서가 곧 읽기 순서라는 계약을 따른다 (ADR 0058):
 // 스크린 리더는 "22분, 5월"로 읽는다.
-func chartColumn(datum chartDatum, axis float64, unit string) *soml.Element {
+func chartColumn(datum chartDatum, spec chartSpec) *soml.Element {
 	col := chartNode(soml.ColElement, datum.span,
 		"grow", "1",
 		"basis", "0",
@@ -346,7 +402,7 @@ func chartColumn(datum chartDatum, axis float64, unit string) *soml.Element {
 		"align", string(soml.BoxAlignCenter),
 		"h", chartFillAxis)
 	col.Children = []soml.Node{
-		chartBand(datum, axis, unit),
+		chartBand(datum, spec),
 		chartNode(soml.ShapeElement, datum.span,
 			"type", chartFrameType,
 			"fill", chartBaselineFill,
@@ -364,7 +420,7 @@ func chartColumn(datum chartDatum, axis float64, unit string) *soml.Element {
 //
 // 값 0은 막대를 내지 않는다: 높이 0의 도형은 산출물에서 아무것도 아니므로 선언을 낼 이유가
 // 없다. 라벨은 남는다 — "0"이 데이터다.
-func chartBand(datum chartDatum, axis float64, unit string) *soml.Element {
+func chartBand(datum chartDatum, spec chartSpec) *soml.Element {
 	band := chartNode(soml.ColElement, datum.span,
 		"grow", "1",
 		"basis", "0",
@@ -372,11 +428,12 @@ func chartBand(datum chartDatum, axis float64, unit string) *soml.Element {
 		"justify", string(soml.BoxJustifyEnd),
 		"align", string(soml.BoxAlignCenter),
 		"gap", chartLabelGap)
-	band.Children = []soml.Node{chartTextNode(datum.raw+unit, datum.fill, datum.span)}
+	band.Children = []soml.Node{chartTextNode(datum.raw+spec.unit, datum.fill, datum.span)}
 	if datum.value == 0 {
 		return band
 	}
-	fill := chartSeriesFill
+	// 계열색이 바탕이고 점의 강조색이 그 점만 이긴다 (ADR 0060의 결정 1·3).
+	fill := spec.series
 	if datum.fill != "" {
 		fill = datum.fill
 	}
@@ -385,7 +442,7 @@ func chartBand(datum chartDatum, axis float64, unit string) *soml.Element {
 		"fill", fill,
 		"border", noneValue,
 		"w", chartBarWidth,
-		"h", chartPercent(datum.value/axis*100),
+		"h", chartPercent(datum.value/spec.axis*100),
 		"shrink", "0"))
 	return band
 }

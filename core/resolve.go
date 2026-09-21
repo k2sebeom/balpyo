@@ -871,6 +871,8 @@ func attrExample(name string) string {
 		return "%"
 	case "max":
 		return "100"
+	case "series":
+		return "accent1"
 	case "label":
 		return "5월"
 	case "value":
