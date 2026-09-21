@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime/debug"
 	"syscall"
 
 	"github.com/k2sebeom/balpyo/internal/pipeline"
@@ -182,17 +181,4 @@ func printDiags(w io.Writer, diags soml.Diagnostics) {
 	for _, d := range diags {
 		fmt.Fprintln(w, d.String())
 	}
-}
-
-// version은 릴리스 빌드에서 -ldflags로 주입한다. 개발 빌드는 모듈 정보에서 유도한다.
-var version = ""
-
-func versionString() string {
-	if version != "" {
-		return "balpyo " + version
-	}
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" {
-		return "balpyo " + info.Main.Version
-	}
-	return "balpyo (devel)"
 }
