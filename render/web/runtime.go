@@ -4,6 +4,8 @@ import (
 	_ "embed"
 	"fmt"
 	"strings"
+
+	"github.com/k2sebeom/balpyo/soml"
 )
 
 // 이 파일은 뷰어 런타임이다 — 산출물 index.html을 발표 가능한 웹앱으로 만드는 인라인
@@ -126,6 +128,21 @@ var viewerCSSAsset string
 // 자산은 층 안에 들어가는 규칙 묶음이므로 2칸 들여쓰기로 시작한다. 앞의 빈 줄은 앞 절과
 // 띄우는 것이다 (contentCSS·chromeCSS도 같은 모양이다).
 func viewerCSS() string { return "\n" + viewerCSSAsset }
+
+// printPageCSS는 인쇄의 **종이 크기**다 — 논리 스테이지 그대로에 여백 0이므로 한 장이 한
+// 페이지를 꽉 채운다. 되돌리기 규칙은 자산(viewer.css)의 @media print 절에 있고, 여기서
+// 만드는 것은 스테이지에 따라 달라지는 이 한 규칙뿐이다 (`--balpyo-stage-width`와 같은 근거).
+//
+// 리터럴을 주는 이유: Chromium은 @page 안의 var()도 풀어 준다 (실측 — 같은 PDF가 나온다).
+// 그러나 `size`를 이해하면서 커스텀 속성은 풀지 못하는 엔진에서는 선언이 통째로 무효가 되어
+// 종이가 조용히 letter로 돌아간다. 값이 하나뿐인 자리에서 그 위험을 지지 않는다.
+func printPageCSS(stage soml.Stage) string {
+	return fmt.Sprintf(`
+  @media print {
+    @page { size: %dpx %dpx; margin: 0; }
+  }
+`, stage.Width, stage.Height)
+}
 
 //go:embed assets/runtime.js
 var runtimeJSAsset string

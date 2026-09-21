@@ -262,6 +262,47 @@
   html[data-balpyo-view="overview"] .balpyo-slide.balpyo-viewer-active {
     outline-color: #fff;
   }
+
+  /* ── 인쇄 ── 어느 뷰에서 눌러도 문서 뷰의 그림이 나온다 (ADR 0062).
+     인쇄는 뷰가 아니라 **미디어**다: 사람은 뷰를 바꾸고 인쇄하지 않고 보고 있는 화면에서
+     누른다 (그래서 인쇄 CSS가 없으면 발표자 뷰에서 누른 사람은 활성 슬라이드 한 장만 담긴
+     letter PDF를 받는다 — 실측). 그러므로 켜진 뷰를 되돌려야 하고, 이 절은 뷰 규칙 **뒤**에
+     온다: 게이트와 같은 명시도의 선택자(값을 묻지 않는 html[data-balpyo-view])를 뒤에 두면
+     !important 없이 이긴다. 종이 크기(@page)는 스테이지가 덱마다 달라 baseCSS가 만든다. */
+  @media print {
+    html, html[data-balpyo-view] { height: auto; background: #fff; }
+    body, html[data-balpyo-view] body { height: auto; overflow: visible; background: #fff; }
+    .balpyo-deck, html[data-balpyo-view] .balpyo-deck {
+      position: static;
+      display: block;
+      height: auto;
+      gap: 0;
+      padding: 0;
+    }
+    /* 한 장이 한 페이지다 — 겹쳐 둔 슬라이드를 세로 스택으로 돌리고 페이지를 나눈다. */
+    .balpyo-slide, html[data-balpyo-view] .balpyo-slide {
+      position: relative;
+      left: auto;
+      top: auto;
+      transform: none;
+      visibility: visible;
+      zoom: 1;
+      outline: none;
+      break-inside: avoid;
+      break-after: page;
+    }
+    /* 마지막 장 뒤에 빈 페이지를 하나 더 만들지 않는다. */
+    .balpyo-slide:last-child, html[data-balpyo-view] .balpyo-slide:last-child { break-after: auto; }
+    /* 오버뷰의 활성 테두리는 종이에 남지 않는다 (테두리 규칙이 한 단계 더 구체적이다). */
+    .balpyo-slide.balpyo-viewer-active,
+    html[data-balpyo-view] .balpyo-slide.balpyo-viewer-active { outline-color: transparent; }
+    .balpyo-viewer-bar, html[data-balpyo-view] .balpyo-viewer-bar,
+    .balpyo-viewer-notes, html[data-balpyo-view] .balpyo-viewer-notes { display: none; }
+  }
+
+  @media print {
+    @page { size: 1280px 720px; margin: 0; }
+  }
 }
 
 @layer balpyo.theme {

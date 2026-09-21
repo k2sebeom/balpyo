@@ -221,6 +221,6 @@ func baseCSS(stage soml.Stage, feat features) string {
     height: var(--balpyo-stage-height);
     overflow: hidden;
   }
-%s%s%s}
-`, stage.Width, stage.Height, contentCSS(feat), chromeCSS(feat), viewerCSS())
+%s%s%s%s}
+`, stage.Width, stage.Height, contentCSS(feat), chromeCSS(feat), viewerCSS(), printPageCSS(stage))
 }
