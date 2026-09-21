@@ -268,6 +268,51 @@ func TestChartPointFillColorsBarAndLabels(t *testing.T) {
 	}
 }
 
+// 계열색은 **프레임**의 것이다 (`series` — ADR 0060): 모든 막대를 칠하고 **라벨은 칠하지
+// 않는다.** 그 비대칭이 이 항목의 발견이다 — 008은 `surface` 막대와 `muted` 라벨을 함께
+// 요구하고, `surface`(#F3F4F6) 글자는 흰 배경에서 대비 1.06:1이라 사라진다. 면의 색과 글의
+// 색은 대비 요구가 다르므로 같은 채널이 될 수 없다.
+func TestChartSeriesColorsEveryBarButNotTheLabels(t *testing.T) {
+	deck := resolvedChart(t, `type="bar" series="surface" h="420"`,
+		chartPoint(`label="5월" value="22"`)+chartPoint(`label="9월" value="12" fill="accent4"`))
+	bars := chartBars(deck)
+	if len(bars) != 2 {
+		t.Fatalf("막대 %d개, want 2개", len(bars))
+	}
+	if fill := bars[0].ShapeStyle().Fill; fill == nil || fill.Color.Token != "surface" {
+		t.Errorf("계열 막대의 채움 = %v, want surface (프레임이 준 계열색)", fill)
+	}
+	// 강조는 계열을 **이긴다** — 점의 fill이 그 점만 계열에서 떼어 낸다.
+	if fill := bars[1].ShapeStyle().Fill; fill == nil || fill.Color.Token != "accent4" {
+		t.Errorf("강조 막대의 채움 = %v, want accent4", fill)
+	}
+
+	// 라벨 색의 기준은 테마의 캡션 역할이다 — 계열색이 라벨에 새지 않았는지를 그 색과 맞대서
+	// 본다 (토큰 이름을 여기 적으면 테마를 갈아 끼울 때 이 단정이 테마 값을 따라간다).
+	control, diags := resolveSlide(t, `<slide id="c">
+  <text role="caption">기준</text>
+</slide>
+`)
+	if len(diags) != 0 {
+		t.Fatalf("기준 덱의 진단이 없어야 한다: %v", diags)
+	}
+	caption := control.Slides[0].Content[0].(*soml.Element).TextStyle().Color
+	texts := chartTexts(deck)
+	if len(texts) != 4 {
+		t.Fatalf("라벨 %d개, want 4개", len(texts))
+	}
+	for i, text := range texts[:2] {
+		if got := text.TextStyle().Color; got != caption {
+			t.Errorf("계열 점의 라벨[%d] 색 = %v, want 캡션 색 %v (계열색은 글에 오지 않는다)", i, got, caption)
+		}
+	}
+	for i, text := range texts[2:] {
+		if got := text.TextStyle().Color; got.Token != "accent4" {
+			t.Errorf("강조 점의 라벨[%d] 색 = %v, want accent4", i, got)
+		}
+	}
+}
+
 // 값 0은 막대를 그리지 않는다 — 높이 0의 도형은 산출물에서 아무것도 아니므로 선언을 내지
 // 않는다 (라벨은 남는다: "0"이 데이터다).
 func TestChartZeroValueDrawsNoBar(t *testing.T) {
@@ -425,6 +470,33 @@ func TestChartDiagnostics(t *testing.T) {
 			attrs:    `type="bar" h="420"`,
 			points:   chartPoint(`label="5월" value="22" fill="brand"`),
 			contains: []string{`fill의 색 토큰 "brand"가 테마에 없다`},
+		},
+		{
+			// 계열색도 같은 어휘다 — 진단은 **저자가 쓴 이름**(series)으로 말한다.
+			name:     "series가 테마에 없는 토큰이다",
+			attrs:    `type="bar" series="brand" h="420"`,
+			points:   chartPoint(`label="5월" value="22"`),
+			contains: []string{`series의 색 토큰 "brand"가 테마에 없다`},
+		},
+		{
+			// 채움 어휘에서 `none`만 빠진다 (ADR 0060의 결정 6) — 그리지 않는 막대는 데이터가
+			// 아니고, 값이 라벨의 `color`로 흐르면 저자가 쓰지 않은 이름으로 진단이 난다.
+			name:     "series가 none이다",
+			attrs:    `type="bar" series="none" h="420"`,
+			points:   chartPoint(`label="5월" value="22"`),
+			contains: []string{`series에 none을 쓸 수 없다`, `value="0"`},
+		},
+		{
+			name:     "점의 fill이 none이다",
+			attrs:    `type="bar" h="420"`,
+			points:   chartPoint(`label="5월" value="22" fill="none"`),
+			contains: []string{`fill에 none을 쓸 수 없다`},
+		},
+		{
+			name:     "series에 값이 없다",
+			attrs:    `type="bar" series h="420"`,
+			points:   chartPoint(`label="5월" value="22"`),
+			contains: []string{"series 속성에는 값이 필요하다"},
 		},
 	}
 	for _, tc := range tests {
