@@ -638,9 +638,37 @@
       통과시키면 값이 라벨의 `color`로 흘러 저자가 쓰지 않은 이름으로 진단이 둘 난다(실측했다).
 
 ### P6 배포 ← **지금 여기**
-- [ ] 크로스 컴파일 릴리스(`goreleaser` 또는 직접) + GitHub Releases + Homebrew tap.
-- [ ] `balpyo version`이 빌드 정보(커밋·날짜)를 말하게.
+- [x] **선결정 ADR** [0061](docs/decisions/0061-release-is-built-by-make-and-the-go-toolchain-and-the-version-belongs-to-the-tag.md):
+      릴리스는 **make와 Go 툴체인**이 만들고(goreleaser를 쓰지 않는다) 절차는 쉘이 아니라
+      `internal/release`가 소유한다. 근거는 실측이다: 커밋·시각·더러움은 툴체인이 이미 `vcs.*`에
+      박고 `-trimpath`도 지우지 않으므로 **주입할 값은 태그 하나**다. 네 타깃 40초·20MB·두 번
+      빌드하면 바이트까지 같다 — goreleaser가 대신 쓸 코드는 루프 하나와 tar 하나다.
+- [x] `balpyo version`이 빌드 정보(커밋·날짜)를 말하게 — 세 줄이 됐다: 태그 / `커밋 feda13c
+      (2026-09-21T01:27:36Z)` / `linux/amd64 · go1.26`. 더러운 트리는 `+dirty`를 붙이고, **모르는
+      것은 줄을 내지 않는다**(`알 수 없음`은 리포트에 쓸모없는 줄을 하나 늘린다). 판정이 순수
+      함수 둘에 걸린 이유도 실측이다: `go test -c` 바이너리에는 `vcs.*`가 하나도 없다 — 박힌
+      커밋을 보는 판정은 진짜 아카이브를 만드는 `internal/release`의 테스트가 갖는다.
+- [x] 크로스 컴파일 릴리스 + GitHub Releases + Homebrew tap: `make dist`가 네 아카이브 +
+      `SHA256SUMS` + `dist/balpyo.rb`를 내고, `v*` 태그가 `.github/workflows/release.yml`을
+      돌린다(게이트를 **다시** 돈 뒤 초안으로 올린다 — 노트는 사람이 쓴다). tap 저장소 커밋은
+      사람의 일이다: 우리 저장소가 아닌 곳에 쓰는 토큰을 CI에 두지 않는다.
+      - **REVIEW에서 계약을 좁혔다**: 한 타깃으로 만든 `.rb`를 실물로 보니 나머지 세 칸이 빈
+        `url`·빈 `sha256`이었다. 그런 파일은 tap에 올라간 뒤 **받는 사람의 기계에서만** 실패하므로,
+        포뮬러는 플랫폼 표를 전부 만들 때만 나오고 나오지 않았다는 것을 출력이 말한다.
+      - **재현성은 게이트다**: `CGO_ENABLED=0`·`-trimpath`·주입은 태그 하나·tar 헤더 고정
+        (시각 epoch 0, uid/gid 0, 사용자 이름 없음) → 두 번 빌드해 해시를 맞대는 테스트가 있다.
+      - **컨테이너의 사용자 하나가 두 가지를 고쳤다**: `make dist`를 호스트 사용자로 돌려
+        `dist/`가 root 소유가 되지 않게 했고(사람이 올리고 지우는 파일이다), 그 덕에 git의 소유
+        검사도 지나가 vcs 스탬핑이 산다. root로 도는 `make test`에는 `safe.directory`를 환경으로
+        넣었다 — 없으면 릴리스 테스트가 **컨테이너에서만** 빨갛다.
+      - **윈도우는 열지 않았다** (표에 없다): 근거는 없음이 아니라 재보지 않았음이다.
+      - DOC: `docs/internals/release.md` 한 장 + `cli.md`의 `balpyo version` 세 줄 표 +
+        getting-started의 "태그된 릴리스에서 받기"(첫 태그가 아직 없다는 것을 그 자리에서 말한다).
 - [ ] 웹 런타임 마감(오버뷰·`reveal`·인쇄) + 인라인 JS를 `go:embed` 자산으로 분리.
+
+**사람이 해야 남는 것** (자격 증명이 필요해 여기서 못 한다): `LICENSE` 파일이 없어 포뮬러에
+`license` 스탠자가 없다(Homebrew audit이 기대한다) · 첫 `v*` 태그를 밀어야 릴리스 경로가 실제로
+돈다 · tap 저장소(`homebrew-balpyo`)를 만들어 생성된 `balpyo.rb`를 올려야 `brew install`이 열린다.
 
 ---
 
