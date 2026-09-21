@@ -422,6 +422,9 @@ func writeShapeSp(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *
 type spSpec struct {
 	id   int
 	name string
+	// descr은 `cNvPr@descr` = 저자의 `alt`이다 (picInfo.descr과 같은 자리 — cNvPrXML).
+	// 도형 본문을 **지우지 않는다**: 이름은 그림에 더해지고 글은 글로 남는다 (ADR 0058).
+	descr string
 	// rect는 도형 좌표다 — 텍스트 박스는 안전 여유를 더한 값, 도형은 잰 값 그대로다
 	// (writeShapeSp의 근거).
 	rect geom.Rect
@@ -541,7 +544,7 @@ func shapeSp(id int, name string, rect geom.Rect, style soml.ShapeStyle) (spSpec
 		// 어서션만이 그것을 잡는다.
 		return spSpec{}, fmt.Errorf("도형 type %q의 prstGeom 매핑이 없다", style.Type)
 	}
-	spec := spSpec{id: id, name: name, rect: rect, preset: preset}
+	spec := spSpec{id: id, name: name, descr: style.Alt, rect: rect, preset: preset}
 	if style.Fill == nil {
 		return spSpec{}, fmt.Errorf("채움이 해석되지 않았다")
 	}
@@ -623,10 +626,10 @@ func writeSp(b *strings.Builder, spec spSpec, theme soml.Theme) error {
 	}
 	w(0, "<p:sp>")
 	w(1, "<p:nvSpPr>")
-	// 이름은 지오메트리 식별자다 — PowerPoint 선택 창과 진단 메시지가 같은 이름으로
-	// 같은 요소를 가리킨다. 저자의 `id`(soml.ShapeStyle.ID)는 아직 산출물에 나가지 않는다:
+	// 이름은 지오메트리 식별자이고 `descr`은 저자의 `alt`이다 (cNvPrXML — 그림·표 프레임과
+	// 같은 함수를 지난다). 저자의 `id`(soml.ShapeStyle.ID)는 아직 산출물에 나가지 않는다:
 	// 그것은 `<arrow from="db">`의 참조 대상 이름이고(Iteration 7), 웹도 쓰지 않는다.
-	w(2, fmt.Sprintf(`<p:cNvPr id="%d" name="%s"/>`, spec.id, escapeXML(spec.name)))
+	w(2, cNvPrXML(spec.id, spec.name, spec.descr))
 	if spec.textBox {
 		w(2, `<p:cNvSpPr txBox="1"/>`)
 	} else {

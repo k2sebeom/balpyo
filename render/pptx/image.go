@@ -326,12 +326,8 @@ func writePic(b *strings.Builder, spec picInfo, theme soml.Theme) error {
 	w(1, "<p:nvPicPr>")
 	// 이름은 도형과 같은 규칙이다 (지오메트리 식별자 — writeSp): PowerPoint 선택 창과 진단
 	// 메시지가 같은 이름으로 같은 요소를 가리킨다. `descr`은 **저자의 `alt`**이고 그것이
-	// PowerPoint의 "대체 텍스트" 칸이다 — 빈 값이면 속성을 내지 않는다 (아래).
-	attrs := fmt.Sprintf(`id="%d" name="%s"`, spec.id, escapeXML(spec.name))
-	if spec.descr != "" {
-		attrs += fmt.Sprintf(` descr="%s"`, escapeXML(spec.descr))
-	}
-	w(2, "<p:cNvPr "+attrs+"/>")
+	// PowerPoint의 "대체 텍스트" 칸이다 — 빈 값이면 속성을 내지 않는다 (cNvPrXML).
+	w(2, cNvPrXML(spec.id, spec.name, spec.descr))
 	// `a:picLocks noChangeAspect`를 넣지 않는다: 산출물은 편집 가능해야 하고, 저자가 아니라
 	// 엔진이 잠근 제약은 파일을 열어 본 사람이 이유를 알 수 없다 (종횡비를 지키며 늘리는 것은
 	// PowerPoint에서 코너 핸들 + Shift로 이미 되고, 잠그면 그것 말고는 아예 되지 않는다).

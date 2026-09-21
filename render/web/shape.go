@@ -643,15 +643,16 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 
 // writeShapeInk는 기하를 그리는 svg를 쓴다 — 채움·테두리·그림자·불투명도·대칭이 여기 걸린다.
 //
-// `aria-hidden`인 이유: 그림은 장식이고 내용은 안의 텍스트다. 스크린 리더가 읽을 것이 없는
-// 요소를 접근성 트리에 남기면 도형마다 빈 그래픽이 읽힌다.
+// 기본이 `aria-hidden`인 이유: 그림은 장식이고 내용은 안의 텍스트다. 스크린 리더가 읽을 것이
+// 없는 요소를 접근성 트리에 남기면 도형마다 빈 그래픽이 읽힌다. **저자의 `alt`이 그 판단의
+// 예외를 선언한다** — 그러면 같은 자리가 `role="img" aria-label`이 된다 (inkAccessAttrs).
 func writeShapeInk(b *strings.Builder, geom shapeGeometry, style soml.ShapeStyle, theme soml.Theme, id string) error {
 	decls, defs, err := shapeInkCSS(style, theme, id)
 	if err != nil {
 		return err
 	}
 	if geom.Space == spacePixel {
-		fmt.Fprintf(b, "<svg class=%q aria-hidden=\"true\"%s>", shapeInkClass, styleAttr(decls))
+		fmt.Fprintf(b, "<svg class=%q%s%s>", shapeInkClass, inkAccessAttrs(style.Alt), styleAttr(decls))
 		b.WriteString(defs)
 		attrs := geom.Attrs
 		if geom.Rounded {
@@ -678,8 +679,8 @@ func writeShapeInk(b *strings.Builder, geom shapeGeometry, style soml.ShapeStyle
 	if style.Radius != nil {
 		return fmt.Errorf("type=%q에는 반경을 실을 자리가 없다", geom.Type)
 	}
-	fmt.Fprintf(b, "<svg class=%q viewBox=\"0 0 100 100\" preserveAspectRatio=\"none\" aria-hidden=\"true\"%s>",
-		shapeInkClass, styleAttr(decls))
+	fmt.Fprintf(b, "<svg class=%q viewBox=\"0 0 100 100\" preserveAspectRatio=\"none\"%s%s>",
+		shapeInkClass, inkAccessAttrs(style.Alt), styleAttr(decls))
 	b.WriteString(defs)
 	for _, p := range geom.Paths {
 		b.WriteString("<path")

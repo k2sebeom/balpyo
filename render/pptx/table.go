@@ -65,7 +65,8 @@ func writeGraphicFrameTbl(b *strings.Builder, deck *soml.Deck, slide *soml.Slide
 	if !ok {
 		return fmt.Errorf("%s: %s <%s>의 측정된 좌표가 없다", slide.Source, id, elem.Name)
 	}
-	if elem.TableStyle() == nil {
+	style := elem.TableStyle()
+	if style == nil {
 		// 해석되지 않은 외관을 기본값으로 그리면 PPTX만 그럴듯하게 나오고 웹과 갈라진다
 		// (render/web.writeTable과 같은 관문).
 		return fmt.Errorf("%s:%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
@@ -75,6 +76,9 @@ func writeGraphicFrameTbl(b *strings.Builder, deck *soml.Deck, slide *soml.Slide
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
+	// 저자의 `alt`은 프레임의 이름이다 (ADR 0058) — `ph`와 같이 명세 바깥에서 얹는다: 격자를
+	// 만드는 계산(tableSpec)에 관여하지 않는 값이다.
+	spec.descr = style.Alt
 	spec.ph = slotPlaceholder(slide, elem)
 	if err := writeGraphicFrame(b, spec, deck.Theme, rels); err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
@@ -87,6 +91,9 @@ func writeGraphicFrameTbl(b *strings.Builder, deck *soml.Deck, slide *soml.Slide
 type tableInfo struct {
 	id   int
 	name string
+	// descr은 `cNvPr@descr` = 저자의 `alt`이고 **표 전체의 이름**이다 (ADR 0058) — 셀은
+	// `a:tbl` 안에 그대로 남아 항해 가능하다 (웹의 `<table aria-label>`과 같은 자리).
+	descr string
 	// rect는 잰 프레임 박스 그대로다 — 텍스트 박스의 안전 여유(TextBoxRect)를 더하지 않는다:
 	// 여유는 글줄이 접히는 것을 막는 장치이고, 표의 글줄은 셀 안에서 접히므로 프레임을 넓히면
 	// 격자만 어긋난다 (열 너비의 합이 프레임 폭이다).
@@ -437,8 +444,8 @@ func writeGraphicFrame(b *strings.Builder, spec tableInfo, theme soml.Theme, rel
 	}
 	w(0, "<p:graphicFrame>")
 	w(1, "<p:nvGraphicFramePr>")
-	// 이름은 도형·그림과 같은 규칙이다 (지오메트리 식별자 — writeSp).
-	w(2, fmt.Sprintf(`<p:cNvPr id="%d" name="%s"/>`, spec.id, escapeXML(spec.name)))
+	// 이름·대체 텍스트는 도형·그림과 같은 규칙이다 (지오메트리 식별자 + `descr` — cNvPrXML).
+	w(2, cNvPrXML(spec.id, spec.name, spec.descr))
 	// `a:graphicFrameLocks noGrp="1"`을 넣지 않는다 — PowerPoint가 표에 그 잠금을 쓰지만,
 	// 저자가 아니라 엔진이 잠근 제약은 파일을 열어 본 사람이 이유를 알 수 없다 (그림에
 	// `picLocks noChangeAspect`를 넣지 않은 것과 같은 판단 — writePic).
