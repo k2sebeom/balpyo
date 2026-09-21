@@ -1,6 +1,10 @@
 package web
 
-import "fmt"
+import (
+	_ "embed"
+	"fmt"
+	"strings"
+)
 
 // 이 파일은 뷰어 런타임이다 — 산출물 index.html을 발표 가능한 웹앱으로 만드는 인라인
 // JS/CSS. 슬라이드를 한 장씩 화면에 맞춰 보여주고, 하단 가운데 컨트롤 바로 넘기며,
@@ -22,6 +26,16 @@ import "fmt"
 // 남아 있어야 발표자 뷰가 켜진 채로도 rect가 0으로 무너지지 않고, 뷰 전환이 줄바꿈을
 // 다시 계산하게 만들지 않는다. 화면 맞춤은 transform: scale이므로 레이아웃 크기
 // (offsetWidth)는 논리 스테이지 그대로 남고, 런타임이 그 값으로 배율을 계산한다.
+//
+// # 런타임 자산은 파일이고, 전달은 그대로 인라인이다
+//
+// JS와 CSS는 assets/ 아래의 파일이고 go:embed로 실린다 (ADR 0062). **전달 방식은 바뀌지
+// 않는다**: 둘 다 index.html 안에 그대로 들어가고 외부 참조는 없다 (파일로 열어도 도는
+// 계약, PRD §9.1). 파일로 뺀 근거는 크기가 아니라 도구다 — Go의 raw string 안에서는 백틱을
+// 한 글자도 쓸 수 없어 JS 템플릿 리터럴이 막히고, 에디터·문법 검사는 그 문자열 안을
+// 들여다보지 않는다. 번들러는 들이지 않는다 (환경은 하나다): 자산은 손으로 쓴 vanilla
+// JS/CSS 그대로다. 인라인을 끝내는 문자열(`</script>`·`</style>`)이 자산에 들어가면 문서가
+// 그 자리에서 깨지므로, 그 조건은 runtime_test가 게이트로 판정한다.
 
 // ViewAttr는 <html>에 실리는 뷰 모드 속성이다. 없으면 문서 뷰다.
 const ViewAttr = "data-balpyo-view"
@@ -85,6 +99,9 @@ func MeasureViewExpr() string {
 	return fmt.Sprintf("document.documentElement.setAttribute(%q, %q)", ViewAttr, MeasureView)
 }
 
+//go:embed assets/viewer.css
+var viewerCSSAsset string
+
 // viewerCSS는 발표자 뷰와 뷰어 크롬의 CSS다 — baseCSS가 balpyo.base 층 안에 싣는다.
 //
 // 발표자 뷰 규칙은 전부 `html[data-balpyo-view="presenter"]` 아래에 있다. 게이트 밖에
@@ -94,90 +111,13 @@ func MeasureViewExpr() string {
 // 크롬의 색·폰트는 테마 토큰이 아니다 (baseCSS의 뷰어 바탕색과 같은 판단): 슬라이드 밖의
 // 색이라 덱의 색이 아니고, 대응하는 PPTX 개념도 없다. 폰트도 system-ui로 두어 테마 폰트
 // 이름이 크롬에 새지 않게 한다.
-func viewerCSS() string {
-	return `
-  /* ── 발표자 뷰 ── 런타임 JS가 <html>에 data-balpyo-view="presenter"를 켠다.
-     속성이 없으면(JS 꺼짐, 또는 지오메트리 패스가 지운 상태) 위의 세로 스택 그대로다. */
-  .balpyo-viewer-bar, .balpyo-viewer-notes { display: none; }
+//
+// 자산은 층 안에 들어가는 규칙 묶음이므로 2칸 들여쓰기로 시작한다. 앞의 빈 줄은 앞 절과
+// 띄우는 것이다 (contentCSS·chromeCSS도 같은 모양이다).
+func viewerCSS() string { return "\n" + viewerCSSAsset }
 
-  html[data-balpyo-view="presenter"] { height: 100%; }
-  html[data-balpyo-view="presenter"] body { height: 100%; overflow: hidden; }
-  html[data-balpyo-view="presenter"] .balpyo-deck {
-    position: fixed;
-    inset: 0;
-    padding: 0;
-    display: block;
-  }
-
-  /* 슬라이드는 전부 화면 가운데 겹쳐 두고 활성 슬라이드만 보인다. display가 아니라
-     visibility인 이유와 transform 스케일인 이유는 파일 머리 주석에 있다. */
-  html[data-balpyo-view="presenter"] .balpyo-slide {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%) scale(var(--balpyo-view-scale, 1));
-    visibility: hidden;
-  }
-  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-active {
-    visibility: visible;
-  }
-
-  html[data-balpyo-view="presenter"] .balpyo-viewer-bar {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    position: fixed;
-    left: 50%;
-    bottom: 16px;
-    transform: translateX(-50%);
-    z-index: 10;
-    padding: 4px;
-    border-radius: 999px;
-    background: rgba(20, 20, 22, 0.88);
-    color: #ddd;
-    font: 14px/1 system-ui, sans-serif;
-  }
-  .balpyo-viewer-bar button {
-    appearance: none;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    padding: 8px 12px;
-    border-radius: 999px;
-    cursor: pointer;
-  }
-  .balpyo-viewer-bar button:hover { background: rgba(255, 255, 255, 0.12); }
-  .balpyo-viewer-bar button:disabled { opacity: 0.35; cursor: default; background: transparent; }
-  .balpyo-viewer-bar button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.18); }
-  .balpyo-viewer-counter {
-    padding: 0 10px;
-    color: #aaa;
-    font-variant-numeric: tabular-nums;
-  }
-
-  html[data-balpyo-view="presenter"] .balpyo-viewer-notes {
-    display: block;
-    position: fixed;
-    left: 50%;
-    bottom: 64px;
-    transform: translateX(-50%);
-    z-index: 10;
-    width: min(640px, calc(100vw - 48px));
-    max-height: 40vh;
-    overflow-y: auto;
-    padding: 14px 18px;
-    border-radius: 12px;
-    background: rgba(20, 20, 22, 0.92);
-    color: #e6e6e6;
-    font: 15px/1.6 system-ui, sans-serif;
-    white-space: pre-wrap;
-  }
-  /* hidden 속성이 이겨야 한다 — 위의 display: block이 UA 스타일을 덮으므로 명시한다. */
-  html[data-balpyo-view="presenter"] .balpyo-viewer-notes[hidden] { display: none; }
-  .balpyo-viewer-notes.balpyo-viewer-empty { color: #999; font-style: italic; }
-`
-}
+//go:embed assets/runtime.js
+var runtimeJSAsset string
 
 // runtimeJS는 뷰어 런타임이다 — Render가 <script>로 인라인한다 (외부 참조 없음).
 //
@@ -188,105 +128,6 @@ func viewerCSS() string {
 //
 // 조작: 컨트롤 바(이전/다음/카운터/노트 토글), 키보드(화살표·Space·PageUp/Down·Home/End,
 // n=노트), URL 해시 딥링크(`#/<슬라이드 id>` 또는 `#/<1-based 번호>`, PRD §9.1).
-const runtimeJS = `(() => {
-  "use strict";
-  const root = document.documentElement;
-  const slides = Array.from(document.querySelectorAll(".balpyo-slide"));
-  if (slides.length === 0) return;
-
-  const button = (cls, label, text) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = cls;
-    b.setAttribute("aria-label", label);
-    b.textContent = text;
-    return b;
-  };
-  const prev = button("balpyo-viewer-prev", "Previous slide", "‹");
-  const next = button("balpyo-viewer-next", "Next slide", "›");
-  const notesToggle = button("balpyo-viewer-notes-toggle", "Toggle speaker notes", "Notes");
-  notesToggle.setAttribute("aria-pressed", "false");
-  const counter = document.createElement("span");
-  counter.className = "balpyo-viewer-counter";
-
-  const bar = document.createElement("nav");
-  bar.className = "balpyo-viewer-bar";
-  bar.setAttribute("aria-label", "Presentation controls");
-  bar.append(prev, counter, next, notesToggle);
-
-  const notes = document.createElement("aside");
-  notes.className = "balpyo-viewer-notes";
-  notes.setAttribute("aria-label", "Speaker notes");
-  notes.hidden = true;
-
-  document.body.append(notes, bar);
-
-  let current = -1;
-
-  // 배율은 창에 꽉 차는 fit이다. 레이아웃 크기(offsetWidth)는 transform과 무관하게 논리
-  // 스테이지이므로, 잰 값을 다시 스케일하는 되먹임이 없다.
-  const fit = () => {
-    const scale = Math.min(
-      window.innerWidth / slides[0].offsetWidth,
-      window.innerHeight / slides[0].offsetHeight);
-    root.style.setProperty("--balpyo-view-scale", String(scale));
-  };
-
-  const show = (index, writeHash) => {
-    const target = Math.min(Math.max(index, 0), slides.length - 1);
-    if (target === current) return;
-    if (current >= 0) slides[current].classList.remove("balpyo-viewer-active");
-    current = target;
-    const slide = slides[current];
-    slide.classList.add("balpyo-viewer-active");
-    counter.textContent = (current + 1) + " / " + slides.length;
-    prev.disabled = current === 0;
-    next.disabled = current === slides.length - 1;
-    const note = slide.querySelector(".balpyo-notes");
-    notes.textContent = note ? note.textContent : "No notes for this slide.";
-    notes.classList.toggle("balpyo-viewer-empty", !note);
-    if (writeHash) {
-      // 히스토리를 쌓지 않는다 — 뒤로 가기가 슬라이드를 되감으면 발표 중에 페이지를
-      // 떠나는 길이 없어진다. file://에서 막는 브라우저가 있어도 조용히 넘어간다.
-      try { history.replaceState(null, "", "#/" + encodeURIComponent(slide.id)); } catch (e) {}
-    }
-  };
-
-  const fromHash = () => {
-    let raw = location.hash.replace(/^#\/?/, "");
-    try { raw = decodeURIComponent(raw); } catch (e) {}
-    if (raw === "") return 0;
-    const byID = slides.findIndex((s) => s.id === raw);
-    if (byID >= 0) return byID;
-    const n = Number(raw);
-    if (Number.isInteger(n) && n >= 1 && n <= slides.length) return n - 1;
-    return 0;
-  };
-
-  prev.addEventListener("click", () => show(current - 1, true));
-  next.addEventListener("click", () => show(current + 1, true));
-  notesToggle.addEventListener("click", () => {
-    notes.hidden = !notes.hidden;
-    notesToggle.setAttribute("aria-pressed", String(!notes.hidden));
-  });
-  window.addEventListener("hashchange", () => show(fromHash(), false));
-  window.addEventListener("resize", fit);
-  window.addEventListener("keydown", (e) => {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-    switch (e.key) {
-    case "ArrowRight": case "ArrowDown": case "PageDown": case " ":
-      e.preventDefault(); show(current + 1, true); break;
-    case "ArrowLeft": case "ArrowUp": case "PageUp":
-      e.preventDefault(); show(current - 1, true); break;
-    case "Home": e.preventDefault(); show(0, true); break;
-    case "End": e.preventDefault(); show(slides.length - 1, true); break;
-    case "n": case "N": notesToggle.click(); break;
-    }
-  });
-
-  root.setAttribute("data-balpyo-view", "presenter");
-  fit();
-  // 해시가 있으면 그 슬라이드로 열되 해시는 손대지 않는다 — 사용자가 준 딥링크 형태
-  // (번호든 id든)를 열자마자 바꿔치지 않는다. 해시가 없으면 첫 슬라이드고 URL은 깨끗하다.
-  show(fromHash(), false);
-})();`
+//
+// 파일 끝의 줄바꿈은 뗀다 — Render가 </script> 앞에 하나 넣는다.
+var runtimeJS = strings.TrimRight(runtimeJSAsset, "\n")
