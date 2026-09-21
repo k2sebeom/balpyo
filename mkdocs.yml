@@ -107,6 +107,7 @@ nav:
       - 0057 문서의 닫힌 목록은 테스트가 읽는다: decisions/0057-docs-are-hand-written-but-closed-lists-are-read-from-them-by-a-test.md
       - 0058 alt은 그림에 이름을 더하고 읽기 순서는 문서 순서다: decisions/0058-alt-names-the-drawing-and-reading-order-is-document-order.md
       - 0059 chart는 값 층이 도형·텍스트로 펼친다: decisions/0059-chart-is-desugared-into-shapes-and-text-not-a-native-chart-part.md
+      - 0060 계열색은 프레임이 소유한다: decisions/0060-the-series-color-belongs-to-the-frame-and-a-point-fill-is-emphasis.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |
