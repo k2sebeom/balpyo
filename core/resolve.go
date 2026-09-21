@@ -116,6 +116,10 @@ type resolver struct {
 	// 한다). 상태가 resolver에 있는 것이 곧 검사 범위가 슬라이드라는 뜻이다 — 근거는
 	// resolver.shapeID의 주석에 있다.
 	ids map[string]soml.Span
+	// revealTurn은 이 슬라이드에서 지금까지 `reveal`을 가진 리스트 항목의 수다 — 값 없는
+	// `reveal`이 받을 차례다 (resolveReveal). 상태가 resolver에 있는 것이 곧 스텝 번호의
+	// 범위가 슬라이드라는 뜻이다 (ids와 같은 태도).
+	revealTurn int
 }
 
 func (r *resolver) errorf(span soml.Span, format string, args ...any) {
@@ -342,8 +346,9 @@ func (r *resolver) textRole(elem *soml.Element) (soml.TextRole, bool) {
 //
 // inherited는 **부모가 물려준 패치**다 (리스트 항목만 쓴다 — resolveList). 자기 인라인
 // 속성보다 **먼저** 얹는 이유는 우선순위의 방향이다: 가까운 선언이 이긴다. `<li>`는 지금
-// 속성을 받지 않으므로(ADR 0038) 두 단이 겹치는 경우가 아직 없지만, 순서를 여기서 못 박아
-// 두면 `<li>`에 속성을 여는 날 우선순위를 다시 논의할 필요가 없다.
+// 외관 속성을 받지 않으므로(ADR 0038 — 여는 속성은 순서인 `reveal` 하나다) 두 단이 겹치는
+// 경우가 아직 없지만, 순서를 여기서 못 박아 두면 `<li>`에 외관 속성을 여는 날 우선순위를
+// 다시 논의할 필요가 없다.
 func (r *resolver) resolveText(elem *soml.Element, role soml.TextRole, inherited textPatch) {
 	style := r.textRoleDefaults(role)
 	mergeText(&style, r.textComponentDefault(elem.Name))
@@ -381,6 +386,9 @@ func (r *resolver) resolveList(list *soml.Element) {
 		}
 		r.resolveText(item, role, patch)
 		r.resolveInlines(item, item.Appearance.Text)
+		// 순서는 외관 뒤에 본다 — 항목의 유일한 자기 속성이고(ADR 0063 결정 1) 외관 패치와
+		// 겹치지 않는다.
+		r.resolveReveal(item)
 	}
 }
 
