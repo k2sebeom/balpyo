@@ -226,15 +226,19 @@ func TestPrintCSSRestoresTheDocumentView(t *testing.T) {
 			t.Errorf("인쇄 CSS에 %q가 없다", want)
 		}
 	}
-	if strings.Contains(printCSS(stage), "!important") {
+	// 인쇄 절은 base 층 안, 그리고 뷰 규칙 **뒤**에 온다.
+	printAt := strings.Index(base, "@media print")
+	if printAt < 0 {
+		t.Fatal("인쇄 절이 없다")
+	}
+	print := base[printAt:]
+	if strings.Contains(print, "!important") {
 		t.Error("인쇄 CSS가 !important를 쓴다 — 같은 명시도로 뒤에 두면 충분하다")
 	}
 	// 뷰가 켜진 상태를 되돌리는 선택자는 값을 묻지 않는다 (발표자 뷰든 오버뷰든 같이 잡힌다).
-	if !strings.Contains(printCSS(stage), fmt.Sprintf("html[%s] ", ViewAttr)) {
-		t.Errorf("인쇄 CSS가 뷰 게이트를 같은 명시도로 되돌리지 않는다:\n%s", printCSS(stage))
+	if !strings.Contains(print, fmt.Sprintf("html[%s] ", ViewAttr)) {
+		t.Errorf("인쇄 CSS가 뷰 게이트를 같은 명시도로 되돌리지 않는다:\n%s", print)
 	}
-	// base 층 안, 그리고 뷰 규칙 **뒤**에 온다.
-	printAt := strings.Index(base, "@media print")
 	presenterAt := strings.LastIndex(base, fmt.Sprintf("html[%s=%q]", ViewAttr, PresenterView))
 	if printAt < presenterAt {
 		t.Error("인쇄 CSS가 발표자 뷰 규칙보다 앞에 있다 — 되돌리기가 이기지 못한다")

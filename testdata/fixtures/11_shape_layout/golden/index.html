@@ -191,6 +191,10 @@
     transform: none;
   }
 
+  /* 이 파일은 뷰어 CSS다 (render/web.viewerCSS가 go:embed로 싣는다). index.html의 <style>
+     안, `@layer balpyo.base` 블록 **안에** 그대로 들어가므로 규칙이 2칸 들여쓰기로 시작한다.
+     닫는 style 태그를 담으면(주석 안이어도) 문서가 그 자리에서 끝난다 — runtime_test가 막는다. */
+
   /* ── 발표자 뷰 ── 런타임 JS가 <html>에 data-balpyo-view="presenter"를 켠다.
      속성이 없으면(JS 꺼짐, 또는 지오메트리 패스가 지운 상태) 위의 세로 스택 그대로다. */
   .balpyo-viewer-bar, .balpyo-viewer-notes { display: none; }
@@ -217,7 +221,11 @@
     visibility: visible;
   }
 
-  html[data-balpyo-view="presenter"] .balpyo-viewer-bar {
+  /* 컨트롤 바는 오버뷰에서도 보인다 — 키보드를 모르는 사람이 오버뷰에서 나갈 길이 그것이다.
+     값을 묻지 않는 선택자(html[data-balpyo-view])를 쓰지 않는 이유는 측정 뷰다: 재는 동안
+     크롬이 그려지면 그 뒤에 찍는 스크린샷이 산출물이 아닌 측정 상태를 본다. */
+  html[data-balpyo-view="presenter"] .balpyo-viewer-bar,
+  html[data-balpyo-view="overview"] .balpyo-viewer-bar {
     display: flex;
     align-items: center;
     gap: 2px;
@@ -271,6 +279,34 @@
   /* hidden 속성이 이겨야 한다 — 위의 display: block이 UA 스타일을 덮으므로 명시한다. */
   html[data-balpyo-view="presenter"] .balpyo-viewer-notes[hidden] { display: none; }
   .balpyo-viewer-notes.balpyo-viewer-empty { color: #999; font-style: italic; }
+
+  /* ── 오버뷰 ── 슬라이드 전부를 격자로 줄여 놓고 하나를 골라 들어간다 (ADR 0062).
+     줄이는 수단은 zoom이다: transform은 부모가 보는 칸 크기를 줄이지 않아 타일마다 감싸는
+     요소가 필요하고, 그 요소는 지오메트리 패스가 읽는 부모 사슬을 바꾼다. zoom 아래에서도
+     레이아웃 크기(offsetWidth)는 논리 스테이지 그대로이므로 화면 맞춤 배율 계산에 되먹임이
+     없다. 열 수와 배율은 런타임이 창에 맞춰 계산해 넣는다 — CSS는 슬라이드 수를 모른다. */
+  html[data-balpyo-view="overview"] { height: 100%; }
+  html[data-balpyo-view="overview"] body { height: 100%; overflow: hidden; }
+  html[data-balpyo-view="overview"] .balpyo-deck {
+    display: grid;
+    grid-template-columns: repeat(var(--balpyo-overview-columns, 4), max-content);
+    justify-content: center;
+    align-content: center;
+    height: 100%;
+    gap: 16px;
+    /* 아래쪽은 컨트롤 바 높이만큼 더 비운다 — 런타임의 열 계산이 같은 값을 쓴다. */
+    padding: 16px 16px 64px;
+  }
+  html[data-balpyo-view="overview"] .balpyo-slide {
+    zoom: var(--balpyo-overview-zoom, 0.2);
+    cursor: pointer;
+    outline: 4px solid transparent;
+  }
+  /* 활성 슬라이드는 **나갈 자리**다 (오버뷰는 이동이 아니라 보기다) — 테두리로 표시한다.
+     테두리도 zoom을 받으므로 4px은 화면에서 1px 남짓이다. */
+  html[data-balpyo-view="overview"] .balpyo-slide.balpyo-viewer-active {
+    outline-color: #fff;
+  }
 }
 
 @layer balpyo.theme {
@@ -390,6 +426,10 @@
 </section>
 </div>
 <script>
+// 이 파일은 뷰어 런타임이다 (render/web.runtimeJS가 go:embed로 싣는다). index.html의 <body>
+// 끝에 script 태그로 인라인되므로 여닫는 태그 문자열을 담을 수 없다 — 닫는 태그는 문서를 그
+// 자리에서 끝내고, 여는 태그는 "런타임은 한 번만 실린다" 게이트를 속인다 (runtime_test가 막는다). 덱 데이터를 보간하지 않는 **고정 파일**이다: 슬라이드·노트는
+// 전부 DOM에서 읽으므로 저자 텍스트가 스크립트로 새는 경로가 없다.
 (() => {
   "use strict";
   const root = document.documentElement;
@@ -408,13 +448,15 @@
   const next = button("balpyo-viewer-next", "Next slide", "›");
   const notesToggle = button("balpyo-viewer-notes-toggle", "Toggle speaker notes", "Notes");
   notesToggle.setAttribute("aria-pressed", "false");
+  const overviewToggle = button("balpyo-viewer-overview", "Toggle slide overview", "Grid");
+  overviewToggle.setAttribute("aria-pressed", "false");
   const counter = document.createElement("span");
   counter.className = "balpyo-viewer-counter";
 
   const bar = document.createElement("nav");
   bar.className = "balpyo-viewer-bar";
   bar.setAttribute("aria-label", "Presentation controls");
-  bar.append(prev, counter, next, notesToggle);
+  bar.append(prev, counter, next, overviewToggle, notesToggle);
 
   const notes = document.createElement("aside");
   notes.className = "balpyo-viewer-notes";
@@ -454,6 +496,39 @@
     }
   };
 
+  // ── 오버뷰 ──
+  //
+  // 오버뷰는 발표자 뷰 안의 상태가 아니라 **같은 속성의 다른 값**이다 (ADR 0062). 드나드는
+  // 것으로 현재 슬라이드가 바뀌지 않는다 — 오버뷰는 이동이 아니라 보기이고, 나오면 보고 있던
+  // 자리로 돌아온다. 자리를 옮기는 것은 타일 클릭(과 오버뷰에서도 듣는 화살표)뿐이다.
+  const overviewOn = () => root.getAttribute("data-balpyo-view") === "overview";
+
+  // 격자는 **전부 한 화면에** 들어와야 한다: 열 수를 1..n으로 훑어 타일이 가장 커지는 값을
+  // 고르고 그 폭에서 zoom을 얻는다. 간격·여백은 viewer.css와 같은 값이고, 아래쪽은 컨트롤
+  // 바가 타일을 덮지 않도록 바 높이만큼 더 비운다.
+  const OVERVIEW_GAP = 16, OVERVIEW_PAD = 16, OVERVIEW_BAR = 48;
+  const overviewFit = () => {
+    const stageWidth = slides[0].offsetWidth, stageHeight = slides[0].offsetHeight;
+    const roomWidth = window.innerWidth - 2 * OVERVIEW_PAD;
+    const roomHeight = window.innerHeight - 2 * OVERVIEW_PAD - OVERVIEW_BAR;
+    let best = {columns: 1, width: 0};
+    for (let columns = 1; columns <= slides.length; columns++) {
+      const rows = Math.ceil(slides.length / columns);
+      const width = Math.min(
+        (roomWidth - (columns - 1) * OVERVIEW_GAP) / columns,
+        ((roomHeight - (rows - 1) * OVERVIEW_GAP) / rows) * (stageWidth / stageHeight));
+      if (width > best.width) best = {columns, width};
+    }
+    root.style.setProperty("--balpyo-overview-columns", String(best.columns));
+    root.style.setProperty("--balpyo-overview-zoom", String(Math.max(best.width, 1) / stageWidth));
+  };
+
+  const setOverview = (on) => {
+    if (on) overviewFit();
+    root.setAttribute("data-balpyo-view", on ? "overview" : "presenter");
+    overviewToggle.setAttribute("aria-pressed", String(on));
+  };
+
   const fromHash = () => {
     let raw = location.hash.replace(/^#\/?/, "");
     try { raw = decodeURIComponent(raw); } catch (e) {}
@@ -471,8 +546,21 @@
     notes.hidden = !notes.hidden;
     notesToggle.setAttribute("aria-pressed", String(!notes.hidden));
   });
+  overviewToggle.addEventListener("click", () => setOverview(!overviewOn()));
+  // 타일 클릭은 오버뷰에서만 슬라이드를 고른다 — 발표 중의 클릭은 넘기기가 아니다
+  // (링크·코드 선택을 삼키지 않는다).
+  slides.forEach((slide, index) => {
+    slide.addEventListener("click", () => {
+      if (!overviewOn()) return;
+      show(index, true);
+      setOverview(false);
+    });
+  });
   window.addEventListener("hashchange", () => show(fromHash(), false));
-  window.addEventListener("resize", fit);
+  window.addEventListener("resize", () => {
+    fit();
+    if (overviewOn()) overviewFit();
+  });
   window.addEventListener("keydown", (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     switch (e.key) {
@@ -483,6 +571,8 @@
     case "Home": e.preventDefault(); show(0, true); break;
     case "End": e.preventDefault(); show(slides.length - 1, true); break;
     case "n": case "N": notesToggle.click(); break;
+    case "o": case "O": e.preventDefault(); setOverview(!overviewOn()); break;
+    case "Escape": if (overviewOn()) { e.preventDefault(); setOverview(false); } break;
     }
   });
 

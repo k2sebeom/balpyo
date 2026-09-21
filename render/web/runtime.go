@@ -58,6 +58,15 @@ const PresenterView = "presenter"
 // 벌이 되면 어느 쪽이 진짜인지 판정할 방법이 없다).
 const MeasureView = "measure"
 
+// OverviewView는 **오버뷰**의 ViewAttr 값이다 — 슬라이드 전부를 격자로 줄여 놓고 하나를 골라
+// 들어가는 화면이다 (런타임의 `o`·Esc·컨트롤 바 버튼이 켜고 끈다).
+//
+// 발표자 뷰 안의 클래스가 아니라 **네 번째 뷰 값**인 이유는 ADR 0006의 결과다 (ADR 0062):
+// 뷰 전환의 구현이 하나면 측정·발표·오버뷰가 같은 파일을 보면서도 각자에게 맞는 배치를 본다.
+// 줄이는 수단은 `zoom`이고 감싸는 요소를 만들지 않는다 — `transform`으로 격자를 만들려면
+// 타일마다 래퍼가 필요하고, 그 요소는 지오메트리 패스가 읽는 부모 사슬을 바꾼다.
+const OverviewView = "overview"
+
 // 뷰어 크롬의 클래스다. 런타임 JS가 만드는 요소이므로 문서 골든에는 나오지 않지만,
 // 발표자 뷰를 조작하는 테스트(internal/testkit)가 같은 문자열로 요소를 집는다 — 식별자
 // 계약(IDAttr 등)과 같은 이유로 여기서 export한다.
@@ -71,6 +80,8 @@ const (
 	ViewerCounterClass = "balpyo-viewer-counter"
 	// ViewerNotesToggleClass는 노트 패널 토글 버튼이다.
 	ViewerNotesToggleClass = "balpyo-viewer-notes-toggle"
+	// ViewerOverviewClass는 오버뷰 토글 버튼이다 (OverviewView).
+	ViewerOverviewClass = "balpyo-viewer-overview"
 	// ViewerNotesClass는 노트 패널이다 (숨은 슬라이드 노트의 내용을 보여준다).
 	ViewerNotesClass = "balpyo-viewer-notes"
 	// viewerActiveClass는 지금 보이는 슬라이드의 표식이다 (런타임이 토글한다).
