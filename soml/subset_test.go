@@ -238,14 +238,14 @@ func TestParseTextSubsetErrors(t *testing.T) {
 		{
 			name: "li에는 variant가 없다",
 			src:  `<slide><ul><li variant="lead">x</li></ul></slide>`,
-			want: []string{"1:16 <li>에는 속성을 쓸 수 없다 (variant)"},
+			want: []string{"1:16 <li>에 알 수 없는 속성 variant (쓸 수 있는 속성: reveal)"},
 		},
 		{
 			// 항목은 **상속만** 받는다 (ADR 0038) — 외관은 목록 단위의 성질이고, 항목마다
 			// 다른 크기를 허용하면 목록이 문단 여럿과 구별되지 않는다.
 			name: "li에는 외관 속성이 없다",
 			src:  `<slide><ul><li size="20">x</li></ul></slide>`,
-			want: []string{"1:16 <li>에는 속성을 쓸 수 없다 (size)"},
+			want: []string{"1:16 <li>에 알 수 없는 속성 size (쓸 수 있는 속성: reveal)"},
 		},
 		{
 			name: "pre 안의 인라인은 아직이다",

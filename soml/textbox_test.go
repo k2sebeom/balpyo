@@ -101,7 +101,7 @@ func TestParseTextBlockAxisStaysClosed(t *testing.T) {
 			// `<li>`는 속성을 받지 않는다 (ADR 0038) — 크기도 컨테이너의 것이다.
 			name: "li에는 크기도 없다",
 			src:  `<slide><ul><li w="100">x</li></ul></slide>`,
-			want: []string{"1:16 <li>에는 속성을 쓸 수 없다 (w)"},
+			want: []string{"1:16 <li>에 알 수 없는 속성 w (쓸 수 있는 속성: reveal)"},
 		},
 		{
 			// 인라인은 박스가 아니라 런이다.

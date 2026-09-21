@@ -299,7 +299,7 @@ func TestParseShapeErrors(t *testing.T) {
 			// 컨테이너(`<ul anchor>`)가 받아 항목이 상속한다.
 			name: "li에는 anchor가 없다",
 			src:  `<slide><ul><li anchor="center">항목</li></ul></slide>`,
-			want: []string{"1:16 <li>에는 속성을 쓸 수 없다 (anchor)"},
+			want: []string{"1:16 <li>에 알 수 없는 속성 anchor (쓸 수 있는 속성: reveal)"},
 		},
 		{
 			name: "인라인에는 anchor가 없다",

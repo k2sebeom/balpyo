@@ -192,7 +192,7 @@ func TestParseLayoutErrors(t *testing.T) {
 			// <li>는 리스트 컨테이너의 자식이지 flex 항목이 아니다 (childPlacementAttrs).
 			name: "li에는 자식 배치 속성이 없다",
 			src:  `<slide><ul><li grow="1">x</li></ul></slide>`,
-			want: []string{"1:16 <li>에는 속성을 쓸 수 없다 (grow)"},
+			want: []string{"1:16 <li>에 알 수 없는 속성 grow (쓸 수 있는 속성: reveal)"},
 		},
 		{
 			// 인라인은 박스가 아니라 런이다.
@@ -258,7 +258,7 @@ func TestParseLayoutErrors(t *testing.T) {
 			// at도 웹에서만 뜻을 갖는 선언이 되므로 열리지 않는다.
 			name: "li에는 자식 배치 속성 at이 없다",
 			src:  `<slide><ul><li at="center">항목</li></ul></slide>`,
-			want: []string{"1:16 <li>에는 속성을 쓸 수 없다 (at)"},
+			want: []string{"1:16 <li>에 알 수 없는 속성 at (쓸 수 있는 속성: reveal)"},
 		},
 		{
 			name: "컨테이너 자신에게 role은 없다",

@@ -161,9 +161,11 @@ func buildElementSpecs() map[string]elementSpec {
 			children: []string{ListItemElement},
 		}
 	}
-	// `<li>`는 속성을 갖지 않는다 — 외관은 컨테이너에서 상속하고(ADR 0038), 자식 배치
-	// 속성도 없다 (리스트 항목은 flex 항목이 아니라 한 텍스트 흐름의 문단이다).
-	specs[ListItemElement] = elementSpec{model: modelInline}
+	// `<li>`가 갖는 속성은 `reveal` **하나**다 — 외관은 컨테이너에서 상속하고(ADR 0038),
+	// 자식 배치 속성도 없다 (리스트 항목은 flex 항목이 아니라 한 텍스트 흐름의 문단이다).
+	// `reveal`이 예외인 이유는 그것이 외관이 아니라 **순서**라는 것이다 (ADR 0063): 항목이
+	// 언제 나타나는지는 항목마다 갈리는 성질이라 컨테이너로 올릴 수 없다.
+	specs[ListItemElement] = elementSpec{attrs: []string{RevealAttr}, model: modelInline}
 	for _, name := range layoutContainerElements {
 		// 빈 컨테이너(`<row></row>`)는 유효하다 — 자식 0개의 flex 컨테이너는 CSS에서
 		// 유효하고, 레이아웃을 짜는 중간 상태에서 저자가 늘 만든다. 빈 컨테이너가
