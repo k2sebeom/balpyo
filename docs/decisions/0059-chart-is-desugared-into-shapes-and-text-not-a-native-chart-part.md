@@ -8,7 +8,8 @@
   ADR 0017(프리셋 기하는 OOXML 정의에서 나온다), ADR 0036(표는 명시 `tcPr`),
   ADR 0043(`<text>`의 박스 속성), ADR 0049(컨테이너를 담은 도형은 배경이 된다),
   ADR 0051(하이라이팅은 값 층이 합성 런으로 컴파일한다), ADR 0058(`alt`은 그림에 이름을
-  더하고 읽기 순서는 문서 순서다), [`<shape>`](../reference/soml/shape.md),
+  더하고 읽기 순서는 문서 순서다), ADR 0060(계열색은 프레임이 소유한다 — 리뷰에서 그 결정 8을
+  좁혔다), [`<chart>`](../reference/soml/chart.md), [`<shape>`](../reference/soml/shape.md),
   [레이아웃 태그](../reference/soml/layout.md)
 
 ## 맥락

@@ -6,8 +6,8 @@
 - 관련: ADR 0059(`<chart>`는 값 층이 도형·텍스트로 펼친다 — 이 결정이 그 결정 8을 좁힌다),
   ADR 0050(강조색 여섯은 재서 고른 팔레트다), ADR 0049(배치를 담은 도형은 배경이 된다),
   ADR 0038(목록의 외관은 컨테이너에 쓰고 항목이 상속한다), ADR 0056(예제는 경고 0의 빌드로
-  게이트한다), [`<shape>`](../reference/soml/shape.md),
-  [외관 어휘](../reference/appearance.md)
+  게이트한다), [`<chart>`](../reference/soml/chart.md),
+  [`<shape>`](../reference/soml/shape.md), [외관 어휘](../reference/appearance.md)
 
 ## 맥락
 

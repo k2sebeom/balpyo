@@ -137,6 +137,22 @@ var docVocabularies = []docVocabulary{
 		Sep:     ", ", Want: soml.ElementAttrs(soml.TableDataCellElement),
 	},
 	{
+		Doc: "reference/soml/chart.md", Vocab: "<chart>의 속성",
+		Pattern: `<chart>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Sep:     ", ", Want: soml.ElementAttrs(soml.ChartElement),
+	},
+	{
+		Doc: "reference/soml/chart.md", Vocab: "<point>의 속성",
+		Pattern: `<point>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Sep:     ", ", Want: soml.ElementAttrs(soml.ChartPointElement),
+	},
+	// 차트 종류는 도형 프리셋과 같은 종류의 닫힌 목록이다 — 진단 문구가 목록을 싣고 문서가
+	// 그 문장을 그대로 인용하므로, 종류가 늘면 두 자리가 함께 움직여야 한다.
+	{
+		Doc: "reference/soml/chart.md", Vocab: "차트 종류",
+		Pattern: `쓸 수 있는 종류: ([^)]+)\)`, Sep: ", ", Want: soml.ChartTypes(),
+	},
+	{
 		Doc: "reference/soml/text-subset.md", Vocab: "<h1>의 속성",
 		Pattern: `<h1>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
 		Sep:     ", ", Want: soml.ElementAttrs("h1"),
