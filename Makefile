@@ -26,9 +26,29 @@ DOCKER_RUN = $(DOCKER) run --rm \
 	-e GOMODCACHE=/gomodcache \
 	-e GOPROXY=off \
 	-e GOFLAGS="$(GOFLAGS)" \
+	$(GIT_SAFE_DIR) \
 	-w /src $(IMAGE)
 
-.PHONY: help image deps test test-host examples review golden shell versions docs docs-serve docs-clean clean
+# 컨테이너는 root로 돌고 /src는 호스트 사용자의 것이므로, git이 이 저장소를 "의심스러운 소유"로
+# 보고 거부한다. 그러면 `go build`의 vcs 스탬핑이 실패한다 (exit status 128) — 릴리스 테스트는
+# 박힌 커밋을 보므로 이 설정이 없으면 컨테이너에서만 빨갛다. 설정 파일을 만들지 않고 환경으로
+# 넣는다 (마운트한 작업 트리에 우리 설정을 남기지 않는다).
+GIT_SAFE_DIR = -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src
+
+# 릴리스 빌드는 **호스트 사용자로** 돈다 — dist/ 의 파일을 사람이 올리고 지워야 하므로 root가
+# 소유하면 안 된다. 그래서 빌드 캐시도 명명 볼륨(root 소유) 대신 컨테이너 임시 디렉토리를 쓴다
+# (찬 캐시로 네 타깃 40초 — 릴리스는 한 번이다).
+DIST_RUN = $(DOCKER) run --rm \
+	--user "$(shell id -u):$(shell id -g)" \
+	-v "$(CURDIR)":/src \
+	-v "$(GOMODCACHE)":/gomodcache \
+	-e GOMODCACHE=/gomodcache \
+	-e GOCACHE=/tmp/gocache \
+	-e HOME=/tmp \
+	-e GOPROXY=off \
+	-w /src $(IMAGE)
+
+.PHONY: help image deps test test-host examples review golden dist shell versions docs docs-serve docs-clean clean
 
 help: ## 사용 가능한 타깃 목록
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -57,6 +77,12 @@ review: image deps ## 리뷰 갤러리 생성 → review/index.html
 golden: image deps ## 골든 갱신 (변경은 구현 커밋과 함께 검토한다)
 	$(DOCKER_RUN) env BALPYO_UPDATE_GOLDEN=1 go test ./... -run 'TestFixtures|TestGolden' -count=1
 	@git status --short -- '*/golden/*' testdata || true
+
+# 릴리스는 테스트와 **같은 이미지**에서 나온다 — 재현성 계약이 툴체인 버전을 포함하므로,
+# 게이트를 돈 Go와 아카이브를 만든 Go가 달라지면 "두 번 빌드하면 같은 바이트"가 저장소 밖에서
+# 뜻을 잃는다 (ADR 0061). VERSION을 주지 않으면 HEAD에 붙은 태그를 읽는다.
+dist: image deps ## 릴리스 아카이브·SHA256SUMS·Homebrew 포뮬러를 dist/ 에 만든다 (VERSION=v0.3.0)
+	$(DIST_RUN) go run ./internal/release/cmd -out dist $(if $(VERSION),-version $(VERSION),) $(if $(TARGETS),-targets $(TARGETS),)
 
 shell: image ## 컨테이너 안에서 셸 열기 (디버깅)
 	$(DOCKER) run --rm -it \

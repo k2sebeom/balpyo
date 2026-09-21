@@ -184,8 +184,15 @@ func TestBuildProducesARunnableArchive(t *testing.T) {
 	if got := fileSHA256(t, filepath.Join(dir, artifact.Name)); got != artifact.SHA256 {
 		t.Errorf("아카이브의 실제 해시 %s ≠ 보고한 해시 %s", got, artifact.SHA256)
 	}
-	if _, err := os.Stat(result.FormulaPath); err != nil {
-		t.Errorf("포뮬러 파일이 없다: %v", err)
+	// 타깃 하나만 만든 빌드는 **포뮬러를 내지 않는다**. 처음에는 여기서 포뮬러 파일을 요구했는데,
+	// 실물을 보고 그 요구를 버렸다: 한 타깃으로 만든 .rb는 나머지 세 칸이 빈 url·빈 sha256이었다
+	// (`make dist TARGETS=linux/amd64`). 그런 파일은 tap에 올라간 뒤 받는 사람의 기계에서만
+	// 실패하므로, 없는 것이 맞다.
+	if result.FormulaPath != "" {
+		t.Errorf("타깃 하나로 포뮬러를 냈다: %s", result.FormulaPath)
+	}
+	if _, err := os.Stat(filepath.Join(dir, FormulaName)); !os.IsNotExist(err) {
+		t.Errorf("%s가 디스크에 있다 (반쪽 포뮬러) — err=%v", FormulaName, err)
 	}
 
 	// 아카이브에는 바이너리 **하나**만 있다 (ADR 0061 결정 6).

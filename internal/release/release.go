@@ -88,25 +88,19 @@ type FormulaSpec struct {
 	Version string
 	// Repo는 `소유자/이름`이다 — 다운로드 URL이 여기서 나온다.
 	Repo string
-	// Artifacts는 놓인 아카이브들이다.
+	// Artifacts는 놓인 아카이브들이다 — 플랫폼 표(Targets)를 전부 덮어야 한다.
 	Artifacts []Artifact
-	// Targets는 덮어야 하는 플랫폼이다. 비어 있으면 Targets()다.
-	Targets []Target
 }
 
 // Formula는 Homebrew tap 포뮬러를 만든다. 덮어야 하는 타깃의 아티팩트가 없으면 **거부한다** —
 // 반쪽 포뮬러는 받는 사람의 기계에서만 실패하고, 그 실패는 우리 로그에 없다.
 func Formula(spec FormulaSpec) (string, error) {
-	want := spec.Targets
-	if len(want) == 0 {
-		want = Targets()
-	}
 	byTarget := make(map[Target]Artifact, len(spec.Artifacts))
 	for _, a := range spec.Artifacts {
 		byTarget[a.Target] = a
 	}
 	var missing []string
-	for _, t := range want {
+	for _, t := range Targets() {
 		if _, ok := byTarget[t]; !ok {
 			missing = append(missing, t.String())
 		}
@@ -212,15 +206,17 @@ func Build(ctx context.Context, opts Options) (Result, error) {
 	if err := os.WriteFile(result.ChecksumsPath, []byte(Checksums(result.Artifacts)), 0o644); err != nil {
 		return Result{}, err
 	}
-	formula, err := Formula(FormulaSpec{
-		Version: opts.Version, Repo: opts.Repo, Artifacts: result.Artifacts, Targets: targets,
-	})
-	if err != nil {
-		return Result{}, err
-	}
-	result.FormulaPath = filepath.Join(opts.OutDir, FormulaName)
-	if err := os.WriteFile(result.FormulaPath, []byte(formula), 0o644); err != nil {
-		return Result{}, err
+	// 포뮬러는 **플랫폼 표를 전부 만들었을 때만** 나온다. 타깃 몇 개만 만든 빌드(`TARGETS=`)에서
+	// 포뮬러를 내면 빈 url·빈 sha256을 담은 .rb가 놓이고, 그것은 받는 사람의 기계에서만 실패한다.
+	if len(result.Artifacts) == len(Targets()) {
+		formula, err := Formula(FormulaSpec{Version: opts.Version, Repo: opts.Repo, Artifacts: result.Artifacts})
+		if err != nil {
+			return Result{}, err
+		}
+		result.FormulaPath = filepath.Join(opts.OutDir, FormulaName)
+		if err := os.WriteFile(result.FormulaPath, []byte(formula), 0o644); err != nil {
+			return Result{}, err
+		}
 	}
 	return result, nil
 }
