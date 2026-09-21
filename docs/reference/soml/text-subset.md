@@ -12,7 +12,7 @@ HTML의 익숙한 텍스트 태그를 그대로 쓰는 서브셋이다 (PRD §7.
 | `h1` `h2` `h3` `p` `blockquote` | 블록 | `variant` `size` `color` `align` `anchor` + [자식 배치 속성](layout.md) | 슬라이드 또는 레이아웃 컨테이너 직속. 내용은 문자 데이터 + 인라인 태그 |
 | `pre` | 블록 | **`lang`** + `variant` `size` `color` `align` `anchor` + 자식 배치 속성 | 슬라이드 또는 레이아웃 컨테이너 직속. 내용은 **문자 데이터만** (공백 원문 보존) |
 | `ul` `ol` | 리스트 컨테이너 | `size` `color` `align` `anchor` + 자식 배치 속성 (**`variant`는 없다**) | 슬라이드 또는 레이아웃 컨테이너 직속. 자식은 `<li>`만 |
-| `li` | 리스트 항목 | 없음 — 외관은 컨테이너에서 **상속한다** | `<ul>`/`<ol>` 안에서만. 내용은 문자 데이터 + 인라인 태그 |
+| `li` | 리스트 항목 | **`reveal`** — 외관은 컨테이너에서 **상속한다** | `<ul>`/`<ol>` 안에서만. 내용은 문자 데이터 + 인라인 태그 |
 | `strong` `em` `code` | 인라인 | 없음 | 블록·`<text>`·`<li>` 안. 인라인끼리 중첩 가능 |
 | `a` | 인라인 | `href` (필수) | `<a>` 안에 `<a>` 불가 |
 | `span` | 인라인 | `color` `weight` | — |
@@ -43,6 +43,10 @@ HTML의 익숙한 텍스트 태그를 그대로 쓰는 서브셋이다 (PRD §7.
   상속 값은 항목 자신의 캐스케이드에서 **컴포넌트 기본값보다 위, 자기 인라인 속성보다
   아래**에 얹힌다 ([외관 속성](../appearance.md)) — 지금은 `<li>`에 인라인 속성이 없으므로
   컨테이너의 선언이 늘 이긴다.
+- **`<li>`가 여는 속성은 `reveal` 하나다**: 외관이 컨테이너의 것이라는 규칙과 부딪히지 않는다 —
+  순차 등장은 외관이 아니라 **순서**이고, 항목이 언제 나타나는지는 항목마다 갈리는 성질이라
+  컨테이너로 올릴 수 없다 (아래 [순차 등장](#순차-등장-reveal),
+  [ADR 0063](../../decisions/0063-reveal-is-presenter-only-hiding-and-every-other-target-is-flattened.md)).
 - **컨테이너는 `variant`를 받지 않는다**: variant는 값 하나가 아니라 외관 번들(크기 + 굵기
   + 색)이라, 상속시키면 "목록 글자를 조금 줄인다"가 아니라 "항목들의 역할을 바꾼다"가
   된다 — 그건 등가 표가 소유한 위계(`<li>` ≡ body)를 속성 하나로 뒤집는 일이다 (ADR 0038).
@@ -237,6 +241,49 @@ func warm(ctx context.Context, ids []string) error {
 - 링크 런은 밑줄과 `accent1` 토큰 색을 받는다 — 웹과 PPTX의 링크 색이 같은 토큰 표에서
   나온다 ([ADR 0010](../../decisions/0010-link-color-accent1.md)).
 
+## 순차 등장 — `reveal`
+
+`<li reveal>`은 그 항목을 **발표자 뷰에서 한 스텝씩** 나타나게 한다 (PRD §7.7). 값을 생략하면
+그 슬라이드에서 자기 차례를 받고, `reveal="2"`는 그 자리를 덮어쓴다.
+
+```html
+<slide id="changes">
+  <h2>올해의 세 가지 변화</h2>
+  <ul>
+    <li>모놀리스 분리 완료</li>            <!-- 처음부터 보인다 -->
+    <li reveal>배포 파이프라인 자동화</li>  <!-- 1번째 → -->
+    <li reveal>관측성 스택 도입</li>        <!-- 2번째 → -->
+  </ul>
+  <ol>
+    <li reveal="3">먼저 잰다</li>          <!-- 목록을 넘어 이어진 3번째 -->
+    <li reveal="3">그 다음 고친다</li>      <!-- 같은 번호는 함께 나타난다 -->
+  </ol>
+</slide>
+```
+
+규칙은 다섯이다:
+
+- **번호는 슬라이드 안에서 1부터다.** 값 없는 `reveal`은 그 슬라이드에서 `reveal`을 가진 항목
+  중 **자기 차례**(문서 순서 1, 2, 3…)를 받고, 차례는 `<ul>`에서 `<ol>`로 넘어가도 이어진다.
+  다음 슬라이드의 첫 스텝은 다시 1이다 — 발표는 슬라이드 단위로 진행하므로 덱을 관통하는
+  번호는 쓸 자리가 없다.
+- **같은 번호를 받은 항목들은 함께 나타난다.** 한 스텝에 여러 줄을 띄우는 유일한 길이다.
+- **값이 있으면 1 이상의 정수다.** `reveal=""`·`0`·`-1`·`1.5`·낱말은 진단이고, 그 항목은
+  순서를 잃는다 (전개된 상태로 남는다). 스텝 0은 "처음부터 보인다"는 뜻이 되어 `reveal`을
+  쓰지 않은 것과 구별되지 않는다.
+- **숨는 곳은 발표자 뷰 하나다.** 문서 뷰(파일을 열어 JS가 꺼진 상태)·오버뷰·인쇄(PDF)·PPTX는
+  **전부 전개된 상태**를 본다. 그래서 발표 중에 Cmd+P를 눌러도 아직 말하지 않은 항목이 종이에서
+  빠지지 않고, PPTX 산출물은 `reveal`을 쓰기 전과 한 바이트도 다르지 않다 (순차 등장을 PPTX
+  진입 애니메이션으로 옮기는 것은 P2다 — PRD §7.7).
+- **나타나도 배치가 움직이지 않는다.** 숨김은 자리를 남기는 방식이므로(`visibility`) 저자가 짠
+  한 배치가 발표 중에 여러 배치가 되지 않는다 — 웹과 PPTX가 같은 좌표를 쓰는 근거다.
+
+조작은 [발표 조작](../cli.md#웹-산출물에서의-발표-조작)과 같다: **다음**(→·Space·›)은 스텝을
+먼저 먹고 남은 스텝이 없을 때 다음 슬라이드로 가고, **이전**(←·‹)은 스텝을 하나 되감는다.
+뒤로 들어온 슬라이드는 전부 전개된 상태이고, 딥링크·오버뷰 타일·Home/End로 곧장 들어간
+슬라이드는 스텝 0에서 시작한다
+([ADR 0063](../../decisions/0063-reveal-is-presenter-only-hiding-and-every-other-target-is-flattened.md)).
+
 ## 예제
 
 `testdata/fixtures/02_text_subset/slides/001_headings.slide` — 제목 위계:
@@ -259,12 +306,12 @@ func warm(ctx context.Context, ids []string) error {
   <h2>올해의 세 가지 변화</h2>
   <ul>
     <li>모놀리스 분리 완료</li>
-    <li>배포 파이프라인 <strong>자동화</strong></li>
-    <li>관측성 스택 도입 (<code>otel</code> + Grafana)</li>
+    <li reveal>배포 파이프라인 <strong>자동화</strong></li>
+    <li reveal>관측성 스택 도입 (<code>otel</code> + Grafana)</li>
   </ul>
   <ol>
     <li>먼저 잰다</li>
-    <li>그 다음 고친다</li>
+    <li reveal="3">그 다음 고친다</li>
   </ol>
 </slide>
 ```
@@ -364,7 +411,7 @@ CSS가 0으로 명시하므로 **브라우저 기본 스타일에 기대는 값�
 | 요소만 담는 자리에 CDATA를 썼다 | `<slide> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)` — 표기가 달라도 내용이다 |
 | 블록에 `role`을 썼다 | `<h1>에 알 수 없는 속성 role (쓸 수 있는 속성: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
 | `<span size>` | `<span>에 알 수 없는 속성 size (쓸 수 있는 속성: color, weight)` |
-| `<li>`에 외관 속성을 썼다 | `<li>에는 속성을 쓸 수 없다 (size)` — 외관은 `<ul>`/`<ol>`에 쓴다 |
+| `<li>`에 외관 속성을 썼다 | `<li>에 알 수 없는 속성 size (쓸 수 있는 속성: reveal)` — 외관은 `<ul>`/`<ol>`에 쓴다 |
 | `<ul variant>` | `<ul>에 알 수 없는 속성 variant (쓸 수 있는 속성: size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
 
 외관 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다. 블록의 `size`/`color`/`align`
@@ -378,6 +425,8 @@ CSS가 0으로 명시하므로 **브라우저 기본 스타일에 기대는 값�
 | `<a>`에 `href`가 없다 | `<a>에는 href가 필요하다 — 목적지 없는 링크는 뜻을 정할 수 없다` |
 | `href`에 값이 없다 (`<a href>`) | `href 속성에는 값이 필요하다 (href="https://example.com")` |
 | `href=""` | `href가 비어 있다 — 목적지 없는 링크는 뜻을 정할 수 없다` |
+| `reveal=""` | `reveal 속성이 비어 있다 (값을 지우면 자기 차례를 받는다)` |
+| `reveal`이 1 이상 정수가 아니다 (`0`·`-1`·`1.5`·낱말) | `reveal은 1 이상 정수다 ("0")` — 그 항목만 순서를 잃고 나머지 항목의 번호는 그대로다 |
 | `weight`에 400/700 수치를 썼다 | `weight는 이름을 쓴다 — "700" 대신 "bold"` |
 | `weight`에 그 외 수치를 썼다 | `weight "600"는 쓸 수 없다 — 굵기는 normal(400)과 bold(700) 두 단계다 (OOXML 굵기는 켬/끔이라 중간 굵기는 웹에서만 동작한다)` |
 | 어휘 밖의 `weight` | `알 수 없는 weight "…" (쓸 수 있는 값: normal, bold)` |

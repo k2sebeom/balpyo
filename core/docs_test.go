@@ -153,6 +153,11 @@ var docVocabularies = []docVocabulary{
 		Pattern: `쓸 수 있는 종류: ([^)]+)\)`, Sep: ", ", Want: soml.ChartTypes(),
 	},
 	{
+		Doc: "reference/soml/text-subset.md", Vocab: "<li>의 속성",
+		Pattern: `<li>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Sep:     ", ", Want: soml.ElementAttrs(soml.ListItemElement),
+	},
+	{
 		Doc: "reference/soml/text-subset.md", Vocab: "<h1>의 속성",
 		Pattern: `<h1>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
 		Sep:     ", ", Want: soml.ElementAttrs("h1"),

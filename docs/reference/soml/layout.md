@@ -393,7 +393,7 @@ slides/007_style_appearance.slide:8:24: warning: style의 "background" 선언은
 | 어휘 밖의 자식 태그 | `<row>의 자식으로 <note>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <image>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <spacer>)` |
 | flex 컨테이너에 트랙을 썼다 | `<row>에 알 수 없는 속성 cols (쓸 수 있는 속성: gap, align, justify, wrap, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, style)` |
 | `<spacer>`에 컨테이너 속성을 썼다 | `<spacer>에 알 수 없는 속성 gap (쓸 수 있는 속성: grow, shrink, basis, span, self, order, style)` |
-| `<li>`에 배치 속성을 썼다 | `<li>에는 속성을 쓸 수 없다 (grow)` |
+| `<li>`에 배치 속성을 썼다 | `<li>에 알 수 없는 속성 grow (쓸 수 있는 속성: reveal)` |
 | 인라인 태그에 배치 속성을 썼다 | `<strong>에는 속성을 쓸 수 없다 (order)` |
 | 블록·`<text>`·`<li>` 안에 컨테이너를 썼다 | `<p> 안에는 문자 데이터와 인라인 태그만 올 수 있다 (<row>는 쓸 수 없다)` |
 | `<ul>`/`<ol>`의 자식에 컨테이너를 썼다 | `<ul>의 자식으로 <row>는 올 수 없다 (쓸 수 있는 태그: <li>)` |
