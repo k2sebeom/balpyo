@@ -33,6 +33,7 @@
 | 속성 | 허용 값 | 하는 일 |
 |---|---|---|
 | `variant` | `striped` | 테마 `table` 컴포넌트의 변형 — 홀수 본문 행에 줄무늬 채움 |
+| `alt` | 문자열 (빈 값은 **에러**) | 표의 **접근성 이름** — 셀은 그대로 항해된다 (아래) |
 | `slot` | 레이아웃의 슬롯 이름 | 슬롯을 채운다 (웹 `grid-area` · PPTX `p:ph`) |
 | 자식 배치 | `grow`·`shrink`·`basis`·`span`·`self`·`order`·`at`·`x`·`y`·`style` | 레이아웃 컨테이너·[`<stack>`](stack.md)의 자식으로서의 자리 |
 
@@ -42,6 +43,10 @@
   컨테이너의 폭(`<col w="480">`)이 그 일을 한다.
 - **외관 속성도 없다** (`fill`·`border`·`shadow`·`radius`). 표의 외관은 **셀**이 소유한다 —
   프레임에 채움을 주면 셀 채움과 겹쳐 어느 쪽이 보이는지가 뷰어마다 갈린다.
+- `alt`은 표에 **이름**을 준다 (웹 `<table aria-label>` · PPTX `p:graphicFrame`의
+  `p:cNvPr@descr`) — 이름은 격자 **위에** 얹히고 격자를 대체하지 않으므로 셀은 스크린 리더의
+  표 항해에 그대로 남는다. 붙는 자리와 빈 값이 에러인 이유는
+  [외관 속성의 접근성 절](../appearance.md)이 소유한다 (도형·그림의 `alt`과 한 규칙이다).
 - `variant`가 어휘 밖이면 **경고**이고 기본 외관으로 계속한다 (테마를 바꿔도 콘텐츠가 남는다는
   정책 — PRD §13-6). 셀에는 `variant`가 **없다**: 줄무늬는 프레임 하나가 켜는 행 채움이다.
 
@@ -291,7 +296,7 @@
 | 셀 안에 블록을 썼다 | `<td> 안에 블록 태그 <p>는 올 수 없다` |
 | `<table>` 안에 문자 데이터를 직접 썼다 | `<table> 안에 문자 데이터를 직접 쓸 수 없다 (<tr>로 감싼다)` |
 | `<tr>` 안에 문자 데이터를 직접 썼다 | `<tr> 안에 문자 데이터를 직접 쓸 수 없다 (<td>로 감싼다)` |
-| `<table>`에 `w`/`h`를 썼다 | `<table>에 알 수 없는 속성 w (쓸 수 있는 속성: variant, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| `<table>`에 `w`/`h`를 썼다 | `<table>에 알 수 없는 속성 w (쓸 수 있는 속성: alt, variant, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
 | `<tr>`에 속성을 썼다 | `<tr>에는 속성을 쓸 수 없다 (fill)` |
 | 셀에 `variant`를 썼다 | `<td>에 알 수 없는 속성 variant (쓸 수 있는 속성: colspan, rowspan, fill, border, color, align, anchor)` |
 
@@ -305,6 +310,8 @@
 | `colspan`이 위 행의 `rowspan`이 덮은 칸을 지난다 | `병합이 겹친다 — 2번째 열은 위 행의 rowspan이 이미 덮었다 (colspan 2이 그 칸을 지난다)` |
 | `rowspan`이 마지막 행을 넘는다 | `rowspan 3은 표의 마지막 행을 넘는다 — 이 셀 아래 남은 행은 1개다` |
 | `colspan`/`rowspan`이 0·음수·정수가 아니다 | `colspan는 1 이상 정수다 ("0")` |
+| `alt`에 값이 없다 | `alt 속성에는 값이 필요하다 (alt="chart") — 이름이 필요 없으면 속성을 지운다` |
+| `alt=""` | `alt은 비어 있을 수 없다 — 이름 없음이 기본값이므로 속성을 지운다 (그림의 alt=""와 다르다: <img>에서 빈 alt은 "장식 이미지"라는 뜻이지만 도형·표에는 그 표기가 없다)` |
 | 어휘 밖 `variant` (**경고**) | `variant "zebra"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: striped)` |
 
 `fill`·`border`·`color`·`align`·`anchor`의 값 진단은 [외관 속성](../appearance.md)·

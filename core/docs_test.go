@@ -111,6 +111,36 @@ var docVocabularies = []docVocabulary{
 		Doc: "index.md", Vocab: "내장 테마",
 		Pattern: `내장 셋\(([^)]+)\)`, Sep: "·", Want: BuiltinThemes(),
 	},
+	// **태그가 여는 속성 목록**이다 ("알 수 없는 속성" 진단의 사본). 이 자리를 뒤늦게 등록하는
+	// 이유는 낡음이 실제로 여기서 일어났기 때문이다: P5.3이 `alt`을 열 때 도형·표의 사본에
+	// 그 이름이 없었고, 세 사본 모두 그 전 이터레이션의 `at`·`x`·`y`·`slot`도 빠져 있었다
+	// (문서를 읽은 저자는 쓸 수 있는 속성을 못 쓴다고 믿는다 — 닫힌 목록의 낡음 중 가장 비싼
+	// 종류다). 태그 이름을 패턴에 넣어 한 문서의 여러 목록(`<table>`과 `<td>`)이 섞이지 않게 한다.
+	{
+		Doc: "reference/soml/shape.md", Vocab: "<shape>의 속성",
+		Pattern: `<shape>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Sep:     ", ", Want: soml.ElementAttrs(soml.ShapeElement),
+	},
+	{
+		Doc: "reference/soml/image.md", Vocab: "<image>의 속성",
+		Pattern: `<image>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Sep:     ", ", Want: soml.ElementAttrs(soml.ImageElement),
+	},
+	{
+		Doc: "reference/soml/table.md", Vocab: "<table>의 속성",
+		Pattern: `<table>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Sep:     ", ", Want: soml.ElementAttrs(soml.TableElement),
+	},
+	{
+		Doc: "reference/soml/table.md", Vocab: "<td>의 속성",
+		Pattern: `<td>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Sep:     ", ", Want: soml.ElementAttrs(soml.TableDataCellElement),
+	},
+	{
+		Doc: "reference/soml/text-subset.md", Vocab: "<h1>의 속성",
+		Pattern: `<h1>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Sep:     ", ", Want: soml.ElementAttrs("h1"),
+	},
 }
 
 // TestDocsVocabularyListsMatchCode는 등록된 자리마다 문서의 목록과 코드의 목록을 **집합으로**

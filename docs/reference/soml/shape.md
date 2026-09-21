@@ -48,12 +48,19 @@
 |---|---|---|---|
 | `type` | 위 표의 12종 | **필수** | 프리셋 지오메트리 |
 | `id` | 임의 이름 | 없음 | 도형 이름 — **아직 아무것도 그리지 않는다** (아래) |
+| `alt` | 문자열 (빈 값은 **에러**) | 없음 | 그림의 **접근성 이름** — 안의 글을 대체하지 않는다 (아래) |
 
 `id`는 어휘에 있고 중복 검사도 받지만 **산출물에 나가지 않는다**. 참조하는 쪽
 (`<arrow from="db">`)이 Iteration 7이고, 그때까지 `id`를 PPTX 도형 이름이나 웹 속성에
 실으면 두 타깃의 식별자 규칙이 미리 갈라진다 — 그래서 지금은 "이 슬라이드에서 유일한
 이름"이라는 계약만 지킨다. 같은 슬라이드에 같은 `id`가 둘이면 에러다 (범위가 슬라이드인
 이유: 참조가 슬라이드를 넘지 않는다).
+
+`alt`은 **그림에 이름을 더하고 안의 글을 대체하지 않는다** — 이름 붙은 도형의 `<text>`·`<p>`는
+두 타깃 모두 읽히는 글로 남는다. 붙는 자리와 빈 값이 에러인 이유는
+[외관 속성의 접근성 절](../appearance.md)이 소유한다 (표·그림의 `alt`과 한 규칙이다).
+`alt`은 캐스케이드 밖이라 `variant`나 테마가 이름을 물려주지 않는다: 이름은 이 도형이 이
+덱에서 무엇인가라 물려받을 수 있는 값이 아니다.
 
 ### 외관 속성 8종
 
@@ -422,7 +429,7 @@ PPTX는 **같은 도형의 본문**(`txBody`)이다. 그래서 도형 안 텍스
 |---|---|
 | 도형 안에 문자 데이터를 직접 썼다 | `<shape> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)` |
 | 도형의 **직속** 자식으로 리스트·그림·표·중첩 도형을 썼다 | `<shape>의 자식으로 <ul>는 올 수 없다 (쓸 수 있는 태그: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)` — 컨테이너로 감싸면 들어간다 |
-| 어휘 밖의 속성 | `<shape>에 알 수 없는 속성 stroke (쓸 수 있는 속성: type, id, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, style)` |
+| 어휘 밖의 속성 | `<shape>에 알 수 없는 속성 stroke (쓸 수 있는 속성: type, id, alt, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
 | `<arrow>`·`<line>`·`<group>`을 썼다 | `알 수 없는 태그 <arrow> (쓸 수 있는 태그: …)` |
 
 값 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다:
@@ -432,6 +439,8 @@ PPTX는 **같은 도형의 본문**(`txBody`)이다. 그래서 도형 안 텍스
 | `type`이 없다 | `<shape>에 type이 필요하다 (쓸 수 있는 종류: rect, rounded-rect, ellipse, diamond, cylinder, chevron, arrow-right, hexagon, parallelogram, callout, star, cloud) — 도형의 종류는 추측할 수 없다` |
 | `type`이 12종 밖이다 | `알 수 없는 도형 type "elipse" (쓸 수 있는 종류: …)` |
 | 같은 슬라이드에 `id`가 둘 | `id "db"가 이 슬라이드에 이미 있다 (…) — 참조가 어느 도형인지 정할 수 없다` |
+| `alt`에 값이 없다 | `alt 속성에는 값이 필요하다 (alt="chart") — 이름이 필요 없으면 속성을 지운다` |
+| `alt=""` | `alt은 비어 있을 수 없다 — 이름 없음이 기본값이므로 속성을 지운다 (그림의 alt=""와 다르다: <img>에서 빈 alt은 "장식 이미지"라는 뜻이지만 도형·표에는 그 표기가 없다)` |
 | 테마에 없는 색 토큰 | `fill의 색 토큰 "brand"가 테마에 없다 (쓸 수 있는 토큰: fg, bg, muted, surface, accent1, accent2, accent3, accent4, accent5, accent6, 또는 #RRGGBB 리터럴)` |
 | **`gradient(…)`를 썼다** | `색 함수 gradient(…)는 아직 쓸 수 없다 (gradient·shade·tint·alpha는 Iteration 8) — 토큰 이름이나 #RRGGBB 리터럴을 쓴다` |
 | `border` 조각 수가 3이 아니다 | `border는 \`<굵기> <스타일> <색>\` 3조각이다 ("solid muted"는 2조각) — 예: "1 solid muted", 또는 "none"` |
