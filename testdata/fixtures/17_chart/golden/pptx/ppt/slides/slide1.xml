@@ -1,0 +1,856 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld name="chart-bar">
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="h2 s0.0"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="609600"/>
+            <a:ext cx="11411712" cy="445740"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="3510"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="2700" b="1">
+                <a:solidFill>
+                  <a:schemeClr val="tx1"/>
+                </a:solidFill>
+                <a:latin typeface="+mj-lt"/>
+                <a:ea typeface="+mj-ea"/>
+              </a:rPr>
+              <a:t>차트는 도형과 텍스트로 펼쳐진다</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="shape s0.1" descr="월별 평균 탐지 시간 — 5월 22분에서 9월 12분으로 줄었다"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="1283940"/>
+            <a:ext cx="10972800" cy="3619500"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="4" name="text s0.1.0.0.0.0"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="565711" y="1323975"/>
+            <a:ext cx="2282250" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>22분</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="5" name="shape s0.1.0.0.0.1"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="938808" y="1621036"/>
+            <a:ext cx="1536055" cy="3032968"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:schemeClr val="accent1"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="6" name="shape s0.1.0.0.1"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="4654004"/>
+            <a:ext cx="2194471" cy="9525"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:schemeClr val="tx2"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="7" name="text s0.1.0.0.2"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="565711" y="4663529"/>
+            <a:ext cx="2282250" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>5월</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="8" name="text s0.1.0.1.0.0"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="2760178" y="1737420"/>
+            <a:ext cx="2282404" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>19분</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="9" name="shape s0.1.0.1.0.1"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="3133279" y="2034480"/>
+            <a:ext cx="1536204" cy="2619524"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:schemeClr val="accent1"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="10" name="shape s0.1.0.1.1"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="2804071" y="4654004"/>
+            <a:ext cx="2194620" cy="9525"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:schemeClr val="tx2"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="11" name="text s0.1.0.1.2"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="2760178" y="4663529"/>
+            <a:ext cx="2282404" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>6월</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="12" name="text s0.1.0.2.0.0"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="4954801" y="2289125"/>
+            <a:ext cx="2282250" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>15분</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="13" name="shape s0.1.0.2.0.1"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="5327898" y="2586186"/>
+            <a:ext cx="1536055" cy="2067818"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:schemeClr val="accent1"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="14" name="shape s0.1.0.2.1"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="4998690" y="4654004"/>
+            <a:ext cx="2194471" cy="9525"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:schemeClr val="tx2"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="15" name="text s0.1.0.2.2"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="4954801" y="4663529"/>
+            <a:ext cx="2282250" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>7월</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="16" name="text s0.1.0.3.0.0"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7149269" y="2564755"/>
+            <a:ext cx="2282404" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>13분</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="17" name="shape s0.1.0.3.0.1"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7522369" y="2861816"/>
+            <a:ext cx="1536204" cy="1792188"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:schemeClr val="accent1"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="18" name="shape s0.1.0.3.1"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7193161" y="4654004"/>
+            <a:ext cx="2194620" cy="9525"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:schemeClr val="tx2"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="19" name="text s0.1.0.3.2"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7149269" y="4663529"/>
+            <a:ext cx="2282404" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>8월</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="20" name="text s0.1.0.4.0.0"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="9343888" y="2702719"/>
+            <a:ext cx="2282404" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="accent4"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>12분</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="21" name="shape s0.1.0.4.0.1"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="9716988" y="2999780"/>
+            <a:ext cx="1536204" cy="1654225"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:schemeClr val="accent4"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="22" name="shape s0.1.0.4.1"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="9387780" y="4654004"/>
+            <a:ext cx="2194620" cy="9525"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:schemeClr val="tx2"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="23" name="text s0.1.0.4.2"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="9343888" y="4663529"/>
+            <a:ext cx="2282404" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="accent4"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>9월</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="24" name="text s0.2"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="5132040"/>
+            <a:ext cx="11411712" cy="239911"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">
+            <a:noAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPts val="1890"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr sz="1350" b="0">
+                <a:solidFill>
+                  <a:schemeClr val="tx2"/>
+                </a:solidFill>
+                <a:latin typeface="+mn-lt"/>
+                <a:ea typeface="+mn-ea"/>
+              </a:rPr>
+              <a:t>축 최대를 적지 않으면 가장 높은 막대가 플롯 밴드의 90%다 — 값 라벨이 올라탈 자리가 남는다.</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sld>
