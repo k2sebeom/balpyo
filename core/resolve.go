@@ -213,6 +213,18 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 	}
 	r.resolveLayout(elem, parent)
 	r.resolveSlot(elem, parent)
+	if elem.Name == soml.ChartElement {
+		// 여덟 번째 갈래이고 **유일하게 트리를 바꾸는** 갈래다 (ADR 0059): `<chart>`는 확정
+		// 값을 얻는 대신 도형·텍스트의 하위 트리로 **펼쳐진다**. 끝나면 elem은 `<shape>`이므로
+		// 바로 아래 도형 갈래가 뿌리를 평범한 배경 도형으로 해석하고, 합성된 자식은 이 함수의
+		// 끝에 있는 순회가 저자가 쓴 것과 같은 경로로 데려간다.
+		//
+		// 배치·슬롯 **뒤**에 있는 이유는 진단의 이름이다: 그 두 해석이 내는 진단은 저자가 쓴
+		// `<chart>`를 말해야 한다 (펼친 뒤에 지나면 저자가 쓰지 않은 `<shape>`를 듣는다).
+		// 박스 속성은 도형과 같은 자리에서(resolveShape의 shapeAttrs) 해석되므로 순서가
+		// 바뀌지 않는다 — resolveLayout은 도형에게도 배치 속성만 본다.
+		r.resolveChart(elem)
+	}
 	if elem.Name == soml.ShapeElement {
 		// 도형은 세 번째 갈래다 (외관·배치에 이어) — 자식은 텍스트 요소이므로 아래 순회가
 		// 기존 텍스트 경로로 데려간다. 부모가 도형이라는 사실이 텍스트 해석을 바꾸지 않는다:
@@ -853,6 +865,16 @@ func attrExample(name string) string {
 		return "40"
 	case soml.StyleAttr:
 		return "align-content: space-evenly"
+	// 차트 속성 (ADR 0059). `type`은 도형 행과 이름을 공유하지만 예시가 갈라질 일이 없다 —
+	// 차트의 `type`은 값 없음도 자기 문구로 말한다 (chartType).
+	case "unit":
+		return "%"
+	case "max":
+		return "100"
+	case "label":
+		return "5월"
+	case "value":
+		return "22"
 	}
 	return ""
 }

@@ -455,7 +455,12 @@ func TestChartDiagnosticsPointAtTheAuthorsSpan(t *testing.T) {
 		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
 	}
 	// 값 구간은 둘째 점(4행)의 `-3`이다 — 인용 부호를 뺀 값에 밑줄이 그어진다.
-	wantCol := len("    <point ") + strings.Index(attrs, `value="`) + len(`value="`) + 1
+	//
+	// 칸을 **룬으로** 센다 (soml.Pos): 진단의 col은 사람이 보는 좌표계이므로 라벨의 한글
+	// 한 글자가 세 칸으로 세어지지 않는다 — 바이트로 세면 이 단정이 라벨 글자 수에 따라
+	// 흔들린다.
+	prefix := "    <point " + attrs[:strings.Index(attrs, `value="`)] + `value="`
+	wantCol := len([]rune(prefix)) + 1
 	if diags[0].Span.Start.Line != 4 || diags[0].Span.Start.Col != wantCol {
 		t.Errorf("위치 = %s, want 4:%d (%s)", diags[0].Span.Start, wantCol, diags[0].String())
 	}
