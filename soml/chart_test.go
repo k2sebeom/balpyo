@@ -121,20 +121,21 @@ func TestChartKindsAreDesugared(t *testing.T) {
 }
 
 // 속성 목록과 순서 — 진단 메시지가 이 순서를 그대로 싣는다 (ShapeAttrs·TableCellAttrs의
-// 회귀 시험과 같은 태도). 고유 넷 → 박스 → 자식 배치 → 슬롯 순이다.
+// 회귀 시험과 같은 태도). 고유 다섯 → 박스 → 자식 배치 → 슬롯 순이다.
 func TestChartAttrsOrder(t *testing.T) {
-	want := "type, unit, max, alt, pad, w, h, min-w, min-h, max-w, max-h, ratio"
+	want := "type, unit, max, series, alt, pad, w, h, min-w, min-h, max-w, max-h, ratio"
 	if got := strings.Join(ChartAttrs(), ", "); got != want {
 		t.Errorf("ChartAttrs() = %q\nwant %q", got, want)
 	}
 	attrs := strings.Join(ElementAttrs(ChartElement), ", ")
-	for _, need := range []string{"type, unit, max, alt", "grow", "shrink", SlotAttr} {
+	for _, need := range []string{"type, unit, max, series, alt", "grow", "shrink", SlotAttr} {
 		if !strings.Contains(attrs, need) {
 			t.Errorf("<chart>의 속성 목록에 %q가 없다: %s", need, attrs)
 		}
 	}
-	// 외관은 **점이 소유한다** — 프레임에 fill을 주면 막대 색과 겹쳐 어느 쪽이 보이는지가
-	// 갈린다 (ADR 0059의 결정 8, `<table>`이 외관을 셀에 둔 것과 같은 판단).
+	// 프레임이 갖는 색은 **계열색 하나**다 (`series` — ADR 0060). 면의 어휘(`fill`·`border` …)는
+	// 열지 않는다: 펼침의 뿌리는 계약상 배경이라(ADR 0049) 같은 이름이 "이 박스의 면"과 "막대의
+	// 면"을 동시에 뜻하면 저자가 `fill="surface"`를 쓰고 회색 상자를 받는다.
 	for _, banned := range []string{"fill", "border", "variant", "radius", "shadow", "rotate"} {
 		for _, a := range ElementAttrs(ChartElement) {
 			if a == banned {
