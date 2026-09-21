@@ -1,0 +1,31 @@
+<!-- `alt`을 쓰는 세 태그를 한 장에 모은다 (ADR 0058): 도형·표·그림. 이 슬라이드가 골든으로
+     갖는 계약은 **이름이 어디에 붙는가**다 — 그림은 똑같고 접근성 트리만 다르므로 픽셀 비교가
+     판정할 수 없고, 골든의 한 줄만이 회귀를 잡는다.
+
+     세 자리가 서로 다르다:
+     - 도형 → 웹은 **잉크 `<svg>`**의 `role="img" aria-label`(박스 `<div>`가 아니다: 그 역할은
+       `generic`이고 ARIA는 그 역할에 이름을 금지한다), PPTX는 `p:sp`의 `p:cNvPr@descr`.
+     - 표 → 웹은 `<table aria-label>`(`role="img"`도 `<caption>`도 아니다: 앞쪽은 셀 항해를
+       지우고 뒤쪽은 보이는 줄을 웹에만 더한다), PPTX는 `p:graphicFrame`의 `descr`.
+     - 그림 → 웹은 `<img alt>`, PPTX는 `p:pic`의 `descr` (ADR 0027 — 먼저 열린 자리다).
+
+     **이름을 더하고 대체하지 않는다**는 것도 골든이 담는다: 이름을 준 도형의 글("배포")이 두
+     타깃 모두 그대로 남는다. 그리고 **이름 없는 도형은 오늘과 한 바이트도 다르지 않다** —
+     가운데 도형의 잉크는 여전히 `aria-hidden="true"`이고 그 `p:sp`에는 `descr`이 없다.
+     비어 있음이 기본값이라 `alt=""`를 에러로 막은 것(값 층)이 이 대비의 근거다. -->
+<slide id="a11y-alt">
+  <h2>alt은 그림에 이름을 더한다</h2>
+  <row gap="lg" align="center">
+    <shape type="arrow-right" alt="왼쪽에서 오른쪽으로 흐르는 배포 단계" fill="accent1" w="300" h="150" pad="sm">
+      <text color="bg" align="center" anchor="center">배포</text>
+    </shape>
+    <shape type="rect" fill="surface" border="1 solid muted" w="300" h="150" pad="md">
+      <p>이름이 없는 도형의 그림은 장식이다 — 읽을 것은 이 글이다.</p>
+    </shape>
+    <image src="assets/flow.png" alt="좌상단에 표식이 있는 두 색 그림" w="260" ratio="2:1"/>
+  </row>
+  <table alt="지역별 분기 매출 표">
+    <tr><th>지역</th><th align="end">Q1</th><th align="end">Q2</th></tr>
+    <tr><td>서울</td><td align="end">12.4억</td><td align="end">14.1억</td></tr>
+  </table>
+</slide>
