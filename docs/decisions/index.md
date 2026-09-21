@@ -66,6 +66,7 @@
 | [0058](0058-alt-names-the-drawing-and-reading-order-is-document-order.md) | `alt`은 그림에 이름을 더하고, 읽기 순서는 문서 순서다 | P5.3 | 확정 |
 | [0059](0059-chart-is-desugared-into-shapes-and-text-not-a-native-chart-part.md) | `<chart>`는 값 층이 도형·텍스트로 펼치는 문법이다 (네이티브 `c:chart`를 열지 않는다) | P2.5 | 확정 |
 | [0060](0060-the-series-color-belongs-to-the-frame-and-a-point-fill-is-emphasis.md) | 계열색은 프레임이 소유하고 점의 `fill`은 강조다 (채움은 색만 받는다) | P2.5 | 확정 |
+| [0061](0061-release-is-built-by-make-and-the-go-toolchain-and-the-version-belongs-to-the-tag.md) | 릴리스는 make와 Go 툴체인이 만들고 버전은 태그가 소유한다 (goreleaser를 쓰지 않는다) | P6 | 확정 |
 
 PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다. 그 결정들의
 색인은 PRD에 있고, 이 표는 **그 이후 구현 중에 새로 확정한 것**만 담는다.
