@@ -198,7 +198,7 @@ func TestParseChartPlacementErrors(t *testing.T) {
 		{
 			name: "차트는 도형의 직속 자식이 아니다 (컨테이너로 감싼다 — 표와 같은 규칙)",
 			src:  `<slide><shape type="rect" w="400" h="300"><chart type="bar" h="200"><point label="a" value="1"/></chart></shape></slide>`,
-			want: []string{"1:46 <shape>의 자식으로 <chart>는 올 수 없다"},
+			want: []string{"1:44 <shape>의 자식으로 <chart>는 올 수 없다"},
 		},
 	}
 	for _, tc := range tests {

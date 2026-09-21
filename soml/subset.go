@@ -72,6 +72,18 @@ const (
 	// `<li>`(측정만 되고 버려진다)와도 다르다 — 그래서 별도 종류다. 헤더·데이터 셀은 종류가
 	// 같고 외관 기본값만 갈라진다 (IsHeaderCell).
 	KindTableCell
+	// KindChart는 `<chart>`다 (chart.go). **렌더러에 닿지 않는 첫 종류다** — 값 층이 도형·
+	// 텍스트의 하위 트리로 펼치므로 확정 트리에 남지 않는다 (desugaredKinds, ADR 0059).
+	//
+	// 그래도 별도 종류인 근거는 KindShape·KindTable과 같다: 파서의 콘텐츠 모델이 다르고
+	// (점만 담는다), 값 층에서 **다른 기계**가 소비한다(펼침). 종류를 나누지 않으면 파서와
+	// 값 층이 각자 `name == "chart"` 비교를 들게 되고, 그것이 카탈로그를 한 곳에 둔 이유를
+	// 무너뜨린다.
+	KindChart
+	// KindChartPoint는 `<point>`다 (chart.go) — void이고, KindChart와 함께 펼쳐진다.
+	// `<tr>`처럼 도형이 되지 않지만 갈라지는 자리가 있다: 행은 프레임 안에 `a:tr`로 **접히고**
+	// 점은 아예 **사라진다** (점 하나가 도형 1 + 텍스트 2가 된다).
+	KindChartPoint
 )
 
 // ElementKinds는 카탈로그의 모든 종류다 (KindNone은 카탈로그 밖이므로 빠진다).
@@ -86,6 +98,7 @@ func ElementKinds() []ElementKind {
 		KindBlock, KindListContainer, KindListItem, KindInline,
 		KindLayoutContainer, KindSpacer, KindShape, KindImage,
 		KindTable, KindTableRow, KindTableCell,
+		KindChart, KindChartPoint,
 	}
 }
 
@@ -103,6 +116,8 @@ var elementKindNames = map[ElementKind]string{
 	KindTable:           "Table",
 	KindTableRow:        "TableRow",
 	KindTableCell:       "TableCell",
+	KindChart:           "Chart",
+	KindChartPoint:      "ChartPoint",
 }
 
 // String은 종류 이름을 돌려준다.
@@ -135,7 +150,8 @@ func allElementNames() []string {
 	names = append(names, inlineElements...)
 	names = append(names, layoutContainerElements...)
 	names = append(names, SpacerElement, ShapeElement, ImageElement, TableElement, TableRowElement)
-	return append(names, tableCellElements...)
+	names = append(names, tableCellElements...)
+	return append(names, ChartElement, ChartPointElement)
 }
 
 // unrenderedKinds는 **파서와 값 층은 아는데 어느 렌더러도 그리지 못하는** 종류다.
@@ -183,8 +199,44 @@ type plannedAttr struct {
 // 갚으면 사라진다.
 var plannedAttrs = []plannedAttr{}
 
+// desugaredKinds는 **값 층이 도형·텍스트로 펼치는** 종류다 (ADR 0059).
+//
+// unrenderedKinds의 거울이지만 뜻이 반대다: 저것은 **빚**이고(렌더러가 뒤따르면 줄이 사라진다)
+// 이것은 **계약**이다 — `<chart>`는 렌더러를 영원히 갖지 않는다. 차트를 도형으로 펼친 결정의
+// 값은 "산출물에 차트라는 물건이 없다"는 것이므로, 어느 렌더러가 이 종류를 다루게 되는 날은
+// 그 결정이 깨진 날이다. 그래서 이 목록의 종류는 렌더러 능력 표에 **있으면 실패**다
+// (render/vocabulary_test.go의 셋째 갈래).
+//
+// 목록이 언어 층에 있는 이유는 unrenderedKinds와 같다 — 파서가 아는 종류의 운명을 파서 옆에
+// 적어야 세 층의 대조가 한 곳을 읽는다. 값 층도 이 목록을 읽는다: 확정 트리에 펼쳐지는 종류가
+// 하나도 없다는 것을 core의 테스트가 이 목록으로 확인한다 (TestResolvedTreeHasNoDesugaredKinds).
+var desugaredKinds = []ElementKind{KindChart, KindChartPoint}
+
+// DesugaredKinds는 펼쳐지는 종류 전부다 (카탈로그 순서). ElementKinds의 부분집합이다.
+func DesugaredKinds() []ElementKind {
+	kinds := make([]ElementKind, len(desugaredKinds))
+	copy(kinds, desugaredKinds)
+	return kinds
+}
+
+// KindDesugared는 이 종류가 값 층에서 펼쳐지는지 보고한다 — 참이면 확정 트리에 남지 않고
+// 렌더러에 닿지 않는다.
+func KindDesugared(kind ElementKind) bool {
+	for _, k := range desugaredKinds {
+		if k == kind {
+			return true
+		}
+	}
+	return false
+}
+
 // KindRendered는 두 렌더러가 이 종류를 그릴 수 있는지 보고한다. KindNone(카탈로그 밖 —
 // `<slide>`·`<text>`·`<note>`)은 각자의 규칙을 따르므로 참이다.
+//
+// 펼쳐지는 종류(KindDesugared)도 **참이다** — 그 종류는 그려진다, 다만 자기 이름으로 그려지지
+// 않는다. 두 물음을 한 함수에 뭉치면 "렌더러가 다뤄야 하는가"와 "저자에게 아직 안 된다고
+// 말해야 하는가"가 섞인다: 차트는 저자가 지금 쓸 수 있는 어휘이므로 checkRendered가 막아서는
+// 안 된다. 렌더러가 다뤄야 하는 종류는 두 물음의 곱이다 (KindRendered && !KindDesugared).
 func KindRendered(kind ElementKind) bool {
 	for _, k := range unrenderedKinds {
 		if k == kind {
@@ -245,6 +297,8 @@ func buildElementKinds() map[string]ElementKind {
 	for _, name := range tableCellElements {
 		kinds[name] = KindTableCell
 	}
+	kinds[ChartElement] = KindChart
+	kinds[ChartPointElement] = KindChartPoint
 	return kinds
 }
 
@@ -259,7 +313,8 @@ func KindOf(name string) ElementKind {
 // 캡션은 `<image>`의 자식이 아니라 **형제 `<text>`**이고, 그림 안 글자는 도형의 일이며
 // (`<shape>` 안 `<text>`) 그림 **위** 글자는 겹침(Iteration 6의 `<stack>`)의 일이다.
 func IsVoidElement(name string) bool {
-	return name == BreakElement || name == SpacerElement || name == ImageElement
+	return name == BreakElement || name == SpacerElement || name == ImageElement ||
+		name == ChartPointElement
 }
 
 // TagTextRole은 블록·리스트 항목 태그의 텍스트 역할이다 — PRD §7.7의 등가 표

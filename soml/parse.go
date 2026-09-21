@@ -84,6 +84,26 @@ func buildElementSpecs() map[string]elementSpec {
 			model:    modelElements,
 			children: tableRowChildren(),
 		},
+		ChartElement: {
+			// 고유(type·unit·max·alt) → 박스 → 자식 배치 → 슬롯 순이다 (ChartAttrs +
+			// withChildPlacement). 차트는 슬라이드 직속이자 레이아웃 컨테이너의 자식이 될 수
+			// 있고(`<row><chart grow="1">`), 슬롯도 채운다 — 펼침의 뿌리가 도형이므로 배치
+			// 어휘가 `<shape>`와 같은 한 벌이다 (ADR 0059).
+			//
+			// 자식은 점뿐이다 (`<table>`의 자식이 행뿐인 것과 같다). 문법은 여기서 끝이고
+			// 값(종류 이름·수치·축)은 core가 본다 — `<chart>`의 특이한 점은 그 값 층이
+			// 검사만 하지 않고 **트리를 도형·텍스트로 바꿔 놓는다**는 것이다 (core/chart.go).
+			attrs:    withChildPlacement(ChartAttrs()),
+			model:    modelElements,
+			children: chartChildren(),
+		},
+		ChartPointElement: {
+			// 점은 void다 — 라벨·값·강조색이 전부 속성이고 담을 것이 없다 (`<image>`와 같은
+			// 근거). 자식 배치·슬롯도 없다: 점은 flex 항목이 아니라 데이터 한 칸이고, 막대의
+			// 폭과 자리는 차트가 정한다 (`<tr>`·셀과 같은 분담).
+			attrs: ChartPointAttrs(),
+			model: modelVoid,
+		},
 		noteElement: {model: modelText},
 	}
 	for _, name := range tableCellElements {
@@ -186,7 +206,7 @@ func buildElementSpecs() map[string]elementSpec {
 // 레이아웃 컨테이너와 `<spacer>`가 들어 있다: 슬라이드 직속 `<spacer>`는 세로 스택에서
 // 밀어내기가 되므로 뜻이 있다 (머리글 아래 여백을 늘려 꼬리글을 바닥에 붙이는 배치).
 func slideChildren() []string {
-	children := []string{TextElement, ShapeElement, ImageElement, TableElement, noteElement}
+	children := []string{TextElement, ShapeElement, ImageElement, TableElement, ChartElement, noteElement}
 	children = append(children, blockElements...)
 	children = append(children, listContainerElements...)
 	children = append(children, layoutContainerElements...)
@@ -443,6 +463,10 @@ func (p *parser) charData(tok Token, parent *Element) {
 		p.errorf(dataSpan(tok), "<%s> 안에 문자 데이터를 직접 쓸 수 없다 (<%s>로 감싼다)", parent.Name, TableRowElement)
 	case KindTableRow:
 		p.errorf(dataSpan(tok), "<%s> 안에 문자 데이터를 직접 쓸 수 없다 (<%s>로 감싼다)", parent.Name, TableDataCellElement)
+	case KindChart:
+		// 차트 안의 글자는 라벨이고 라벨은 점의 속성이다 — `<text>로 감싼다`고 말하면 저자가
+		// 차트 안에 텍스트를 놓을 수 있다고 듣는다 (자식은 점뿐이다).
+		p.errorf(dataSpan(tok), "<%s> 안에 문자 데이터를 직접 쓸 수 없다 (<%s>로 감싼다)", parent.Name, ChartPointElement)
 	default:
 		p.errorf(dataSpan(tok), "<%s> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)", parent.Name)
 	}
@@ -650,6 +674,12 @@ func (p *parser) checkPlacement(elem *Element, stack []*Element, root *Element) 
 	// 자리별 일반 메시지보다 "표/행 안에 쓴다"가 고칠 방법을 곧장 말한다.
 	if KindOf(elem.Name) == KindTableRow && KindOf(parent.Name) != KindTable {
 		p.errorf(elem.NameSpan, "<%s>는 <%s>의 자식으로만 쓸 수 있다", TableRowElement, TableElement)
+		return
+	}
+	// <point>도 같은 규칙이다 — 어디에 있든 차트의 자식이어야 한다. 자리별 일반 메시지
+	// ("<slide>의 자식으로 <point>는 올 수 없다")는 저자가 붙여 놓을 곳을 말하지 않는다.
+	if KindOf(elem.Name) == KindChartPoint && KindOf(parent.Name) != KindChart {
+		p.errorf(elem.NameSpan, "<%s>는 <%s>의 자식으로만 쓸 수 있다", ChartPointElement, ChartElement)
 		return
 	}
 	if KindOf(elem.Name) == KindTableCell && KindOf(parent.Name) != KindTableRow {

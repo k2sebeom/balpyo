@@ -324,8 +324,8 @@ func TestImageKind(t *testing.T) {
 	}
 	// Iteration 7·9와 P1·P2의 컴포넌트는 카탈로그에도 어휘에도 없어야 한다. `<stack>`은
 	// Iteration 6에, `<table>`은 M2.1(ADR 0036)에 열렸다 (table.go의 TestTableKinds가 그
-	// 계약을 본다). `<chart>`는 M2.2다 — 아직 없어야 한다.
-	for _, name := range []string{"arrow", "line", "group", "icon", "chart"} {
+	// 계약을 본다). `<chart>`도 M2.2(ADR 0059)에 열렸다 (chart.go의 TestChartKinds가 그 계약을 본다).
+	for _, name := range []string{"arrow", "line", "group", "icon"} {
 		if KindOf(name) != KindNone {
 			t.Errorf("<%s>가 카탈로그에 있다 — 뒤 iteration의 어휘다", name)
 		}
@@ -399,12 +399,17 @@ func TestImageAttrs(t *testing.T) {
 			}
 		}
 	}
-	// `alt`이 열린 자리는 **그림·도형·표 셋뿐이다** (ADR 0058) — 그 셋이 양 타깃에 이름을 실을
-	// 자리를 가진 요소다 (`<img alt>`·`p:sp`·`p:graphicFrame`의 `descr`). 텍스트 요소와 레이아웃
-	// 컨테이너에 새면 한 타깃에만 나가는 속성이 된다 (앞쪽은 내용이 이미 글이고, 뒤쪽은 PPTX에
-	// 도형이 없다 — ADR 0011).
+	// `alt`이 열린 자리는 **그림·도형·표·차트 넷뿐이다** (ADR 0058) — 그 넷이 양 타깃에 이름을
+	// 실을 자리를 가진 요소다 (`<img alt>`·`p:sp`·`p:graphicFrame`의 `descr`). 텍스트 요소와
+	// 레이아웃 컨테이너에 새면 한 타깃에만 나가는 속성이 된다 (앞쪽은 내용이 이미 글이고,
+	// 뒤쪽은 PPTX에 도형이 없다 — ADR 0011).
+	//
+	// `<chart>`가 넷째인 근거는 펼침이다 (ADR 0059): 차트는 값 층에서 뿌리 도형 하나가 되고
+	// `alt`이 그 도형에 실린다 — 즉 도형에 열린 자리를 **저자 표기로 물려받는다**. 열지 않으면
+	// 저자가 그림 하나를 이름 없이 내보내는 유일한 어휘가 차트가 된다.
 	for name, spec := range elementSpecs {
-		want := name == ImageElement || name == ShapeElement || name == TableElement
+		want := name == ImageElement || name == ShapeElement || name == TableElement ||
+			name == ChartElement
 		if got := hasAttr(spec.attrs, "alt"); got != want {
 			t.Errorf("<%s>의 alt = %v, want %v", name, got, want)
 		}

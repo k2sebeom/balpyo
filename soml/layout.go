@@ -220,8 +220,8 @@ func withChildPlacement(attrs []string) []string {
 // 슬라이드의 노트인가"가 같은 답이면서 트리 위치만 다른 중복이 된다. `<li>`도 없다 —
 // 리스트 컨테이너의 자식으로만 온다.
 func layoutChildren() []string {
-	children := make([]string, 0, 4+len(blockElements)+len(listContainerElements)+len(layoutContainerElements)+1)
-	children = append(children, TextElement, ShapeElement, ImageElement, TableElement)
+	children := make([]string, 0, 5+len(blockElements)+len(listContainerElements)+len(layoutContainerElements)+1)
+	children = append(children, TextElement, ShapeElement, ImageElement, TableElement, ChartElement)
 	children = append(children, blockElements...)
 	children = append(children, listContainerElements...)
 	children = append(children, layoutContainerElements...)
