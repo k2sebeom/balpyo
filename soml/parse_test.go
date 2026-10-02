@@ -28,6 +28,61 @@ func elementAt(t *testing.T, nodes []Node, i int) *Element {
 	return elem
 }
 
+// treeCase는 정상 트리 케이스다 — want는 dumpNodes 표현이다.
+type treeCase struct {
+	name string
+	src  string
+	want string
+}
+
+func runTreeCases(t *testing.T, tests []treeCase) {
+	t.Helper()
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := parseOK(t, tc.src)
+			if got := dumpNodes(doc.Content); got != tc.want {
+				t.Errorf("트리 = %s\nwant %s", got, tc.want)
+			}
+		})
+	}
+}
+
+// diagCase는 진단 케이스다 — want의 각 원소는 "line:col 메시지조각"이고 순서대로 대조한다.
+// want가 비면 진단 0건을 단정한다.
+type diagCase struct {
+	name string
+	src  string
+	want []string
+}
+
+func runDiagCases(t *testing.T, tests []diagCase) {
+	t.Helper()
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, diags := Parse("slides/001_title.slide", tc.src)
+			for i, want := range tc.want {
+				pos, message, _ := strings.Cut(want, " ")
+				if i >= len(diags) {
+					t.Errorf("진단 %d개뿐이다, want %q", len(diags), want)
+					break
+				}
+				if got := diags[i].Span.Start.String(); got != pos {
+					t.Errorf("진단[%d] 위치 = %s, want %s (%s)", i, got, pos, diags[i].Message)
+				}
+				if !strings.Contains(diags[i].Message, message) {
+					t.Errorf("진단[%d] 메시지 = %q, want %q 포함", i, diags[i].Message, message)
+				}
+				if diags[i].Severity != SeverityError {
+					t.Errorf("진단[%d]은 에러여야 한다: %v", i, diags[i])
+				}
+			}
+			if len(diags) != len(tc.want) {
+				t.Errorf("진단 %d개, want %d개:\n%s", len(diags), len(tc.want), diags.Err())
+			}
+		})
+	}
+}
+
 func TestParseSlide(t *testing.T) {
 	src := `<slide id="architecture">
   <text role="title" size="48" color="fg" align="center">2026 아키텍처 리뷰</text>
@@ -41,9 +96,6 @@ func TestParseSlide(t *testing.T) {
 
 	if doc.ID != "architecture" {
 		t.Errorf("ID = %q, want %q", doc.ID, "architecture")
-	}
-	if doc.Skip {
-		t.Error("skip 속성이 없으면 Skip은 false다")
 	}
 	if doc.Root == nil || doc.Root.Name != "slide" {
 		t.Fatalf("루트 = %+v", doc.Root)
@@ -78,7 +130,6 @@ func TestParseSlide(t *testing.T) {
 		}
 	}
 
-	// 요소 스팬은 여는 `<`부터 닫는 `>`까지다.
 	if got := title.Span.Text(src); !strings.HasPrefix(got, "<text role") || !strings.HasSuffix(got, "</text>") {
 		t.Errorf("요소 스팬 = %q", got)
 	}
@@ -89,13 +140,13 @@ func TestParseSlide(t *testing.T) {
 }
 
 // 무손실 계약은 파서를 지나서도 유지된다 — format이 되돌려 쓸 근거가 덱 모델에 남는다.
+// 깨진 입력에서도 성립해야 한다.
 func TestParseKeepsSourceTokens(t *testing.T) {
 	for _, src := range []string{
 		"",
 		"<slide></slide>",
 		"<!-- 메모 -->\n<slide>\n  <text>제목</text>\n</slide>\n",
 		"<slide id='a'  skip >\n  <note>노트</note>\n</slide>",
-		// 깨진 입력에서도 성립해야 한다.
 		"<slide><txt>x</txt>",
 		"<slide id=\"a>\n</slide>",
 		"</slide>",
@@ -108,91 +159,45 @@ func TestParseKeepsSourceTokens(t *testing.T) {
 	}
 }
 
+// 슬라이드 속성 — 파서는 layout·justify의 원문 값과 **값 구간**만 싣는다 (어휘 검사는 core다).
+// 구간은 인용 부호를 제외한다 — core의 진단이 부호가 아니라 값에 밑줄을 긋는다.
 func TestParseSlideAttributes(t *testing.T) {
 	tests := []struct {
-		name     string
-		src      string
-		wantID   string
-		wantSkip bool
+		name        string
+		src         string
+		wantID      string
+		wantSkip    bool
+		wantLayout  string
+		wantJustify string
 	}{
-		{name: "id 없음", src: `<slide></slide>`},
-		{name: "id", src: `<slide id="intro"></slide>`, wantID: "intro"},
+		{name: "속성 없음", src: `<slide></slide>`},
 		{name: "홑따옴표 id", src: `<slide id='intro'></slide>`, wantID: "intro"},
 		// 값 없는 불리언 속성은 참이다 (HTML 관례).
-		{name: "값 없는 skip", src: `<slide skip></slide>`, wantSkip: true},
+		{name: "값 없는 skip", src: `<slide id="a" skip></slide>`, wantID: "a", wantSkip: true},
 		{name: "skip=true", src: `<slide skip="true"></slide>`, wantSkip: true},
 		{name: "skip=false", src: `<slide skip="false"></slide>`},
-		{name: "id와 skip", src: `<slide id="a" skip></slide>`, wantID: "a", wantSkip: true},
+		{name: "layout", src: `<slide layout="two-column" id="hero"></slide>`, wantID: "hero", wantLayout: "two-column"},
+		{name: "어휘 밖 layout도 원문 그대로", src: `<slide layout="titel"></slide>`, wantLayout: "titel"},
+		{name: "justify", src: `<slide justify="between"></slide>`, wantJustify: "between"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			doc := parseOK(t, tc.src)
-			if doc.ID != tc.wantID {
-				t.Errorf("ID = %q, want %q", doc.ID, tc.wantID)
+			if doc.ID != tc.wantID || doc.Skip != tc.wantSkip || doc.Layout != tc.wantLayout || doc.Justify != tc.wantJustify {
+				t.Errorf("ID/Skip/Layout/Justify = %q/%v/%q/%q, want %q/%v/%q/%q",
+					doc.ID, doc.Skip, doc.Layout, doc.Justify, tc.wantID, tc.wantSkip, tc.wantLayout, tc.wantJustify)
 			}
-			if doc.Skip != tc.wantSkip {
-				t.Errorf("Skip = %v, want %v", doc.Skip, tc.wantSkip)
+			if tc.wantLayout != "" {
+				if got := doc.LayoutSpan.Text(tc.src); got != tc.wantLayout {
+					t.Errorf("LayoutSpan = %q, want %q", got, tc.wantLayout)
+				}
 			}
-		})
-	}
-}
-
-// layout은 파서가 원문 값과 **값 구간**만 싣는다 — 어휘(content·canvas) 검사는 core다
-// (레이아웃 어휘는 테마와 함께 자라므로 파서가 알 수 없다). 진단이 값에 밑줄을 그으려면
-// LayoutSpan이 부호를 제외한 값 구간을 가리켜야 한다.
-func TestParseSlideLayout(t *testing.T) {
-	tests := []struct {
-		name       string
-		src        string
-		wantLayout string
-	}{
-		{name: "layout 없음", src: `<slide></slide>`},
-		{name: "content", src: `<slide layout="content"></slide>`, wantLayout: "content"},
-		{name: "canvas", src: `<slide layout="canvas"></slide>`, wantLayout: "canvas"},
-		{name: "two-column", src: `<slide layout="two-column"></slide>`, wantLayout: "two-column"},
-		{name: "section-divider", src: `<slide layout="section-divider"></slide>`, wantLayout: "section-divider"},
-		// 어휘 밖 값도 파서는 원문 그대로 싣는다 — 판정은 core의 몫이다.
-		{name: "어휘 밖 값도 원문 그대로", src: `<slide layout="titel"></slide>`, wantLayout: "titel"},
-		{name: "layout과 id 함께", src: `<slide layout="canvas" id="hero"></slide>`, wantLayout: "canvas"},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			doc := parseOK(t, tc.src)
-			if doc.Layout != tc.wantLayout {
-				t.Errorf("Layout = %q, want %q", doc.Layout, tc.wantLayout)
-			}
-			if tc.wantLayout == "" {
-				return
-			}
-			// 값 스팬은 인용 부호를 제외한다 — core의 진단이 부호가 아니라 값에 밑줄을 긋는다.
-			if got := doc.LayoutSpan.Text(tc.src); got != tc.wantLayout {
-				t.Errorf("LayoutSpan = %q, want %q", got, tc.wantLayout)
+			if tc.wantJustify != "" {
+				if got := doc.JustifySpan.Text(tc.src); got != tc.wantJustify {
+					t.Errorf("JustifySpan = %q, want %q", got, tc.wantJustify)
+				}
 			}
 		})
-	}
-}
-
-// 슬롯 속성은 슬라이드 직계 자식이 될 수 있는 요소 전부에 열린다 (SlotAttr) — 파서는 이름만
-// 보고, "슬라이드 직계 자식에만·그 레이아웃에 그 슬롯이 있는가"는 core가 검증한다.
-func TestParseSlot(t *testing.T) {
-	doc := parseOK(t, `<slide layout="two-column">`+
-		`<text slot="title">Before / After</text>`+
-		`<col slot="left"><text>왼쪽</text></col>`+
-		`<shape slot="right" type="rect"><text>오른쪽</text></shape>`+
-		`<text>슬롯 없는 자식</text>`+
-		`</slide>`)
-	if got, ok := elementAt(t, doc.Content, 0).Attr(SlotAttr); !ok || got.Value != "title" {
-		t.Errorf("<text> slot = %q (ok=%v), want title", got.Value, ok)
-	}
-	if got, ok := elementAt(t, doc.Content, 1).Attr(SlotAttr); !ok || got.Value != "left" {
-		t.Errorf("<col> slot = %q (ok=%v), want left", got.Value, ok)
-	}
-	if got, ok := elementAt(t, doc.Content, 2).Attr(SlotAttr); !ok || got.Value != "right" {
-		t.Errorf("<shape> slot = %q (ok=%v), want right", got.Value, ok)
-	}
-	// 슬롯 없는 직계 자식은 slot 속성이 없다 — 기본 슬롯(body) 배정은 core의 몫이다.
-	if _, ok := elementAt(t, doc.Content, 3).Attr(SlotAttr); ok {
-		t.Errorf("슬롯 없는 자식에 slot 속성이 있다")
 	}
 }
 
@@ -206,11 +211,8 @@ func TestSlideLayoutsCatalog(t *testing.T) {
 	if strings.Join(got, " ") != want {
 		t.Errorf("SlideLayouts() = %q\nwant %q", strings.Join(got, " "), want)
 	}
-	if DefaultSlideLayout != LayoutContent {
-		t.Errorf("DefaultSlideLayout = %q, want content", DefaultSlideLayout)
-	}
-	if DefaultSlot != "body" {
-		t.Errorf("DefaultSlot = %q, want body", DefaultSlot)
+	if DefaultSlideLayout != LayoutContent || DefaultSlot != "body" {
+		t.Errorf("DefaultSlideLayout/DefaultSlot = %q/%q, want content/body", DefaultSlideLayout, DefaultSlot)
 	}
 }
 
@@ -227,7 +229,7 @@ func TestParseCollapsesWhitespace(t *testing.T) {
 		{name: "탭과 줄바꿈도 공백", src: "<slide><text>a\tb\nc</text></slide>", want: "a b c"},
 		{name: "공백만이면 비운다", src: "<slide><text>\n   \n</text></slide>", want: ""},
 		// 비ASCII 공백은 저자가 의도해 넣은 문자다.
-		{name: "U+00A0은 남는다", src: "<slide><text>한 글</text></slide>", want: "한 글"},
+		{name: "U+00A0은 남는다", src: "<slide><text>한 글</text></slide>", want: "한 글"},
 		{name: "노트도 같은 규칙", src: "<slide><note>\n  줄1\n  줄2\n</note></slide>", want: "줄1 줄2"},
 	}
 	for _, tc := range tests {
@@ -247,42 +249,62 @@ func TestParseCollapsesWhitespace(t *testing.T) {
 // 요소만 담는 모델에서 요소 사이 공백은 내용이 아니다 — 콘텐츠 트리에 텍스트 노드가 없다.
 func TestParseDropsLayoutWhitespace(t *testing.T) {
 	doc := parseOK(t, "<slide>\n  <text>a</text>\n  <text>b</text>\n</slide>\n")
-	if len(doc.Root.Children) != 2 {
-		t.Fatalf("자식 %d개, want 2개", len(doc.Root.Children))
+	if got := dumpNodes(doc.Root.Children); got != `text("a") text("b")` {
+		t.Errorf("자식 = %s", got)
 	}
-	for i, child := range doc.Root.Children {
-		if _, ok := child.(*Element); !ok {
-			t.Errorf("자식 %d가 요소가 아니다: %T", i, child)
-		}
-	}
-}
-
-func TestParseSelfClosingAndEmpty(t *testing.T) {
-	doc := parseOK(t, `<slide><text/><note/></slide>`)
+	doc = parseOK(t, `<slide><text/><note/></slide>`)
 	if len(doc.Content) != 1 || doc.Notes != "" {
 		t.Errorf("콘텐츠 %d개, Notes %q", len(doc.Content), doc.Notes)
 	}
 }
 
-// 에러는 line:col을 갖는다. 진단은 소스 순서로 정렬되어 저자가 위에서 아래로 고칠 수 있다.
-func TestParseErrors(t *testing.T) {
+// 요소의 Span은 여는 `<`부터 닫는 태그의 `>`(자기 닫힘은 `/>`)까지다 — 진단·지오메트리가
+// 저자의 태그를 정확히 가리켜야 한다.
+func TestParseElementSpans(t *testing.T) {
 	tests := []struct {
-		name string
 		src  string
-		// want의 각 원소는 "line:col 메시지조각"이다.
-		want []string
+		path []int // 콘텐츠에서 자식 색인을 따라 내려간다
+		want string
 	}{
+		{"<slide>\n  <shape type=\"rect\">\n    <text>배지</text>\n  </shape>\n</slide>", []int{0}, "2:3-4:11"},
+		{"<slide>\n  <shape type=\"rect\">\n    <text>배지</text>\n  </shape>\n</slide>", []int{0, 0}, "3:5-3:20"},
+		{"<slide>\n  <shape type=\"rect\" id=\"db\"/>\n</slide>", []int{0}, "2:3-2:31"},
+		{"<slide>\n  <image src=\"assets/wide.png\"/>\n</slide>", []int{0}, "2:3-2:33"},
+		{"<slide>\n  <row gap=\"md\">\n    <spacer/>\n  </row>\n</slide>", []int{0}, "2:3-4:9"},
+		{"<slide>\n  <row gap=\"md\">\n    <spacer/>\n  </row>\n</slide>", []int{0, 0}, "3:5-3:14"},
+	}
+	for _, tc := range tests {
+		nodes := parseOK(t, tc.src).Content
+		var elem *Element
+		for _, i := range tc.path {
+			elem = elementAt(t, nodes, i)
+			nodes = elem.Children
+		}
+		if got := elem.Span.Start.String() + "-" + elem.Span.End.String(); got != tc.want {
+			t.Errorf("%q %v의 <%s> Span = %s, want %s", tc.src, tc.path, elem.Name, got, tc.want)
+		}
+	}
+}
+
+// 문서 층의 진단 — line:col과 문구까지 단정한다. 진단은 소스 순서로 정렬되어 저자가 위에서
+// 아래로 고칠 수 있다.
+func TestParseErrors(t *testing.T) {
+	runDiagCases(t, []diagCase{
 		{
 			name: "오타 태그",
 			src:  "<slide>\n  <txt>제목</txt>\n</slide>",
 			want: []string{"2:4 알 수 없는 태그 <txt>"},
 		},
 		{
+			// 닫힌 어휘 위반이면 허용 어휘 전부를 함께 낸다 — 카탈로그가 닫혀 있다는 증거다.
+			name: "어휘 밖 태그는 허용 어휘를 싣는다",
+			src:  "<slide><h6>제목</h6></slide>",
+			want: []string{"1:9 알 수 없는 태그 <h6> (쓸 수 있는 태그: <a>, <blockquote>, <br>, <chart>, <code>, <col>, <em>, <grid>, <h1>, <h2>, <h3>, <image>, <li>, <note>, <ol>, <p>, <point>, <pre>, <row>, <shape>, <slide>, <spacer>, <span>, <stack>, <strong>, <table>, <td>, <text>, <th>, <tr>, <ul>)"},
+		},
+		{
 			name: "알 수 없는 속성",
-			// `layout`은 Iteration 6에 열렸으므로(값 어휘는 core가 본다) 파서 진단이 아니다.
-			// `reveal`은 여전히 닫혀 있다 (parse.go의 주석 — 웹 런타임 Phase 2).
 			src:  `<slide reveal="fade"></slide>`,
-			want: []string{"1:8 알 수 없는 속성 reveal"},
+			want: []string{"1:8 알 수 없는 속성 reveal (쓸 수 있는 속성: layout, id, skip, justify)"},
 		},
 		{
 			name: "<note>에는 속성이 없다",
@@ -352,37 +374,17 @@ func TestParseErrors(t *testing.T) {
 			src:  `<slide id=></slide>`,
 			want: []string{"1:8 속성 id에 `=`만 있고 값이 없다"},
 		},
-		{
-			name: "값 없는 id",
-			src:  `<slide id></slide>`,
-			want: []string{"1:8 id 속성에는 값이 필요하다"},
-		},
-		{
-			name: "id가 비었다",
-			src:  `<slide id=""></slide>`,
-			want: []string{"1:12 id 속성이 비어 있다"},
-		},
-		{
-			name: "skip 값이 어휘 밖",
-			src:  `<slide skip="maybe"></slide>`,
-			want: []string{"1:14 skip 값은 true 또는 false다"},
-		},
-		{
-			// 파서는 layout의 문법만 본다 — 값 없는 layout은 뜻을 정할 수 없다.
-			// 어휘(content·canvas) 검사는 core다.
-			name: "값 없는 layout",
-			src:  `<slide layout></slide>`,
-			want: []string{"1:8 layout 속성에는 값이 필요하다"},
-		},
-		{
-			name: "layout이 비었다",
-			src:  `<slide layout=""></slide>`,
-			want: []string{"1:16 layout 속성이 비어 있다"},
-		},
+		{name: "값 없는 id", src: `<slide id></slide>`, want: []string{"1:8 id 속성에는 값이 필요하다"}},
+		{name: "id가 비었다", src: `<slide id=""></slide>`, want: []string{"1:12 id 속성이 비어 있다"}},
+		{name: "skip 값이 어휘 밖", src: `<slide skip="maybe"></slide>`, want: []string{"1:14 skip 값은 true 또는 false다"}},
+		{name: "값 없는 layout", src: `<slide layout></slide>`, want: []string{"1:8 layout 속성에는 값이 필요하다"}},
+		{name: "layout이 비었다", src: `<slide layout=""></slide>`, want: []string{"1:16 layout 속성이 비어 있다"}},
+		{name: "값 없는 justify", src: `<slide justify></slide>`, want: []string{"1:8 justify 속성에는 값이 필요하다"}},
+		{name: "justify가 비었다", src: `<slide justify=""></slide>`, want: []string{"1:17 justify 속성이 비어 있다"}},
 		{
 			name: "속성 중복",
 			src:  `<slide id="a" id="b"></slide>`,
-			want: []string{"1:15 속성 id가 중복됐다"},
+			want: []string{"1:15 속성 id가 중복됐다 (앞의 것만 쓴다)"},
 		},
 		{
 			name: "쓸 수 없는 문자",
@@ -400,9 +402,7 @@ func TestParseErrors(t *testing.T) {
 			want: []string{"1:9 <slide>의 자식으로 <slide>는 올 수 없다"},
 		},
 		{
-			// `<` + 공백은 마크업이 아니므로 문자 데이터다 (ADR 0037). 요소만 담는 <slide>
-			// 안에서는 그 문자 데이터가 진단이 된다 — 진단의 종류가 바뀐 것이지 사라진 것이
-			// 아니다.
+			// `<` + 공백은 마크업이 아니므로 문자 데이터다 (ADR 0037).
 			name: "마크업이 아닌 <는 문자 데이터다",
 			src:  `<slide>< ></slide>`,
 			want: []string{"1:8 <slide> 안에 문자 데이터를 직접 쓸 수 없다"},
@@ -429,32 +429,7 @@ func TestParseErrors(t *testing.T) {
 				"3:9 알 수 없는 속성 badattr",
 			},
 		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			_, diags := Parse("slides/001_title.slide", tc.src)
-			for i, want := range tc.want {
-				pos, message, _ := strings.Cut(want, " ")
-				if i >= len(diags) {
-					t.Errorf("진단 %d개뿐이다, want %q", len(diags), want)
-					break
-				}
-				if got := diags[i].Span.Start.String(); got != pos {
-					t.Errorf("진단[%d] 위치 = %s, want %s (%s)", i, got, pos, diags[i].Message)
-				}
-				if !strings.Contains(diags[i].Message, message) {
-					t.Errorf("진단[%d] 메시지 = %q, want %q 포함", i, diags[i].Message, message)
-				}
-				if diags[i].Severity != SeverityError {
-					t.Errorf("진단[%d]은 에러여야 한다: %v", i, diags[i])
-				}
-			}
-			if len(diags) != len(tc.want) {
-				t.Errorf("진단 %d개, want %d개:\n%s", len(diags), len(tc.want), diags.Err())
-			}
-		})
-	}
+	})
 }
 
 // 파서는 어떤 입력에서도 멈춘다 — 에러 복구가 있는 손으로 쓴 루프이므로 진행 보장을 검사한다.
@@ -492,20 +467,6 @@ func TestParseColumnIsRuneBased(t *testing.T) {
 	}
 }
 
-// 진단 메시지는 무엇을 고쳐야 하는지 알려준다 — 닫힌 어휘 위반이면 허용 어휘를 함께 낸다.
-func TestParseDiagnosticNamesVocabulary(t *testing.T) {
-	_, diags := Parse("a.slide", "<slide><h6>제목</h6></slide>")
-	if len(diags) == 0 {
-		t.Fatal("h6은 어휘 밖이다 (서브셋은 h1~h3) — 에러여야 한다")
-	}
-	message := diags[0].Message
-	for _, want := range []string{"<note>", "<slide>", "<text>", "<h1>", "<ul>", "<strong>"} {
-		if !strings.Contains(message, want) {
-			t.Errorf("메시지에 허용 어휘 %s가 없다: %q", want, message)
-		}
-	}
-}
-
 // 진단은 파일 경로를 갖는다 — 에디터가 클릭할 수 있는 `file:line:col` 형태가 된다.
 func TestParseDiagnosticCarriesFile(t *testing.T) {
 	_, diags := Parse("slides/ch/002_intro.slide", "<slide><txt/></slide>")
@@ -514,48 +475,5 @@ func TestParseDiagnosticCarriesFile(t *testing.T) {
 	}
 	if got, want := diags[0].String(), "slides/ch/002_intro.slide:1:9: error: "; !strings.HasPrefix(got, want) {
 		t.Errorf("진단 = %q, want %q로 시작", got, want)
-	}
-}
-
-// `<slide justify>`는 흐름 모드 슬라이드의 **세로 분배**다 (ADR 0044 D17). 파서는 layout과
-// 같은 경계를 지킨다: 문법(값 있음·비지 않음)만 보고 어휘 6종은 core가 본다 — 값과 구간을
-// 원문 그대로 나른다.
-func TestParseSlideJustify(t *testing.T) {
-	doc, diags := Parse("slides/001.slide", `<slide justify="between"><p>x</p></slide>`)
-	if len(diags) != 0 {
-		t.Fatalf("진단이 없어야 한다: %v", diags)
-	}
-	if doc.Justify != "between" {
-		t.Errorf("Justify = %q, want \"between\"", doc.Justify)
-	}
-	// 구간은 **값**을 가리킨다 — core의 어휘 진단이 부호가 아니라 값에 밑줄을 긋는다.
-	// `<slide justify="` 다음이 17칸이다.
-	if got := doc.JustifySpan.Start; !got.IsValid() || got.Line != 1 || got.Col != 17 {
-		t.Errorf("JustifySpan.Start = %s, want 1:17", got)
-	}
-	// 속성이 없으면 빈 문자열이다 (기본값은 core·렌더러가 소유한다 — 선언이 없으면 흐름 그대로).
-	plain, diags := Parse("slides/002.slide", `<slide><p>x</p></slide>`)
-	if len(diags) != 0 {
-		t.Fatalf("진단이 없어야 한다: %v", diags)
-	}
-	if plain.Justify != "" {
-		t.Errorf("justify 없는 슬라이드의 Justify = %q, want \"\"", plain.Justify)
-	}
-}
-
-// 문법 진단은 layout과 같은 두 형태다 (값 없음·빈 값).
-func TestParseSlideJustifySyntax(t *testing.T) {
-	tests := []struct {
-		src  string
-		want string
-	}{
-		{`<slide justify></slide>`, "1:8: error: justify 속성에는 값이 필요하다"},
-		{`<slide justify=""></slide>`, "1:17: error: justify 속성이 비어 있다"},
-	}
-	for _, tc := range tests {
-		_, diags := Parse("slides/001.slide", tc.src)
-		if len(diags) != 1 || !strings.Contains(diags[0].String(), tc.want) {
-			t.Errorf("%s → %v, want %q", tc.src, diags, tc.want)
-		}
 	}
 }

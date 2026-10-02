@@ -1,9 +1,6 @@
 package soml
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
 // textOf는 파싱 결과의 첫 콘텐츠 요소의 텍스트다.
 func textOf(t *testing.T, src string) string {
@@ -12,7 +9,7 @@ func textOf(t *testing.T, src string) string {
 	return elementAt(t, doc.Content, 0).TextContent()
 }
 
-// 이름 있는 참조 5종과 수치 참조가 풀린다 — 모델에는 **해석된 문자**가 담긴다 (ADR 0037).
+// 이름 있는 참조 5종과 수치 참조가 풀리고 참조·마크업 모양이 아닌 `&`·`<`는 리터럴이다 — 모델에는 **해석된 문자**가 담긴다 (ADR 0037).
 func TestParseResolvesCharRefs(t *testing.T) {
 	tests := []struct {
 		name string
@@ -26,6 +23,8 @@ func TestParseResolvesCharRefs(t *testing.T) {
 		{"참조는 두 번 풀리지 않는다", `&amp;lt;`, "&lt;"},
 		{"참조 모양이 아닌 &는 리터럴이다", `R&D 예산 ?a=1&b=2 100% & 그 외`, "R&D 예산 ?a=1&b=2 100% & 그 외"},
 		{"참조로 쓴 공백은 접히지 않는다", `가&#32;&#32;나`, "가  나"},
+		// 마크업이 아닌 `<`는 내용이다 — 비교 연산자와 수식이 그냥 쓰인다.
+		{"마크업이 아닌 <", "a < b 1<2 x <= y a <- b 끝은 <", "a < b 1<2 x <= y a <- b 끝은 <"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -36,35 +35,31 @@ func TestParseResolvesCharRefs(t *testing.T) {
 	}
 }
 
-// 참조 모양인데 어휘 밖이면 에러다 — 지원하지 않는 이름을 리터럴로 흘리면 화면에
-// `&nbsp;`가 보이는 것으로만 드러난다.
-func TestParseRejectsUnknownCharRefs(t *testing.T) {
-	tests := []struct {
-		name string
-		body string
-		want string // 진단 메시지에 들어 있어야 하는 조각
-		col  int    // 진단이 가리키는 칸 (1-based)
-	}{
-		{"알 수 없는 이름", `공백&nbsp;하나`, "&nbsp;", 13},
-		{"수치가 비었다", `&#;`, "&#;", 11},
-		{"XML이 금지한 문자", `&#0;`, "&#0;", 11},
-		{"서로게이트", `&#xD800;`, "&#xD800;", 11},
-		{"범위를 넘는 코드포인트", `&#x110000;`, "&#x110000;", 11},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			_, diags := Parse("slides/001.slide", "<slide><p>"+tc.body+"</p></slide>")
-			if len(diags) != 1 {
-				t.Fatalf("진단 %d건, want 1건:\n%s", len(diags), diags.Err())
-			}
-			if !strings.Contains(diags[0].Message, tc.want) {
-				t.Errorf("메시지 = %q, want %q 포함", diags[0].Message, tc.want)
-			}
-			if diags[0].Span.Start.Col != tc.col {
-				t.Errorf("진단 위치 = %v, want 1:%d (참조를 가리켜야 한다)", diags[0].Span.Start, tc.col)
-			}
-		})
-	}
+// 참조 모양인데 어휘 밖이면 에러다 — 리터럴로 흘리면 화면에 `&nbsp;`가 보이는 것으로만
+// 드러난다. 진단은 참조(속성이면 값 안의 참조)를 가리킨다.
+func TestParseCharRefAndCDataErrors(t *testing.T) {
+	runDiagCases(t, []diagCase{
+		{name: "알 수 없는 이름", src: `<slide><p>공백&nbsp;하나</p></slide>`, want: []string{"1:13 쓸 수 없는 문자 참조 &nbsp;"}},
+		{name: "수치가 비었다", src: `<slide><p>&#;</p></slide>`, want: []string{"1:11 &#;"}},
+		{name: "XML이 금지한 문자", src: `<slide><p>&#0;</p></slide>`, want: []string{"1:11 &#0;"}},
+		{name: "서로게이트", src: `<slide><p>&#xD800;</p></slide>`, want: []string{"1:11 &#xD800;"}},
+		{name: "범위를 넘는 코드포인트", src: `<slide><p>&#x110000;</p></slide>`, want: []string{"1:11 &#x110000;"}},
+		{name: "속성 값 안의 참조", src: `<slide><image src="a.png" alt="&nbsp;"/></slide>`, want: []string{"1:32 쓸 수 없는 문자 참조 &nbsp;"}},
+		// 글자가 뒤따르는 `<`는 여전히 태그다 — 오타를 리터럴로 흘리지 않는다.
+		{name: "글자가 뒤따르는 <는 태그다", src: `<slide><p>a <txt>b</txt></p></slide>`, want: []string{"1:14 알 수 없는 태그 <txt>"}},
+		{
+			// 닫히지 않은 CDATA는 파일의 나머지를 삼키므로 열린 태그 진단이 함께 난다.
+			name: "닫히지 않은 CDATA",
+			src:  "<slide><pre><![CDATA[<slide>\n</pre></slide>",
+			want: []string{
+				"1:2 <slide> 태그가 닫히지 않았다",
+				"1:9 <pre> 태그가 닫히지 않았다",
+				"1:13 CDATA 섹션이 `]]>`로 닫히지 않았다",
+			},
+		},
+		// 요소만 담는 모델에서 CDATA는 문자 데이터와 같은 진단을 받는다.
+		{name: "슬라이드 직속 CDATA", src: `<slide><![CDATA[본문]]></slide>`, want: []string{"1:8 <slide> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)"}},
+	})
 }
 
 // 속성 값도 같은 규칙으로 푼다 — `alt="a &lt; b"`가 동작하고 `?a=1&b=2`는 그대로다.
@@ -79,53 +74,6 @@ func TestParseResolvesCharRefsInAttrValues(t *testing.T) {
 	href, _ := link.Attr("href")
 	if want := "https://x/?a=1&b=2"; href.Value != want {
 		t.Errorf("href = %q, want %q (참조 모양이 아닌 &는 리터럴이다)", href.Value, want)
-	}
-}
-
-func TestParseRejectsUnknownCharRefInAttrValue(t *testing.T) {
-	_, diags := Parse("slides/001.slide", `<slide><image src="a.png" alt="&nbsp;"/></slide>`)
-	if len(diags) != 1 {
-		t.Fatalf("진단 %d건, want 1건:\n%s", len(diags), diags.Err())
-	}
-	if !strings.Contains(diags[0].Message, "&nbsp;") {
-		t.Errorf("메시지 = %q", diags[0].Message)
-	}
-	// 값 안의 참조를 가리킨다 — 속성 이름이 아니라 값이다.
-	if got := diags[0].Span.Start.Col; got != 32 {
-		t.Errorf("진단 위치 = 1:%d, want 1:32", got)
-	}
-}
-
-// 마크업이 아닌 `<`는 내용이다 — 비교 연산자와 수식이 그냥 쓰인다 (ADR 0037).
-func TestParseKeepsNonMarkupAngleBracket(t *testing.T) {
-	tests := []struct {
-		name string
-		body string
-		want string
-	}{
-		{"비교 연산자", "a < b", "a < b"},
-		{"공백 없는 비교", "1<2", "1<2"},
-		{"작거나 같다", "x <= y", "x <= y"},
-		{"닫기만 있는 화살표", "a <- b", "a <- b"},
-		{"문장 끝의 <", "끝은 <", "끝은 <"},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := textOf(t, "<slide><p>"+tc.body+"</p></slide>"); got != tc.want {
-				t.Errorf("텍스트 = %q, want %q", got, tc.want)
-			}
-		})
-	}
-}
-
-// 글자가 뒤따르는 `<`는 여전히 태그다 — 오타를 리터럴로 흘리지 않는다.
-func TestParseStillRejectsUnknownTagAfterAngleBracket(t *testing.T) {
-	_, diags := Parse("slides/001.slide", "<slide><p>a <txt>b</txt></p></slide>")
-	if len(diags) == 0 {
-		t.Fatal("알 수 없는 태그 <txt>가 진단되지 않았다")
-	}
-	if !strings.Contains(diags[0].Message, "<txt>") {
-		t.Errorf("첫 진단 = %q, want <txt> 언급", diags[0].Message)
 	}
 }
 
@@ -168,32 +116,6 @@ func TestParseCData(t *testing.T) {
 				t.Errorf("텍스트 = %q\nwant       %q", got, tc.want)
 			}
 		})
-	}
-}
-
-func TestParseRejectsUnterminatedCData(t *testing.T) {
-	_, diags := Parse("slides/001.slide", "<slide><pre><![CDATA[<slide>\n</pre></slide>")
-	// 닫히지 않은 CDATA는 파일의 나머지를 삼키므로 열린 태그 진단이 함께 난다 (닫히지 않은
-	// 주석과 같다). CDATA를 말하는 진단이 그 안에 있어야 한다.
-	var found bool
-	for _, d := range diags {
-		if strings.Contains(d.Message, "CDATA") {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("닫히지 않은 CDATA가 진단되지 않았다:\n%s", diags.Err())
-	}
-}
-
-// 요소만 담는 모델에서 CDATA는 문자 데이터와 같은 진단을 받는다 — 표기가 달라도 내용이다.
-func TestParseRejectsCDataWhereCharDataIsNotAllowed(t *testing.T) {
-	_, diags := Parse("slides/001.slide", `<slide><![CDATA[본문]]></slide>`)
-	if len(diags) != 1 {
-		t.Fatalf("진단 %d건, want 1건:\n%s", len(diags), diags.Err())
-	}
-	if !strings.Contains(diags[0].Message, "문자 데이터") {
-		t.Errorf("진단 = %q", diags[0].Message)
 	}
 }
 
