@@ -8,15 +8,11 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 코드 하이라이팅의 값 층 계약이다 (P2.4 · ADR 0051): `<pre>`의 문자 데이터가
-// **합성 인라인 런**이 되고, 색은 테마의 `code.tokens` 표에서 오며, 탭은 칼럼을 세어 펴진다.
-//
-// 렌더러를 손대지 않는 것이 이 설계의 값이므로 여기서 못 박는 모양이 곧 두 산출물의 입력이다.
+// 코드 하이라이팅의 값 층 (ADR 0051): `<pre>`의 문자 데이터가 합성 인라인 런이 되고, 색은 테마의
+// `code.tokens`에서 오며, 탭은 칼럼을 세어 펴진다. 렌더러는 이 모양을 그대로 입력으로 받는다.
 
-// codeRuns는 `<pre>`의 자식을 `"<색 토큰 또는 plain>|<글자>"` 목록으로 눕힌다 — 색 있는
-// 조각은 합성 `<span>`, plain은 문자 데이터다. 색을 토큰 이름으로 돌려주는 이유: 리터럴 RGB로
-// 눕히면 schemeClr 참조가 끊긴 것을 이 테스트가 못 본다. 구분자가 공백이 아니라 `|`인 이유는
-// 런 대부분이 공백으로 시작하거나 끝난다는 것이다 — 기댓값에서 그 공백이 보여야 한다.
+// codeRuns는 `<pre>`의 자식을 `"<색 토큰 또는 plain>|<글자>"` 목록으로 눕힌다. 색은 토큰 이름이어야
+// 한다(리터럴이면 schemeClr 참조가 끊긴다). 구분자 `|`는 런 앞뒤 공백을 기댓값에서 보이게 한다.
 func codeRuns(t *testing.T, pre *soml.Element) []string {
 	t.Helper()
 	var runs []string
@@ -95,9 +91,9 @@ func TestHighlightUsesThemeTokenTable(t *testing.T) {
 </slide>]]></pre></slide>`)
 	runs := codeRuns(t, pre)
 	for _, want := range []string{
-		"accent1|<slide",      // NameTag → name
-		"accent2|layout=",     // NameAttribute → attr
-		`accent3|"content"`,   // LiteralString → string
+		"accent1|<slide",    // NameTag → name
+		"accent2|layout=",   // NameAttribute → attr
+		`accent3|"content"`, // LiteralString → string
 		"muted|<!-- 주석 -->", // Comment → comment (인접 합치기가 셋을 하나로 만든다)
 	} {
 		if !hasRun(runs, want) {

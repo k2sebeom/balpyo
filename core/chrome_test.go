@@ -136,8 +136,8 @@ func TestLoadChromeRejectsBadDecls(t *testing.T) {
 func themeFSWithChrome(chrome string) fstest.MapFS {
 	manifest := `{"name":"t","layouts":["content"],"chrome":` + chrome + `}`
 	return fstest.MapFS{
-		"t/theme.json":          {Data: []byte(manifest)},
-		"t/tokens.json":         {Data: []byte(`{"color":[],"font":[],"space":[],"radius":[],"shadow":[]}`)},
+		"t/theme.json":  {Data: []byte(manifest)},
+		"t/tokens.json": {Data: []byte(`{"color":[],"font":[],"space":[],"radius":[],"shadow":[]}`)},
 		// code 절은 모든 테마가 적어야 한다 (탭 폭이 테마의 것이다 — ADR 0051).
 		"t/components.json":     {Data: []byte(`{"text":{"roles":[]},"code":{"tabSize":2,"tokens":[]}}`)},
 		"t/layouts/content.css": {Data: []byte("")},
