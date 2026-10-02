@@ -1,0 +1,61 @@
+# slide 1 chart-bar
+textbox "h2 s0.0"
+  ¶ start | "차트는 도형과 텍스트로 펼쳐진다"{heading 27pt b fg}
+shape:rect "shape s0.1" alt="월별 평균 탐지 시간 — 5월 22분에서 9월 12분으로 줄었다" fill=none line=none
+textbox "text s0.1.0.0.0.0"
+  ¶ center | "22분"{body 13.5pt muted}
+shape:rect "shape s0.1.0.0.0.1" fill=accent1 line=none
+shape:rect "shape s0.1.0.0.1" fill=muted line=none
+textbox "text s0.1.0.0.2"
+  ¶ center | "5월"{body 13.5pt muted}
+textbox "text s0.1.0.1.0.0"
+  ¶ center | "19분"{body 13.5pt muted}
+shape:rect "shape s0.1.0.1.0.1" fill=accent1 line=none
+shape:rect "shape s0.1.0.1.1" fill=muted line=none
+textbox "text s0.1.0.1.2"
+  ¶ center | "6월"{body 13.5pt muted}
+textbox "text s0.1.0.2.0.0"
+  ¶ center | "15분"{body 13.5pt muted}
+shape:rect "shape s0.1.0.2.0.1" fill=accent1 line=none
+shape:rect "shape s0.1.0.2.1" fill=muted line=none
+textbox "text s0.1.0.2.2"
+  ¶ center | "7월"{body 13.5pt muted}
+textbox "text s0.1.0.3.0.0"
+  ¶ center | "13분"{body 13.5pt muted}
+shape:rect "shape s0.1.0.3.0.1" fill=accent1 line=none
+shape:rect "shape s0.1.0.3.1" fill=muted line=none
+textbox "text s0.1.0.3.2"
+  ¶ center | "8월"{body 13.5pt muted}
+textbox "text s0.1.0.4.0.0"
+  ¶ center | "12분"{body 13.5pt accent4}
+shape:rect "shape s0.1.0.4.0.1" fill=accent4 line=none
+shape:rect "shape s0.1.0.4.1" fill=muted line=none
+textbox "text s0.1.0.4.2"
+  ¶ center | "9월"{body 13.5pt accent4}
+textbox "text s0.2"
+  ¶ start | "축 최대를 적지 않으면 가장 높은 막대가 플롯 밴드의 90%다 — 값 라벨이 올라탈 자리가 남는다."{body 13.5pt muted}
+# slide 2 chart-axis
+textbox "h2 s1.0"
+  ¶ start | "축은 저자가 정할 수 있다"{heading 27pt b fg}
+shape:rect "shape s1.1.0" alt="지역별 도입률" fill=none line=none
+textbox "text s1.1.0.0.0.0.0"
+  ¶ center | "62%"{body 13.5pt muted}
+shape:rect "shape s1.1.0.0.0.0.1" fill=accent2 line=none
+shape:rect "shape s1.1.0.0.0.1" fill=muted line=none
+textbox "text s1.1.0.0.0.2"
+  ¶ center | "서울"{body 13.5pt muted}
+textbox "text s1.1.0.0.1.0.0"
+  ¶ center | "41%"{body 13.5pt muted}
+shape:rect "shape s1.1.0.0.1.0.1" fill=accent2 line=none
+shape:rect "shape s1.1.0.0.1.1" fill=muted line=none
+textbox "text s1.1.0.0.1.2"
+  ¶ center | "부산"{body 13.5pt muted}
+textbox "text s1.1.0.0.2.0.0"
+  ¶ center | "0%"{body 13.5pt muted}
+shape:rect "shape s1.1.0.0.2.1" fill=muted line=none
+textbox "text s1.1.0.0.2.2"
+  ¶ center | "대전"{body 13.5pt muted}
+textbox "text s1.1.1.0"
+  ¶ start | "0은 막대가 없다"{heading 27pt b fg}
+textbox "p s1.1.1.1"
+  ¶ start | "값이 0인 점은 라벨만 남는다 — 그 자리가 비어 있는 것이 데이터다."{body 18pt fg}

@@ -1,0 +1,54 @@
+# slide 1 shape-layout-card
+textbox "h2 s0.0"
+  ¶ start | "카드 하나가 도형 하나다"{heading 27pt b fg}
+shape:roundRect "shape s0.1.0" fill=surface line=muted
+textbox "text s0.1.0.0.0"
+  ¶ start | "측정"{heading 27pt b fg}
+textbox "p s0.1.0.0.1"
+  ¶ start | "브라우저가 배치를 계산하고 우리는 그 결과를 잰다."{body 18pt fg}
+textbox "text s0.1.0.0.2"
+  ¶ start | "geom.Refs"{body 13.5pt muted}
+shape:roundRect "shape s0.1.1" fill=surface line=muted
+textbox "text s0.1.1.0.0"
+  ¶ start | "해석"{heading 27pt b fg}
+textbox "p s0.1.1.0.1"
+  ¶ start | "토큰과 역할 기본값이 확정 외관이 된다."{body 18pt fg}
+textbox "text s0.1.1.0.2"
+  ¶ start | "core.Resolve"{body 13.5pt muted}
+shape:roundRect "shape s0.1.2" fill=surface line=muted
+textbox "text s0.1.2.0.0"
+  ¶ start | "조립"{heading 27pt b fg}
+textbox "p s0.1.2.0.1"
+  ¶ start | "잰 좌표가 그대로 xfrm이 되어 두 타깃이 만난다."{body 18pt fg}
+textbox "text s0.1.2.0.2"
+  ¶ start | "render/pptx"{body 13.5pt muted}
+# slide 2 shape-layout-nested
+textbox "h2 s1.0"
+  ¶ start | "컨테이너를 거쳐 들어오는 어휘"{heading 27pt b fg}
+shape:roundRect "shape s1.1" fill=surface line=muted
+shape:roundRect "shape s1.1.0.0.0" fill=accent1 line=muted
+  ¶ center | "규칙"{body 18pt bg}
+textbox "h3 s1.1.0.0.1"
+  ¶ start | "도형 안 리스트"{heading 21pt b fg}
+textbox "ul s1.1.0.1"
+  ¶ start ul | "리스트는 컨테이너를 거쳐 들어온다."{body 18pt fg}
+  ¶ start ul | "불릿 문단은 텍스트 박스 하나에 산다."{body 18pt fg}
+  ¶ start ul | "배경 도형은 빈 문단만 갖는다."{body 18pt fg}
+# slide 3 shape-layout-modes
+textbox "h2 s2.0"
+  ¶ start | "흡수 모드와 배경 모드"{heading 27pt b fg}
+shape:rect "shape s2.1.0" fill=surface line=muted
+  ¶ start | "흡수 모드"{heading 21pt b fg}
+  ¶ start | "자식이 텍스트뿐이면 글자가 이 도형의 문단이 된다."{body 18pt fg}
+shape:rect "shape s2.1.1.0" fill=surface line=muted
+textbox "h3 s2.1.1.0.0.0"
+  ¶ start | "배경 모드"{heading 21pt b fg}
+textbox "p s2.1.1.0.0.1"
+  ¶ start | "컨테이너를 담으면 도형은 배경이 되고 글자는 형제가 된다."{body 18pt fg}
+shape:roundRect "shape s2.1.1.1" fill=none line=accent1
+textbox "text s2.1.1.1.0"
+  ¶ start | "섞인 도형"{heading 27pt b fg}
+textbox "p s2.1.1.1.1.0"
+  ¶ start | "왼쪽 칸"{body 18pt fg}
+textbox "p s2.1.1.1.1.1"
+  ¶ start | "오른쪽 칸"{body 18pt fg}

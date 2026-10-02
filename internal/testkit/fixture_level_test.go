@@ -548,6 +548,10 @@ func TestFixtureGoldenPartList(t *testing.T) {
 				if err != nil {
 					return err
 				}
+				if rel == layoutGolden {
+					// 구조 스냅샷은 산출물 파트가 아니다 — 이 표는 R2에서 불변식 판정으로 바뀐다.
+					return nil
+				}
 				got = append(got, filepath.ToSlash(rel))
 				return nil
 			})

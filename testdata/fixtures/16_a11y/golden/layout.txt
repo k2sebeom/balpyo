@@ -1,0 +1,26 @@
+# slide 1 a11y-alt
+textbox "h2 s0.0"
+  ¶ start | "alt은 그림에 이름을 더한다"{heading 27pt b fg}
+shape:rightArrow "shape s0.1.0" alt="왼쪽에서 오른쪽으로 흐르는 배포 단계" fill=accent1 line=muted
+  ¶ center | "배포"{body 18pt bg}
+shape:rect "shape s0.1.1" fill=surface line=muted
+  ¶ start | "이름이 없는 도형의 그림은 장식이다 — 읽을 것은 이 글이다."{body 18pt fg}
+pic "image s0.1.2" alt="좌상단에 표식이 있는 두 색 그림"
+table "table s0.2" alt="지역별 분기 매출 표"
+  ¶ r0 start | "지역"{body 18pt b bg}
+  ¶ r0 end | "Q1"{body 18pt b bg}
+  ¶ r0 end | "Q2"{body 18pt b bg}
+  ¶ r1 start | "서울"{body 18pt fg}
+  ¶ r1 end | "12.4억"{body 18pt fg}
+  ¶ r1 end | "14.1억"{body 18pt fg}
+# slide 2 a11y-order
+textbox "h2 s1.0"
+  ¶ start | "읽기 순서는 문서 순서다"{heading 27pt b fg}
+textbox "p s1.1"
+  ¶ start | "order는 화면의 자리만 바꾼다 — 스크린 리더와 PowerPoint의 읽기 순서는 이 파일의 순서다."{body 18pt fg}
+shape:roundRect "shape s1.2.0" fill=accent1 line=muted
+  ¶ start | "문서에서 첫째"{heading 27pt b bg}
+  ¶ start | "order=\"2\" — 화면에서는 오른쪽에 있지만 먼저 읽힌다."{body 18pt bg}
+shape:roundRect "shape s1.2.1" fill=surface line=muted
+  ¶ start | "문서에서 둘째"{heading 27pt b fg}
+  ¶ start | "order=\"-1\" — 화면에서는 왼쪽으로 가지만 나중에 읽힌다."{body 18pt fg}

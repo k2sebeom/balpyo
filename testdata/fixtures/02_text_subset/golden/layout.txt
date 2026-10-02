@@ -1,0 +1,65 @@
+# slide 1 headings
+textbox "h1 s0.0"
+  ¶ start | "2026 아키텍처 리뷰"{heading 42pt b fg}
+textbox "h2 s0.1"
+  ¶ start | "상반기 회고"{heading 27pt b fg}
+textbox "h3 s0.2"
+  ¶ start | "플랫폼 팀"{heading 21pt b fg}
+textbox "p s0.3"
+  ¶ start | "모놀리스 분리를 마쳤고, 배포 파이프라인을 자동화했으며, 관측성 스택을 도입했다."{body 18pt fg}
+textbox "blockquote s0.4"
+  ¶ start | "측정하지 않으면 개선할 수 없다."{body 18pt muted}
+# slide 2 lists
+textbox "h2 s1.0"
+  ¶ start | "올해의 세 가지 변화"{heading 27pt b fg}
+textbox "ul s1.1"
+  ¶ start ul | "모놀리스 분리 완료"{body 18pt fg}
+  ¶ start ul | "배포 파이프라인 "{body 18pt fg} · "자동화"{body 18pt b fg}
+  ¶ start ul | "관측성 스택 도입 ("{body 18pt fg} · "otel"{mono 18pt fg} · " + Grafana)"{body 18pt fg}
+textbox "ol s1.2"
+  ¶ start ol | "먼저 잰다"{body 18pt fg}
+  ¶ start ol | "그 다음 고친다"{body 18pt fg}
+# slide 3 inline
+textbox "h2 s2.0"
+  ¶ start | "인라인 서식"{heading 27pt b fg}
+textbox "p s2.1"
+  ¶ start | "배포 파이프라인 "{body 18pt fg} · "자동화"{body 18pt b fg} · "와 "{body 18pt fg} · "관측성"{body 18pt i fg} · "이 핵심이다."{body 18pt fg}
+textbox "p s2.2"
+  ¶ start | "빌드는 "{body 18pt fg} · "make test"{mono 18pt fg} · "로 돌리고, 문서는 "{body 18pt fg} · "레퍼런스"{body 18pt u accent1 →https://example.com/docs} · "를 본다."{body 18pt fg}
+textbox "p s2.3"
+  ¶ start | "첫 줄"{body 18pt fg} · ⏎ · "둘째 줄"{body 18pt fg}
+textbox "p s2.4"
+  ¶ start | "강조된 런"{body 18pt b accent1} · "과 보통 런이 한 문단에 있다."{body 18pt fg}
+# slide 4 pre
+textbox "h2 s3.0"
+  ¶ start | "코드 블록"{heading 27pt b fg}
+textbox "pre s3.1"
+  ¶ start | "func main() {"{mono 15pt fg} · ⏎ · "  fmt.Println(\"balpyo\")  // 연속  공백도 내용이다"{mono 15pt fg} · ⏎ · "}"{mono 15pt fg}
+# slide 5 equivalence
+textbox "text s4.0"
+  ¶ start | "역할로 쓴 제목"{heading 27pt b fg}
+textbox "h2 s4.1"
+  ¶ start | "블록으로 쓴 제목"{heading 27pt b fg}
+textbox "text s4.2"
+  ¶ start | "역할로 쓴 본문"{body 18pt fg}
+textbox "p s4.3"
+  ¶ start | "블록으로 쓴 본문"{body 18pt fg}
+# slide 6 variant
+textbox "h2 s5.0"
+  ¶ start | "모르는 variant는 기본 외관으로 폴백한다"{heading 27pt b fg}
+textbox "text s5.1"
+  ¶ start | "KICKER — 작고 굵은 강조색"{body 13.5pt b accent1}
+textbox "p s5.2"
+  ¶ start | "lead — 본문보다 큰 도입 문단이다."{body 24pt fg}
+# slide 7 list-appearance
+textbox "h2 s6.0"
+  ¶ start | "컨테이너에 쓴 외관은 항목이 상속한다"{heading 27pt b fg}
+textbox "ul s6.1.0"
+  ¶ start ul | "기본 크기 — body 역할의 24px"{body 18pt fg}
+  ¶ start ul | "항목마다 속성을 쓰지 않는다"{body 18pt fg}
+textbox "ul s6.1.1"
+  ¶ start ul | "컨테이너에 한 번 쓴 20px와 muted가 항목 둘에 함께 내려온다"{body 15pt muted}
+  ¶ start ul | "마커도 항목의 확정 폰트·색을 딴다 — 글리프만 남아 어긋나지 않는다"{body 15pt muted}
+textbox "ol s6.2"
+  ¶ center ol | "정렬도 목록 단위다"{body 18pt fg}
+  ¶ center ol | "번호는 엔진이 그린다"{body 18pt fg}
