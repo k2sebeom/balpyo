@@ -1,8 +1,6 @@
 package soml
 
 import (
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -47,70 +45,32 @@ func dumpNode(node Node) string {
 
 // 텍스트 서브셋의 정상 트리 — 태그별 이름·자식·속성이 파싱을 그대로 통과한다.
 func TestParseTextSubset(t *testing.T) {
-	tests := []struct {
-		name string
-		src  string
-		want string
-	}{
+	runTreeCases(t, []treeCase{
 		{
 			name: "제목 위계",
 			src:  `<slide><h1>제목</h1><h2>부제</h2><h3>소제</h3></slide>`,
 			want: `h1("제목") h2("부제") h3("소제")`,
 		},
 		{
-			name: "문단과 인용",
-			src:  `<slide><p>본문</p><blockquote>인용</blockquote></slide>`,
-			want: `p("본문") blockquote("인용")`,
+			name: "문단과 인용과 pre",
+			src:  `<slide><p>본문</p><blockquote>인용</blockquote><pre>x := 1</pre></slide>`,
+			want: `p("본문") blockquote("인용") pre("x := 1")`,
 		},
 		{
-			name: "순서 없는 리스트",
-			src:  `<slide><ul><li>하나</li><li>둘</li></ul></slide>`,
-			want: `ul(li("하나") li("둘"))`,
+			name: "리스트 둘과 인라인 섞인 항목",
+			src:  `<slide><ul><li>배포 <strong>자동화</strong></li></ul><ol><li>첫째</li><li>둘째</li></ol></slide>`,
+			want: `ul(li("배포 " strong("자동화"))) ol(li("첫째") li("둘째"))`,
 		},
 		{
-			name: "순서 있는 리스트",
-			src:  `<slide><ol><li>첫째</li><li>둘째</li></ol></slide>`,
-			want: `ol(li("첫째") li("둘째"))`,
-		},
-		{
-			name: "인라인 섞인 리스트 항목",
-			src:  `<slide><ul><li>배포 <strong>자동화</strong></li></ul></slide>`,
-			want: `ul(li("배포 " strong("자동화")))`,
-		},
-		{
-			name: "인라인 중첩",
-			src:  `<slide><p><strong><em>강조</em></strong></p></slide>`,
-			want: `p(strong(em("강조")))`,
-		},
-		{
-			name: "인라인 코드",
-			src:  `<slide><p>명령은 <code>go build</code>다</p></slide>`,
-			want: `p("명령은 " code("go build") "다")`,
-		},
-		{
-			name: "링크",
-			src:  `<slide><p><a href="https://example.com">문서</a></p></slide>`,
-			want: `p(a[href=https://example.com]("문서"))`,
-		},
-		{
-			name: "줄바꿈",
-			src:  `<slide><p>첫 줄<br/>둘째 줄</p></slide>`,
-			want: `p("첫 줄" br "둘째 줄")`,
-		},
-		{
-			name: "span 색·굵기",
-			src:  `<slide><p><span color="accent1" weight="700">강조</span></p></slide>`,
-			want: `p(span[color=accent1 weight=700]("강조"))`,
-		},
-		{
-			name: "text 안의 인라인",
-			src:  `<slide><text>본문 <em>강조</em></text></slide>`,
-			want: `text("본문 " em("강조"))`,
+			name: "인라인 중첩·코드·링크·줄바꿈·span",
+			src: `<slide><p><strong><em>강조</em></strong> <code>go build</code> <a href="https://example.com">문서</a>` +
+				`첫 줄<br/>둘째 줄 <span color="accent1" weight="700">강조</span></p></slide>`,
+			want: `p(strong(em("강조")) " " code("go build") " " a[href=https://example.com]("문서") "첫 줄" br "둘째 줄 " span[color=accent1 weight=700]("강조"))`,
 		},
 		{
 			name: "블록 ≡ text 역할 등가 — 나란히 파싱된다",
-			src:  `<slide><text role="body">본문</text><p>본문</p></slide>`,
-			want: `text[role=body]("본문") p("본문")`,
+			src:  `<slide><text role="body">본문 <em>강조</em></text><p>본문</p></slide>`,
+			want: `text[role=body]("본문 " em("강조")) p("본문")`,
 		},
 		{
 			name: "variant — text와 블록에 열려 있다",
@@ -118,46 +78,42 @@ func TestParseTextSubset(t *testing.T) {
 			want: `text[variant=kicker]("개요") p[variant=lead]("본문")`,
 		},
 		{
-			name: "블록의 인라인 외관 속성 — text와 같은 어휘 (role 제외)",
-			src:  `<slide><h3 size="40" color="accent1" align="center">소제</h3></slide>`,
-			want: `h3[size=40 color=accent1 align=center]("소제")`,
+			// anchor는 도형 밖에서도 문법은 유효하다 — 자리에 따라 속성 어휘가 갈라지면 저자가
+			// 태그를 옮길 때마다 문법이 바뀐다.
+			name: "블록의 외관 속성과 가로 크기",
+			src:  `<slide><h3 size="40" color="accent1" align="center" anchor="center" w="fill" max-w="720">소제</h3></slide>`,
+			want: `h3[size=40 color=accent1 align=center anchor=center w=fill max-w=720]("소제")`,
 		},
 		{
-			// 리스트 컨테이너는 블록과 **같은** 외관 4종을 받는다 (P0.3 — variant는 여전히
-			// 닫혀 있다): 목록의 타이포그래피를 바꾸려고 레이아웃을 바꿀 이유가 없어야 한다.
-			name: "리스트 컨테이너의 외관 속성 — 블록과 같은 4종",
-			src:  `<slide><ul size="20" color="accent1" align="center" anchor="center"><li>항목</li></ul></slide>`,
-			want: `ul[size=20 color=accent1 align=center anchor=center](li("항목"))`,
+			name: "text의 외관·크기·배치가 함께",
+			src:  `<slide><text size="16" w="140" min-w="80" max-w="50%" align="center" grow="1">x</text></slide>`,
+			want: `text[size=16 w=140 min-w=80 max-w=50% align=center grow=1]("x")`,
 		},
 		{
-			name: "리스트 컨테이너의 외관과 배치는 함께 쓴다",
-			src:  `<slide><row><ol basis="360" size="20"><li>항목</li></ol></row></slide>`,
-			want: `row(ol[basis=360 size=20](li("항목")))`,
+			// 리스트 컨테이너는 블록과 같은 외관 4종과 가로 크기를 받는다 (variant는 닫혀 있다 — ADR 0038).
+			name: "리스트 컨테이너의 외관·크기·배치",
+			src:  `<slide><row><ul size="20" color="accent1" align="center" anchor="center" w="480" basis="360"><li>항목</li></ul></row></slide>`,
+			want: `row(ul[size=20 color=accent1 align=center anchor=center w=480 basis=360](li("항목")))`,
 		},
 		{
-			name: "pre 코드 블록",
-			src:  `<slide><pre>x := 1</pre></slide>`,
-			want: `pre("x := 1")`,
+			// reveal은 이름만 파서가 본다 — 값 어휘(정수 ≥ 1)는 값 층의 것이다 (ADR 0063).
+			name: "li의 reveal — 값 없음과 번호",
+			src:  `<slide><ul><li>하나</li><li reveal>둘</li><li reveal="2">셋</li></ul></slide>`,
+			want: `ul(li("하나") li[reveal=]("둘") li[reveal=2]("셋"))`,
 		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			doc := parseOK(t, tc.src)
-			if got := dumpNodes(doc.Content); got != tc.want {
-				t.Errorf("트리 = %s\nwant %s", got, tc.want)
-			}
-		})
-	}
+		{
+			// 슬롯이 그 레이아웃에 있는가·직계 자식인가는 core가 검증한다.
+			name: "slot은 슬라이드 직계 자식에 열린다",
+			src: `<slide layout="two-column"><text slot="title">제목</text><col slot="left"><text>왼쪽</text></col>` +
+				`<shape slot="right" type="rect"><text>오른쪽</text></shape><text>슬롯 없음</text></slide>`,
+			want: `text[slot=title]("제목") col[slot=left](text("왼쪽")) shape[slot=right type=rect](text("오른쪽")) text("슬롯 없음")`,
+		},
+	})
 }
 
-// 배치 위반·void 위반·모르는 속성 — 진단의 line:col과 문구까지 단정한다.
+// 텍스트 서브셋의 배치 위반·void 위반·모르는 속성 — 진단의 line:col과 문구까지 단정한다.
 func TestParseTextSubsetErrors(t *testing.T) {
-	tests := []struct {
-		name string
-		src  string
-		// want의 각 원소는 "line:col 메시지조각"이다.
-		want []string
-	}{
+	runDiagCases(t, []diagCase{
 		{
 			name: "li가 슬라이드 직속",
 			src:  `<slide><li>항목</li></slide>`,
@@ -174,19 +130,9 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			want: []string{"1:17 중첩 리스트는 아직 지원하지 않는다"},
 		},
 		{
-			name: "블록 안의 블록 — p 안의 p",
-			src:  `<slide><p><p>본문</p></p></slide>`,
-			want: []string{"1:12 <p> 안에 블록 태그 <p>는 올 수 없다"},
-		},
-		{
-			name: "블록 안의 블록 — li 안의 h2",
+			name: "블록 안의 블록",
 			src:  `<slide><ul><li><h2>제목</h2></li></ul></slide>`,
-			want: []string{"1:17 <li> 안에 블록 태그 <h2>는 올 수 없다"},
-		},
-		{
-			name: "a 안의 a",
-			src:  `<slide><p><a href="x"><a href="y">z</a></a></p></slide>`,
-			want: []string{"1:24 <a> 안에 <a>를 겹칠 수 없다"},
+			want: []string{"1:17 <li> 안에 블록 태그 <h2>는 올 수 없다 (블록은 겹치지 않는다)"},
 		},
 		{
 			name: "a 안의 a — 사이에 인라인이 있어도",
@@ -199,53 +145,33 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			want: []string{"1:12 void 태그 <br>은 내용을 가질 수 없다 (<br/>로 쓴다)"},
 		},
 		{
-			name: "void 위반 — 자기 닫힘이 아닌 br",
-			src:  `<slide><p><br></br></p></slide>`,
-			want: []string{"1:12 void 태그 <br>은 내용을 가질 수 없다"},
-		},
-		{
-			name: "span의 size는 막혀 있다",
+			name: "span의 속성 목록",
 			src:  `<slide><p><span size="20">x</span></p></slide>`,
 			want: []string{"1:17 <span>에 알 수 없는 속성 size (쓸 수 있는 속성: color, weight)"},
 		},
 		{
-			name: "a의 속성은 href뿐",
-			src:  `<slide><p><a target="_blank">x</a></p></slide>`,
-			want: []string{"1:14 <a>에 알 수 없는 속성 target (쓸 수 있는 속성: href)"},
-		},
-		{
-			// 블록은 역할을 표에서만 얻는다 — role 속성을 열면 <p role="title">이
-			// 두 표기의 등가(PRD §7.7)를 깬다. 어휘 뒤쪽은 Iteration 3이 더한 자식 배치
-			// 속성이다 (블록이 레이아웃 컨테이너의 자식이 될 수 있다 — soml/layout.go).
+			// 블록은 역할을 표에서만 얻는다 — role 속성을 열면 <p role="title">이 두 표기의
+			// 등가(PRD §7.7)를 깬다.
 			name: "블록에는 role이 없다",
 			src:  `<slide><h1 role="body">제목</h1></slide>`,
 			want: []string{"1:12 <h1>에 알 수 없는 속성 role (쓸 수 있는 속성: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
 		},
 		{
-			name: "인라인에는 variant가 없다",
+			name: "인라인에는 속성이 없다",
 			src:  `<slide><p><strong variant="kicker">x</strong></p></slide>`,
 			want: []string{"1:19 <strong>에는 속성을 쓸 수 없다 (variant)"},
 		},
 		{
-			// 외관 4종은 열렸지만 variant는 닫혀 있다 (P0.3·ADR 0038): variant는 외관
-			// **번들**이라 항목마다 다른 번들이 붙으면 목록의 타이포그래피가 목록이기를
-			// 멈춘다 — 컨테이너에 열어도 상속의 뜻이 "글자 하나"가 아니라 "역할 바꾸기"가
-			// 된다.
-			name: "리스트 컨테이너에는 variant가 없다",
-			src:  `<slide><ul variant="lead"><li>x</li></ul></slide>`,
-			want: []string{"1:12 <ul>에 알 수 없는 속성 variant (쓸 수 있는 속성: size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
-		},
-		{
-			name: "li에는 variant가 없다",
-			src:  `<slide><ul><li variant="lead">x</li></ul></slide>`,
-			want: []string{"1:16 <li>에 알 수 없는 속성 variant (쓸 수 있는 속성: reveal)"},
-		},
-		{
-			// 항목은 **상속만** 받는다 (ADR 0038) — 외관은 목록 단위의 성질이고, 항목마다
-			// 다른 크기를 허용하면 목록이 문단 여럿과 구별되지 않는다.
+			// 항목은 외관을 상속만 받는다 (ADR 0038) — 열린 것은 순서(reveal)뿐이다.
 			name: "li에는 외관 속성이 없다",
 			src:  `<slide><ul><li size="20">x</li></ul></slide>`,
 			want: []string{"1:16 <li>에 알 수 없는 속성 size (쓸 수 있는 속성: reveal)"},
+		},
+		{
+			// 세로 축·pad·ratio는 텍스트에 닫혀 있다 (ADR 0043).
+			name: "text에는 h가 없다",
+			src:  `<slide><text h="56">x</text></slide>`,
+			want: []string{`1:14 <text>에 알 수 없는 속성 h (쓸 수 있는 속성: role, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)`},
 		},
 		{
 			name: "pre 안의 인라인은 아직이다",
@@ -258,9 +184,9 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			want: []string{"1:12 <p> 안에는 문자 데이터와 인라인 태그만 올 수 있다 (<text>는 쓸 수 없다)"},
 		},
 		{
-			name: "인라인이 슬라이드 직속",
+			name: "인라인이 슬라이드 직속 — 슬라이드의 자식 어휘",
 			src:  `<slide><strong>x</strong></slide>`,
-			want: []string{"1:9 <slide>의 자식으로 <strong>는 올 수 없다"},
+			want: []string{"1:9 <slide>의 자식으로 <strong>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <image>, <table>, <chart>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
 		},
 		{
 			name: "ul 안의 문자 데이터",
@@ -272,53 +198,15 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			src:  `<slide><ul><p>x</p></ul></slide>`,
 			want: []string{"1:13 <ul>의 자식으로 <p>는 올 수 없다 (쓸 수 있는 태그: <li>)"},
 		},
-		{
-			// lang은 `<pre>` 고유 속성이다 (ADR 0051) — 다른 블록에는 뜻이 없다.
-			// 어휘 순서는 고유 → 외관 → 박스이므로 pre의 목록에서 lang이 맨 앞이다.
-			name: "lang은 pre만 받는다",
-			src:  `<slide><p lang="go">x</p></slide>`,
-			want: []string{"1:11 <p>에 알 수 없는 속성 lang (쓸 수 있는 속성: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
-		},
-		{
-			name: "pre의 속성 목록은 lang으로 시작한다",
-			src:  `<slide><pre role="code">x</pre></slide>`,
-			want: []string{"1:13 <pre>에 알 수 없는 속성 role (쓸 수 있는 속성: lang, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			_, diags := Parse("slides/001_title.slide", tc.src)
-			for i, want := range tc.want {
-				pos, message, _ := strings.Cut(want, " ")
-				if i >= len(diags) {
-					t.Errorf("진단 %d개뿐이다, want %q", len(diags), want)
-					break
-				}
-				if got := diags[i].Span.Start.String(); got != pos {
-					t.Errorf("진단[%d] 위치 = %s, want %s (%s)", i, got, pos, diags[i].Message)
-				}
-				if !strings.Contains(diags[i].Message, message) {
-					t.Errorf("진단[%d] 메시지 = %q, want %q 포함", i, diags[i].Message, message)
-				}
-			}
-			if len(diags) != len(tc.want) {
-				t.Errorf("진단 %d개, want %d개:\n%s", len(diags), len(tc.want), diags.Err())
-			}
-		})
-	}
+	})
 }
 
-// 인라인 경계 공백 계약 — 여기서 접히는 방식이 곧 런 분할(항목 06)의 입력이다.
+// 인라인 경계 공백 계약 — 여기서 접히는 방식이 곧 런 분할의 입력이다.
 //
 // 계약: 요소(블록이든 인라인이든) **양 끝**의 공백은 들여쓰기이므로 내용이 아니고,
-// 형제 **사이**의 공백은 내용이다. `<strong>배포 </strong>자동화`처럼 태그 안쪽 끝에
-// 붙인 공백은 잘린다 — 공백은 태그 밖에 쓴다.
+// 형제 **사이**의 공백은 내용이다. 태그 안쪽 끝에 붙인 공백은 잘린다.
 func TestParseInlineEdgeSpace(t *testing.T) {
-	tests := []struct {
-		name string
-		src  string
-		want string
-	}{
+	runTreeCases(t, []treeCase{
 		{
 			name: "인라인 앞의 한 칸은 내용",
 			src:  `<slide><p>배포 파이프라인 <strong>자동화</strong></p></slide>`,
@@ -349,15 +237,7 @@ func TestParseInlineEdgeSpace(t *testing.T) {
 			src:  "<slide><p>배포\n  <strong>\n    자동화\n  </strong>\n</p></slide>",
 			want: `p("배포 " strong("자동화"))`,
 		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			doc := parseOK(t, tc.src)
-			if got := dumpNodes(doc.Content); got != tc.want {
-				t.Errorf("트리 = %s\nwant %s", got, tc.want)
-			}
-		})
-	}
+	})
 }
 
 // pre는 공백을 보존한다 — 여는 태그 직후·닫는 태그 직전의 개행 하나만 벗긴다 (HTML 관례).
@@ -372,54 +252,24 @@ func TestParsePrePreservesWhitespace(t *testing.T) {
 			src:  "<slide><pre>\nfunc main() {\n\tfmt.Println()\n}\n</pre></slide>",
 			want: "func main() {\n\tfmt.Println()\n}",
 		},
-		{
-			name: "연속 공백은 접히지 않는다",
-			src:  `<slide><pre>a  b</pre></slide>`,
-			want: "a  b",
-		},
-		{
-			name: "양 끝 개행은 하나씩만 벗긴다",
-			src:  "<slide><pre>\n\ncode\n\n</pre></slide>",
-			want: "\ncode\n",
-		},
-		{
-			name: "CRLF도 개행 하나다",
-			src:  "<slide><pre>\r\ncode\r\n</pre></slide>",
-			want: "code",
-		},
-		{
-			name: "개행이 없으면 그대로",
-			src:  `<slide><pre>code</pre></slide>`,
-			want: "code",
-		},
-		{
-			name: "안쪽 들여쓰기는 내용이다",
-			src:  "<slide><pre>\n  indented\n</pre></slide>",
-			want: "  indented",
-		},
-		{
-			name: "닫는 태그 앞의 들여쓰기는 개행이 아니므로 남는다",
-			src:  "<slide><pre>\ncode\n  </pre></slide>",
-			want: "code\n  ",
-		},
+		{name: "연속 공백은 접히지 않는다", src: `<slide><pre>a  b</pre></slide>`, want: "a  b"},
+		{name: "양 끝 개행은 하나씩만 벗긴다", src: "<slide><pre>\n\ncode\n\n</pre></slide>", want: "\ncode\n"},
+		{name: "CRLF도 개행 하나다", src: "<slide><pre>\r\ncode\r\n</pre></slide>", want: "code"},
+		{name: "안쪽 들여쓰기는 내용이다", src: "<slide><pre>\n  indented\n</pre></slide>", want: "  indented"},
+		{name: "닫는 태그 앞의 들여쓰기는 남는다", src: "<slide><pre>\ncode\n  </pre></slide>", want: "code\n  "},
+		// 벗기고 남은 빈 텍스트 노드를 트리에 남기지 않는다.
+		{name: "개행뿐인 pre는 빈 요소다", src: "<slide><pre>\n</pre></slide>", want: ""},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			doc := parseOK(t, tc.src)
-			pre := elementAt(t, doc.Content, 0)
+			pre := elementAt(t, parseOK(t, tc.src).Content, 0)
 			if got := pre.TextContent(); got != tc.want {
 				t.Errorf("pre 내용 = %q, want %q", got, tc.want)
 			}
+			if tc.want == "" && len(pre.Children) != 0 {
+				t.Errorf("자식 %d개 (%s), want 0개", len(pre.Children), dumpNodes(pre.Children))
+			}
 		})
-	}
-}
-
-// 개행뿐인 pre는 빈 요소가 된다 — 벗기고 남은 빈 텍스트 노드를 트리에 남기지 않는다.
-func TestParsePreOnlyNewline(t *testing.T) {
-	doc := parseOK(t, "<slide><pre>\n</pre></slide>")
-	pre := elementAt(t, doc.Content, 0)
-	if len(pre.Children) != 0 {
-		t.Errorf("자식 %d개 (%s), want 0개", len(pre.Children), dumpNodes(pre.Children))
 	}
 }
 
@@ -444,44 +294,17 @@ func TestTagTextRole(t *testing.T) {
 			t.Errorf("TagTextRole(%q) = %q, %v — want %q", tc.tag, role, ok, tc.role)
 		}
 	}
-	// 표 밖의 이름: <text>는 role 속성이 역할을 정하고, 컨테이너·인라인은 역할이 없다.
-	for _, name := range []string{TextElement, "ul", "ol", "strong", "br", RootElement, "h6"} {
+	// 표 밖의 이름 전부는 역할이 없다 — <text>는 role 속성이 정하고, 나머지는 텍스트가 아니다.
+	inTable := map[string]bool{}
+	for _, tc := range cases {
+		inTable[tc.tag] = true
+	}
+	for _, name := range append(allElementNames(), TextElement, RootElement, "h6") {
+		if inTable[name] {
+			continue
+		}
 		if role, ok := TagTextRole(name); ok {
 			t.Errorf("TagTextRole(%q) = %q — 표에 없어야 한다", name, role)
 		}
-	}
-	// 블록·li 전부가 표에 있어야 한다 — 표에 없는 블록은 해석되지 않은 채 렌더러에 닿는다.
-	for _, name := range append(append([]string{}, blockElements...), ListItemElement) {
-		if _, ok := TagTextRole(name); !ok {
-			t.Errorf("서브셋 태그 %q가 역할 표에 없다", name)
-		}
-	}
-}
-
-// 활성 픽스처 02_text_subset(항목 08이 `_`를 뗐다)의 슬라이드가 파서 어휘와 어긋나지
-// 않는지 파싱만 검증한다 — 골든·렌더 검증은 픽스처 러너(internal/testkit)의 몫이고,
-// 여기는 파서 계약(진단 0건)만 본다. 이 파일들이 서브셋 항목 전부의 시험대다.
-func TestParseTextSubsetFixture(t *testing.T) {
-	dir := filepath.Join("..", "testdata", "fixtures", "02_text_subset", "slides")
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("픽스처 디렉토리를 읽을 수 없다: %v", err)
-	}
-	parsed := 0
-	for _, entry := range entries {
-		if !strings.HasSuffix(entry.Name(), Ext) {
-			continue
-		}
-		src, err := os.ReadFile(filepath.Join(dir, entry.Name()))
-		if err != nil {
-			t.Fatalf("%s: %v", entry.Name(), err)
-		}
-		if _, diags := Parse(entry.Name(), string(src)); len(diags) != 0 {
-			t.Errorf("%s: 진단이 없어야 한다:\n%s", entry.Name(), diags.Err())
-		}
-		parsed++
-	}
-	if parsed == 0 {
-		t.Fatal("파싱한 슬라이드가 없다 — 픽스처가 비었다")
 	}
 }

@@ -74,16 +74,12 @@ func TestCollectEmptyDirIsNotAnError(t *testing.T) {
 	}
 }
 
-func TestCollectMissingDir(t *testing.T) {
-	if _, err := Collect(fstest.MapFS{}, "slides"); err == nil {
-		t.Error("없는 디렉토리는 에러여야 한다")
-	}
-}
-
-func TestCollectFileInsteadOfDir(t *testing.T) {
-	fsys := fstest.MapFS{"slides": {Data: []byte("x")}}
-	if _, err := Collect(fsys, "slides"); err == nil {
-		t.Error("파일을 슬라이드 디렉토리로 준 경우는 에러여야 한다")
+// 없는 디렉토리와 디렉토리 자리의 파일은 에러다.
+func TestCollectRejectsMissingDir(t *testing.T) {
+	for _, fsys := range []fstest.MapFS{{}, {"slides": {Data: []byte("x")}}} {
+		if _, err := Collect(fsys, "slides"); err == nil {
+			t.Errorf("%v: 에러여야 한다", fsys)
+		}
 	}
 }
 
