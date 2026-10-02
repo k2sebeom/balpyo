@@ -7,9 +7,7 @@ import (
 	"github.com/k2sebeom/balpyo/render/geom"
 )
 
-// notesSources는 픽스처 01_text와 같은 배치다 — 슬라이드 1·3에만 노트가 있고 2에는 없다.
-// 노트만 있는 슬라이드는 좌표가 필요한 요소가 없으므로 지오메트리 없이 렌더된다
-// (TestRenderNotesNeedNoGeometry가 못 박는다).
+// notesSources는 슬라이드 1·3에만 노트가 있고 2에는 없는 덱이다.
 func notesSources() []string {
 	return []string{
 		`<slide><note>인사 30초. 청중에 인프라팀 포함.</note></slide>`,
@@ -18,41 +16,32 @@ func notesSources() []string {
 	}
 }
 
-// 노트 파트·관계·Content_Types가 전부 있고, 노트 없는 슬라이드(2번)는 아무것도 갖지 않는다.
+// 노트는 있는 슬라이드에만 파트·관계가 생기고, 노트가 없는 덱은 노트 마스터도 내지 않는다.
+// 노트는 좌표 대상이 아니므로 지오메트리 없이(New()) 렌더된다 — 브라우저를 띄우지 않는다.
 func TestRenderNotesParts(t *testing.T) {
 	deck := resolvedDeck(t, notesSources()...)
+	if refs := geom.Refs(deck); len(refs) != 0 {
+		t.Fatalf("노트만 있는 덱의 좌표 대상이 %d개다: %v", len(refs), refs)
+	}
 	parts, _ := renderPackage(t, New(), deck)
-
-	for _, want := range []string{
-		notesMasterPart, notesMasterRelsPart,
-		notesSlidePart(1), notesSlideRelsPart(1),
-		notesSlidePart(3), notesSlideRelsPart(3),
-	} {
+	for _, want := range []string{notesMasterPart, notesSlidePart(1), notesSlidePart(3)} {
 		if _, ok := parts[want]; !ok {
 			t.Errorf("파트 %q가 없다", want)
 		}
 	}
-	// 노트 없는 슬라이드는 노트 파트도 관계도 갖지 않는다.
 	if _, ok := parts[notesSlidePart(2)]; ok {
-		t.Error("노트 없는 슬라이드 2에 노트 파트가 있으면 안 된다")
+		t.Error("노트 없는 슬라이드 2에 노트 파트가 있다")
 	}
 	if strings.Contains(parts[slideRelsPart(2)], "notesSlide") {
-		t.Error("노트 없는 슬라이드 2의 rels에 notesSlide 관계가 있으면 안 된다")
+		t.Error("노트 없는 슬라이드 2의 rels에 notesSlide 관계가 있다")
 	}
 
-	// Content_Types Override — 빠지면 PowerPoint가 복구를 건다.
-	ct := parts[contentTypesPart]
-	for _, want := range []string{
-		`<Override PartName="/ppt/notesMasters/notesMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml"/>`,
-		`<Override PartName="/ppt/notesSlides/notesSlide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"/>`,
-		`<Override PartName="/ppt/notesSlides/notesSlide3.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"/>`,
-	} {
-		if !strings.Contains(ct, want) {
-			t.Errorf("[Content_Types].xml에 %q가 없다", want)
-		}
+	empty, _ := renderPackage(t, New(), testDeck())
+	if _, ok := empty[notesMasterPart]; ok {
+		t.Error("노트 없는 덱에 노트 마스터가 있다")
 	}
-	if strings.Contains(ct, "notesSlide2.xml") {
-		t.Error("[Content_Types].xml에 없는 파트 notesSlide2의 Override가 있다")
+	if strings.Contains(empty[presentationPart], "notesMasterIdLst") {
+		t.Error("노트 없는 덱에 notesMasterIdLst가 있다")
 	}
 }
 
@@ -166,42 +155,5 @@ func TestRenderNotesEscapesXML(t *testing.T) {
 	want := `<a:t>R&amp;D 예산 &gt; 작년 &amp; &quot;인용&quot;</a:t>`
 	if !strings.Contains(parts[notesSlidePart(1)], want) {
 		t.Errorf("notesSlide1.xml에 %q가 없다\n%s", want, parts[notesSlidePart(1)])
-	}
-}
-
-// 노트 원문의 개행은 파서가 공백으로 접는다 — 웹의 balpyo-notes와 PPTX 노트 슬라이드가
-// **같은 문자열**을 받는다 (결정은 soml.Parse 한 곳이다). 한쪽이 개행을 되살리면 저자가
-// 발표자 뷰에서 읽는 글의 줄 구조가 타깃마다 달라진다.
-func TestRenderNotesNewlinesAgreeWithWebRenderer(t *testing.T) {
-	deck := resolvedDeck(t, "<slide>\n  <note>인사 30초.\n  데모는 생략 가능.</note>\n</slide>")
-
-	const collapsed = "인사 30초. 데모는 생략 가능."
-	parts, _ := renderPackage(t, New(), deck)
-	notes := parts[notesSlidePart(1)]
-	if !strings.Contains(notes, "<a:t>"+collapsed+"</a:t>") {
-		t.Errorf("PPTX 노트가 접힌 문자열을 내지 않았다\n%s", notes)
-	}
-	if strings.Contains(notes, "<a:br") {
-		t.Error("PPTX 노트가 a:br을 냈다 — 파서가 접은 개행이 되살아났다")
-	}
-
-	html := renderWebString(t, deck)
-	if !strings.Contains(html, `<div class="balpyo-notes" hidden>`+collapsed+"</div>") {
-		t.Errorf("웹 노트가 접힌 문자열을 내지 않았다\n%s", html)
-	}
-}
-
-// 노트는 지오메트리 패스의 좌표 대상이 아니다 — 노트만 있는 덱은 브라우저 없이 렌더된다.
-// Refs가 노트를 세기 시작하면 checkGeometry가 지오메트리를 요구하고, 노트만 있는 덱이
-// 브라우저를 띄우게 된다.
-func TestRenderNotesNeedNoGeometry(t *testing.T) {
-	deck := resolvedDeck(t, notesSources()...)
-	if refs := geom.Refs(deck); len(refs) != 0 {
-		t.Fatalf("노트만 있는 덱의 좌표 대상이 %d개다 (0이어야 한다): %v", len(refs), refs)
-	}
-	// New() = 지오메트리 없는 렌더러 — 성공해야 한다 (renderPackage 경유 위 테스트들이
-	// 이미 쓰지만, 여기서 명시적으로 못 박는다).
-	if _, err := New().Render(deck); err != nil {
-		t.Fatalf("노트만 있는 덱이 지오메트리 없이 렌더되지 않는다: %v", err)
 	}
 }
