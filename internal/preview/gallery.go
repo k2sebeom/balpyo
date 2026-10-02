@@ -12,22 +12,9 @@ import (
 // IndexFile은 갤러리 문서의 이름이다.
 const IndexFile = "index.html"
 
-// Verdict는 슬라이드 한 장의 판정이다.
-type Verdict int
-
-const (
-	// VerdictNone은 판정할 것이 없는 경우다 (비교할 렌더가 하나뿐이다).
-	VerdictNone Verdict = iota
-	// VerdictOK는 허용 오차 안이다.
-	VerdictOK
-	// VerdictOver는 허용 오차를 넘었다 — 사람이 볼 자리라는 표시이고, 실패가 아니다
-	// (ADR 0047 결정 4).
-	VerdictOver
-)
-
 // Shot은 갤러리의 한 칸이다.
 type Shot struct {
-	// Caption은 칸 위에 붙는 이름이다 (web · pptx · diff).
+	// Caption은 칸 위에 붙는 이름이다 (web · pptx).
 	Caption string
 	Image   image.Image
 }
@@ -37,17 +24,14 @@ type Slide struct {
 	ID    string
 	Index int
 	Shots []Shot
-	// Summary는 행 머리에 붙는 한 줄이다 (보통 DiffResult.String()).
-	Summary string
-	Verdict Verdict
 }
 
 // Gallery는 사람이 눈으로 확인하는 산출물이다 — 슬라이드별 렌더 이미지와 그것들을 나란히
 // 놓는 문서 하나.
 //
-// 테스트가 통과하는 것과 결과가 좋아 보이는 것은 다른 문제다. 허용 오차 안에서도 글자가
-// 어색하게 잘릴 수 있고, 그건 사람만 알아본다. 그래서 `make test`와 `make review`,
-// 그리고 `balpyo preview`가 **같은 코드**로 이 갤러리를 만든다 (ADR 0047).
+// 테스트가 통과하는 것과 결과가 좋아 보이는 것은 다른 문제다. 컴포넌트와 레이아웃이 같아도
+// 글자가 어색하게 잘릴 수 있고, 그건 사람만 알아본다. 그래서 `make review`와 `balpyo preview`가
+// **같은 코드**로 이 갤러리를 만든다 (ADR 0047).
 type Gallery struct {
 	// Title은 문서 제목이다.
 	Title string
@@ -82,7 +66,7 @@ func NewGallery(dir string) (*Gallery, error) {
 	}
 	return &Gallery{
 		Title: "balpyo 리뷰 — 웹 vs PPTX",
-		Lede:  "왼쪽이 웹 스크린샷, 가운데가 LibreOffice 렌더, 오른쪽이 픽셀 diff(마젠타가 다른 픽셀)다.",
+		Lede:  "왼쪽이 웹 스크린샷, 오른쪽이 LibreOffice 렌더다.",
 		dir:   dir,
 	}, nil
 }
@@ -172,10 +156,7 @@ func (g *Gallery) indexHTML() string {
   .slide { margin: 16px 0 32px; }
   .meta { display: flex; gap: 12px; align-items: baseline; margin-bottom: 8px; }
   .id { font-weight: 600; }
-  .summary { color: #aaa; font-variant-numeric: tabular-nums; }
-  .badge { padding: 1px 8px; border-radius: 999px; font-size: 12px; }
-  .ok { background: #1d4a2a; color: #b7f0c6; }
-  .fail { background: #5a1d1d; color: #f5b7b7; }
+  .summary { color: #aaa; }
   .cols { display: grid; gap: 12px; }
   figure { margin: 0; }
   figcaption { color: #888; font-size: 12px; margin-bottom: 4px; }
@@ -199,15 +180,8 @@ func (g *Gallery) indexHTML() string {
 		}
 		for i, slide := range group.slides {
 			b.WriteString(`<div class="slide">` + "\n")
-			fmt.Fprintf(&b, `<div class="meta"><span class="id">#%d %s</span>`,
+			fmt.Fprintf(&b, `<div class="meta"><span class="id">#%d %s</span></div>`+"\n",
 				slide.Index+1, html.EscapeString(slide.ID))
-			switch slide.Verdict {
-			case VerdictOK:
-				b.WriteString(`<span class="badge ok">허용 오차 안</span>`)
-			case VerdictOver:
-				b.WriteString(`<span class="badge fail">허용 오차 초과</span>`)
-			}
-			fmt.Fprintf(&b, `<span class="summary">%s</span></div>`+"\n", html.EscapeString(slide.Summary))
 			// 칸 수만큼 열을 나눈다 — 렌더 하나만 본 갤러리는 한 열이다.
 			fmt.Fprintf(&b, `<div class="cols" style="grid-template-columns: repeat(%d, 1fr)">`+"\n",
 				max(len(slide.Shots), 1))

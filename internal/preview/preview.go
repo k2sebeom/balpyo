@@ -1,5 +1,5 @@
 // Package preview는 검수 산출물을 만든다 — PPTX를 그림으로 되돌리고, 웹 스크린샷과 나란히
-// 놓고, 다른 픽셀을 강조한 갤러리 문서 하나로 묶는다.
+// 놓은 갤러리 문서 하나로 묶는다.
 //
 // 왜 테스트 하네스가 아니라 여기인가 (ADR 0047): 이 흐름은 Iteration 내내 사람이 손으로 돌던
 // 것이다 — 임시 테스트 파일을 쓰고, 컨테이너에 들어가고, soffice와 pdftoppm을 돌리고, PNG를
@@ -7,14 +7,13 @@
 // internal/testkit을 임포트하면 릴리스 바이너리에 testing이 링크되고, "도구가 없으면
 // 건너뛴다"는 **테스트 정책**이 사용자 행동이 된다.
 //
-// 그래서 소유가 뒤집혔다: 엔진(래스터화·픽셀 diff·갤러리)은 이 패키지가 갖고, 하네스는 그 위에
-// 테스트 정책(건너뛰기·t.Fatal·픽스처별 오차표)만 얹는다. internal/testkit이 internal/preview를
-// 임포트하며, 반대 방향은 없다.
+// 그래서 소유가 뒤집혔다: 엔진(래스터화·갤러리)은 이 패키지가 갖고, 하네스는 그 위에
+// 테스트 정책(건너뛰기·t.Fatal)만 얹는다. internal/testkit이 internal/preview를 임포트하며,
+// 반대 방향은 없다.
 //
-// `balpyo preview`는 **게이트가 아니다** (ADR 0047 결정 4). 허용 오차를 넘은 슬라이드가 있어도
-// 종료 코드는 0이다 — 두 렌더가 달라야 정답인 슬라이드가 있고(§7.9의 `style` 외관), 그 판단에
-// 필요한 픽스처별 조정표는 저장소의 테스트 정책이지 사용자 덱의 기준이 아니다. 여기서 하는 일은
-// 숫자와 그림을 사람 앞에 놓는 것까지다.
+// `balpyo preview`는 **판정하지 않는다** (ADR 0066). 두 타깃의 계약은 픽셀이 아니라 컴포넌트·
+// 레이아웃 동일성이고(ADR 0064) 그것은 `go test`가 본다 — 여기서 하는 일은 그림을 사람 앞에
+// 나란히 놓는 것까지다. 픽셀 diff · 비율 · 허용 오차 배지는 없다.
 package preview
 
 import (
@@ -35,13 +34,14 @@ import (
 // DefaultDirName은 갤러리가 떨어지는 디렉토리 이름이다 (프로젝트 루트 기준).
 //
 // 산출물 디렉토리(dist/) 안에 두지 않는 이유: 검수 산출물은 배포물이 아니다. dist/를 그대로
-// 올리는 사람이 웹 스크린샷 수십 장과 diff 이미지를 함께 올리게 된다.
+// 올리는 사람이 웹 스크린샷 수십 장을 함께 올리게 된다.
 const DefaultDirName = "preview"
 
-// DefaultRenders는 갤러리에 나란히 놓는 렌더다.
+// DefaultRenders는 Renders를 주지 않았을 때 갤러리에 나란히 놓는 렌더다.
 //
-// 기본이 둘인 이유: 이 명령의 존재 이유가 **두 타깃이 같은지 눈으로 보는 것**이다. 하나만
-// 보려면 그 타깃을 주면 되고, 그때 갤러리는 한 열이 된다.
+// 기본이 둘인 이유: 이 명령의 존재 이유가 **두 타깃을 나란히 눈으로 보는 것**이다. 다만 PPTX
+// 열은 LibreOffice · poppler가 있어야 그릴 수 있다 — 기본 렌더에서 도구가 없으면 웹 열만으로
+// 갤러리를 만들고 그 사실을 로그와 갤러리 안내에 남긴다 (ADR 0066). 하나만 보려면 그 타깃을 준다.
 func DefaultRenders() []render.Target { return []render.Target{render.TargetHTML, render.TargetPPTX} }
 
 // Options는 검수 실행의 입력이다.
@@ -49,7 +49,8 @@ type Options struct {
 	// Build는 빌드 옵션이다 — `balpyo build`가 받는 것과 같은 값이다. Targets는 Renders에서
 	// 정해지므로 여기서 준 값은 무시한다.
 	Build pipeline.Options
-	// Renders는 갤러리에 나타날 렌더다. 비면 DefaultRenders다.
+	// Renders는 갤러리에 나타날 렌더다. 비면 DefaultRenders이고, 그때는 래스터 도구가 없으면
+	// PPTX 열을 뺀다. 명시한 pptx는 도구가 없으면 빌드 전에 멈춘다.
 	Renders []render.Target
 	// Dir가 비면 <프로젝트 루트>/preview다.
 	Dir string
@@ -61,10 +62,6 @@ type Options struct {
 type SlideReport struct {
 	Index int
 	ID    string
-	// Diff는 두 렌더를 모두 본 경우의 픽셀 비교다 (한 열 갤러리에서는 nil).
-	Diff *DiffResult
-	// Over는 허용 오차를 넘었는지다 — **사람이 볼 자리라는 표시**이고 실패가 아니다.
-	Over bool
 }
 
 // Result는 검수 실행의 산출이다.
@@ -76,6 +73,10 @@ type Result struct {
 	// OutDir은 빌드 산출물 디렉토리다 — PPTX를 PowerPoint/Keynote로 직접 열어 보는 확인은
 	// 갤러리가 대신할 수 없다.
 	OutDir string
+	// Renders는 실제로 갤러리에 놓인 렌더다 (기본 렌더에서 PPTX가 빠졌을 수 있다).
+	Renders []render.Target
+	// SkippedPPTX는 기본 렌더에서 PPTX 열을 뺀 이유다 (뺀 적이 없으면 빈 문자열).
+	SkippedPPTX string
 	// Slides는 슬라이드 순서대로의 결과다.
 	Slides []SlideReport
 	// Diagnostics는 빌드가 남긴 경고다.
@@ -84,24 +85,14 @@ type Result struct {
 	Noise string
 }
 
-// Over는 허용 오차를 넘은 슬라이드 수다.
-func (r *Result) Over() int {
-	count := 0
-	for _, slide := range r.Slides {
-		if slide.Over {
-			count++
-		}
-	}
-	return count
-}
-
 // Run은 프로젝트를 빌드하고 검수 갤러리를 만든다.
 //
 // 순서가 중요하다: **도구를 먼저 찾는다.** 여섯 장을 빌드하고 브라우저까지 띄운 뒤에
 // "soffice가 없다"를 알려 주는 것은 사람의 시간을 버리는 일이다.
 func Run(opts Options) (*Result, error) {
 	renders := opts.Renders
-	if len(renders) == 0 {
+	optional := len(renders) == 0
+	if optional {
 		renders = DefaultRenders()
 	}
 	log := opts.Log
@@ -121,12 +112,22 @@ func Run(opts Options) (*Result, error) {
 	}
 
 	var raster *Rasterizer
+	skipped := ""
 	if wantPPTX {
 		found, err := NewRasterizer()
-		if err != nil {
+		switch {
+		case err != nil && optional:
+			// 기본 렌더의 PPTX 열은 도구가 있을 때만 그린다 — 웹 열만이라도 보는 것이 아무것도
+			// 못 보는 것보다 낫다. 대신 조용히 빼지 않는다: 로그와 갤러리 안내가 그 사실을 말한다.
+			skipped = err.Error()
+			wantPPTX = false
+			renders = []render.Target{render.TargetHTML}
+			fmt.Fprintf(log, "PPTX 열을 뺀다 — %s\n", skipped)
+		case err != nil:
 			return nil, err
+		default:
+			raster = found
 		}
-		raster = found
 	}
 
 	projectDir := opts.Build.ProjectDir
@@ -156,7 +157,7 @@ func Run(opts Options) (*Result, error) {
 	}
 
 	built, err := pipeline.Build(build)
-	result := &Result{Dir: dir}
+	result := &Result{Dir: dir, Renders: renders, SkippedPPTX: skipped}
 	if built != nil {
 		result.Diagnostics = built.Diagnostics
 		result.OutDir = built.OutDir
@@ -205,7 +206,7 @@ func Run(opts Options) (*Result, error) {
 		return result, err
 	}
 	gallery.Title = galleryTitle(deck)
-	gallery.Lede = galleryLede(wantWeb, wantPPTX)
+	gallery.Lede = galleryLede(wantWeb, wantPPTX, skipped != "")
 	// 묶음 이름은 디렉토리 이름이 되므로 슬러그를 쓴다 — 덱 제목에 `/`나 `:`가 있으면 갤러리가
 	// 엉뚱한 곳에 파일을 쓴다 (산출 PPTX 이름을 정하는 것과 같은 규칙이다 — pptx.FileName).
 	group := soml.Slug(deck.Title)
@@ -218,52 +219,20 @@ func Run(opts Options) (*Result, error) {
 
 	for i, slide := range deck.Slides {
 		var shots []Shot
-		var webImg image.Image
 		if wantWeb {
 			shot, err := screenshot(session, i)
 			if err != nil {
 				return result, err
 			}
-			webImg = shot
-			shots = append(shots, Shot{Caption: "web", Image: webImg})
+			shots = append(shots, Shot{Caption: "web", Image: shot})
 		}
-		var pptxImg image.Image
 		if wantPPTX {
-			pptxImg = pptxPages[i]
-			shots = append(shots, Shot{Caption: "pptx", Image: pptxImg})
+			shots = append(shots, Shot{Caption: "pptx", Image: pptxPages[i]})
 		}
-
-		report := SlideReport{Index: i, ID: slide.ID}
-		verdict := VerdictNone
-		summary := ""
-		if webImg != nil && pptxImg != nil {
-			tolerance := DefaultDiffOptions()
-			diff, err := Diff(webImg, pptxImg, tolerance)
-			if err != nil {
-				return result, fmt.Errorf("슬라이드 %d(%s): %w", i+1, slide.ID, err)
-			}
-			report.Diff = &diff
-			report.Over = diff.Ratio > tolerance.MaxRatio
-			verdict = VerdictOK
-			if report.Over {
-				verdict = VerdictOver
-			}
-			summary = diff.String()
-			shots = append(shots, Shot{Caption: "diff", Image: diff.Image})
-		}
-		if err := gallery.AddSlide(group, Slide{
-			ID:      slide.ID,
-			Index:   i,
-			Shots:   shots,
-			Summary: summary,
-			Verdict: verdict,
-		}); err != nil {
+		if err := gallery.AddSlide(group, Slide{ID: slide.ID, Index: i, Shots: shots}); err != nil {
 			return result, err
 		}
-		result.Slides = append(result.Slides, report)
-		if summary != "" {
-			fmt.Fprintf(log, "  #%d %s: %s\n", i+1, slide.ID, summary)
-		}
+		result.Slides = append(result.Slides, SlideReport{Index: i, ID: slide.ID})
 	}
 
 	// 산출물도 갤러리 옆에 둔다 — 갤러리로 판정할 수 없는 확인이 있다: PPTX를 PowerPoint/
@@ -317,11 +286,14 @@ func galleryTitle(deck *soml.Deck) string {
 
 // galleryLede는 열이 무엇인지 말하는 한 줄이다. 열이 하나뿐인 갤러리에 "왼쪽이 웹"이라고 쓰면
 // 사람이 보고 있는 것을 잘못 읽는다.
-func galleryLede(hasWeb, hasPPTX bool) string {
+func galleryLede(hasWeb, hasPPTX, skippedPPTX bool) string {
 	switch {
 	case hasWeb && hasPPTX:
-		return "왼쪽이 웹 스크린샷, 가운데가 LibreOffice로 되돌린 PPTX, 오른쪽이 픽셀 diff(마젠타가 다른 픽셀)다. " +
-			"허용 오차 표시는 판정이 아니라 눈으로 볼 자리라는 뜻이다."
+		return "왼쪽이 웹 스크린샷, 오른쪽이 LibreOffice로 되돌린 PPTX다. 두 타깃은 컴포넌트와 레이아웃이 " +
+			"같고 줄바꿈 · 글리프는 각 엔진의 몫이다 — 판정은 `go test`가 하고, 여기는 눈으로 보는 자리다."
+	case skippedPPTX:
+		return "웹 스크린샷이다. LibreOffice(soffice)나 poppler(pdftoppm)가 없어 PPTX 열을 뺐다 — " +
+			"설치하면 나란히 보인다."
 	case hasPPTX:
 		return "LibreOffice로 되돌린 PPTX다. 웹과 나란히 보려면 --target에 html을 넣는다."
 	default:
