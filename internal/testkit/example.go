@@ -63,11 +63,12 @@ func Examples(t testing.TB) []Example {
 // 호스트에서는 건너뛴다).
 func (e Example) Build(t testing.TB) *pipeline.Result {
 	t.Helper()
-	RequireChromium(t)
+	session := SharedSession(t)
 	result, err := pipeline.Build(pipeline.Options{
 		ProjectDir: e.Dir,
 		Targets:    []render.Target{render.TargetHTML, render.TargetPPTX},
 		OutDir:     t.TempDir(),
+		Measurer:   session,
 		Strict:     true,
 	})
 	if err != nil {

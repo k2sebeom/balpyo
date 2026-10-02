@@ -71,11 +71,12 @@ func Fixtures(t testing.TB) []Fixture {
 // 약속된 자리에서 빨간불이 나므로 호스트의 빠른 되풀이가 쓸 수 없게 된다.
 func (f Fixture) Build(t testing.TB) *pipeline.Result {
 	t.Helper()
-	RequireChromium(t)
+	session := SharedSession(t)
 	result, err := pipeline.Build(pipeline.Options{
 		ProjectDir: f.Dir,
 		Targets:    []render.Target{render.TargetHTML, render.TargetPPTX},
 		OutDir:     t.TempDir(),
+		Measurer:   session,
 	})
 	if err != nil {
 		t.Fatalf("%s 빌드 실패: %v", f.Name, err)
