@@ -26,8 +26,9 @@ import (
 //   - 미디어 파트는 에셋 표의 자리 + 포맷의 확장자이고 바이트가 입력 파일과 같다 (웹 산출 에셋도).
 //   - zip 타임스탬프는 1980-01-01이다 · 마스터의 `p:hf`는 없다 (크롬은 슬라이드의 도형이다 — ADR 0045).
 //   - 모든 XML 파트가 ECMA-376 스키마에 맞는다 (schema.go — ADR 0065).
+//   - 파트 사이의 참조가 맞는다 — 도형 id · 슬라이드 id · 관계 종류 · 레이아웃 연결 · 플레이스홀더 (crosspart.go).
 //
-// 덱과 무관한 규칙(zip · content types · rels · 스키마)은 AssertValidPPTX가 맡는다 — 픽스처가 아닌
+// 덱과 무관한 규칙(zip · content types · rels · 스키마 · 파트 사이)은 AssertValidPPTX가 맡는다 — 픽스처가 아닌
 // 단위 테스트의 덱(render/pptx)도 같은 판정을 받는다.
 
 // contentTypesPart는 패키지의 content type 표다.
@@ -101,7 +102,8 @@ func (f Fixture) AssertPackage(t testing.TB, result *pipeline.Result) {
 	}
 }
 
-// AssertValidPPTX는 덱과 무관한 패키지 규칙 — zip 타임스탬프 · content types · 관계 그래프 · 스키마 —
+// AssertValidPPTX는 덱과 무관한 패키지 규칙 — zip 타임스탬프 · content types · 관계 그래프 · 스키마 ·
+// 파트 사이 참조 —
 // 을 보고 파트 표를 돌려준다.
 func AssertValidPPTX(t testing.TB, data []byte) map[string][]byte {
 	t.Helper()
@@ -118,6 +120,7 @@ func AssertValidPPTX(t testing.TB, data []byte) map[string][]byte {
 	assertContentTypes(t, parts)
 	assertRels(t, parts)
 	AssertSchema(t, parts)
+	AssertCrossParts(t, parts)
 	return parts
 }
 

@@ -11,7 +11,8 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// schemaDeckParts는 브라우저 없이 렌더한 작은 덱의 파트 표다 — 텍스트 · 리스트 · 프리셋 도형 · 표 · 노트.
+// schemaDeckParts는 브라우저 없이 렌더한 작은 덱의 파트 표다 — 플레이스홀더 · 텍스트 · 리스트 · 프리셋
+// 도형 · 표 · 노트.
 // 변이 테스트의 관심은 좌표가 아니라 XML의 모양이므로 합성 지오메트리로 충분하다.
 func schemaDeckParts(t *testing.T) map[string][]byte {
 	t.Helper()
@@ -20,7 +21,7 @@ func schemaDeckParts(t *testing.T) map[string][]byte {
 		t.Fatal(err)
 	}
 	doc, diags := soml.Parse("slides/001.slide", `<slide>
-  <h1>스키마 검증</h1>
+  <h1 slot="title">스키마 검증</h1>
   <ul><li>첫째 <strong>항목</strong></li></ul>
   <shape type="rect" fill="accent1" w="120" h="80"/>
   <table><tr><th>열</th></tr><tr><td>값</td></tr></table>
@@ -30,7 +31,7 @@ func schemaDeckParts(t *testing.T) map[string][]byte {
 		t.Fatal(err)
 	}
 	deck := &soml.Deck{Title: "schema", Aspect: soml.Aspect16x9, Stage: stage}
-	deck.Slides = []*soml.Slide{{ID: "s1", Source: "slides/001.slide",
+	deck.Slides = []*soml.Slide{{ID: "s1", Source: "slides/001.slide", Layout: soml.LayoutContent,
 		Notes: doc.Notes, Content: doc.Content, Tokens: doc.Tokens}}
 	if err := core.Resolve(deck, nil).Err(); err != nil {
 		t.Fatal(err)
@@ -65,14 +66,7 @@ func TestSchemaRejectsMutatedParts(t *testing.T) {
 			`xmlns:p="urn:balpyo:not-ooxml"`, "no element declaration"},
 	} {
 		t.Run(m.name, func(t *testing.T) {
-			re := regexp.MustCompile(m.pattern)
-			src := string(parts[m.part])
-			if !re.MatchString(src) {
-				t.Fatalf("%s에 변이할 자리 %q가 없다 — 렌더러 출력이 바뀌었으면 패턴을 고친다", m.part, m.pattern)
-			}
-			loc := re.FindStringIndex(src)
-			mutated := src[:loc[0]] + re.ReplaceAllString(src[loc[0]:loc[1]], m.replace) + src[loc[1]:]
-			err := ValidatePart(t, []byte(mutated))
+			err := ValidatePart(t, mutatePart(t, parts, m.part, m.pattern, m.replace))
 			if err == nil {
 				t.Fatal("변이한 파트가 스키마를 통과했다 — 검증기가 거르지 않는다")
 			}
@@ -81,4 +75,16 @@ func TestSchemaRejectsMutatedParts(t *testing.T) {
 			}
 		})
 	}
+}
+
+// mutatePart는 파트에서 pattern의 첫 자리만 replace로 바꾼 사본을 돌려준다 (파트 표는 그대로다).
+func mutatePart(t *testing.T, parts map[string][]byte, part, pattern, replace string) []byte {
+	t.Helper()
+	re := regexp.MustCompile(pattern)
+	src := string(parts[part])
+	loc := re.FindStringIndex(src)
+	if loc == nil {
+		t.Fatalf("%s에 변이할 자리 %q가 없다 — 렌더러 출력이 바뀌었으면 패턴을 고친다", part, pattern)
+	}
+	return []byte(src[:loc[0]] + re.ReplaceAllString(src[loc[0]:loc[1]], replace) + src[loc[1]:])
 }
