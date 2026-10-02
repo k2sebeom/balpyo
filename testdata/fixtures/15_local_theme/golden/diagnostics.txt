@@ -1,0 +1,1 @@
+themes/corp/layouts/title.slots.css: warning: 레이아웃 CSS의 "color" 선언은 배치가 아니다 — 웹에만 적용되고 PPTX 마스터에는 반영되지 않는다 (ADR 0014). 색·테두리 같은 외관은 components.json에 선언한다
