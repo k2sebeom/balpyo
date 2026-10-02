@@ -543,11 +543,7 @@ func ChildPath(path []int, i int) []int {
 func contentCSS(feat features) string {
 	css := fmt.Sprintf(`
   /* 스테이지는 자식을 문서 순서대로 세로로 쌓는다. 여백 64px은 1280폭의 5%%로,
-     프로젝터의 오버스캔에서도 글자가 잘리지 않는다.
-
-     text-autospace는 잰 폭을 고정한다 — 브라우저가 한글↔라틴 경계에 간격을 넣기
-     시작하면(CSS Text 4는 그것을 기본값에 둔다) 잰 폭이 움직이고, 잰 폭이 곧 PPTX
-     좌표이므로 저자가 아무것도 고치지 않은 채 줄이 다시 접힌다 (D11, ADR 0005). */
+     프로젝터의 오버스캔에서도 글자가 잘리지 않는다. */
   .balpyo-stage {
     position: relative;
     width: 100%%;
@@ -556,7 +552,6 @@ func contentCSS(feat features) string {
     display: flex;
     flex-direction: column;
     gap: %dpx;
-    text-autospace: no-autospace;
   }
 
   /* 텍스트 블록은 콘텐츠 폭 전체를 갖는다 — 줄바꿈 폭이 확정되어야 브라우저가 잰 박스가

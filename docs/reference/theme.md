@@ -227,9 +227,9 @@ LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`�
 `justify-items`가 `stretch`(기본값)가 아니면 grid 항목이 **내용 폭**으로 줄어든다. 그러면 두
 가지를 잃는다: 저자가 `align`으로 문단을 움직일 폭(
 [ADR 0043](../decisions/0043-explicit-width-belongs-to-the-placement-context.md))과, 잰 박스와
-글줄 사이의 **여유 폭**이다. 여유가 0인 줄은 PPTX에서 접힐 수 있다 — LibreOffice·PowerPoint가
-한글과 라틴 글자 사이에 넣는 간격이 PPTX 박스의 안전 여유(4%)보다 클 수 있기 때문이다
-([알려진 차이](../guides/known-differences.md)). 그래서 **가운데는 값을 내고 쓰고, 왼쪽은
+글줄 사이의 **여유 폭**이다. 여유가 0인 줄은 PowerPoint가 조금만 넓게 그려도 한 줄 더 접히고,
+그러면 `normAutofit`이 글자를 줄여 박스에 맞춘다 ([계약 밖의 차이](../guides/known-differences.md)).
+그래서 **가운데는 값을 내고 쓰고, 왼쪽은
 선언하지 않는다**: 가운데가 곧 뜻인 자리(표지·`stat`의 수치 한 개·마무리)에서만 그 대가를
 받아들인다.
 
