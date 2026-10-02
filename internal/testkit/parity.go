@@ -12,7 +12,6 @@ import (
 
 	"github.com/k2sebeom/balpyo/internal/pipeline"
 	"github.com/k2sebeom/balpyo/render/geom"
-	"github.com/k2sebeom/balpyo/render/pptx"
 	"github.com/k2sebeom/balpyo/render/web"
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -183,11 +182,9 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 					return fmt.Errorf("%s: %s <%s>의 외관이 해석되지 않았다", slide.Source, id, elem.Name)
 				}
 				n.Kind = "textbox"
-				rect = pptx.TextBoxRect(rect, style.Align)
 				n.Paras = webParas(n.Paras, elem, *style, deck.Theme, "", "")
 			case soml.KindListContainer:
 				n.Kind = "textbox"
-				rect = pptx.TextBoxRect(rect, soml.AlignStart)
 				n.Paras = webListParas(n.Paras, elem, deck.Theme)
 			case soml.KindShape:
 				style := elem.ShapeStyle()

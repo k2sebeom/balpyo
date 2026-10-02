@@ -97,12 +97,11 @@ func TestRenderTextShapes(t *testing.T) {
 		`<p:cNvPr id="3" name="text s0.1"/>`,
 		// 텍스트 박스 표시.
 		`<p:cNvSpPr txBox="1"/>`,
-		// 잰 rect + 안전 여유 → EMU (64px = 609600, 67.2px = 640080; 폭은 start 정렬이라
-		// 오른쪽으로만 4% 넓어진다: 1152px × 1.04 = 1198.08px = 11411712).
+		// 잰 rect 그대로 → EMU (64px = 609600, 67.2px = 640080, 1152px = 10972800).
 		`<a:off x="609600" y="609600"/>`,
-		`<a:ext cx="11411712" cy="640080"/>`,
+		`<a:ext cx="10972800" cy="640080"/>`,
 		`<a:off x="609600" y="1478280"/>`,
-		`<a:ext cx="11411712" cy="342900"/>`,
+		`<a:ext cx="10972800" cy="342900"/>`,
 		// 사각형 프리셋 + 채움/선 없음.
 		`<a:prstGeom prst="rect">`,
 		"<a:noFill/>",
@@ -353,57 +352,6 @@ func TestRenderContentDeckIsByteIdentical(t *testing.T) {
 	}
 	if !bytes.Equal(render(), render()) {
 		t.Error("같은 덱이 다른 바이트를 냈다")
-	}
-}
-
-// 안전 여유는 글자가 닻을 내린 변을 움직이지 않아야 한다 — start는 왼쪽 변, end는 오른쪽 변,
-// center는 중심이 그대로여야 웹과 같은 자리에 그려진다 (TextBoxRect의 계약).
-func TestTextBoxRect(t *testing.T) {
-	measured := geom.Rect{X: 100, Y: 50, W: 1000, H: 40}
-	tests := []struct {
-		align soml.TextAlign
-		want  geom.Rect
-	}{
-		{soml.AlignStart, geom.Rect{X: 100, Y: 50, W: 1040, H: 40}},
-		{soml.AlignCenter, geom.Rect{X: 80, Y: 50, W: 1040, H: 40}},
-		{soml.AlignEnd, geom.Rect{X: 60, Y: 50, W: 1040, H: 40}},
-		// justify는 글줄을 박스 폭까지 늘이므로 넓히지 않는다.
-		{soml.AlignJustify, measured},
-	}
-	for _, tc := range tests {
-		got := TextBoxRect(measured, tc.align)
-		if got != tc.want {
-			t.Errorf("TextBoxRect(%s, %s) = %s, want %s", measured, tc.align, got, tc.want)
-		}
-		// 높이와 세로 위치는 어느 정렬에서도 그대로다 — 줄바꿈 여유는 가로 문제다.
-		if got.Y != measured.Y || got.H != measured.H {
-			t.Errorf("TextBoxRect(%s)가 세로를 건드렸다: %s", tc.align, got)
-		}
-	}
-
-	// 크기 0 박스(빈 요소)는 여유도 0이다 — 위치가 흔들리면 안 된다.
-	zero := geom.Rect{X: 64, Y: 64}
-	if got := TextBoxRect(zero, soml.AlignCenter); got != zero {
-		t.Errorf("크기 0 박스가 움직였다: %s", got)
-	}
-
-	// 음수 좌표에서도 안전 여유는 **부호와 무관**해야 한다 (항목 05 — 박스 밖으로 걸친
-	// 오버레이 배지는 음수 x를 갖는다). 여유(slack)는 폭 W(양수)에서 나오고 정렬 방향으로만
-	// x를 움직이므로, X의 부호가 계산에 끼면 안 된다: start는 오른쪽으로만, end는 왼쪽으로만,
-	// center는 양쪽 반씩 — 양수 좌표와 같은 규칙이다.
-	neg := geom.Rect{X: -50, Y: -30, W: 1000, H: 40}
-	for _, tc := range []struct {
-		align soml.TextAlign
-		want  geom.Rect
-	}{
-		{soml.AlignStart, geom.Rect{X: -50, Y: -30, W: 1040, H: 40}},
-		{soml.AlignCenter, geom.Rect{X: -70, Y: -30, W: 1040, H: 40}},
-		{soml.AlignEnd, geom.Rect{X: -90, Y: -30, W: 1040, H: 40}},
-		{soml.AlignJustify, neg},
-	} {
-		if got := TextBoxRect(neg, tc.align); got != tc.want {
-			t.Errorf("음수 좌표 TextBoxRect(%s, %s) = %s, want %s", neg, tc.align, got, tc.want)
-		}
 	}
 }
 

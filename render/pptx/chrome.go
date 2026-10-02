@@ -69,10 +69,9 @@ func writeChromeShapes(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, i
 //     `align-items: center`로 글줄을 가운데 둔다 (render/web.chromeCSS). 같은 규칙을 PPTX가
 //     `anchor="ctr"`로 갖는다 — `t`로 두면 같은 rect에서 글자만 위로 붙어 두 타깃이 갈라진다.
 //   - **wrap이 none이다.** 웹의 크롬은 한 줄이라는 계약이고(`white-space: nowrap`), rect는 글자
-//     내용 폭이다. `square`로 두면 LibreOffice가 몇 px 넓게 잰 순간 줄이 접혀 띠를 넘치고, 그
-//     넘침은 본문 위로 올라간다. `<pre>`가 wrap="none"인 것과 같은 규칙이다: 웹이 접지 않기로
-//     한 글자를 PPTX가 접으면 줄 수가 갈라진다. 접히지 않으므로 안전 여유(TextBoxRect)도 쓰지
-//     않는다 — 그 여유는 재-줄바꿈을 막는 장치이고, 여기에는 막을 줄바꿈이 없다.
+//     내용 폭이다. `square`로 두면 다른 엔진이 몇 px 넓게 잰 순간 줄이 접혀 띠를 넘치고, 그
+//     넘침은 본문 위로 올라간다. `<pre>`가 wrap="none"인 것과 같은 규칙이다. 접히지 않으므로
+//     autofit도 끈다 (`noAutofit`).
 func chromeBodyXML(item soml.ChromeItem, theme soml.Theme) (string, error) {
 	algn, err := algnValue(item.Align)
 	if err != nil {

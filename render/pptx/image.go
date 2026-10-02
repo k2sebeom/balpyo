@@ -106,8 +106,7 @@ const roundRectPreset = "roundRect"
 
 // writePicShape는 `<image/>` 하나를 p:pic으로 쓴다.
 //
-// 좌표는 잰 rect **그대로**다 (도형과 같고 텍스트 박스와 다르다 — 안전 여유는 글자를 잰
-// 박스의 장치이고 그림의 박스는 저자가 정한 크기다). `pad`도 다시 빼지 않는다: 웹의 여백은
+// 좌표는 잰 rect **그대로**다 (모든 객체와 같다). `pad`도 다시 빼지 않는다: 웹의 여백은
 // 저자 박스가 흡수하고 잰 rect는 그 안쪽의 **그림**이다 (05/03의 실측: `pad="20"`인 240×120
 // 칸의 잰 rect가 200×80이다).
 func writePicShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, rels *slideRels) error {

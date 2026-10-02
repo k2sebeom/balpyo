@@ -131,7 +131,7 @@ func TestRenderLayoutContainersEmitNoShapes(t *testing.T) {
 	}
 }
 
-// 중첩된 자식의 xfrm은 **잰 rect 그대로**(+ 정렬 방향의 안전 여유)다 — 컨테이너 안이라는
+// 중첩된 자식의 xfrm은 **잰 rect 그대로**다 — 컨테이너 안이라는
 // 사실이 좌표에 영향을 주지 않는다 (rect는 이미 슬라이드 상대다). 컨테이너 상대로 잘못
 // 계산하면(예: 부모 x를 더하면) 이 테스트가 잡는다.
 func TestRenderNestedShapeCoordinatesComeFromMeasuredRects(t *testing.T) {
@@ -140,31 +140,29 @@ func TestRenderNestedShapeCoordinatesComeFromMeasuredRects(t *testing.T) {
 	g := measuredGeometry(t, deck, rects...)
 	xml := slideXML(t, deck, g)
 
-	// 도형이 되는 요소와 그 rect·정렬 (리스트는 언제나 start — writeListShape).
+	// 도형이 되는 요소와 그 rect.
 	for _, tc := range []struct {
-		name  string
-		rect  geom.Rect
-		align soml.TextAlign
+		name string
+		rect geom.Rect
 	}{
-		{"text s0.0.0.0", rects[2], soml.AlignStart},
-		{"p s0.0.0.2", rects[4], soml.AlignStart},
-		{"ul s0.0.1.0", rects[6], soml.AlignStart},
-		{"text s0.0.1.1", rects[8], soml.AlignStart},
+		{"text s0.0.0.0", rects[2]},
+		{"p s0.0.0.2", rects[4]},
+		{"ul s0.0.1.0", rects[6]},
+		{"text s0.0.1.1", rects[8]},
 	} {
-		box := TextBoxRect(tc.rect, tc.align)
-		x, y := Offset(box)
-		cx, cy := Extent(box)
+		x, y := Offset(tc.rect)
+		cx, cy := Extent(tc.rect)
 		want := fmt.Sprintf("<a:off x=\"%d\" y=\"%d\"/>\n            <a:ext cx=\"%d\" cy=\"%d\"/>", x, y, cx, cy)
 		if !strings.Contains(xml, want) {
-			t.Errorf("%s의 xfrm이 측정값 %s(+여유)에서 오지 않았다 (want %q)\n%s", tc.name, tc.rect, want, xml)
+			t.Errorf("%s의 xfrm이 측정값 %s에서 오지 않았다 (want %q)\n%s", tc.name, tc.rect, want, xml)
 		}
 	}
-	// 환산이 실제로 EMU인지 한 값은 손으로 못 박는다: 중첩된 첫 `<text>`는 (64,64) 300×36에
-	// start 여유 4%가 붙어 312px 폭이다 — 64px = 609600, 312px = 2971800, 36px = 342900.
+	// 환산이 실제로 EMU인지 한 값은 손으로 못 박는다: 중첩된 첫 `<text>`는 (64,64) 300×36이다
+	// — 64px = 609600, 300px = 2857500, 36px = 342900.
 	if want := `<a:off x="609600" y="609600"/>`; !strings.Contains(xml, want) {
 		t.Errorf("중첩 자식의 a:off가 %q가 아니다", want)
 	}
-	if want := `<a:ext cx="2971800" cy="342900"/>`; !strings.Contains(xml, want) {
+	if want := `<a:ext cx="2857500" cy="342900"/>`; !strings.Contains(xml, want) {
 		t.Errorf("중첩 자식의 a:ext가 %q가 아니다", want)
 	}
 }
