@@ -1249,3 +1249,24 @@ func TestMeasureReadsPerSlideContentBox(t *testing.T) {
 		}
 	}
 }
+
+// 기동이 한 번 실패해도 세션이 뜬다 — 첫 실행에서만 죽는 가짜 브라우저가 진짜 브라우저 앞에 선다.
+// 브라우저 여럿이 한꺼번에 뜰 때의 간헐적 기동 실패를 같은 모양으로 재현한다.
+func TestLaunchRetriesAFailedStart(t *testing.T) {
+	real := testkit.RequireChromium(t)
+	dir := t.TempDir()
+	mark := filepath.Join(dir, "started-once")
+	fake := filepath.Join(dir, "flaky-chrome")
+	script := fmt.Sprintf("#!/bin/sh\nif [ ! -e %q ]; then : > %q; exit 1; fi\nexec %q \"$@\"\n", mark, mark, real)
+	if err := os.WriteFile(fake, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	s, err := geom.Launch(fake)
+	if err != nil {
+		t.Fatalf("한 번 실패한 기동을 다시 시도하지 않았다: %v", err)
+	}
+	s.Close()
+	if _, err := os.Stat(mark); err != nil {
+		t.Fatalf("가짜 브라우저가 실행되지 않았다 — 테스트가 재시도를 지나지 않았다: %v", err)
+	}
+}

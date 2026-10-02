@@ -33,6 +33,12 @@ const (
 	actionTimeout = 60 * time.Second
 	// sessionLifetime은 세션 하나의 상한이다.
 	sessionLifetime = 10 * time.Minute
+	// launchAttempts는 기동을 시도하는 횟수다. 브라우저 여럿이 한꺼번에 뜨면(`go test ./...`가
+	// 패키지를 나란히 돌릴 때, watch와 build가 겹칠 때) 기동이 가끔 `context canceled` ·
+	// `dial … EOF`로 실패하고, 같은 명령을 다시 하면 뜬다 — 그 다시 하기를 사람 대신 한다.
+	launchAttempts = 3
+	// launchBackoff는 시도 사이의 기다림이다 (n번째 실패 뒤 n배).
+	launchBackoff = 250 * time.Millisecond
 )
 
 // Candidates는 브라우저 실행 파일 후보다 (탐색 순서).
@@ -114,6 +120,21 @@ func Launch(bin string) (*Session, error) {
 		}
 		bin = found
 	}
+	var err error
+	for attempt := 1; attempt <= launchAttempts; attempt++ {
+		var s *Session
+		if s, err = launchOnce(bin); err == nil {
+			return s, nil
+		}
+		if attempt < launchAttempts {
+			time.Sleep(time.Duration(attempt) * launchBackoff)
+		}
+	}
+	return nil, fmt.Errorf("브라우저를 띄울 수 없다 (%s, %d번 시도): %w", bin, launchAttempts, err)
+}
+
+// launchOnce는 브라우저를 한 번 띄운다.
+func launchOnce(bin string) (*Session, error) {
 	opts := append([]chromedp.ExecAllocatorOption{}, chromedp.DefaultExecAllocatorOptions[:]...)
 	opts = append(opts,
 		chromedp.ExecPath(bin),
@@ -150,7 +171,7 @@ func Launch(bin string) (*Session, error) {
 	// 안전하다 (Session.run).
 	if err := chromedp.Run(s.ctx, chromedp.Navigate("about:blank")); err != nil {
 		s.Close()
-		return nil, fmt.Errorf("브라우저를 띄울 수 없다 (%s): %w", bin, err)
+		return nil, err
 	}
 	return s, nil
 }
