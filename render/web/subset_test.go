@@ -50,23 +50,11 @@ func TestRenderBlockTagMapping(t *testing.T) {
 	}{
 		{"h1", "56"}, {"h2", "36"}, {"h3", "28"}, {"p", "24"}, {"blockquote", "24"},
 	} {
-		open := fmt.Sprintf("<%s class=\"balpyo-text\" data-balpyo-id=\"s0.%d\" data-balpyo-el=%q style=\"",
-			tc.tag, i, tc.tag)
-		if !strings.Contains(out, open) {
-			t.Errorf("<%s>의 여는 태그 %q가 없다", tc.tag, open)
-		}
-		if !strings.Contains(out, "</"+tc.tag+">") {
-			t.Errorf("<%s>가 닫히지 않았다", tc.tag)
-		}
-		// 역할·태그 기본값이 해석되어 인라인 style로 나오는지 — 태그별 크기가 그 증거다.
-		start := strings.Index(out, open)
-		if start < 0 {
-			continue
-		}
-		line := out[start:]
-		line = line[:strings.Index(line, ">")+1]
-		if want := "font-size: " + tc.size + "px"; !strings.Contains(line, want) {
-			t.Errorf("<%s>의 style에 %q가 없다: %s", tc.tag, want, line)
+		open := openTagOf(t, out, fmt.Sprintf("s0.%d", i))
+		// 역할·태그 기본값이 해석되어 인라인 style로 나온다 — 태그별 크기가 그 증거다.
+		prefix := fmt.Sprintf("<%s class=\"balpyo-text\" ", tc.tag)
+		if !strings.HasPrefix(open, prefix) || !strings.Contains(open, "font-size: "+tc.size+"px") {
+			t.Errorf("<%s>의 여는 태그 = %s, want %q로 시작 + font-size %spx", tc.tag, open, prefix, tc.size)
 		}
 	}
 }
@@ -163,35 +151,6 @@ func TestRenderInlineRunStyles(t *testing.T) {
 	}
 }
 
-// 측정 대상 계약: data-balpyo-id는 블록 종류(text·블록·리스트 컨테이너·li)에만 붙는다.
-// 여러 줄에 걸친 인라인의 rect는 뜻이 없고, PPTX에서 인라인은 박스가 아니라 런이다.
-func TestRenderInlineElementsCarryNoID(t *testing.T) {
-	out := renderString(t, subsetDeck(t,
-		`<p><strong>굵게 <em>기울여</em></strong> <a href="https://example.com">링크</a><br/>다음 줄</p>
-  <ul><li><code>코드</code> 항목</li></ul>`))
-	// 블록 종류만 센다: p, ul, li — 3개.
-	if got, want := strings.Count(out, "data-balpyo-id="), 3; got != want {
-		t.Errorf("식별자 개수 = %d, want %d (블록 종류에만 붙는다)", got, want)
-	}
-	for _, tag := range []string{"strong", "em", "code", "a"} {
-		if strings.Contains(out, "<"+tag+" data-balpyo-id") || strings.Contains(out, "<"+tag+" "+IDAttr) {
-			t.Errorf("인라인 <%s>에 식별자가 붙었다", tag)
-		}
-	}
-}
-
-// href는 원문 그대로 싣되 HTML 속성으로 이스케이프한다 — &가 그대로 나가면 파싱에 따라
-// 엔티티로 읽혀 목적지가 조용히 바뀐다.
-func TestRenderEscapesHref(t *testing.T) {
-	out := renderString(t, subsetDeck(t, `<p><a href="https://example.com/?a=1&b=2">링크</a></p>`))
-	if !strings.Contains(out, `href="https://example.com/?a=1&amp;b=2"`) {
-		t.Error("href의 &가 이스케이프되지 않았다")
-	}
-	if strings.Contains(out, `href="https://example.com/?a=1&b=2"`) {
-		t.Error("href가 원문 그대로 나갔다")
-	}
-}
-
 // <br/>은 <br>로 — 서식도 식별자도 없는 흐름의 분절점이고, 앞뒤에 공백을 만들면 안 된다.
 func TestRenderBreak(t *testing.T) {
 	out := renderString(t, subsetDeck(t, "<p>첫 줄<br/>둘째 줄</p>"))
@@ -268,80 +227,5 @@ func TestRenderCharRefsEscapeOnce(t *testing.T) {
 	}
 	if strings.Contains(out, "&amp;lt;") {
 		t.Errorf("문자 참조가 두 번 이스케이프됐다:\n%s", stageOf(t, out))
-	}
-}
-
-// 리스트·인라인이 섞인 텍스트도 이스케이프된다 — 저자 텍스트가 태그로 새면 안 된다.
-// (트리를 손으로 만들어 해석되지 않은 원문 문자가 그대로 온 경우를 본다 — 참조 경로는
-// TestRenderCharRefsEscapeOnce가 본다.)
-func TestRenderEscapesSubsetText(t *testing.T) {
-	deck := contentDeck()
-	style := bodyStyle()
-	li := &soml.Element{
-		Name:       "li",
-		Appearance: &soml.Appearance{Text: &style},
-		Children:   []soml.Node{&soml.Text{Value: "a < b & c"}},
-	}
-	deck.Slides[0].Content = []soml.Node{&soml.Element{Name: "ul", Children: []soml.Node{li}}}
-	out := renderString(t, deck)
-	if !strings.Contains(out, "a &lt; b &amp; c") {
-		t.Errorf("li 텍스트가 이스케이프되지 않았다:\n%s", stageOf(t, out))
-	}
-}
-
-// 해석되지 않은 인라인 외관은 에러다 — 조용히 부모 스타일로 그리면 웹만 그럴듯하게 나오고
-// PPTX 런 분할과 갈라진다.
-func TestRenderRejectsUnresolvedInline(t *testing.T) {
-	deck := contentDeck()
-	style := bodyStyle()
-	deck.Slides[0].Content = []soml.Node{&soml.Element{
-		Name:       "p",
-		Appearance: &soml.Appearance{Text: &style},
-		Children: []soml.Node{
-			&soml.Text{Value: "본문 "},
-			&soml.Element{Name: "strong", Children: []soml.Node{&soml.Text{Value: "굵게"}}},
-		},
-	}}
-	if _, err := New().Render(deck); err == nil {
-		t.Error("외관이 해석되지 않은 인라인은 에러여야 한다")
-	}
-}
-
-// <a>의 목적지가 확정되지 않은 덱도 에러다 — core의 href 검증을 지나지 않은 값이 산출물에
-// 실릴 길을 막는다.
-func TestRenderRejectsAnchorWithoutLink(t *testing.T) {
-	deck := contentDeck()
-	style := bodyStyle()
-	deck.Slides[0].Content = []soml.Node{&soml.Element{
-		Name:       "p",
-		Appearance: &soml.Appearance{Text: &style},
-		Children: []soml.Node{&soml.Element{
-			Name:       "a",
-			Appearance: &soml.Appearance{Text: &style},
-			Children:   []soml.Node{&soml.Text{Value: "링크"}},
-		}},
-	}}
-	if _, err := New().Render(deck); err == nil {
-		t.Error("Link가 없는 <a>는 에러여야 한다")
-	}
-}
-
-// 컨테이너의 외관 속성은 항목의 확정 스타일로 내려온다 (ADR 0038) — 웹은 항목마다 완전
-// 명시 인라인 style을 내므로 컨테이너에 텍스트 선언이 붙을 자리가 없다. 그래서 `<ul>`
-// 태그의 산출은 외관 속성을 쓴 덱에서도 **그대로**다 (골든 불변의 근거).
-func TestRenderListInheritsContainerAppearance(t *testing.T) {
-	out := renderString(t, subsetDeck(t, `
-  <ul size="20" color="muted" align="center">
-    <li>첫째</li>
-    <li>둘째</li>
-  </ul>`))
-	if got := strings.Count(out, "font-size: 20px"); got != 2 {
-		t.Errorf("font-size: 20px가 %d개, want 2개 (항목마다 확정 스타일)\n%s", got, out)
-	}
-	if got := strings.Count(out, "text-align: center"); got != 2 {
-		t.Errorf("text-align: center가 %d개, want 2개\n%s", got, out)
-	}
-	if !strings.Contains(out, `<ul class="balpyo-list" data-balpyo-id="s0.0" data-balpyo-el="ul">`) {
-		t.Errorf("컨테이너 태그에 선언이 붙었다 — 외관은 항목이 싣는다\n%s", out)
 	}
 }

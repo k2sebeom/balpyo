@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// 이 파일은 **PRD §9.4 표의 그라디언트·색 변형 행 회귀 장치**다 (Iteration 8). 도형 채움·
+// 이 파일은 **PRD §9.4 표의 그라디언트·색 변형 행 회귀 장치**다. 도형 채움·
 // 테두리 그라디언트는 svg `<defs>`의 `linearGradient`를 만들고 `url(#…)`로 가리키며, 텍스트
 // 색 그라디언트는 `background-clip: text`, 색 변형은 `color-mix()`다.
 
@@ -34,24 +34,16 @@ func TestShapeFillGradientEmitsSVGDef(t *testing.T) {
 	}
 }
 
-// 기본 각도(180deg = 위→아래) → 시작 (0.5,0)·끝 (0.5,1) 벡터.
-func TestShapeFillGradientDefaultAngleVector(t *testing.T) {
-	out := renderString(t, subsetDeck(t, `<shape type="rect" fill="gradient(accent1 bg)"/>`))
-	ink := inkOf(t, out, "s0.0")
-	if !strings.Contains(ink, `x1="0.5" y1="0" x2="0.5" y2="1"`) {
-		t.Errorf("기본 180deg 벡터가 위→아래가 아니다:\n%s", ink)
-	}
-}
-
-// 90deg(왼→오) → 시작 (0,0.5)·끝 (1,0.5).
-func TestShapeFillGradientHorizontalVector(t *testing.T) {
-	out := renderString(t, subsetDeck(t, `<shape type="rect" fill="gradient(accent1 bg, 90deg)"/>`))
-	ink := inkOf(t, out, "s0.0")
-	if !strings.Contains(ink, `x1="0" y1="0.5" x2="1" y2="0.5"`) {
-		t.Errorf("90deg 벡터가 왼→오가 아니다:\n%s", ink)
-	}
-	if !strings.Contains(ink, `linear-gradient`) && !strings.Contains(ink, `linearGradient`) {
-		t.Errorf("그라디언트 def가 없다:\n%s", ink)
+// 각도 → linearGradient 벡터 (기본 180deg = 위→아래).
+func TestShapeFillGradientAngleVector(t *testing.T) {
+	for _, tc := range []struct{ fill, want string }{
+		{"gradient(accent1 bg)", `x1="0.5" y1="0" x2="0.5" y2="1"`},
+		{"gradient(accent1 bg, 90deg)", `x1="0" y1="0.5" x2="1" y2="0.5"`},
+	} {
+		out := renderString(t, subsetDeck(t, fmt.Sprintf(`<shape type="rect" fill="%s"/>`, tc.fill)))
+		if ink := inkOf(t, out, "s0.0"); !strings.Contains(ink, tc.want) {
+			t.Errorf("fill=%q의 벡터에 %q가 없다:\n%s", tc.fill, tc.want, ink)
+		}
 	}
 }
 

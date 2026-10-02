@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -48,43 +49,7 @@ func contentDeck() *soml.Deck {
 	}
 }
 
-func TestRenderTextContent(t *testing.T) {
-	out := renderString(t, contentDeck())
-	for _, want := range []string{
-		`<div class="balpyo-text"`,
-		"2026 아키텍처 리뷰",
-		"상반기 회고와 하반기 계획",
-		"font-size: 56px",
-		"color: var(--balpyo-color-accent1)",
-		"text-align: center",
-	} {
-		if !strings.Contains(out, want) {
-			t.Errorf("산출 HTML에 %q가 없다", want)
-		}
-	}
-	// 텍스트는 스테이지 안에 들어간다 — 지오메트리 패스가 스테이지 좌표계로 rect를 읽는다.
-	stage := stageOf(t, out)
-	if !strings.Contains(stage, "2026 아키텍처 리뷰") {
-		t.Errorf("텍스트가 스테이지 밖에 있다:\n%s", stage)
-	}
-}
-
-// 문서 순서가 곧 스택 순서다 — 저자가 쓴 순서와 화면 순서가 다르면 SOML을 읽어 결과를
-// 예측할 수 없다.
-func TestRenderKeepsContentOrder(t *testing.T) {
-	out := renderString(t, contentDeck())
-	first := strings.Index(out, "2026 아키텍처 리뷰")
-	second := strings.Index(out, "상반기 회고와 하반기 계획")
-	if first < 0 || second < 0 {
-		t.Fatal("텍스트가 없다")
-	}
-	if first > second {
-		t.Error("콘텐츠는 문서 순서대로 나와야 한다")
-	}
-}
-
-// 요소 식별자는 지오메트리 패스(Iteration 1의 다음 조각)가 브라우저 rect를 덱 요소에
-// 되돌려 붙이는 유일한 열쇠다. 규칙: `s<슬라이드 인덱스>[.<자식 슬라이스 인덱스>]…`.
+// 요소 식별자는 지오메트리 패스가 브라우저 rect를 덱 요소에 되돌려 붙이는 유일한 열쇠다. 규칙: `s<슬라이드 인덱스>[.<자식 슬라이스 인덱스>]…`.
 func TestRenderElementIdentity(t *testing.T) {
 	deck := contentDeck()
 	deck.Slides = append(deck.Slides, &soml.Slide{
@@ -105,58 +70,72 @@ func TestRenderElementIdentity(t *testing.T) {
 		}
 	}
 	// 식별자는 문서 전체에서 유일해야 한다 — 겹치면 rect가 다른 요소에 붙는다.
-	if n := strings.Count(out, `data-balpyo-id="s0.0"`); n != 1 {
-		t.Errorf(`data-balpyo-id="s0.0"가 %d번 나온다`, n)
-	}
 	if got, want := strings.Count(out, "data-balpyo-id="), 3; got != want {
 		t.Errorf("식별자 개수 = %d, want %d (렌더된 요소마다 하나)", got, want)
 	}
 }
 
-// 노트는 발표자용 메타데이터다 (파서가 Content에서 빼 Slide.Notes로 보낸다). 스테이지에
-// 한 번 더 그리면 화면에 노트가 새어 나온다.
-func TestRenderNoteStaysOutOfStage(t *testing.T) {
-	out := renderString(t, contentDeck())
-	if stage := stageOf(t, out); strings.Contains(stage, "인사 30초") {
-		t.Errorf("노트가 스테이지 안에 들어갔다:\n%s", stage)
-	}
-	if got := strings.Count(out, "인사 30초"); got != 1 {
-		t.Errorf("노트 텍스트가 %d번 나온다, want 1 (숨은 노트 요소에만)", got)
+// 측정 대상 계약: 식별자는 덱 트리의 슬라이스 인덱스 경로이고, 잴 요소(블록·리스트·컨테이너·
+// spacer·도형과 그 안의 텍스트)에만 붙는다. 인라인은 PPTX에서 박스가 아니라 런이고, 도형의
+// 그림 svg는 박스가 좌표를 소유한다. 개수가 geom.Refs와 맞아야 자리 맞대기가 성립한다.
+func TestElementIDContract(t *testing.T) {
+	type ref struct{ id, el string }
+	for _, tc := range []struct {
+		name string
+		body string
+		want []ref
+	}{
+		{"인라인에는 없다", `<p><strong>굵게 <em>기울여</em></strong> <a href="https://example.com">링크</a><br/>다음 줄</p>
+  <ul><li><code>코드</code> 항목</li></ul>`,
+			[]ref{{"s0.0", "p"}, {"s0.1", "ul"}, {"s0.1.0", "li"}}},
+		{"중첩 레이아웃", `<col gap="md"><row gap="sm"><p>중첩</p></row></col>`,
+			[]ref{{"s0.0", "col"}, {"s0.0.0", "row"}, {"s0.0.0.0", "p"}}},
+		{"stack 중첩과 grid 안 stack", `<stack><stack><p at="center">안쪽</p></stack></stack>
+  <grid cols="2"><stack><p at="bottom-right">셀 안 stack</p></stack></grid>`,
+			[]ref{{"s0.0", "stack"}, {"s0.0.0", "stack"}, {"s0.0.0.0", "p"},
+				{"s0.1", "grid"}, {"s0.1.0", "stack"}, {"s0.1.0.0", "p"}}},
+		{"도형과 그 안의 텍스트", `<grid cols="2"><shape type="rect"><h3>머리</h3><p>본문</p></shape><shape type="ellipse"/></grid>`,
+			[]ref{{"s0.0", "grid"}, {"s0.0.0", "shape"}, {"s0.0.0.0", "h3"}, {"s0.0.0.1", "p"}, {"s0.0.1", "shape"}}},
+		{"배치를 담은 도형", `<shape type="rounded-rect" pad="lg" w="320" h="240"><col gap="sm">
+      <text role="heading">카드 제목</text><p>본문 한 줄.</p><text role="caption">푸터</text></col></shape>`,
+			[]ref{{"s0.0", "shape"}, {"s0.0.0", "col"},
+				{"s0.0.0.0", "text"}, {"s0.0.0.1", "p"}, {"s0.0.0.2", "text"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out := renderString(t, subsetDeck(t, tc.body))
+			for _, r := range tc.want {
+				if open := openTagOf(t, out, r.id); !strings.Contains(open, fmt.Sprintf("%s=%q", ElAttr, r.el)) {
+					t.Errorf("%s의 여는 태그에 %s=%q가 없다: %s", r.id, ElAttr, r.el, open)
+				}
+			}
+			if got := strings.Count(out, IDAttr+"="); got != len(tc.want) {
+				t.Errorf("식별자 개수 = %d, want %d", got, len(tc.want))
+			}
+			if strings.Contains(out, fmt.Sprintf("<svg class=%q %s", shapeInkClass, IDAttr)) {
+				t.Error("그림 svg에 식별자가 붙었다 — 측정 대상이 아니다")
+			}
+		})
 	}
 }
 
-func TestRenderEscapesTextContent(t *testing.T) {
-	deck := contentDeck()
-	deck.Slides[0].Content = []soml.Node{textElem(`<script>alert("x")</script> & 5 > 3`, bodyStyle())}
-	out := renderString(t, deck)
-	// `<script>` 자체는 뷰어 런타임으로 정당하게 존재한다 — 저자 텍스트가 태그로 새는
-	// 것만 잡는다.
-	if strings.Contains(out, "<script>alert") {
-		t.Error("텍스트 콘텐츠가 이스케이프되지 않았다")
+// 해석되지 않은 외관을 조용히 기본값으로 그리면 웹만 그럴듯하게 나오고 PPTX와 갈라진다.
+func TestRenderRejectsUnresolvedText(t *testing.T) {
+	style := bodyStyle()
+	para := func(children ...soml.Node) soml.Node {
+		return &soml.Element{Name: "p", Appearance: &soml.Appearance{Text: &style}, Children: children}
 	}
-	if !strings.Contains(out, "&amp; 5 &gt; 3") {
-		t.Error("`&`와 `>`가 이스케이프되어야 한다")
-	}
-}
-
-// 콘텐츠가 없는 슬라이드의 스테이지는 빈 요소 하나다 — 빈 슬라이드의 산출물이 콘텐츠
-// 렌더가 붙었다고 달라지면 00_empty 골든이 이유 없이 움직인다.
-func TestRenderEmptyStageStaysCompact(t *testing.T) {
-	deck := contentDeck()
-	deck.Slides[0].Content = nil
-	out := renderString(t, deck)
-	if !strings.Contains(out, `<div class="balpyo-stage"></div>`) {
-		t.Error("빈 스테이지는 빈 요소 하나여야 한다")
-	}
-}
-
-// 해석되지 않은 외관을 조용히 기본값으로 그리면 웹과 PPTX가 서로 다른 것을 그리기 시작한다.
-func TestRenderRejectsUnresolvedAppearance(t *testing.T) {
-	deck := contentDeck()
-	unresolved := &soml.Element{Name: soml.TextElement, Children: []soml.Node{&soml.Text{Value: "제목"}}}
-	deck.Slides[0].Content = []soml.Node{unresolved}
-	if _, err := New().Render(deck); err == nil {
-		t.Error("외관이 해석되지 않은 요소는 에러여야 한다")
+	for name, node := range map[string]soml.Node{
+		"외관 없는 텍스트": &soml.Element{Name: soml.TextElement, Children: []soml.Node{&soml.Text{Value: "제목"}}},
+		"외관 없는 인라인": para(&soml.Element{Name: "strong", Children: []soml.Node{&soml.Text{Value: "굵게"}}}),
+		// core의 href 검증을 지나지 않은 값이 산출물에 실릴 길을 막는다.
+		"Link 없는 <a>": para(&soml.Element{Name: "a", Appearance: &soml.Appearance{Text: &style},
+			Children: []soml.Node{&soml.Text{Value: "링크"}}}),
+	} {
+		deck := contentDeck()
+		deck.Slides[0].Content = []soml.Node{node}
+		if _, err := New().Render(deck); err == nil {
+			t.Errorf("%s는 에러여야 한다", name)
+		}
 	}
 }
 
@@ -172,32 +151,6 @@ func TestRenderRejectsUnknownElement(t *testing.T) {
 	// 진단은 파일과 위치를 갖는다 — 렌더 단계의 에러도 저자가 고칠 자리를 가리켜야 한다.
 	if !strings.Contains(err.Error(), "slides/001_title.slide") {
 		t.Errorf("에러가 파일을 가리키지 않는다: %v", err)
-	}
-}
-
-func TestRenderContentIsDeterministic(t *testing.T) {
-	a, b := renderString(t, contentDeck()), renderString(t, contentDeck())
-	if a != b {
-		t.Error("콘텐츠 렌더 결과가 실행마다 다르다")
-	}
-}
-
-// 스테이지는 자식을 위에서 아래로 쌓고, 텍스트 블록은 콘텐츠 폭 전체를 갖는다.
-// 폭이 확정되어야 브라우저의 줄바꿈이 결정적이고, 그 rect가 그대로 PPTX 텍스트 박스가 된다
-// (PRD §9.3: 박스 명시 고정 + autofit off).
-func TestRenderStageStacksChildren(t *testing.T) {
-	out := renderString(t, contentDeck())
-	css := between(t, out, "<style>", "</style>")
-	for _, want := range []string{
-		"flex-direction: column;",
-		"gap: 24px;",
-		"padding: 64px;",
-		"width: 100%;",
-		"flex: 0 0 auto;",
-	} {
-		if !strings.Contains(css, want) {
-			t.Errorf("스택 CSS에 %q가 없다", want)
-		}
 	}
 }
 

@@ -128,7 +128,7 @@ func TestViewExprsShareAttr(t *testing.T) {
 }
 
 // 런타임은 덱 데이터를 보간하지 않는 고정 문자열이다 — 저자 텍스트가 스크립트로 새는
-// 경로가 없어야 하고, 골든이 덱마다 다른 JS를 담지 않아야 한다.
+// 경로가 없어야 하고, 덱마다 다른 JS가 나가지 않아야 한다.
 func TestRuntimeIsStatic(t *testing.T) {
 	a := renderString(t, testDeck())
 	deck := testDeck()

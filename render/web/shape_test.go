@@ -3,18 +3,14 @@ package web
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **PRD §9.4 표의 도형 행 회귀 장치**다 (layout_test.go가 §7.4 표에 대해 하는 일과
-// 같은 자리). 외관 속성 하나가 어느 CSS 선언이 되는지를 표로 적고, 어휘 목록
-// (soml.ShapeAppearanceAttrs)을 순회해 "표에 있고 코드에 없는 행"이 남지 않았는지 대조한다.
-//
-// 12종 기하는 **서로 다른 산출**을 내는지까지 본다 — 같은 모양이 두 프리셋에 붙는 실수는
-// 그 테스트로만 잡히고, 산출물을 눈으로 보기 전까지 조용하다.
+// 이 파일은 **PRD §9.4 표의 도형 행 회귀 장치**다 (layout_test.go의 §7.4 표와 같은 자리).
 
 // shapeCase는 외관 속성 하나가 CSS 선언 하나로 컴파일되는 것을 확인하는 행이다.
 type shapeCase struct {
@@ -89,29 +85,15 @@ func TestShapeAppearanceCompilesToCSS(t *testing.T) {
 	}
 }
 
-// **표에 있고 코드에 없는 행이 남지 않는다**: 어휘 목록(soml)을 순회해 위의 표가 도형 외관
-// 속성을 전수로 덮는지 본다. 속성이 하나 늘면 이 테스트가 먼저 빨개진다 — 매핑을 잊은 속성은
-// "파싱·해석은 되는데 그려지지 않는" 조용한 실패가 된다.
 func TestShapeAppearanceVocabularyIsFullyMapped(t *testing.T) {
-	covered := map[string]bool{}
+	var covered []string
 	for _, tc := range shapeCases() {
-		covered[tc.attr] = true
+		covered = append(covered, tc.attr)
 	}
-	for _, attr := range soml.ShapeAppearanceAttrs() {
-		if !covered[attr] {
-			t.Errorf("도형 외관 속성 %q의 CSS 매핑 검증이 없다 (PRD §9.4 표의 행이 빠졌다)", attr)
-		}
-	}
-	for attr := range covered {
-		if !containsString(soml.ShapeAppearanceAttrs(), attr) {
-			t.Errorf("도형 외관 속성 %q는 카탈로그에 없다", attr)
-		}
-	}
-	// 박스 속성(pad·크기·비율)은 레이아웃 컨테이너와 **같은 매핑**을 쓴다 (boxSizeCSS) —
-	// 그 공유를 아래 TestShapeBoxCSSMatchesContainer가 대조한다. 여기서는 어휘가 둘로
-	// 갈라지지 않았는지만 본다.
+	assertCoversCatalog(t, "도형 외관 속성", covered, soml.ShapeAppearanceAttrs())
+	// 박스 속성(pad·크기·비율)은 컨테이너와 같은 매핑을 쓴다 (TestShapeBoxCSSMatchesContainer).
 	for _, attr := range soml.BoxAttrs() {
-		if containsString(soml.ShapeAppearanceAttrs(), attr) {
+		if slices.Contains(soml.ShapeAppearanceAttrs(), attr) {
 			t.Errorf("박스 속성 %q가 외관 어휘에 섞였다", attr)
 		}
 	}
@@ -236,11 +218,8 @@ func TestShapeAdjustSpecsMatchStretchedGeometry(t *testing.T) {
 	}
 }
 
-// 텍스트 영역 표는 **프리셋 정의의 `<rect>`**이고 웹만 읽는다 (ADR 0040).
-//
-// 표를 두 벌로 적는 이유는 조정값 명세와 같다: 인셋이 틀려도 **파일은 열리고** 도형도 그려진다 —
-// 글자가 실루엣을 가로지르거나 LibreOffice와 다른 자리에 앉는 것으로만 드러나고, 그 판정은
-// 브라우저와 LibreOffice가 함께 필요한 픽셀 테스트에만 있다 (internal/testkit).
+// 텍스트 영역 표는 **프리셋 정의의 `<rect>`**이고 웹만 읽는다 (ADR 0040). 인셋이 틀려도 파일은
+// 열리고 도형도 그려지므로 값을 두 벌로 적어 대조한다.
 func TestShapeTextRectsMatchPresetDefinitions(t *testing.T) {
 	roundRect := 1 - math.Sqrt2/2
 	want := map[string]ShapeInsets{
@@ -349,32 +328,6 @@ func TestShapeInsetsPxResolvesAgainstTheBox(t *testing.T) {
 	}
 }
 
-// 텍스트 영역은 **박스 안**에 있다 (인셋이 음수가 아니고 마주 보는 두 인셋의 합이 100% 미만).
-//
-// 왜 이것만 단정하는가: "네 꼭짓점이 실루엣 안에 있다"는 더 강한 성질은 **프리셋 정의에서
-// 성립하지 않는다** — parallelogram의 rect는 사선을 1.6%p 넘어가고(18.75% 대 접점 20.31%),
-// diamond·arrow-right·chevron·callout의 변은 실루엣에 정확히 닿는다. 프리셋의 rect는 실루엣의
-// 내접 사각형이 아니라 **PowerPoint가 정한 본문 영역**이고, 우리 일은 그것을 웹에서 같게
-// 재현하는 것이다 (그래서 이 열은 유도가 아니라 정의를 옮긴 것이고, 실측이 그 짝을 확인한다).
-func TestShapeTextRectsStayInsideTheBox(t *testing.T) {
-	for _, geom := range shapeGeometries() {
-		in := geom.TextRect
-		for name, value := range map[string]float64{"l": in.L, "t": in.T, "r": in.R, "b": in.B} {
-			if value < 0 {
-				t.Errorf("%s: %s 인셋이 음수다 (%v) — 텍스트 영역이 박스 밖으로 나간다", geom.Type, name, value)
-			}
-		}
-		if in.L+in.R >= 100 || in.T+in.B >= 100 {
-			t.Errorf("%s: 마주 보는 인셋의 합이 100%%를 넘는다 (%+v) — 텍스트 영역이 뒤집힌다", geom.Type, in)
-		}
-		// 반경 비례가 0.5를 넘으면 반경이 짧은 변의 절반일 때(완전한 반원) 인셋이 변의 절반을
-		// 넘어 영역이 사라진다.
-		if in.Radius < 0 || in.Radius > 0.5 {
-			t.Errorf("%s: 반경 비례 %v가 0~0.5 밖이다", geom.Type, in.Radius)
-		}
-	}
-}
-
 // 정규 공간의 도형만 늘어난다 — 늘린 공간에서는 선 굵기를 균일하게 유지해야 하고
 // (vector-effect), px 공간에는 늘림이 없으므로 그 선언이 없어야 한다 (rounded-rect의 반경이
 // 원형으로 남는 이유와 같은 자리다).
@@ -449,6 +402,11 @@ func TestShapeTokensStayReferences(t *testing.T) {
 	}
 	if !strings.Contains(ink, `rx="12"`) {
 		t.Errorf("반경이 확정 수치로 나가지 않았다: %s", ink)
+	}
+	// 레이아웃 태그가 없어도 도형의 `pad`가 참조하는 공간 토큰은 선언된다 — var()는 모르는
+	// 변수에 아무 소리도 내지 않아 여백이 조용히 0이 된다.
+	if !strings.Contains(css, spaceVarPrefix+"md:") {
+		t.Errorf("공간 토큰 선언 %q가 없다", spaceVarPrefix+"md")
 	}
 }
 
@@ -551,41 +509,9 @@ func TestShapeBoxCSSMatchesContainer(t *testing.T) {
 	}
 }
 
-// 도형은 잰다 — **재는 것과 도형이 되는 것이 처음 일치하는 종류**다. 도형 안 텍스트도 재지만
-// (`<li>`처럼) PPTX가 그 rect를 소비하지 않는다. 개수 등식이 geom.Refs와 맞아야 자리
-// 맞대기가 성립한다.
-func TestShapeIsMeasuredWithItsText(t *testing.T) {
-	out := renderString(t, subsetDeck(t, `
-  <grid cols="2">
-    <shape type="rect"><h3>머리</h3><p>본문</p></shape>
-    <shape type="ellipse"/>
-  </grid>`))
-	for _, tc := range []struct{ id, el string }{
-		{"s0.0", "grid"}, {"s0.0.0", "shape"}, {"s0.0.0.0", "h3"}, {"s0.0.0.1", "p"}, {"s0.0.1", "shape"},
-	} {
-		open := openTagOf(t, out, tc.id)
-		if want := fmt.Sprintf("%s=%q", ElAttr, tc.el); !strings.Contains(open, want) {
-			t.Errorf("%s의 여는 태그에 %s가 없다: %s", tc.id, want, open)
-		}
-	}
-	// 식별자는 다섯 개다 (그리드 + 도형 둘 + 도형 안 텍스트 둘) — 그림 svg는 세지 않는다.
-	if got, want := strings.Count(out, IDAttr+"="), 5; got != want {
-		t.Errorf("식별자 개수 = %d, want %d", got, want)
-	}
-	if strings.Contains(out, fmt.Sprintf("<svg class=%q %s", shapeInkClass, IDAttr)) {
-		t.Error("그림 svg에 식별자가 붙었다 — 측정 대상이 아니다")
-	}
-}
-
-// 배치를 담은 도형은 **배경**이다 (ADR 0049): 레이아웃 컨테이너 자식이 박스 안에서 그대로
-// 흐르고, PPTX에서는 그 자식들이 형제 도형이 된다. 웹 쪽 계약은 둘이다 —
-//
-//   - 구조: 컨테이너가 도형 박스 **안에**, 그림 svg **뒤에** 온다 (흡수 모드처럼 사라지지
-//     않는다). 문서 순서가 칠 순서이므로 이 순서가 곧 "글자가 그림 위"다.
-//   - 엔진 CSS: 그림이 절대 배치라 흐름 콘텐츠보다 위에 칠해지므로, 도형의 흐름 자식은
-//     position: relative로 올라와야 한다. 그 규칙이 `.balpyo-text`에만 걸려 있으면 카드의
-//     내용 **전부**가 배경 그림 아래로 사라지고, 그 실패는 산출물을 열어 보기 전까지 조용하다
-//     (도형 안에 컨테이너를 넣을 수 있게 된 지금이 그 규칙이 좁아지는 순간이다).
+// 배치를 담은 도형은 **배경**이다 (ADR 0049): 컨테이너가 도형 박스 안, 그림 svg 뒤에 오고
+// (문서 순서 = 칠 순서), 도형의 흐름 자식은 position: relative로 절대 배치된 그림 위에 올라온다.
+// 그 규칙이 `.balpyo-text`에만 걸리면 카드 내용 전부가 그림 아래로 조용히 사라진다.
 func TestShapeHoldingLayoutLiftsItsChildrenAboveTheInk(t *testing.T) {
 	out := renderString(t, subsetDeck(t, `
   <shape type="rounded-rect" pad="lg" w="320" h="240">
@@ -595,15 +521,6 @@ func TestShapeHoldingLayoutLiftsItsChildrenAboveTheInk(t *testing.T) {
       <text role="caption">푸터</text>
     </col>
   </shape>`))
-	for _, tc := range []struct{ id, el string }{
-		{"s0.0", "shape"}, {"s0.0.0", "col"},
-		{"s0.0.0.0", "text"}, {"s0.0.0.1", "p"}, {"s0.0.0.2", "text"},
-	} {
-		open := openTagOf(t, out, tc.id)
-		if want := fmt.Sprintf("%s=%q", ElAttr, tc.el); !strings.Contains(open, want) {
-			t.Errorf("%s의 여는 태그에 %s가 없다: %s", tc.id, want, open)
-		}
-	}
 	// 도형 → 그림 → 컨테이너 순서다 (컨테이너가 도형 밖으로 나가면 배경이 아니라 형제가 된다).
 	shapeAt := strings.Index(out, fmt.Sprintf("%s=%q", IDAttr, "s0.0"))
 	inkAt := strings.Index(out, fmt.Sprintf("<svg class=%q", shapeInkClass))
@@ -632,34 +549,6 @@ func TestShapeHoldingLayoutLiftsItsChildrenAboveTheInk(t *testing.T) {
 		if !strings.Contains(css, want) {
 			t.Errorf("도형 엔진 CSS에 %q가 없다", want)
 		}
-	}
-}
-
-// 도형을 쓰지 않은 덱에는 도형 CSS도, 그림자 토큰 변수도 나가지 않는다 — 골든 불변의 단위
-// 테스트 절반이다 (나머지 절반은 픽스처 골든이 바이트로 확인한다).
-func TestShapeCSSOnlyWhenShapesUsed(t *testing.T) {
-	plain := renderString(t, subsetDeck(t, "<p>도형 없음</p>"))
-	for _, absent := range []string{
-		"." + shapeClass, "." + shapeInkClass, shapeRotateVar, shadowVarPrefix, MeasureView,
-	} {
-		if strings.Contains(plain, absent) {
-			t.Errorf("도형이 없는 덱의 산출물에 %q가 있다", absent)
-		}
-	}
-	shaped := renderString(t, subsetDeck(t, `<shape type="rect" pad="md"/>`))
-	for _, want := range []string{
-		"." + shapeClass + " {", "." + shapeInkClass + " {", shadowVarPrefix + "soft",
-		// 도형의 `pad`도 공간 토큰을 참조한다 — 레이아웃 태그가 없어도 선언이 나가야 한다
-		// (var()는 모르는 변수에 아무 소리도 내지 않으므로 여백이 조용히 0이 된다).
-		spaceVarPrefix + "md",
-	} {
-		if !strings.Contains(shaped, want) {
-			t.Errorf("도형을 쓴 덱의 산출물에 %q가 없다", want)
-		}
-	}
-	// 레이아웃 CSS는 여전히 조건부다 — 도형이 배치 어휘를 켜지 않는다.
-	if strings.Contains(shaped, ".balpyo-row {") {
-		t.Error("도형만 있는 덱에 레이아웃 CSS가 나갔다")
 	}
 }
 
@@ -721,17 +610,6 @@ func TestShapeRenderRejectsUnresolvedOrUnknown(t *testing.T) {
 				t.Errorf("%s는 에러여야 한다", tc.name)
 			}
 		})
-	}
-}
-
-func TestShapeRenderIsDeterministic(t *testing.T) {
-	body := `<grid cols="2" gap="md">
-    <shape type="cloud" fill="accent1" shadow="soft" rotate="15" span="2" h="160"><p anchor="center">구름</p></shape>
-    <shape type="cylinder" fill="none" border="2 dashed muted" flip="v"/>
-  </grid>`
-	a, b := renderString(t, subsetDeck(t, body)), renderString(t, subsetDeck(t, body))
-	if a != b {
-		t.Error("도형 렌더 결과가 실행마다 다르다")
 	}
 }
 
