@@ -79,6 +79,10 @@ func TestChromeShapeIsNotAPlaceholder(t *testing.T) {
 	if !strings.Contains(number, `anchor="ctr"`) {
 		t.Errorf("크롬 bodyPr의 세로 앵커가 ctr이 아니다:\n%s", number)
 	}
+	// 웹이 한 줄로 두기로 한 띠를 PPTX가 접으면 띠를 넘쳐 본문 위로 올라간다.
+	if !strings.Contains(number, `wrap="none"`) {
+		t.Errorf("크롬 bodyPr가 wrap=none이 아니다:\n%s", number)
+	}
 	// 가로 정렬은 확정 모델의 align이다 (end → r).
 	if !strings.Contains(number, `algn="r"`) {
 		t.Errorf("번호의 문단 정렬이 r이 아니다:\n%s", number)
