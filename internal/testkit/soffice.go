@@ -1,7 +1,6 @@
 package testkit
 
 import (
-	"image"
 	"testing"
 
 	"github.com/k2sebeom/balpyo/internal/preview"
@@ -26,39 +25,4 @@ func OpenPPTX(t testing.TB, pptxPath string) string {
 		t.Errorf("LibreOffice가 경고·복구를 냈다 — 사용자도 파일을 열 때마다 본다:\n%s", noise)
 	}
 	return pdfPath
-}
-
-// RenderPPTX는 pptx를 슬라이드별 PNG로 렌더한다 (soffice → pdf → pdftoppm → png).
-//
-// size는 논리 스테이지 크기다 — 웹 스크린샷과 픽셀 비교하려면 같은 크기여야 한다.
-func RenderPPTX(t testing.TB, pptxPath string, size image.Point) []image.Image {
-	t.Helper()
-	return RenderPDF(t, OpenPPTX(t, pptxPath), size)
-}
-
-// RenderPDF는 PDF를 페이지별 PNG로 렌더한다.
-func RenderPDF(t testing.TB, pdfPath string, size image.Point) []image.Image {
-	t.Helper()
-	raster := &preview.Rasterizer{Pdftoppm: RequirePdftoppm(t)}
-	pages, err := raster.Pages(pdfPath, size, t.TempDir())
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-	return pages
-}
-
-// RenderPDFPoints는 PDF를 **종이 크기 그대로** 페이지별 PNG로 렌더한다 — PNG의 픽셀 수가 곧
-// 페이지의 pt 크기다.
-//
-// 크기를 주는 RenderPDF와 나눠 두는 이유는 판정이 다르기 때문이다: 인쇄 게이트가 보는 것은
-// 그림이 아니라 종이다 (한 장이 한 페이지인지, ADR 0062). 목표 크기를 주고 렌더하면 종이가
-// letter로 나왔어도 PNG는 원하는 크기가 되어 그 실패가 사라진다.
-func RenderPDFPoints(t testing.TB, pdfPath string) []image.Image {
-	t.Helper()
-	raster := &preview.Rasterizer{Pdftoppm: RequirePdftoppm(t)}
-	pages, err := raster.PagesAtPointScale(pdfPath, t.TempDir())
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-	return pages
 }
