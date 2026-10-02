@@ -153,7 +153,10 @@ LibreOffice는 관대한 리더라 자식 순서 · 열거값 밖의 속성을 �
       → 건너뛰기 · Strict는 이미 `RequireChromium`의 정책이다 (메시지에서 테스트 이미지 안내를 지웠다).
       `geom.Launch`가 기동을 3번까지 시도한다 (250ms × n 대기). `TestLaunchRetriesAFailedStart`가 첫 기동에서만 죽는
       가짜 브라우저로 본다 — 재시도를 끄면 실패한다.
-- [ ] 동일성 판정(R1-a)이 환경과 무관한지 확인한다 — 다른 폰트가 깔린 호스트에서도 초록이어야 한다.
+- [x] 동일성 판정(R1-a)이 환경과 무관한지 확인한다 — 다른 폰트가 깔린 호스트에서도 초록이어야 한다.
+  다른 호스트 대신 폰트를 바꾼다: `TestParityHoldsUnderDifferentFonts`가 15_local_theme의 글꼴 토큰을
+  고정폭(Courier New)으로 갈아 끼워 빌드한다 — 측정 rect는 움직이고(전제로 단정), 두 트리는 같고,
+  layout.txt는 원래 골든과 같은 바이트다.
 
 ## R5. 제품 코드에서 픽셀 시절의 타협을 푼다
 
