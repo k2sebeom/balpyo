@@ -138,10 +138,15 @@ LibreOffice는 관대한 리더라 자식 순서 · 열거값 밖의 속성을 �
       `BALPYO_SMOKE`를 지운다. (`balpyo preview`의 PPTX 래스터는 R6에서 옵트인으로 남는다.)
       → `render/pptx/valid_test.go`가 같은 덱을 `AssertValidPPTX`에 건다 · `OpenPPTX`(`soffice.go`)를 지웠다.
       `RequireSoffice`/`RequirePdftoppm`은 preview 래스터 테스트만 부르고, 없으면 Strict에서도 건너뛴다.
-- [ ] Docker를 지운다: `docker/`(Dockerfile · `fonts.conf` · `versions.env`) · `TestImageVersionsMatchPins` ·
+- [x] Docker를 지운다: `docker/`(Dockerfile · `fonts.conf` · `versions.env`) · `TestImageVersionsMatchPins` ·
       Makefile의 `DOCKER_RUN`/`DIST_RUN`/`image`/`shell`/`versions` · `make test-host`. `make test` =
       `go test ./...`, `make dist`는 호스트에서 `CGO_ENABLED=0 go build -trimpath`.
-- [ ] CI(`ci.yml`)를 `setup-go` + 러너의 Chrome으로 · "실패 시 리뷰 갤러리" 단계를 지운다.
+      → `.dockerignore` · `internal/testkit/versions.go`도 지웠다. `CGO_ENABLED=0` · `-trimpath`는 이미
+      `internal/release`가 건다 — `make dist`는 그것을 호스트에서 부른다. preview의 도구 안내는 `make shell`
+      대신 설치 · 경로 · `--target html`을 댄다. `AGENTS.md`의 Testing 절을 새 게이트로 다시 썼다.
+- [x] CI(`ci.yml`)를 `setup-go` + 러너의 Chrome으로 · "실패 시 리뷰 갤러리" 단계를 지운다.
+      → `release.yml`도 같다. 두 잡이 `BALPYO_TEST_STRICT=1` · `BALPYO_CHROMIUM_NO_SANDBOX=1`(Ubuntu 러너의
+      AppArmor가 샌드박스를 막는다)을 켠다. 러너에서 첫 실행으로 확인한다.
 - [ ] Chromium이 필요한 테스트는 없으면 **명확한 메시지로 건너뛴다** (`BALPYO_TEST_STRICT=1`이면 실패 — CI가 켠다).
       패키지 여럿이 동시에 Chrome을 띄우면 가끔 실패한다 (R3에서 관찰 — `context canceled` · `dial … EOF`):
       띄우기 재시도를 넣는다.

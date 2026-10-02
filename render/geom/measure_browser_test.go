@@ -1,4 +1,4 @@
-// 이 파일만 브라우저를 띄운다 — 외부 도구 정책(없으면 로컬은 건너뛰고 테스트 이미지에서는
+// 이 파일만 브라우저를 띄운다 — 외부 도구 정책(없으면 로컬은 건너뛰고 CI(Strict)에서는
 // 실패)은 internal/testkit이 소유하므로, 패키지 밖 테스트로 두어 testkit을 임포트한다
 // (testkit → pipeline → render/pptx → render/geom 이므로 같은 패키지 안에서는 순환이 된다).
 package geom_test

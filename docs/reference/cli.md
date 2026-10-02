@@ -443,8 +443,8 @@ LibreOffice로 되돌린 PPTX, 그리고 다른 픽셀을 마젠타로 칠한 di
 # 1. 설치한다 (macOS: brew install --cask libreoffice; brew install poppler)
 # 2. 경로를 준다
 BALPYO_SOFFICE=/path/to/soffice BALPYO_PDFTOPPM=/path/to/pdftoppm balpyo preview
-# 3. 테스트 이미지 안에서 돈다 — 저장소에는 둘이 설치된 이미지가 있다
-make shell
+# 3. 웹만 본다
+balpyo preview --target html
 ```
 
 웹만 보는 검수(`--target html`)는 이 도구들을 찾지 않는다. 브라우저(Chromium/Chrome)는

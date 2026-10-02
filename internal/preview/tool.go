@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-// 도구 경로를 지정하는 환경 변수. 테스트 이미지가 넣는 값은 docker/test.Dockerfile에 있다.
+// 도구 경로를 지정하는 환경 변수. PATH에 없는 설치를 가리킬 때 쓴다.
 const (
 	// EnvSoffice는 LibreOffice 실행 파일 경로다.
 	EnvSoffice = "BALPYO_SOFFICE"
@@ -29,9 +29,8 @@ const (
 	EnvPdftoppm = "BALPYO_PDFTOPPM"
 )
 
-// 탐색 순서: 환경 변수 → PATH → 알려진 설치 경로. macOS 경로를 함께 두는 이유는 컨테이너
-// 없이도 검수를 돌려 볼 수 있게 하기 위해서다 — 다만 픽셀 수치는 이미지 안에서만 신뢰한다
-// (docs/internals/testing.md).
+// 탐색 순서: 환경 변수 → PATH → 알려진 설치 경로. macOS 경로를 함께 두는 이유는 앱 번들로
+// 설치한 LibreOffice가 PATH에 없기 때문이다.
 var (
 	// SofficeCandidates는 LibreOffice 실행 파일 후보다.
 	SofficeCandidates = []string{

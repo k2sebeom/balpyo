@@ -1,6 +1,6 @@
 // 이 파일만 외부 테스트 패키지(preview_test)인 이유: 도구가 없을 때 건너뛸지 실패할지는
 // **테스트 정책**이고 그 정책의 주인은 internal/testkit이다 (BALPYO_TEST_STRICT). 같은 판단을
-// 여기에 다시 적으면 호스트에서는 건너뛰고 이미지 안에서는 실패한다는 약속이 두 벌이 된다.
+// 여기에 다시 적으면 도구가 없을 때의 약속이 두 벌이 된다.
 // 외부 테스트 패키지는 testkit을 임포트할 수 있다 — testkit이 preview를 임포트해도 순환이
 // 아니다.
 package preview_test

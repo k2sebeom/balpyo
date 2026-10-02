@@ -44,7 +44,7 @@ func TestPreviewCommandWritesGallery(t *testing.T) {
 	}
 }
 
-// 웹만 보는 검수는 LibreOffice 없이 돈다 — 저작 루프가 컨테이너에 묶이지 않아야 한다.
+// 웹만 보는 검수는 LibreOffice 없이 돈다 — 저작 루프가 래스터 도구에 묶이지 않아야 한다.
 func TestPreviewCommandWebOnlyNeedsNoLibreOffice(t *testing.T) {
 	testkit.RequireChromium(t)
 	t.Setenv(preview.EnvSoffice, filepath.Join(t.TempDir(), "없는-soffice"))
@@ -74,7 +74,7 @@ func TestPreviewCommandStopsWhenToolsAreMissing(t *testing.T) {
 	if err == nil {
 		t.Fatal("도구가 없으면 에러여야 한다")
 	}
-	for _, want := range []string{preview.EnvSoffice, "make shell"} {
+	for _, want := range []string{preview.EnvSoffice, "--target html"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("에러에 %q가 없다: %v", want, err)
 		}
