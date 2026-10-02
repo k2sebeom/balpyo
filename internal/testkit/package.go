@@ -25,6 +25,10 @@ import (
 //   - 슬라이드 파트 수 = 덱의 장 수 · 노트 파트는 노트가 있는 장에만 있다.
 //   - 미디어 파트는 에셋 표의 자리 + 포맷의 확장자이고 바이트가 입력 파일과 같다 (웹 산출 에셋도).
 //   - zip 타임스탬프는 1980-01-01이다 · 마스터의 `p:hf`는 없다 (크롬은 슬라이드의 도형이다 — ADR 0045).
+//   - 모든 XML 파트가 ECMA-376 스키마에 맞는다 (schema.go — ADR 0065).
+//
+// 덱과 무관한 규칙(zip · content types · rels · 스키마)은 AssertValidPPTX가 맡는다 — 픽스처가 아닌
+// 단위 테스트의 덱(render/pptx)도 같은 판정을 받는다.
 
 // contentTypesPart는 패키지의 content type 표다.
 const contentTypesPart = "[Content_Types].xml"
@@ -36,18 +40,7 @@ func (f Fixture) AssertPackage(t testing.TB, result *pipeline.Result) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
-	if err != nil {
-		t.Fatalf("pptx를 열 수 없다: %v", err)
-	}
-	for _, entry := range zr.File {
-		if y, m, d := entry.Modified.Date(); y != 1980 || m != 1 || d != 1 {
-			t.Errorf("%s의 zip 타임스탬프가 %s다 — 같은 입력이 다른 바이트가 된다", entry.Name, entry.Modified)
-		}
-	}
-	parts := PPTXParts(t, data)
-	assertContentTypes(t, parts)
-	assertRels(t, parts)
+	parts := AssertValidPPTX(t, data)
 
 	slides, notes := 0, 0
 	for name, part := range parts {
@@ -106,6 +99,26 @@ func (f Fixture) AssertPackage(t testing.TB, result *pipeline.Result) {
 	for name := range media {
 		t.Errorf("에셋 표에 없는 미디어 파트가 있다: %s", name)
 	}
+}
+
+// AssertValidPPTX는 덱과 무관한 패키지 규칙 — zip 타임스탬프 · content types · 관계 그래프 · 스키마 —
+// 을 보고 파트 표를 돌려준다.
+func AssertValidPPTX(t testing.TB, data []byte) map[string][]byte {
+	t.Helper()
+	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		t.Fatalf("pptx를 열 수 없다: %v", err)
+	}
+	for _, entry := range zr.File {
+		if y, m, d := entry.Modified.Date(); y != 1980 || m != 1 || d != 1 {
+			t.Errorf("%s의 zip 타임스탬프가 %s다 — 같은 입력이 다른 바이트가 된다", entry.Name, entry.Modified)
+		}
+	}
+	parts := PPTXParts(t, data)
+	assertContentTypes(t, parts)
+	assertRels(t, parts)
+	AssertSchema(t, parts)
+	return parts
 }
 
 // AssertSameBytes는 같은 입력의 두 빌드가 같은 바이트를 냈는지 본다 (불변식 6).
