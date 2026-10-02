@@ -106,9 +106,9 @@ func TestRenderTextShapes(t *testing.T) {
 		// 사각형 프리셋 + 채움/선 없음.
 		`<a:prstGeom prst="rect">`,
 		"<a:noFill/>",
-		// 박스 고정 + 오버플로 허용 (PRD §13-1), 인셋은 웹 박스 모델과 같은 0.
+		// 박스 고정 + 넘치면 줄여 맞춤 (ADR 0064), 인셋은 웹 박스 모델과 같은 0.
 		`<a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">`,
-		"<a:noAutofit/>",
+		"<a:normAutofit/>",
 	} {
 		if !strings.Contains(xml, want) {
 			t.Errorf("slide1.xml에 %q가 없다", want)
