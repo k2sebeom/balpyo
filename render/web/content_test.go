@@ -201,6 +201,16 @@ func TestRenderStageStacksChildren(t *testing.T) {
 	}
 }
 
+// 한국어 덱은 어절에서 접는다 — 규칙은 lang이 ko일 때만 걸린다 (중국어·일본어는 keep-all이
+// 줄바꿈을 막는다).
+func TestRenderStageBreaksKoreanAtWords(t *testing.T) {
+	css := between(t, renderString(t, contentDeck()), "<style>", "</style>")
+	want := ".balpyo-stage:lang(ko) {\n    word-break: keep-all;\n    overflow-wrap: anywhere;\n  }"
+	if !strings.Contains(css, want) {
+		t.Errorf("스테이지 CSS에 한국어 줄바꿈 규칙이 없다:\n%s", css)
+	}
+}
+
 // stageOf는 첫 슬라이드의 스테이지 안쪽 HTML이다. 스테이지 닫는 태그는 그 자체로 한 줄이고
 // 텍스트 블록은 내용까지 한 줄에 담기므로 줄 단위로 구간을 잘라낼 수 있다.
 func stageOf(t *testing.T, out string) string {

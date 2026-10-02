@@ -173,8 +173,9 @@ LibreOffice는 관대한 리더라 자식 순서 · 열거값 밖의 속성을 �
 - [x] 웹 `text-autospace: no-autospace` 고정(`render/web/content.go`)은 LibreOffice의 스크립트
       간격에 맞춘 것이다 — 지우고 브라우저 기본으로 돌린다.
       지웠다 (고정을 못 박던 `TestRenderStagePinsScriptSpacing`도).
-- [ ] 한국어 줄바꿈: 웹 스테이지에 `word-break: keep-all` + `overflow-wrap: anywhere` (옛 E1).
+- [x] 한국어 줄바꿈: 웹 스테이지에 `word-break: keep-all` + `overflow-wrap: anywhere` (옛 E1).
       한국어 관행이 옳은 쪽이라 하는 것이지 PPTX와 맞추려는 것이 아니다.
+      `.balpyo-stage:lang(ko)`에만 건다 — 중국어·일본어는 keep-all이 줄바꿈을 막는다.
 
 ## R6. `preview`: 나란히 보기만
 
