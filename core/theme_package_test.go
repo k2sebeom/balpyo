@@ -263,7 +263,7 @@ func checkSlotAreas(t *testing.T, pkg themePackage) {
 			}
 		}
 	}
-	if diags := lintLayouts(pkg.slotLayouts); len(diags) != 0 {
+	if diags := lintLayouts("themes/"+pkg.manifest.Name, ".slots.css", pkg.slotLayouts); len(diags) != 0 {
 		t.Errorf("%s 슬롯 영역 CSS가 진단을 냈다:\n%v", pkg.manifest.Name, diags)
 	}
 }
@@ -286,7 +286,7 @@ func TestBuiltinThemesImplementEveryStandardLayout(t *testing.T) {
 			t.Errorf("테마 %q의 레이아웃 %d종, want %d종 (%v)",
 				name, len(pkg.manifest.Layouts), len(soml.SlideLayouts()), pkg.manifest.Layouts)
 		}
-		if diags := lintLayouts(pkg.layouts); len(diags) != 0 {
+		if diags := lintLayouts("themes/"+name, ".css", pkg.layouts); len(diags) != 0 {
 			t.Errorf("%s 레이아웃 CSS가 진단을 냈다:\n%v", name, diags)
 		}
 	}

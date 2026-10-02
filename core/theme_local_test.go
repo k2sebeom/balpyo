@@ -314,6 +314,29 @@ func TestExtendsOverridesLayoutCSSByFile(t *testing.T) {
 	}
 }
 
+// 로컬 테마의 레이아웃 CSS는 로딩에서 린트되어 덱 진단으로 나간다 — 경고는 병합 결과에 남은
+// 파일의 주인(고칠 파일)을 가리키고, 자식이 덮어 쓴 부모의 파일과 내장 테마의 파일은 말하지 않는다.
+func TestLocalThemeLayoutCSSIsLinted(t *testing.T) {
+	parent := localTheme("corp", `{"name":"corp","extends":"minimal"}`, "", "", map[string]string{
+		"title.css":       "background: red;",
+		"end.css":         "color: red;",
+		"title.slots.css": "box-shadow: none;",
+	})
+	child := localTheme("corp-dark", `{"name":"corp-dark","extends":"corp"}`, "", "", map[string]string{
+		"title.css": "display: grid;",
+	})
+	_, diags := themeDeckIn(t, mergeFS(parent, child), "corp-dark", themeProbe)
+	want := []string{"themes/corp/layouts/end.css", "themes/corp/layouts/title.slots.css"}
+	if len(diags) != len(want) {
+		t.Fatalf("진단 %d개, want %d: %v", len(diags), len(want), diags)
+	}
+	for i, file := range want {
+		if diags[i].File != file || diags[i].Severity != soml.SeverityWarning {
+			t.Errorf("진단[%d] = %s %q, want warning %q", i, diags[i].Severity, diags[i].File, file)
+		}
+	}
+}
+
 // layouts를 생략하면 부모의 목록이다. 적었다면 그것이 최종 목록이고 부모∪자식의 CSS 파일 집합과
 // 양방향으로 맞아야 한다.
 func TestExtendsInheritsTheLayoutDeclaration(t *testing.T) {

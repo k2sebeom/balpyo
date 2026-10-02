@@ -68,7 +68,8 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 
 	// 덱 크롬 계획은 슬라이드 루프 **앞**이다 (ADR 0045): 설정과 테마 선언만 보므로 덱에 한
 	// 번 결정되고, 테마가 침묵했을 때의 경고도 그래서 덱에 한 번 나간다.
-	chromePlan, diags := resolveChrome(deck, pkg)
+	chromePlan, chromeDiags := resolveChrome(deck, pkg)
+	diags := append(pkg.lint, chromeDiags...)
 	for _, slide := range deck.Slides {
 		r := resolver{theme: deck.Theme, comps: pkg.components, file: slide.Source}
 		// 레이아웃 어휘는 슬라이드마다 도는 이 루프 머리에서 확정한다 — 파일 하나로
