@@ -147,9 +147,12 @@ LibreOffice는 관대한 리더라 자식 순서 · 열거값 밖의 속성을 �
 - [x] CI(`ci.yml`)를 `setup-go` + 러너의 Chrome으로 · "실패 시 리뷰 갤러리" 단계를 지운다.
       → `release.yml`도 같다. 두 잡이 `BALPYO_TEST_STRICT=1` · `BALPYO_CHROMIUM_NO_SANDBOX=1`(Ubuntu 러너의
       AppArmor가 샌드박스를 막는다)을 켠다. 러너에서 첫 실행으로 확인한다.
-- [ ] Chromium이 필요한 테스트는 없으면 **명확한 메시지로 건너뛴다** (`BALPYO_TEST_STRICT=1`이면 실패 — CI가 켠다).
+- [x] Chromium이 필요한 테스트는 없으면 **명확한 메시지로 건너뛴다** (`BALPYO_TEST_STRICT=1`이면 실패 — CI가 켠다).
       패키지 여럿이 동시에 Chrome을 띄우면 가끔 실패한다 (R3에서 관찰 — `context canceled` · `dial … EOF`):
       띄우기 재시도를 넣는다.
+      → 건너뛰기 · Strict는 이미 `RequireChromium`의 정책이다 (메시지에서 테스트 이미지 안내를 지웠다).
+      `geom.Launch`가 기동을 3번까지 시도한다 (250ms × n 대기). `TestLaunchRetriesAFailedStart`가 첫 기동에서만 죽는
+      가짜 브라우저로 본다 — 재시도를 끄면 실패한다.
 - [ ] 동일성 판정(R1-a)이 환경과 무관한지 확인한다 — 다른 폰트가 깔린 호스트에서도 초록이어야 한다.
 
 ## R5. 제품 코드에서 픽셀 시절의 타협을 푼다
