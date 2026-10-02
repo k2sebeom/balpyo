@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/k2sebeom/balpyo/soml"
@@ -170,6 +171,77 @@ func requireComponents(theme soml.Theme, comps components) error {
 		if style.Align == "" {
 			return fmt.Errorf("역할 %q의 align이 없다 (쓸 수 있는 align: %s)",
 				role, textAlignList(soml.TextAligns()))
+		}
+	}
+	return nil
+}
+
+// requireComponentColors는 컴포넌트 표의 **모든 색 참조**(역할 밖 — 컴포넌트 기본값·variant의
+// color·fill·border, 이미지 테두리, 표 셀)가 이 테마의 색 토큰 이름인지 본다.
+//
+// 테마 데이터는 색을 토큰 이름으로만 적는다 (리터럴은 PPTX의 테마 색 편집을 끊는다 — colorFill의
+// 근거). 그 이름을 여기서 보지 않으면 `gradient(…)`·`#FF9900`·오타가 토큰 이름인 채로 확정
+// 외관에 실려, 그 variant를 인라인 덮기 없이 쓴 슬라이드가 나올 때 **렌더러**에서야 멈춘다 —
+// `check`는 렌더하지 않으므로 통과하고 `build`만 실패한다. 역할의 색(requireComponents)과 같은
+// 자리에서 같은 태도로 멈춰, 진단이 고칠 파일(components.json)과 자리를 가리킨다.
+func requireComponentColors(theme soml.Theme, comps components) error {
+	check := func(where string, color *soml.Color) error {
+		if color == nil {
+			return nil
+		}
+		if _, ok := theme.Color(color.Token); !color.IsToken() || !ok {
+			return fmt.Errorf("components.json의 %s %q가 이 테마의 색 토큰이 아니다 — 테마는 색 토큰 이름만 쓴다 (이 테마: %s)",
+				where, color.Token, strings.Join(theme.ColorNames(), ", "))
+		}
+		return nil
+	}
+	fill := func(where string, f *soml.Fill) error {
+		if f == nil || f.None {
+			return nil
+		}
+		return check(where+" fill", &f.Color)
+	}
+	border := func(where string, b *soml.Border) error {
+		if b == nil || b.None {
+			return nil
+		}
+		return check(where+" border", &b.Color)
+	}
+
+	tags := make([]string, 0, len(comps.textComponentDefaults))
+	for tag := range comps.textComponentDefaults {
+		tags = append(tags, tag)
+	}
+	sort.Strings(tags)
+	var errs []error
+	for _, tag := range tags {
+		errs = append(errs, check(fmt.Sprintf("text.componentDefaults %q의 color", tag), comps.textComponentDefaults[tag].color))
+	}
+	for _, v := range comps.textVariants {
+		errs = append(errs, check(fmt.Sprintf("text variant %q의 color", v.name), v.patch.color))
+	}
+	errs = append(errs, fill("shape.default의", comps.shapeDefault.fill),
+		border("shape.default의", comps.shapeDefault.border))
+	for _, v := range comps.shapeVariants {
+		where := fmt.Sprintf("shape variant %q의", v.name)
+		errs = append(errs, fill(where, v.patch.fill), border(where, v.patch.border))
+	}
+	errs = append(errs, border("image.default의", comps.imageDefault.border))
+	for _, v := range comps.imageVariants {
+		errs = append(errs, border(fmt.Sprintf("image variant %q의", v.name), v.patch.border))
+	}
+	for _, c := range []struct {
+		where string
+		patch cellPatch
+	}{{"table.cell의", comps.table.cell}, {"table.header의", comps.table.header}} {
+		errs = append(errs, fill(c.where, c.patch.fill), border(c.where, c.patch.border),
+			check(c.where+" color", c.patch.color))
+	}
+	errs = append(errs, fill("table.stripe의", comps.table.stripe))
+	// 첫 에러 하나로 멈춘다 — requireTokens와 같은 이유 (파일 하나를 고치는 흐름).
+	for _, err := range errs {
+		if err != nil {
+			return err
 		}
 	}
 	return nil

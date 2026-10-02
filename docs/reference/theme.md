@@ -434,6 +434,7 @@ minimal"), 테마를 프로젝트 파일시스템 안에서만 읽으므로 `..`
 | `components.json`의 `text.roles`에 역할 5종 중 하나가 없다 | **에러** | `components.json의 text.roles에 역할 "code"가 없다 (필수: title, heading, body, caption, code)` |
 | 역할의 `size`·`lineHeight`가 0 이하이거나 `align`이 없다 | **에러** | `역할은 캐스케이드의 바닥이라 완전한 값이어야 한다` |
 | 역할의 `font`·`color`가 이 테마의 토큰이 아니다 | **에러** | 이 테마가 가진 이름을 함께 나열한다 |
+| 컴포넌트 기본값·variant·이미지·표의 `color`·`fill`·`border` 색이 이 테마의 색 토큰 이름이 아니다 (그라디언트·`#RRGGBB` 리터럴 포함) | **에러** | 자리와 값을 가리키고 이 테마의 색 토큰을 나열한다 — 그 variant를 쓴 슬라이드가 없어도 로딩에서 멈춘다 |
 | `components.json`에 모르는 키가 있다 | **에러** | 미지원 키를 가리킨다 (오타·미구현 키) |
 | `code.tabSize`가 1 미만이다 | **에러** | `tabSize는 1 이상이어야 한다` |
 | `code.tokens`에 모르는 종류가 있다 | **에러** | `알 수 없는 코드 토큰 종류 "kw" (쓸 수 있는 종류: keyword, name, attr, string, number, comment, punct)` |
