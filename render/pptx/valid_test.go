@@ -1,5 +1,6 @@
-// LibreOffice 열림 테스트. 도형이 든 슬라이드의 XML이 스키마에서 벗어나면 골든·단위
-// 테스트는 초록인 채 사용자만 복구 경고를 본다 — 그래서 조립 결과를 실제 뷰어로 연다.
+// 유효성 테스트 (ADR 0065). 도형이 든 슬라이드의 XML이 스키마에서 벗어나면 단위 테스트는
+// 초록인 채 사용자만 PowerPoint의 복구 대화상자를 본다 — 그래서 조립 결과를 ECMA-376 스키마와
+// 파트 사이 검사(testkit.AssertValidPPTX)에 건다. 픽스처가 닿지 않는 조합을 여기서 모은다.
 //
 // 외부 테스트 패키지(pptx_test)인 이유: internal/testkit이 internal/pipeline을 거쳐 이
 // 패키지를 임포트하므로, 패키지 안 테스트에서 testkit을 부르면 순환이 된다.
@@ -7,8 +8,6 @@ package pptx_test
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/k2sebeom/balpyo/core"
@@ -18,15 +17,12 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// LibreOffice가 텍스트 박스가 든 덱을 경고·복구 없이 여는지 본다. 원문은 실제 픽스처가
+// 텍스트 박스가 든 덱이 스키마와 파트 사이 검사를 지나는지 본다. 원문은 실제 픽스처가
 // 요구하는 것들을 담는다 — 한글, &, 인라인 외관, 빈 요소, 리스트, 레이아웃, 프리셋 도형,
 // 그리고 노트. 노트는 **2번 슬라이드에만** 있다: notesSlide2가 notesSlide1 없이 존재하는,
 // 번호가 비어 뛰는 경우다 (notesSlidePart의 번호 규칙) — 노트 파트는 관계·Content_Types가
-// 조금만 틀려도 복구 경고로 드러나므로 이 게이트가 여기서 특히 값을 한다.
-func TestLibreOfficeOpensTextShapes(t *testing.T) {
-	// 도구가 없으면 렌더를 시작하기 전에 건너뛴다(로컬) 또는 실패한다(테스트 이미지).
-	testkit.RequireSoffice(t)
-
+// 조금만 틀려도 PowerPoint가 복구를 묻으므로 이 검사가 여기서 특히 값을 한다.
+func TestTextShapesAreValidPPTX(t *testing.T) {
 	stage, err := soml.Aspect16x9.Stage()
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +40,7 @@ func TestLibreOfficeOpensTextShapes(t *testing.T) {
   <note>데모 실패 시 스크린샷으로 대체. R&D 예산 언급은 생략.</note>
 </slide>`,
 		// 런 분할·hlinkClick·a:br·pre — 슬라이드 rels의 External 관계와 rPr의 i/u·
-		// hlinkClick 순서가 스키마를 벗어나면 여기서 복구 경고로 드러난다 (항목 06).
+		// hlinkClick 순서가 스키마를 벗어나면 여기서 검사가 실패한다 (항목 06).
 		// 같은 URL이 두 번 나와 관계 재사용 경로도 지난다.
 		"<slide>\n" +
 			"  <h2>배포 <strong>자동화</strong> 회고</h2>\n" +
@@ -94,7 +90,7 @@ func TestLibreOfficeOpensTextShapes(t *testing.T) {
   </col>
 </slide>`,
 		// 프리셋 도형 12종 — `prstGeom` 이름이 틀리거나 `avLst` 문법이 어긋나면 여기서 처음
-		// 소리가 난다 (골든·단위 테스트는 초록인 채 사용자만 복구 경고를 본다). 조정값이
+		// 소리가 난다 (단위 테스트는 초록인 채 사용자만 복구 대화상자를 본다). 조정값이
 		// 실리는 프리셋 여섯이 이 슬라이드에 다 있다 — 합성 지오메트리가 모든 도형에 같은
 		// rect를 주므로(1152×67.2) `ss = h`이고, 그래서 w 기준 조정값이 프리셋 기본값보다
 		// 훨씬 큰 값으로 계산된다: 상한을 넘는 조정값이 스키마 유효성을 깨지 않는지도 함께
@@ -119,7 +115,7 @@ func TestLibreOfficeOpensTextShapes(t *testing.T) {
 </slide>`,
 		// 도형 외관 + 도형 안 텍스트 — `xfrm@rot`/`flipH`/`flipV`, `effectLst > outerShdw`,
 		// 색 안의 `a:alpha`, `bodyPr`의 인셋·앵커, 그리고 문단 여럿이 든 도형 하나가
-		// 복구 경고 없이 열리는지. `<a>`가 든 도형은 도형 sp의 txBody에서도 슬라이드
+		// 스키마를 지나는지. `<a>`가 든 도형은 도형 sp의 txBody에서도 슬라이드
 		// rels의 External 관계가 살아나는지를 함께 지난다 (도형 본문의 첫 하이퍼링크다).
 		`<slide>
   <row gap="lg" align="stretch">
@@ -150,30 +146,23 @@ func TestLibreOfficeOpensTextShapes(t *testing.T) {
 	}
 
 	// 합성 지오메트리로 충분하다 — 이 테스트의 관심은 좌표 값이 아니라 XML의 스키마
-	// 유효성이다 (좌표 정확성은 픽셀 비교가 본다, 항목 07).
+	// 유효성이다 (좌표 정확성은 동일성 판정이 본다 — ADR 0064).
 	g := geom.Synthetic(deck, geom.Rect{X: 64, Y: 64, W: 1152, H: 67.2})
 	files, err := pptx.NewWithGeometry(g).Render(deck)
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(t.TempDir(), pptx.FileName(deck))
-	if err := os.WriteFile(path, files[pptx.FileName(deck)], 0o644); err != nil {
-		t.Fatal(err)
-	}
-	testkit.OpenPPTX(t, path)
+	testkit.AssertValidPPTX(t, files[pptx.FileName(deck)])
 }
 
-// LibreOffice가 겹침(stack)과 음수·슬라이드 밖 좌표가 든 덱을 경고·복구 없이 여는지 —
-// 하네스가 stderr의 복구·경고를 실패로 보므로 음수 `a:off`나 스테이지 밖 도형이 뷰어를
-// 거스르면 여기서 드러난다 (골든·단위 테스트는 초록인 채 사용자만 경고를 본다).
+// 겹침(stack)과 음수·슬라이드 밖 좌표가 든 덱이 유효한지 — 음수 `a:off`나 스테이지 밖 도형이
+// 스키마의 타입·범위를 거스르면 여기서 드러난다.
 //
 // 항목 05는 이 경로에 새 코드를 더하지 않는다 — 문서 순서 = z-순서는 레이아웃 컨테이너
 // 분기(도형 0개 + 자식 재귀)로 자동으로 맞고, 음수 좌표는 Offset이 그대로 흘려보낸다. 그래서
-// 이 테스트의 일은 "자동으로 맞을 것이 실제 뷰어에서도 맞는지" 확인하는 것이다: 배경 카드
+// 이 테스트의 일은 "자동으로 맞을 것이 패키지로도 유효한지" 확인하는 것이다: 배경 카드
 // 위에 배지가 겹치고(같은 좌표), 한 배지는 슬라이드 왼쪽 위 밖으로 반쯤 걸친다(음수 x/y).
-func TestLibreOfficeOpensStackOverlapAndNegativeCoords(t *testing.T) {
-	testkit.RequireSoffice(t)
-
+func TestStackOverlapAndNegativeCoordsAreValidPPTX(t *testing.T) {
 	stage, err := soml.Aspect16x9.Stage()
 	if err != nil {
 		t.Fatal(err)
@@ -220,9 +209,5 @@ func TestLibreOfficeOpensStackOverlapAndNegativeCoords(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(t.TempDir(), pptx.FileName(deck))
-	if err := os.WriteFile(path, files[pptx.FileName(deck)], 0o644); err != nil {
-		t.Fatal(err)
-	}
-	testkit.OpenPPTX(t, path)
+	testkit.AssertValidPPTX(t, files[pptx.FileName(deck)])
 }

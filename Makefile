@@ -48,7 +48,7 @@ DIST_RUN = $(DOCKER) run --rm \
 	-e GOPROXY=off \
 	-w /src $(IMAGE)
 
-.PHONY: help image deps test test-host examples review smoke golden dist shell versions docs docs-serve docs-clean clean
+.PHONY: help image deps test test-host examples review golden dist shell versions docs docs-serve docs-clean clean
 
 help: ## 사용 가능한 타깃 목록
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -80,9 +80,6 @@ review: ## 픽스처마다 웹 · PPTX 나란히 보기 → review/<픽스처>/g
 			then echo "  $$name"; else echo "  $$name 실패: $$(echo "$$out" | head -n 1)"; fi; \
 	done
 	@echo "리뷰 갤러리: review/<픽스처>/gallery/index.html"
-
-smoke: ## LibreOffice가 산출 PPTX를 경고 없이 여는지 (옵트인 — soffice 필요)
-	BALPYO_SMOKE=1 go test ./render/pptx ./internal/preview -count=1
 
 golden: image deps ## 골든 갱신 (변경은 구현 커밋과 함께 검토한다)
 	$(DOCKER_RUN) env BALPYO_UPDATE_GOLDEN=1 go test ./... -run 'TestFixtures|TestGolden' -count=1
