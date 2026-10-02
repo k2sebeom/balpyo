@@ -109,18 +109,35 @@
       → `RequireSoffice`가 `BALPYO_SMOKE=1`이 아니면 건너뛴다 (`internal/preview`의 LibreOffice 테스트도 같은 문).
       `make review`는 R6을 앞당겨 `balpyo preview`를 픽스처마다 부른다 — soffice가 없으면 R6 전까지 실패한다.
 
-## R4. 테스트 환경: 호스트에서 `go test ./...`
+## R4. PPTX 검증을 Go로 · Docker를 지운다
 
-- [ ] 게이트를 호스트로 옮긴다: `make test` = `go test ./...`. Chromium이 필요한 테스트
-      (지오메트리 패스)는 Chromium이 없으면 **명확한 메시지로 건너뛴다** — 빌드 자체가 Chromium을
-      쓰므로 개발자는 이미 갖고 있다.
-      R3 시점 관찰: 호스트 `go test ./...`에서 패키지 여럿이 동시에 Chrome을 띄우면 가끔 실행이 실패한다
-      (`context canceled` · `dial … EOF`) — 단독 재실행은 초록. 게이트가 되려면 띄우기 재시도나 `-p` 제한이 필요하다.
+Docker 이미지가 남은 이유는 하나였다 — "PowerPoint가 복구 없이 연다"를 LibreOffice로 확인하는 것.
+LibreOffice는 관대한 리더라 자식 순서 · 열거값 밖의 속성을 조용히 받아 준다 (PowerPoint는 복구를
+묻는다). 스키마 검증이 그 자리에 더 맞다. 폰트 고정 · poppler는 픽셀 비교용이었고 R3에서 할 일이
+없어졌다. Chromium은 빌드(지오메트리 패스)의 의존성이라 개발자는 이미 갖고 있다.
+
+- [x] 스파이크: `github.com/knroy/go-xml`(MIT · 순수 Go · Go 1.25+)로 ECMA-376 Transitional XSD를
+      읽어 픽스처 · 예제의 모든 XML 파트를 검증한다.
+      → 스키마 18개(420KB: `pml` · `dml-*` · `shared-*` · `opc-*` · Dublin Core · `xml.xsd`) 적재 76ms, 덱당
+      검증 2–26ms. 픽스처 18 · 예제 3이 모두 유효. 변이 12종(자식 순서 · 필수 속성 · 열거값 · 모르는 요소 ·
+      타입 · 범위 · 모르는 속성 · 프리셋 이름 · 필수 자식 · rels `Target` · content types 속성)을 모두 잡고,
+      메시지가 요소 경로와 기대한 자식을 댄다. 테스트 전용 의존성이다 (`balpyo` 바이너리에 링크되지 않는다).
+- [ ] 스키마 층: XSD를 `internal/testkit/ooxml/`에 출처와 함께 둔다 · `AssertPackage`가 모든 XML 파트를
+      스키마로 검증한다 (픽스처 · 예제 · `render/pptx`의 열림 테스트 덱) · 변이 테스트 몇 개로 검증기가
+      실제로 거르는지 못 박는다.
+- [ ] 파트 사이 층 (스키마로 못 말하는 PowerPoint 규칙): 슬라이드 안 `cNvPr@id` 유일 · `sldId` ≥ 256 · 유일 ·
+      `r:id`/`r:embed`가 맞는 종류의 관계를 가리킨다 · 슬라이드→레이아웃→마스터 연결 · `p:ph@idx`가 레이아웃에
+      있다.
+- [ ] LibreOffice를 테스트에서 지운다: `render/pptx/soffice_test.go`는 스키마 검증으로 바꾸고, `make smoke` ·
+      `BALPYO_SMOKE`를 지운다. (`balpyo preview`의 PPTX 래스터는 R6에서 옵트인으로 남는다.)
+- [ ] Docker를 지운다: `docker/`(Dockerfile · `fonts.conf` · `versions.env`) · `TestImageVersionsMatchPins` ·
+      Makefile의 `DOCKER_RUN`/`DIST_RUN`/`image`/`shell`/`versions` · `make test-host`. `make test` =
+      `go test ./...`, `make dist`는 호스트에서 `CGO_ENABLED=0 go build -trimpath`.
+- [ ] CI(`ci.yml`)를 `setup-go` + 러너의 Chrome으로 · "실패 시 리뷰 갤러리" 단계를 지운다.
+- [ ] Chromium이 필요한 테스트는 없으면 **명확한 메시지로 건너뛴다** (`BALPYO_TEST_STRICT=1`이면 실패 — CI가 켠다).
+      패키지 여럿이 동시에 Chrome을 띄우면 가끔 실패한다 (R3에서 관찰 — `context canceled` · `dial … EOF`):
+      띄우기 재시도를 넣는다.
 - [ ] 동일성 판정(R1-a)이 환경과 무관한지 확인한다 — 다른 폰트가 깔린 호스트에서도 초록이어야 한다.
-- [ ] Docker 이미지는 CI 편의로만 남기고 줄인다: LibreOffice · poppler · `fonts.conf`(힌팅 고정) ·
-      `versions.env` 버전 핀과 `TestImageVersionsMatchPins`를 지운다. `make test-host`는
-      `make test`와 같아지므로 지운다.
-- [ ] CI(`ci.yml`)의 "실패 시 리뷰 갤러리" 단계를 지운다.
 
 ## R5. 제품 코드에서 픽셀 시절의 타협을 푼다
 
