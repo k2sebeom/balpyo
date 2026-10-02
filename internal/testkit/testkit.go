@@ -1,9 +1,8 @@
-// Package testkit은 픽스처 기반 테스트 하네스다 — 골든 비교, LibreOffice·Chromium
-// 헬퍼, 픽셀 diff, 리뷰 갤러리.
+// Package testkit은 픽스처 기반 테스트 하네스다 — 골든 비교, 동일성 판정(웹 트리 == PPTX 트리),
+// 패키지 불변식, Chromium·LibreOffice 헬퍼.
 //
-// 왜 라이브러리인가: 테스트가 보는 산출물과 사람이 리뷰에서 보는 산출물이 다르면 리뷰가
-// 거짓말을 한다. `make test`와 `make review`는 같은 코드를 돌고, 리뷰 모드만 중간
-// 산출물을 review/ 에 남긴다.
+// **LibreOffice는 옵트인 스모크다** (ADR 0064): BALPYO_SMOKE=1(`make smoke`)일 때만 돈다.
+// 깨진 패키지를 잡는 값은 진짜지만, 계약은 더 이상 LibreOffice의 렌더에 기대지 않는다.
 //
 // **도구가 없을 때의 정책**: BALPYO_TEST_STRICT=1(테스트 이미지가 켠다)이면 건너뛰지
 // 않고 실패한다. 그래서 로컬 macOS에서 `go test ./...`가 초록이어도 — 거기서는 LibreOffice·
@@ -27,8 +26,8 @@ const (
 	EnvStrict = "BALPYO_TEST_STRICT"
 	// EnvUpdateGolden이 1이면 골든을 비교하는 대신 새로 쓴다 (`make golden`).
 	EnvUpdateGolden = "BALPYO_UPDATE_GOLDEN"
-	// EnvReview가 1이면 픽스처 스위트가 review/ 갤러리를 남긴다 (`make review`).
-	EnvReview = "BALPYO_REVIEW"
+	// EnvSmoke가 1이면 LibreOffice 스모크 테스트가 돈다 (`make smoke`). 없으면 건너뛴다.
+	EnvSmoke = "BALPYO_SMOKE"
 
 	// EnvChromium은 Chromium/Chrome 실행 파일 경로다. 빌드(지오메트리 패스)가 보는 변수와
 	// 같아야 한다 — 다르면 "테스트는 되는데 빌드는 브라우저를 못 찾는다"가 된다.
@@ -47,8 +46,8 @@ func Strict() bool { return os.Getenv(EnvStrict) == "1" }
 // UpdateGolden은 골든을 갱신하는 실행인지 알려준다.
 func UpdateGolden() bool { return os.Getenv(EnvUpdateGolden) == "1" }
 
-// Reviewing은 리뷰 갤러리를 남기는 실행인지 알려준다.
-func Reviewing() bool { return os.Getenv(EnvReview) == "1" }
+// Smoke는 옵트인 스모크(LibreOffice) 실행인지 알려준다.
+func Smoke() bool { return os.Getenv(EnvSmoke) == "1" }
 
 // RepoRoot는 저장소 루트다. 픽스처와 골든은 패키지 상대가 아니라 저장소 상대 경로에
 // 있으므로(여러 패키지의 테스트가 같은 픽스처를 본다) 루트를 찾아야 한다.
@@ -93,10 +92,18 @@ func RequireChromium(t testing.TB) string {
 	return requireTool(t, "Chromium", EnvChromium, LookChromium)
 }
 
-// RequireSoffice는 LibreOffice가 필요한 테스트의 진입점이다.
+// RequireSoffice는 LibreOffice가 필요한 테스트의 진입점이다. 스모크 실행이 아니면 건너뛰고,
+// 스모크 실행인데 도구가 없으면 실패한다 — 스모크를 부른 사람은 그것이 돌기를 원했다.
 func RequireSoffice(t testing.TB) string {
 	t.Helper()
-	return requireTool(t, "LibreOffice(soffice)", EnvSoffice, LookSoffice)
+	if !Smoke() {
+		t.Skipf("LibreOffice 스모크는 옵트인이다 — %s=1 (`make smoke`)", EnvSmoke)
+	}
+	path, err := LookSoffice()
+	if err != nil {
+		t.Fatalf("스모크 실행인데 LibreOffice(soffice)가 없다: %v — %s로 경로를 지정한다", err, EnvSoffice)
+	}
+	return path
 }
 
 // RequirePdftoppm은 pdftoppm이 필요한 테스트의 진입점이다.

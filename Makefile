@@ -48,7 +48,7 @@ DIST_RUN = $(DOCKER) run --rm \
 	-e GOPROXY=off \
 	-w /src $(IMAGE)
 
-.PHONY: help image deps test test-host examples review golden dist shell versions docs docs-serve docs-clean clean
+.PHONY: help image deps test test-host examples review smoke golden dist shell versions docs docs-serve docs-clean clean
 
 help: ## 사용 가능한 타깃 목록
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -70,9 +70,19 @@ test-host: ## 호스트에서 테스트 (LibreOffice·Chromium 테스트는 건�
 examples: image deps ## 예제 덱을 경고 0으로 빌드하는지 확인 (make test에도 포함)
 	$(DOCKER_RUN) go test ./internal/testkit -run TestExamplesBuildClean -v -count=1
 
-review: image deps ## 리뷰 갤러리 생성 → review/index.html
-	$(DOCKER_RUN) env BALPYO_REVIEW=1 go test ./internal/testkit -run TestFixtures -v -count=1
-	@echo "리뷰 갤러리: review/index.html"
+# 갤러리는 사람이 보는 도구다 — 테스트 스위트를 다시 돌리지 않고 `balpyo preview`를 픽스처마다
+# 부른다. 한 픽스처가 실패해도 나머지는 만든다 — 실패한 픽스처는 첫 줄의 이유와 함께 알린다.
+review: ## 픽스처마다 웹 · PPTX 나란히 보기 → review/<픽스처>/gallery/index.html
+	@mkdir -p .make && go build -o .make/balpyo ./cmd/balpyo
+	@for dir in testdata/fixtures/*/; do \
+		name=$$(basename $$dir); \
+		if out=$$(.make/balpyo preview --project $$dir --out review/$$name/build --gallery review/$$name/gallery 2>&1); \
+			then echo "  $$name"; else echo "  $$name 실패: $$(echo "$$out" | head -n 1)"; fi; \
+	done
+	@echo "리뷰 갤러리: review/<픽스처>/gallery/index.html"
+
+smoke: ## LibreOffice가 산출 PPTX를 경고 없이 여는지 (옵트인 — soffice 필요)
+	BALPYO_SMOKE=1 go test ./render/pptx ./internal/preview -count=1
 
 golden: image deps ## 골든 갱신 (변경은 구현 커밋과 함께 검토한다)
 	$(DOCKER_RUN) env BALPYO_UPDATE_GOLDEN=1 go test ./... -run 'TestFixtures|TestGolden' -count=1
