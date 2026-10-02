@@ -86,6 +86,9 @@ func TestResolveInlineInheritance(t *testing.T) {
 			func(s soml.TextStyle) soml.TextStyle { s.Italic = true; return s }},
 		{"li 안의 em", "<slide>\n  <ul><li><em>x</em></li></ul>\n</slide>\n", "em",
 			func(s soml.TextStyle) soml.TextStyle { s.Italic = true; return s }},
+		// weight="normal"은 상속된 굵기를 되돌린다.
+		{"strong 안의 weight=normal", "<slide>\n  <p><strong><span weight=\"normal\">x</span></strong></p>\n</slide>\n", "span",
+			func(s soml.TextStyle) soml.TextStyle { return s }},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -97,167 +100,77 @@ func TestResolveInlineInheritance(t *testing.T) {
 	}
 }
 
-// 부모가 이미 700 이상이면 strong은 그대로 둔다 — 더 굵은 단계는 없다.
-func TestResolveStrongKeepsBolderParent(t *testing.T) {
-	got := *tagStyle(t, "<slide>\n  <h1><strong>x</strong></h1>\n</slide>\n", "strong")
-	want := *tagStyle(t, "<slide>\n  <h1>제목</h1>\n</slide>\n", "h1")
-	if got != want {
-		t.Errorf("<h1> 안의 <strong> = %+v, want h1 확정 스타일 그대로 %+v", got, want)
+// 부모가 이미 700 이상이면 strong은 그대로 둔다. code의 size·역할은 부모를 따른다 — code 역할
+// (20px)을 끌어오면 한 줄 안에서 글자 크기가 섞여 웹 줄 박스와 PPTX 절대 줄간격이 갈라진다.
+func TestResolveInlineKeepsParentScale(t *testing.T) {
+	if got, want := *tagStyle(t, "<slide>\n  <h1><strong>x</strong></h1>\n</slide>\n", "strong"),
+		*tagStyle(t, "<slide>\n  <h1>제목</h1>\n</slide>\n", "h1"); got != want {
+		t.Errorf("<h1> 안의 <strong> = %+v, want h1 그대로 %+v", got, want)
 	}
-}
-
-// code의 size는 부모를 따른다 — title 안의 code는 56px mono다. code 역할(20px)을 끌어오면
-// 한 줄 안에서 글자 크기가 섞여 웹 줄 박스와 PPTX 절대 줄간격(spcPts)이 갈라진다.
-func TestResolveCodeInheritsSize(t *testing.T) {
 	got := tagStyle(t, "<slide>\n  <text role=\"title\"><code>x</code></text>\n</slide>\n", "code")
-	if got.Size != 56 || got.Font != soml.FontMono {
-		t.Errorf("title 안의 code = %+v, want Size 56 + mono", *got)
-	}
-	if got.Role != soml.RoleTitle {
-		t.Errorf("Role = %s, want 부모의 역할 유지 (역할은 인라인에 다시 적용되지 않는다)", got.Role)
+	if got.Size != 56 || got.Font != soml.FontMono || got.Role != soml.RoleTitle {
+		t.Errorf("title 안의 code = %+v, want 56px mono + 부모 역할", *got)
 	}
 }
 
-// 하이퍼링크 목적지는 스타일이 아니다 — Appearance.Link에 원문 그대로 실린다.
+// 링크 목적지는 스타일이 아니라 Appearance.Link에 원문 그대로 실린다. URL 문법은 검증하지 않는다 —
+// 파일·앵커·상대 경로 전부 유효할 수 있고, 잘못된 URL은 클릭이 실패할 뿐이다.
 func TestResolveAnchorLink(t *testing.T) {
-	deck, diags := resolveSlide(t, "<slide>\n  <p><a href=\"https://example.com/x\">링크</a></p>\n</slide>\n")
-	if len(diags) != 0 {
-		t.Fatalf("진단이 없어야 한다: %v", diags)
+	for _, href := range []string{"https://example.com/x", "assets/intro.pdf", "#section-2", "mailto:x@y.z", "not a url"} {
+		deck, diags := resolveSlide(t, "<slide>\n  <p><a href=\""+href+"\">링크</a></p>\n</slide>\n")
+		if len(diags) != 0 {
+			t.Fatalf("%s: 진단이 없어야 한다: %v", href, diags)
+		}
+		if got := findElement(t, deck, "a").Appearance.Link; got != href {
+			t.Errorf("Link = %q, want %q", got, href)
+		}
 	}
-	a := findElement(t, deck, "a")
-	if a.Appearance == nil || a.Appearance.Link != "https://example.com/x" {
-		t.Fatalf("Appearance = %+v, want Link 원문 유지", a.Appearance)
-	}
-	style := a.TextStyle()
-	if style == nil || !style.Underline || style.Color != soml.TokenColor("accent1") {
-		t.Errorf("<a> 스타일 = %+v, want 밑줄 + accent1 토큰", style)
-	}
-	// 링크가 아닌 인라인에는 Link가 실리지 않는다.
-	deck, _ = resolveSlide(t, "<slide>\n  <p><strong>x</strong></p>\n</slide>\n")
+	deck, _ := resolveSlide(t, "<slide>\n  <p><strong>x</strong></p>\n</slide>\n")
 	if strong := findElement(t, deck, "strong"); strong.Appearance.Link != "" {
 		t.Errorf("<strong>에 Link가 실렸다: %q", strong.Appearance.Link)
 	}
 }
 
-// href 값의 URL 문법은 검증하지 않는다 — 파일·앵커·상대 경로 전부 유효할 수 있고, 잘못된
-// URL은 클릭이 실패할 뿐 빌드가 막을 수 있는 실패가 아니다.
-func TestResolveAnchorHrefIsOpenValue(t *testing.T) {
-	for _, href := range []string{"assets/intro.pdf", "#section-2", "mailto:x@y.z", "not a url"} {
-		t.Run(href, func(t *testing.T) {
-			deck, diags := resolveSlide(t, "<slide>\n  <p><a href=\""+href+"\">링크</a></p>\n</slide>\n")
-			if len(diags) != 0 {
-				t.Fatalf("진단이 없어야 한다: %v", diags)
-			}
-			if got := findElement(t, deck, "a").Appearance.Link; got != href {
-				t.Errorf("Link = %q, want %q", got, href)
-			}
-		})
-	}
-}
-
-// 없는/빈 href는 에러다 — 목적지 없는 링크는 뜻을 정할 수 없다 (hasValue와 같은 태도).
-func TestResolveAnchorHrefErrors(t *testing.T) {
+// 인라인 값 층의 진단. 목적지 없는 링크는 뜻을 정할 수 없어 에러지만 런 스타일은 확정된다.
+// weight는 normal·bold 둘이다 — OOXML 굵기는 켬/끔(rPr@b)뿐이고, CSS 수치는 대응 이름을 짚어
+// 준다. span color는 <text color>와 같은 값 해석 코드(같은 문구)를 지난다.
+func TestResolveInlineDiagnostics(t *testing.T) {
 	cases := []struct {
-		name     string
-		src      string
-		line     int
-		col      int
-		contains string
+		name, inline string
+		col          int
+		contains     string
 	}{
-		{"href 없음", "<slide>\n  <p><a>링크</a></p>\n</slide>\n", 2, 7, "href가 필요하다"},
-		{"값 없는 href", "<slide>\n  <p><a href>링크</a></p>\n</slide>\n", 2, 9, "값이 필요하다"},
-		{"빈 href", "<slide>\n  <p><a href=\"\">링크</a></p>\n</slide>\n", 2, 15, "비어 있다"},
+		{"href 없음", `<a>링크</a>`, 7, "href가 필요하다"},
+		{"값 없는 href", `<a href>링크</a>`, 9, "값이 필요하다"},
+		{"빈 href", `<a href="">링크</a>`, 15, "비어 있다"},
+		{"weight 수치 400", `<span weight="400">x</span>`, 20, `"normal"`},
+		{"weight 수치 700", `<span weight="700">x</span>`, 20, `"bold"`},
+		{"중간 굵기", `<span weight="600">x</span>`, 20, "두 단계"},
+		{"알 수 없는 weight", `<span weight="semibold">x</span>`, 20, "알 수 없는 weight"},
+		{"값 없는 weight", `<span weight>x</span>`, 12, "값이 필요하다"},
+		{"빈 weight", `<span weight="">x</span>`, 20, "비어 있다"},
+		{"span color", `<span color="brand">x</span>`, 19, "테마에 없다"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			deck, diags := resolveSlide(t, tc.src)
-			if len(diags) != 1 {
-				t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
-			}
-			diag := diags[0]
-			if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, tc.contains) {
-				t.Errorf("진단 = %q, want %q 포함", diag.String(), tc.contains)
-			}
-			if diag.Span.Start.Line != tc.line || diag.Span.Start.Col != tc.col {
-				t.Errorf("위치 = %s, want %d:%d", diag.Span.Start, tc.line, tc.col)
-			}
-			// href가 틀려도 런 스타일은 확정된다 — 진단은 한 번에 다 나와야 하고, 밑줄·색은
-			// 목적지와 무관하게 정해진다.
-			if style := findElement(t, deck, "a").TextStyle(); style == nil || !style.Underline {
-				t.Errorf("href 에러 후에도 <a>의 스타일은 확정되어야 한다: %+v", style)
+			deck, diag := oneDiag(t, "<slide>\n  <p>"+tc.inline+"</p>\n</slide>\n")
+			assertDiag(t, diag, 2, tc.col, tc.contains)
+			if strings.HasPrefix(tc.inline, "<a") {
+				if style := findElement(t, deck, "a").TextStyle(); style == nil || !style.Underline {
+					t.Errorf("href 에러 후에도 <a>의 스타일은 확정되어야 한다: %+v", style)
+				}
 			}
 		})
 	}
-}
-
-// span의 color 값 어휘 진단은 <text color>와 문구가 같아야 한다 — 값 해석 코드를 공유한다는
-// 계약의 회귀 테스트다 (두 벌이 되면 진단이 갈라진다).
-func TestResolveSpanColorSharesTextDiagnostics(t *testing.T) {
-	_, spanDiags := resolveSlide(t, "<slide>\n  <p><span color=\"brand\">x</span></p>\n</slide>\n")
-	_, textDiags := resolveSlide(t, "<slide>\n  <text color=\"brand\">x</text>\n</slide>\n")
-	if len(spanDiags) != 1 || len(textDiags) != 1 {
-		t.Fatalf("진단이 각 1개여야 한다: span=%v text=%v", spanDiags, textDiags)
-	}
-	if spanDiags[0].Message != textDiags[0].Message {
-		t.Errorf("span 진단 %q ≠ text 진단 %q — 값 해석 코드가 갈라졌다",
-			spanDiags[0].Message, textDiags[0].Message)
-	}
-	// 위치는 span의 값을 가리킨다.
-	if spanDiags[0].Span.Start.Line != 2 || spanDiags[0].Span.Start.Col != 19 {
-		t.Errorf("위치 = %s, want 2:19", spanDiags[0].Span.Start)
+	_, span := oneDiag(t, "<slide>\n  <p><span color=\"brand\">x</span></p>\n</slide>\n")
+	_, text := oneDiag(t, "<slide>\n  <text color=\"brand\">x</text>\n</slide>\n")
+	if span.Message != text.Message {
+		t.Errorf("span 진단 %q ≠ text 진단 %q — 값 해석 코드가 갈라졌다", span.Message, text.Message)
 	}
 }
 
-// weight의 어휘는 normal(400)·bold(700) 둘이다 — OOXML의 굵기는 켬/끔(rPr@b)뿐이라
-// CSS의 수치 축을 열면 중간 굵기가 웹에서만 동작한다.
-func TestResolveSpanWeightVocabulary(t *testing.T) {
-	// normal은 상속된 굵기를 되돌릴 수 있다 — strong 안에서 400.
-	got := tagStyle(t, "<slide>\n  <p><strong><span weight=\"normal\">x</span></strong></p>\n</slide>\n", "span")
-	if got.Weight != 400 {
-		t.Errorf("strong 안의 <span weight=normal> = %d, want 400", got.Weight)
-	}
-	bold := tagStyle(t, "<slide>\n  <p><span weight=\"bold\">x</span></p>\n</slide>\n", "span")
-	if bold.Weight != 700 {
-		t.Errorf(`<span weight="bold"> = %d, want 700`, bold.Weight)
-	}
-}
-
-func TestResolveSpanWeightDiagnostics(t *testing.T) {
-	cases := []struct {
-		name     string
-		attrs    string
-		line     int
-		col      int
-		contains string
-	}{
-		// CSS 습관의 수치는 대응하는 이름을 짚어 준다 (align의 left/right와 같은 태도).
-		{"수치 400", `weight="400"`, 2, 20, `"normal"`},
-		{"수치 700", `weight="700"`, 2, 20, `"bold"`},
-		{"중간 굵기", `weight="600"`, 2, 20, "두 단계"},
-		{"알 수 없는 이름", `weight="semibold"`, 2, 20, "알 수 없는 weight"},
-		{"값 없는 weight", `weight`, 2, 12, "값이 필요하다"},
-		{"빈 weight", `weight=""`, 2, 20, "비어 있다"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			_, diags := resolveSlide(t, "<slide>\n  <p><span "+tc.attrs+">x</span></p>\n</slide>\n")
-			if len(diags) != 1 {
-				t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
-			}
-			diag := diags[0]
-			if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, tc.contains) {
-				t.Errorf("진단 = %q, want %q 포함", diag.String(), tc.contains)
-			}
-			if diag.Span.Start.Line != tc.line || diag.Span.Start.Col != tc.col {
-				t.Errorf("위치 = %s, want %d:%d", diag.Span.Start, tc.line, tc.col)
-			}
-		})
-	}
-}
-
-// 해석 후 인라인 요소 전부의 Appearance가 non-nil이어야 렌더러의 nil 가드가 실제로
-// "core를 거치지 않은 덱"만 잡는다. 유일한 예외는 <br> — void이고 텍스트 흐름의 분절점일
-// 뿐이라 서식을 갖지 않는다.
+// 해석 후 인라인 요소의 Appearance는 non-nil이다 (렌더러의 nil 가드가 "core를 거치지 않은 덱"만
+// 잡도록). 예외는 서식이 없는 분절점 <br>이다.
 func TestResolveInlineAppearanceNonNil(t *testing.T) {
 	src := "<slide>\n  <p>본문 <strong>굵게 <em>기울임</em></strong> <code>코드</code>" +
 		" <a href=\"#x\">링크</a> <span>스팬</span>줄<br/>끝</p>\n</slide>\n"

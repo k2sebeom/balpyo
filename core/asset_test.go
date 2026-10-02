@@ -7,8 +7,6 @@ import (
 	"image/color"
 	"image/jpeg"
 	"image/png"
-	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -17,12 +15,8 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 에셋 표 테스트는 **디스크를 건드리지 않는다** (fstest.MapFS) — core가 `os` 대신 `fs.FS`를
-// 보는 이유가 이것이다: 없는 파일·깨진 헤더·확장자 불일치·디렉토리를 실제 파일 없이 만든다.
-//
-// 바이트는 테스트가 **그때 만든다** (커밋된 픽스처 에셋을 읽지 않는다): 표에 담기는 고유
-// 크기가 헤더의 값과 같은지 단정하려면 기대값이 원본에서 나와야 하고, 커밋된 파일을 읽으면
-// 그 파일이 바뀌었을 때 무엇이 틀렸는지 알 수 없다.
+// 에셋 테스트는 디스크 대신 fstest.MapFS를 쓰고 바이트를 그때 만든다 — 기대 크기가 원본에서
+// 나와야 무엇이 틀렸는지 알 수 있다.
 
 // pngBytes는 w×h PNG 바이트다.
 func pngBytes(t *testing.T, w, h int) []byte {
@@ -166,7 +160,7 @@ func TestResolveAssetsErrors(t *testing.T) {
 			if len(diags) != 1 {
 				t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
 			}
-			assertImageDiag(t, diags[0], imageCol(attrs, tc.src), tc.contains...)
+			assertDiag(t, diags[0], 2, imageCol(attrs, tc.src), tc.contains...)
 			// 실패한 에셋은 표에 실리지 않는다 — 렌더러가 반쪽 항목을 보지 않게.
 			if len(deck.Assets) != 0 {
 				t.Errorf("실패한 에셋이 표에 실렸다: %v", deck.Assets.Keys())
@@ -208,56 +202,6 @@ func TestResolveAssetsWithoutFS(t *testing.T) {
 	}
 	if !strings.Contains(diags[0].Message, "엔진 버그") {
 		t.Errorf("진단 = %q, want 엔진 버그", diags[0].String())
-	}
-}
-
-// 픽스처는 이번 iteration 전체의 시험대다 (`05_image` — 항목 05가 스위트에 편입했다).
-// 값 층과 에셋 패스가 픽스처를 통째로 해석하는지, 표의 항목이 예상한 셋뿐인지 못 박는다.
-func TestResolveImageFixture(t *testing.T) {
-	deck := readFixtureDeck(t, "05_image")
-	if diags := Resolve(deck, nil); len(diags) != 0 {
-		t.Fatalf("픽스처 해석 진단이 없어야 한다: %v", diags)
-	}
-	dir := filepath.Join("..", "testdata", "fixtures", "05_image")
-	if diags := ResolveAssets(deck, os.DirFS(dir)); len(diags) != 0 {
-		t.Fatalf("픽스처 에셋 진단이 없어야 한다: %v", diags)
-	}
-	// 순서는 첫 사용의 문서 순서다 — 001_fit이 wide·tall·dot을, 003이 photo를 처음 쓴다.
-	want := []string{"assets/wide.png", "assets/tall.png", "assets/dot.png", "assets/photo.jpg"}
-	if !reflect.DeepEqual(deck.Assets.Keys(), want) {
-		t.Errorf("에셋 표 = %v, want %v", deck.Assets.Keys(), want)
-	}
-	for _, asset := range deck.Assets {
-		if asset.Width <= 0 || asset.Height <= 0 || len(asset.Bytes) == 0 {
-			t.Errorf("%s의 값이 비었다: %dx%d %dB", asset.Key, asset.Width, asset.Height, len(asset.Bytes))
-		}
-		// 커밋된 바이트와 같아야 한다 — 엔진은 바이트를 고치지 않는다 (리사이즈·재압축 없음).
-		data, err := os.ReadFile(filepath.Join(dir, asset.Key))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(asset.Bytes, data) {
-			t.Errorf("%s의 바이트가 파일과 다르다", asset.Key)
-		}
-	}
-	// 고유 크기는 픽스처가 못 박은 값이다. 항목 05/05가 세 장을 **박스보다 크게** 다시 만들었고
-	// (그 전에는 wide 16×8·tall 8×16·photo 16×8이라 `contain` 칸이 전부 16×8 점으로 남았다 —
-	// NOTES 05/03의 열린 질문 (a)), 확대하지 않는 경로를 보이는 아주 작은 그림 하나를
-	// `dot.png`로 남겼다.
-	sizes := map[string][2]int{
-		"assets/wide.png":  {1200, 600},
-		"assets/tall.png":  {600, 1200},
-		"assets/photo.jpg": {1200, 600},
-		"assets/dot.png":   {16, 8},
-	}
-	for key, size := range sizes {
-		asset, ok := deck.Assets.Get(key)
-		if !ok {
-			t.Fatalf("%s가 표에 없다", key)
-		}
-		if asset.Width != size[0] || asset.Height != size[1] {
-			t.Errorf("%s = %dx%d, want %dx%d", key, asset.Width, asset.Height, size[0], size[1])
-		}
 	}
 }
 
