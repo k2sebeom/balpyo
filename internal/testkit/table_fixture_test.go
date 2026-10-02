@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
+	"path"
 	"testing"
 
 	"github.com/k2sebeom/balpyo/render/geom"
@@ -13,23 +13,14 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 표 픽스처(09_table) 수준의 검증이다. render/pptx·render/web의 단위 테스트가 조립기 하나의
-// 산출을 보는 것과 달리, 여기서는 **픽스처 전체를 빌드한 결과**를 놓고 표의 계약이 실제 덱에서도
-// 성립하는지 본다 (ADR 0036):
+// 표 픽스처(09_table) 수준의 검증이다. 종류 · 자리 · 셀 글자는 동일성 판정(AssertParity)이
+// 이미 본다 — 여기서 보는 것은 컴포넌트 트리에 없는 **표 내부의 OOXML 계약**이다 (ADR 0036):
 //
-//  1. 표는 `p:sp`도 `p:pic`도 아닌 **세 번째 골격**이다 — `p:graphicFrame` + `a:tbl`.
+//  1. 격자가 기대한 크기이고 표 스타일을 끈다 (No Style, No Grid · 줄무늬 힌트 없음).
 //  2. `a:tbl`의 모든 행은 **열 수만큼의 `a:tc`**를 갖는다 (병합에 덮인 자리는 `hMerge`/`vMerge`
-//     빈 셀이다). 이것이 깨진 파일은 PowerPoint가 열 때 복구를 묻는다 — 그 실패는 골든 diff에서
-//     보이지 않으므로 계약으로 둔다.
-//  3. 셀 외관은 **명시**다 (네 변 + 채움) — 표 스타일을 가리키지 않으므로(No Style, No Grid)
-//     뷰어가 얹을 값이 없고, 얹을 값이 없어야 웹과 같은 그림이 된다.
+//     빈 셀이다). 이것이 깨진 파일은 PowerPoint가 열 때 복구를 묻는다.
+//  3. 셀 외관은 **명시**다 (네 변 + 앵커) — 뷰어가 얹을 값이 없어야 웹과 같은 그림이 된다.
 //  4. 격자 수치(`a:gridCol@w`·`a:tr@h`)는 **잰 값**이고 그 합이 프레임 크기와 정확히 같다.
-//
-// 09_table을 fixtureNames에 넣지 않는 이유: 그 표가 도는 검사들은 "측정 박스 하나 ↔ 도형 하나"의
-// 등식(TestFixtureShapeCountExcludesNonShapeElements)과 `p:sp`/`p:pic`만 세는 countedShapeTags를
-// 전제한다. 표는 그 전제를 깨는 첫 종류다 — 프레임 하나가 행·셀 박스 수십 개를 흡수한다. 그
-// 등식을 표까지 넓히는 것은 별개의 변경이고(도형 수 등식에 항을 더하는 일), 여기서는 표 고유의
-// 계약을 표 고유의 자리에서 본다. 골든 비교와 픽셀 비교는 일반 러너(TestFixtures)가 이미 돈다.
 const tableFixtureName = "09_table"
 
 // noStyleNoGridID는 PowerPoint 내장 표 스타일 "No Style, No Grid"의 식별자다.
@@ -69,11 +60,9 @@ type tableFixtureGrid struct {
 
 // 표는 `p:graphicFrame` + `a:tbl`로 나오고, 그 격자가 기대한 크기이며, 표 스타일을 가리키지
 // 않는다 (줄무늬 힌트도 켜지 않는다 — 줄무늬는 값 층이 셀 채움으로 구워 놓는다).
-//
-// 브라우저 없이 도는 검사다 (골든 파트만 읽는다).
 func TestTableFixtureTablesAreGraphicFrames(t *testing.T) {
 	seen := map[string]bool{}
-	for _, slide := range tableFixtureGoldenSlides(t) {
+	for _, slide := range tableFixtureSlides(t) {
 		want, ok := tableFixtureTables[slide.id]
 		if !ok {
 			t.Errorf("%s(%s)가 표에 없다 — 슬라이드가 늘면 기대 격자를 함께 적는다", slide.part, slide.id)
@@ -133,7 +122,7 @@ func TestTableFixtureTablesAreGraphicFrames(t *testing.T) {
 	}
 	for id := range tableFixtureTables {
 		if !seen[id] {
-			t.Errorf("표의 슬라이드 %s가 골든에 없다", id)
+			t.Errorf("표의 슬라이드 %s가 산출물에 없다", id)
 		}
 	}
 }
@@ -145,10 +134,8 @@ func TestTableFixtureTablesAreGraphicFrames(t *testing.T) {
 // 요구하고, 모자란 파일을 스스로 고치며 "이 프레젠테이션의 내용에 문제가 있습니다"를 띄운다.
 // 골든 비교로는 그것을 알 수 없고(XML은 그럴듯하다) 픽셀 비교로도 알 수 없다 (LibreOffice는
 // 조용히 그린다). 그래서 덮인 칸을 **세는** 자리가 필요하다.
-//
-// 브라우저 없이 도는 검사다.
 func TestTableFixtureEveryRowFillsTheGrid(t *testing.T) {
-	for _, slide := range tableFixtureGoldenSlides(t) {
+	for _, slide := range tableFixtureSlides(t) {
 		for i, frame := range slide.frames {
 			tbl := frame.Tbl
 			cols := len(tbl.Cols)
@@ -220,11 +207,9 @@ func TestTableFixtureEveryRowFillsTheGrid(t *testing.T) {
 // 변과 없다고 선언한 변은 뷰어가 표 스타일을 바꿀 때 갈라진다.
 //
 // 덮인 셀(`hMerge`/`vMerge`)은 예외다: 그 자리의 외관은 주인 셀이 소유한다 (빈 `a:tcPr`).
-//
-// 브라우저 없이 도는 검사다.
 func TestTableFixtureCellsCarryExplicitAppearance(t *testing.T) {
 	cells, noFills := 0, 0
-	for _, slide := range tableFixtureGoldenSlides(t) {
+	for _, slide := range tableFixtureSlides(t) {
 		for i, frame := range slide.frames {
 			for r, row := range frame.Tbl.Rows {
 				for c, cell := range row.Cells {
@@ -241,7 +226,7 @@ func TestTableFixtureCellsCarryExplicitAppearance(t *testing.T) {
 					}
 					for _, side := range []struct {
 						name string
-						ln   *goldenLn
+						ln   *tblLn
 					}{{"lnL", cell.Pr.LnL}, {"lnR", cell.Pr.LnR}, {"lnT", cell.Pr.LnT}, {"lnB", cell.Pr.LnB}} {
 						if side.ln == nil {
 							t.Errorf("%s: %s가 없다 — 네 변을 모두 명시해야 표 스타일이 끼어들지 않는다", where, side.name)
@@ -259,7 +244,7 @@ func TestTableFixtureCellsCarryExplicitAppearance(t *testing.T) {
 		}
 	}
 	if cells == 0 {
-		t.Fatal("셀을 하나도 보지 않았다 — 골든이 비었다 (`make golden`으로 만든다)")
+		t.Fatal("셀을 하나도 보지 않았다 — 산출물에 표가 없다")
 	}
 	// `border="none"` 셀이 실제로 `noFill` 네 변을 냈는가 (003_striped의 보류 셀 하나) —
 	// 없으면 위 순회가 "테두리가 있는 셀만" 보고 통과한 것이다.
@@ -289,7 +274,7 @@ func TestTableFixtureGridComesFromMeasuredBoxes(t *testing.T) {
 		t.Fatal(err)
 	}
 	parts := PPTXParts(t, data)
-	frames := make([][]goldenFrame, len(result.Deck.Slides))
+	frames := make([][]tblFrame, len(result.Deck.Slides))
 	for i := range result.Deck.Slides {
 		part := fmt.Sprintf("ppt/slides/slide%d.xml", i+1)
 		frames[i] = decodeFrames(t, part, parts[part])
@@ -380,54 +365,56 @@ func childBoxes(refs []geom.Ref, boxes []geom.Box, parent, el string) []geom.Box
 	return found
 }
 
-// tableFixtureGoldenSlide는 골든 슬라이드 파트 하나에서 읽은 표들이다.
-type tableFixtureGoldenSlide struct {
+// tableFixtureSlide는 슬라이드 파트 하나에서 읽은 표들이다.
+type tableFixtureSlide struct {
 	part   string
 	id     string
-	frames []goldenFrame
+	frames []tblFrame
 }
 
-// tableFixtureGoldenSlides는 09_table의 골든 슬라이드를 순서대로 읽는다 (브라우저 없이).
+// tableFixtureSlides는 09_table을 한 번 빌드해 슬라이드를 순서대로 읽는다 — 세 검사가 같은
+// 산출물을 보므로 빌드를 나눠 쓴다 (파트는 메모리에 남는다).
 //
 // 슬라이드를 **id로** 기억하는 이유는 다른 픽스처 검사와 같다: 파트 번호로 표를 짜면 슬라이드를
 // 하나 끼워 넣는 순간 표가 엉뚱한 슬라이드를 가리킨다.
-func tableFixtureGoldenSlides(t *testing.T) []tableFixtureGoldenSlide {
+func tableFixtureSlides(t *testing.T) []tableFixtureSlide {
 	t.Helper()
-	goldenDir := fixtureByName(t, tableFixtureName).GoldenDir()
-	slides := make([]tableFixtureGoldenSlide, 0, len(tableFixtureTables))
-	for i := 1; ; i++ {
-		part := fmt.Sprintf("slide%d.xml", i)
-		data, err := os.ReadFile(filepath.Join(goldenDir, "pptx", "ppt", "slides", part))
-		if os.IsNotExist(err) {
-			break
-		}
+	if tableSlidesCache == nil {
+		fixture := fixtureByName(t, tableFixtureName)
+		result := fixture.Build(t)
+		data, err := os.ReadFile(fixture.Output(t, result, ".pptx"))
 		if err != nil {
-			t.Fatalf("골든이 없다 (`make golden`으로 만든다): %v", err)
+			t.Fatal(err)
 		}
-		slides = append(slides, tableFixtureGoldenSlide{
-			part:   part,
-			id:     goldenSlideID(t, string(data)),
-			frames: decodeFrames(t, part, data),
-		})
+		parts := PPTXParts(t, data)
+		for i, slide := range result.Deck.Slides {
+			part := fmt.Sprintf("ppt/slides/slide%d.xml", i+1)
+			tableSlidesCache = append(tableSlidesCache, tableFixtureSlide{
+				part: path.Base(part), id: slide.ID, frames: decodeFrames(t, part, parts[part]),
+			})
+		}
 	}
-	if len(slides) != len(tableFixtureTables) {
-		t.Fatalf("골든 슬라이드 %d장, want %d장", len(slides), len(tableFixtureTables))
+	if len(tableSlidesCache) != len(tableFixtureTables) {
+		t.Fatalf("슬라이드 %d장, want %d장", len(tableSlidesCache), len(tableFixtureTables))
 	}
-	return slides
+	return tableSlidesCache
 }
+
+// tableSlidesCache는 tableFixtureSlides가 한 번 읽은 결과다.
+var tableSlidesCache []tableFixtureSlide
 
 // decodeFrames는 슬라이드 파트에서 `p:graphicFrame`을 문서 순서로 읽는다.
 //
 // 정규식이 아니라 XML 디코더를 쓰는 이유: 이 검사들이 보는 것은 **중첩된 구조**다 (행 안의
 // 셀, 셀 안의 네 변). 정규식으로는 "이 행의 셀"과 "다음 행의 셀"을 가를 수 없고, 가르지 못하면
 // 병합 격자를 셀 수 없다.
-func decodeFrames(t *testing.T, part string, data []byte) []goldenFrame {
+func decodeFrames(t *testing.T, part string, data []byte) []tblFrame {
 	t.Helper()
 	if len(data) == 0 {
 		t.Fatalf("파트 %s가 없다", part)
 	}
 	var tree struct {
-		Frames []goldenFrame `xml:"cSld>spTree>graphicFrame"`
+		Frames []tblFrame `xml:"cSld>spTree>graphicFrame"`
 	}
 	if err := xml.Unmarshal(data, &tree); err != nil {
 		t.Fatalf("%s를 읽을 수 없다: %v", part, err)
@@ -435,9 +422,9 @@ func decodeFrames(t *testing.T, part string, data []byte) []goldenFrame {
 	return tree.Frames
 }
 
-// goldenFrame은 `p:graphicFrame` 하나다 (표만 담는다 — 이번 어휘에서 프레임을 내는 종류는
+// tblFrame은 `p:graphicFrame` 하나다 (표만 담는다 — 이번 어휘에서 프레임을 내는 종류는
 // `<table>`뿐이다).
-type goldenFrame struct {
+type tblFrame struct {
 	NV struct {
 		CNvPr struct {
 			ID   int    `xml:"id,attr"`
@@ -460,11 +447,11 @@ type goldenFrame struct {
 			Cy int64 `xml:"cy,attr"`
 		} `xml:"ext"`
 	} `xml:"xfrm"`
-	Tbl goldenTbl `xml:"graphic>graphicData>tbl"`
+	Tbl tblTable `xml:"graphic>graphicData>tbl"`
 }
 
-// goldenTbl은 `a:tbl` 하나다.
-type goldenTbl struct {
+// tblTable은 `a:tbl` 하나다.
+type tblTable struct {
 	Pr struct {
 		FirstRow string `xml:"firstRow,attr"`
 		FirstCol string `xml:"firstCol,attr"`
@@ -475,34 +462,34 @@ type goldenTbl struct {
 	Cols []struct {
 		W int64 `xml:"w,attr"`
 	} `xml:"tblGrid>gridCol"`
-	Rows []goldenTr `xml:"tr"`
+	Rows []tblRow `xml:"tr"`
 }
 
-// goldenTr은 `a:tr` 하나다.
-type goldenTr struct {
-	H     int64      `xml:"h,attr"`
-	Cells []goldenTc `xml:"tc"`
+// tblRow은 `a:tr` 하나다.
+type tblRow struct {
+	H     int64     `xml:"h,attr"`
+	Cells []tblCell `xml:"tc"`
 }
 
-// goldenTc는 `a:tc` 하나다.
-type goldenTc struct {
+// tblCell는 `a:tc` 하나다.
+type tblCell struct {
 	GridSpan int    `xml:"gridSpan,attr"`
 	RowSpan  int    `xml:"rowSpan,attr"`
 	HMerge   string `xml:"hMerge,attr"`
 	VMerge   string `xml:"vMerge,attr"`
 	Pr       struct {
-		Anchor string    `xml:"anchor,attr"`
-		LnL    *goldenLn `xml:"lnL"`
-		LnR    *goldenLn `xml:"lnR"`
-		LnT    *goldenLn `xml:"lnT"`
-		LnB    *goldenLn `xml:"lnB"`
+		Anchor string `xml:"anchor,attr"`
+		LnL    *tblLn `xml:"lnL"`
+		LnR    *tblLn `xml:"lnR"`
+		LnT    *tblLn `xml:"lnT"`
+		LnB    *tblLn `xml:"lnB"`
 	} `xml:"tcPr"`
 	// Runs는 셀 글자다 — 덮인 셀이 비어 있는지 보는 데 쓴다.
 	Runs []string `xml:"txBody>p>r>t"`
 }
 
-// goldenLn은 셀 테두리 한 변이다 (`a:lnL` 등).
-type goldenLn struct {
+// tblLn은 셀 테두리 한 변이다 (`a:lnL` 등).
+type tblLn struct {
 	NoFill    *struct{} `xml:"noFill"`
 	SolidFill *struct{} `xml:"solidFill"`
 }

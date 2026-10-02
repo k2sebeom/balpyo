@@ -6,7 +6,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -141,20 +140,6 @@ func fixtureByName(t *testing.T, name string) Fixture {
 func textFixture(t *testing.T) Fixture {
 	t.Helper()
 	return fixtureByName(t, textFixtureName)
-}
-
-// goldenSlideIDPattern은 조립기가 슬라이드 id를 남기는 자리다 (`<p:cSld name="…">`).
-var goldenSlideIDPattern = regexp.MustCompile(`<p:cSld name="([^"]*)"`)
-
-// goldenSlideID는 골든 파트에서 슬라이드 id를 읽는다 — 표의 열쇠를 파트 번호가 아니라
-// 저자가 붙인 id로 두기 위해서다 (슬라이드를 끼워 넣어도 표가 따라 움직인다).
-func goldenSlideID(t *testing.T, xml string) string {
-	t.Helper()
-	m := goldenSlideIDPattern.FindStringSubmatch(xml)
-	if m == nil {
-		t.Fatal("골든 슬라이드 파트에 cSld@name이 없다 — 표의 열쇠를 만들 수 없다")
-	}
-	return m[1]
 }
 
 // cropImage는 이미지에서 사각형 영역을 새 이미지로 잘라 온다 (이미지 경계로 자른다).
