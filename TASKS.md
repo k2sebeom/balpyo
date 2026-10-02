@@ -134,8 +134,10 @@ LibreOffice는 관대한 리더라 자식 순서 · 열거값 밖의 속성을 �
       → `crosspart.go`(`CheckCrossParts`)를 `AssertValidPPTX`가 부른다. 더한 것: 마스터 · 레이아웃 id는 한 공간 ·
       마스터의 `sldLayoutIdLst` = 그 마스터를 가리키는 레이아웃 · 노트 ↔ 슬라이드 되가리킴 · 관계를 참조하는 요소가
       표(`relRefTypes`)에 없으면 실패. 픽스처 18 · 예제 3이 통과하고, `TestCrossPartsRejectsMutations`가 변이 10종을 본다.
-- [ ] LibreOffice를 테스트에서 지운다: `render/pptx/soffice_test.go`는 스키마 검증으로 바꾸고, `make smoke` ·
+- [x] LibreOffice를 테스트에서 지운다: `render/pptx/soffice_test.go`는 스키마 검증으로 바꾸고, `make smoke` ·
       `BALPYO_SMOKE`를 지운다. (`balpyo preview`의 PPTX 래스터는 R6에서 옵트인으로 남는다.)
+      → `render/pptx/valid_test.go`가 같은 덱을 `AssertValidPPTX`에 건다 · `OpenPPTX`(`soffice.go`)를 지웠다.
+      `RequireSoffice`/`RequirePdftoppm`은 preview 래스터 테스트만 부르고, 없으면 Strict에서도 건너뛴다.
 - [ ] Docker를 지운다: `docker/`(Dockerfile · `fonts.conf` · `versions.env`) · `TestImageVersionsMatchPins` ·
       Makefile의 `DOCKER_RUN`/`DIST_RUN`/`image`/`shell`/`versions` · `make test-host`. `make test` =
       `go test ./...`, `make dist`는 호스트에서 `CGO_ENABLED=0 go build -trimpath`.
