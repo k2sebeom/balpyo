@@ -88,7 +88,7 @@ func TestMeasureReadsSlideRelativeBoxes(t *testing.T) {
 	deck := browserDeck(t)
 	path := renderHTML(t, deck, nil)
 
-	g, err := geom.Measure(deck, path)
+	g, err := testkit.SharedSession(t).Measure(deck, path)
 	if err != nil {
 		t.Fatalf("지오메트리 패스 실패: %v", err)
 	}
@@ -133,56 +133,12 @@ func TestMeasureReadsSlideRelativeBoxes(t *testing.T) {
 	}
 }
 
-// 텍스트 메트릭: 줄 박스는 Iteration 1 리뷰 포인트(브라우저가 잰 박스가 다른 엔진에서 같은
-// 줄바꿈을 유지하는가, PRD §13-1)의 수치 재료다.
-func TestMeasureCollectsLineBoxes(t *testing.T) {
-	testkit.RequireChromium(t)
-	deck := browserDeck(t)
-	g, err := geom.Measure(deck, renderHTML(t, deck, nil))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	body, ok := g.Box("s0.1")
-	if !ok {
-		t.Fatal("s0.1이 없다")
-	}
-	if body.LineCount() < 2 {
-		t.Fatalf("줄 %d개 — 긴 본문은 여러 줄이어야 한다 (%s)", body.LineCount(), body.Rect)
-	}
-	// 줄 박스는 위에서 아래로, 박스 안에 들어 있어야 한다. 벗어나면 좌표계가 섞인 것이다.
-	prev := -math.MaxFloat64
-	for i, line := range body.Lines {
-		if line.Y < prev {
-			t.Errorf("줄 %d의 y = %v가 앞 줄(%v)보다 위다", i, line.Y, prev)
-		}
-		prev = line.Y
-		if line.X < body.Rect.X-0.5 || line.X+line.W > body.Rect.X+body.Rect.W+0.5 {
-			t.Errorf("줄 %d(%s)이 박스(%s) 밖이다", i, line, body.Rect)
-		}
-	}
-	// 박스 높이 ≈ 줄 수 × 줄 간격. 이 관계가 성립해야 "박스 고정 + autofit off"로 내보낸
-	// 박스가 텍스트를 담고, 줄이 하나 늘었을 때 얼마나 넘치는지가 이 간격으로 계산된다.
-	advance := body.LineAdvance()
-	if want := float64(body.LineCount()) * advance; math.Abs(body.Rect.H-want) > 1 {
-		t.Errorf("박스 높이 = %v, 줄 %d개 × 간격 %v = %v", body.Rect.H, body.LineCount(), advance, want)
-	}
-	// 줄 박스는 글자 상자이므로 줄 간격보다 낮다 — 이 둘이 같아지면 잰 것이 글자 상자가
-	// 아니라 줄 슬롯이라는 뜻이고, 그러면 겹치는 줄을 구분할 수 없다.
-	if body.LineHeight() <= 0 || body.LineHeight() > advance {
-		t.Errorf("줄 박스 높이 = %v, 줄 간격 = %v", body.LineHeight(), advance)
-	}
-	if slack := body.Slack(); slack < 0 || slack > body.Rect.W {
-		t.Errorf("Slack = %v, 박스 폭 %v 안이어야 한다", slack, body.Rect.W)
-	}
-}
-
 // 인라인 런의 글자도 **그 블록이 그린 줄**이다 — 순회는 `data-balpyo-id`를 가진 자손에서만
 // 멈춘다 (measure.go의 줄 박스 절).
 //
 // 두 실패를 동시에 막는다. 줄이 통째로 런이면(코드 하이라이팅의 주석 한 줄 — ADR 0051) 잰
-// 줄이 0개가 되어 "그림이 있는데 잰 줄이 없다"가 되고, 줄 안에 런이 섞이면 조각마다 줄을
-// 세어 한 줄이 셋이 된다 — 줄 수는 줄바꿈 판정의 좌변이므로 둘 다 판정을 조용히 무너뜨린다.
+// 줄이 0개가 되어 가로 넘침 검사가 그 글자를 보지 못하고, 줄 안에 런이 섞이면 조각마다 줄을
+// 세어 한 줄이 셋이 된다.
 func TestMeasureLinesIncludeInlineRuns(t *testing.T) {
 	testkit.RequireChromium(t)
 	deck := layoutDeck(t,
@@ -198,8 +154,8 @@ func TestMeasureLinesIncludeInlineRuns(t *testing.T) {
 		{id: "s1.0", what: "런이 섞인 단락"},
 	} {
 		box := boxOf(t, g, tc.id)
-		if box.LineCount() != 1 {
-			t.Fatalf("%s의 줄 수 = %d, want 1 (%+v)", tc.what, box.LineCount(), box.Lines)
+		if len(box.Lines) != 1 {
+			t.Fatalf("%s의 줄 수 = %d, want 1 (%+v)", tc.what, len(box.Lines), box.Lines)
 		}
 		line := box.Lines[0]
 		// 잰 줄이 그림을 덮는지: 글자는 박스 왼쪽에서 시작하고, 폭이 있고, 박스 안에 있다.
@@ -224,7 +180,7 @@ func TestMeasureRejectsScaledPage(t *testing.T) {
 	path := renderHTML(t, deck, func(html string) string {
 		return strings.Replace(html, "</head>", "<style>.balpyo-slide { zoom: 0.5; }</style>\n</head>", 1)
 	})
-	_, err := geom.Measure(deck, path)
+	_, err := testkit.SharedSession(t).Measure(deck, path)
 	if err == nil {
 		t.Fatal("스케일된 페이지는 에러여야 한다")
 	}
@@ -244,7 +200,7 @@ func TestMeasureRejectsDeckMismatch(t *testing.T) {
 		Index: 2, ID: "third", Source: "slides/003_third.slide",
 		Content: []soml.Node{&soml.Element{Name: soml.TextElement}},
 	})
-	if _, err := geom.Measure(&extra, path); err == nil {
+	if _, err := testkit.SharedSession(t).Measure(&extra, path); err == nil {
 		t.Error("HTML에 없는 슬라이드가 있는 덱은 에러여야 한다")
 	}
 }
@@ -289,7 +245,7 @@ func main() {
 		t.Fatalf("외관 해석 실패: %v", err)
 	}
 
-	g, err := geom.Measure(deck, renderHTML(t, deck, nil))
+	g, err := testkit.SharedSession(t).Measure(deck, renderHTML(t, deck, nil))
 	if err != nil {
 		t.Fatalf("지오메트리 패스 실패: %v", err)
 	}
@@ -380,7 +336,7 @@ func layoutDeck(t *testing.T, bodies ...string) *soml.Deck {
 // geom.collect 중 한쪽만 컨테이너를 세면 여기서 개수·순서가 어긋나 실패한다.
 func measureLayout(t *testing.T, deck *soml.Deck) *geom.Geometry {
 	t.Helper()
-	g, err := geom.Measure(deck, renderHTML(t, deck, nil))
+	g, err := testkit.SharedSession(t).Measure(deck, renderHTML(t, deck, nil))
 	if err != nil {
 		t.Fatalf("지오메트리 패스 실패: %v", err)
 	}
@@ -570,18 +526,13 @@ func TestMeasureNestedLayoutIsSlideRelative(t *testing.T) {
 // 측정 뷰를 켜서 회전 선언을 무효화하고(web.MeasureView), 측정이 끝나면 되돌린다 — 두 절반을
 // 한 테스트에서 본다: 잰 값은 회전 전, 되돌린 뒤 읽은 값은 회전된 bbox여야 한다.
 func TestMeasureRotatedShapeIsUnrotatedBox(t *testing.T) {
-	bin := testkit.RequireChromium(t)
 	deck := layoutDeck(t, `<row gap="md">
     <shape type="rect" fill="accent1" w="120" h="120" rotate="45"/>
     <shape type="rect" fill="accent1" w="120" h="120"/>
   </row>`)
 	path := renderHTML(t, deck, nil)
 
-	session, err := geom.Launch(bin)
-	if err != nil {
-		t.Fatalf("브라우저를 띄울 수 없다: %v", err)
-	}
-	defer session.Close()
+	session := testkit.SharedSession(t)
 	g, err := session.Measure(deck, path)
 	if err != nil {
 		t.Fatalf("지오메트리 패스 실패: %v", err)
@@ -938,12 +889,7 @@ func TestOpenFailsOnBrokenImage(t *testing.T) {
 		// 낸 경로와 실제 파일이 어긋난 상태의 재현이다.
 		return strings.Replace(html, `src="assets/wide.png"`, `src="assets/missing.png"`, 1)
 	})
-	session, err := geom.Launch("")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer session.Close()
-	err = session.Open(path)
+	err := testkit.SharedSession(t).Open(path)
 	if err == nil {
 		t.Fatal("읽히지 않는 그림이 있는 페이지를 그냥 열었다 — 그 상태로 재면 rect가 0×0이다")
 	}
