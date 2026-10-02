@@ -833,8 +833,7 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rel
 	}
 	// 인셋 0: 웹이 잰 rect는 border box이고 `.balpyo-text`는 padding·border가 0이므로
 	// 곧 콘텐츠 박스다 (render/web.contentCSS). OOXML 기본 인셋(좌우 91440, 상하 45720)을
-	// 그대로 두면 좌표는 맞는데 글자만 몇 px 밀리고, 그 오차는 픽셀 비교에서 원인 불명으로
-	// 나타난다. wrap="square"는 박스 폭 안에서 줄을 바꾸는 웹과 같은 결정이고, normAutofit은
+	// 그대로 두면 좌표는 맞는데 글자만 몇 px 밀린다. wrap="square"는 박스 폭 안에서 줄을 바꾸는 웹과 같은 결정이고, normAutofit은
 	// 박스 고정 + 넘치면 PowerPoint가 줄여 맞춤이다 (ADR 0064): 줄이 어디서 접히는지는 엔진의
 	// 몫이라 PowerPoint가 한 줄 더 접어도 글자는 잰 박스 안에 머물고, 저자가 PowerPoint에서
 	// 글을 고친 뒤에도 그렇다. pre만 wrap="none" + noAutofit이다: 웹이 줄바꿈하지 않기로

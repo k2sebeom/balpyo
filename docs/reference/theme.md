@@ -178,7 +178,7 @@ accent1, …)`). 그래서 **토큰 이름은 테마가 소유하는 어휘**다
 LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`에서 이 규칙이 눈에 보인다:
 **고정폭 라틴에는 고정폭 CJK `ea`가 필요하다**(`minimal`은 `Noto Sans Mono CJK KR`이다).
 비례폭 면을 적어 두면 코드 블록의 한글 주석 한 줄이 두 엔진에서 다른 폭으로 그려진다 (측정
-−7.9% → 짝을 맞춘 뒤 +0.6% — [알려진 차이](../guides/known-differences.md)).
+−7.9% → 짝을 맞춘 뒤 +0.6% — [계약 밖의 차이](../guides/known-differences.md)).
 
 ### 강조색 여섯의 규칙
 
