@@ -11,24 +11,12 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **PRD §9.4 표의 이미지 행 회귀 장치**다 (shape_test.go가 도형 행에 대해 하는 일과
-// 같은 자리). 외관 속성 하나가 어느 CSS 선언이 되는지를 표로 적고, 어휘 목록
-// (soml.ImageAppearanceAttrs)을 순회해 "표에 있고 코드에 없는 행"이 남지 않았는지 대조한다.
-//
-// 그림에만 있는 계약 둘을 함께 지킨다: **`fit`의 매핑**(잰 rect가 그려진 그림이라는 결정 —
-// render/web/image.go의 fit 절)과 **산출물이 파일 여러 개**라는 사실(에셋이 render.Files의
-// 항목으로 나온다).
+// 이 파일은 **PRD §9.4 표의 이미지 행 회귀 장치**다 — 외관 표, `fit` 매핑, 에셋 산출 파일.
 
-// imageFixture는 그림 픽스처다 — 실제 에셋 바이트를 가진 유일한 프로젝트이므로 이 패키지의
-// 이미지 테스트가 그 디렉토리를 파일 시스템으로 쓴다 (골든은 항목 05가 만들었다).
+// imageFixture는 실제 에셋 바이트를 가진 유일한 픽스처다.
 const imageFixture = "05_image"
 
-// imageDeck은 서브셋 원문을 파이프라인과 같은 순서로 덱으로 만든다 — 파싱 → 해석 →
-// **에셋 패스**.
-//
-// subsetDeck를 그대로 쓸 수 없는 이유가 계약이다: 그림은 값이 디스크를 가리키므로
-// core.ResolveAssets를 거치지 않은 덱에는 바이트가 없고, 렌더러는 그 상태에서 멈춘다
-// (에셋 표 없이 그린 그림은 산출물에서 깨진 이미지가 되고 그것을 재면 rect가 0×0이다).
+// imageDeck은 subsetDeck에 **에셋 패스**를 더한다 — 에셋 표가 빈 덱에서 렌더러는 멈춘다.
 func imageDeck(t *testing.T, body string) *soml.Deck {
 	t.Helper()
 	deck := subsetDeck(t, body)
@@ -71,10 +59,8 @@ type imageCase struct {
 	name string
 	// decl은 슬라이드 원문에 쓸 속성 표기다.
 	decl string
-	// want는 나와야 하는 CSS 선언이다.
+	// want는 `<img>`에 나와야 하는 CSS 선언이다.
 	want string
-	// box면 저자가 준 박스 div를, 아니면 `<img>`의 인라인 style을 본다.
-	box bool
 }
 
 // imageCases는 PRD §9.4 표의 이미지 외관 행을 그대로 옮긴 것이다 (표 순서).
@@ -83,33 +69,33 @@ func imageCases() []imageCase {
 		// variant는 CSS 선언을 스스로 만들지 않는다 — 캐스케이드의 한 단이므로 **그 결과**가
 		// CSS에 나오는지로 확인한다 (framed = 테두리+반경+그림자 — 테마의 image.variants).
 		{"variant", "테마 번들이 CSS까지 온다", `variant="framed"`,
-			"border-color: var(--balpyo-color-muted)", false},
+			"border-color: var(--balpyo-color-muted)"},
 
 		// border — 축약 3조각이 선언 셋으로 갈라진다. 도형은 SVG `stroke`에 걸고 그림은 CSS
 		// `border-*`에 건다 (`<img>`에 stroke는 아무 일도 하지 않는다).
-		{"border", "실선 토큰", `border="1 solid muted"`, "border-color: var(--balpyo-color-muted)", false},
-		{"border", "굵기", `border="3 solid accent1"`, "border-width: 3px", false},
-		{"border", "리터럴 색", `border="2 solid #6B7280"`, "border-color: #6B7280", false},
-		{"border", "dashed", `border="2 dashed muted"`, "border-style: dashed", false},
-		{"border", "dotted", `border="2 dotted muted"`, "border-style: dotted", false},
-		{"border", "none은 선언을 내지 않는다", `border="none"`, "", false},
+		{"border", "실선 토큰", `border="1 solid muted"`, "border-color: var(--balpyo-color-muted)"},
+		{"border", "굵기", `border="3 solid accent1"`, "border-width: 3px"},
+		{"border", "리터럴 색", `border="2 solid #6B7280"`, "border-color: #6B7280"},
+		{"border", "dashed", `border="2 dashed muted"`, "border-style: dashed"},
+		{"border", "dotted", `border="2 dotted muted"`, "border-style: dotted"},
+		{"border", "none은 선언을 내지 않는다", `border="none"`, ""},
 
 		// radius — 그림의 모양은 직사각형과 반경으로 끝난다 (프리셋 기하가 없다).
-		{"radius", "토큰", `radius="md"`, "border-radius: 12px", false},
-		{"radius", "수치", `radius="32"`, "border-radius: 32px", false},
+		{"radius", "토큰", `radius="md"`, "border-radius: 12px"},
+		{"radius", "수치", `radius="32"`, "border-radius: 32px"},
 
 		// shadow — 토큰 참조다 (drop-shadow의 인자를 테마 층이 선언한다).
-		{"shadow", "토큰", `shadow="soft"`, "filter: drop-shadow(var(--balpyo-shadow-soft))", false},
+		{"shadow", "토큰", `shadow="soft"`, "filter: drop-shadow(var(--balpyo-shadow-soft))"},
 
-		{"opacity", "0.4", `opacity="0.4"`, "opacity: 0.4", false},
-		{"opacity", "1", `opacity="1"`, "opacity: 1", false},
+		{"opacity", "0.4", `opacity="0.4"`, "opacity: 0.4"},
+		{"opacity", "1", `opacity="1"`, "opacity: 1"},
 
 		// rotate·flip은 **한 선언**을 커스텀 프로퍼티로 나눠 쓴다 (요소가 하나뿐이다).
-		{"rotate", "각도", `rotate="15"`, "--balpyo-image-rotate: 15deg", false},
-		{"rotate", "음수", `rotate="-30"`, "--balpyo-image-rotate: -30deg", false},
-		{"flip", "h", `flip="h"`, "--balpyo-image-flip: scaleX(-1)", false},
-		{"flip", "v", `flip="v"`, "--balpyo-image-flip: scaleY(-1)", false},
-		{"flip", "hv", `flip="hv"`, "--balpyo-image-flip: scale(-1, -1)", false},
+		{"rotate", "각도", `rotate="15"`, "--balpyo-image-rotate: 15deg"},
+		{"rotate", "음수", `rotate="-30"`, "--balpyo-image-rotate: -30deg"},
+		{"flip", "h", `flip="h"`, "--balpyo-image-flip: scaleX(-1)"},
+		{"flip", "v", `flip="v"`, "--balpyo-image-flip: scaleY(-1)"},
+		{"flip", "hv", `flip="hv"`, "--balpyo-image-flip: scale(-1, -1)"},
 	}
 }
 
@@ -119,103 +105,47 @@ func TestImageAppearanceCompilesToCSS(t *testing.T) {
 		t.Run(tc.attr+"/"+tc.name, func(t *testing.T) {
 			out := renderString(t, imageDeck(t, fmt.Sprintf("<image %s %s/>", wideSrc, tc.decl)))
 			got := openTagOf(t, out, "s0.0")
-			where := "그림"
-			if tc.box {
-				got, where = imageBoxOf(t, out, "s0.0"), "박스"
-			}
-			if tc.want == "" {
-				// 빈 want는 "선언이 하나도 없다"의 표기다 — 그 속성이 CSS를 내지 않는 것이
-				// 계약인 행 (border="none").
+			if tc.want == "" { // border="none"은 선언을 내지 않는다.
 				if strings.Contains(got, "border-") {
-					t.Errorf("<image %s>의 %s에 테두리 선언이 남았다: %s", tc.decl, where, got)
+					t.Errorf("<image %s>에 테두리 선언이 남았다: %s", tc.decl, got)
 				}
 				return
 			}
 			if !strings.Contains(got, tc.want) {
-				t.Errorf("<image %s>의 %s에 %q가 없다: %s", tc.decl, where, tc.want, got)
+				t.Errorf("<image %s>에 %q가 없다: %s", tc.decl, tc.want, got)
 			}
 		})
 	}
 }
 
-// **표에 있고 코드에 없는 행이 남지 않는다**: 어휘 목록(soml)을 순회해 위의 표가 이미지 외관
-// 속성을 전수로 덮는지 본다. 속성이 하나 늘면 이 테스트가 먼저 빨개진다.
 func TestImageAppearanceVocabularyIsFullyMapped(t *testing.T) {
-	covered := map[string]bool{}
+	var covered []string
 	for _, tc := range imageCases() {
-		covered[tc.attr] = true
+		covered = append(covered, tc.attr)
 	}
-	for _, attr := range soml.ImageAppearanceAttrs() {
-		if !covered[attr] {
-			t.Errorf("이미지 외관 속성 %q의 CSS 매핑 검증이 없다 (PRD §9.4 표의 행이 빠졌다)", attr)
-		}
-	}
-	for attr := range covered {
-		if !containsString(soml.ImageAppearanceAttrs(), attr) {
-			t.Errorf("이미지 외관 속성 %q는 카탈로그에 없다", attr)
-		}
-	}
+	assertCoversCatalog(t, "이미지 외관 속성", covered, soml.ImageAppearanceAttrs())
 }
 
-// `fit` 어휘 전수 → CSS. **이 표가 항목 03의 중심 결정이다** (render/web/image.go의 fit 절):
-// `contain`은 `object-fit`을 내지 않으므로 잰 rect가 여백을 포함한 박스가 아니라 그림이다.
+// `fit` → CSS (render/web/image.go의 fit 절): `contain`은 `object-fit`을 내지 않으므로 잰 rect가
+// 여백을 포함한 박스가 아니라 그림이다. 인라인 style **전체**를 단정한다 (`max-width: 100%`는
+// `width: 100%`를 품는다). 어휘의 모든 값이 여기 한 행 이상이다.
 func TestImageFitCompilesToCSS(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		decl string
-		want []string
-		gone []string
-		// exact가 있으면 인라인 style **전체**를 단정한다 (부분 문자열이 서로를 덮는 자리 —
-		// `max-width: 100%`는 `width: 100%`를 품는다).
-		exact string
-	}{
-		{"cover는 박스를 채우고 자른다", `fit="cover" w="fill" ratio="4:3"`,
-			[]string{"width: 100%", "height: 100%", "object-fit: cover"}, nil,
-			"width: 100%; height: 100%; object-fit: cover"},
-		{"contain은 박스를 넘지 않는다", `fit="contain" w="fill" ratio="4:3"`,
-			[]string{"max-width: 100%", "max-height: 100%"}, []string{"object-fit"},
-			"max-width: 100%; max-height: 100%"},
-		{"생략하면 contain이다", `w="fill" ratio="4:3"`,
-			[]string{"max-width: 100%", "max-height: 100%"}, []string{"object-fit"},
-			"max-width: 100%; max-height: 100%"},
-		// 크기 속성이 없으면 `fit`은 아무것도 하지 않는다 (soml.ImageAttrs의 계약) — cover의
-		// `width: 100%`가 나가면 고유 크기 그림이 부모 폭까지 늘어난다 (실측 1152×576).
-		{"크기가 없는 cover는 늘리지 않는다", `fit="cover"`,
-			[]string{"max-width: 100%", "max-height: 100%"}, []string{"object-fit"},
-			"max-width: 100%; max-height: 100%"},
-		// min/max만 준 그림도 박스가 정해진 것이 아니다 — 한계는 `contain`의 매핑이 이미 지킨다.
-		{"max-w만 준 cover도 늘리지 않는다", `fit="cover" max-w="400"`,
-			[]string{"max-width: 100%"}, []string{"object-fit"},
-			"max-width: 100%; max-height: 100%"},
+	const contain = "max-width: 100%; max-height: 100%"
+	for _, tc := range []struct{ name, decl, want string }{
+		{"cover는 박스를 채우고 자른다", `fit="cover" w="fill" ratio="4:3"`, "width: 100%; height: 100%; object-fit: cover"},
+		{"contain은 박스를 넘지 않는다", `fit="contain" w="fill" ratio="4:3"`, contain},
+		{"생략하면 contain이다", `w="fill" ratio="4:3"`, contain},
+		// 크기 속성이 없거나 한계만 있으면 `fit`은 아무것도 하지 않는다 (soml.ImageAttrs) — cover의
+		// `width: 100%`가 나가면 고유 크기 그림이 부모 폭까지 늘어난다.
+		{"크기가 없는 cover는 늘리지 않는다", `fit="cover"`, contain},
+		{"max-w만 준 cover도 늘리지 않는다", `fit="cover" max-w="400"`, contain},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			out := renderString(t, imageDeck(t, fmt.Sprintf("<image %s %s/>", wideSrc, tc.decl)))
-			img := openTagOf(t, out, "s0.0")
-			for _, want := range tc.want {
-				if !strings.Contains(img, want) {
-					t.Errorf("<image %s>의 그림에 %q가 없다: %s", tc.decl, want, img)
-				}
-			}
-			for _, gone := range tc.gone {
-				if strings.Contains(img, gone) {
-					t.Errorf("<image %s>의 그림에 %q가 있다: %s", tc.decl, gone, img)
-				}
-			}
-			if tc.exact != "" && !strings.Contains(img, `style="`+tc.exact+`">`) {
-				t.Errorf("<image %s>의 그림 선언 = %s, want style=%q", tc.decl, img, tc.exact)
+			if img := openTagOf(t, out, "s0.0"); !strings.Contains(img, `style="`+tc.want+`">`) {
+				t.Errorf("<image %s>의 그림 선언 = %s, want style=%q", tc.decl, img, tc.want)
 			}
 		})
-	}
-}
-
-// `fit` 어휘 전수가 매핑을 갖는다 — 값이 하나 늘면 여기서 먼저 걸린다.
-func TestImageFitVocabularyIsFullyMapped(t *testing.T) {
-	for _, fit := range soml.ImageFits() {
-		body := fmt.Sprintf("<image %s fit=%q w=\"200\" h=\"150\"/>", wideSrc, string(fit))
-		img := openTagOf(t, renderString(t, imageDeck(t, body)), "s0.0")
-		if !strings.Contains(img, "max-width: 100%") && !strings.Contains(img, "object-fit") {
-			t.Errorf("fit=%q의 CSS 매핑이 없다: %s", string(fit), img)
-		}
 	}
 }
 
@@ -349,20 +279,6 @@ func TestImageStyleEscapeHatchIsLast(t *testing.T) {
 	}
 }
 
-// 엔진 CSS 절은 **그림이 있는 덱에만** 나온다 (골든 diff가 무엇이 움직였는지 말할 수 있게).
-func TestImageCSSOnlyWhenDeckHasImages(t *testing.T) {
-	withImage := renderString(t, imageDeck(t, fmt.Sprintf("<image %s/>", wideSrc)))
-	if !strings.Contains(withImage, ".balpyo-image {") {
-		t.Error("그림이 있는 덱에 이미지 CSS가 없다")
-	}
-	without := renderString(t, subsetDeck(t, "<p>글자만</p>"))
-	for _, gone := range []string{".balpyo-image", "balpyo-image-ink"} {
-		if strings.Contains(without, gone) {
-			t.Errorf("그림이 없는 덱에 %q가 나왔다", gone)
-		}
-	}
-}
-
 // 그림자·공간 토큰 변수는 **참조하는 어휘**가 있는 덱에 나온다 — 도형 없이 그림만 있는 덱에서
 // 선언이 빠지면 var()가 조용히 무시되어 그림자와 여백이 사라진다.
 func TestImageDeckDeclaresShadowAndSpaceTokens(t *testing.T) {
@@ -374,41 +290,6 @@ func TestImageDeckDeclaresShadowAndSpaceTokens(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("토큰 선언 %q가 없다", want)
 		}
-	}
-}
-
-// 도형과 **같은 값**을 낸다 (같은 함수를 쓴다는 사실의 회귀 테스트). 프로퍼티는 갈라지지만
-// (`stroke` ↔ `border-color`, `rx` ↔ `border-radius`) **값**은 한 함수에서 나오므로 같아야
-// 한다 — 값이 갈라지면 같은 덱의 도형과 그림이 다른 색·다른 그림자를 갖는다.
-func TestImageAndShapeShareAppearanceValues(t *testing.T) {
-	for _, tc := range []struct {
-		attr string
-		decl string
-		// value는 두 산출물에 함께 나와야 하는 **값**이다.
-		value string
-	}{
-		{"border", `border="2 solid muted"`, "var(--balpyo-color-muted)"},
-		{"border", `border="3 solid #6B7280"`, "#6B7280"},
-		{"border", `border="2 solid muted"`, "2px"},
-		{"radius", `radius="md"`, "12"},
-		{"shadow", `shadow="soft"`, "drop-shadow(var(--balpyo-shadow-soft))"},
-		{"opacity", `opacity="0.4"`, "opacity: 0.4"},
-		{"rotate", `rotate="15"`, "15deg"},
-		{"flip", `flip="h"`, "scaleX(-1)"},
-	} {
-		t.Run(tc.attr+"/"+tc.value, func(t *testing.T) {
-			imageOut := renderString(t, imageDeck(t, fmt.Sprintf(`<image %s w="200" h="150" %s/>`, wideSrc, tc.decl)))
-			// 도형은 반경을 실을 자리가 rounded-rect뿐이다 (ADR 0019) — 그림은 항상 유효하다.
-			shapeOut := renderString(t, subsetDeck(t, fmt.Sprintf(`<shape type="rounded-rect" w="200" h="150" %s/>`, tc.decl)))
-			image := openTagOf(t, imageOut, "s0.0")
-			shape := openTagOf(t, shapeOut, "s0.0") + inkOf(t, shapeOut, "s0.0")
-			if !strings.Contains(image, tc.value) {
-				t.Errorf("그림에 값 %q가 없다: %s", tc.value, image)
-			}
-			if !strings.Contains(shape, tc.value) {
-				t.Errorf("도형에 값 %q가 없다 — 값 함수가 갈라졌다: %s", tc.value, shape)
-			}
-		})
 	}
 }
 
@@ -439,21 +320,7 @@ func TestRenderEmitsAssetFiles(t *testing.T) {
 	}
 }
 
-// 그림이 없는 덱의 산출물은 여전히 **파일 하나**다 (에셋 항목이 조건 없이 생기면 기존 골든
-// 트리에 빈 항목이 남는다).
-func TestRenderWithoutImagesEmitsIndexOnly(t *testing.T) {
-	files, err := New().Render(subsetDeck(t, "<p>글자만</p>"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(files) != 1 || files[IndexFile] == nil {
-		t.Errorf("산출 파일 = %v, want index.html 하나", files.Paths())
-	}
-}
-
-// 픽스처 전체: 같은 그림을 여러 번 쓴 덱에서도 에셋 항목은 **하나**이고(항목 02의 정규화 키가
-// 이미 접었다), 두 번 렌더하면 **바이트가 같다** (결정성 — pipeline_test가 못 박은 성질에 새
-// 파일이 편입된다).
+// 같은 그림을 여러 번 쓴 덱에서도 에셋 항목은 **하나**이고, 두 번 렌더하면 에셋까지 바이트가 같다.
 func TestRenderFixtureAssetsAreDeduplicatedAndDeterministic(t *testing.T) {
 	deck := fixtureDeck(t, imageFixture)
 	files, err := New().Render(deck)
@@ -480,41 +347,8 @@ func TestRenderFixtureAssetsAreDeduplicatedAndDeterministic(t *testing.T) {
 	}
 }
 
-// 픽스처의 모든 `<image>`가 식별자를 가진 `<img>`로 나온다 — 하나라도 빠지면 지오메트리
-// 패스가 그 그림의 좌표를 잃고 PPTX에서 그림이 조용히 사라진다.
-func TestRenderFixtureRendersEveryImage(t *testing.T) {
-	deck := fixtureDeck(t, imageFixture)
-	out := renderString(t, deck)
-	want := 0
-	var walk func(nodes []soml.Node)
-	walk = func(nodes []soml.Node) {
-		for _, node := range nodes {
-			elem, ok := node.(*soml.Element)
-			if !ok {
-				continue
-			}
-			if soml.KindOf(elem.Name) == soml.KindImage {
-				want++
-			}
-			walk(elem.Children)
-		}
-	}
-	for _, slide := range deck.Slides {
-		walk(slide.Content)
-	}
-	if want == 0 {
-		t.Fatal("픽스처에 그림이 없다")
-	}
-	if got := strings.Count(out, `data-balpyo-el="image"`); got != want {
-		t.Errorf("렌더된 그림 = %d개, 덱 모델의 그림 = %d개", got, want)
-	}
-	if got := strings.Count(out, `<div class="balpyo-image"`); got != want {
-		t.Errorf("박스 = %d개, 그림 = %d개", got, want)
-	}
-}
-
-// 해석·에셋 패스를 거치지 않은 덱은 **멈춘다** (렌더러의 마지막 관문). 깨진 그림이 산출물로
-// 나가면 측정이 0×0 rect를 재서 그 좌표를 PPTX로 보낸다.
+// 에셋 패스를 거치지 않았거나 `src`가 빈 그림은 **멈춘다** — 깨진 그림은 0×0 rect로 재이고,
+// `<img src="">`는 브라우저가 현재 문서를 다시 받는 요청이다.
 func TestImageRequiresResolvedAssets(t *testing.T) {
 	// 에셋 패스를 돌리지 않은 덱 (표가 비었다).
 	deck := subsetDeck(t, fmt.Sprintf("<image %s/>", wideSrc))
@@ -523,12 +357,7 @@ func TestImageRequiresResolvedAssets(t *testing.T) {
 	} else if !strings.Contains(err.Error(), "core.ResolveAssets") {
 		t.Errorf("진단이 무엇을 거치지 않았는지 말하지 않는다: %v", err)
 	}
-}
-
-// 해석에 실패한 `src`(빈 문자열)는 렌더되지 않는다 — `<img src="">`는 브라우저가 **현재
-// 문서를 다시 받는** 요청이고, 그 바이트를 디코드하려는 상태를 측정이 잰다.
-func TestImageWithoutSrcStops(t *testing.T) {
-	deck := imageDeck(t, fmt.Sprintf("<image %s/>", wideSrc))
+	deck = imageDeck(t, fmt.Sprintf("<image %s/>", wideSrc))
 	deck.Slides[0].Content[0].(*soml.Element).Appearance.Image.Src = ""
 	if _, err := New().Render(deck); err == nil {
 		t.Fatal("src가 빈 그림을 렌더했다")

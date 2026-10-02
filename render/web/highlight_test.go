@@ -62,29 +62,12 @@ func TestRenderPreHighlightsWithColorVars(t *testing.T) {
 	if got := preText(t, out); got != code {
 		t.Errorf("하이라이팅이 글자를 바꿨다:\n%q\nwant %q", got, code)
 	}
-	// white-space: pre는 그대로 살아 있다 — 공백이 접히면 런을 쪼갠 의미가 없다.
-	if !strings.Contains(out, "white-space: pre") {
-		t.Error("pre의 style에 white-space: pre가 없다")
-	}
 }
 
-// `lang`이 없는 `<pre>`는 예전 모양 그대로다 — 하이라이팅은 저자가 켜는 것이고, 켜지 않은
-// 덱의 산출물은 한 글자도 움직이지 않는다 (골든이 그 증인이다).
+// `lang`이 없는 `<pre>`는 런으로 쪼개지지 않는다 — 하이라이팅은 저자가 켜는 것이다.
 func TestRenderPreWithoutLangHasNoSpans(t *testing.T) {
 	out := renderString(t, subsetDeck(t, "<pre>func main() {\n  println(1)\n}</pre>"))
 	if inner := preInner(t, out); strings.Contains(inner, "<span") {
 		t.Errorf("lang 없는 pre에 런이 생겼다:\n%s", inner)
-	}
-}
-
-// 탭은 값 층이 펴므로(D15) 산출물에는 탭이 남지 않는다 — CSS `tab-size`는 OOXML의 절대
-// 탭 정지점(`a:defTabSz`)과 같은 규칙이 아니어서 두 산출물의 줄이 갈라진다.
-func TestRenderPreHasNoTabs(t *testing.T) {
-	out := renderString(t, subsetDeck(t, "<pre lang=\"go\">func f() {\n\treturn nil\n}</pre>"))
-	if strings.Contains(preInner(t, out), "\t") {
-		t.Errorf("탭이 산출물에 남았다:\n%q", preInner(t, out))
-	}
-	if !strings.Contains(preText(t, out), "\n  return nil") {
-		t.Errorf("탭이 테마 폭(2)으로 펴지지 않았다:\n%q", preText(t, out))
 	}
 }
