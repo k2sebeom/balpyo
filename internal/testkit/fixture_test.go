@@ -5,12 +5,23 @@ import (
 	"testing"
 )
 
-// TestFixtures는 픽스처 스위트다 — 모든 반복(iteration)이 여기에 픽스처를 더한다.
+// TestFixtures는 픽스처 스위트다 — 픽스처마다: 빌드 → 골든 비교(layout.txt · diagnostics.txt) →
+// 동일성 판정(웹 트리 == PPTX 트리) → 패키지 불변식 → 두 번째 빌드와 같은 바이트.
 //
-// 픽스처마다: 빌드 → 골든 비교(layout.txt · diagnostics.txt) → 동일성 판정 → 패키지 불변식 →
-// 렌더 비교. `make review`는 같은 테스트를 리뷰 모드로 돌려 갤러리를 남긴다.
+// 픽스처를 병렬로 돌리지 않는다 — 빌드마다 브라우저를 띄우므로 병렬은 CI 메모리를 먹는다.
 func TestFixtures(t *testing.T) {
-	NewSuite(t).Run(t)
+	for _, fixture := range Fixtures(t) {
+		t.Run(fixture.Name, func(t *testing.T) {
+			// 브라우저가 없는 호스트에서는 Build가 먼저 건너뛴다 (Fixture.Build).
+			result := fixture.Build(t)
+			fixture.AssertGolden(t, result)
+			t.Run("parity", func(t *testing.T) { fixture.AssertParity(t, result) })
+			t.Run("package", func(t *testing.T) {
+				fixture.AssertPackage(t, result)
+				fixture.AssertSameBytes(t, result, fixture.Build(t))
+			})
+		})
+	}
 }
 
 func TestFixturesAreDiscovered(t *testing.T) {
@@ -57,4 +68,23 @@ func TestFixtureGoldenTreeShape(t *testing.T) {
 			t.Errorf("골든에 산출물 스냅샷이 있다: %s", name)
 		}
 	}
+}
+
+// fixtureByName은 픽스처 러너와 같은 수집 경로로 픽스처를 집는다 — 경로를 직접 조립하면
+// 러너가 못 보는 픽스처를 여기만 보는 상태가 생길 수 있다.
+func fixtureByName(t *testing.T, name string) Fixture {
+	t.Helper()
+	for _, fixture := range Fixtures(t) {
+		if fixture.Name == name {
+			return fixture
+		}
+	}
+	t.Fatalf("픽스처 %s가 수집되지 않았다", name)
+	return Fixture{}
+}
+
+// textFixture는 01_text다 (뷰어 런타임 검사들이 쓴다).
+func textFixture(t *testing.T) Fixture {
+	t.Helper()
+	return fixtureByName(t, "01_text")
 }

@@ -1,7 +1,9 @@
 package testkit
 
 import (
+	"bytes"
 	"image"
+	"image/png"
 	"os"
 	"path/filepath"
 	"testing"
@@ -69,7 +71,7 @@ func (b *Browser) ScreenshotElement(t testing.TB, selector string) image.Image {
 	if err != nil {
 		t.Fatalf("%s: %v", selector, err)
 	}
-	img, err := DecodePNG(buf)
+	img, err := png.Decode(bytes.NewReader(buf))
 	if err != nil {
 		t.Fatalf("%s: %v", selector, err)
 	}
