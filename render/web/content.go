@@ -554,6 +554,16 @@ func contentCSS(feat features) string {
     gap: %dpx;
   }
 
+  /* 한국어는 어절에서 접는다 — 글자 사이에서 접는 브라우저 기본은 한국어 조판 관행이 아니다.
+     PPTX와 맞추려는 것이 아니다 (줄바꿈 위치는 계약 밖이다 — ADR 0064). overflow-wrap:
+     anywhere는 좁은 칸에서 한 어절이 칸보다 길 때만 그 어절을 자른다 — keep-all만 두면 그
+     어절이 칸을 넘친다. 중국어·일본어는 띄어쓰기가 없어 keep-all이 줄바꿈을 막으므로
+     lang이 ko일 때만이다. */
+  .balpyo-stage:lang(ko) {
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
   /* 텍스트 블록은 콘텐츠 폭 전체를 갖는다 — 줄바꿈 폭이 확정되어야 브라우저가 잰 박스가
      PPTX 텍스트 박스로 그대로 간다. flex: 0 0 auto는 스택이 스테이지보다 길 때 박스가
      눌리는 것을 막는다 (기본 정책은 박스 고정 + 오버플로 허용 — PRD §13-1). */
