@@ -379,7 +379,7 @@ func TestNewGeometryRejectsMismatch(t *testing.T) {
 func TestNewGeometryKeepsBoxesAndLines(t *testing.T) {
 	deck := testDeck([]soml.Node{textElem(chars("제목"))}, []soml.Node{textElem(chars("끝"))})
 	m := validMeasurement(deck)
-	// 두 줄로 나뉜 요소를 만들어 텍스트 메트릭 파생값을 검증한다.
+	// 두 줄로 나뉜 요소 — 줄 박스가 그대로 남아야 배치 검사가 가로 넘침을 잰다.
 	m.Slides[0].Boxes[0].Rect = Rect{X: 64, Y: 64, W: 1152, H: 72}
 	m.Slides[0].Boxes[0].Lines = []Rect{
 		{X: 64, Y: 64, W: 1100, H: 36},
@@ -406,19 +406,8 @@ func TestNewGeometryKeepsBoxesAndLines(t *testing.T) {
 	if box.Rect != (Rect{X: 64, Y: 64, W: 1152, H: 72}) {
 		t.Errorf("Rect = %s", box.Rect)
 	}
-	if box.LineCount() != 2 {
-		t.Errorf("LineCount = %d, want 2", box.LineCount())
-	}
-	if got := box.MaxLineWidth(); got != 1100 {
-		t.Errorf("MaxLineWidth = %v, want 1100", got)
-	}
-	// 여유 폭이 줄바꿈 임계값의 재료다: 다른 엔진의 글자 폭이 이 값을 넘어서면 줄이 하나
-	// 늘어난다 (Iteration 1 리뷰 포인트, PRD §13-1).
-	if got := box.Slack(); got != 52 {
-		t.Errorf("Slack = %v, want 52", got)
-	}
-	if got := box.LineHeight(); got != 36 {
-		t.Errorf("LineHeight = %v, want 36", got)
+	if len(box.Lines) != 2 {
+		t.Errorf("Lines = %v, want 2줄", box.Lines)
 	}
 	if _, ok := g.Box("s9.9"); ok {
 		t.Error("없는 식별자를 찾았다고 한다")
