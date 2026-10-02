@@ -35,93 +35,81 @@ func textElem(children ...soml.Node) *soml.Element {
 // chars는 문자 데이터 노드다.
 func chars(s string) *soml.Text { return &soml.Text{Value: s} }
 
-// 측정 대상은 블록 종류(soml.KindOf의 카탈로그: text·블록·리스트 컨테이너·li)뿐이다.
-// 인라인·void는 건너뛴다 — 여러 줄에 걸친 인라인의 rect는 뜻이 없고, PPTX에서 인라인은
-// 박스가 아니라 런이다. 웹 렌더러가 같은 카탈로그로 식별자를 붙이므로(render/web) 이
-// 대칭이 깨지면 Refs ↔ querySelectorAll 자리 맞대기가 런타임에 실패한다.
-func TestRefsSkipInlineElements(t *testing.T) {
-	p := &soml.Element{Name: "p", Children: []soml.Node{
-		chars("배포 "),
-		&soml.Element{Name: "strong", Children: []soml.Node{
-			chars("자동"),
-			&soml.Element{Name: "em", Children: []soml.Node{chars("화")}},
-		}},
-		&soml.Element{Name: "br"},
-		&soml.Element{Name: "a", Children: []soml.Node{chars("링크")}},
-	}}
-	ul := &soml.Element{Name: "ul", Children: []soml.Node{
-		&soml.Element{Name: "li", Children: []soml.Node{
-			chars("항목 "),
-			&soml.Element{Name: "code", Children: []soml.Node{chars("otel")}},
-		}},
-		&soml.Element{Name: "li", Children: []soml.Node{chars("둘째")}},
-	}}
-	refs := Refs(testDeck([]soml.Node{p, ul}))
-
-	var ids, els []string
-	for _, ref := range refs {
-		ids = append(ids, ref.ID)
-		els = append(els, ref.El)
-	}
-	if want := "s0.0,s0.1,s0.1.0,s0.1.1"; strings.Join(ids, ",") != want {
-		t.Errorf("Refs = %v, want %s", ids, want)
-	}
-	if want := "p,ul,li,li"; strings.Join(els, ",") != want {
-		t.Errorf("El = %v, want %s", els, want)
+// shapeElem은 rect 도형이다.
+func shapeElem(attrs []soml.Attr, children ...soml.Node) *soml.Element {
+	return &soml.Element{
+		Name:     soml.ShapeElement,
+		Attrs:    append([]soml.Attr{{Name: "type", Value: "rect", HasValue: true}}, attrs...),
+		Children: children,
 	}
 }
 
-// 식별자는 덱 모델의 슬라이스 인덱스에서 나온다 — 렌더 결과를 파싱하지 않고 만들 수 있어야
-// 지오메트리 패스가 rect를 요소에 붙일 수 있다 (render/web 패키지 주석의 계약).
-func TestRefsFollowDeckStructure(t *testing.T) {
+func refIDs(refs []Ref) string {
+	var got []string
+	for _, ref := range refs {
+		got = append(got, ref.ID+"/"+ref.El)
+	}
+	return strings.Join(got, ",")
+}
+
+// 식별자는 덱 모델의 슬라이스 인덱스에서 나온다 (렌더 결과를 파싱하지 않는다). 측정 대상은
+// 블록 종류·도형과 그 안 텍스트이고, 인라인·void는 건너뛴다 — PPTX에서 인라인은 박스가 아니라 런이다.
+func TestRefs(t *testing.T) {
 	tests := []struct {
 		name string
 		deck *soml.Deck
-		want []string
+		want string
 	}{
+		{"콘텐츠가 없는 덱", testDeck(nil, nil), ""},
 		{
-			name: "콘텐츠가 없는 덱은 측정할 것이 없다",
-			deck: testDeck(nil, nil),
-			want: nil,
+			"슬라이드마다 자식 인덱스를 0부터 센다",
+			testDeck([]soml.Node{textElem(chars("a")), textElem(chars("b"))}, []soml.Node{textElem()}),
+			"s0.0/text,s0.1/text,s1.0/text",
 		},
 		{
-			name: "슬라이드마다 자식 인덱스를 0부터 센다",
-			deck: testDeck(
-				[]soml.Node{textElem(chars("a")), textElem(chars("b"))},
-				[]soml.Node{textElem()},
-			),
-			want: []string{"s0.0", "s0.1", "s1.0"},
+			"문자 노드도 자식 인덱스를 차지한다",
+			testDeck([]soml.Node{textElem(chars("앞"), textElem(chars("안")))}),
+			"s0.0/text,s0.0.1/text",
 		},
 		{
-			name: "문자 노드도 자식 인덱스를 차지한다",
-			deck: testDeck([]soml.Node{textElem(chars("앞"), textElem(chars("안")))}),
-			want: []string{"s0.0", "s0.0.1"},
+			"인라인·void는 건너뛴다",
+			testDeck([]soml.Node{
+				&soml.Element{Name: "p", Children: []soml.Node{
+					chars("배포 "),
+					&soml.Element{Name: "strong", Children: []soml.Node{
+						chars("자동"), &soml.Element{Name: "em", Children: []soml.Node{chars("화")}},
+					}},
+					&soml.Element{Name: "br"},
+				}},
+				&soml.Element{Name: "ul", Children: []soml.Node{
+					&soml.Element{Name: "li", Children: []soml.Node{
+						chars("항목 "), &soml.Element{Name: "code", Children: []soml.Node{chars("otel")}},
+					}},
+					&soml.Element{Name: "li", Children: []soml.Node{chars("둘째")}},
+				}},
+			}),
+			"s0.0/p,s0.1/ul,s0.1.0/li,s0.1.1/li",
+		},
+		{
+			"도형과 도형 안 텍스트는 둘 다 잰다",
+			testDeck([]soml.Node{shapeElem(nil, textElem(chars("머리")), textElem(chars("본문"))), shapeElem(nil)}),
+			"s0.0/shape,s0.0.0/text,s0.0.1/text,s0.1/shape",
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			refs := Refs(tc.deck)
-			var got []string
-			for _, ref := range refs {
-				got = append(got, ref.ID)
-			}
-			if strings.Join(got, ",") != strings.Join(tc.want, ",") {
-				t.Fatalf("Refs = %v, want %v", got, tc.want)
-			}
-			for _, ref := range refs {
-				if ref.El != soml.TextElement {
-					t.Errorf("%s의 El = %q, want %q", ref.ID, ref.El, soml.TextElement)
-				}
+			if got := refIDs(Refs(tc.deck)); got != tc.want {
+				t.Errorf("Refs = %s, want %s", got, tc.want)
 			}
 		})
 	}
 }
 
-// 지오메트리 패스가 만든 식별자와 웹 렌더러가 쓴 식별자가 갈라지면 좌표가 엉뚱한 요소에
-// 붙는다. 브라우저 없이도 잡힌다 — HTML에서 순서대로 뽑아 Refs와 대조한다.
+// 웹 렌더러가 쓴 식별자와 Refs가 갈라지면 좌표가 엉뚱한 요소에 붙는다 — 브라우저 없이 HTML에서
+// 순서대로 뽑아 대조한다 (도형의 svg는 식별자를 갖지 않는다).
 func TestRefsMatchRenderedHTML(t *testing.T) {
 	deck := testDeck(
-		[]soml.Node{textElem(chars("제목")), textElem(chars("본문"))},
+		[]soml.Node{textElem(chars("제목")), shapeElem(nil, textElem(chars("머리"))), shapeElem(nil)},
 		[]soml.Node{textElem(chars("끝"))},
 	)
 	if diags := core.Resolve(deck, nil); len(diags) > 0 {
@@ -131,14 +119,11 @@ func TestRefsMatchRenderedHTML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	html := string(files[web.IndexFile])
-
 	pattern := regexp.MustCompile(regexp.QuoteMeta(web.IDAttr) + `="([^"]+)"`)
-	var rendered []string
-	for _, m := range pattern.FindAllStringSubmatch(html, -1) {
+	var rendered, want []string
+	for _, m := range pattern.FindAllStringSubmatch(string(files[web.IndexFile]), -1) {
 		rendered = append(rendered, m[1])
 	}
-	var want []string
 	for _, ref := range Refs(deck) {
 		want = append(want, ref.ID)
 	}
@@ -147,61 +132,10 @@ func TestRefsMatchRenderedHTML(t *testing.T) {
 	}
 }
 
-// **도형과 도형 안 텍스트는 둘 다 잰다** — `<shape>`는 재는 것과 도형이 되는 것이 처음
-// 일치하는 종류이고(잰 rect가 곧 `xfrm`), 도형 안 텍스트는 재지만 PPTX가 소비하지 않는다
-// (`<li>`와 같은 처지 — 같은 도형의 `txBody` 문단이 된다). 웹 렌더러가 같은 카탈로그로
-// 식별자를 붙이므로 두 목록의 자리가 맞는다 (아래 HTML 대조가 그 절반이다).
-func TestRefsCollectShapesAndTheirText(t *testing.T) {
-	shape := func(children ...soml.Node) *soml.Element {
-		return &soml.Element{
-			Name:     soml.ShapeElement,
-			Attrs:    []soml.Attr{{Name: "type", Value: "rect", HasValue: true}},
-			Children: children,
-		}
-	}
-	deck := testDeck([]soml.Node{
-		shape(textElem(chars("머리")), textElem(chars("본문"))),
-		shape(),
-	})
-	if diags := core.Resolve(deck, nil); len(diags) > 0 {
-		t.Fatalf("외관 해석 진단: %v", diags)
-	}
-	var got []string
-	for _, ref := range Refs(deck) {
-		got = append(got, ref.ID+"/"+ref.El)
-	}
-	want := []string{"s0.0/shape", "s0.0.0/text", "s0.0.1/text", "s0.1/shape"}
-	if strings.Join(got, ",") != strings.Join(want, ",") {
-		t.Errorf("Refs = %v, want %v", got, want)
-	}
-
-	// 웹 렌더러가 낸 식별자와 순서가 같아야 자리 맞대기가 성립한다 — 그림 svg는 식별자를
-	// 갖지 않으므로 목록에 끼어들지 않는다.
-	files, err := web.New().Render(deck)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pattern := regexp.MustCompile(regexp.QuoteMeta(web.IDAttr) + `="([^"]+)"`)
-	var rendered []string
-	for _, m := range pattern.FindAllStringSubmatch(string(files[web.IndexFile]), -1) {
-		rendered = append(rendered, m[1])
-	}
-	if want := []string{"s0.0", "s0.0.0", "s0.0.1", "s0.1"}; strings.Join(rendered, ",") != strings.Join(want, ",") {
-		t.Errorf("HTML의 식별자 = %v, want %v", rendered, want)
-	}
-}
-
-// Ref는 좌표 말고 **배치 문맥**도 나른다 (Parent·Free·Overlap) — 배치 진단이 "이 이탈·겹침이
-// 저자의 선택인가"를 물을 때 쓰는 사실이다 (layout.go, ADR 0039). 순회가 이미 덱을 걷고 있으므로
-// 그 문맥은 여기서 나오는 것이 맞다: 진단이 덱을 한 번 더 걸으면 두 순회가 갈라질 수 있다.
+// Ref는 배치 문맥(Parent·Free·Overlap)도 나른다 — 진단이 "이 이탈·겹침이 저자의 선택인가"를
+// 묻는 사실이다. 진단이 덱을 따로 걸으면 두 순회가 갈라질 수 있다.
 func TestRefsCarryPlacementFacts(t *testing.T) {
-	shape := func(attrs []soml.Attr, children ...soml.Node) *soml.Element {
-		return &soml.Element{
-			Name:     soml.ShapeElement,
-			Attrs:    append([]soml.Attr{{Name: "type", Value: "rect", HasValue: true}}, attrs...),
-			Children: children,
-		}
-	}
+	shape := shapeElem
 	// 첫 장: `<stack>`의 자식 둘 — 하나는 그냥 쌓이고 하나는 좌표로 비켜 앉는다.
 	// 둘째 장: canvas 스테이지 — 직계 자식 전부가 좌표를 쓰는 자리다.
 	deck := testDeck(
@@ -250,9 +184,7 @@ func TestRefsCarryPlacementFacts(t *testing.T) {
 	}
 }
 
-// 측정 스크립트는 **측정 뷰를 켜고 재고 되돌린다** — 회전 도형의 rect가 회전 전 박스여야
-// 하기 때문이다 (web.MeasureView). 표현식을 리터럴로 쓰지 않는 계약(양쪽이 같은 문자열)과
-// 순서(켜기 → 읽기 → finally 되돌리기)를 브라우저 없이 확인한다.
+// 측정 스크립트는 측정 뷰를 켜고(회전 전 박스) 재고 finally에서 되돌린다 (web.MeasureView).
 func TestMeasureExprTogglesMeasureView(t *testing.T) {
 	expr := measureExpr()
 	set, reset := strings.Index(expr, web.MeasureViewExpr()), strings.Index(expr, web.DocumentViewExpr())
@@ -263,8 +195,6 @@ func TestMeasureExprTogglesMeasureView(t *testing.T) {
 	if !(set < read && read < reset) {
 		t.Errorf("순서가 어긋난다 — 켜기 %d, 읽기 %d, 되돌리기 %d", set, read, reset)
 	}
-	// 되돌리기는 예외가 나도 실행되어야 한다 — 페이지가 측정 상태로 남으면 그 뒤의
-	// 스크린샷이 회전 없는 그림을 찍는다.
 	if at := strings.Index(expr, "} finally {"); at < 0 || at > reset {
 		t.Errorf("되돌리기가 finally 안에 없다:\n%s", expr)
 	}
@@ -296,8 +226,7 @@ func validMeasurement(deck *soml.Deck) measurement {
 	return m
 }
 
-// 브라우저가 읽은 것과 덱 모델이 어긋나면 조용히 넘기지 않는다 — 좌표가 엉뚱한 요소에 붙은
-// PPTX는 열어 보기 전까지 정상으로 보인다.
+// 브라우저가 읽은 것과 덱 모델이 어긋나면 조용히 넘기지 않는다.
 func TestNewGeometryRejectsMismatch(t *testing.T) {
 	deck := testDeck(
 		[]soml.Node{textElem(chars("제목")), textElem(chars("본문"))},
@@ -308,31 +237,11 @@ func TestNewGeometryRejectsMismatch(t *testing.T) {
 		mutate  func(m *measurement)
 		wantMsg string
 	}{
-		{
-			name:    "픽셀 비율이 1이 아니다",
-			mutate:  func(m *measurement) { m.DPR = 2 },
-			wantMsg: "devicePixelRatio",
-		},
-		{
-			name:    "슬라이드 수가 다르다",
-			mutate:  func(m *measurement) { m.Slides = m.Slides[:1] },
-			wantMsg: "슬라이드 수",
-		},
-		{
-			name:    "슬라이드 순서가 어긋났다",
-			mutate:  func(m *measurement) { m.Slides[1].Index = 7 },
-			wantMsg: "data-slide-index",
-		},
-		{
-			name:    "페이지가 스케일되어 있다",
-			mutate:  func(m *measurement) { m.Slides[0].W = 640; m.Slides[0].H = 360 },
-			wantMsg: "스케일",
-		},
-		{
-			name:    "요소가 덜 나왔다",
-			mutate:  func(m *measurement) { m.Slides[0].Boxes = m.Slides[0].Boxes[:1] },
-			wantMsg: "s0.1",
-		},
+		{"픽셀 비율이 1이 아니다", func(m *measurement) { m.DPR = 2 }, "devicePixelRatio"},
+		{"슬라이드 수가 다르다", func(m *measurement) { m.Slides = m.Slides[:1] }, "슬라이드 수"},
+		{"슬라이드 순서가 어긋났다", func(m *measurement) { m.Slides[1].Index = 7 }, "data-slide-index"},
+		{"페이지가 스케일되어 있다", func(m *measurement) { m.Slides[0].W = 640; m.Slides[0].H = 360 }, "스케일"},
+		{"요소가 덜 나왔다", func(m *measurement) { m.Slides[0].Boxes = m.Slides[0].Boxes[:1] }, "s0.1"},
 		{
 			name: "요소가 더 나왔다",
 			mutate: func(m *measurement) {
@@ -340,26 +249,10 @@ func TestNewGeometryRejectsMismatch(t *testing.T) {
 			},
 			wantMsg: "s1.1",
 		},
-		{
-			name:    "식별자가 다르다",
-			mutate:  func(m *measurement) { m.Slides[0].Boxes[1].ID = "s0.9" },
-			wantMsg: "s0.9",
-		},
-		{
-			name:    "태그 이름이 다르다",
-			mutate:  func(m *measurement) { m.Slides[0].Boxes[0].El = "shape" },
-			wantMsg: "shape",
-		},
-		{
-			name:    "rect가 수치가 아니다",
-			mutate:  func(m *measurement) { m.Slides[0].Boxes[0].Rect.W = math.NaN() },
-			wantMsg: "유효하지 않다",
-		},
-		{
-			name:    "줄 박스가 무한대다",
-			mutate:  func(m *measurement) { m.Slides[0].Boxes[0].Lines[0].H = math.Inf(1) },
-			wantMsg: "유효하지 않다",
-		},
+		{"식별자가 다르다", func(m *measurement) { m.Slides[0].Boxes[1].ID = "s0.9" }, "s0.9"},
+		{"태그 이름이 다르다", func(m *measurement) { m.Slides[0].Boxes[0].El = "shape" }, "shape"},
+		{"rect가 수치가 아니다", func(m *measurement) { m.Slides[0].Boxes[0].Rect.W = math.NaN() }, "유효하지 않다"},
+		{"줄 박스가 무한대다", func(m *measurement) { m.Slides[0].Boxes[0].Lines[0].H = math.Inf(1) }, "유효하지 않다"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
