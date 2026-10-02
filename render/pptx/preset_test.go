@@ -357,7 +357,7 @@ func TestRenderShapeRotateAndFlip(t *testing.T) {
 }
 
 // 도형 안 텍스트는 **같은 도형의 txBody 문단**이다 — 별도 sp가 아니고, 자기 잰 rect도
-// 소비되지 않는다. 좌표는 도형의 rect **그대로**여야 한다 (안전 여유 없음).
+// 소비되지 않는다. 좌표는 도형의 rect **그대로**여야 한다.
 func TestRenderShapeTextBody(t *testing.T) {
 	deck := resolvedDeck(t, `<slide>
   <shape type="rect" fill="surface" w="280" h="220" pad="lg">
@@ -377,8 +377,7 @@ func TestRenderShapeTextBody(t *testing.T) {
 	if got := strings.Count(xml, "<a:p>"); got != 2 {
 		t.Errorf("a:p %d개, want 2개 — 자식 여럿이 문단 여럿이 되지 않았다\n%s", got, xml)
 	}
-	// 좌표는 도형의 잰 rect다: 텍스트 박스의 안전 여유(4%)가 붙으면 안 된다 —
-	// 도형의 박스는 글자를 잰 결과가 아니라 저자가 정한 크기다 (writeShapeSp).
+	// 좌표는 도형의 잰 rect 그대로다 (writeShapeSp).
 	x, y := Offset(shape)
 	cx, cy := Extent(shape)
 	for _, want := range []string{
@@ -390,10 +389,6 @@ func TestRenderShapeTextBody(t *testing.T) {
 		if !strings.Contains(xml, want) {
 			t.Errorf("slide1.xml에 %q가 없다\n%s", want, xml)
 		}
-	}
-	slack, _ := Extent(TextBoxRect(shape, soml.AlignStart))
-	if strings.Contains(xml, fmt.Sprintf(`cx="%d"`, slack)) {
-		t.Errorf("도형 폭에 텍스트 박스의 안전 여유가 붙었다 (cx=%d)", slack)
 	}
 }
 
@@ -476,11 +471,10 @@ func TestRenderShapeWithLayoutBecomesBackdrop(t *testing.T) {
 			t.Errorf("배경의 본문에 %q가 있다 — 자식을 흡수했다\n%s", absent, backdrop)
 		}
 	}
-	// 자식은 텍스트 박스다 — 잰 rect에 안전 여유(4%)가 붙는다 (흡수 모드에서는 붙지 않았다).
+	// 자식은 텍스트 박스다 — 잰 rect 그대로다.
 	for _, rect := range children {
-		box := TextBoxRect(rect, soml.AlignStart)
-		bx, by := Offset(box)
-		bcx, bcy := Extent(box)
+		bx, by := Offset(rect)
+		bcx, bcy := Extent(rect)
 		for _, want := range []string{
 			fmt.Sprintf(`<a:off x="%d" y="%d"/>`, bx, by),
 			fmt.Sprintf(`<a:ext cx="%d" cy="%d"/>`, bcx, bcy),

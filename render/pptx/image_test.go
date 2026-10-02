@@ -94,7 +94,7 @@ func TestRenderPicStructure(t *testing.T) {
 		indentedXML(1, "</p:blipFill>"),
 		indentedXML(1, "<p:spPr>"),
 		indentedXML(2, "<a:xfrm>"),
-		// 잰 rect 그대로다 — 안전 여유도, `pad` 되돌림도 없다 (64px = 609600).
+		// 잰 rect 그대로다 — `pad` 되돌림도 없다 (64px = 609600).
 		indentedXML(3, `<a:off x="609600" y="609600"/>`),
 		indentedXML(3, `<a:ext cx="3048000" cy="1524000"/>`),
 		indentedXML(2, "</a:xfrm>"),

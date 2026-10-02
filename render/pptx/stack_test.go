@@ -146,8 +146,7 @@ func TestRenderStackChildNegativeCoordinateEmitsSignedOffset(t *testing.T) {
 	)
 	xml := slideXML(t, deck, g)
 
-	// 기본 정렬(start)이라 안전 여유는 오른쪽으로만 붙어 x는 잰 값 그대로다: -24px = -228600,
-	// -16px = -152400 EMU. 부호 있는 좌표는 OOXML `a:off`에 정당하다.
+	// x·y는 잰 값 그대로다: -24px = -228600, -16px = -152400 EMU. 부호 있는 좌표는 OOXML `a:off`에 정당하다.
 	if want := `<a:off x="-228600" y="-152400"/>`; !strings.Contains(xml, want) {
 		t.Errorf("음수 좌표가 부호 있는 a:off로 나오지 않았다 (want %q)\n%s", want, xml)
 	}

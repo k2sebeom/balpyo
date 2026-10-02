@@ -93,10 +93,10 @@ func TestRenderUnorderedList(t *testing.T) {
 		t.Error("web.ListItemGap이 0이 아니다 — PPTX 쪽 spcAft 대응을 함께 구현해야 한다")
 	}
 
-	// 좌표는 컨테이너의 잰 rect + 안전 여유(start: 오른쪽만)다.
+	// 좌표는 컨테이너의 잰 rect 그대로다.
 	for _, want := range []string{
 		`<a:off x="609600" y="1905000"/>`,           // 64px, 200px
-		`<a:ext cx="11411712" cy="1028700"/>`,       // 1152px×1.04, 108px
+		`<a:ext cx="10972800" cy="1028700"/>`,       // 1152px, 108px
 		`<p:cNvSpPr txBox="1"/>`,                    // 텍스트 박스 표시
 		`<a:bodyPr wrap="square" lIns="0" tIns="0"`, // 블록과 같은 인셋 0 + 줄바꿈
 	} {

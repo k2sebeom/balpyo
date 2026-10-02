@@ -94,9 +94,7 @@ type tableInfo struct {
 	// descr은 `cNvPr@descr` = 저자의 `alt`이고 **표 전체의 이름**이다 (ADR 0058) — 셀은
 	// `a:tbl` 안에 그대로 남아 항해 가능하다 (웹의 `<table aria-label>`과 같은 자리).
 	descr string
-	// rect는 잰 프레임 박스 그대로다 — 텍스트 박스의 안전 여유(TextBoxRect)를 더하지 않는다:
-	// 여유는 글줄이 접히는 것을 막는 장치이고, 표의 글줄은 셀 안에서 접히므로 프레임을 넓히면
-	// 격자만 어긋난다 (열 너비의 합이 프레임 폭이다).
+	// rect는 잰 프레임 박스 그대로다 (열 너비의 합이 프레임 폭이다).
 	rect geom.Rect
 	ph   *placeholder
 	// firstRow는 `a:tblPr@firstRow` 힌트다 — 첫 행이 머리행일 때만 켠다.

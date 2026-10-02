@@ -167,8 +167,9 @@ LibreOffice는 관대한 리더라 자식 순서 · 열거값 밖의 속성을 �
       박스 안에 머무는 쪽이 옳다. 크롬 띠와 `<pre>`(wrap="none")는 판단해서 그대로 둘 수 있다.
       텍스트 · 리스트 · 도형 몸체가 `normAutofit`이다. 크롬 띠와 `<pre>`는 `wrap="none"`이라
       글줄 수가 원문으로 정해져 있으므로 `noAutofit`으로 둔다.
-- [ ] `TextBoxRect`의 4% 여유(`textBoxSlackRatio`): 근거가 "LibreOffice 줄 수를 맞춘다"였다.
+- [x] `TextBoxRect`의 4% 여유(`textBoxSlackRatio`): 근거가 "LibreOffice 줄 수를 맞춘다"였다.
       autofit 아래에서 필요한지 다시 보고, 필요 없으면 지운다 (잰 rect == `xfrm`이 더 단순한 계약이다).
+      지웠다 — 넘침은 `normAutofit`이 받는다. 텍스트 · 리스트 박스도 도형 · 그림 · 표처럼 잰 rect 그대로다.
 - [ ] 웹 `text-autospace: no-autospace` 고정(`render/web/content.go`)은 LibreOffice의 스크립트
       간격에 맞춘 것이다 — 지우고 브라우저 기본으로 돌린다.
 - [ ] 한국어 줄바꿈: 웹 스테이지에 `word-break: keep-all` + `overflow-wrap: anywhere` (옛 E1).
