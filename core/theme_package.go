@@ -504,6 +504,9 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 	if err := requireComponents(tokens, comps); err != nil {
 		return pkg, err
 	}
+	if err := requireComponentColors(tokens, comps); err != nil {
+		return pkg, err
+	}
 	pkg.components = comps
 
 	if err := checkLayoutFiles(pkg.manifest, raw.layouts, raw.slotLayouts); err != nil {

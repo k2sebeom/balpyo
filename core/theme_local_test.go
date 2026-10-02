@@ -314,6 +314,32 @@ func TestExtendsOverridesLayoutCSSByFile(t *testing.T) {
 	}
 }
 
+// 컴포넌트 표의 색은 이 테마의 색 토큰 **이름**이어야 한다 — 그라디언트·리터럴·오타는 그 variant를
+// 쓴 슬라이드가 렌더될 때가 아니라 테마 로딩에서 멈춘다 (check가 build와 같은 판정을 하는 이유).
+func TestComponentColorsMustBeThemeTokens(t *testing.T) {
+	cases := []struct{ name, comps, want string }{
+		{"shape variant 그라디언트", `{"shape":{"variants":[{"name":"chip","fill":"gradient(accent6 accent1, 90deg)"}]}}`,
+			`shape variant "chip"의 fill "gradient(accent6 accent1, 90deg)"`},
+		{"shape variant 테두리 리터럴", `{"shape":{"variants":[{"name":"badge","border":"2 solid #FF9900"}]}}`,
+			`shape variant "badge"의 border "#FF9900"`},
+		{"text variant 오타", `{"text":{"variants":[{"name":"kicker","color":"acent1"}]}}`,
+			`text variant "kicker"의 color "acent1"`},
+		{"표 줄무늬", `{"table":{"stripe":"zebra"}}`, `table.stripe의 fill "zebra"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			project := localTheme("corp", `{"name":"corp","extends":"minimal"}`, "", tc.comps, nil)
+			_, diags := themeDeckIn(t, project, "corp", themeProbe)
+			if len(diags) != 1 || diags[0].Severity != soml.SeverityError {
+				t.Fatalf("진단 = %v, want 에러 1개", diags)
+			}
+			if !strings.Contains(diags[0].Message, tc.want) {
+				t.Errorf("진단이 %q를 말하지 않는다: %s", tc.want, diags[0].Message)
+			}
+		})
+	}
+}
+
 // 로컬 테마의 레이아웃 CSS는 로딩에서 린트되어 덱 진단으로 나간다 — 경고는 병합 결과에 남은
 // 파일의 주인(고칠 파일)을 가리키고, 자식이 덮어 쓴 부모의 파일과 내장 테마의 파일은 말하지 않는다.
 func TestLocalThemeLayoutCSSIsLinted(t *testing.T) {
