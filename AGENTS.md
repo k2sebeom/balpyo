@@ -17,7 +17,12 @@ A guide for coding agents working in this repository. For the full product defin
 
 The core idea: authors lay out slides with flow layout (`<row>`/`<col>`/`<grid>`/`<stack>`),
 a headless browser computes the geometry (the **geometry pass**), and the PPTX renderer bakes
-those measured rects into EMU coordinates. Authors never touch coordinates. Themes are
+those measured rects into EMU coordinates. Authors never touch coordinates.
+
+**The two targets agree on components and layout, not pixels** (ADR 0064): the same element
+becomes the same kind of object, at the measured rect, with the same resolved appearance, in the
+same order. Where a line wraps inside a box is each engine's business — PPTX text bodies use
+`normAutofit`. Don't add fixes or tests whose goal is glyph/line-break/pixel parity. Themes are
 **design systems** (tokens + component defaults + variants + layout CSS), compiled to both CSS
 and the OOXML theme.
 
@@ -100,6 +105,7 @@ Invariants to preserve:
 5. **Geometry is a side table** (`geom.Geometry`) injected into the PPTX renderer, not stored in the deck.
 6. **Determinism**: same input → same bytes (zip timestamps fixed to 1980-01-01, ordered lists not maps).
 7. **Diagnostics come from one place** (parser for in-file, `core.Validate` for cross-file) with `line:col`, shared by `build`/`check`/`watch`.
+8. **Component/layout parity** (ADR 0064): both targets emit the same component tree — kind, rect, resolved appearance, document order, text runs. Line breaks are outside the contract.
 
 ### Adding a tag / vocabulary
 
@@ -110,8 +116,13 @@ Vocabulary must exist in four layers at once: `soml` catalog (`soml/subset.go` `
 
 ## Testing
 
-Tests must run in the pinned Docker image (Chromium, LibreOffice, poppler, Noto fonts only,
-hinting off) — pixel and text-metric comparisons are only meaningful in a deterministic environment.
+> **Refactor in progress** (`TASKS.md` R1–R8): the pixel/ink/line-count machinery and the
+> Docker-pinned environment below are being replaced by a component-tree parity check that runs
+> with plain `go test ./...` on the host. Don't extend the pixel machinery; this section is
+> rewritten when R4 lands.
+
+Today tests still run in the pinned Docker image (Chromium, LibreOffice, poppler, Noto fonts only,
+hinting off).
 
 ```bash
 make test        # full suite in container (the real gate; also what CI runs)
@@ -132,11 +143,10 @@ make docs        # mkdocs build --strict (new pages must be in mkdocs.yml nav)
 
 ## Workflow conventions
 
-- Follow `TASKS.md` in order; each item is RED (tests incl. error/warning cases) → GREEN
-  (`soml` → `core` → renderers) → REVIEW (`make review`, open the PPTX) → DOC. Tick its
-  checkboxes when done.
-- New design decisions get an ADR in `docs/decisions/` (Korean; context → options → decision →
-  rationale → consequences). **ADRs are never edited after the fact** — a later ADR supersedes.
+- Follow `TASKS.md` in order; each item is tests → implementation (`soml` → `core` →
+  renderers) → docs. Tick its checkboxes when done.
+- Decisions that change a contract get an ADR in `docs/decisions/` (Korean; context → options →
+  decision → rationale → consequences). **ADRs are never edited after the fact** — a later ADR supersedes.
 - `docs/reference/` documents implemented behavior only.
 - Diagnostic-wording changes keep the input that produced the message as a fixture.
 - Micro commits with `feat:` / `fix:` / `refactor:` / `test:` / `doc:` prefixes; no AI/author
