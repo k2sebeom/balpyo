@@ -77,12 +77,20 @@
 `golden/index.html` 전체와 `golden/pptx/**`(파트별 XML) 스냅샷은 CSS 한 줄만 바꿔도 수십 파일이
 움직이고, 리뷰어가 그 diff를 읽지 않는다.
 
-- [ ] 픽스처 골든을 `layout.txt`(R1) + `diagnostics.txt` 둘로 줄인다. 웹 HTML · PPTX 파트 ·
+- [x] 픽스처 골든을 `layout.txt`(R1) + `diagnostics.txt` 둘로 줄인다. 웹 HTML · PPTX 파트 ·
       복사된 에셋 골든을 지운다.
-- [ ] PPTX 패키지 구조(파트 목록 · content types · rels)는 한 테스트가 픽스처 전체에 대해
+      → 골든 491개 → 21개 (layout.txt 18 · diagnostics.txt 3). 골든을 읽던 검사는 먼저 정리했다: R1이 덮는 것은
+      지우고(크롬 픽스처 파일 전체 · 좌표 · 도형 수 · z-순서 · 색 참조 · 팔레트 슬롯 · 회전 — 뒤의 둘은
+      `render/pptx` 단위 테스트가 이미 본다), 표 검사는 새 빌드의 산출물을 읽는다. `TestFixtures`가 호스트에서 초록이 됐다.
+- [x] PPTX 패키지 구조(파트 목록 · content types · rels)는 한 테스트가 픽스처 전체에 대해
       **불변식으로** 단정한다 (스냅샷이 아니라): 모든 rel 대상이 존재한다 · 미디어 파트가
       에셋 표 순서다 · zip 타임스탬프 1980-01-01 · 같은 입력 두 번이 같은 바이트다.
-- [ ] `TestStaleGoldensAreDetected` 계열은 새 골든 두 종에 맞춰 남긴다.
+      → `internal/testkit/package.go` (`AssertPackage` · `AssertSameBytes`). 더한 것: 파트마다 content type ·
+      관계가 가리키지 않는 파트 없음 · rId 중복 없음 · 노트 파트는 노트가 있는 장에만 · `p:hf` 없음 · 미디어와
+      웹 에셋 바이트 = 입력. `Suite.Run`이 빌드 하나로 골든 · 동일성 · 패키지를 돌고, 두 번째 빌드와 바이트를 견준다
+      (픽스처당 빌드 수는 그대로 둘). `TestFixtureGoldenPartList` · `TestImageFixtureAssetsAreByteIdentical`을 대체한다.
+- [x] `TestStaleGoldensAreDetected` 계열은 새 골든 두 종에 맞춰 남긴다.
+      → 그대로 남는다 (골든 이름과 무관한 장치다). `TestFixtureGoldenTreeShape`가 "골든은 두 종뿐"을 단정한다.
 
 ## R3. 픽셀 · 잉크 · LibreOffice 장치를 걷어낸다
 
