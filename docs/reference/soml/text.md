@@ -96,8 +96,9 @@ CSS 선언(`font-family` `font-size` `font-weight` `line-height` `color` `text-a
 
 **PPTX** — `p:sp` 텍스트 박스 하나가 된다 (`p:cNvSpPr@txBox="1"`, 프리셋 `rect`,
 채움·선 없음). 좌표(`a:xfrm`)는 지오메트리 패스가 브라우저에서 잰 박스에 안전 여유
-(폭 +4%)를 더한 값이고, autofit은 꺼진다 (`a:noAutofit` — 박스 고정 + 오버플로 허용,
-PRD §13-1). `w`로 폭을 정하면 그 폭이 잰 박스가 되어 `a:ext@cx`로 실린다 — 안전 여유는
+(폭 +4%)를 더한 값이고, 몸체는 `a:normAutofit`이다 — 박스는 잰 크기로 고정되고, 글자가
+넘치면 PowerPoint가 줄여 맞춘다 (줄이 어디서 접히는지는 엔진의 몫이다 — ADR 0064).
+`<pre>`만 `wrap="none"` + `a:noAutofit`이다 (원문의 줄이 곧 글줄이다). `w`로 폭을 정하면 그 폭이 잰 박스가 되어 `a:ext@cx`로 실린다 — 안전 여유는
 `align="center"`에서 양쪽으로 반씩 늘어나므로 요청한 자리에 가운데가 유지된다. 외관 매핑:
 
 | 확정 값 | OOXML |

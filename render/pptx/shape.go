@@ -884,21 +884,23 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rel
 	// 인셋 0: 웹이 잰 rect는 border box이고 `.balpyo-text`는 padding·border가 0이므로
 	// 곧 콘텐츠 박스다 (render/web.contentCSS). OOXML 기본 인셋(좌우 91440, 상하 45720)을
 	// 그대로 두면 좌표는 맞는데 글자만 몇 px 밀리고, 그 오차는 픽셀 비교에서 원인 불명으로
-	// 나타난다. wrap="square"는 박스 폭 안에서 줄을 바꾸는 웹과 같은 결정이고, noAutofit은
-	// 박스 고정 + 오버플로 허용이다 (PRD §13-1) — autofit 위임은 폰트 크기를 바꿔 웹과의
-	// 시각 일치를 깬다. pre만 wrap="none"이다: 웹이 줄바꿈하지 않기로 했으므로
-	// (render/web.writeBlock의 white-space: pre) PPTX가 접으면 줄 수가 갈라진다.
+	// 나타난다. wrap="square"는 박스 폭 안에서 줄을 바꾸는 웹과 같은 결정이고, normAutofit은
+	// 박스 고정 + 넘치면 PowerPoint가 줄여 맞춤이다 (ADR 0064): 줄이 어디서 접히는지는 엔진의
+	// 몫이라 PowerPoint가 한 줄 더 접어도 글자는 잰 박스 안에 머물고, 저자가 PowerPoint에서
+	// 글을 고친 뒤에도 그렇다. pre만 wrap="none" + noAutofit이다: 웹이 줄바꿈하지 않기로
+	// 했으므로(render/web.writeBlock의 white-space: pre) 줄 수가 원문의 줄 수로 정해져 있고,
+	// 코드의 글자 크기를 엔진이 줄이면 형제 코드 블록과 크기가 갈라진다.
 	//
 	// anchor="t"는 슬라이드 직속 텍스트 박스의 고정값이다 — 잰 rect가 곧 내용 크기라 세로
 	// 앵커가 움직일 여백이 없다 (soml.TextStyle.Anchor). 앵커가 뜻을 갖는 자리는 도형
 	// 안이고, 그쪽 bodyPr은 shapeBodyXML이 낸다.
-	wrap := "square"
+	wrap, autofit := "square", "<a:normAutofit/>"
 	if elem.Name == "pre" {
-		wrap = "none"
+		wrap, autofit = "none", "<a:noAutofit/>"
 	}
 	w(1, `<p:txBody>`)
 	w(2, fmt.Sprintf(`<a:bodyPr wrap="%s" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">`, wrap))
-	w(3, "<a:noAutofit/>")
+	w(3, autofit)
 	w(2, "</a:bodyPr>")
 	w(2, "<a:lstStyle/>")
 	// 빈 텍스트는 런 없는 문단으로 남는다 — 도형 자체는 낸다 (writeTextShape의 정책).
@@ -973,7 +975,7 @@ func shapeBodyXML(elem *soml.Element, style soml.ShapeStyle, rect geom.Rect, the
 	}
 	w(1, `<p:txBody>`)
 	w(2, fmt.Sprintf(`<a:bodyPr wrap="square" %s anchor="%s">`, insets, anchor))
-	w(3, "<a:noAutofit/>")
+	w(3, "<a:normAutofit/>")
 	w(2, "</a:bodyPr>")
 	w(2, "<a:lstStyle/>")
 	if len(elem.Children) == 0 || soml.ShapeHoldsLayout(elem) {
@@ -1102,12 +1104,12 @@ func listBodyXML(list *soml.Element, theme soml.Theme, rels *slideRels) (string,
 	w := func(depth int, line string) {
 		b.WriteString("\n" + shapeIndent + strings.Repeat("  ", depth) + line)
 	}
-	// 인셋 0·wrap="square"·noAutofit의 근거는 블록과 같다 (textBodyXML): `.balpyo-list`도
+	// 인셋 0·wrap="square"·normAutofit의 근거는 블록과 같다 (textBodyXML): `.balpyo-list`도
 	// padding·border 0의 border box라 잰 rect가 곧 콘텐츠 박스이고, li의 들여쓰기는 인셋이
 	// 아니라 문단의 marL이 소유한다 (웹의 li padding-left와 짝).
 	w(1, `<p:txBody>`)
 	w(2, `<a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">`)
-	w(3, "<a:noAutofit/>")
+	w(3, "<a:normAutofit/>")
 	w(2, "</a:bodyPr>")
 	w(2, "<a:lstStyle/>")
 	if len(list.Children) == 0 {

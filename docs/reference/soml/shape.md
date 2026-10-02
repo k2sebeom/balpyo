@@ -367,7 +367,7 @@ PPTX는 **같은 도형의 본문**(`txBody`)이다. 그래서 도형 안 텍스
   </p:spPr>
   <p:txBody>
     <a:bodyPr wrap="square" lIns="228600" tIns="228600" rIns="228600" bIns="228600" anchor="t">
-      <a:noAutofit/>
+      <a:normAutofit/>
     </a:bodyPr>
     …문단들…
   </p:txBody>
