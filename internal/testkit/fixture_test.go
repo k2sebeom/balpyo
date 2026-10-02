@@ -7,8 +7,8 @@ import (
 
 // TestFixtures는 픽스처 스위트다 — 모든 반복(iteration)이 여기에 픽스처를 더한다.
 //
-// 픽스처마다: 빌드 → 골든 비교(HTML + PPTX 파트 XML) → 렌더 비교(웹 스크린샷 vs
-// LibreOffice 렌더). `make review`는 같은 테스트를 리뷰 모드로 돌려 갤러리를 남긴다.
+// 픽스처마다: 빌드 → 골든 비교(layout.txt · diagnostics.txt) → 동일성 판정 → 패키지 불변식 →
+// 렌더 비교. `make review`는 같은 테스트를 리뷰 모드로 돌려 갤러리를 남긴다.
 func TestFixtures(t *testing.T) {
 	NewSuite(t).Run(t)
 }
@@ -44,27 +44,17 @@ func TestFixtureBuildLeavesFixtureDirClean(t *testing.T) {
 	}
 }
 
-// PPTX 골든은 zip 바이트가 아니라 파트별 XML이다 — git diff에서 "무엇이 달라졌나"가 읽혀야 한다.
+// 골든은 두 종뿐이다 — 구조 스냅샷과 (경고가 있을 때) 진단. 산출물 스냅샷이 다시 끼어들면
+// 환경 고정이 다시 필요해진다 (ADR 0064).
 func TestFixtureGoldenTreeShape(t *testing.T) {
 	fixture := Fixtures(t)[0]
 	files := fixture.goldenFiles(t, fixture.Build(t))
-	if files["index.html"] == nil {
-		t.Error("웹 산출물 골든이 없다")
+	if len(files[layoutGolden]) == 0 {
+		t.Error("구조 스냅샷이 비었다")
 	}
-	for _, part := range []string{
-		"pptx/[Content_Types].xml",
-		"pptx/ppt/presentation.xml",
-		"pptx/ppt/slideMasters/slideMaster1.xml",
-		"pptx/ppt/theme/theme1.xml",
-		"pptx/ppt/slides/slide1.xml",
-	} {
-		if files[part] == nil {
-			t.Errorf("PPTX 파트 골든이 없다: %s", part)
-		}
-	}
-	for name, data := range files {
-		if len(data) == 0 {
-			t.Errorf("빈 골든: %s", name)
+	for name := range files {
+		if name != layoutGolden && name != diagnosticsGolden {
+			t.Errorf("골든에 산출물 스냅샷이 있다: %s", name)
 		}
 	}
 }

@@ -29,7 +29,7 @@ func NewSuite(t testing.TB) *Suite {
 	return &Suite{Diff: DefaultDiffOptions(), root: t, review: NewReview(t)}
 }
 
-// Run은 모든 픽스처를 돈다: 빌드 → 골든 비교 → 웹/PPTX 렌더 비교.
+// Run은 모든 픽스처를 돈다: 빌드 → 골든 비교 → 동일성 판정 → 패키지 불변식 → 웹/PPTX 렌더 비교.
 //
 // 픽스처를 병렬로 돌리지 않는다. 브라우저 세션과 리뷰 갤러리가 공유 상태이고, 무엇보다
 // 병렬 LibreOffice 프로세스는 CI에서 메모리로 서로를 죽인다.
