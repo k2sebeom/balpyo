@@ -17,13 +17,13 @@ import (
 	"github.com/k2sebeom/balpyo/render/web"
 )
 
-// 브라우저를 찾는 환경 변수. 테스트 이미지가 값을 넣고(docker/test.Dockerfile), 사용자도
+// 브라우저를 찾는 환경 변수. CI가 값을 넣고(.github/workflows/ci.yml), 사용자도
 // 같은 변수로 브라우저를 지정한다 — 빌드와 테스트가 다른 변수를 보면 "테스트는 되는데 빌드는
 // 브라우저를 못 찾는다"가 된다.
 const (
 	// EnvChromium은 Chromium/Chrome 실행 파일 경로다.
 	EnvChromium = "BALPYO_CHROMIUM"
-	// EnvNoSandbox가 1이면 --no-sandbox를 붙인다 (컨테이너 안에서는 root라 필수).
+	// EnvNoSandbox가 1이면 --no-sandbox를 붙인다 (root · 샌드박스를 막는 러너에서 필요).
 	EnvNoSandbox = "BALPYO_CHROMIUM_NO_SANDBOX"
 )
 
@@ -104,9 +104,8 @@ type Session struct {
 
 // Launch는 브라우저를 띄운다. bin이 비면 LookChromium으로 찾는다. 정리는 호출자가 Close로 한다.
 //
-// 플래그는 전부 렌더 결정성을 위한 것이다: 스케일 1, sRGB 고정, 힌팅·LCD 서브픽셀 끔.
-// 이미지 안의 fontconfig 설정(docker/fonts.conf)과 같은 방향이다 — 브라우저와 LibreOffice가
-// 같은 글자 폭을 내야 텍스트 메트릭 비교가 성립한다.
+// 플래그는 전부 렌더 결정성을 위한 것이다: 스케일 1, sRGB 고정, 힌팅·LCD 서브픽셀 끔 —
+// 같은 호스트에서 같은 입력이 같은 rect를 내야 산출 바이트가 같다 (불변식 6).
 func Launch(bin string) (*Session, error) {
 	if bin == "" {
 		found, err := LookChromium()

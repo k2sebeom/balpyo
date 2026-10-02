@@ -116,30 +116,37 @@ Vocabulary must exist in four layers at once: `soml` catalog (`soml/subset.go` `
 
 ## Testing
 
-> **Refactor in progress** (`TASKS.md` R1–R8): the pixel/ink/line-count machinery and the
-> Docker-pinned environment below are being replaced by a component-tree parity check that runs
-> with plain `go test ./...` on the host. Don't extend the pixel machinery; this section is
-> rewritten when R4 lands.
+The gate is plain `go test ./...` on the host — no container (ADR 0065). The only external tool
+is Chromium/Chrome, because the build itself needs it (geometry pass). Tests that need it skip
+when it is missing; `BALPYO_TEST_STRICT=1` (set in CI) turns those skips into failures.
 
-Today tests still run in the pinned Docker image (Chromium, LibreOffice, poppler, Noto fonts only,
-hinting off).
+What the suite judges, per fixture (`TestFixtures`) and per example (`TestExamplesBuildClean`):
+
+- **Parity** (ADR 0064): the component tree read back from the PPTX XML equals the one derived
+  from the deck + measured geometry — kind, rect (EMU), resolved appearance, order, text runs.
+- **Goldens**: only `golden/layout.txt` (the tree without rects) and `golden/diagnostics.txt`.
+- **PPTX validity** (`testkit.AssertValidPPTX`): every XML part validates against the vendored
+  ECMA-376 Transitional XSDs (`internal/testkit/ooxml/`, via `github.com/knroy/go-xml`), plus
+  cross-part rules the schema can't express (`crosspart.go`) and package invariants
+  (`package.go`). Mutation tests prove the validator still rejects broken parts.
+- **Determinism**: two builds of the same input produce the same bytes.
 
 ```bash
-make test        # full suite in container (the real gate; also what CI runs)
-make test-host   # go test ./... on host — skips Chromium/LibreOffice tests (not a real green)
-make examples    # examples/* must build with zero warnings
-make review      # web/PPTX/diff gallery → review/index.html
+make test        # go test ./... (the gate; same command CI runs)
+make examples    # examples/* must build with zero warnings (also part of make test)
+make review      # balpyo preview per fixture → review/<fixture>/gallery/index.html (human tool)
 make golden      # regenerate goldens (review the diff; commit with the implementation)
 make docs        # mkdocs build --strict (new pages must be in mkdocs.yml nav)
 ```
 
-- Fixtures live in `testdata/fixtures/NN_name/` (`balpyo.json`, `slides/`, `golden/` with
-  `diagnostics.txt`, `index.html`, `pptx/`).
+- Don't add pixel, ink or line-count assertions. LibreOffice/poppler are only used by
+  `balpyo preview` rasterizing; their tests skip when the tools are absent.
+- Fixtures live in `testdata/fixtures/NN_name/` (`balpyo.json`, `slides/`, `golden/`).
 - `examples/` (balpyo-intro 12, incident-postmortem 10, quarterly-review 6 slides) are
   regression decks gated by a strict zero-warning build, not goldens.
 - `core/docs_test.go` reads closed lists and quoted diagnostics from the docs — changing a
   vocabulary or message means updating the docs too.
-- Before committing: `gofmt -l .` empty, `go vet ./...`, `go test ./...`, `make test`.
+- Before committing: `gofmt -l .` empty, `go vet ./...`, `go test ./...`.
 
 ## Workflow conventions
 

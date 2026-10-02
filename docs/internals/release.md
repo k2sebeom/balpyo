@@ -81,7 +81,7 @@ go build -trimpath -ldflags "-X main.version=v0.3.0" ./cmd/balpyo
 
 `.github/workflows/release.yml`이 `v*` 태그에서 돈다:
 
-1. **게이트를 다시 돈다** (`make test`, 컨테이너). 태그가 main의 초록 커밋을 가리킨다고 믿지
+1. **게이트를 다시 돈다** (`make test`). 태그가 main의 초록 커밋을 가리킨다고 믿지
    않는다 — 발표한 아티팩트는 되돌릴 수 없으므로 3분을 다시 쓴다.
 2. `make dist VERSION=<태그>`로 아카이브를 만들고 `sha256sum -c SHA256SUMS`로 확인한다.
 3. **초안**(draft) 릴리스를 만들어 아카이브·`SHA256SUMS`·`balpyo.rb`를 첨부한다. 릴리스 노트는
@@ -90,17 +90,10 @@ go build -trimpath -ldflags "-X main.version=v0.3.0" ./cmd/balpyo
 릴리스를 내는 사람의 절차는 네 걸음이다: 태그를 붙여 밀고 → 워크플로가 만든 초안에 노트를 쓰고
 → 발행하고 → tap 저장소에 `balpyo.rb`를 올린다.
 
-## 릴리스 빌드는 테스트와 같은 이미지에서 돈다
+## 릴리스 빌드는 호스트의 툴체인에서 돈다
 
-`make dist`도 `make test`와 같은 컨테이너를 쓴다 ([테스트 환경](testing.md)) — 재현성 계약이
-툴체인 버전을 포함하므로, 게이트를 돈 Go와 아카이브를 만든 Go가 다르면 "두 번 빌드하면 같은
-바이트"가 저장소 밖에서 뜻을 잃는다.
-
-다른 점 하나는 **사용자**다. `dist/`의 파일은 사람이 올리고 지우므로 컨테이너의 root가 소유하면
-안 된다 — 그래서 `make dist`는 호스트 사용자로 돌고(`--user`), root 소유인 명명 볼륨 대신
-컨테이너 임시 디렉토리를 빌드 캐시로 쓴다 (찬 캐시로 네 타깃 40초 — 릴리스는 한 번이다).
-
-그 덕에 부수적으로 git의 소유 검사도 지나간다. root로 도는 `make test`에서는 그것이
-지나가지 않아 `go build`의 vcs 스탬핑이 실패하므로(`error obtaining VCS status`), `DOCKER_RUN`이
-`safe.directory`를 환경으로 넣는다 — 그 설정이 없으면 릴리스 테스트가 **컨테이너에서만**
-빨갛다.
+`make dist`는 `make test`와 같은 Go(`go.mod`의 버전 — CI는 `setup-go`의 `go-version-file`)로
+돈다. 재현성 계약(같은 태그 → 같은 바이트)을 지키는 것은 툴체인이다: `internal/release`가
+`CGO_ENABLED=0` · `-trimpath`로 빌드하고 주입하는 값은 태그 하나다. 한때 이 빌드는 테스트
+컨테이너 안에서 돌았지만, 컨테이너가 고정하던 것은 렌더 도구(LibreOffice · 폰트)였지 Go가
+아니었다 ([ADR 0065](../decisions/0065-pptx-validity-is-judged-by-the-ecma-376-schema-not-by-libreoffice.md)).

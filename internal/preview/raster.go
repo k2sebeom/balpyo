@@ -45,8 +45,9 @@ func NewRasterizer() (*Rasterizer, error) {
 // toolError는 도구를 못 찾았을 때의 안내다 — 사용자가 다음에 할 일이 문장 안에 있어야 한다.
 func toolError(name, env string, err error) error {
 	return fmt.Errorf("%s가 필요하다: %w\n"+
-		"PPTX를 그림으로 되돌리는 데만 쓰는 도구다 — 설치하거나 %s로 경로를 주거나, "+
-		"`make shell`(테스트 이미지)에서 돌린다. PowerPoint·Keynote가 있으면 산출물을 직접 여는 쪽이 더 정확하다",
+		"PPTX를 그림으로 되돌리는 데만 쓰는 도구다 — 설치하거나(macOS: brew install --cask libreoffice; "+
+		"brew install poppler) %s로 경로를 주거나, `--target html`로 웹만 본다. "+
+		"PowerPoint·Keynote가 있으면 산출물을 직접 여는 쪽이 더 정확하다",
 		name, err, env)
 }
 
