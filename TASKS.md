@@ -128,9 +128,12 @@ LibreOffice는 관대한 리더라 자식 순서 · 열거값 밖의 속성을 �
       → `schema.go`(`AssertSchema` · `ValidatePart`) · `AssertValidPPTX`(zip · content types · rels · 스키마 —
       덱과 무관한 규칙). `TestFixtures` · `TestExamplesBuildClean`이 부른다. `TestSchemaRejectsMutatedParts`가
       브라우저 없이 변이 11종을 본다. `render/pptx`의 열림 테스트는 LibreOffice를 지우는 항목에서 옮긴다.
-- [ ] 파트 사이 층 (스키마로 못 말하는 PowerPoint 규칙): 슬라이드 안 `cNvPr@id` 유일 · `sldId` ≥ 256 · 유일 ·
+- [x] 파트 사이 층 (스키마로 못 말하는 PowerPoint 규칙): 슬라이드 안 `cNvPr@id` 유일 · `sldId` ≥ 256 · 유일 ·
       `r:id`/`r:embed`가 맞는 종류의 관계를 가리킨다 · 슬라이드→레이아웃→마스터 연결 · `p:ph@idx`가 레이아웃에
       있다.
+      → `crosspart.go`(`CheckCrossParts`)를 `AssertValidPPTX`가 부른다. 더한 것: 마스터 · 레이아웃 id는 한 공간 ·
+      마스터의 `sldLayoutIdLst` = 그 마스터를 가리키는 레이아웃 · 노트 ↔ 슬라이드 되가리킴 · 관계를 참조하는 요소가
+      표(`relRefTypes`)에 없으면 실패. 픽스처 18 · 예제 3이 통과하고, `TestCrossPartsRejectsMutations`가 변이 10종을 본다.
 - [ ] LibreOffice를 테스트에서 지운다: `render/pptx/soffice_test.go`는 스키마 검증으로 바꾸고, `make smoke` ·
       `BALPYO_SMOKE`를 지운다. (`balpyo preview`의 PPTX 래스터는 R6에서 옵트인으로 남는다.)
 - [ ] Docker를 지운다: `docker/`(Dockerfile · `fonts.conf` · `versions.env`) · `TestImageVersionsMatchPins` ·
