@@ -210,83 +210,14 @@ type Box struct {
 	ID    string `json:"id"`
 	El    string `json:"el"`
 	Slide int    `json:"slide"`
-	// Rect는 요소 박스다. PPTX 텍스트 박스는 이 크기로 고정되고 autofit은 꺼진다 (PRD §9.3).
+	// Rect는 요소 박스다. PPTX 도형의 xfrm이 이 rect다 — 텍스트 몸체는 normAutofit이라 넘치면
+	// PowerPoint가 글자를 줄여 맞춘다 (ADR 0064).
 	Rect Rect `json:"rect"`
 	// Lines는 브라우저가 실제로 나눈 줄 박스다 (위에서 아래 순서).
 	//
-	// x/y/w/h 말고 이것까지 재는 이유는 Iteration 1의 리뷰 포인트 때문이다: 박스를 고정해
-	// 내보낸 뒤 LibreOffice/PowerPoint가 **같은 자리에서 줄을 나누는가**를 수치로 판정해야
-	// 한다 (PRD §13-1의 임계값). 줄 수는 판정의 좌변이고, Slack(줄 끝에 남은 여유 폭)은
-	// 판정의 우변이다 — 다른 엔진의 글자 폭이 Slack을 넘어 넓어지는 순간 줄이 하나 늘어난다.
-	// 그 이상(글리프 단위 메트릭, 폰트 테이블)은 재지 않는다: 임계값을 정하는 데 쓰이지 않는
-	// 데이터는 골든만 키운다.
+	// 쓰는 곳은 배치 검사의 가로 넘침 하나다 (layout.go의 textEscape — 줄바꿈이 불가능한 글자가
+	// 박스 옆으로 흐른 것). 줄 수 · 줄 폭은 두 타깃의 계약이 아니다 (ADR 0064).
 	Lines []Rect `json:"lines,omitempty"`
-}
-
-// LineCount는 브라우저가 나눈 줄 수다.
-func (b Box) LineCount() int { return len(b.Lines) }
-
-// MaxLineWidth는 가장 긴 줄의 폭이다.
-func (b Box) MaxLineWidth() float64 {
-	var max float64
-	for _, line := range b.Lines {
-		if line.W > max {
-			max = line.W
-		}
-	}
-	return max
-}
-
-// Slack은 가장 긴 줄과 박스 폭 사이에 남은 여유 폭이다 (px).
-//
-// 줄바꿈 허용 오차의 재료다: 다른 렌더 엔진이 같은 텍스트를 이보다 더 넓게 그리면 그 요소는
-// 줄이 하나 늘어난다. 요소별 Slack/MaxLineWidth의 최소값이 곧 그 덱이 견디는 폭 오차 비율이다.
-func (b Box) Slack() float64 {
-	slack := b.Rect.W - b.MaxLineWidth()
-	if slack < 0 {
-		return 0
-	}
-	return slack
-}
-
-// LineHeight는 줄 박스 높이다 — **글자 상자**(ascent+descent)이고 CSS 줄높이가 아니다.
-// 브라우저가 Range에 주는 사각형이 글자 상자이기 때문이다 (24px 본문에서 36px 줄높이의 줄이
-// 29px로 돌아온다). 줄마다 다를 수 있으므로 첫 줄을 쓴다 — 이번 iteration의 어휘에서는 요소
-// 하나가 한 가지 폰트 크기를 갖는다.
-func (b Box) LineHeight() float64 {
-	if len(b.Lines) == 0 {
-		return 0
-	}
-	return b.Lines[0].H
-}
-
-// LineAdvance는 줄 사이의 세로 간격이다 (줄이 둘 미만이면 0).
-//
-// 줄바꿈 판정의 세로 절반이다. Slack이 "다른 엔진의 글자가 얼마나 넓어져도 줄이 안 늘어나는가"
-// 라면, 이 값은 "줄이 하나 늘었을 때 고정 박스를 얼마나 넘치는가"의 단위다 — 박스 높이는
-// 대체로 줄 수 × 이 값이므로, 줄이 하나 늘면 정확히 이만큼 넘친다. 첫 두 줄로 재는 이유는
-// 평균이 값이 흔들리는 경우(요소 안에 크기가 다른 글자)를 감춰서다.
-func (b Box) LineAdvance() float64 {
-	if len(b.Lines) < 2 {
-		return 0
-	}
-	return b.Lines[1].Y - b.Lines[0].Y
-}
-
-// TextRect는 줄 박스 전체를 감싸는 사각형이다 — 박스 안에서 글자가 실제로 차지한 영역.
-func (b Box) TextRect() Rect {
-	if len(b.Lines) == 0 {
-		return Rect{X: b.Rect.X, Y: b.Rect.Y}
-	}
-	left, top := math.MaxFloat64, math.MaxFloat64
-	right, bottom := -math.MaxFloat64, -math.MaxFloat64
-	for _, line := range b.Lines {
-		left = math.Min(left, line.X)
-		top = math.Min(top, line.Y)
-		right = math.Max(right, line.Right())
-		bottom = math.Max(bottom, line.Bottom())
-	}
-	return Rect{X: left, Y: top, W: right - left, H: bottom - top}
 }
 
 // Geometry는 지오메트리 패스의 산출이다 — 식별자에서 슬라이드 상대 좌표로.
