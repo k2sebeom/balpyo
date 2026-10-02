@@ -71,6 +71,7 @@
 | [0063](0063-reveal-is-presenter-only-hiding-and-every-other-target-is-flattened.md) | `reveal`은 발표자 뷰에서만 숨기는 것이고, 나머지 전부는 전개된 상태다 | P6 | 확정 |
 | [0064](0064-the-contract-is-component-and-layout-parity-not-pixel-parity.md) | 두 타깃의 계약은 픽셀 동일성이 아니라 컴포넌트·레이아웃 동일성이다 | R0 | 확정 |
 | [0065](0065-pptx-validity-is-judged-by-the-ecma-376-schema-not-by-libreoffice.md) | PPTX의 유효성은 LibreOffice가 아니라 ECMA-376 스키마가 판정한다 (Docker를 걷어낸다) | R4 | 확정 |
+| [0066](0066-preview-only-places-renders-side-by-side.md) | `balpyo preview`는 두 렌더를 나란히 놓기만 한다 (diff · 허용 오차를 지운다) | R6 | 확정 |
 
 PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다. 그 결정들의
 색인은 PRD에 있고, 이 표는 **그 이후 구현 중에 새로 확정한 것**만 담는다.

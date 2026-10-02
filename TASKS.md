@@ -179,12 +179,17 @@ LibreOffice는 관대한 리더라 자식 순서 · 열거값 밖의 속성을 �
 
 ## R6. `preview`: 나란히 보기만
 
-- [ ] 갤러리는 웹 · PPTX를 나란히 놓는 사람용 도구로 남는다. **diff 이미지와 diff 비율을 지운다**
+- [x] 갤러리는 웹 · PPTX를 나란히 놓는 사람용 도구로 남는다. **diff 이미지와 diff 비율을 지운다**
       (`internal/preview/diff.go` — 비율은 실제 불일치를 과장한다는 것이 3회차에서 이미 확인됐다).
-- [ ] PPTX 래스터는 `soffice`가 있을 때만 — 없으면 웹만으로 갤러리를 만든다(지금
+      → `Diff`/`DiffOptions`/`Verdict`/`Result.Over`와 배지를 지웠다. PNG 도우미는 `png.go`로 옮겼고, 래스터
+      결정성 테스트는 픽셀 동등성을 직접 본다. ADR 0066이 ADR 0047 결정 4(허용 오차)·5·6을 대체한다.
+- [x] PPTX 래스터는 `soffice`가 있을 때만 — 없으면 웹만으로 갤러리를 만든다(지금
       `TestRunWithWebOnlyNeedsNoLibreOffice`의 동작을 기본으로).
-- [ ] `make review`는 `balpyo preview`를 픽스처에 돌리는 얇은 입구가 된다 (테스트 스위트를
+      → `--target`을 주지 않았을 때만 물러서고, 로그 · 갤러리 안내 · `Result.SkippedPPTX`가 그 사실을 말한다.
+      `pptx`를 명시하면 지금처럼 빌드 전에 멈춘다.
+- [x] `make review`는 `balpyo preview`를 픽스처에 돌리는 얇은 입구가 된다 (테스트 스위트를
       `BALPYO_REVIEW=1`로 다시 돌리지 않는다).
+      → R3에서 이미 그렇게 바꿨다. 이제 soffice가 없는 호스트에서도 웹 갤러리까지 만든다.
 
 ## R7. 단위 테스트를 다듬는다
 
