@@ -201,12 +201,15 @@ LibreOffice는 관대한 리더라 자식 순서 · 열거값 밖의 속성을 �
 
 ## R8. 문서를 새 계약에 맞춘다
 
-- [ ] `docs/internals/testing.md`를 다시 쓴다: 동일성 판정 · 골든 두 종 · 호스트 실행 · 옵트인 스모크.
-- [ ] `docs/guides/known-differences.md`를 "계약 밖의 차이"로 바꾼다 — 줄바꿈 위치 · 자간 ·
+- [x] `docs/internals/testing.md`를 다시 쓴다: 동일성 판정 · 골든 두 종 · 호스트 실행 · 옵트인 스모크.
+      → 옵트인 스모크는 ADR 0065로 없어져 그 자리에 스키마 · 파트 사이 · 변이 테스트 · 결정성 절.
+- [x] `docs/guides/known-differences.md`를 "계약 밖의 차이"로 바꾼다 — 줄바꿈 위치 · 자간 ·
       안티에일리어싱은 결함이 아니라 엔진의 몫이라는 한 절.
-- [ ] `docs/internals/geometry-pass.md`에서 픽셀 비교 파이프라인 그림을 지운다.
-- [ ] `testdata/fixtures/README.md`의 골든 트리를 새 모양으로.
-- [ ] `make docs`가 `--strict`로 통과.
+      → 허용 비율 · text-autospace 고정 · 줄 수 검사 절을 지우고 normAutofit 절. 링크 글자도 새 이름으로.
+- [x] `docs/internals/geometry-pass.md`에서 픽셀 비교 파이프라인 그림을 지운다.
+      → 안전 여유 +4% · 허용 오차 절도. 레퍼런스 곳곳의 "픽셀 비교가 판정한다"도 컴포넌트 트리로.
+- [x] `testdata/fixtures/README.md`의 골든 트리를 새 모양으로.
+- [x] `make docs`가 `--strict`로 통과.
 
 ---
 

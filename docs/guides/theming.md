@@ -72,7 +72,7 @@ balpyo check --theme ink --check-layout --strict
 
 가운데로 모이는 슬롯(표지·`stat`·마무리)의 한 줄에 **한글 사이 문장부호**가 있으면 PPTX에서
 접힐 수 있다 — 그 자리의 한 줄은 짧게 쓴다
-([알려진 차이](known-differences.md)의 "가운데 정렬 슬롯은 여유가 없다").
+([계약 밖의 차이](known-differences.md)의 "가운데 정렬 슬롯은 여유가 없다").
 
 ## 자기 테마 만들기 — 프로젝트 안에서
 
