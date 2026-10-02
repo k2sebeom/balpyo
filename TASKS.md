@@ -122,9 +122,12 @@ LibreOffice는 관대한 리더라 자식 순서 · 열거값 밖의 속성을 �
       검증 2–26ms. 픽스처 18 · 예제 3이 모두 유효. 변이 12종(자식 순서 · 필수 속성 · 열거값 · 모르는 요소 ·
       타입 · 범위 · 모르는 속성 · 프리셋 이름 · 필수 자식 · rels `Target` · content types 속성)을 모두 잡고,
       메시지가 요소 경로와 기대한 자식을 댄다. 테스트 전용 의존성이다 (`balpyo` 바이너리에 링크되지 않는다).
-- [ ] 스키마 층: XSD를 `internal/testkit/ooxml/`에 출처와 함께 둔다 · `AssertPackage`가 모든 XML 파트를
+- [x] 스키마 층: XSD를 `internal/testkit/ooxml/`에 출처와 함께 둔다 · `AssertPackage`가 모든 XML 파트를
       스키마로 검증한다 (픽스처 · 예제 · `render/pptx`의 열림 테스트 덱) · 변이 테스트 몇 개로 검증기가
       실제로 거르는지 못 박는다.
+      → `schema.go`(`AssertSchema` · `ValidatePart`) · `AssertValidPPTX`(zip · content types · rels · 스키마 —
+      덱과 무관한 규칙). `TestFixtures` · `TestExamplesBuildClean`이 부른다. `TestSchemaRejectsMutatedParts`가
+      브라우저 없이 변이 11종을 본다. `render/pptx`의 열림 테스트는 LibreOffice를 지우는 항목에서 옮긴다.
 - [ ] 파트 사이 층 (스키마로 못 말하는 PowerPoint 규칙): 슬라이드 안 `cNvPr@id` 유일 · `sldId` ≥ 256 · 유일 ·
       `r:id`/`r:embed`가 맞는 종류의 관계를 가리킨다 · 슬라이드→레이아웃→마스터 연결 · `p:ph@idx`가 레이아웃에
       있다.
