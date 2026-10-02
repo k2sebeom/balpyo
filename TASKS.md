@@ -47,16 +47,30 @@
 픽스처마다 **두 타깃에서 각각 뽑은 컴포넌트 트리가 같다**는 판정 하나로 픽스처 수준 검증을
 대체한다.
 
-- [ ] `internal/testkit`에 트리 추출기 둘 — 웹 쪽은 덱 모델 + 지오메트리 side table에서,
+- [x] `internal/testkit`에 트리 추출기 둘 — 웹 쪽은 덱 모델 + 지오메트리 side table에서,
       PPTX 쪽은 산출된 슬라이드 XML(`spTree`)을 다시 읽어서. 노드 한 줄:
       `종류 · 요소 ID · rect · 외관 요약(색 토큰 · 글꼴 참조 · 크기 · 정렬) · 플레이스홀더 · 텍스트 런`.
-- [ ] 판정 둘: (a) **웹 트리 == PPTX 트리** — 같은 실행 안에서 비교하므로 환경과 무관하다.
+      → `internal/testkit/parity.go` (`WebLayout` · `PPTXLayout` · `FormatLayout`). 웹 쪽은 EMU·pt
+      환산을 렌더러 함수를 부르지 않고 따로 계산한다 — 같은 함수를 두 쪽이 부르면 그 결함이 판정을 지나간다.
+- [x] 판정 둘: (a) **웹 트리 == PPTX 트리** — 같은 실행 안에서 비교하므로 환경과 무관하다.
       (b) 트리를 `golden/layout.txt`로 남긴다 — 단, **rect는 빼고** 구조·외관·순서만 담는다
       (rect는 폰트에 따라 움직이므로 골든에 넣으면 다시 환경 고정이 필요해진다).
-- [ ] 옛 판정이 지키던 것을 새 판정이 덮는지 대조한다:
+      → `TestFixtureLayoutParity`(a) · `goldenFiles`의 `layout.txt`(b). 변이 검사로 확인한 것: 1 EMU 위치·크기
+      어긋남 · 정렬 · 글꼴 참조 · 글자 크기 · 굵기 · `<br>` · z-순서 · 리스트 마커가 각각 실패를 낸다.
+- [x] 옛 판정이 지키던 것을 새 판정이 덮는지 대조한다:
       `TestFixtureCoordinatesMatchGeometry`, `…SlideColorsKeepTokenReferences`,
       `…ShapeCountExcludesNonShapeElements`, `TestStackFixtureZOrderIsDocumentOrder`,
       `TestTableFixture*`, `TestChromeFixture*`. 덮이면 지운다(R3).
+      - **덮인다 → R3에서 지운다**: `TestFixtureCoordinatesMatchGeometry` · `TestFixtureShapeCountExcludesNonShapeElements` ·
+        `TestShapeFixtureSlideShapeCounts` · `TestShapeRolesLineUpWithGeometryRefs`(+ `shapeRoles`) ·
+        `TestStackFixtureZOrderIsDocumentOrder` · `TestChromeFixtureIsOnTheIncludedSlidesOnly` ·
+        `TestChromeFixtureNumberIsASlidenumFieldOfDeckPosition` · `TestChromeFixtureShapesMatchGeometry` ·
+        `TestTableFixtureTablesAreGraphicFrames`의 종류 판정.
+      - **일부만 덮인다**: `…SlideColorsKeepTokenReferences` — 글자 · 채움 · 선 · 그라디언트 스톱 색은 트리에 있다.
+        그림자(`effectLst`)와 표 셀 채움 · 테두리 색은 없다 → `render/pptx` 단위 테스트로 옮긴다.
+      - **덮이지 않는다 → R3에서 단위 테스트로 옮긴다** (OOXML 유효성 · 표 내부 격자): `TestTableFixtureEveryRowFillsTheGrid` ·
+        `TestTableFixtureCellsCarryExplicitAppearance` · `TestTableFixtureGridComesFromMeasuredBoxes`(열 너비 · 행 높이) ·
+        `TestChromeIsAbsentFromOtherFixtureGoldens`(`p:hf` 없음) · `TestShapeFixtureRotatedExtentIsPreRotation`(`xfrm@rot`).
 
 ## R2. 골든을 줄인다: 산출물 스냅샷 → 구조 스냅샷
 

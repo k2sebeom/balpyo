@@ -1,0 +1,17 @@
+# slide 1 title
+textbox "text s0.0"
+  ¶ center | "Platform Team"{body 15pt muted}
+textbox "text s0.1"
+  ¶ center | "2026 아키텍처 리뷰"{heading 48pt b fg}
+textbox "text s0.2"
+  ¶ center | "상반기 회고와 하반기 계획"{body 18pt fg}
+# slide 2 overview
+textbox "text s1.0"
+  ¶ start | "올해의 세 가지 변화"{heading 27pt b accent1}
+textbox "text s1.1"
+  ¶ start | "모놀리스 분리를 마쳤고, 배포 파이프라인을 자동화했으며, 관측성 스택(OpenTelemetry + Grafana)을 도입했다."{body 18pt fg}
+textbox "text s1.2"
+  ¶ end | "2026 H1"{body 13.5pt muted}
+# slide 3 closing
+textbox "text s2.0"
+  ¶ center | "질의응답 (Q and A)"{heading 42pt b fg}

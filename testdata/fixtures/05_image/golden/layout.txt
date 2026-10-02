@@ -1,0 +1,77 @@
+# slide 1 image-fit
+textbox "h2 s0.0"
+  ¶ start | "fit — cover와 contain"{heading 27pt b fg}
+pic "image s0.1.0.0" alt="넓은 그림을 박스에 채운 것"
+textbox "text s0.1.0.1"
+  ¶ start | "cover · 넓은 그림"{body 13.5pt muted}
+pic "image s0.1.1.0" alt="좁은 그림을 박스에 채운 것"
+textbox "text s0.1.1.1"
+  ¶ start | "cover · 좁은 그림"{body 13.5pt muted}
+pic "image s0.1.2.0" alt="넓은 그림을 박스에 맞춘 것"
+textbox "text s0.1.2.1"
+  ¶ start | "contain · 넓은 그림"{body 13.5pt muted}
+pic "image s0.1.3.0" alt="좁은 그림을 박스에 맞춘 것"
+textbox "text s0.1.3.1"
+  ¶ start | "contain · 좁은 그림"{body 13.5pt muted}
+pic "image s0.2.0" alt="고유 크기가 박스보다 작은 그림"
+textbox "text s0.2.1"
+  ¶ start | "contain은 확대하지 않는다 — 고유 크기 16×8 그림은 240×120 박스 안에서 16×8로 남는다"{body 13.5pt muted}
+# slide 2 image-appearance
+textbox "h2 s1.0"
+  ¶ start | "테두리·모서리·그림자·투명도·회전"{heading 27pt b fg}
+pic "image s1.1.0" alt="테두리"
+pic "image s1.1.1" alt="둥근 모서리"
+pic "image s1.1.2" alt="그림자"
+pic "image s1.2.0" alt="반투명"
+pic "image s1.2.1" alt="회전"
+pic "image s1.2.2" alt="좌우 대칭"
+# slide 3 image-formats
+textbox "h2 s2.0"
+  ¶ start | "PNG · JPEG · 같은 그림 두 번"{heading 27pt b fg}
+pic "image s2.1.0.0" alt="PNG 에셋"
+textbox "text s2.1.0.1"
+  ¶ start | "wide.png"{body 13.5pt muted}
+pic "image s2.1.1.0" alt="JPEG 에셋"
+textbox "text s2.1.1.1"
+  ¶ start | "photo.jpg"{body 13.5pt muted}
+pic "image s2.1.2.0" alt="같은 PNG를 다시 쓴 것"
+textbox "text s2.1.2.1"
+  ¶ start | "wide.png (같은 파트)"{body 13.5pt muted}
+# slide 4 image-text
+textbox "h2 s3.0"
+  ¶ start | "그림과 텍스트"{heading 27pt b fg}
+pic "image s3.1.0.0" alt="구성도"
+textbox "text s3.1.0.1"
+  ¶ start | "그림 1. 구성도 — 캡션은 그림의 자식이 아니라 형제다"{body 13.5pt muted}
+textbox "h3 s3.1.1.0"
+  ¶ start | "담을 것이 없는 태그"{heading 21pt b fg}
+textbox "p s3.1.1.1"
+  ¶ start | "그림은 void다. 그림 안 글자는 도형의 일이고, 그림 위 글자는 겹침의 일이다."{body 18pt fg}
+textbox "p s3.1.1.2"
+  ¶ start | "자세한 규칙은 "{body 18pt fg} · "레퍼런스"{body 18pt u accent1 →https://balpyo.dev/reference/soml/image} · "에 있다."{body 18pt fg}
+# slide 5 image-grid
+textbox "h2 s4.0"
+  ¶ start | "그림 그리드"{heading 27pt b fg}
+pic "image s4.1.0" alt="첫째 칸"
+pic "image s4.1.1" alt="둘째 칸"
+pic "image s4.1.2" alt="셋째 칸"
+pic "image s4.1.3" alt="여백이 있는 칸"
+pic "image s4.1.4" alt="두 칸을 차지하는 그림"
+# slide 6 image-full
+textbox "h2 s5.0"
+  ¶ start | "전면 그림"{heading 27pt b fg}
+pic "image s5.1" alt="전면 그림"
+textbox "text s5.3"
+  ¶ start | "배율은 고유 크기가 아니라 w·h·ratio가 정한다 — 이 그림은 1152×360으로 놓였다."{body 13.5pt muted}
+# slide 7 image-variant
+textbox "h2 s6.0"
+  ¶ start | "variant는 테마가 정한 액자다"{heading 27pt b fg}
+pic "image s6.1.0.0" alt="장식 없는 그림"
+textbox "text s6.1.0.1"
+  ¶ start | "기본 — 테마가 얹지 않는다"{body 13.5pt muted}
+pic "image s6.1.1.0" alt="액자를 씌운 그림"
+textbox "text s6.1.1.1"
+  ¶ start | "framed — 액자 한 벌"{body 13.5pt muted}
+pic "image s6.1.2.0" alt="액자에 테두리를 덮은 그림"
+textbox "text s6.1.2.1"
+  ¶ start | "인라인 border가 이긴다"{body 13.5pt muted}

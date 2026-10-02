@@ -112,6 +112,10 @@ func (f Fixture) goldenFiles(t testing.TB, result *pipeline.Result) map[string][
 		}
 		files[name] = data
 	}
+	// 구조 스냅샷 — rect 없는 컴포넌트 트리다 (ADR 0064). 폰트와 무관하므로 어느 호스트에서도
+	// 같은 바이트다.
+	webTree, _ := f.Layouts(t, result)
+	files[layoutGolden] = []byte(FormatLayout(webTree, false))
 	// 경고는 산출물의 일부다 — 골든에 남겨야 "언제부터 경고가 생겼나"가 diff에 보인다.
 	if diags := result.Diagnostics; len(diags) > 0 {
 		var b strings.Builder
