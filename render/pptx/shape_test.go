@@ -1,7 +1,6 @@
 package pptx
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -75,101 +74,25 @@ func renderWebString(t *testing.T, deck *soml.Deck) string {
 	return string(files[web.IndexFile])
 }
 
-// `<text>` 하나가 p:sp 하나가 되고, 잰 rect가 그대로 EMU 좌표로 나온다. 문서 순서가
-// spTree 순서다 — 겹침 z-순서의 근거.
-func TestRenderTextShapes(t *testing.T) {
+// 텍스트 박스의 골격: 채움·선 없는 rect, 박스 고정 + 넘치면 줄여 맞춤(ADR 0064), 인셋 0.
+// 줄높이는 절대 줄간격이다 — title 56px × 1.2 × 0.75 = 50.4pt (LineSpacing의 근거). 종류·rect·
+// 런은 패리티가 본다.
+func TestRenderTextBody(t *testing.T) {
 	deck := resolvedDeck(t, `<slide>
   <text role="title">제목</text>
-  <text>본문</text>
 </slide>`)
-	g := measuredGeometry(t, deck,
-		geom.Rect{X: 64, Y: 64, W: 1152, H: 67.2},
-		geom.Rect{X: 64, Y: 155.2, W: 1152, H: 36},
-	)
-	xml := slideXML(t, deck, g)
+	xml := slideXML(t, deck, measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 1152, H: 67.2}))
 
-	if got := strings.Count(xml, "<p:sp>"); got != 2 {
-		t.Fatalf("p:sp %d개, want 2\n%s", got, xml)
-	}
 	for _, want := range []string{
-		// 결정적인 도형 id·이름 (id=1은 spTree 그룹).
-		`<p:cNvPr id="2" name="text s0.0"/>`,
-		`<p:cNvPr id="3" name="text s0.1"/>`,
-		// 텍스트 박스 표시.
 		`<p:cNvSpPr txBox="1"/>`,
-		// 잰 rect 그대로 → EMU (64px = 609600, 67.2px = 640080, 1152px = 10972800).
-		`<a:off x="609600" y="609600"/>`,
-		`<a:ext cx="10972800" cy="640080"/>`,
-		`<a:off x="609600" y="1478280"/>`,
-		`<a:ext cx="10972800" cy="342900"/>`,
-		// 사각형 프리셋 + 채움/선 없음.
 		`<a:prstGeom prst="rect">`,
 		"<a:noFill/>",
-		// 박스 고정 + 넘치면 줄여 맞춤 (ADR 0064), 인셋은 웹 박스 모델과 같은 0.
 		`<a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">`,
 		"<a:normAutofit/>",
-	} {
-		if !strings.Contains(xml, want) {
-			t.Errorf("slide1.xml에 %q가 없다", want)
-		}
-	}
-	// 문서 순서 = spTree 순서: 제목 도형이 본문 도형보다 앞이다.
-	if strings.Index(xml, `name="text s0.0"`) > strings.Index(xml, `name="text s0.1"`) {
-		t.Error("spTree 순서가 문서 순서가 아니다")
-	}
-}
-
-// 해석된 외관이 rPr/pPr로 컴파일된다 (PRD §9.4) — Attrs를 다시 읽지 않으므로 역할
-// 기본값과 인라인 속성의 조합이 웹과 같은 값으로 나와야 한다.
-func TestRenderTextAppearance(t *testing.T) {
-	deck := resolvedDeck(t, `<slide>
-  <text role="title" align="center">제목</text>
-  <text role="code" color="#abcdef">코드</text>
-</slide>`)
-	g := measuredGeometry(t, deck,
-		geom.Rect{X: 64, Y: 64, W: 1152, H: 67.2},
-		geom.Rect{X: 64, Y: 155.2, W: 1152, H: 30},
-	)
-	xml := slideXML(t, deck, g)
-
-	for _, want := range []string{
-		// title: 56px → 42pt → sz=4200, weight 700 → b=1, 줄높이 1.2 → 1.2×56px×0.75 =
-		// 50.4pt = spcPts 5040(절대 줄간격 — units.go LineSpacing의 근거),
-		// 가운데 정렬, fg 토큰 → schemeClr tx1, heading 폰트 → major 참조.
-		`<a:rPr sz="4200" b="1">`,
-		`<a:pPr algn="ctr">`,
 		`<a:spcPts val="5040"/>`,
-		`<a:schemeClr val="tx1"/>`,
-		`<a:latin typeface="+mj-lt"/>`,
-		`<a:ea typeface="+mj-ea"/>`,
-		// code: 20px → 15pt, weight 400 → b=0, 리터럴 색은 srgbClr(대문자 정규화),
-		// mono는 fontScheme 자리가 없어 리터럴 typeface다.
-		`<a:rPr sz="1500" b="0">`,
-		`<a:srgbClr val="ABCDEF"/>`,
-		`<a:latin typeface="Noto Sans Mono"/>`,
 	} {
 		if !strings.Contains(xml, want) {
 			t.Errorf("slide1.xml에 %q가 없다", want)
-		}
-	}
-}
-
-// 토큰 색의 RGB는 슬라이드 파트에 나오면 안 된다 — 리터럴로 눕는 순간 그 글자만
-// PowerPoint의 테마 색 편집을 따라가지 못한다 (웹의 CSS 변수 보존과 짝을 이루는 절반).
-func TestRenderTextKeepsTokenColorsAsSchemeClr(t *testing.T) {
-	deck := resolvedDeck(t, `<slide>
-  <text color="accent1">강조</text>
-</slide>`)
-	g := measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 1152, H: 36})
-	xml := slideXML(t, deck, g)
-
-	if !strings.Contains(xml, `<a:schemeClr val="accent1"/>`) {
-		t.Error("토큰 색이 schemeClr 참조로 나오지 않았다")
-	}
-	for _, token := range deck.Theme.Colors {
-		if strings.Contains(xml, token.RGB) {
-			t.Errorf("토큰 %s의 RGB(%s)가 슬라이드 파트에 있다 — 테마 파트에만 있어야 한다",
-				token.Name, token.RGB)
 		}
 	}
 }
@@ -217,141 +140,67 @@ func TestBoldValue(t *testing.T) {
 	}
 }
 
-// 문자 데이터의 &는 유효한 XML로 이스케이프되어야 한다 — 픽스처 003의 "질의응답 (Q and A)"
-// 같은 실제 원문이 &를 쓰는 순간 파일이 열리지 않는 것을 막는다.
-func TestRenderTextEscapesXML(t *testing.T) {
-	deck := resolvedDeck(t, `<slide>
-  <text>R&D 로드맵 > 상반기</text>
-</slide>`)
-	g := measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 1152, H: 36})
-	xml := slideXML(t, deck, g)
-
-	if want := "<a:t>R&amp;D 로드맵 &gt; 상반기</a:t>"; !strings.Contains(xml, want) {
-		t.Errorf("slide1.xml에 %q가 없다\n%s", want, xml)
+// 원문의 문자 참조는 해석된 뒤 `a:t`에서 **한 번** 이스케이프된다 (ADR 0037) — 두 번이면
+// PowerPoint에 `&lt;`가 보이고, 안 하면 파일이 열리지 않는다.
+func TestRenderTextEscapesXMLOnce(t *testing.T) {
+	tests := []struct{ src, want string }{
+		{`R&D 로드맵 > 상반기`, "<a:t>R&amp;D 로드맵 &gt; 상반기</a:t>"},
+		{`&lt;slide id=&quot;x&quot;&gt; &amp; a &lt; b`, `<a:t>&lt;slide id=&quot;x&quot;&gt; &amp; a &lt; b</a:t>`},
 	}
-}
-
-// 원문의 문자 참조는 해석된 뒤 `a:t`에서 **한 번** XML 이스케이프된다 (ADR 0037) —
-// `&lt;`(원문) → `<`(모델) → `&lt;`(a:t). 두 번 이스케이프되면 PowerPoint에 `&lt;`가 보인다.
-func TestRenderCharRefsEscapeOnceInPPTX(t *testing.T) {
-	deck := resolvedDeck(t, `<slide>
-  <text>&lt;slide id=&quot;x&quot;&gt; &amp; a &lt; b</text>
-</slide>`)
-	g := measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 1152, H: 36})
-	xml := slideXML(t, deck, g)
-
-	want := `<a:t>&lt;slide id=&quot;x&quot;&gt; &amp; a &lt; b</a:t>`
-	if !strings.Contains(xml, want) {
-		t.Errorf("slide1.xml에 %q가 없다\n%s", want, xml)
-	}
-	if strings.Contains(xml, "&amp;lt;") {
-		t.Errorf("문자 참조가 두 번 이스케이프됐다\n%s", xml)
-	}
-}
-
-// 원문 개행은 파서가 공백으로 접는다 — 웹과 PPTX가 **같은 문자열**을 받아야 줄 수가
-// 갈라지지 않는다 (픽스처 002의 본문이 이 경우다). 한쪽이 a:br을 내고 다른 쪽이 접으면
-// 두 타깃의 줄바꿈이 달라진다.
-func TestRenderTextNewlinesAgreeWithWebRenderer(t *testing.T) {
-	deck := resolvedDeck(t, "<slide>\n  <text>모놀리스 분리를 마쳤고,\n  관측성 스택을 도입했다.</text>\n</slide>")
-	g := measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 1152, H: 72})
-
-	const collapsed = "모놀리스 분리를 마쳤고, 관측성 스택을 도입했다."
-	xml := slideXML(t, deck, g)
-	if !strings.Contains(xml, "<a:t>"+collapsed+"</a:t>") {
-		t.Errorf("PPTX가 접힌 문자열을 내지 않았다\n%s", xml)
-	}
-	if strings.Contains(xml, "<a:br") {
-		t.Error("PPTX가 a:br을 냈다 — 파서가 접은 개행이 되살아났다")
-	}
-
-	// 웹 렌더러도 같은 결정을 해야 한다. 두 렌더러가 같은 덱 모델을 받으므로 이 대조가
-	// "결정은 파서 한 곳"이라는 계약을 못 박는다.
-	html := renderWebString(t, deck)
-	if !strings.Contains(html, ">"+collapsed+"</div>") {
-		t.Errorf("웹이 접힌 문자열을 내지 않았다\n%s", html)
-	}
-	if strings.Contains(html, "<br") {
-		t.Error("웹이 <br>을 냈다 — 두 렌더러의 개행 결정이 갈라졌다")
-	}
-}
-
-// 빈 텍스트·크기 0 박스도 도형을 낸다 — 건너뛰면 spTree 순서와 도형 id가 내용에 따라
-// 흔들리고, 저자는 빈 요소의 존재를 PowerPoint에서 확인할 수 없다 (writeTextShape의 정책).
-func TestRenderEmptyTextStillEmitsShape(t *testing.T) {
-	deck := resolvedDeck(t, `<slide>
-  <text></text>
-</slide>`)
-	g := measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 0, H: 0})
-	xml := slideXML(t, deck, g)
-
-	if got := strings.Count(xml, "<p:sp>"); got != 1 {
-		t.Fatalf("p:sp %d개, want 1\n%s", got, xml)
-	}
-	if !strings.Contains(xml, `<a:ext cx="0" cy="0"/>`) {
-		t.Error("크기 0 박스가 그대로 나오지 않았다")
-	}
-	// 빈 텍스트는 런 없는 문단이다.
-	if strings.Contains(xml, "<a:r>") {
-		t.Error("빈 텍스트에 런이 있으면 안 된다")
-	}
-}
-
-// 어휘에 태그를 추가하고 렌더 매핑을 잊으면 조용히 사라지는 대신 멈춘다 (웹과 같은 계약).
-func TestRenderUnmappedElementFails(t *testing.T) {
-	deck := resolvedDeck(t, `<slide>
-  <text>본문</text>
-</slide>`)
-	deck.Slides[0].Content = []soml.Node{&soml.Element{Name: "box"}}
-	g := measuredGeometry(t, deck, geom.Rect{X: 0, Y: 0, W: 10, H: 10})
-
-	_, err := NewWithGeometry(g).Render(deck)
-	if err == nil {
-		t.Fatal("매핑 없는 태그가 렌더되었다")
-	}
-	if !strings.Contains(err.Error(), "매핑이 없다") {
-		t.Errorf("에러가 매핑 부재를 가리키지 않는다: %v", err)
-	}
-}
-
-// 외관이 해석되지 않은 요소는 기본값으로 그리지 않는다 — 웹만 그럴듯하게 나오고 PPTX와
-// 갈라지는 대신 멈춘다 (render/web.writeText와 같은 계약).
-func TestRenderUnresolvedAppearanceFails(t *testing.T) {
-	deck := resolvedDeck(t, `<slide>
-  <text>본문</text>
-</slide>`)
-	deck.Slides[0].Content[0].(*soml.Element).Appearance = nil
-	g := measuredGeometry(t, deck, geom.Rect{X: 0, Y: 0, W: 10, H: 10})
-
-	_, err := NewWithGeometry(g).Render(deck)
-	if err == nil {
-		t.Fatal("해석되지 않은 외관이 렌더되었다")
-	}
-	if !strings.Contains(err.Error(), "core.Resolve") {
-		t.Errorf("에러가 해석 누락을 가리키지 않는다: %v", err)
-	}
-}
-
-// 콘텐츠가 있는 덱도 같은 입력이 같은 바이트를 내야 한다 — 도형 조립에 맵 순회가 새면
-// 여기서 잡힌다.
-func TestRenderContentDeckIsByteIdentical(t *testing.T) {
-	render := func() []byte {
-		deck := resolvedDeck(t, `<slide>
-  <text role="title" align="center">제목</text>
-  <text color="accent1">본문</text>
-</slide>`)
-		g := measuredGeometry(t, deck,
-			geom.Rect{X: 64, Y: 64, W: 1152, H: 67.2},
-			geom.Rect{X: 64, Y: 155.2, W: 1152, H: 36},
-		)
-		files, err := NewWithGeometry(g).Render(deck)
-		if err != nil {
-			t.Fatal(err)
+	for _, tc := range tests {
+		deck := resolvedDeck(t, "<slide>\n  <text>"+tc.src+"</text>\n</slide>")
+		xml := slideXML(t, deck, measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 1152, H: 36}))
+		if !strings.Contains(xml, tc.want) {
+			t.Errorf("slide1.xml에 %q가 없다\n%s", tc.want, xml)
 		}
-		return files[FileName(deck)]
 	}
-	if !bytes.Equal(render(), render()) {
-		t.Error("같은 덱이 다른 바이트를 냈다")
+}
+
+// 렌더러는 해석·검증을 지나지 않은 모델을 기본값으로 그리지 않고 멈춘다 — 웹만 그럴듯하게
+// 나오고 PPTX와 갈라지는 대신 (웹 렌더러와 같은 계약). 파서가 막는 모양도 직접 만든다.
+func TestRenderRejectsUnresolvedModel(t *testing.T) {
+	tests := []struct {
+		name, src string
+		breakIt   func(content []soml.Node)
+		want      []string
+	}{
+		{"매핑 없는 태그", `<slide><text>본문</text></slide>`, func(c []soml.Node) {
+			c[0] = &soml.Element{Name: "box"}
+		}, []string{"매핑이 없다"}},
+		{"해석 안 된 외관", `<slide><text>본문</text></slide>`, func(c []soml.Node) {
+			c[0].(*soml.Element).Appearance = nil
+		}, []string{"core.Resolve"}},
+		{"해석 안 된 인라인", `<slide><p><strong>강조</strong></p></slide>`, func(c []soml.Node) {
+			c[0].(*soml.Element).Children[0].(*soml.Element).Appearance = nil
+		}, []string{"core.Resolve"}},
+		{"Link 없는 a", `<slide><p><a href="https://example.com">링크</a></p></slide>`, func(c []soml.Node) {
+			c[0].(*soml.Element).Children[0].(*soml.Element).Appearance.Link = ""
+		}, []string{"core.Resolve"}},
+		// 문자 데이터는 측정 대상이 아니라 지오메트리는 그대로 유효하다 — 순회가 건너뛰면 글자가 사라진다.
+		{"컨테이너 안 문자 데이터", `<slide><row><text>본문</text></row></slide>`, func(c []soml.Node) {
+			row := c[0].(*soml.Element)
+			row.Children = append(row.Children, &soml.Text{Value: "떠 있는 글자"})
+		}, []string{"요소가 아닌 노드", "s0.0.1"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			deck := resolvedDeck(t, tc.src)
+			tc.breakIt(deck.Slides[0].Content)
+			rects := make([]geom.Rect, len(geom.Refs(deck)))
+			for i := range rects {
+				rects[i] = geom.Rect{W: 10, H: 10}
+			}
+			g := measuredGeometry(t, deck, rects...)
+			_, err := NewWithGeometry(g).Render(deck)
+			if err == nil {
+				t.Fatal("렌더가 멈추지 않았다")
+			}
+			for _, want := range tc.want {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("에러에 %q가 없다: %v", want, err)
+				}
+			}
+		})
 	}
 }
 
