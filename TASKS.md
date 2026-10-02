@@ -94,21 +94,28 @@
 
 ## R3. 픽셀 · 잉크 · LibreOffice 장치를 걷어낸다
 
-- [ ] 지운다: `internal/testkit`의 `pixel.go` · `ink.go`(+ 테스트) · `script_spacing_test.go`,
+- [x] 지운다: `internal/testkit`의 `pixel.go` · `ink.go`(+ 테스트) · `script_spacing_test.go`,
       `fixture_level_test.go`의 픽셀/잉크/줄 수 판정
       (`TestFixtureLineBreaksMatchLibreOffice` · `…PresetGeometryPerShape` · `…InShapeTextLineCounts` ·
       `…InShapeTextRect` · `TestImageFixturePictureRegions` · `TestStackFixtureOverlapRegions` 등)과
       완화표 `inShapeLineDivergences` · `loLineWidthMaxRatios` · 픽스처별 `DiffOptions`.
-- [ ] `fixture_level_test.go`에서 R1이 덮지 못하는 판정이 남으면 해당 패키지의 단위 테스트로
+      → `review.go` · `suite.go`와 LibreOffice 래스터 헬퍼(`RenderPPTX` · `RenderPDF` · `RenderPDFPoints`)도 지웠다.
+      `TestFixtures`는 빌드 → 골든 → 동일성 → 패키지 불변식 → 같은 바이트의 루프 하나다.
+- [x] `fixture_level_test.go`에서 R1이 덮지 못하는 판정이 남으면 해당 패키지의 단위 테스트로
       옮긴다. 이 파일은 없어지는 것이 목표다.
-- [ ] `render/pptx/soffice_test.go`: "LibreOffice가 연다" 하나만 **옵트인 스모크**로 남긴다
+      → 없어졌다. 옮길 것(크롬 `wrap="none"` · 표 격자 · 인쇄 페이지)은 R1–R2에서 먼저 옮겼다.
+- [x] `render/pptx/soffice_test.go`: "LibreOffice가 연다" 하나만 **옵트인 스모크**로 남긴다
       (`soffice`가 없으면 건너뛰고, `make smoke`로만 돈다). 깨진 PPTX를 잡는 값은 진짜다.
+      → `RequireSoffice`가 `BALPYO_SMOKE=1`이 아니면 건너뛴다 (`internal/preview`의 LibreOffice 테스트도 같은 문).
+      `make review`는 R6을 앞당겨 `balpyo preview`를 픽스처마다 부른다 — soffice가 없으면 R6 전까지 실패한다.
 
 ## R4. 테스트 환경: 호스트에서 `go test ./...`
 
 - [ ] 게이트를 호스트로 옮긴다: `make test` = `go test ./...`. Chromium이 필요한 테스트
       (지오메트리 패스)는 Chromium이 없으면 **명확한 메시지로 건너뛴다** — 빌드 자체가 Chromium을
       쓰므로 개발자는 이미 갖고 있다.
+      R3 시점 관찰: 호스트 `go test ./...`에서 패키지 여럿이 동시에 Chrome을 띄우면 가끔 실행이 실패한다
+      (`context canceled` · `dial … EOF`) — 단독 재실행은 초록. 게이트가 되려면 띄우기 재시도나 `-p` 제한이 필요하다.
 - [ ] 동일성 판정(R1-a)이 환경과 무관한지 확인한다 — 다른 폰트가 깔린 호스트에서도 초록이어야 한다.
 - [ ] Docker 이미지는 CI 편의로만 남기고 줄인다: LibreOffice · poppler · `fonts.conf`(힌팅 고정) ·
       `versions.env` 버전 핀과 `TestImageVersionsMatchPins`를 지운다. `make test-host`는
