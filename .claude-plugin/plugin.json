@@ -1,0 +1,13 @@
+{
+  "name": "balpyo",
+  "displayName": "Balpyo",
+  "description": "Author Balpyo decks and design Balpyo themes — one SOML source renders to self-contained HTML and editable native PPTX",
+  "version": "0.1.0",
+  "author": {
+    "name": "k2sebeom",
+    "url": "https://github.com/k2sebeom"
+  },
+  "homepage": "https://github.com/k2sebeom/balpyo",
+  "repository": "https://github.com/k2sebeom/balpyo",
+  "keywords": ["presentation", "slides", "pptx", "deck", "soml", "balpyo", "theme"]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "balpyo",
+  "owner": {
+    "name": "k2sebeom",
+    "url": "https://github.com/k2sebeom"
+  },
+  "description": "Skills for writing Balpyo decks and designing Balpyo themes",
+  "plugins": [
+    {
+      "name": "balpyo",
+      "source": ".",
+      "description": "Author Balpyo decks and design Balpyo themes — one SOML source renders to self-contained HTML and editable native PPTX",
+      "category": "documents"
+    }
+  ]
+}
