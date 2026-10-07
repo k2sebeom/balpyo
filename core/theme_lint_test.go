@@ -11,7 +11,7 @@ import (
 func TestLayoutCSSAppearanceWarning(t *testing.T) {
 	appearance := []string{"color", "background", "border", "box-shadow", "font-size"}
 	for _, prop := range appearance {
-		diags := lintLayoutCSS(prop+": x", "title")
+		diags := lintLayoutCSS(prop+": x", "layouts/title.css")
 		if len(diags) != 1 {
 			t.Fatalf("%s: 진단 수 = %d, want 1 (%v)", prop, len(diags), diags)
 		}
@@ -23,11 +23,11 @@ func TestLayoutCSSAppearanceWarning(t *testing.T) {
 		}
 	}
 	// 배치 프로퍼티는 조용하다 (값은 보지 않는다 — 어떤 값이든 통과).
-	if diags := lintLayoutCSS("display: grid; gap: 24px; padding: 10", "content"); len(diags) != 0 {
+	if diags := lintLayoutCSS("display: grid; gap: 24px; padding: 10", "layouts/content.css"); len(diags) != 0 {
 		t.Errorf("배치 프로퍼티가 경고를 냈다: %v", diags)
 	}
 	// --strict: 외관 경고가 에러로 승격한다 (soml.Diagnostics.Strict).
-	strict := lintLayoutCSS("color: red", "title").Strict()
+	strict := lintLayoutCSS("color: red", "layouts/title.css").Strict()
 	if !strict.HasErrors() {
 		t.Error("--strict가 외관 경고를 에러로 승격하지 않았다")
 	}
@@ -37,7 +37,7 @@ func TestLayoutCSSAppearanceWarning(t *testing.T) {
 // allowlist 밖은 경고지만 문법은 값 층과 같은 정책으로 에러다 (style.go와 같은 규칙).
 func TestLayoutCSSSyntaxError(t *testing.T) {
 	for _, css := range []string{"display flex", ": 10px", "width:"} {
-		diags := lintLayoutCSS(css, "title")
+		diags := lintLayoutCSS(css, "layouts/title.css")
 		if len(diags) == 0 {
 			t.Fatalf("%q: 진단이 없다 — 문법 위반이 잡히지 않았다", css)
 		}
@@ -55,9 +55,9 @@ func TestLayoutCSSLintDeterminism(t *testing.T) {
 		"alpha": "color: red",
 		"mango": "color: red",
 	}
-	want := []string{"layouts/alpha.css", "layouts/mango.css", "layouts/zebra.css"}
+	want := []string{"themes/corp/layouts/alpha.css", "themes/corp/layouts/mango.css", "themes/corp/layouts/zebra.css"}
 	for run := 0; run < 5; run++ {
-		diags := lintLayouts(layouts)
+		diags := lintLayouts("themes/corp", ".css", layouts)
 		if len(diags) != len(want) {
 			t.Fatalf("진단 수 = %d, want %d", len(diags), len(want))
 		}

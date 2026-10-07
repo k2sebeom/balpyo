@@ -120,7 +120,12 @@ func loadThemeNamed(fsys fs.FS, name string) (themePackage, error) {
 	for _, child := range chain[1:] {
 		merged = mergeRawTheme(merged, child)
 	}
-	return buildThemePackage(merged)
+	pkg, err := buildThemePackage(merged)
+	if err != nil {
+		return pkg, err
+	}
+	pkg.lint = lintThemeChain(chain)
+	return pkg, nil
 }
 
 // readThemeChain은 뿌리부터 잎까지의 원문 선언이다 (`minimal` → `corp` → `corp-dark`).

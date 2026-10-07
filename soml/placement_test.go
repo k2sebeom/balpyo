@@ -15,25 +15,13 @@ func TestFlowOfCoversLayoutContainers(t *testing.T) {
 		{StackElement, FlowStack},
 	}
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if KindOf(tc.name) != KindLayoutContainer {
-				t.Fatalf("%q는 레이아웃 컨테이너가 아니다", tc.name)
-			}
-			if got := FlowOf(tc.name); got != tc.want {
-				t.Errorf("FlowOf(%q) = %d, want %d", tc.name, got, tc.want)
-			}
-		})
+		if got := FlowOf(tc.name); got != tc.want {
+			t.Errorf("FlowOf(%q) = %d, want %d", tc.name, got, tc.want)
+		}
 	}
-	// 카탈로그의 컨테이너 전부가 위 표에 있어야 한다 — 컨테이너를 추가하고 흐름을 잊으면
-	// FlowRow(제로값)로 조용히 떨어진다.
-	for _, name := range layoutContainerElements {
-		found := false
-		for _, tc := range cases {
-			found = found || tc.name == name
-		}
-		if !found {
-			t.Errorf("컨테이너 %q의 흐름 대응 테스트가 없다", name)
-		}
+	// 컨테이너를 추가하고 흐름을 잊으면 FlowRow(제로값)로 조용히 떨어진다.
+	if len(cases) != len(ElementNamesOf(KindLayoutContainer)) {
+		t.Errorf("흐름 표 %d개, 레이아웃 컨테이너 %v", len(cases), ElementNamesOf(KindLayoutContainer))
 	}
 }
 

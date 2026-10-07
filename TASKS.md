@@ -1,224 +1,238 @@
-# TASKS — production-grade 로드맵 (도그푸딩 3회차 기준, 2026-09-21)
+# TASKS — 리팩터: 픽셀 동일성에서 컴포넌트·레이아웃 동일성으로 (2026-10-02)
 
-> **근거는 추측이 아니라 실측이다.** 이 문서는 덱을 직접 써 본 기록에서 **실제로 막힌 것만**
-> 담는다 — 3회차는 `workspace/sample-deck`(11장, 한국어, `minimal`, 16:9, 푸터·번호 켜짐)이다.
-> `check` → `check --check-layout --strict` → `build --target html,pptx` → `preview`를 순서대로
-> 돌리고 22장(웹 11 · PPTX 11)을 눈으로 견줬다. 쓰다가 부딪히지 않은 기능은 여기 없다.
+> **계약을 바꾼다.** 지금까지 balpyo는 "웹과 PPTX가 픽셀 단위로 같다"를 목표로 삼았다. 그
+> 목표는 글자를 서로 다른 두 엔진(Chromium · PowerPoint/LibreOffice)이 배치하는 한 닿지
+> 않는다 — 줄바꿈 규칙(E1), 스크립트 경계 간격(P1.5), 폰트 해석(필드 테스트 4), 대각
+> 그라디언트(ADR 0034)가 차례로 그 사실을 보였다. 게다가 픽셀 게이트가 비교한 상대는
+> PowerPoint가 아니라 대리 렌더러 LibreOffice였다.
 >
-> 판정 기준은 하나다: **"XML로 슬라이드를 쓰는 사람이, 결과를 열어보지 않고도 production 품질을
-> 낼 수 있는가."** 어휘가 몇 개인지가 아니라, 저자가 (1) 쓰고 싶은 것을 쓸 수 있고 (2) 잘못을
-> 빌드가 잡아주고 (3) 두 타깃이 같은 그림을 내는가로 잰다.
+> **새 계약: 같은 컴포넌트가 같은 자리에 같은 외관으로 나온다.**
 >
-> 타깃은 웹(HTML)과 **편집 가능한** 네이티브 PPTX 두 개다. PDF 렌더는 out of scope.
+> - **컴포넌트**: SOML 요소 하나는 두 타깃에서 같은 종류의 객체다 — 텍스트 박스 · 프리셋
+>   도형 · 그림 · 표 · 플레이스홀더. 문서 순서(= 칠 순서 · 읽기 순서)도 같다.
+> - **레이아웃**: PPTX 객체의 `xfrm`은 브라우저가 잰 rect다 (EMU 반올림 안에서).
+> - **외관**: 해석된 값이 같다 — 색은 토큰 이름(`schemeClr`), 글꼴은 테마 참조, 크기·굵기·정렬.
+> - **글자 내용**은 런 단위로 같다. **줄이 어디서 접히는지는 계약 밖이다** — 각 엔진의 몫이다.
 >
-> **1·2회차(D1–D20 / P0–P6)는 전부 닫혔다.** 그 스무 건의 증상·근거·증거는 git 이력과
-> [ADR 0036–0063](docs/decisions/index.md)이 갖는다 — 닫힌 것을 여기 다시 싣지 않는 이유는
-> 이 문서가 **열린 것의 목록**이어야 읽히기 때문이다. 3회차는 그 위에서 시작했다.
+> 지키는 것은 그대로다: 저자는 좌표를 쓰지 않는다(지오메트리 패스), PPTX는 편집 가능한
+> 네이티브 객체다, 테마는 디자인 시스템이다, 진단은 한 곳에서 나온다.
+>
+> 숫자로 본 출발점: 테스트 코드 34.6k줄 > 제품 코드 26.4k줄 · 골든 파일 473개 ·
+> `internal/testkit/fixture_level_test.go` 한 파일 2,638줄 · 테스트에 Docker 이미지
+> (Chromium + LibreOffice + poppler + 고정 폰트 + 힌팅 끔) 필요.
 
 ---
 
-## 3회차에서 막힌 것 (E1–E9)
+## 진행 규칙 (가볍게)
 
-심각도는 "저자가 우회할 수 있는가"로 매겼다.
-
-| # | 증상 (실측) | 심각도 | 항목 | 상태 |
-|---|---|---|---|---|
-| E1 | **한글 줄바꿈 규칙이 두 엔진에서 갈린다.** Chromium은 음절 사이에서 끊고(`데이터와 모델의 편`/`향을 측정한다.`) LibreOffice는 낱말 경계에서만 끊는다(`데이터와 모델의`/`편향을 측정한다.`). 도형 카드 셋을 나란히 놓으니 **셋 다 다른 자리에서** 접혔고, 웹 쪽이 한글 관행으로는 틀린 쪽이다. 잰 폭이 PPTX 배치를 예측하지 못하므로 **"브라우저가 재고 PPTX가 그 rect를 쓴다"는 계약이 CJK에서 성립하지 않는다**. 여유가 0에 가까운 도형 문단은 LibreOffice에서 줄이 하나 늘고 그 줄은 **도형 밖으로 흐른다**. 그런데 `build --check-layout --strict`는 **종료 코드 0**이다 — 지오메트리 패스는 브라우저만 쟀다 | **높음** (우회 불가) | P7.1 | 열림 |
-| E2 | `preview --out preview`(빌드 출력 == 갤러리)에서 갤러리 쓰기가 자기 PPTX를 지운 뒤 그것을 읽으려 한다: `검수 산출물을 읽을 수 없다: open …/preview/온보딩-3일-4시간.pptx: no such file or directory`, 종료 코드 1. 진단이 원인(두 디렉토리가 같다)을 말하지 않는다 | 낮음 (우회 가능) | P7.2 | 열림 |
-| E3 | **알 수 없는 태그 진단이 전역 어휘 31개를 나열한다.** 슬롯·속성 진단은 자리로 좁히는데(`레이아웃 "title"에 없는 슬롯 "titel" (쓸 수 있는 슬롯: kicker, title, subtitle, author, date)`) 태그만 좁히지 않는다 — `<ul>` 안에서 답은 `<li>` 하나인데 31개를 읽힌다. 자식 목록은 이미 있다(`<ul>의 자식으로 <p>는 올 수 없다 (쓸 수 있는 태그: <li>)`) | 중간 | P7.3 | 열림 |
-| E4 | **오타에 "혹시 이것인가"가 없다.** 3회차에서 실제로 낸 오타 넷이 전부 편집 거리 1–2였다: `img`→`image` · `two-colum`→`two-column` · `heding`→`heading` · `elipse`→`ellipse`. 목록이 이미 닫혀 있으므로 후보는 계산할 수 있다 | 중간 | P7.3 | 열림 |
-| E5 | **진단이 소스 위치 순으로 정렬되지 않는다.** 두 장을 함께 검사하니 `002_b.slide:3:6` · `002_b.slide:5:4` · `001_a.slide:2:15` 순으로 나왔다 — 파일을 오르내리며 고치게 된다 | 낮음 | P7.3 | 열림 |
-| E6 | **사고 하나가 경고 여럿이 된다.** 목록 하나가 스테이지를 279px 넘치니 경고 **7건**이다 — `<ul>`(3:4) + 넘친 `<li>` 여섯(14:6…19:6, 9/63/117/171/225/279px). 콘텐츠 박스 이탈은 하나로 보고되는데(같은 목록이 19px만 넘칠 때 경고 1건) **스테이지 이탈은 컨테이너와 자손이 각자 보고한다**. ADR 0039의 "요소당 진단 하나"는 지켜지지만 같은 ADR의 "읽히지 않는 경고는 없는 것과 같다"가 깨진다 | 중간 | P7.4 | 열림 |
-| E7 | **`layout="quote"`가 인용문을 본문 크기로 낸다.** 인용 한 문장을 위해 있는 레이아웃인데 인용 타이포그래피가 없어 미완성 장으로 보인다 — 세 테마 전부 `blockquote`에 `color: muted` 하나뿐이다. 저자가 `variant="lead"`로 고칠 수 있으나(실측: strict 통과) 그것이 기본이어야 한다 | 중간 (우회 가능) | P7.5 | 열림 |
-| E8 | 레이아웃 기본값 셋이 그림을 약하게 만든다: `layout="code"`의 캡션이 푸터 띠에 붙어 **두 줄 푸터로 읽힌다**(겹침은 아니다 — 콘텐츠 박스는 `(64,64 1152×592)`로 656에서 끝나고 크롬 띠는 656–720이다. 같은 왼쪽 끝·같은 muted 색이 둘을 한 덩이로 만든다) · `layout="title"`은 제목 덩이와 저자/날짜 줄 사이가 크게 빈다 · `layout="stat"`의 `label`(18px)이 `body`(24px)보다 작아 **위계가 뒤집힌다** | 중간 | P7.5 | 열림 |
-| E9 | **`init` 덱과 손으로 쓴 덱이 ID로 부딪힌다.** 스캐폴드 3장을 지우지 않고 자기 장을 쓰면 첫 `check`가 에러 2건으로 시작한다(`슬라이드 ID "cover"가 slides/001_cover.slide와 충돌한다`). 판정은 옳은데 **고칠 길을 말하지 않고**(삭제하거나 이름을 바꾼다) ID 충돌만 `line:col`이 없다 — 다른 진단은 전부 갖는다 | 낮음 | P7.6 | 열림 |
-
-**3회차에서 통과한 것** (이 로드맵이 건드리지 않는 baseline):
-
-- **속도와 게이트**: 11장이 `--check-layout --strict`까지 0.63초, 두 타깃 빌드가 종료 코드 0.
-- **전달**: `dist/index.html`이 외부 참조 **0건**이다(`src=`·`href=` 전수) — USB로 들고 가 파일로
-  열어도 돈다. ADR 0062의 "전달은 그대로 인라인"이 실물에서 참이다.
-- **구조 검증이 촘촘하다.** 조용히 새길 바라고 넣은 것이 전부 잡혔다: `<ul>` 안의 `<p>` ·
-  목록 밖의 `<li>` · 오타 난 슬롯 이름 · **같은 슬롯에 요소 둘**(지오메트리 패스가
-  `<text>가 형제 <text>와 95px×36px 겹친다`로 잡는다 — 슬롯 중복을 어휘 층이 아니라 잰 값이
-  잡는다는 뜻이다).
-- **`watch`**: 저장마다 3–5ms 재빌드, `/_balpyo/status`가 `generation` + 진단을 JSON으로 내고,
-  깨진 파일은 마지막 성공본을 지우지 않는다. 태그를 깨고 되돌리는 동안 탭이 한 번도 비지 않았다.
-- **두 타깃의 일치**: 11장 diff에서 남은 차이는 안티에일리어싱과 P1.5의 알려진 스크립트 간격이다.
-  **그 간격이 파일이 아니라 뷰어의 것임을 다시 확인했다** — PPTX 런을 풀어 보니
-  `'데이터와 모델의 편향을 측정한다.'`로 깨끗하고, 렌더에 보이는 `측정한다 .`의 공백은 XML에 없다.
-  그래서 `preview`의 diff 비율은 실제 불일치를 **과장한다**.
-- **크롬**: `end` 레이아웃에서 푸터·번호가 제외된다(테마 선언대로).
-- **`reveal`**: 스텝이 마크업(`data-balpyo-reveal="1"`·`"2"`)에 실리고 오버뷰·인쇄는 전개된다.
+- 항목마다 **테스트 → 구현 → 문서**. 테스트가 먼저 바뀌는 항목(R1·R2)은 새 판정이 **옛 판정을
+  대체하는 것**을 확인한 다음 옛 것을 지운다.
+- ADR은 **계약을 바꾸는 결정에만** 쓴다. 이 리팩터 전체에 필요한 것은 R0의 하나다.
+- 지우는 커밋은 지우는 것만 담는다 (`refactor:`/`test:`) — 되돌리기 쉽게.
+- 끝나면 `go test ./...` 하나가 진짜 게이트다 (R4).
 
 ---
 
-## 반복 절차 (모든 항목 공통)
+## R0. 계약을 문서로 바꾼다 — **먼저 한다**
 
-항목마다 아래 네 체크박스가 곧 완료 조건이다.
+- [x] **ADR 0064 — 컴포넌트·레이아웃 동일성**: 위의 네 줄을 결정으로 적는다. 대체하는 것을
+      명시한다: PRD §13의 결정 1(autofit 배제 · 줄 수 차이 0 · 픽셀 임계값), §14의 "웹 ↔ PPTX
+      시각적 일치 — 픽셀 비교" 지표, ADR 0005의 여유 근거(줄 수를 맞추기 위한 여유). 옛 ADR은
+      고치지 않는다.
+- [x] PRD §13·§14를 새 계약으로 바꾼다 (PRD는 ADR이 아니라 살아 있는 문서다).
+- [x] `AGENTS.md`의 Testing 절과 불변식 목록을 새 계약에 맞춘다.
 
-- **① RED — 테스트**: 정상 + **에러/경고** 케이스. 파서 · 값 해석 · 웹 골든 · PPTX 구조(XML
-  어서션) · PPTX 열림(LibreOffice) · 픽셀 비교 중 해당하는 것. 픽스처는 `testdata/fixtures/`.
-- **② GREEN — 구현**: `soml/`(어휘) → `core/`(값) → `render/web/` · `render/pptx/`. 컨테이너에서
-  `make test` 전부 통과.
-- **③ REVIEW — 시각 확인**: `make review` 갤러리 + PPTX를 PNG로 되돌려 확인. 새 설계 결정은 ADR
-  (`docs/decisions/`, 한국어, 맥락 → 선택지 → 결정 → 근거 → 결과. **쓴 뒤 고치지 않는다** —
-  틀리면 다음 ADR이 고친다).
-- **④ DOC — 문서**: `docs/reference/…`를 **구현된 동작만** 반영해 갱신. 새 페이지는
-  `mkdocs.yml` nav에 등록한다 — CI가 `--strict`로 빌드해 nav에 없는 문서를 에러로 잡는다.
+## R1. 동일성 판정 하나: 레이아웃 스냅샷
 
-> 추가 규칙 셋:
-> 1. **도그푸딩 덱이 회귀 테스트다.** 어휘를 건드리는 항목은 마지막에 `examples/*` 셋을 다시
->    빌드해 12 · 10 · 6장이 그대로 나오는지 본다 (P5.1이 이걸 자동화한다).
-> 2. **저자 주석이 마찰 기록이다.** 우회로 짠 자리는 슬라이드 주석에 "마찰점"으로 남기고, 그
->    항목이 닫힐 때 주석과 우회를 함께 지운다 (그게 REVIEW의 증거다).
-> 3. **3회차가 남긴 규칙**: 진단 문구를 고치는 항목은 **그 문구를 실제로 낸 입력**을 픽스처로
->    남긴다. E3–E5는 셋 다 "문구가 없거나 순서가 틀렸다"이고, 그런 결함은 골든에도 픽셀에도
->    보이지 않아 사람이 써 보지 않으면 다음 회차까지 산다.
+픽스처마다 **두 타깃에서 각각 뽑은 컴포넌트 트리가 같다**는 판정 하나로 픽스처 수준 검증을
+대체한다.
+
+- [x] `internal/testkit`에 트리 추출기 둘 — 웹 쪽은 덱 모델 + 지오메트리 side table에서,
+      PPTX 쪽은 산출된 슬라이드 XML(`spTree`)을 다시 읽어서. 노드 한 줄:
+      `종류 · 요소 ID · rect · 외관 요약(색 토큰 · 글꼴 참조 · 크기 · 정렬) · 플레이스홀더 · 텍스트 런`.
+      → `internal/testkit/parity.go` (`WebLayout` · `PPTXLayout` · `FormatLayout`). 웹 쪽은 EMU·pt
+      환산을 렌더러 함수를 부르지 않고 따로 계산한다 — 같은 함수를 두 쪽이 부르면 그 결함이 판정을 지나간다.
+- [x] 판정 둘: (a) **웹 트리 == PPTX 트리** — 같은 실행 안에서 비교하므로 환경과 무관하다.
+      (b) 트리를 `golden/layout.txt`로 남긴다 — 단, **rect는 빼고** 구조·외관·순서만 담는다
+      (rect는 폰트에 따라 움직이므로 골든에 넣으면 다시 환경 고정이 필요해진다).
+      → `TestFixtureLayoutParity`(a) · `goldenFiles`의 `layout.txt`(b). 변이 검사로 확인한 것: 1 EMU 위치·크기
+      어긋남 · 정렬 · 글꼴 참조 · 글자 크기 · 굵기 · `<br>` · z-순서 · 리스트 마커가 각각 실패를 낸다.
+- [x] 옛 판정이 지키던 것을 새 판정이 덮는지 대조한다:
+      `TestFixtureCoordinatesMatchGeometry`, `…SlideColorsKeepTokenReferences`,
+      `…ShapeCountExcludesNonShapeElements`, `TestStackFixtureZOrderIsDocumentOrder`,
+      `TestTableFixture*`, `TestChromeFixture*`. 덮이면 지운다(R3).
+      - **덮인다 → R3에서 지운다**: `TestFixtureCoordinatesMatchGeometry` · `TestFixtureShapeCountExcludesNonShapeElements` ·
+        `TestShapeFixtureSlideShapeCounts` · `TestShapeRolesLineUpWithGeometryRefs`(+ `shapeRoles`) ·
+        `TestStackFixtureZOrderIsDocumentOrder` · `TestChromeFixtureIsOnTheIncludedSlidesOnly` ·
+        `TestChromeFixtureNumberIsASlidenumFieldOfDeckPosition` · `TestChromeFixtureShapesMatchGeometry` ·
+        `TestTableFixtureTablesAreGraphicFrames`의 종류 판정.
+      - **일부만 덮인다**: `…SlideColorsKeepTokenReferences` — 글자 · 채움 · 선 · 그라디언트 스톱 색은 트리에 있다.
+        그림자(`effectLst`)와 표 셀 채움 · 테두리 색은 없다 → `render/pptx` 단위 테스트로 옮긴다.
+      - **덮이지 않는다 → R3에서 단위 테스트로 옮긴다** (OOXML 유효성 · 표 내부 격자): `TestTableFixtureEveryRowFillsTheGrid` ·
+        `TestTableFixtureCellsCarryExplicitAppearance` · `TestTableFixtureGridComesFromMeasuredBoxes`(열 너비 · 행 높이) ·
+        `TestChromeIsAbsentFromOtherFixtureGoldens`(`p:hf` 없음) · `TestShapeFixtureRotatedExtentIsPreRotation`(`xfrm@rot`).
+
+## R2. 골든을 줄인다: 산출물 스냅샷 → 구조 스냅샷
+
+`golden/index.html` 전체와 `golden/pptx/**`(파트별 XML) 스냅샷은 CSS 한 줄만 바꿔도 수십 파일이
+움직이고, 리뷰어가 그 diff를 읽지 않는다.
+
+- [x] 픽스처 골든을 `layout.txt`(R1) + `diagnostics.txt` 둘로 줄인다. 웹 HTML · PPTX 파트 ·
+      복사된 에셋 골든을 지운다.
+      → 골든 491개 → 21개 (layout.txt 18 · diagnostics.txt 3). 골든을 읽던 검사는 먼저 정리했다: R1이 덮는 것은
+      지우고(크롬 픽스처 파일 전체 · 좌표 · 도형 수 · z-순서 · 색 참조 · 팔레트 슬롯 · 회전 — 뒤의 둘은
+      `render/pptx` 단위 테스트가 이미 본다), 표 검사는 새 빌드의 산출물을 읽는다. `TestFixtures`가 호스트에서 초록이 됐다.
+- [x] PPTX 패키지 구조(파트 목록 · content types · rels)는 한 테스트가 픽스처 전체에 대해
+      **불변식으로** 단정한다 (스냅샷이 아니라): 모든 rel 대상이 존재한다 · 미디어 파트가
+      에셋 표 순서다 · zip 타임스탬프 1980-01-01 · 같은 입력 두 번이 같은 바이트다.
+      → `internal/testkit/package.go` (`AssertPackage` · `AssertSameBytes`). 더한 것: 파트마다 content type ·
+      관계가 가리키지 않는 파트 없음 · rId 중복 없음 · 노트 파트는 노트가 있는 장에만 · `p:hf` 없음 · 미디어와
+      웹 에셋 바이트 = 입력. `Suite.Run`이 빌드 하나로 골든 · 동일성 · 패키지를 돌고, 두 번째 빌드와 바이트를 견준다
+      (픽스처당 빌드 수는 그대로 둘). `TestFixtureGoldenPartList` · `TestImageFixtureAssetsAreByteIdentical`을 대체한다.
+- [x] `TestStaleGoldensAreDetected` 계열은 새 골든 두 종에 맞춰 남긴다.
+      → 그대로 남는다 (골든 이름과 무관한 장치다). `TestFixtureGoldenTreeShape`가 "골든은 두 종뿐"을 단정한다.
+
+## R3. 픽셀 · 잉크 · LibreOffice 장치를 걷어낸다
+
+- [x] 지운다: `internal/testkit`의 `pixel.go` · `ink.go`(+ 테스트) · `script_spacing_test.go`,
+      `fixture_level_test.go`의 픽셀/잉크/줄 수 판정
+      (`TestFixtureLineBreaksMatchLibreOffice` · `…PresetGeometryPerShape` · `…InShapeTextLineCounts` ·
+      `…InShapeTextRect` · `TestImageFixturePictureRegions` · `TestStackFixtureOverlapRegions` 등)과
+      완화표 `inShapeLineDivergences` · `loLineWidthMaxRatios` · 픽스처별 `DiffOptions`.
+      → `review.go` · `suite.go`와 LibreOffice 래스터 헬퍼(`RenderPPTX` · `RenderPDF` · `RenderPDFPoints`)도 지웠다.
+      `TestFixtures`는 빌드 → 골든 → 동일성 → 패키지 불변식 → 같은 바이트의 루프 하나다.
+- [x] `fixture_level_test.go`에서 R1이 덮지 못하는 판정이 남으면 해당 패키지의 단위 테스트로
+      옮긴다. 이 파일은 없어지는 것이 목표다.
+      → 없어졌다. 옮길 것(크롬 `wrap="none"` · 표 격자 · 인쇄 페이지)은 R1–R2에서 먼저 옮겼다.
+- [x] `render/pptx/soffice_test.go`: "LibreOffice가 연다" 하나만 **옵트인 스모크**로 남긴다
+      (`soffice`가 없으면 건너뛰고, `make smoke`로만 돈다). 깨진 PPTX를 잡는 값은 진짜다.
+      → `RequireSoffice`가 `BALPYO_SMOKE=1`이 아니면 건너뛴다 (`internal/preview`의 LibreOffice 테스트도 같은 문).
+      `make review`는 R6을 앞당겨 `balpyo preview`를 픽스처마다 부른다 — soffice가 없으면 R6 전까지 실패한다.
+
+## R4. PPTX 검증을 Go로 · Docker를 지운다
+
+Docker 이미지가 남은 이유는 하나였다 — "PowerPoint가 복구 없이 연다"를 LibreOffice로 확인하는 것.
+LibreOffice는 관대한 리더라 자식 순서 · 열거값 밖의 속성을 조용히 받아 준다 (PowerPoint는 복구를
+묻는다). 스키마 검증이 그 자리에 더 맞다. 폰트 고정 · poppler는 픽셀 비교용이었고 R3에서 할 일이
+없어졌다. Chromium은 빌드(지오메트리 패스)의 의존성이라 개발자는 이미 갖고 있다.
+
+- [x] 스파이크: `github.com/knroy/go-xml`(MIT · 순수 Go · Go 1.25+)로 ECMA-376 Transitional XSD를
+      읽어 픽스처 · 예제의 모든 XML 파트를 검증한다.
+      → 스키마 18개(420KB: `pml` · `dml-*` · `shared-*` · `opc-*` · Dublin Core · `xml.xsd`) 적재 76ms, 덱당
+      검증 2–26ms. 픽스처 18 · 예제 3이 모두 유효. 변이 12종(자식 순서 · 필수 속성 · 열거값 · 모르는 요소 ·
+      타입 · 범위 · 모르는 속성 · 프리셋 이름 · 필수 자식 · rels `Target` · content types 속성)을 모두 잡고,
+      메시지가 요소 경로와 기대한 자식을 댄다. 테스트 전용 의존성이다 (`balpyo` 바이너리에 링크되지 않는다).
+- [x] 스키마 층: XSD를 `internal/testkit/ooxml/`에 출처와 함께 둔다 · `AssertPackage`가 모든 XML 파트를
+      스키마로 검증한다 (픽스처 · 예제 · `render/pptx`의 열림 테스트 덱) · 변이 테스트 몇 개로 검증기가
+      실제로 거르는지 못 박는다.
+      → `schema.go`(`AssertSchema` · `ValidatePart`) · `AssertValidPPTX`(zip · content types · rels · 스키마 —
+      덱과 무관한 규칙). `TestFixtures` · `TestExamplesBuildClean`이 부른다. `TestSchemaRejectsMutatedParts`가
+      브라우저 없이 변이 11종을 본다. `render/pptx`의 열림 테스트는 LibreOffice를 지우는 항목에서 옮긴다.
+- [x] 파트 사이 층 (스키마로 못 말하는 PowerPoint 규칙): 슬라이드 안 `cNvPr@id` 유일 · `sldId` ≥ 256 · 유일 ·
+      `r:id`/`r:embed`가 맞는 종류의 관계를 가리킨다 · 슬라이드→레이아웃→마스터 연결 · `p:ph@idx`가 레이아웃에
+      있다.
+      → `crosspart.go`(`CheckCrossParts`)를 `AssertValidPPTX`가 부른다. 더한 것: 마스터 · 레이아웃 id는 한 공간 ·
+      마스터의 `sldLayoutIdLst` = 그 마스터를 가리키는 레이아웃 · 노트 ↔ 슬라이드 되가리킴 · 관계를 참조하는 요소가
+      표(`relRefTypes`)에 없으면 실패. 픽스처 18 · 예제 3이 통과하고, `TestCrossPartsRejectsMutations`가 변이 10종을 본다.
+- [x] LibreOffice를 테스트에서 지운다: `render/pptx/soffice_test.go`는 스키마 검증으로 바꾸고, `make smoke` ·
+      `BALPYO_SMOKE`를 지운다. (`balpyo preview`의 PPTX 래스터는 R6에서 옵트인으로 남는다.)
+      → `render/pptx/valid_test.go`가 같은 덱을 `AssertValidPPTX`에 건다 · `OpenPPTX`(`soffice.go`)를 지웠다.
+      `RequireSoffice`/`RequirePdftoppm`은 preview 래스터 테스트만 부르고, 없으면 Strict에서도 건너뛴다.
+- [x] Docker를 지운다: `docker/`(Dockerfile · `fonts.conf` · `versions.env`) · `TestImageVersionsMatchPins` ·
+      Makefile의 `DOCKER_RUN`/`DIST_RUN`/`image`/`shell`/`versions` · `make test-host`. `make test` =
+      `go test ./...`, `make dist`는 호스트에서 `CGO_ENABLED=0 go build -trimpath`.
+      → `.dockerignore` · `internal/testkit/versions.go`도 지웠다. `CGO_ENABLED=0` · `-trimpath`는 이미
+      `internal/release`가 건다 — `make dist`는 그것을 호스트에서 부른다. preview의 도구 안내는 `make shell`
+      대신 설치 · 경로 · `--target html`을 댄다. `AGENTS.md`의 Testing 절을 새 게이트로 다시 썼다.
+- [x] CI(`ci.yml`)를 `setup-go` + 러너의 Chrome으로 · "실패 시 리뷰 갤러리" 단계를 지운다.
+      → `release.yml`도 같다. 두 잡이 `BALPYO_TEST_STRICT=1` · `BALPYO_CHROMIUM_NO_SANDBOX=1`(Ubuntu 러너의
+      AppArmor가 샌드박스를 막는다)을 켠다. 러너에서 첫 실행으로 확인한다.
+- [x] Chromium이 필요한 테스트는 없으면 **명확한 메시지로 건너뛴다** (`BALPYO_TEST_STRICT=1`이면 실패 — CI가 켠다).
+      패키지 여럿이 동시에 Chrome을 띄우면 가끔 실패한다 (R3에서 관찰 — `context canceled` · `dial … EOF`):
+      띄우기 재시도를 넣는다.
+      → 건너뛰기 · Strict는 이미 `RequireChromium`의 정책이다 (메시지에서 테스트 이미지 안내를 지웠다).
+      `geom.Launch`가 기동을 3번까지 시도한다 (250ms × n 대기). `TestLaunchRetriesAFailedStart`가 첫 기동에서만 죽는
+      가짜 브라우저로 본다 — 재시도를 끄면 실패한다.
+- [x] 동일성 판정(R1-a)이 환경과 무관한지 확인한다 — 다른 폰트가 깔린 호스트에서도 초록이어야 한다.
+  다른 호스트 대신 폰트를 바꾼다: `TestParityHoldsUnderDifferentFonts`가 15_local_theme의 글꼴 토큰을
+  고정폭(Courier New)으로 갈아 끼워 빌드한다 — 측정 rect는 움직이고(전제로 단정), 두 트리는 같고,
+  layout.txt는 원래 골든과 같은 바이트다.
+
+## R5. 제품 코드에서 픽셀 시절의 타협을 푼다
+
+계약이 바뀌어 **필요 없어진** 것만 푼다. 결과는 R1의 동일성 판정이 지킨다.
+
+- [x] PPTX 텍스트 몸체 `noAutofit` → `normAutofit` (`render/pptx/shape.go`의 세 자리). 글자가
+      잰 박스를 넘으면 PowerPoint가 줄여 맞춘다 — 편집 가능한 파일에서 저자가 글을 고친 뒤에도
+      박스 안에 머무는 쪽이 옳다. 크롬 띠와 `<pre>`(wrap="none")는 판단해서 그대로 둘 수 있다.
+      텍스트 · 리스트 · 도형 몸체가 `normAutofit`이다. 크롬 띠와 `<pre>`는 `wrap="none"`이라
+      글줄 수가 원문으로 정해져 있으므로 `noAutofit`으로 둔다.
+- [x] `TextBoxRect`의 4% 여유(`textBoxSlackRatio`): 근거가 "LibreOffice 줄 수를 맞춘다"였다.
+      autofit 아래에서 필요한지 다시 보고, 필요 없으면 지운다 (잰 rect == `xfrm`이 더 단순한 계약이다).
+      지웠다 — 넘침은 `normAutofit`이 받는다. 텍스트 · 리스트 박스도 도형 · 그림 · 표처럼 잰 rect 그대로다.
+- [x] 웹 `text-autospace: no-autospace` 고정(`render/web/content.go`)은 LibreOffice의 스크립트
+      간격에 맞춘 것이다 — 지우고 브라우저 기본으로 돌린다.
+      지웠다 (고정을 못 박던 `TestRenderStagePinsScriptSpacing`도).
+- [x] 한국어 줄바꿈: 웹 스테이지에 `word-break: keep-all` + `overflow-wrap: anywhere` (옛 E1).
+      한국어 관행이 옳은 쪽이라 하는 것이지 PPTX와 맞추려는 것이 아니다.
+      `.balpyo-stage:lang(ko)`에만 건다 — 중국어·일본어는 keep-all이 줄바꿈을 막는다.
+
+## R6. `preview`: 나란히 보기만
+
+- [x] 갤러리는 웹 · PPTX를 나란히 놓는 사람용 도구로 남는다. **diff 이미지와 diff 비율을 지운다**
+      (`internal/preview/diff.go` — 비율은 실제 불일치를 과장한다는 것이 3회차에서 이미 확인됐다).
+      → `Diff`/`DiffOptions`/`Verdict`/`Result.Over`와 배지를 지웠다. PNG 도우미는 `png.go`로 옮겼고, 래스터
+      결정성 테스트는 픽셀 동등성을 직접 본다. ADR 0066이 ADR 0047 결정 4(허용 오차)·5·6을 대체한다.
+- [x] PPTX 래스터는 `soffice`가 있을 때만 — 없으면 웹만으로 갤러리를 만든다(지금
+      `TestRunWithWebOnlyNeedsNoLibreOffice`의 동작을 기본으로).
+      → `--target`을 주지 않았을 때만 물러서고, 로그 · 갤러리 안내 · `Result.SkippedPPTX`가 그 사실을 말한다.
+      `pptx`를 명시하면 지금처럼 빌드 전에 멈춘다.
+- [x] `make review`는 `balpyo preview`를 픽스처에 돌리는 얇은 입구가 된다 (테스트 스위트를
+      `BALPYO_REVIEW=1`로 다시 돌리지 않는다).
+      → R3에서 이미 그렇게 바꿨다. 이제 soffice가 없는 호스트에서도 웹 갤러리까지 만든다.
+
+## R7. 단위 테스트를 다듬는다
+
+- [x] 패키지별로 한 번씩 훑는다 (`soml` · `core` · `render/web` · `render/pptx` · `render/geom`):
+      R1이 이미 덮는 단정 · 지운 상수(여유 비율, 스크립트 간격)를 못 박은 테스트 · 같은 것을 다른
+      입력으로 반복하는 테스트를 지우거나 테이블 테스트로 합친다.
+      → core 9023→6471 · pptx 5539→3150 · soml 4596→2178 · web 4502→3498 · geom 2245→1403.
+- [x] 목표선: **테스트 코드 줄 수 < 제품 코드 줄 수**, `go test ./...`가 호스트에서 30초 안.
+      → 테스트 22063 < 제품 26846 (31268이었다). 브라우저 세션을 바이너리마다 하나로 나눠 59초 → 17초
+      (STRICT · `-count=1` 전체 29초 — preview의 LibreOffice 래스터 포함).
+- [x] `core/docs_test.go`(문서의 닫힌 목록 대조)는 남긴다 — 값이 크고 비용이 작다. → 한 줄도 바꾸지 않았다.
+
+## R8. 문서를 새 계약에 맞춘다
+
+- [x] `docs/internals/testing.md`를 다시 쓴다: 동일성 판정 · 골든 두 종 · 호스트 실행 · 옵트인 스모크.
+      → 옵트인 스모크는 ADR 0065로 없어져 그 자리에 스키마 · 파트 사이 · 변이 테스트 · 결정성 절.
+- [x] `docs/guides/known-differences.md`를 "계약 밖의 차이"로 바꾼다 — 줄바꿈 위치 · 자간 ·
+      안티에일리어싱은 결함이 아니라 엔진의 몫이라는 한 절.
+      → 허용 비율 · text-autospace 고정 · 줄 수 검사 절을 지우고 normAutofit 절. 링크 글자도 새 이름으로.
+- [x] `docs/internals/geometry-pass.md`에서 픽셀 비교 파이프라인 그림을 지운다.
+      → 안전 여유 +4% · 허용 오차 절도. 레퍼런스 곳곳의 "픽셀 비교가 판정한다"도 컴포넌트 트리로.
+- [x] `testdata/fixtures/README.md`의 골든 트리를 새 모양으로.
+- [x] `make docs`가 `--strict`로 통과.
 
 ---
 
-## 남은 항목 — **이 순서로 한다**
+## 완료 판정
 
-순서의 이유: **조용한 실패가 먼저다.** E1은 이 제품에서 가장 비싼 종류의 버그다 — 빌드가
-"깨끗하다"고 말한 뒤 깨진 산출물을 내보낸다. 나머지 여덟은 저자가 결과를 보면 알 수 있는 것이고,
-E2만 버그이고 E3–E9는 고쳐 쓰는 일이다.
-
-### P7.1 한글 줄바꿈을 두 엔진에서 같은 규칙으로 (E1) — **먼저 한다**
-브라우저가 재고 PPTX가 그 rect를 쓴다는 것이 이 제품의 설계다. 두 엔진이 줄바꿈 **규칙**을
-달리 쓰면 그 계약이 CJK에서 성립하지 않고, 그 사실이 오늘 테스트 안에 **완화표로 굳어 있다**
-(`internal/testkit/fixture_level_test.go`의 `inShapeLineDivergences` 두 줄 — 고치면 깨지도록
-일부러 단정해 둔 표다). 도형은 넓힐 수 없어 흡수도 불가능하다: 여유 8.0%인 자리에서도 갈렸다.
-
-- [ ] **선결정 ADR 0064**: 규칙을 어디서 맞추는가. 후보는 (가) 웹 스테이지가
-      `word-break: keep-all`을 못 박아 **웹을 LibreOffice 규칙에 맞춘다**(리포지토리가 이미
-      지목한 후보이고, 한글 관행으로도 이쪽이 옳다) · (나) PPTX 쪽에서 흡수한다(실측으로 이미
-      기각됐다 — `pptx.TextBoxRect`의 4% 여유는 원인이 여유가 아니라 규칙이라 닿지 않는다) ·
-      (다) 갈라짐을 진단으로 낸다(저자가 고칠 수단이 없어 ADR 0039의 "고칠 수 없는 경고" 금지에
-      걸린다). 결정해야 할 딸린 질문 둘: **keep-all이 끊을 곳을 못 찾는 줄**을 어떻게 하는가
-      (`overflow-wrap: anywhere`를 함께 걸어 긴 URL·식별자가 박스를 넘지 않게 할 것인가 —
-      두 선언은 함께여야 뜻이 있다), 그리고 `lang`이 한국어가 아닌 덱에도 거는가.
-- [ ] RED: `render/geom`에 **규칙 자체를 재는** 판정 — 같은 문자열·같은 폭에서 접힌 자리가
-      `inShapeLineDivergences`의 두 자리에서 일치하는지. 그 표를 **지우는 것이 GREEN의 정의다**
-      (표의 주석이 그렇게 적어 뒀다: "고쳐도 깨진다 — 그때 표를 지우는 것이 고쳤다는 증거다").
-      픽스처 한 장 추가: 여유가 0에 가까운 도형 문단 셋 + 긴 URL 한 줄(keep-all의 부작용 자리).
-- [ ] GREEN: 웹 스테이지 CSS 한 선언 + 그것이 움직이는 골든 전부. **PPTX 렌더러는 손대지
-      않는다** — 잰 폭이 바뀌면 좌표가 따라온다(ADR 0043·0049에서 두 번 확인된 성질이다).
-- [ ] REVIEW: `workspace/sample-deck`을 다시 빌드해 웹·PPTX의 줄바꿈 자리를 11장 전수 대조하고,
-      `examples/*` 셋(28장)의 경고가 0건으로 남는지 본다. 타이포그래피가 모든 덱에서 움직이므로
-      이 REVIEW는 **덱 39장**이다 — 그것이 이 항목이 1·2회차에서 미뤄진 이유이기도 하다.
-- [ ] DOC: `guides/known-differences.md`에서 줄바꿈 절을 **해결로 옮긴다**(P1.5의 스크립트 간격은
-      남는다 — 그건 뷰어의 것이고 이건 우리 것이었다) + `appearance.md`에 줄바꿈 규칙 한 줄.
-
-### P7.2 `preview`의 출력 디렉토리와 갤러리가 같을 때 (E2)
-자기 산출물을 지운 뒤 읽으려 한다. 고치는 자리는 한 곳이고 판정도 한 줄이다.
-- [ ] RED: `cmd/balpyo/preview_test.go`에 `--out`과 `--gallery`가 같은 경로일 때 **렌더 전에**
-      멈추고 두 경로를 말하는지. 하위 경로도 같은 사고다(`--out preview/dist`).
-- [ ] GREEN: 플래그를 푼 직후 한 번 판정한다 — 진단이 "산출물을 읽을 수 없다"가 아니라
-      "빌드 출력 디렉토리와 검수 갤러리가 같다"를 말한다. 종료 코드는 1 그대로다(검수할 것이
-      만들어지지 않은 경우이므로 ADR 0047의 규칙 안에 있다).
-- [ ] REVIEW / DOC: `cli.md`의 `preview` 절에 두 디렉토리가 갈라져야 한다는 한 줄.
-
-### P7.3 진단이 자리를 좁히고 후보를 대고 순서대로 나온다 (E3 · E4 · E5)
-셋 다 같은 자리의 일이고, 셋 다 **닫힌 목록이 이미 있으므로** 계산할 수 있다.
-- [ ] **선결정** (ADR을 쓸 만한 것은 하나다): 제안을 **어디까지** 낼 것인가. 제안은 틀리면
-      저자를 엉뚱한 곳으로 보내므로 편집 거리 상한과 "후보가 둘 이상이면 무엇을 하는가"를
-      정해야 한다. 나머지 둘(자리로 좁히기 · 정렬)은 결정이 아니라 구현이다.
-- [ ] RED: `soml`에 세 판정 — (E3) `<ul>` 안의 알 수 없는 태그가 `<li>`만 나열한다 ·
-      (E4) 오타 넷(`img`·`two-colum`·`heding`·`elipse`)이 각자 정답 하나를 제안한다, 그리고
-      **거리가 먼 이름에는 제안이 없다**(`<zzz>`가 아무것도 제안하지 않는 것이 같은 판정의
-      반쪽이다) · (E5) 진단이 `file` → `line` → `column` 순으로 정렬된다. 정렬은 `Diagnostics`
-      한 자리에서 일어나 `check`·`build`·`watch`가 같은 순서를 본다.
-- [ ] GREEN: 태그 진단이 부모의 자식 카탈로그를 읽는다(그 목록은 이미 `<ul>의 자식으로 …`
-      진단이 쓰고 있다) · 제안은 그 자리의 **닫힌 목록 안에서만** 고른다(전역에서 고르면
-      `<ul>` 안에서 `<image>`를 제안하는 일이 생긴다) · 정렬은 출력 직전에 한 번.
-- [ ] REVIEW: 3회차에 실제로 낸 오타 넷을 다시 쳐서 넷 다 한 번에 고쳐지는지.
-- [ ] DOC: `guides/diagnostics.md`(신설 후보 — 진단을 읽는 법: 자리 · 제안 · 순서) 또는
-      기존 가이드의 절. 진단 문구를 문서가 인용하는 자리는 `core/docs_test.go`가 대조한다.
-
-### P7.4 사고 하나에 경고 하나 (E6)
-ADR 0039가 **요소당** 하나로 정의한 것을 **사고당** 하나로 좁힌다. 근거는 그 ADR 자신이다:
-"그 몇 px이 조상으로 전파된다"고 적어 두고, 전파된 결과를 자손마다 다시 보고하고 있다.
-- [ ] **선결정 ADR 0065**: 무엇이 "같은 사고"인가. 후보는 조상이 이미 같은 방향으로 스테이지
-      이탈을 보고했으면 자손의 스테이지 이탈을 **억누른다**는 규칙이다. 주의할 반례 둘:
-      `<stack>`·canvas의 자식은 조상과 무관하게 자기 좌표로 나갈 수 있고(억누르면 진단을
-      **잃는다**), 조상보다 **더 많이** 넘친 자손은 새 사실이다. 억누른 것을 세어
-      요약 줄에 남길 것인가도 여기서 정한다.
-- [ ] RED: `render/geom/layout_test.go`에 케이스 넷 — (a) 목록 하나가 279px 넘칠 때 경고 1건
-      (오늘 7건) · (b) 콘텐츠 박스 이탈은 오늘처럼 1건 그대로 · (c) canvas 자식이 혼자 나가면
-      여전히 보고된다 · (d) 자손이 조상보다 더 나가면 둘 다 보고된다.
-- [ ] GREEN: `Diagnose`의 이탈 분기에서 조상 사슬을 본다. 억누르는 판정은 **한 함수**에 두고
-      크롬 경로(`diagnoseChrome`)는 건드리지 않는다 — 크롬의 부모는 슬라이드뿐이라 같은 질문이
-      없다(ADR 0045가 적어 둔 대로다).
-- [ ] REVIEW: E6을 낸 그 덱으로 7건 → 1건을 확인하고, `examples/*`가 여전히 0건인지 본다.
-- [ ] DOC: `guides/layout-warnings.md`에 "사고 하나에 경고 하나" 절.
-
-### P7.5 레이아웃 기본값: 인용 · 표지 · 통계 (E7 · E8)
-어휘를 늘리지 않는다. 테마가 이미 소유한 값을 고치는 일이다.
-- [ ] `quote`: `blockquote`가 인용 레이아웃에서 `lead`(32px)를 기본으로 받는다. **역할이 아니라
-      자리가 정한다** — 흐름 모드의 `<blockquote>`는 본문 크기 그대로여야 하므로(문장 중간의
-      인용이다) 판정은 `quote` 슬롯에 붙는다. 내장 테마 셋이 같은 계약을 받는다
-      (`core/theme_select_test.go`의 "갈리지 않는 것" 목록에 줄이 하나 는다).
-- [ ] `code`: 캡션과 크롬 띠 사이에 숨 쉴 자리. 콘텐츠 박스는 656에서 끝나고 띠는 656부터이므로
-      **겹침이 아니라 인접이 문제**다 — `caption` 행이 아래 여백을 갖거나, 캡션이 코드 블록에
-      붙는다(두 번째가 뜻으로는 맞다: 캡션은 코드를 설명한다).
-- [ ] `title`: 제목 덩이와 저자/날짜 사이의 빈 띠. 행 정의(`grid-template-rows`)가 결정 자리다.
-- [ ] `stat`: `label`이 `body`보다 크거나 같아야 한다. 숫자를 설명하는 줄이 그 아래 산문보다
-      작으면 위계가 뒤집힌다 — 세 테마 전부.
-- [ ] RED/REVIEW: `08_slots` 픽스처의 해당 장 골든 + `make review` 실물. 기본값을 고치는 항목의
-      RED는 골든이다(값이 움직였다는 것이 판정이다).
-- [ ] DOC: `layouts.md`의 슬롯 표에 인용·통계의 기본 외관 한 줄씩.
-
-### P7.6 첫 덱의 마찰: 스캐폴드 충돌과 ID 진단 (E9)
-`init`의 계약(ADR 0048)은 "스캐폴딩 덱이 strict 빌드를 통과한다"다. 그건 지켜진다 — 깨지는 것은
-**저자가 자기 장을 더한 다음**이다.
-- [ ] ID 충돌 진단에 `line:col`과 고칠 길. ID는 파일 이름에서 오므로 구간이 없다고 생각했으나,
-      **`<slide>` 태그의 자리**는 있다(다른 진단은 전부 갖는다). 문구는 충돌한 두 파일을 말하고
-      "하나를 지우거나 이름을 바꾼다"로 끝난다.
-- [ ] `init`이 자기가 쓴 파일을 말한다 — 지울 것을 알아야 지운다. `--force`를 열지 않는 근거
-      (원고를 덮지 않는다)는 그대로다.
-- [ ] RED: `cmd/balpyo/init_test.go`에 `init` → 자기 장 추가 → `check` 순서가 **충돌을 말하고
-      고칠 길까지 말하는지**. GREEN/DOC: getting-started의 첫 절.
+- [x] `go test ./...`가 호스트에서 초록이고, 그것이 CI의 게이트다 (CI 러너에서는 아직 돌려 보지 않았다)
+- [x] 픽스처마다 "웹 트리 == PPTX 트리" 판정이 돌고, 골든은 `layout.txt` · `diagnostics.txt`뿐이다
+- [x] 저장소에 픽셀 허용 오차 상수가 하나도 없다 (남은 것은 EMU 반올림 1px · 배치 경고의 서브픽셀 1px)
+- [x] `examples/*` 셋이 `check --check-layout --strict`로 경고 0건 (회귀 게이트는 그대로)
+- [x] 테스트 코드 < 제품 코드
 
 ---
 
-## production-grade 판정선
+## 리팩터 이후 (보류 — 순서 미정)
 
-아래가 전부 `[x]`가 되면 "XML로 production 품질 덱을 쓴다"가 참이다.
+계약과 무관하게 여전히 유효한 것들. 리팩터가 끝난 뒤 다시 정렬한다.
 
-- [x] **자기 설명**: SOML 문법을 화면에 띄우는 덱이 SOML로 쓰인다 (P0.1)
-- [x] **손으로 짜는 것이 없다**: 표를 도형으로, 차트를 좌표로, 라벨을 빈 도형으로 흉내지
-      않는다 (P2.1, P2.5, P1.3)
-- [x] **세로 공간을 저자가 손으로 만들지 않는다**: 슬롯 모드는 테마가, 흐름 모드는
-      `<slide justify>` 한 선언이 세로 리듬을 소유한다 (P1.4)
-- [x] **한 명령으로 검수한다**: `balpyo watch`가 저장마다 탭을 새로고침하고(P3.1),
-      `balpyo preview`가 웹·PPTX·diff를 나란히 놓은 갤러리를 한 줄로 만든다(P3.2)
-- [x] **덱이 덱처럼 생겼다**: 페이지 번호·푸터를 켤 수 있고(P2.2), 강조색이 재서 고른 여섯이라
-      덱이 색 둘~셋에 뜻을 하나씩 주는 위계를 세울 수 있다 (P4.1)
-- [x] **접근성이 산출물에 실린다**: 그림·도형·표에 이름을 줄 수 있고 읽기 순서는 두 타깃에서
-      문서 순서다 (P5.3)
-- [x] **예제가 썩지 않는다**: 게이트가 예제 셋(28장)을 두 타깃으로 빌드하고 진단 0건을
-      요구한다 (P5.1)
-- [x] **전달이 한 파일이다**: `index.html`이 외부 참조 0건으로 나가 파일로 열어도 돈다 (P6)
-- [ ] **조용한 실패가 없다**: 넘침·이탈이 빌드 진단으로 잡히고(P1.1) 미구현 어휘는 쓰는 순간
-      막힌다(P0.2). **E1이 이 줄을 다시 열었다** — 도형 안 한글 문단이 PPTX에서 넘치는 것을
-      게이트가 보지 못한다. 브라우저만 재기 때문이다 (P7.1)
-- [ ] **두 타깃이 갈리지 않는다**: 슬롯·정렬은 같은 그림이고(P1.3·P1.4) 문장부호 간격은
-      뷰어의 것으로 밝혀졌다(P1.5). 남은 것은 **줄바꿈 규칙**이다 (P7.1)
-- [ ] **진단이 고칠 길을 말한다**: 자리를 좁히고(E3) 후보를 대고(E4) 순서대로 나오고(E5)
-      사고 하나에 하나다(E6) — 진단이 있는 것과 읽히는 것은 다르다 (P7.3 · P7.4)
-- [ ] **기본값이 production이다**: 레이아웃 11종이 저자가 고쳐 쓰지 않아도 발표할 그림을
-      낸다 (P7.5)
-
----
-
-## 설계 결정 (ADR)
-
-1·2회차의 결정 스물여덟 건은 [ADR 0036–0063](docs/decisions/index.md)이 갖는다. 3회차가 요구하는
-결정은 셋이고, 둘은 아직 쓰이지 않았다.
-
-| 결정 | 항목 | 간 곳 |
-|---|---|---|
-| 줄바꿈 규칙을 웹에서 맞추는가 PPTX에서 흡수하는가 · `keep-all`과 함께 걸 것 | P7.1 | ADR 0064 (대기) |
-| 무엇이 "같은 배치 사고"인가 — 조상이 보고했으면 자손을 억누르는가 | P7.4 | ADR 0065 (대기) |
-| 오타 제안의 상한과 후보가 여럿일 때 | P7.3 | 선결정만 (ADR 없이 닫을 후보) |
+- 3회차 사용성: `preview --out`이 갤러리와 같을 때 자기 PPTX를 지운다(옛 E2) · 알 수 없는 태그
+  진단을 부모의 자식 목록으로 좁히고 오타 후보를 댄다 · 진단을 파일→줄→열로 정렬한다(E3–E5) ·
+  사고 하나에 경고 하나(E6) · `quote`/`code`/`title`/`stat` 레이아웃 기본값(E7–E8) · ID 충돌 진단의
+  `line:col`과 고칠 길(E9).
+- 필드 테스트(`workspace/FIELD-TEST.md`): 테마 배경 채널 + 테마 소유 자산 · 크롬 로고 · 그라디언트
+  토큰 · 측정 브라우저가 테마 글꼴을 못 찾을 때 경고.

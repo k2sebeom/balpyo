@@ -1,0 +1,33 @@
+# slide 1 theme-title
+textbox "text s0.0" ph=body/2
+  ¶ start | "P4.2"{body 13.5pt b accent1}
+textbox "text s0.1" ph=ctrTitle/0
+  ¶ start | "어두운 테마"{heading 39pt b fg}
+textbox "text s0.2" ph=subTitle/1
+  ¶ start | "같은 원문, 다른 테마"{body 18pt muted}
+textbox "text s0.3" ph=body/3
+  ¶ start | "balpyo"{body 13.5pt muted}
+textbox "text s0.4" ph=body/4
+  ¶ start | "2026-09"{body 13.5pt muted}
+# slide 2 theme-roles
+textbox "text s1.0" ph=title/0
+  ¶ start | "역할과 variant"{heading 25.5pt b fg}
+textbox "text s1.1.0"
+  ¶ start | "테마가 바뀌면 크기와 색이 함께 바뀐다."{body 24pt fg}
+textbox "p s1.1.1"
+  ¶ start | "본문은 24px에 줄높이 1.5다 — 세 내장 테마가 같은 리듬을 쓴다."{body 18pt fg}
+textbox "h3 s1.1.2"
+  ¶ start | "컴포넌트 기본값"{heading 21pt b fg}
+textbox "blockquote s1.1.3"
+  ¶ start | "인용은 색만 물러난다."{body 18pt muted}
+textbox "text s1.1.4"
+  ¶ start | "variant는 테마의 어휘다"{body 13.5pt b accent1}
+textbox "text s1.1.5"
+  ¶ start | "캡션은 muted로 물러난다."{body 13.5pt muted}
+# slide 3 theme-code
+textbox "text s2.0" ph=title/0
+  ¶ start | "코드도 테마의 색을 받는다"{heading 25.5pt b fg}
+textbox "pre s2.1" ph=body/1
+  ¶ start | "// 테마 이름은 덱의 요청이고, 결과는 토큰 표다."{mono 15pt muted} · ⏎ · "func"{mono 15pt accent6} · " "{mono 15pt fg} · "themeOf"{mono 15pt accent1} · "(deck *Deck) (Theme, "{mono 15pt fg} · "error"{mono 15pt accent6} · ") {"{mono 15pt fg} · ⏎ · "  name := deck.ThemeName"{mono 15pt fg} · ⏎ · "  "{mono 15pt fg} · "if"{mono 15pt accent6} · " name == "{mono 15pt fg} · "\"\""{mono 15pt accent3} · " {"{mono 15pt fg} · ⏎ · "    name = DefaultTheme"{mono 15pt fg} · ⏎ · "  }"{mono 15pt fg} · ⏎ · "  "{mono 15pt fg} · "return"{mono 15pt accent6} · " "{mono 15pt fg} · "load"{mono 15pt accent1} · "(name)"{mono 15pt fg} · ⏎ · "}"{mono 15pt fg}
+textbox "text s2.2" ph=body/2
+  ¶ start | "같은 블록이 테마마다 다른 색을 얻는다."{body 13.5pt muted}

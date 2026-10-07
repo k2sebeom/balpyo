@@ -6,11 +6,9 @@ import (
 )
 
 // 이 파일은 **접근성 이름의 자리**를 못 박는다 (ADR 0058): `alt`은 그림에 이름을 **더하고**
-// 안의 글을 대체하지 않는다. 그 계약이 깨지는 방식은 눈에 보이지 않는다 — 그림은 똑같고
-// 스크린 리더만 달라지므로, 판정이 없으면 회귀가 조용하다.
+// 안의 글을 대체하지 않는다. 회귀는 화면에 보이지 않고 스크린 리더만 달라진다.
 
-// inkTagOf는 도형 박스 뒤에 오는 잉크 svg의 여는 태그다 — svg에는 식별자가 없으므로
-// (박스가 요소의 좌표를 소유한다) 박스 태그 다음의 첫 `<svg`를 자른다.
+// inkTagOf는 도형 박스 다음의 첫 잉크 `<svg` 여는 태그다 (svg에는 식별자가 없다).
 func inkTagOf(t *testing.T, out, id string) string {
 	t.Helper()
 	box := openTagOf(t, out, id)
@@ -27,16 +25,10 @@ func inkTagOf(t *testing.T, out, id string) string {
 	return rest[start : start+end+1]
 }
 
-// `alt`은 **잉크 svg**에 이름을 붙인다 — 오늘의 `aria-hidden="true"`가 "그림은 장식이다"라는
-// 판단이고, `alt`은 저자가 그 예외를 선언하는 채널이므로 붙을 자리가 그 판단이 적힌 자리다.
-//
-// 박스 `<div>`에 붙이지 않는 이유가 이 테스트의 나머지 절반이다: 그 div의 역할은 `generic`이고
-// ARIA는 그 역할에 이름을 **금지**한다 (AT가 무시해도 규격을 지킨 것이므로 저자가 쓴 접근성
-// 정보가 조용히 사라진다). 그리고 이름을 박스에 주면 `role="img"`가 함께 필요해져 안의 글이
-// AT에서 **장식이 되고**, PPTX의 `descr`은 본문을 지우지 않으므로 두 타깃이 갈라진다.
+// `alt`은 **잉크 svg**에 이름을 붙인다 (`aria-hidden`이 적힌 자리). 박스 `<div>`는 역할이
+// `generic`이라 ARIA가 이름을 금지하고, `role="img"`를 주면 안의 글이 AT에서 장식이 된다.
 func TestShapeAltNamesTheInk(t *testing.T) {
-	// 두 기하 공간 모두 같은 규칙이다 — 픽셀 공간(rect)과 정규 공간(path)이 svg를 쓰는
-	// 코드가 갈라져 있어 한쪽만 고치는 실수가 실제로 가능하다.
+	// 픽셀 공간(rect)과 정규 공간(path)은 svg를 쓰는 코드가 갈라져 있다.
 	for _, shapeType := range []string{"rect", "arrow-right"} {
 		t.Run(shapeType, func(t *testing.T) {
 			out := renderString(t, subsetDeck(t, `<shape type="`+shapeType+
@@ -63,10 +55,9 @@ func TestShapeAltNamesTheInk(t *testing.T) {
 	}
 }
 
-// `alt`이 없으면 산출물은 오늘과 한 바이트도 다르지 않다 — 그림은 장식이고 내용은 안의
-// 텍스트다 (빈 그래픽이 도형마다 읽히는 것을 막는 그 판단 그대로다).
-func TestShapeWithoutAltStaysHidden(t *testing.T) {
-	out := renderString(t, subsetDeck(t, `<shape type="rect" w="200" h="100"/>`))
+// `alt`이 없으면 도형 그림은 장식(aria-hidden)이고 표에는 이름이 없다.
+func TestWithoutAltHasNoName(t *testing.T) {
+	out := renderString(t, subsetDeck(t, `<shape type="rect" w="200" h="100"/><table><tr><td>Q3</td></tr></table>`))
 	ink := inkTagOf(t, out, "s0.0")
 	if !strings.Contains(ink, `aria-hidden="true"`) {
 		t.Errorf("이름 없는 그림이 접근성 트리에 남았다: %s", ink)
@@ -74,13 +65,13 @@ func TestShapeWithoutAltStaysHidden(t *testing.T) {
 	if strings.Contains(ink, "aria-label") || strings.Contains(ink, "role=") {
 		t.Errorf("이름이 없는데 역할·이름이 붙었다: %s", ink)
 	}
+	if tag := openTagOf(t, out, "s0.1"); strings.Contains(tag, "aria-") {
+		t.Errorf("이름 없는 표에 aria 속성이 붙었다: %s", tag)
+	}
 }
 
-// 표의 `alt`은 **표의 이름**이다 — 셀은 두 타깃 모두 항해 가능한 채로 남는다.
-//
-// `role="img"`를 쓰지 않는 이유: 표의 내용은 그림이 아니라 격자 안의 글이고, 그 역할은
-// `<th>`/`<td>`의 항해를 지운다 (접근성을 더하는 척하며 빼앗는다). `<caption>`도 쓰지 않는다 —
-// **보이는 요소**라서 웹에만 줄이 하나 생기고 PPTX와 그림이 갈라진다.
+// 표의 `alt`은 **표의 이름**이다 — `role="img"`는 셀 항해를 지우고, `<caption>`은 보이는
+// 요소라 웹에만 줄이 생긴다.
 func TestTableAltNamesTheTable(t *testing.T) {
 	out := renderString(t, subsetDeck(t,
 		`<table alt="분기별 매출 표"><tr><th>분기</th></tr><tr><td>Q3</td></tr></table>`))
@@ -100,13 +91,6 @@ func TestTableAltNamesTheTable(t *testing.T) {
 	// 머리 셀과 본문 셀의 구별은 그대로다 (접근성의 본체는 이쪽이고 이름은 그 위다).
 	if !strings.Contains(out, "<th") || !strings.Contains(out, "<td") {
 		t.Errorf("표의 셀 구조가 달라졌다:\n%s", out)
-	}
-}
-
-func TestTableWithoutAltHasNoName(t *testing.T) {
-	out := renderString(t, subsetDeck(t, `<table><tr><td>Q3</td></tr></table>`))
-	if tag := openTagOf(t, out, "s0.0"); strings.Contains(tag, "aria-") {
-		t.Errorf("이름 없는 표에 aria 속성이 붙었다: %s", tag)
 	}
 }
 

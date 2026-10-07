@@ -17,13 +17,13 @@ import (
 	"github.com/k2sebeom/balpyo/render/web"
 )
 
-// 브라우저를 찾는 환경 변수. 테스트 이미지가 값을 넣고(docker/test.Dockerfile), 사용자도
+// 브라우저를 찾는 환경 변수. CI가 값을 넣고(.github/workflows/ci.yml), 사용자도
 // 같은 변수로 브라우저를 지정한다 — 빌드와 테스트가 다른 변수를 보면 "테스트는 되는데 빌드는
 // 브라우저를 못 찾는다"가 된다.
 const (
 	// EnvChromium은 Chromium/Chrome 실행 파일 경로다.
 	EnvChromium = "BALPYO_CHROMIUM"
-	// EnvNoSandbox가 1이면 --no-sandbox를 붙인다 (컨테이너 안에서는 root라 필수).
+	// EnvNoSandbox가 1이면 --no-sandbox를 붙인다 (root · 샌드박스를 막는 러너에서 필요).
 	EnvNoSandbox = "BALPYO_CHROMIUM_NO_SANDBOX"
 )
 
@@ -33,6 +33,12 @@ const (
 	actionTimeout = 60 * time.Second
 	// sessionLifetime은 세션 하나의 상한이다.
 	sessionLifetime = 10 * time.Minute
+	// launchAttempts는 기동을 시도하는 횟수다. 브라우저 여럿이 한꺼번에 뜨면(`go test ./...`가
+	// 패키지를 나란히 돌릴 때, watch와 build가 겹칠 때) 기동이 가끔 `context canceled` ·
+	// `dial … EOF`로 실패하고, 같은 명령을 다시 하면 뜬다 — 그 다시 하기를 사람 대신 한다.
+	launchAttempts = 3
+	// launchBackoff는 시도 사이의 기다림이다 (n번째 실패 뒤 n배).
+	launchBackoff = 250 * time.Millisecond
 )
 
 // Candidates는 브라우저 실행 파일 후보다 (탐색 순서).
@@ -104,9 +110,8 @@ type Session struct {
 
 // Launch는 브라우저를 띄운다. bin이 비면 LookChromium으로 찾는다. 정리는 호출자가 Close로 한다.
 //
-// 플래그는 전부 렌더 결정성을 위한 것이다: 스케일 1, sRGB 고정, 힌팅·LCD 서브픽셀 끔.
-// 이미지 안의 fontconfig 설정(docker/fonts.conf)과 같은 방향이다 — 브라우저와 LibreOffice가
-// 같은 글자 폭을 내야 텍스트 메트릭 비교가 성립한다.
+// 플래그는 전부 렌더 결정성을 위한 것이다: 스케일 1, sRGB 고정, 힌팅·LCD 서브픽셀 끔 —
+// 같은 호스트에서 같은 입력이 같은 rect를 내야 산출 바이트가 같다 (불변식 6).
 func Launch(bin string) (*Session, error) {
 	if bin == "" {
 		found, err := LookChromium()
@@ -115,6 +120,21 @@ func Launch(bin string) (*Session, error) {
 		}
 		bin = found
 	}
+	var err error
+	for attempt := 1; attempt <= launchAttempts; attempt++ {
+		var s *Session
+		if s, err = launchOnce(bin); err == nil {
+			return s, nil
+		}
+		if attempt < launchAttempts {
+			time.Sleep(time.Duration(attempt) * launchBackoff)
+		}
+	}
+	return nil, fmt.Errorf("브라우저를 띄울 수 없다 (%s, %d번 시도): %w", bin, launchAttempts, err)
+}
+
+// launchOnce는 브라우저를 한 번 띄운다.
+func launchOnce(bin string) (*Session, error) {
 	opts := append([]chromedp.ExecAllocatorOption{}, chromedp.DefaultExecAllocatorOptions[:]...)
 	opts = append(opts,
 		chromedp.ExecPath(bin),
@@ -151,7 +171,7 @@ func Launch(bin string) (*Session, error) {
 	// 안전하다 (Session.run).
 	if err := chromedp.Run(s.ctx, chromedp.Navigate("about:blank")); err != nil {
 		s.Close()
-		return nil, fmt.Errorf("브라우저를 띄울 수 없다 (%s): %w", bin, err)
+		return nil, err
 	}
 	return s, nil
 }

@@ -144,7 +144,7 @@ my-talk/
 
 `index.html`은 자체 완결형이다 — 파일 하나(와 있으면 `assets/`)를 열면 오프라인에서 발표된다.
 `.pptx`의 텍스트 박스는 진짜 텍스트 박스이고 도형은 진짜 도형이며 색은 테마 색 참조를
-유지한다. 뷰어가 웹과 다르게 그리는 몇 가지는 [알려진 차이](known-differences.md)에 있다.
+유지한다. 줄바꿈 위치처럼 엔진마다 달라도 되는 것은 [계약 밖의 차이](known-differences.md)에 있다.
 
 CI에서는 경고를 통과시키지 않는다. 산출물이 필요 없는 검사라면 `check`가 같은 판정을
 산출물 없이 한다 ([`balpyo check`](../reference/cli.md#balpyo-check)).
@@ -155,8 +155,8 @@ CI에서는 경고를 통과시키지 않는다. 산출물이 필요 없는 검�
 ```
 
 두 산출물이 같은지 **눈으로** 보려면 검수 갤러리를 만든다 — 슬라이드마다 웹 스크린샷과 PPTX
-렌더가 나란히 놓이고 다른 픽셀이 마젠타로 칠해진다. PPTX를 그림으로 되돌리는 데 LibreOffice와
-`pdftoppm`이 필요하며, 없으면 시작하기 전에 그렇게 말한다
+렌더가 나란히 놓인다. PPTX를 그림으로 되돌리는 데 LibreOffice와 `pdftoppm`이 필요하며, 없으면
+PPTX 열을 빼고 웹 열만 만든다
 ([`balpyo preview`](../reference/cli.md#balpyo-preview)).
 
 ```bash

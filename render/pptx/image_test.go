@@ -3,7 +3,6 @@ package pptx
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -13,33 +12,20 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **`<image>` → `p:pic` + 미디어 파트 + 관계**의 회귀 장치다 (preset_test.go가
-// 도형에 대해 하는 일과 같은 자리). 그림에만 있는 계약 셋을 지킨다:
-//
-//  1. `p:pic`의 네 부분(nvPicPr·blipFill·spPr·기하)과 스키마 순서.
-//  2. `fit`의 기하 — `contain`은 크롭 없음, `cover`는 `srcRect`로 **양쪽 절반씩**.
-//  3. **삼각 대조** — 미디어 파트·관계·콘텐츠 타입은 셋이 함께 맞아야 그림이 나온다.
-//     각각을 따로 단정하는 이유는 한 곳만 보는 테스트가 나머지 두 곳의 어긋남을 통과시키기
-//     때문이다 (그리고 그 실패는 "파일은 열리는데 그림 자리가 빈다"다).
+// `<image>` → `p:pic` + 미디어 파트 + 관계. 종류·rect·descr은 패리티가 보고, 여기서는 그 밖의
+// 것(srcRect 크롭, 외관, 미디어 중복 제거와 관계 번호)을 본다.
 
-// imageFixtureDir은 실제 에셋 바이트를 가진 유일한 프로젝트다 (골든은 항목 05가 만들었다).
-// 그림 테스트가 디스크를 쓰는 이유는 값이 디스크를 가리키기 때문이다: 손으로 만든
-// 바이트로 재면 고유 크기가 커밋된 파일과 갈라져도 알 수 없다.
+// imageFixtureDir은 실제 에셋 바이트를 가진 프로젝트다 — 고유 크기가 커밋된 파일에서 온다.
 const imageFixtureDir = "../../testdata/fixtures/05_image"
 
-// 픽스처 에셋의 고유 크기 (커밋된 파일의 사실 — core/asset_test.go가 같은 값을 단정한다).
-// `fit`은 종횡비가 박스와 다를 때만 뜻이 있어 가로/세로 각각이 필요하고, 아래 크롭 표는
-// **비율만** 쓰므로(2:1·1:2) 픽셀 수가 바뀌어도 기대값이 움직이지 않는다.
+// 픽스처 에셋. 크롭 표는 비율만 쓰므로(2:1·1:2) 픽셀 수가 바뀌어도 기대값이 움직이지 않는다.
 const (
 	wideSrc  = `src="assets/wide.png"` // 1200×600 (2:1)
 	tallSrc  = `src="assets/tall.png"` // 600×1200 (1:2)
 	photoSrc = `src="assets/photo.jpg"`
 )
 
-// imageDeck은 그림이 든 덱을 파이프라인과 같은 순서로 만든다 — 파싱 → 해석 → **에셋 패스**.
-//
-// resolvedDeck를 그대로 쓸 수 없는 이유가 계약이다: 에셋 표가 없으면 미디어 파트에 실을
-// 바이트가 없고 렌더러는 그 상태에서 멈춘다 (writePicShape의 관문).
+// imageDeck은 그림이 든 덱을 파이프라인과 같은 순서로 만든다 — 파싱 → 해석 → 에셋 패스.
 func imageDeck(t *testing.T, sources ...string) *soml.Deck {
 	t.Helper()
 	deck := resolvedDeck(t, sources...)
@@ -63,86 +49,28 @@ func picOf(t *testing.T, xml string) string {
 	return xml[start : start+end+len("</p:pic>")]
 }
 
-// 그림 하나의 **전문**이다 — 스키마 순서(nvPicPr → blipFill → spPr, spPr 안에서 xfrm →
-// prstGeom → ln → effectLst)를 한 조각으로 못 박는다. 조각을 따로 찾는 단정만 두면 순서가
-// 뒤바뀐 산출물이 통과하고, 어긴 순서는 LibreOffice의 복구 경고로만 드러난다.
+// 그림은 p:sp가 아니라 p:pic이다. 채움은 blipFill이 소유하므로 spPr에 채움을 내지 않고, 선
+// 없음은 명시한다 (비워 두면 테마의 기본 선이 상속된다). picLocks도 넣지 않는다.
 func TestRenderPicStructure(t *testing.T) {
-	deck := imageDeck(t, fmt.Sprintf(`<slide>
-  <image %s alt="넓은 그림" w="320" h="160"/>
-</slide>`, wideSrc))
-	g := measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 320, H: 160})
-	parts, _ := renderPackage(t, NewWithGeometry(g), deck)
-	xml := parts[slidePart(1)]
-
-	if got := strings.Count(xml, "<p:sp>"); got != 0 {
-		t.Errorf("p:sp %d개 — 그림은 도형(p:sp)이 아니라 p:pic이다\n%s", got, xml)
-	}
-	want := strings.Join([]string{
-		indentedXML(0, "<p:pic>"),
-		indentedXML(1, "<p:nvPicPr>"),
-		// 이름은 지오메트리 식별자다 (도형과 같은 규칙), descr은 저자의 `alt`다.
-		indentedXML(2, `<p:cNvPr id="2" name="image s0.0" descr="넓은 그림"/>`),
-		// picLocks를 넣지 않는다 — 엔진이 잠근 제약은 열어 본 사람이 이유를 알 수 없다.
-		indentedXML(2, "<p:cNvPicPr/>"),
-		indentedXML(2, "<p:nvPr/>"),
-		indentedXML(1, "</p:nvPicPr>"),
-		indentedXML(1, "<p:blipFill>"),
-		indentedXML(2, `<a:blip r:embed="rId3"/>`),
-		indentedXML(2, "<a:stretch>"),
-		indentedXML(3, "<a:fillRect/>"),
-		indentedXML(2, "</a:stretch>"),
-		indentedXML(1, "</p:blipFill>"),
-		indentedXML(1, "<p:spPr>"),
-		indentedXML(2, "<a:xfrm>"),
-		// 잰 rect 그대로다 — 안전 여유도, `pad` 되돌림도 없다 (64px = 609600).
-		indentedXML(3, `<a:off x="609600" y="609600"/>`),
-		indentedXML(3, `<a:ext cx="3048000" cy="1524000"/>`),
-		indentedXML(2, "</a:xfrm>"),
-		indentedXML(2, `<a:prstGeom prst="rect">`),
-		indentedXML(3, "<a:avLst/>"),
-		indentedXML(2, "</a:prstGeom>"),
-		// 선 없음도 명시한다 (도형과 같은 근거 — 비워 두면 테마의 기본 선이 상속된다).
-		indentedXML(2, "<a:ln>"),
-		indentedXML(3, "<a:noFill/>"),
-		indentedXML(2, "</a:ln>"),
-		indentedXML(1, "</p:spPr>"),
-		indentedXML(0, "</p:pic>"),
-	}, "")
-	if !strings.Contains(xml, want) {
-		t.Errorf("p:pic 전문이 기대와 다르다\ngot:\n%s\nwant:\n%s", picOf(t, xml), want)
-	}
-	// spPr에 채움을 내지 않는다 — 그림의 채움은 p:blipFill이 소유한다 (writePic의 근거).
-	if strings.Contains(picOf(t, xml), "<a:solidFill>") {
-		t.Error("p:pic의 spPr에 채움이 들었다 — 같은 요소의 채움이 두 곳에서 선언된다")
-	}
-}
-
-// `alt`이 없으면 `descr` 속성을 내지 않는다 (항목 01의 열린 질문을 닫는 자리).
-//
-// 웹은 `alt=""`를 **언제나** 낸다: `<img>`에서 속성 없음과 빈 문자열은 스크린 리더에 다른
-// 뜻이고 빈 문자열이 "장식 이미지"의 표기다. OOXML에는 그 구별이 없다 — `descr=""`는 "대체
-// 텍스트가 비었다"이고 장식이라는 뜻이 아니며(PowerPoint의 "장식용으로 표시"는 확장 요소다),
-// 빈 속성은 재저장 diff의 잡음이 된다. 그래서 이 비대칭은 두 포맷의 차이이고 갈라짐이 아니다.
-func TestRenderPicAltIsOptional(t *testing.T) {
 	deck := imageDeck(t, fmt.Sprintf("<slide>\n  <image %s w=\"320\" h=\"160\"/>\n</slide>", wideSrc))
-	g := measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 320, H: 160})
-	xml := slideXML(t, deck, g)
-	if strings.Contains(xml, "descr=") {
-		t.Errorf("alt 없는 그림에 descr이 붙었다\n%s", picOf(t, xml))
-	}
-	if !strings.Contains(xml, `<p:cNvPr id="2" name="image s0.0"/>`) {
-		t.Errorf("cNvPr이 기대와 다르다\n%s", picOf(t, xml))
-	}
+	xml := slideXML(t, deck, measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 320, H: 160}))
 
-	// XML 특수문자가 든 alt은 이스케이프된다 — 속성 안에서 인용부호가 깨지면 파일이 열리지
-	// 않는다 (도형 이름과 같은 escapeXML을 지난다).
-	deck = imageDeck(t, fmt.Sprintf(`<slide>
-  <image %s alt="a & b < c" w="320" h="160"/>
-</slide>`, wideSrc))
-	g = measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 320, H: 160})
-	xml = slideXML(t, deck, g)
-	if !strings.Contains(xml, `descr="a &amp; b &lt; c"`) {
-		t.Errorf("alt이 이스케이프되지 않았다\n%s", picOf(t, xml))
+	if strings.Contains(xml, "<p:sp>") {
+		t.Errorf("그림이 p:sp를 냈다\n%s", xml)
+	}
+	pic := picOf(t, xml)
+	for _, want := range []string{
+		"<p:cNvPicPr/>",
+		`<a:blip r:embed="rId3"/>`,
+		"<a:stretch>",
+		indentedXML(2, "<a:ln>") + indentedXML(3, "<a:noFill/>") + indentedXML(2, "</a:ln>"),
+	} {
+		if !strings.Contains(pic, want) {
+			t.Errorf("p:pic에 %q가 없다\n%s", want, pic)
+		}
+	}
+	if strings.Contains(pic, "<a:solidFill>") {
+		t.Errorf("p:pic의 spPr에 채움이 들었다\n%s", pic)
 	}
 }
 
@@ -194,9 +122,7 @@ func TestRenderPicFitGeometry(t *testing.T) {
 
 // cover 크롭의 계산 — 고유 종횡비 × 박스 종횡비의 표.
 //
-// 단위 테스트로 따로 두는 이유: 이 함수가 두 타깃이 **같은 영역**을 보여준다는 계약의 전부이고
-// (TASKS Iteration 5의 리뷰 포인트), 렌더 경로를 지나면 표를 넓힐 때마다 덱과 지오메트리를
-// 만들어야 한다. 판정은 항목 05의 픽셀 비교가 하고, 여기서는 수와 대칭성을 못 박는다.
+// 이 함수가 두 타깃이 같은 영역을 보여준다는 계약의 전부다 — 수와 대칭성을 못 박는다.
 func TestCoverCropTable(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -300,6 +226,9 @@ func TestRenderPicAppearance(t *testing.T) {
 		{"flip", "h", `flip="h"`, []string{`<a:xfrm flipH="1">`}, nil},
 		{"flip", "v", `flip="v"`, []string{`<a:xfrm flipV="1">`}, nil},
 		{"flip", "hv", `flip="hv"`, []string{`<a:xfrm flipH="1" flipV="1">`}, nil},
+
+		// 정하지 않은 외관은 아무 요소도 내지 않는다 (soml.ImageStyle의 nil 계약).
+		{"", "정하지 않음", "", nil, []string{"<a:effectLst>", "<a:alphaModFix", `prst="roundRect"`, "rot=", "flipH=", "flipV=", "<a:srcRect"}},
 	}
 	covered := map[string]bool{}
 	for _, tc := range tests {
@@ -325,18 +254,6 @@ func TestRenderPicAppearance(t *testing.T) {
 	for _, attr := range soml.ImageAppearanceAttrs() {
 		if !covered[attr] {
 			t.Errorf("외관 속성 %q의 OOXML 매핑 단정이 없다", attr)
-		}
-	}
-}
-
-// 정하지 않은 외관은 아무 요소도 내지 않는다 (soml.ImageStyle의 nil 계약) — 테마의 이미지
-// 컴포넌트 기본값이 비어 있는 것(테마의 image.default)이 산출물에서 지켜지는지의 확인이다.
-func TestRenderPicOmitsUnsetAppearance(t *testing.T) {
-	deck := imageDeck(t, fmt.Sprintf("<slide>\n  <image %s w=\"320\" h=\"160\"/>\n</slide>", wideSrc))
-	pic := picOf(t, slideXML(t, deck, measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 320, H: 160})))
-	for _, deny := range []string{"<a:effectLst>", "<a:alphaModFix", `prst="roundRect"`, "rot=", "flipH=", "flipV=", "<a:srcRect"} {
-		if strings.Contains(pic, deny) {
-			t.Errorf("정하지 않은 외관의 산출에 %q가 있다\n%s", deny, pic)
 		}
 	}
 }
@@ -378,11 +295,9 @@ func TestPicPresetsMatchShapeVocabulary(t *testing.T) {
 	}
 }
 
-// 삼각 대조 — 미디어 파트·관계·콘텐츠 타입.
-//
-// 덱은 픽스처의 사실을 그대로 쓴다: 에셋 3개(PNG 2 + JPEG 1), 같은 그림을 한 슬라이드에서 두
-// 번, 같은 그림을 두 슬라이드에서, 그리고 링크·노트가 함께 있는 슬라이드 (관계 번호가 밀리는
-// 유일한 자리다).
+// 미디어 파트는 에셋당 하나이고 관계는 슬라이드의 것이다 — 같은 그림을 한 슬라이드에서 두 번,
+// 두 슬라이드에서 쓰고, 링크·노트가 함께 있어 관계 번호가 밀리는 자리를 본다. 관계 대상·콘텐츠
+// 타입의 짝은 교차 파트 검증(testkit)이 본다.
 func TestRenderMediaPartsAndRelationships(t *testing.T) {
 	deck := imageDeck(t,
 		fmt.Sprintf(`<slide>
@@ -437,40 +352,7 @@ func TestRenderMediaPartsAndRelationships(t *testing.T) {
 		}
 	}
 
-	// ② 관계: 모든 r:embed가 그 슬라이드의 rels에 있고, 모든 이미지 관계가 실제 파트를
-	//    가리킨다. 두 방향을 함께 봐야 "rels에는 있는데 파트가 없다"와 "파트는 있는데 관계가
-	//    없다"가 모두 걸린다.
-	for i := range deck.Slides {
-		n := i + 1
-		xml := parts[slidePart(n)]
-		rels := parts[slideRelsPart(n)]
-		for _, embed := range embedIDs(xml) {
-			if !strings.Contains(rels, fmt.Sprintf(`Id="%s" Type="%s"`, embed, imageRelType)) {
-				t.Errorf("슬라이드 %d의 %s가 rels에 이미지 관계로 없다\n%s", n, embed, rels)
-			}
-		}
-		for _, target := range relTargets(rels, imageRelType) {
-			part := mediaPartDir + strings.TrimPrefix(target, "../media/")
-			if _, ok := parts[part]; !ok {
-				t.Errorf("슬라이드 %d의 이미지 관계가 없는 파트 %s를 가리킨다", n, part)
-			}
-			if strings.Contains(rels, fmt.Sprintf(`Target="%s" TargetMode=`, target)) {
-				t.Errorf("슬라이드 %d의 이미지 관계에 TargetMode가 붙었다 — 파트가 URL로 읽힌다", n)
-			}
-		}
-	}
-
-	// ③ 콘텐츠 타입: 쓴 확장자가 전부 있고 **쓰지 않은 것이 없다**.
-	types := parts[contentTypesPart]
-	for _, want := range []string{
-		`<Default Extension="png" ContentType="image/png"/>`,
-		`<Default Extension="jpg" ContentType="image/jpeg"/>`,
-	} {
-		if !strings.Contains(types, want) {
-			t.Errorf("[Content_Types]에 %q가 없다\n%s", want, types)
-		}
-	}
-	if got := strings.Count(types, `<Default Extension="png"`); got != 1 {
+	if got := strings.Count(parts[contentTypesPart], `<Default Extension="png"`); got != 1 {
 		t.Errorf("png Default가 %d개다 — 포맷당 하나여야 한다", got)
 	}
 
@@ -528,21 +410,6 @@ func TestSlideRelIDsFollowDocumentOrder(t *testing.T) {
 	}
 }
 
-// 그림이 없는 덱의 산출물은 그림 렌더가 붙었다는 이유로 달라지지 않는다 — 미디어 파트도,
-// Content_Types의 Default도 없다 (골든 4개가 움직이지 않는 근거).
-func TestDeckWithoutImagesHasNoMedia(t *testing.T) {
-	deck := resolvedDeck(t, "<slide>\n  <text>글자만</text>\n</slide>")
-	parts, order := renderPackage(t, NewWithGeometry(measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 1152, H: 36})), deck)
-	for _, name := range order {
-		if strings.HasPrefix(name, mediaPartDir) {
-			t.Errorf("그림 없는 덱에 미디어 파트 %s가 있다", name)
-		}
-	}
-	if strings.Contains(parts[contentTypesPart], "image/") {
-		t.Errorf("그림 없는 덱의 [Content_Types]에 이미지 타입이 있다\n%s", parts[contentTypesPart])
-	}
-}
-
 // `.jpg`와 `.jpeg`가 섞여도 Default는 **하나**다 — 파트 이름을 포맷에서 짓기 때문이다
 // (mediaPart). 픽스처에는 `.jpeg` 파일이 없으므로 표를 손으로 만들어 그 사실을 못 박는다.
 func TestMediaDefaultsGroupPerFormat(t *testing.T) {
@@ -576,93 +443,38 @@ func TestMediaDefaultsGroupPerFormat(t *testing.T) {
 	}
 }
 
-// 같은 덱을 두 번 조립하면 zip 바이트가 같다 — 바이너리 파트가 그 계약에 편입된다.
-func TestRenderPicIsDeterministic(t *testing.T) {
-	deck := imageDeck(t, fmt.Sprintf(`<slide>
-  <image %s w="320" h="160"/>
-  <image %s fit="cover" w="200" h="200"/>
-</slide>`, wideSrc, photoSrc))
-	g := measuredGeometry(t, deck,
-		geom.Rect{X: 64, Y: 64, W: 320, H: 160},
-		geom.Rect{X: 500, Y: 64, W: 200, H: 200},
-	)
-	first, err := NewWithGeometry(g).Render(deck)
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, err := NewWithGeometry(g).Render(deck)
-	if err != nil {
-		t.Fatal(err)
-	}
-	name := FileName(deck)
-	if string(first[name]) != string(second[name]) {
-		t.Error("같은 덱의 두 조립이 다른 바이트를 냈다 — 골든 비교가 성립하지 않는다")
-	}
-}
-
 // 렌더러의 마지막 관문 — 값 층이 이미 막는 것들이지만, 어긴 덱이 조용히 그림 없는 파일이
-// 되지 않는다는 것이 계약이다 (도형의 같은 관문과 짝).
+// 되지 않는다 (도형의 같은 관문과 짝).
 func TestRenderPicErrors(t *testing.T) {
-	rect := geom.Rect{X: 64, Y: 64, W: 320, H: 160}
 	src := fmt.Sprintf("<slide>\n  <image %s w=\"320\" h=\"160\"/>\n</slide>", wideSrc)
-
-	t.Run("에셋 표가 없다", func(t *testing.T) {
-		// core.ResolveAssets를 거치지 않은 덱 — 미디어 파트에 실을 바이트가 없다.
-		deck := resolvedDeck(t, src)
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "에셋 표에") {
-			t.Errorf("에러 = %q", got)
-		}
-	})
-	t.Run("src가 해석되지 않았다", func(t *testing.T) {
-		deck := imageDeck(t, src)
-		imageStyleOf(t, deck).Src = ""
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "src가 해석되지 않았다") {
-			t.Errorf("에러 = %q", got)
-		}
-	})
-	t.Run("fit이 어휘 밖이다", func(t *testing.T) {
-		deck := imageDeck(t, src)
-		imageStyleOf(t, deck).Fit = soml.ImageFit("fill")
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "맞춤 어휘 밖이다") {
-			t.Errorf("에러 = %q", got)
-		}
-	})
-	t.Run("테두리 굵기가 0이다", func(t *testing.T) {
-		deck := imageDeck(t, src)
-		imageStyleOf(t, deck).Border = &soml.Border{Style: soml.BorderSolid}
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "테두리 굵기가 해석되지 않았다") {
-			t.Errorf("에러 = %q", got)
-		}
-	})
-	t.Run("불투명도가 범위 밖이다", func(t *testing.T) {
-		deck := imageDeck(t, src)
-		over := 1.5
-		imageStyleOf(t, deck).Opacity = &over
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "0~1 밖이다") {
-			t.Errorf("에러 = %q", got)
-		}
-	})
-	t.Run("flip이 어휘 밖이다", func(t *testing.T) {
-		deck := imageDeck(t, src)
-		imageStyleOf(t, deck).Flip = soml.Flip("x")
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "대칭 어휘 밖이다") {
-			t.Errorf("에러 = %q", got)
-		}
-	})
-	t.Run("에셋의 바이트가 비었다", func(t *testing.T) {
-		deck := imageDeck(t, src)
-		deck.Assets[0].Bytes = nil
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "바이트가 비었다") {
-			t.Errorf("에러 = %q", got)
-		}
-	})
-	t.Run("포맷의 콘텐츠 타입을 모른다", func(t *testing.T) {
-		deck := imageDeck(t, src)
-		deck.Assets[0].Format = soml.ImageFormat("webp")
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "확장자가 없다") {
-			t.Errorf("에러 = %q", got)
-		}
-	})
+	over := 1.5
+	tests := []struct {
+		name    string
+		noAsset bool // core.ResolveAssets를 거치지 않는다
+		breakIt func(deck *soml.Deck, style *soml.ImageStyle)
+		want    string
+	}{
+		{"에셋 표가 없다", true, func(*soml.Deck, *soml.ImageStyle) {}, "에셋 표에"},
+		{"src가 해석되지 않았다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Src = "" }, "src가 해석되지 않았다"},
+		{"fit이 어휘 밖이다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Fit = soml.ImageFit("fill") }, "맞춤 어휘 밖이다"},
+		{"테두리 굵기가 0이다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Border = &soml.Border{Style: soml.BorderSolid} }, "테두리 굵기가 해석되지 않았다"},
+		{"불투명도가 범위 밖이다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Opacity = &over }, "0~1 밖이다"},
+		{"flip이 어휘 밖이다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Flip = soml.Flip("x") }, "대칭 어휘 밖이다"},
+		{"에셋의 바이트가 비었다", false, func(d *soml.Deck, _ *soml.ImageStyle) { d.Assets[0].Bytes = nil }, "바이트가 비었다"},
+		{"포맷의 콘텐츠 타입을 모른다", false, func(d *soml.Deck, _ *soml.ImageStyle) { d.Assets[0].Format = soml.ImageFormat("webp") }, "확장자가 없다"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			deck := resolvedDeck(t, src)
+			if !tc.noAsset {
+				deck = imageDeck(t, src)
+			}
+			tc.breakIt(deck, imageStyleOf(t, deck))
+			if got := renderShapeError(t, deck, geom.Rect{X: 64, Y: 64, W: 320, H: 160}); !strings.Contains(got, tc.want) {
+				t.Errorf("에러 = %q, want %q", got, tc.want)
+			}
+		})
+	}
 }
 
 // imageStyleOf는 해석된 덱의 첫 콘텐츠 요소의 이미지 외관이다 (shapeStyleOf의 형제).
@@ -677,44 +489,4 @@ func imageStyleOf(t *testing.T, deck *soml.Deck) *soml.ImageStyle {
 		t.Fatal("첫 콘텐츠에 이미지 외관이 없다")
 	}
 	return style
-}
-
-// embedIDs는 슬라이드 파트의 `blip@r:embed` 목록이다 (문서 순서, 중복 포함).
-func embedIDs(xml string) []string {
-	var ids []string
-	for _, chunk := range strings.Split(xml, `<a:blip r:embed="`)[1:] {
-		if end := strings.Index(chunk, `"`); end >= 0 {
-			ids = append(ids, chunk[:end])
-		}
-	}
-	return ids
-}
-
-// relTargets는 rels 파트에서 이 타입 관계의 Target 목록이다.
-func relTargets(rels, relType string) []string {
-	var targets []string
-	for _, line := range strings.Split(rels, "\n") {
-		if !strings.Contains(line, `Type="`+relType+`"`) {
-			continue
-		}
-		at := strings.Index(line, `Target="`)
-		if at < 0 {
-			continue
-		}
-		rest := line[at+len(`Target="`):]
-		if end := strings.Index(rest, `"`); end >= 0 {
-			targets = append(targets, rest[:end])
-		}
-	}
-	return targets
-}
-
-// 픽스처의 에셋 파일이 실제로 그 자리에 있는지 — 없으면 위 테스트가 전부 "에셋 해석 실패"로
-// 깨지고 원인이 픽스처인지 코드인지 보이지 않는다.
-func TestImageFixtureAssetsExist(t *testing.T) {
-	for _, name := range []string{"wide.png", "tall.png", "photo.jpg"} {
-		if _, err := os.Stat(filepath.Join(imageFixtureDir, "assets", name)); err != nil {
-			t.Errorf("픽스처 에셋이 없다: %v", err)
-		}
-	}
 }

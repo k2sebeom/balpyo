@@ -1,0 +1,103 @@
+# slide 1 table-basic
+textbox "h2 s0.0"
+  ¶ start | "지역별 분기 매출"{heading 27pt b fg}
+table "table s0.1"
+  ¶ r0 start | "지역"{body 18pt b bg}
+  ¶ r0 start | "Q1"{body 18pt b bg}
+  ¶ r0 start | "Q2"{body 18pt b bg}
+  ¶ r0 start | "전분기 대비"{body 18pt b bg}
+  ¶ r1 start | "서울"{body 18pt fg}
+  ¶ r1 start | "12.4억"{body 18pt fg}
+  ¶ r1 start | "14.1억"{body 18pt fg}
+  ¶ r1 start | "+13.7%"{body 18pt fg}
+  ¶ r2 start | "부산"{body 18pt fg}
+  ¶ r2 start | "6.8억"{body 18pt fg}
+  ¶ r2 start | "7.2억"{body 18pt fg}
+  ¶ r2 start | "+5.9%"{body 18pt fg}
+  ¶ r3 start | "남미"{body 18pt fg}
+  ¶ r3 start | "3.1억"{body 18pt fg}
+  ¶ r3 start | "5.6억"{body 18pt fg}
+  ¶ r3 start | "+80.6%"{body 18pt fg}
+# slide 2 table-merge
+textbox "h2 s1.0"
+  ¶ start | "반기별 매출 (병합 머리행)"{heading 27pt b fg}
+table "table s1.1"
+  ¶ r0 start | "구분"{body 18pt b bg}
+  ¶ r0 start | "상반기"{body 18pt b bg}
+  ¶ r0 start | "하반기"{body 18pt b bg}
+  ¶ r1 start | "Q1"{body 18pt b bg}
+  ¶ r1 start | "Q2"{body 18pt b bg}
+  ¶ r1 start | "Q3"{body 18pt b bg}
+  ¶ r1 start | "Q4"{body 18pt b bg}
+  ¶ r2 start | "서울"{body 18pt fg}
+  ¶ r2 start | "12.4"{body 18pt fg}
+  ¶ r2 start | "14.1"{body 18pt fg}
+  ¶ r2 start | "15.0"{body 18pt fg}
+  ¶ r2 start | "16.2"{body 18pt fg}
+  ¶ r3 start | "부산"{body 18pt fg}
+  ¶ r3 start | "6.8"{body 18pt fg}
+  ¶ r3 start | "7.2"{body 18pt fg}
+  ¶ r3 start | "7.4"{body 18pt fg}
+  ¶ r3 start | "7.9"{body 18pt fg}
+  ¶ r4 start | "기타"{body 18pt fg}
+  ¶ r4 start | "1.0"{body 18pt fg}
+  ¶ r4 start | "1.1"{body 18pt fg}
+  ¶ r4 start | "1.3"{body 18pt fg}
+  ¶ r4 start | "1.4"{body 18pt fg}
+  ¶ r5 start | "0.9"{body 18pt fg}
+  ¶ r5 start | "1.0"{body 18pt fg}
+  ¶ r5 start | "1.1"{body 18pt fg}
+  ¶ r5 start | "1.2"{body 18pt fg}
+# slide 3 table-striped
+textbox "h2 s2.0"
+  ¶ start | "줄무늬 표와 셀 오버라이드"{heading 27pt b fg}
+table "table s2.1"
+  ¶ r0 start | "항목"{body 18pt b bg}
+  ¶ r0 center | "상태"{body 18pt b bg}
+  ¶ r0 end | "예산"{body 18pt b bg}
+  ¶ r1 start | "서버 증설"{body 18pt fg}
+  ¶ r1 center | "진행"{body 18pt bg}
+  ¶ r1 end | "2.4억"{body 18pt fg}
+  ¶ r2 start | "보안 감사"{body 18pt fg}
+  ¶ r2 center | "대기"{body 18pt fg}
+  ¶ r2 end | "0.8억"{body 18pt fg}
+  ¶ r3 start | "계약 갱신"{body 18pt fg}
+  ¶ r3 center | "보류"{body 18pt fg}
+  ¶ r3 end | "1.2억"{body 18pt fg}
+# slide 4 table-slots
+textbox "h1 s3.0" ph=title/0
+  ¶ start | "SLA 달성률"{heading 42pt b fg}
+table "table s3.1" ph=body/1
+  ¶ r0 start | "서비스"{body 18pt b bg}
+  ¶ r0 start | "목표"{body 18pt b bg}
+  ¶ r0 start | "실적"{body 18pt b bg}
+  ¶ r1 start | "API"{body 18pt fg}
+  ¶ r1 start | "99.9%"{body 18pt fg}
+  ¶ r1 start | "99.95%"{body 18pt fg}
+  ¶ r2 start | "웹"{body 18pt fg}
+  ¶ r2 start | "99.5%"{body 18pt fg}
+  ¶ r2 start | "99.70%"{body 18pt fg}
+# slide 5 table-in-container
+textbox "h2 s4.0"
+  ¶ start | "장애 요약"{heading 27pt b fg}
+textbox "h3 s4.1.0.0"
+  ¶ start | "등급별 건수"{heading 21pt b fg}
+table "table s4.1.0.1"
+  ¶ r0 start | "등급"{body 18pt b bg}
+  ¶ r0 start | "건수"{body 18pt b bg}
+  ¶ r1 start | "P1"{body 18pt fg}
+  ¶ r1 start | "2"{body 18pt fg}
+  ¶ r2 start | "P2"{body 18pt fg}
+  ¶ r2 start | "5"{body 18pt fg}
+textbox "h3 s4.1.1.0"
+  ¶ start | "평균 복구 시간"{heading 21pt b fg}
+table "table s4.1.1.1"
+  ¶ r0 start | "등급"{body 18pt b bg}
+  ¶ r0 start | "분"{body 18pt b bg}
+  ¶ r0 start | "목표"{body 18pt b bg}
+  ¶ r1 start | "P1"{body 18pt fg}
+  ¶ r1 start | "38"{body 18pt fg}
+  ¶ r1 start | "60"{body 18pt fg}
+  ¶ r2 start | "P2"{body 18pt fg}
+  ¶ r2 start | "74"{body 18pt fg}
+  ¶ r2 start | "120"{body 18pt fg}

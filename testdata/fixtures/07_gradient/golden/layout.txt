@@ -1,0 +1,37 @@
+# slide 1 fill-gradient
+textbox "h2 s0.0"
+  ¶ start | "채움 그라디언트"{heading 27pt b fg}
+shape:roundRect "shape s0.1.0" fill=gradient(accent1,surface) line=muted
+  ¶ center | "accent1 → surface"{body 18pt fg}
+shape:roundRect "shape s0.1.1" fill=gradient(#0F65F9,#7C3AED) line=muted
+  ¶ center | "파랑 → 보라"{body 18pt bg}
+shape:roundRect "shape s0.1.2" fill=gradient(accent1,muted,surface) line=muted
+  ¶ center | "3색 스톱"{body 18pt bg}
+shape:rect "shape s0.2.0" fill=gradient(accent1,bg) line=muted
+  ¶ center | "90deg 가로"{body 18pt fg}
+shape:rect "shape s0.2.1" fill=gradient(accent1,bg) line=muted
+  ¶ center | "45deg"{body 18pt fg}
+# slide 2 border-text-gradient
+textbox "h2 s1.0"
+  ¶ start | "테두리 · 텍스트 그라디언트"{heading 27pt b fg}
+shape:roundRect "shape s1.1.0" fill=none line=gradient(accent1,muted)
+  ¶ center | "테두리 그라디언트"{body 18pt fg}
+shape:rect "shape s1.1.1" fill=surface line=gradient(#0F65F9,#EC4899)
+  ¶ center | "파랑→분홍 테두리"{body 18pt fg}
+textbox "text s1.2"
+  ¶ center | "그라디언트 제목"{heading 42pt b gradient(#0F65F9,#7C3AED,#EC4899)}
+# slide 3 color-variants
+textbox "h2 s2.0"
+  ¶ start | "색 변형: shade · tint · alpha"{heading 27pt b fg}
+shape:rect "shape s2.1.0" fill=accent1 line=muted
+  ¶ center | "base"{body 18pt bg}
+shape:rect "shape s2.1.1" fill=accent1 line=muted
+  ¶ center | "shade 40%"{body 18pt bg}
+shape:rect "shape s2.1.2" fill=accent1 line=muted
+  ¶ center | "tint 40%"{body 18pt fg}
+shape:rect "shape s2.1.3" fill=accent1 line=muted
+  ¶ center | "alpha 0.5"{body 18pt fg}
+textbox "text s2.2.0"
+  ¶ start | "텍스트 shade 30%"{body 18pt accent1}
+textbox "text s2.2.1"
+  ¶ start | "텍스트 alpha 0.5"{body 18pt fg}

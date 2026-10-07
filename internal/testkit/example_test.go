@@ -1,6 +1,9 @@
 package testkit_test
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/k2sebeom/balpyo/internal/testkit"
@@ -49,6 +52,18 @@ func TestExamplesBuildClean(t *testing.T) {
 			// 웹만 보고 통과하는 길을 막는다.
 			if len(result.Written) < 2 {
 				t.Errorf("예제 %s의 산출물이 %v다 — 웹과 PPTX 둘 다 나와야 한다", example.Name, result.Written)
+			}
+			// PPTX는 패키지 규칙과 ECMA-376 스키마를 지나야 한다 (ADR 0065) — 어휘가 겹친 실제 덱이
+			// 픽스처 하나하나가 닿지 않는 조합을 밟는다.
+			for _, name := range result.Written {
+				if !strings.HasSuffix(name, ".pptx") {
+					continue
+				}
+				data, err := os.ReadFile(filepath.Join(result.OutDir, filepath.FromSlash(name)))
+				if err != nil {
+					t.Fatal(err)
+				}
+				testkit.AssertValidPPTX(t, data)
 			}
 		})
 	}

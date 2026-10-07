@@ -10,49 +10,18 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **테마 선택**의 계약이다 (P4.2 · ADR 0052).
-//
-// 못 박는 것 셋:
-//
-//  1. 덱이 말한 이름이 값 층의 로더 선택을 바꾼다 (`Deck.ThemeName` → `deck.Theme`).
-//  2. 어휘 밖 이름은 **에러**다 — 폴백 테마로 조용히 계속하지 않는다.
-//  3. 내장 테마는 셋 다 **같은 계약**을 받는다 (팔레트·레이아웃·슬롯·variant 어휘·본문 리듬).
-//
-// 3번이 테스트인 이유는 이식성이다: 저자가 테마 이름 한 줄만 바꿨을 때 덱이 다르게 보이는 것은
-// 제품이지만, 덱이 **깨지는** 것은 버그다.
+// 테마 선택의 계약 (ADR 0052): 덱의 이름이 로더를 고르고, 어휘 밖 이름은 에러이며, 내장 테마는
+// 같은 계약을 받는다 — 테마를 갈면 다르게 보여야 하지만 깨지면 버그다.
 
-// themeDeck은 같은 원문을 주어진 테마 이름으로 해석한다 — 테마 선택만 다른 두 결과를 견주는
-// 자리라 슬라이드 원문은 호출자가 한 벌만 갖는다.
+// themeDeck은 같은 원문을 주어진 내장 테마 이름으로 해석한다.
 func themeDeck(t *testing.T, name, src string) (*soml.Deck, soml.Diagnostics) {
 	t.Helper()
-	doc, parseDiags := soml.Parse("slides/001_text.slide", src)
-	if len(parseDiags) != 0 {
-		t.Fatalf("파서 진단이 없어야 한다: %v", parseDiags)
-	}
-	deck := &soml.Deck{ThemeName: name, Slides: []*soml.Slide{{
-		ID: "text", Source: doc.File,
-		Layout: soml.SlideLayout(doc.Layout), LayoutSpan: doc.LayoutSpan,
-		Content: doc.Content, Tokens: doc.Tokens,
-	}}}
-	return deck, Resolve(deck, nil)
+	return themeDeckIn(t, nil, name, src)
 }
 
 const themeProbe = `<slide id="probe"><h1>제목</h1><p>본문</p></slide>`
 
-// TestResolveUsesDeckThemeName은 덱의 테마 요청이 로더 선택을 바꾼다는 것을 못 박는다.
-// 이것이 P4.2가 이은 배선이다 — 그전에는 `balpyo.json`의 theme 값이 검사만 받고 버려졌다.
-func TestResolveUsesDeckThemeName(t *testing.T) {
-	deck, diags := themeDeck(t, "ink", themeProbe)
-	if len(diags) != 0 {
-		t.Fatalf("내장 테마를 골랐는데 진단이 났다: %v", diags)
-	}
-	if deck.Theme.Name != "ink" {
-		t.Errorf("deck.Theme.Name = %q, want ink — 요청한 테마가 결과에 닿지 않았다", deck.Theme.Name)
-	}
-}
-
-// TestResolveEmptyThemeNameUsesDefault는 테마를 말하지 않은 덱이 기본 테마를 받음을 못 박는다.
-// `Deck`을 설정 없이 만드는 길(테스트·프리뷰)이 있으므로 빈 값은 에러가 아니다.
+// 빈 이름은 기본 테마다 — 설정 없이 Deck을 만드는 길(테스트·프리뷰)이 있다.
 func TestResolveEmptyThemeNameUsesDefault(t *testing.T) {
 	deck, diags := themeDeck(t, "", themeProbe)
 	if len(diags) != 0 {
@@ -63,12 +32,7 @@ func TestResolveEmptyThemeNameUsesDefault(t *testing.T) {
 	}
 }
 
-// TestResolveUnknownThemeIsAnError는 어휘 밖 이름이 **에러 + 해석 중단**임을 못 박는다
-// (ADR 0052).
-//
-// 모르는 variant와 규칙이 다른 자리다: variant 어휘는 테마의 사유물이라 경고 + 폴백이지만,
-// 테마 **이름**의 어휘는 엔진이 소유하므로(BuiltinThemes) 목록 밖 이름은 오타이거나 설치되지
-// 않은 테마다. 조용히 minimal로 그리면 저자는 "내 테마가 왜 안 먹지"를 슬라이드에서 찾는다.
+// 테마 이름의 어휘는 엔진 소유라 목록 밖 이름은 에러 + 해석 중단이다 (variant와 달리 폴백 없음).
 func TestResolveUnknownThemeIsAnError(t *testing.T) {
 	deck, diags := themeDeck(t, "corp", themeProbe)
 	if len(diags) != 1 {
@@ -86,7 +50,6 @@ func TestResolveUnknownThemeIsAnError(t *testing.T) {
 			t.Errorf("진단이 %q를 말하지 않는다: %s", want, diag.Message)
 		}
 	}
-	// 해석은 **중단**된다 — 폴백 테마로 계속하면 산출물이 저자가 고르지 않은 테마로 나간다.
 	if deck.Theme.Name != "" {
 		t.Errorf("deck.Theme.Name = %q, want 빈 값 — 모르는 테마로 해석이 이어졌다", deck.Theme.Name)
 	}
@@ -95,8 +58,7 @@ func TestResolveUnknownThemeIsAnError(t *testing.T) {
 	}
 }
 
-// TestBuiltinThemesRenderTheSameDeckDifferently는 "테마를 갈면 같은 덱이 다르게 보인다"를
-// 값으로 확인한다 — 팔레트가 같은 테마 둘은 테마 둘이 아니다.
+// 요청한 테마가 결과에 닿고, 팔레트가 같은 테마 둘은 테마 둘이 아니다.
 func TestBuiltinThemesRenderTheSameDeckDifferently(t *testing.T) {
 	seen := map[string]string{}
 	for _, name := range BuiltinThemes() {
@@ -116,13 +78,7 @@ func TestBuiltinThemesRenderTheSameDeckDifferently(t *testing.T) {
 	}
 }
 
-// TestLoadConfigChecksThemeVocabulary는 `balpyo.json`의 theme가 어휘와 대조됨을 못 박는다.
-// 값 층도 같은 판정을 하지만(위 테스트) 설정 로드가 **더 좋은 에러**를 준다 — 파일을 가리키고
-// 쓸 수 있는 이름을 나열한다.
-//
-// 검사하는 자리가 `Config.Validate`가 아니라 `LoadConfig`인 이유는 어휘가 **프로젝트에
-// 달렸다**는 것이다 (`themes/<이름>/` — ADR 0054의 결정 5): `Validate`는 파일시스템을 모르므로
-// 기본값 채우기만 하고, 프로젝트를 아는 자리가 이름을 판정한다.
+// 이름 판정은 프로젝트를 아는 LoadConfig의 일이다 (로컬 테마 — ADR 0054). Validate는 기본값만 채운다.
 func TestLoadConfigChecksThemeVocabulary(t *testing.T) {
 	write := func(t *testing.T, body string) string {
 		t.Helper()
@@ -139,14 +95,13 @@ func TestLoadConfigChecksThemeVocabulary(t *testing.T) {
 	}
 	_, err := LoadConfig(write(t, `{"theme":"corp"}`))
 	if err == nil {
-		t.Fatal("없는 테마 이름이 통과했다 — 값이 조용히 버려지던 시절의 필드가 된다")
+		t.Fatal("없는 테마 이름이 통과했다")
 	}
 	for _, want := range append([]string{ConfigFile, "theme", "corp"}, BuiltinThemes()...) {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("에러가 %q를 말하지 않는다: %v", want, err)
 		}
 	}
-	// 빈 값은 기본 테마로 채운다 (설정 파일 없이 빌드되는 프로젝트가 있다).
 	empty := DefaultConfig()
 	empty.Theme = ""
 	if err := empty.Validate(); err != nil {
@@ -155,8 +110,6 @@ func TestLoadConfigChecksThemeVocabulary(t *testing.T) {
 	if empty.Theme != DefaultTheme {
 		t.Errorf("빈 theme = %q, want %q", empty.Theme, DefaultTheme)
 	}
-	// Validate는 이름을 판정하지 않는다 — 프로젝트를 모르는 자리가 어휘를 좁히면 로컬 테마를
-	// 쓰는 설정이 파일시스템을 보지도 않고 거부된다.
 	local := DefaultConfig()
 	local.Theme = "corp"
 	if err := local.Validate(); err != nil {
@@ -164,63 +117,36 @@ func TestLoadConfigChecksThemeVocabulary(t *testing.T) {
 	}
 }
 
-// TestBuiltinThemesShareRecommendedVariants는 공식 테마 셋이 **같은 variant 어휘**를 갖는다는
-// 계약이다 (PRD §13-6 · ADR 0052).
-//
-// variant 어휘는 테마의 사유물이지만, 공식 테마가 권장 어휘를 공유하지 않으면 테마를 간 덱의
-// `variant="stat-card"`가 경고로 바뀐다 — "테마를 갈면 다르게 보인다"가 "테마를 갈면 깨진다"가
-// 되는 자리다. 순서까지 같은 이유는 모르는 variant 경고가 나열하는 목록이 테마마다 다른 순서로
-// 나올 이유가 없다는 것이다.
-func TestBuiltinThemesShareRecommendedVariants(t *testing.T) {
-	wantText := []string{"kicker", "lead"}
-	wantShape := []string{"card", "card-header", "card-body", "card-backdrop", "stat-card", "badge"}
-	wantImage := []string{"framed"}
+// 공식 테마는 같은 variant 어휘(순서까지)와 본문 리듬(24px/1.5 — ADR 0002)을 공유한다
+// (PRD §13-6 · ADR 0052). 어긋나면 테마를 간 덱이 경고로 깨진다.
+func TestBuiltinThemesShareContract(t *testing.T) {
+	names := func(n int, at func(int) string) string {
+		out := make([]string, n)
+		for i := range out {
+			out[i] = at(i)
+		}
+		return strings.Join(out, ",")
+	}
 	for _, name := range BuiltinThemes() {
 		comps := loadBuiltinTheme(name).components
-		gotText := make([]string, 0, len(comps.textVariants))
-		for _, v := range comps.textVariants {
-			gotText = append(gotText, v.name)
+		if got := names(len(comps.textVariants), func(i int) string { return comps.textVariants[i].name }); got != "kicker,lead" {
+			t.Errorf("%s의 텍스트 variant = %s", name, got)
 		}
-		gotShape := make([]string, 0, len(comps.shapeVariants))
-		for _, v := range comps.shapeVariants {
-			gotShape = append(gotShape, v.name)
+		if got := names(len(comps.shapeVariants), func(i int) string { return comps.shapeVariants[i].name }); got != "card,card-header,card-body,card-backdrop,stat-card,badge" {
+			t.Errorf("%s의 도형 variant = %s", name, got)
 		}
-		gotImage := make([]string, 0, len(comps.imageVariants))
-		for _, v := range comps.imageVariants {
-			gotImage = append(gotImage, v.name)
+		if got := names(len(comps.imageVariants), func(i int) string { return comps.imageVariants[i].name }); got != "framed" {
+			t.Errorf("%s의 이미지 variant = %s", name, got)
 		}
-		if strings.Join(gotText, ",") != strings.Join(wantText, ",") {
-			t.Errorf("%s의 텍스트 variant = %v, want %v", name, gotText, wantText)
-		}
-		if strings.Join(gotShape, ",") != strings.Join(wantShape, ",") {
-			t.Errorf("%s의 도형 variant = %v, want %v", name, gotShape, wantShape)
-		}
-		if strings.Join(gotImage, ",") != strings.Join(wantImage, ",") {
-			t.Errorf("%s의 이미지 variant = %v, want %v", name, gotImage, wantImage)
-		}
-	}
-}
-
-// TestBuiltinThemesShareBodyRhythm은 본문이 세 테마에서 24px · 줄높이 1.5임을 못 박는다
-// (ADR 0052의 결정 8). 스테이지 720px이 정확히 본문 20줄이라는 사실(ADR 0002)은 제품의 수직
-// 리듬이고, 테마마다 갈리면 문서에서 그 문장이 사라진다. 테마가 가르는 것은 제목 위계·색·짜임이다.
-func TestBuiltinThemesShareBodyRhythm(t *testing.T) {
-	for _, name := range BuiltinThemes() {
-		body, ok := loadBuiltinTheme(name).components.textRoles[soml.RoleBody]
-		if !ok {
-			t.Fatalf("%s에 body 역할이 없다", name)
-		}
-		if body.Size != 24 || body.LineHeight != 1.5 {
+		body, ok := comps.textRoles[soml.RoleBody]
+		if !ok || body.Size != 24 || body.LineHeight != 1.5 {
 			t.Errorf("%s의 body = %gpx/%g, want 24px/1.5", name, body.Size, body.LineHeight)
 		}
 	}
 }
 
-// ── 로더의 완전성 검사 (ADR 0052의 결정 3) ──────────────────────────────────
-//
-// 폴백 테마를 지운 대가로 로더가 완전성을 요구한다: 필수 토큰·역할이 없으면 **테마 로드가
-// 실패한다**. 그러지 않으면 테마 제작자의 누락이 산출물에서 "글자 크기가 0"으로 나타나고,
-// 원인을 찾는 자리가 테마에서 멀어진다 (theme.md의 "채워야 하는 이름" 표가 이 검사다).
+// ── 로더의 완전성 검사 (ADR 0052의 결정 3) ──
+// 폴백 테마가 없으므로 필수 토큰·역할이 빠지면 로드가 실패한다 (theme.md의 "채워야 하는 이름" 표).
 
 // fullTokens는 완전한 tokens.json이다 — 아래 테스트가 여기서 한 조각씩 뺀다.
 const fullTokens = `{
@@ -249,15 +175,11 @@ const fullTokens = `{
   "shadow": [{"name":"soft","dist":4,"dir":90,"blur":16,"color":"fg","alpha":0.15}]
 }`
 
-// fullComponents는 완전한 components.json이다 (역할 5종 + 최소 도형 기본값 + code 절).
-//
-// 조각으로 쪼개 둔 이유는 **code 절만 겨누는 테스트**가 있다는 것이다 (highlight_test의
-// themeFSWithCode): 완전성 검사를 통과해야 로더가 code 절까지 도달하므로, 그 테스트도 완전한
-// 역할 표를 써야 하고 그 표를 두 번 적을 이유는 없다.
+// fullComponents는 완전한 components.json이다. code 절만 겨누는 테스트(highlight_test)가
+// componentsWithCode로 같은 역할 표를 재사용한다.
 const fullComponents = "{" + fullRolesAndShape + `,
   "code": ` + fullCode + "\n}"
 
-// componentsWithCode는 완전한 컴포넌트 표에서 code 절만 갈아 끼운다.
 func componentsWithCode(code string) string {
 	return "{" + fullRolesAndShape + `,
   "code": ` + code + "\n}"
@@ -275,8 +197,7 @@ const fullRolesAndShape = `
   ]},
   "shape": { "default": {"fill":"surface","border":"1 solid muted","radius":"md"} }`
 
-// memTheme는 메모리 위의 테마 패키지 하나다 — 로더는 fs.FS 위에서 도므로 내장 테마와 같은
-// 코드를 지난다 (theme_package.go의 계약).
+// memTheme는 메모리 위의 테마 패키지 하나다 — 로더는 fs.FS 위에서 돌므로 내장 테마와 같은 길이다.
 func memTheme(tokens, comps string) fstest.MapFS {
 	return fstest.MapFS{
 		"t/theme.json":          {Data: []byte(`{"name":"t","layouts":["content"]}`)},
@@ -286,65 +207,47 @@ func memTheme(tokens, comps string) fstest.MapFS {
 	}
 }
 
-// TestLoadThemeAcceptsCompletePackage는 아래 테스트들이 무엇을 빼는지가 뜻을 갖도록 **완전한**
-// 패키지가 로드됨을 먼저 못 박는다 (빼기 전의 기준선).
-func TestLoadThemeAcceptsCompletePackage(t *testing.T) {
+// 완전한 패키지는 로드되고(기준선), 필수 토큰·역할·역할이 가리키는 토큰이 하나라도 빠지면
+// 빠진 이름을 말하며 실패한다.
+func TestLoadThemeRequiresCompleteness(t *testing.T) {
 	if _, err := loadTheme(memTheme(fullTokens, fullComponents), "t"); err != nil {
 		t.Fatalf("완전한 테마가 거부됐다: %v", err)
 	}
-}
-
-// TestLoadThemeRequiresTokenVocabulary는 필수 토큰 이름이 빠지면 로드가 실패함을 못 박는다.
-// 이름은 **저자가 속성에 쓰는 어휘**이므로(`color="accent6"`·`gap="md"`), 빠진 이름은 그 이름을
-// 쓴 덱을 조용히 망가뜨린다.
-func TestLoadThemeRequiresTokenVocabulary(t *testing.T) {
-	cases := []struct{ name, drop, want string }{
-		{"색 fg", `{"name":"fg","rgb":"000000","slot":"dk1","ref":"tx1"},`, "fg"},
-		{"색 accent6", `,
-    {"name":"accent6","rgb":"9333EA","slot":"accent6","ref":"accent6"}`, "accent6"},
-		{"폰트 mono", `,
-    {"name":"mono","latin":"Noto Sans Mono","ea":"Noto Sans Mono CJK KR","generic":"monospace"}`, "mono"},
-		{"공간 md", `{"name":"md","px":24},`, "md"},
-		{"반경 lg", `,{"name":"lg","px":24}`, "lg"},
-		{"그림자 soft", `{"name":"soft","dist":4,"dir":90,"blur":16,"color":"fg","alpha":0.15}`, "soft"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			tokens := strings.Replace(fullTokens, tc.drop, "", 1)
-			if tokens == fullTokens {
-				t.Fatalf("테스트 준비 오류 — %q를 fullTokens에서 찾지 못했다", tc.drop)
-			}
-			err := second(loadTheme(memTheme(tokens, fullComponents), "t"))
-			if err == nil {
-				t.Fatalf("%s가 없는데 로드가 통과했다", tc.name)
-			}
-			if !strings.Contains(err.Error(), tc.want) {
-				t.Errorf("에러가 빠진 이름 %q를 말하지 않는다: %v", tc.want, err)
-			}
-		})
-	}
-}
-
-// TestLoadThemeRequiresTextRoles는 텍스트 역할 5종과 그 역할이 **가리키는 토큰**을 로더가
-// 요구함을 못 박는다. 역할 하나가 없으면 그 역할을 쓴 블록이 크기 0·색 없음으로 렌더되고,
-// 폰트·색 이름이 이 테마에 없으면 확정 외관이 해석되지 않는 참조를 담는다.
-func TestLoadThemeRequiresTextRoles(t *testing.T) {
-	cases := []struct{ name, from, to, want string }{
-		{"역할 caption 없음",
+	cases := []struct {
+		name     string
+		tokens   bool // true면 fullTokens, 아니면 fullComponents를 고친다
+		from, to string
+		want     string
+	}{
+		{"색 fg", true, `{"name":"fg","rgb":"000000","slot":"dk1","ref":"tx1"},`, "", "fg"},
+		{"색 accent6", true, `,
+    {"name":"accent6","rgb":"9333EA","slot":"accent6","ref":"accent6"}`, "", "accent6"},
+		{"폰트 mono", true, `,
+    {"name":"mono","latin":"Noto Sans Mono","ea":"Noto Sans Mono CJK KR","generic":"monospace"}`, "", "mono"},
+		{"공간 md", true, `{"name":"md","px":24},`, "", "md"},
+		{"반경 lg", true, `,{"name":"lg","px":24}`, "", "lg"},
+		{"그림자 soft", true, `{"name":"soft","dist":4,"dir":90,"blur":16,"color":"fg","alpha":0.15}`, "", "soft"},
+		{"역할 caption 없음", false,
 			`{"name":"caption","font":"body","size":18,"weight":400,"lineHeight":1.4,"color":"muted","align":"start"},`,
 			"", "caption"},
-		{"역할의 폰트가 테마에 없다", `"font":"mono","size":20`, `"font":"display","size":20`, "display"},
-		{"역할의 색이 테마에 없다", `"color":"muted","align":"start"},`, `"color":"dim","align":"start"},`, "dim"},
-		{"역할의 크기가 0", `"size":24,"weight":400,"lineHeight":1.5,"color":"fg"`,
+		{"역할의 폰트가 테마에 없다", false, `"font":"mono","size":20`, `"font":"display","size":20`, "display"},
+		{"역할의 색이 테마에 없다", false, `"color":"muted","align":"start"},`, `"color":"dim","align":"start"},`, "dim"},
+		{"역할의 크기가 0", false, `"size":24,"weight":400,"lineHeight":1.5,"color":"fg"`,
 			`"size":0,"weight":400,"lineHeight":1.5,"color":"fg"`, "size"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			comps := strings.Replace(fullComponents, tc.from, tc.to, 1)
-			if comps == fullComponents {
-				t.Fatalf("테스트 준비 오류 — %q를 fullComponents에서 찾지 못했다", tc.from)
+			tokens, comps := fullTokens, fullComponents
+			target := &comps
+			if tc.tokens {
+				target = &tokens
 			}
-			err := second(loadTheme(memTheme(fullTokens, comps), "t"))
+			before := *target
+			*target = strings.Replace(before, tc.from, tc.to, 1)
+			if *target == before {
+				t.Fatalf("테스트 준비 오류 — %q를 찾지 못했다", tc.from)
+			}
+			err := second(loadTheme(memTheme(tokens, comps), "t"))
 			if err == nil {
 				t.Fatalf("%s인데 로드가 통과했다", tc.name)
 			}
@@ -355,5 +258,5 @@ func TestLoadThemeRequiresTextRoles(t *testing.T) {
 	}
 }
 
-// second는 (값, 에러) 쌍에서 에러만 집는 테스트 헬퍼다 — 위 표 주행이 값을 쓰지 않는다.
+// second는 (값, 에러) 쌍에서 에러만 집는다.
 func second(_ themePackage, err error) error { return err }

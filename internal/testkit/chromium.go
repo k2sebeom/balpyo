@@ -1,9 +1,12 @@
 package testkit
 
 import (
+	"bytes"
 	"image"
+	"image/png"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/k2sebeom/balpyo/render/geom"
@@ -25,21 +28,47 @@ type Rect = geom.Rect
 // t.Cleanup 정리, 그리고 실패를 t.Fatal로 바꾸는 얇은 층.
 //
 // 픽스처마다 브라우저를 새로 띄우지 않는 이유는 스위트 시간이다 — 세션 하나를 공유하고
-// 페이지만 바꿔 연다 (`balpyo server`의 웜 세션과 같은 전략, PRD §11).
+// 페이지만 바꿔 연다 (SharedSession).
 type Browser struct {
 	session *geom.Session
 }
 
-// NewBrowser는 결정적인 플래그로 브라우저를 띄운다. 정리는 t.Cleanup이 한다.
+// NewBrowser는 공유 세션(SharedSession) 위의 브라우저다. 페이지는 Load가 연다.
 func NewBrowser(t testing.TB) *Browser {
 	t.Helper()
+	return &Browser{session: SharedSession(t)}
+}
+
+var shared struct {
+	once    sync.Once
+	session *geom.Session
+	err     error
+}
+
+// SharedSession은 테스트 바이너리 하나가 공유하는 브라우저 세션이다 — 픽스처 빌드 · 예제 빌드 ·
+// 측정 테스트가 모두 이 세션을 쓴다.
+//
+// 공유하는 이유는 스위트 시간이다: 기동이 빌드 한 번보다 비싸서, 빌드마다 브라우저를 띄우면
+// `go test ./...`의 대부분이 기동 시간이었다. 세션은 페이지를 열 때마다 새 문서를 그리므로
+// (`balpyo watch`의 웜 세션과 같은 근거 — ADR 0046) 앞 테스트의 상태가 다음 측정에 남지 않는다.
+// 테스트를 병렬로 돌리지 않는다는 전제다 — 세션 하나는 한 번에 한 페이지를 연다.
+//
+// 정리는 그 패키지의 TestMain이 CloseSharedSession으로 한다.
+func SharedSession(t testing.TB) *geom.Session {
+	t.Helper()
 	bin := RequireChromium(t)
-	session, err := geom.Launch(bin)
-	if err != nil {
-		t.Fatalf("브라우저를 띄울 수 없다: %v", err)
+	shared.once.Do(func() { shared.session, shared.err = geom.Launch(bin) })
+	if shared.err != nil {
+		t.Fatalf("브라우저를 띄울 수 없다: %v", shared.err)
 	}
-	t.Cleanup(session.Close)
-	return &Browser{session: session}
+	return shared.session
+}
+
+// CloseSharedSession은 공유 세션을 닫는다 (띄운 적이 없으면 아무것도 하지 않는다).
+func CloseSharedSession() {
+	if shared.session != nil {
+		shared.session.Close()
+	}
 }
 
 // Load는 로컬 HTML 파일을 연다. 폰트가 다 실린 뒤에 돌아온다 — 폰트 로드 전에 찍은
@@ -69,7 +98,7 @@ func (b *Browser) ScreenshotElement(t testing.TB, selector string) image.Image {
 	if err != nil {
 		t.Fatalf("%s: %v", selector, err)
 	}
-	img, err := DecodePNG(buf)
+	img, err := png.Decode(bytes.NewReader(buf))
 	if err != nil {
 		t.Fatalf("%s: %v", selector, err)
 	}

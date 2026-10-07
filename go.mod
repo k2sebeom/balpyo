@@ -6,6 +6,7 @@ require (
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/chromedp/cdproto v0.0.0-20260714215040-dc233986426f
 	github.com/chromedp/chromedp v0.16.0
+	github.com/knroy/go-xml v1.4.0
 )
 
 require (
@@ -16,4 +17,5 @@ require (
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 )

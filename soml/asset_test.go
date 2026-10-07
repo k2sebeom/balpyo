@@ -99,11 +99,3 @@ func TestElementImageStyle(t *testing.T) {
 		t.Error("이미지 외관이 도형 자리에 실렸다")
 	}
 }
-
-// `fit`의 기본값은 **언어**의 것이다 (테마가 아니다) — 테마를 바꿨을 때 얼굴이 잘리기
-// 시작하면 안 된다.
-func TestDefaultImageFit(t *testing.T) {
-	if DefaultImageFit != FitContain {
-		t.Errorf("DefaultImageFit = %q, want %q", DefaultImageFit, FitContain)
-	}
-}

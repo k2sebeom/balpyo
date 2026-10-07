@@ -5,12 +5,23 @@ import (
 	"testing"
 )
 
-// TestFixtures는 픽스처 스위트다 — 모든 반복(iteration)이 여기에 픽스처를 더한다.
+// TestFixtures는 픽스처 스위트다 — 픽스처마다: 빌드 → 골든 비교(layout.txt · diagnostics.txt) →
+// 동일성 판정(웹 트리 == PPTX 트리) → 패키지 불변식 → 두 번째 빌드와 같은 바이트.
 //
-// 픽스처마다: 빌드 → 골든 비교(HTML + PPTX 파트 XML) → 렌더 비교(웹 스크린샷 vs
-// LibreOffice 렌더). `make review`는 같은 테스트를 리뷰 모드로 돌려 갤러리를 남긴다.
+// 픽스처를 병렬로 돌리지 않는다 — 빌드마다 브라우저를 띄우므로 병렬은 CI 메모리를 먹는다.
 func TestFixtures(t *testing.T) {
-	NewSuite(t).Run(t)
+	for _, fixture := range Fixtures(t) {
+		t.Run(fixture.Name, func(t *testing.T) {
+			// 브라우저가 없는 호스트에서는 Build가 먼저 건너뛴다 (Fixture.Build).
+			result := fixture.Build(t)
+			fixture.AssertGolden(t, result)
+			t.Run("parity", func(t *testing.T) { fixture.AssertParity(t, result) })
+			t.Run("package", func(t *testing.T) {
+				fixture.AssertPackage(t, result)
+				fixture.AssertSameBytes(t, result, fixture.Build(t))
+			})
+		})
+	}
 }
 
 func TestFixturesAreDiscovered(t *testing.T) {
@@ -44,27 +55,36 @@ func TestFixtureBuildLeavesFixtureDirClean(t *testing.T) {
 	}
 }
 
-// PPTX 골든은 zip 바이트가 아니라 파트별 XML이다 — git diff에서 "무엇이 달라졌나"가 읽혀야 한다.
+// 골든은 두 종뿐이다 — 구조 스냅샷과 (경고가 있을 때) 진단. 산출물 스냅샷이 다시 끼어들면
+// 환경 고정이 다시 필요해진다 (ADR 0064).
 func TestFixtureGoldenTreeShape(t *testing.T) {
 	fixture := Fixtures(t)[0]
 	files := fixture.goldenFiles(t, fixture.Build(t))
-	if files["index.html"] == nil {
-		t.Error("웹 산출물 골든이 없다")
+	if len(files[layoutGolden]) == 0 {
+		t.Error("구조 스냅샷이 비었다")
 	}
-	for _, part := range []string{
-		"pptx/[Content_Types].xml",
-		"pptx/ppt/presentation.xml",
-		"pptx/ppt/slideMasters/slideMaster1.xml",
-		"pptx/ppt/theme/theme1.xml",
-		"pptx/ppt/slides/slide1.xml",
-	} {
-		if files[part] == nil {
-			t.Errorf("PPTX 파트 골든이 없다: %s", part)
+	for name := range files {
+		if name != layoutGolden && name != diagnosticsGolden {
+			t.Errorf("골든에 산출물 스냅샷이 있다: %s", name)
 		}
 	}
-	for name, data := range files {
-		if len(data) == 0 {
-			t.Errorf("빈 골든: %s", name)
+}
+
+// fixtureByName은 픽스처 러너와 같은 수집 경로로 픽스처를 집는다 — 경로를 직접 조립하면
+// 러너가 못 보는 픽스처를 여기만 보는 상태가 생길 수 있다.
+func fixtureByName(t *testing.T, name string) Fixture {
+	t.Helper()
+	for _, fixture := range Fixtures(t) {
+		if fixture.Name == name {
+			return fixture
 		}
 	}
+	t.Fatalf("픽스처 %s가 수집되지 않았다", name)
+	return Fixture{}
+}
+
+// textFixture는 01_text다 (뷰어 런타임 검사들이 쓴다).
+func textFixture(t *testing.T) Fixture {
+	t.Helper()
+	return fixtureByName(t, "01_text")
 }

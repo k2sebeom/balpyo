@@ -22,8 +22,6 @@ const (
 	FixturesDir = "testdata/fixtures"
 	// goldenDirName은 픽스처 안의 골든 디렉토리 이름이다.
 	goldenDirName = "golden"
-	// pptxGoldenPrefix는 PPTX 파트 골든이 들어가는 하위 경로다.
-	pptxGoldenPrefix = "pptx"
 	// diagnosticsGolden은 경고가 있을 때만 생기는 골든이다.
 	diagnosticsGolden = "diagnostics.txt"
 )
@@ -67,17 +65,18 @@ func Fixtures(t testing.TB) []Fixture {
 // 디렉토리는 입력 전용으로 남는다 (골든만 사람이 커밋한다).
 //
 // 빌드 자체가 브라우저를 필요로 한다 — 지오메트리 패스가 박스를 재지 못하면 골든도 나오지
-// 않는다. 그래서 도구 정책을 여기서 먼저 적용한다: 브라우저가 없으면 이미지 안에서는
-// 실패하고(Strict), 도구 없는 호스트에서는 건너뛴다. 이 줄이 없으면 호스트의
-// `make test-host`가 픽스처마다 "브라우저를 찾을 수 없다"로 **죽는다** — 건너뛰기로
+// 않는다. 그래서 도구 정책을 여기서 먼저 적용한다: 브라우저가 없으면 CI에서는
+// 실패하고(Strict), 도구 없는 호스트에서는 건너뛴다. 이 줄이 없으면 브라우저 없는 호스트의
+// `go test ./...`가 픽스처마다 "브라우저를 찾을 수 없다"로 **죽는다** — 건너뛰기로
 // 약속된 자리에서 빨간불이 나므로 호스트의 빠른 되풀이가 쓸 수 없게 된다.
 func (f Fixture) Build(t testing.TB) *pipeline.Result {
 	t.Helper()
-	RequireChromium(t)
+	session := SharedSession(t)
 	result, err := pipeline.Build(pipeline.Options{
 		ProjectDir: f.Dir,
 		Targets:    []render.Target{render.TargetHTML, render.TargetPPTX},
 		OutDir:     t.TempDir(),
+		Measurer:   session,
 	})
 	if err != nil {
 		t.Fatalf("%s 빌드 실패: %v", f.Name, err)
@@ -91,27 +90,15 @@ func (f Fixture) AssertGolden(t testing.TB, result *pipeline.Result) {
 	AssertGoldenTree(t, f.GoldenDir(), f.goldenFiles(t, result))
 }
 
-// goldenFiles는 골든으로 남길 파일 묶음을 만든다.
+// goldenFiles는 골든으로 남길 파일 묶음을 만든다 — 두 종뿐이다 (ADR 0064, TASKS R2).
 //
-// PPTX는 zip 바이트 대신 **압축을 푼 파트별 XML**을 남긴다. 이유가 두 개다: zip 바이트는
-// 압축기 구현이 바뀌면 내용이 같은데도 달라지고, 무엇보다 XML 골든은 git diff에서 읽힌다 —
-// "도형이 하나 늘었다"가 diff로 보이는 것이 이 골든의 목적이다.
+// 구조 스냅샷(`layout.txt`)은 rect 없는 컴포넌트 트리라 폰트와 무관하고, 어느 호스트에서도 같은
+// 바이트다. 웹 HTML과 PPTX 파트 XML은 남기지 않는다: CSS 한 줄에도 수십 파일이 움직여 diff가
+// 읽히지 않았다. 패키지 구조는 불변식(AssertPackage)이, 두 타깃의 일치는 동일성 판정이 본다.
 func (f Fixture) goldenFiles(t testing.TB, result *pipeline.Result) map[string][]byte {
 	t.Helper()
-	files := map[string][]byte{}
-	for _, name := range result.Written {
-		data, err := os.ReadFile(filepath.Join(result.OutDir, filepath.FromSlash(name)))
-		if err != nil {
-			t.Fatalf("산출물을 읽을 수 없다: %v", err)
-		}
-		if strings.EqualFold(path.Ext(name), ".pptx") {
-			for part, partData := range PPTXParts(t, data) {
-				files[path.Join(pptxGoldenPrefix, part)] = partData
-			}
-			continue
-		}
-		files[name] = data
-	}
+	webTree, _ := f.Layouts(t, result)
+	files := map[string][]byte{layoutGolden: []byte(FormatLayout(webTree, false))}
 	// 경고는 산출물의 일부다 — 골든에 남겨야 "언제부터 경고가 생겼나"가 diff에 보인다.
 	if diags := result.Diagnostics; len(diags) > 0 {
 		var b strings.Builder

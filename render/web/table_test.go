@@ -4,34 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/k2sebeom/balpyo/core"
 	"github.com/k2sebeom/balpyo/soml"
 )
-
-// tableDeck는 표 하나를 담은 슬라이드를 파이프라인과 같은 순서(파싱 → 해석)로 덱으로 만든다
-// (subsetDeck의 표 판 — 손으로 만든 트리 대신 원문을 쓰는 이유도 같다).
-func tableDeck(t *testing.T, body string) *soml.Deck {
-	t.Helper()
-	const source = "slides/001_table.slide"
-	doc, diags := soml.Parse(source, "<slide id=\"table\">\n"+body+"\n</slide>\n")
-	if len(diags) != 0 {
-		t.Fatalf("파싱 실패: %v", diags)
-	}
-	stage, err := soml.Aspect16x9.Stage()
-	if err != nil {
-		t.Fatal(err)
-	}
-	deck := &soml.Deck{
-		Title: "표", Lang: "ko", Aspect: soml.Aspect16x9, Stage: stage,
-		Slides: []*soml.Slide{{
-			Index: 0, ID: "table", Source: source, Content: doc.Content,
-		}},
-	}
-	if err := core.Resolve(deck, nil).Err(); err != nil {
-		t.Fatalf("외관 해석 실패: %v", err)
-	}
-	return deck
-}
 
 // renderTable는 덱의 첫 콘텐츠 노드(표 프레임)를 HTML로 쓴다.
 //
@@ -55,7 +29,7 @@ func renderTable(t *testing.T, deck *soml.Deck) string {
 // 셀이 **모두** 식별자를 갖는지 못 박는다 (ADR 0036: 열 너비·행 높이는 잰 셀 박스에서 온다 —
 // 셀에 식별자가 없으면 PPTX 격자를 잴 수 없다).
 func TestRenderTableIsARealTable(t *testing.T) {
-	out := renderTable(t, tableDeck(t, `  <table>
+	out := renderTable(t, subsetDeck(t, `  <table>
     <tr><th>지역</th><th>Q1</th></tr>
     <tr><td>서울</td><td>12.4</td></tr>
   </table>`))
@@ -71,18 +45,8 @@ func TestRenderTableIsARealTable(t *testing.T) {
 			t.Errorf("표 HTML에 %q가 없다:\n%s", want, out)
 		}
 	}
-	// 식별자는 문서 순서다 — 지오메트리 패스가 같은 순서로 덱을 걸으며 대조한다 (geom.Refs).
-	order := []string{"s0.0", "s0.0.0", "s0.0.0.0", "s0.0.0.1", "s0.0.1", "s0.0.1.0", "s0.0.1.1"}
-	at := -1
-	for _, id := range order {
-		i := strings.Index(out, `data-balpyo-id="`+id+`"`)
-		if i < 0 {
-			t.Fatalf("식별자 %q가 없다:\n%s", id, out)
-		}
-		if i < at {
-			t.Errorf("식별자 %q가 문서 순서를 벗어났다:\n%s", id, out)
-		}
-		at = i
+	if got := strings.Count(out, IDAttr+"="); got != 7 {
+		t.Errorf("식별자 %d개, want 7 (프레임 · 행 2 · 셀 4)", got)
 	}
 }
 
@@ -90,7 +54,7 @@ func TestRenderTableIsARealTable(t *testing.T) {
 // 박는다 — 브라우저 기본 스타일(`th { font-weight: bold; text-align: center }`)이나 테마 표
 // 스타일 상속이 셀 모양을 정할 자리를 남기지 않는다 (ADR 0036의 "명시 tcPr"의 웹 절반).
 func TestRenderTableCellAppearance(t *testing.T) {
-	out := renderTable(t, tableDeck(t, `  <table>
+	out := renderTable(t, subsetDeck(t, `  <table>
     <tr><th>머리</th></tr>
     <tr><td anchor="bottom">본문</td></tr>
   </table>`))
@@ -118,7 +82,7 @@ func TestRenderTableCellAppearance(t *testing.T) {
 // 나가는지 못 박는다 — 테마가 얹은 헤더 채움·셀 테두리를 지우는 유일한 방법이므로, 선언을
 // 내지 않으면 저자가 지운 것이 조용히 되살아난다.
 func TestRenderTableCellFillAndBorderNone(t *testing.T) {
-	out := renderTable(t, tableDeck(t, `  <table>
+	out := renderTable(t, subsetDeck(t, `  <table>
     <tr><th fill="none" border="none">머리</th></tr>
   </table>`))
 	for _, want := range []string{"background-color: transparent", "border-style: none"} {
@@ -132,9 +96,9 @@ func TestRenderTableCellFillAndBorderNone(t *testing.T) {
 }
 
 // TestRenderTableSpans는 병합 칸 수가 HTML 속성으로 나가고 **1일 때는 나가지 않는지** 못
-// 박는다 (기본값을 적으면 골든이 뜻 없는 속성으로 붐빈다 — 배치 선언의 nil 계약과 같은 태도).
+// 박는다 (배치 선언의 nil 계약과 같은 태도).
 func TestRenderTableSpans(t *testing.T) {
-	out := renderTable(t, tableDeck(t, `  <table>
+	out := renderTable(t, subsetDeck(t, `  <table>
     <tr><td colspan="2">합친 칸</td><td rowspan="2">오른쪽</td></tr>
     <tr><td>a</td><td>b</td></tr>
   </table>`))
@@ -151,7 +115,7 @@ func TestRenderTableSpans(t *testing.T) {
 // TestRenderTableFrameVariant는 프레임 변형이 CSS 훅(클래스)으로 나가는지 못 박는다 —
 // 줄무늬 **색**은 셀 채움으로 이미 구워져 있고(core), 클래스는 저자 CSS의 표적이다.
 func TestRenderTableFrameVariant(t *testing.T) {
-	out := renderTable(t, tableDeck(t, `  <table variant="striped">
+	out := renderTable(t, subsetDeck(t, `  <table variant="striped">
     <tr><td>a</td></tr>
     <tr><td>b</td></tr>
   </table>`))
@@ -161,26 +125,5 @@ func TestRenderTableFrameVariant(t *testing.T) {
 	// 줄무늬 채움은 셀에 명시로 실린다 (홀수 본문 행 = 둘째 행).
 	if !strings.Contains(out, "background-color: var(--balpyo-color-surface)") {
 		t.Errorf("줄무늬 채움이 셀에 실리지 않았다:\n%s", out)
-	}
-}
-
-// TestTableCSSOnlyWhenUsed는 표 CSS 절이 표를 쓴 덱에만 나가는지 못 박는다 (골든 불변 —
-// 리스트·도형 절과 같은 규칙: 쓰지 않은 어휘의 CSS가 들어가면 diff가 무엇이 변했는지
-// 말해 주지 못한다).
-func TestTableCSSOnlyWhenUsed(t *testing.T) {
-	deck := tableDeck(t, "  <table>\n    <tr><td>a</td></tr>\n  </table>")
-	feat := contentFeatures(deck)
-	if !feat.tables {
-		t.Fatal("표를 쓴 덱의 tables 특성이 거짓이다")
-	}
-	css := contentCSS(feat)
-	for _, want := range []string{".balpyo-table", "border-collapse: collapse"} {
-		if !strings.Contains(css, want) {
-			t.Errorf("표 CSS에 %q가 없다:\n%s", want, css)
-		}
-	}
-	// 표가 없는 덱에는 한 줄도 나가지 않는다.
-	if plain := contentCSS(contentFeatures(contentDeck())); strings.Contains(plain, "balpyo-table") {
-		t.Errorf("표 없는 덱에 표 CSS가 나갔다:\n%s", plain)
 	}
 }

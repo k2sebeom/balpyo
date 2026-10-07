@@ -1,0 +1,40 @@
+# slide 1 local-theme-title
+textbox "text s0.0" ph=body/2
+  ¶ start | "P4.3"{body 12pt b muted}
+textbox "text s0.1" ph=ctrTitle/0
+  ¶ start | "프로젝트가 가진 테마"{heading 48pt b accent1}
+textbox "text s0.2" ph=subTitle/1
+  ¶ start | "내장 테마를 물려받아 값을 갈아 끼운다"{body 18pt muted}
+textbox "text s0.3" ph=body/3
+  ¶ start | "balpyo"{body 13.5pt muted}
+textbox "text s0.4" ph=body/4
+  ¶ start | "2026-09"{body 13.5pt muted}
+# slide 2 local-theme-inherited
+textbox "text s1.0" ph=title/0
+  ¶ start | "물려받은 값과 더한 값"{heading 27pt b fg}
+textbox "text s1.1.0"
+  ¶ start | "tagline은 corp가 더한 variant다."{body 21pt accent1}
+textbox "text s1.1.1"
+  ¶ start | "lead는 minimal의 것이고 그대로 쓴다."{body 24pt fg}
+shape:roundRect "shape s1.1.2" fill=surface line=muted
+textbox "text s1.1.2.0.0"
+  ¶ start | "채움과 반경은 corp가 정했다."{body 18pt fg}
+textbox "text s1.1.2.0.1"
+  ¶ start | "테두리는 minimal의 기본값이 남았다."{body 13.5pt muted}
+textbox "text s1.1.3"
+  ¶ start | "푸터는 가운데다 — corp가 자리만 갈아 끼웠다."{body 13.5pt muted}
+textbox "chrome footer"
+  ¶ center | "2026 · 사내 발표"{body 13.5pt muted}
+textbox "chrome pageNumber"
+  ¶ end | "2"{field body 13.5pt muted}
+# slide 3 local-theme-code
+textbox "text s2.0" ph=title/0
+  ¶ start | "이름이 같은 것만 갈린다"{heading 27pt b fg}
+textbox "pre s2.1" ph=body/1
+  ¶ start | "// 테마 이름은 프로젝트의 어휘에서 풀린다: 내장 ∪ themes/이름/."{mono 15pt muted} · ⏎ · "func"{mono 15pt accent1} · " "{mono 15pt fg} · "loadThemeNamed"{mono 15pt accent1} · "(fsys fs.FS, name "{mono 15pt fg} · "string"{mono 15pt accent1} · ") (themePackage, "{mono 15pt fg} · "error"{mono 15pt accent1} · ") {"{mono 15pt fg} · ⏎ · "  chain, err := "{mono 15pt fg} · "readThemeChain"{mono 15pt accent1} · "(fsys, name)"{mono 15pt fg} · ⏎ · "  "{mono 15pt fg} · "if"{mono 15pt accent1} · " err != "{mono 15pt fg} · "nil"{mono 15pt accent1} · " {"{mono 15pt fg} · ⏎ · "    "{mono 15pt fg} · "return"{mono 15pt accent1} · " themePackage{}, err"{mono 15pt fg} · ⏎ · "  }"{mono 15pt fg} · ⏎ · "  merged := chain["{mono 15pt fg} · "0"{mono 15pt accent4} · "]"{mono 15pt fg} · ⏎ · "  "{mono 15pt fg} · "for"{mono 15pt accent1} · " _, child := "{mono 15pt fg} · "range"{mono 15pt accent1} · " chain["{mono 15pt fg} · "1"{mono 15pt accent4} · ":] {"{mono 15pt fg} · ⏎ · "    merged = "{mono 15pt fg} · "mergeRawTheme"{mono 15pt accent1} · "(merged, child)"{mono 15pt fg} · ⏎ · "  }"{mono 15pt fg} · ⏎ · "  "{mono 15pt fg} · "return"{mono 15pt accent1} · " "{mono 15pt fg} · "buildThemePackage"{mono 15pt accent1} · "(merged)"{mono 15pt fg} · ⏎ · "}"{mono 15pt fg}
+textbox "text s2.2" ph=body/2
+  ¶ start | "병합은 원문 층에서 끝나고 검사는 그 결과에 한 번 돈다."{body 13.5pt muted}
+textbox "chrome footer"
+  ¶ center | "2026 · 사내 발표"{body 13.5pt muted}
+textbox "chrome pageNumber"
+  ¶ end | "3"{field body 13.5pt muted}

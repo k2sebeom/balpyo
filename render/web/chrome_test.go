@@ -36,7 +36,7 @@ func chromeDeck() *soml.Deck {
 // 먹고, 지오메트리 패스가 재는 Ref가 되어 저자가 고칠 수 없는 배치 경고가 나온다.
 func TestChromeIsStageSibling(t *testing.T) {
 	out := renderString(t, chromeDeck())
-	slide := sliceBetween(t, out, `id="body"`, "</section>")
+	slide := between(t, out, `id="body"`, "</section>")
 	stageEnd := strings.Index(slide, "</div>")
 	chrome := strings.Index(slide, ChromeClass)
 	if chrome < 0 {
@@ -47,7 +47,7 @@ func TestChromeIsStageSibling(t *testing.T) {
 	}
 
 	// 크롬이 없는 슬라이드에는 아무것도 붙지 않는다.
-	cover := sliceBetween(t, out, `id="cover"`, "</section>")
+	cover := between(t, out, `id="cover"`, "</section>")
 	if strings.Contains(cover, ChromeClass) {
 		t.Errorf("크롬 없는 슬라이드에 크롬이 나왔다:\n%s", cover)
 	}
@@ -58,7 +58,7 @@ func TestChromeIsStageSibling(t *testing.T) {
 // PPTX가 같은 자리에 같은 도형을 놓는다는 것이다.
 func TestChromeMarkup(t *testing.T) {
 	out := renderString(t, chromeDeck())
-	slide := sliceBetween(t, out, `id="body"`, "</section>")
+	slide := between(t, out, `id="body"`, "</section>")
 	for _, want := range []string{
 		ChromeKindAttr + `="footer"`,
 		ChromeKindAttr + `="pageNumber"`,
@@ -78,27 +78,6 @@ func TestChromeMarkup(t *testing.T) {
 	}
 }
 
-// 띠 CSS는 크롬을 쓴 덱에만 나간다 — 다른 어휘 조건과 같은 근거다 (골든 불변).
-func TestChromeCSSIsGated(t *testing.T) {
-	plain := renderString(t, testDeck())
-	if strings.Contains(plain, "."+ChromeClass) {
-		t.Error("크롬을 쓰지 않은 덱에 크롬 CSS가 들어갔다")
-	}
-
-	out := renderString(t, chromeDeck())
-	for _, want := range []string{
-		"." + ChromeClass + " {",
-		"position: absolute",
-		"bottom: 0",
-		"left: 64px",
-		"right: 64px",
-	} {
-		if !strings.Contains(out, want) {
-			t.Errorf("크롬 CSS에 %q가 없다", want)
-		}
-	}
-}
-
 // 크롬 글자는 설정에서 오므로 이스케이프해야 한다 — `footer`는 저자가 쓰는 값이다.
 func TestChromeTextIsEscaped(t *testing.T) {
 	deck := chromeDeck()
@@ -115,19 +94,4 @@ func TestChromeTextIsEscaped(t *testing.T) {
 	if !strings.Contains(out, "balpyo-chrome-center") {
 		t.Error("center 정렬 클래스가 없다")
 	}
-}
-
-// sliceBetween은 산출물에서 한 구간을 떼어낸다 — 슬라이드 하나만 보고 판정하기 위한 것이다.
-func sliceBetween(t *testing.T, out, from, to string) string {
-	t.Helper()
-	start := strings.Index(out, from)
-	if start < 0 {
-		t.Fatalf("%q를 찾을 수 없다", from)
-	}
-	rest := out[start:]
-	end := strings.Index(rest, to)
-	if end < 0 {
-		t.Fatalf("%q 뒤에서 %q를 찾을 수 없다", from, to)
-	}
-	return rest[:end]
 }

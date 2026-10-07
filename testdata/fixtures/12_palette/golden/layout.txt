@@ -1,0 +1,32 @@
+# slide 1 palette-accents
+textbox "h2 s0.0"
+  ¶ start | "강조색 여섯"{heading 27pt b fg}
+shape:roundRect "shape s0.1.0" fill=accent1 line=none
+  ¶ center | "accent1"{body 18pt bg}
+shape:roundRect "shape s0.1.1" fill=accent2 line=none
+  ¶ center | "accent2"{body 18pt bg}
+shape:roundRect "shape s0.1.2" fill=accent3 line=none
+  ¶ center | "accent3"{body 18pt bg}
+shape:roundRect "shape s0.1.3" fill=accent4 line=none
+  ¶ center | "accent4"{body 18pt bg}
+shape:roundRect "shape s0.1.4" fill=accent5 line=none
+  ¶ center | "accent5"{body 18pt bg}
+shape:roundRect "shape s0.1.5" fill=accent6 line=none
+  ¶ center | "accent6"{body 18pt bg}
+# slide 2 palette-variants
+textbox "h2 s1.0"
+  ¶ start | "변형과 그라디언트도 참조로 남는다"{heading 27pt b fg}
+shape:rect "shape s1.1.0" fill=accent3 line=none
+  ¶ center | "base"{body 18pt bg}
+shape:rect "shape s1.1.1" fill=accent3 line=none
+  ¶ center | "shade 40%"{body 18pt bg}
+shape:rect "shape s1.1.2" fill=accent3 line=none
+  ¶ center | "tint 40%"{body 18pt fg}
+shape:rect "shape s1.1.3" fill=accent3 line=none
+  ¶ center | "alpha 0.5"{body 18pt fg}
+shape:roundRect "shape s1.2.0" fill=gradient(accent2,accent6) line=none
+  ¶ center | "accent2 → accent6"{body 18pt bg}
+textbox "text s1.2.1.0"
+  ¶ start | "accent4 글자"{body 18pt accent4}
+textbox "text s1.2.1.1"
+  ¶ start | "accent5 글자"{body 18pt accent5}
