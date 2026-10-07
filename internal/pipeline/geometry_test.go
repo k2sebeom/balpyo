@@ -152,10 +152,12 @@ func overflowProject(t *testing.T) string {
 		"slides/001_wide.slide": `<slide id="wide">
   <shape type="rect" fill="surface" w="1200" h="100"></shape>
 </slide>`,
-		// (2) 작은 도형 안 텍스트: 300×80 도형에 여러 줄이 되는 문장을 담는다.
+		// (2) 작은 도형 안 텍스트: 300×80 도형에 다섯 줄을 담는다. 줄은 `<br/>`가 정한다 —
+		// 문장이 몇 줄로 접히는지는 글꼴의 몫이라(ADR 0064) 그것에 기대면 측정 호스트의
+		// 글꼴에 따라 경고가 나오기도 하고 안 나오기도 한다 (CJK 글꼴이 없는 CI 러너).
 		"slides/002_small_shape.slide": `<slide id="small-shape">
   <shape type="rect" fill="surface" w="300" h="80">
-    <p>도형이 작으면 문장은 줄을 늘리고, 늘어난 줄은 도형 밖으로 흐른다.</p>
+    <p>하나<br/>둘<br/>셋<br/>넷<br/>다섯</p>
   </shape>
 </slide>`,
 		// (3) 스테이지 이탈: canvas 좌표로 스테이지 오른쪽 밖에 둔다.
