@@ -128,7 +128,8 @@ render_prompt() {
 
 # ── 검증 ─────────────────────────────────────────────────────────────────────
 
-# gates는 게이트를 순서대로 돌린다 — 싼 것부터. make test는 컨테이너를 띄우므로 마지막이다.
+# gates는 게이트를 순서대로 돌린다 — 싼 것부터. make test도 go test ./...이므로 (ADR 0065) 따로
+# 돌리지 않는다.
 gates() {
 	local out
 	log "게이트: gofmt"
@@ -138,8 +139,6 @@ gates() {
 	(cd "$ROOT" && go vet ./...) || return 1
 	log "게이트: go test"
 	(cd "$ROOT" && go test ./...) || return 1
-	log "게이트: make test (컨테이너)"
-	(cd "$ROOT" && make test) || return 1
 }
 
 # verify_commit은 항목이 남긴 커밋이 규약대로인지 본다: 새 커밋이 있고, 워킹 트리가
@@ -190,7 +189,7 @@ run_item() {
 	[[ -n "${MODEL:-}" ]] && args+=(--model "$MODEL")
 
 	# STREAM=1은 진행 상황을 흘린다. 기본이 아닌 이유는 jq 의존과 로그 부피이고, 켜는
-	# 이유는 항목 하나가 길어서(컨테이너 테스트까지 돈다) 끝날 때까지 아무 출력이 없으면
+	# 이유는 항목 하나가 길어서(전체 테스트까지 돈다) 끝날 때까지 아무 출력이 없으면
 	# 멈춘 것과 구별되지 않기 때문이다.
 	if [[ "${STREAM:-}" == 1 ]] && command -v jq >/dev/null 2>&1; then
 		(cd "$ROOT" && "$CLAUDE_BIN" "${args[@]}" --output-format stream-json --verbose "$prompt") \
