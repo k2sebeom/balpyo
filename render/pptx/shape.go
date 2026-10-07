@@ -25,44 +25,6 @@ const shapeIndent = "      "
 // 이미 쓰고 있다.
 const firstShapeID = 2
 
-// textBoxSlackRatio는 텍스트 박스 폭에 더하는 안전 여유 비율이다 (PRD §9.3 — "측정된
-// 크기에 약간의 안전 여유를 더해 명시 고정").
-//
-// 값의 근거 (Iteration 1의 측정, NOTES.md 01/07): LibreOffice는 한글↔라틴 스크립트 경계마다
-// 간격을 넣어(스크립트 간격 — OOXML로 끌 수 없다) 혼합 문자 줄을 브라우저보다 넓게 그린다.
-// 박스를 측정 폭 그대로 고정하면 여유 폭(Slack)이 그보다 작은 줄은 LibreOffice에서 한 줄
-// 늘어난다 — 01_text 픽스처의 본문(여유 2.4%, 오차 +3.3%)이 정확히 그렇게 갈라졌다.
-//
-// **4%는 그 오차의 상한이 아니다.** 스크립트 간격은 경계 수에 비례하므로(경계당 +0.245 em)
-// 짧은 줄에 문장부호가 몰리면 +14.5%까지 나온다 (P1.5의 측정 —
-// docs/guides/known-differences.md). 여유로 덮는 길은 막혀 있다: 반대 방향의 위험(브라우저가
-// 넘긴 단어가 넓힌 박스에 들어가 줄이 **줄어드는** 것) 때문에 여유는 단어 하나 폭보다 작아야
-// 한다. 4%는 "단어 하나보다 작은 최대치"이고, 오차가 큰 줄이 접히지 않는 근거는 여유가 아니라
-// 그 줄에 남은 여유 공간(좁은 트랙의 짧은 줄 — 40~46%)이다. 줄 수 갈라짐은 허용 오차 0의
-// 줄 수 검사(TestFixtureLineBreaksMatchLibreOffice)가 따로 감시한다.
-const textBoxSlackRatio = 0.04
-
-// TextBoxRect는 잰 박스에 안전 여유를 더한 PPTX 텍스트 박스 사각형이다.
-//
-// 넓히는 방향은 정렬이 정한다 — 글자가 닻을 내린 변은 움직이지 않아야 웹과 같은 자리에
-// 그려진다: start는 오른쪽으로만, end는 왼쪽으로만, center는 양쪽으로 반씩 넓힌다.
-// justify는 넓히지 않는다: 양쪽 정렬은 글줄을 박스 폭까지 늘이므로, 박스를 넓히면 웹보다
-// 긴 글줄이 된다 (스크립트 간격 위험은 남지만 자리 어긋남보다 낫다).
-func TextBoxRect(r geom.Rect, align soml.TextAlign) geom.Rect {
-	if align == soml.AlignJustify {
-		return r
-	}
-	slack := r.W * textBoxSlackRatio
-	switch align {
-	case soml.AlignCenter:
-		r.X -= slack / 2
-	case soml.AlignEnd:
-		r.X -= slack
-	}
-	r.W += slack
-	return r
-}
-
 // shapesXML은 슬라이드 콘텐츠를 도형 목록으로 컴파일한다 — 이 함수가 지오메트리(①)와
 // 해석된 외관(②)이 OOXML에서 만나는 자리다 (PRD §9.3).
 //
@@ -344,7 +306,7 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	spec := textBoxSp(shapeID, elem.Name+" "+id, TextBoxRect(box.Rect, style.Align), body)
+	spec := textBoxSp(shapeID, elem.Name+" "+id, box.Rect, body)
 	spec.ph = slotPlaceholder(slide, elem)
 	return writeSp(b, spec, deck.Theme)
 }
@@ -354,12 +316,7 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 // 박스로 조각나 편집 단위가 깨진다 — 리스트는 하나의 텍스트 흐름이다.
 //
 // 좌표는 컨테이너의 잰 rect다 (항목 05가 ul/ol에 식별자를 붙였다 — li rect는 측정되지만
-// 도형 좌표로 쓰지 않는다). 안전 여유는 블록과 같은 TextBoxRect를 **start 정렬로** 적용한다:
-// li는 align 속성을 받지 않아 (파서 allowlist) 확정 정렬이 언제나 역할 기본값 start이므로,
-// 글자가 닻을 내린 왼쪽 변(=마커 위치)이 움직이지 않는 방향은 오른쪽 확장뿐이다. 여유 비율의
-// 근거(스크립트 간격)는 텍스트 폭 기준인데 리스트 폭에는 마커 자리(ListTextIndent)가
-// 포함되어 절대 여유가 텍스트만일 때보다 약간 크다 — 줄 늘어남(LibreOffice에서 한 줄
-// 증가)을 막는 안전한 방향의 오차이므로 그대로 두고, 실제 판정은 항목 08의 픽셀 비교가 한다.
+// 도형 좌표로 쓰지 않는다).
 func writeListShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, rels *slideRels) error {
 	box, ok := g.Box(id)
 	if !ok {
@@ -369,7 +326,7 @@ func writeListShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	spec := textBoxSp(shapeID, elem.Name+" "+id, TextBoxRect(box.Rect, soml.AlignStart), body)
+	spec := textBoxSp(shapeID, elem.Name+" "+id, box.Rect, body)
 	spec.ph = slotPlaceholder(slide, elem)
 	return writeSp(b, spec, deck.Theme)
 }
@@ -377,13 +334,7 @@ func writeListShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 // writeShapeSp는 `<shape>` 하나를 p:sp(프리셋 도형)로 쓴다 — **자식 텍스트를 자기 txBody로
 // 흡수한다** (writeShapeNode의 네 분기).
 //
-// 좌표는 도형의 잰 rect **그대로**다. 안전 여유(TextBoxRect)를 적용하지 않는 것이 텍스트
-// 박스와 갈라지는 자리이고, 근거는 여유의 뜻이다: 그것은 "브라우저가 잰 글자 폭보다
-// LibreOffice가 넓게 잴 수 있다"를 흡수하는 장치인데(textBoxSlackRatio), 도형의 박스는
-// 글자를 잰 결과가 아니라 **저자가 정한 크기**다 (`w`/`h`/`ratio` — soml.ShapeAttrs의 근거).
-// 넓히면 그림이 커져 배치가 어긋나고 글자는 도형 밖으로 나간다. 도형 안 글자의 줄바꿈 여유는
-// 대신 `pad`를 뺀 안쪽과 글자 폭의 차이가 소유한다 — 구조적으로 더 크지만 보장은 아니다
-// (NOTES의 측정).
+// 좌표는 도형의 잰 rect **그대로**다 — 모든 객체가 그렇다 (잰 rect == `xfrm`, ADR 0064).
 func writeShapeSp(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, rels *slideRels) error {
 	box, ok := g.Box(id)
 	if !ok {
@@ -425,8 +376,7 @@ type spSpec struct {
 	// descr은 `cNvPr@descr` = 저자의 `alt`이다 (picInfo.descr과 같은 자리 — cNvPrXML).
 	// 도형 본문을 **지우지 않는다**: 이름은 그림에 더해지고 글은 글로 남는다 (ADR 0058).
 	descr string
-	// rect는 도형 좌표다 — 텍스트 박스는 안전 여유를 더한 값, 도형은 잰 값 그대로다
-	// (writeShapeSp의 근거).
+	// rect는 도형 좌표다 — 잰 rect 그대로다.
 	rect geom.Rect
 	// textBox는 `p:cNvSpPr@txBox`를 켠다. **도형에는 켜지 않는다**: PowerPoint가 텍스트
 	// 박스와 도형에 다른 서식 창을 주고, 도형이 텍스트 박스로 표시되면 "모양 변경"이
@@ -883,22 +833,23 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rel
 	}
 	// 인셋 0: 웹이 잰 rect는 border box이고 `.balpyo-text`는 padding·border가 0이므로
 	// 곧 콘텐츠 박스다 (render/web.contentCSS). OOXML 기본 인셋(좌우 91440, 상하 45720)을
-	// 그대로 두면 좌표는 맞는데 글자만 몇 px 밀리고, 그 오차는 픽셀 비교에서 원인 불명으로
-	// 나타난다. wrap="square"는 박스 폭 안에서 줄을 바꾸는 웹과 같은 결정이고, noAutofit은
-	// 박스 고정 + 오버플로 허용이다 (PRD §13-1) — autofit 위임은 폰트 크기를 바꿔 웹과의
-	// 시각 일치를 깬다. pre만 wrap="none"이다: 웹이 줄바꿈하지 않기로 했으므로
-	// (render/web.writeBlock의 white-space: pre) PPTX가 접으면 줄 수가 갈라진다.
+	// 그대로 두면 좌표는 맞는데 글자만 몇 px 밀린다. wrap="square"는 박스 폭 안에서 줄을 바꾸는 웹과 같은 결정이고, normAutofit은
+	// 박스 고정 + 넘치면 PowerPoint가 줄여 맞춤이다 (ADR 0064): 줄이 어디서 접히는지는 엔진의
+	// 몫이라 PowerPoint가 한 줄 더 접어도 글자는 잰 박스 안에 머물고, 저자가 PowerPoint에서
+	// 글을 고친 뒤에도 그렇다. pre만 wrap="none" + noAutofit이다: 웹이 줄바꿈하지 않기로
+	// 했으므로(render/web.writeBlock의 white-space: pre) 줄 수가 원문의 줄 수로 정해져 있고,
+	// 코드의 글자 크기를 엔진이 줄이면 형제 코드 블록과 크기가 갈라진다.
 	//
 	// anchor="t"는 슬라이드 직속 텍스트 박스의 고정값이다 — 잰 rect가 곧 내용 크기라 세로
 	// 앵커가 움직일 여백이 없다 (soml.TextStyle.Anchor). 앵커가 뜻을 갖는 자리는 도형
 	// 안이고, 그쪽 bodyPr은 shapeBodyXML이 낸다.
-	wrap := "square"
+	wrap, autofit := "square", "<a:normAutofit/>"
 	if elem.Name == "pre" {
-		wrap = "none"
+		wrap, autofit = "none", "<a:noAutofit/>"
 	}
 	w(1, `<p:txBody>`)
 	w(2, fmt.Sprintf(`<a:bodyPr wrap="%s" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">`, wrap))
-	w(3, "<a:noAutofit/>")
+	w(3, autofit)
 	w(2, "</a:bodyPr>")
 	w(2, "<a:lstStyle/>")
 	// 빈 텍스트는 런 없는 문단으로 남는다 — 도형 자체는 낸다 (writeTextShape의 정책).
@@ -973,7 +924,7 @@ func shapeBodyXML(elem *soml.Element, style soml.ShapeStyle, rect geom.Rect, the
 	}
 	w(1, `<p:txBody>`)
 	w(2, fmt.Sprintf(`<a:bodyPr wrap="square" %s anchor="%s">`, insets, anchor))
-	w(3, "<a:noAutofit/>")
+	w(3, "<a:normAutofit/>")
 	w(2, "</a:bodyPr>")
 	w(2, "<a:lstStyle/>")
 	if len(elem.Children) == 0 || soml.ShapeHoldsLayout(elem) {
@@ -1102,12 +1053,12 @@ func listBodyXML(list *soml.Element, theme soml.Theme, rels *slideRels) (string,
 	w := func(depth int, line string) {
 		b.WriteString("\n" + shapeIndent + strings.Repeat("  ", depth) + line)
 	}
-	// 인셋 0·wrap="square"·noAutofit의 근거는 블록과 같다 (textBodyXML): `.balpyo-list`도
+	// 인셋 0·wrap="square"·normAutofit의 근거는 블록과 같다 (textBodyXML): `.balpyo-list`도
 	// padding·border 0의 border box라 잰 rect가 곧 콘텐츠 박스이고, li의 들여쓰기는 인셋이
 	// 아니라 문단의 marL이 소유한다 (웹의 li padding-left와 짝).
 	w(1, `<p:txBody>`)
 	w(2, `<a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">`)
-	w(3, "<a:noAutofit/>")
+	w(3, "<a:normAutofit/>")
 	w(2, "</a:bodyPr>")
 	w(2, "<a:lstStyle/>")
 	if len(list.Children) == 0 {

@@ -1,7 +1,6 @@
 package pptx
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -10,9 +9,8 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 프리셋 도형(`<shape>`)의 OOXML 조립. 텍스트 박스의 단정은 shape_test.go가 갖고 있고,
-// 여기서는 **도형이 되는 갈래**를 본다: prstGeom 12종, avLst 조정값, 외관(채움·테두리·
-// 그림자·불투명도·회전·대칭), 그리고 도형 안 텍스트가 같은 도형의 txBody가 되는 것.
+// 프리셋 도형(`<shape>`)의 OOXML 조립 중 패리티가 보지 않는 것: prstGeom 12종, avLst 조정값,
+// 그림자·불투명도·회전·대칭, 인셋 보정.
 
 // shapeStyleOf는 해석된 덱의 첫 콘텐츠 요소의 도형 외관이다 — 에러 경로 테스트가 확정 값을
 // 망가뜨려 렌더러의 마지막 관문을 두드릴 때 쓴다.
@@ -215,52 +213,6 @@ func TestRenderShapeLiteralColorsStayLiteral(t *testing.T) {
 	}
 }
 
-// 채움·테두리 없음 → `noFill` (명시해야 테마 fmtScheme의 기본 채움/선이 상속되지 않는다).
-func TestRenderShapeNoFillNoBorder(t *testing.T) {
-	deck := resolvedDeck(t, `<slide>
-  <shape type="rect" fill="none" border="none" w="200" h="100"/>
-</slide>`)
-	xml := slideXML(t, deck, measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 200, H: 100}))
-
-	if !strings.Contains(xml, indentedXML(2, "<a:noFill/>")+indentedXML(2, "<a:ln>")+
-		indentedXML(3, "<a:noFill/>")+indentedXML(2, "</a:ln>")) {
-		t.Errorf("채움·선 없음이 noFill 쌍으로 나오지 않았다\n%s", xml)
-	}
-	if strings.Contains(xml, "<a:solidFill>") {
-		t.Error("채움·테두리가 없는 도형에 solidFill이 있다")
-	}
-	if strings.Contains(xml, "<a:prstDash") {
-		t.Error("선 없는 도형에 prstDash가 있다 — 없는 선의 스타일은 뜻이 없다")
-	}
-}
-
-// 테두리 축약 3조각이 OOXML의 세 자리로 갈라진다: 굵기는 `w`(EMU), 색은 solidFill 자식,
-// 스타일은 prstDash 자식. 파선 계열은 **웹의 stroke-dasharray 수치와 짝**이어야 한다
-// (prstDashValue의 근거 — 이름이 아니라 수치가 두 타깃을 잇는다).
-func TestRenderShapeBorderParts(t *testing.T) {
-	tests := []struct {
-		border string
-		want   []string
-	}{
-		{"3 solid muted", []string{`<a:ln w="28575">`, `<a:prstDash val="solid"/>`}},
-		{"2 dashed accent1", []string{`<a:ln w="19050">`, `<a:prstDash val="dash"/>`}},
-		{"1 dotted fg", []string{`<a:ln w="9525">`, `<a:prstDash val="dot"/>`}},
-	}
-	for _, tc := range tests {
-		t.Run(tc.border, func(t *testing.T) {
-			deck := resolvedDeck(t, fmt.Sprintf(`<slide>
-  <shape type="rect" fill="none" border=%q w="200" h="100"/>
-</slide>`, tc.border))
-			xml := slideXML(t, deck, measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 200, H: 100}))
-			for _, want := range tc.want {
-				if !strings.Contains(xml, want) {
-					t.Errorf("border=%q의 산출에 %q가 없다\n%s", tc.border, want, xml)
-				}
-			}
-		})
-	}
-}
-
 // 그림자 → `effectLst > outerShdw`. 극좌표(dist·dir)를 그대로 내고(변환은 웹 쪽이다),
 // 색은 토큰 참조 + 알파다. fmtScheme의 effectStyleLst 참조로 내지 않는다 (writeEffect의 근거).
 func TestRenderShapeShadow(t *testing.T) {
@@ -356,157 +308,9 @@ func TestRenderShapeRotateAndFlip(t *testing.T) {
 	}
 }
 
-// 도형 안 텍스트는 **같은 도형의 txBody 문단**이다 — 별도 sp가 아니고, 자기 잰 rect도
-// 소비되지 않는다. 좌표는 도형의 rect **그대로**여야 한다 (안전 여유 없음).
-func TestRenderShapeTextBody(t *testing.T) {
-	deck := resolvedDeck(t, `<slide>
-  <shape type="rect" fill="surface" w="280" h="220" pad="lg">
-    <h3>문단 둘</h3>
-    <p>도형 하나에 자식 여럿은 txBody의 문단 여럿이다.</p>
-  </shape>
-</slide>`)
-	shape := geom.Rect{X: 64, Y: 64, W: 280, H: 220}
-	xml := slideXML(t, deck, measuredGeometry(t, deck, shape,
-		geom.Rect{X: 100, Y: 100, W: 208, H: 30},
-		geom.Rect{X: 100, Y: 136, W: 208, H: 48},
-	))
-
-	if got := strings.Count(xml, "<p:sp>"); got != 1 {
-		t.Fatalf("p:sp %d개, want 1개 — 도형 안 텍스트가 별도 도형이 되었다\n%s", got, xml)
-	}
-	if got := strings.Count(xml, "<a:p>"); got != 2 {
-		t.Errorf("a:p %d개, want 2개 — 자식 여럿이 문단 여럿이 되지 않았다\n%s", got, xml)
-	}
-	// 좌표는 도형의 잰 rect다: 텍스트 박스의 안전 여유(4%)가 붙으면 안 된다 —
-	// 도형의 박스는 글자를 잰 결과가 아니라 저자가 정한 크기다 (writeShapeSp).
-	x, y := Offset(shape)
-	cx, cy := Extent(shape)
-	for _, want := range []string{
-		fmt.Sprintf(`<a:off x="%d" y="%d"/>`, x, y),
-		fmt.Sprintf(`<a:ext cx="%d" cy="%d"/>`, cx, cy),
-		// pad lg(36px) → 인셋 EMU. 웹에서 같은 값이 도형의 padding이다.
-		`<a:bodyPr wrap="square" lIns="342900" tIns="342900" rIns="342900" bIns="342900" anchor="t">`,
-	} {
-		if !strings.Contains(xml, want) {
-			t.Errorf("slide1.xml에 %q가 없다\n%s", want, xml)
-		}
-	}
-	slack, _ := Extent(TextBoxRect(shape, soml.AlignStart))
-	if strings.Contains(xml, fmt.Sprintf(`cx="%d"`, slack)) {
-		t.Errorf("도형 폭에 텍스트 박스의 안전 여유가 붙었다 (cx=%d)", slack)
-	}
-}
-
-// 배치를 담은 도형은 **배경**이 되고 자식은 **형제 도형**이 된다 (ADR 0049) — 흡수 모드와
-// 정반대다: 도형은 빈 문단만 갖고, 안의 텍스트는 자기 잰 rect를 좌표로 쓰는 텍스트 박스가
-// 된다. `p:grpSp`가 아닌 이유는 좌표 공간이다 — 그룹은 `chOff`/`chExt`로 자식 좌표계를 하나
-// 더 만들어 "잰 rect가 곧 xfrm"이라는 계약(PRD §9.3)을 깨뜨린다.
-//
-// 카드가 이 항목의 이유다: 도형 둘(배경 + 텍스트 박스)로 흉내 낸 카드는 PowerPoint에서 테두리가
-// 겹치고 모서리가 맞지 않았다 (D7).
-func TestRenderShapeWithLayoutBecomesBackdrop(t *testing.T) {
-	deck := resolvedDeck(t, `<slide>
-  <shape type="rounded-rect" fill="surface" w="280" h="220" pad="lg">
-    <col gap="sm">
-      <text role="heading">카드 제목</text>
-      <p>카드 본문.</p>
-      <text role="caption">푸터</text>
-    </col>
-  </shape>
-</slide>`)
-	shape := geom.Rect{X: 64, Y: 64, W: 280, H: 220}
-	children := []geom.Rect{
-		{X: 100, Y: 100, W: 208, H: 32}, // text role=heading
-		{X: 100, Y: 144, W: 208, H: 48}, // p
-		{X: 100, Y: 204, W: 208, H: 24}, // text role=caption
-	}
-	xml := slideXML(t, deck, measuredGeometry(t, deck, shape,
-		// 컨테이너의 rect는 측정되지만 소비되지 않는다 (레이아웃 컨테이너는 도형이 아니다).
-		geom.Rect{X: 100, Y: 100, W: 208, H: 128},
-		children[0], children[1], children[2],
-	))
-
-	// 배경 1 + 자식 텍스트 박스 3 = p:sp 4개.
-	if got := strings.Count(xml, "<p:sp>"); got != 4 {
-		t.Fatalf("p:sp %d개, want 4개 (배경 1 + 자식 3)\n%s", got, xml)
-	}
-	// `<p:grpSp>`로 좁혀 본다 — spTree 자신이 `p:grpSpPr`를 갖는다 (그룹 도형이 아니다).
-	if strings.Contains(xml, "<p:grpSp>") {
-		t.Errorf("배경 모드가 그룹이 되었다 — 자식 좌표 공간이 생긴다 (ADR 0049)\n%s", xml)
-	}
-	for _, want := range []string{
-		`name="shape s0.0"`, // 배경 도형은 남는다
-		// 자식은 형제 도형이 된다 (흡수 모드에서는 이 이름들이 없었다).
-		`name="text s0.0.0.0"`,
-		`name="p s0.0.0.1"`,
-		`name="text s0.0.0.2"`,
-		`prst="roundRect"`, // 배경은 여전히 프리셋 도형이다
-	} {
-		if !strings.Contains(xml, want) {
-			t.Errorf("slide1.xml에 %q가 없다\n%s", want, xml)
-		}
-	}
-	if strings.Contains(xml, `name="col s0.0.0"`) {
-		t.Errorf("컨테이너가 도형을 냈다 — 배치는 좌표로 구워진다 (ADR 0011)\n%s", xml)
-	}
-	// 배경이 spTree의 **첫** 도형이다 (나중 도형이 위에 그려지므로 이 순서가 곧 "글자가 배경 위").
-	if at := strings.Index(xml, `name="shape s0.0"`); at > strings.Index(xml, `name="text s0.0.0.0"`) {
-		t.Errorf("배경이 자식보다 뒤에 나왔다 — 글자가 배경에 덮인다\n%s", xml)
-	}
-	// 배경의 좌표는 잰 rect 그대로이고, 본문은 **빈 문단**이다 (자식 없는 도형과 같은 갈래).
-	x, y := Offset(shape)
-	cx, cy := Extent(shape)
-	for _, want := range []string{
-		fmt.Sprintf(`<a:off x="%d" y="%d"/>`, x, y),
-		fmt.Sprintf(`<a:ext cx="%d" cy="%d"/>`, cx, cy),
-		// pad·앵커는 그대로 실린다 — 저자가 PowerPoint에서 배경에 글자를 넣을 때 서식이
-		// 뷰어 기본값에서 오지 않아야 한다 (shapeBodyXML의 근거).
-		`<a:bodyPr wrap="square" lIns="342900" tIns="342900" rIns="342900" bIns="342900" anchor="t">`,
-		"<a:p/>",
-	} {
-		if !strings.Contains(xml, want) {
-			t.Errorf("slide1.xml에 %q가 없다\n%s", want, xml)
-		}
-	}
-	// 자식 텍스트는 배경에 흡수되지 않았다 — 배경의 txBody에 런이 하나라도 있으면 글자가
-	// 두 번(배경 문단 + 형제 도형) 그려진다.
-	backdrop := xml[strings.Index(xml, `name="shape s0.0"`):strings.Index(xml, `name="text s0.0.0.0"`)]
-	for _, absent := range []string{"카드 제목", "카드 본문.", "푸터", "<a:r>"} {
-		if strings.Contains(backdrop, absent) {
-			t.Errorf("배경의 본문에 %q가 있다 — 자식을 흡수했다\n%s", absent, backdrop)
-		}
-	}
-	// 자식은 텍스트 박스다 — 잰 rect에 안전 여유(4%)가 붙는다 (흡수 모드에서는 붙지 않았다).
-	for _, rect := range children {
-		box := TextBoxRect(rect, soml.AlignStart)
-		bx, by := Offset(box)
-		bcx, bcy := Extent(box)
-		for _, want := range []string{
-			fmt.Sprintf(`<a:off x="%d" y="%d"/>`, bx, by),
-			fmt.Sprintf(`<a:ext cx="%d" cy="%d"/>`, bcx, bcy),
-		} {
-			if !strings.Contains(xml, want) {
-				t.Errorf("자식 텍스트 박스에 %q가 없다\n%s", want, xml)
-			}
-		}
-	}
-	// 도형 id는 도형을 낸 자리에서만 오른다 (컨테이너는 소비하지 않는다).
-	for _, want := range []string{`id="2"`, `id="3"`, `id="4"`, `id="5"`} {
-		if !strings.Contains(xml, want) {
-			t.Errorf("도형 id가 연속하지 않는다 — %q가 없다\n%s", want, xml)
-		}
-	}
-	if strings.Contains(xml, `id="6"`) {
-		t.Errorf("도형 4개인데 id가 6까지 갔다 — 컨테이너가 id를 소비했다\n%s", xml)
-	}
-}
-
 // chevron의 프리셋 rect는 폭 0 열(`x1 = x2 = w/2`)이라 좌우 인셋이 **음수**로 그 폭을
 // 되돌린다 (ADR 0041) — 되돌리지 않으면 뷰어가 글자를 한 자씩 세로로 쌓는다.
-//
-// 세로가 0인 것이 이 보정의 좁음이다: chevron 프리셋의 rect는 위아래가 박스와 같다. 나머지
-// 11종은 보정이 아예 없고(`rect` 갈래가 그것을 단정한다), 그 짝은 픽셀이 지킨다
-// (internal/testkit의 도형 안 텍스트 대조).
+// 세로는 0이다 — chevron 프리셋의 rect는 위아래가 박스와 같다.
 func TestRenderChevronCancelsItsTextRect(t *testing.T) {
 	shape := geom.Rect{X: 64, Y: 64, W: 280, H: 120}
 	cancel := EMU(shape.W / 2)
@@ -536,150 +340,6 @@ func TestRenderChevronCancelsItsTextRect(t *testing.T) {
 				t.Errorf("slide1.xml에 %q가 없다\n%s", tc.want, xml)
 			}
 		})
-	}
-}
-
-// 세로 앵커 3종 → `bodyPr@anchor`. 규칙(첫 자식이 정한다)은 웹과 **같은 함수**에서 온다
-// (web.ShapeAnchor) — 두 벌이면 두 타깃의 앵커가 갈라진다.
-func TestRenderShapeAnchor(t *testing.T) {
-	tests := []struct {
-		anchor string
-		want   string
-	}{
-		{`anchor="top"`, `anchor="t"`},
-		{`anchor="center"`, `anchor="ctr"`},
-		{`anchor="bottom"`, `anchor="b"`},
-		// 앵커를 정하지 않으면 위다 — OOXML 기본값이고 flex의 기본 분배와 같은 뜻이다.
-		{"", `anchor="t"`},
-	}
-	for _, tc := range tests {
-		t.Run(tc.anchor, func(t *testing.T) {
-			deck := resolvedDeck(t, fmt.Sprintf(`<slide>
-  <shape type="rect" fill="surface" w="240" h="220">
-    <p %s>앵커</p>
-  </shape>
-</slide>`, tc.anchor))
-			xml := slideXML(t, deck, measuredGeometry(t, deck,
-				geom.Rect{X: 64, Y: 64, W: 240, H: 220},
-				geom.Rect{X: 64, Y: 64, W: 240, H: 24},
-			))
-			if !strings.Contains(xml, tc.want) {
-				t.Errorf("%q의 산출에 %q가 없다\n%s", tc.anchor, tc.want, xml)
-			}
-		})
-	}
-}
-
-// 자식 없는 도형(`<shape/>`)도 txBody를 갖는다 — CT_TextBody가 문단 하나 이상을 요구한다.
-func TestRenderEmptyShapeStillEmitsBody(t *testing.T) {
-	deck := resolvedDeck(t, `<slide>
-  <shape type="ellipse" fill="accent1" w="120" h="120"/>
-</slide>`)
-	xml := slideXML(t, deck, measuredGeometry(t, deck, geom.Rect{X: 64, Y: 64, W: 120, H: 120}))
-
-	if !strings.Contains(xml, "<a:p/>") {
-		t.Errorf("빈 도형이 빈 문단을 내지 않았다\n%s", xml)
-	}
-	if strings.Contains(xml, "<a:r>") {
-		t.Error("빈 도형에 런이 있으면 안 된다")
-	}
-}
-
-// **네 분기를 한 슬라이드에서**: 같은 단어를 쓰는 개념들이 정반대로 매핑되는 자리이므로
-// 테스트가 그 대비를 직접 말한다 (writeShapeNode의 표).
-//
-//	<ul>       → 도형 1개 (li 둘이 문단 둘)
-//	<col>      → 도형 0개 + 자식으로 내려가기
-//	<spacer/>  → 도형 0개
-//	<shape>    → 도형 1개 + 자식 흡수 (자식 텍스트가 문단이 된다)
-func TestRenderShapeNodeBranchContrast(t *testing.T) {
-	deck := resolvedDeck(t, `<slide>
-  <ul>
-    <li>첫째</li>
-    <li>둘째</li>
-  </ul>
-  <col gap="md">
-    <text>컨테이너 안 텍스트</text>
-    <spacer/>
-  </col>
-  <shape type="rect" fill="surface" w="240" h="120" pad="sm">
-    <p>도형 안 텍스트</p>
-  </shape>
-</slide>`)
-	xml := slideXML(t, deck, measuredGeometry(t, deck,
-		geom.Rect{X: 64, Y: 64, W: 400, H: 72},   // ul
-		geom.Rect{X: 88, Y: 64, W: 376, H: 36},   // li
-		geom.Rect{X: 88, Y: 100, W: 376, H: 36},  // li
-		geom.Rect{X: 64, Y: 160, W: 400, H: 100}, // col
-		geom.Rect{X: 64, Y: 160, W: 400, H: 36},  // col > text
-		geom.Rect{X: 64, Y: 232, W: 400, H: 0},   // spacer
-		geom.Rect{X: 64, Y: 300, W: 240, H: 120}, // shape
-		geom.Rect{X: 76, Y: 312, W: 216, H: 24},  // shape > p
-	))
-
-	// 측정 박스 8개 − 컨테이너 1 − spacer 1 − li 2 − 도형 안 텍스트 1 = 도형 3개.
-	if got := strings.Count(xml, "<p:sp>"); got != 3 {
-		t.Fatalf("p:sp %d개, want 3개\n%s", got, xml)
-	}
-	for _, want := range []string{
-		`name="ul s0.0"`,     // 리스트 컨테이너가 도형 하나다
-		`name="text s0.1.0"`, // 컨테이너는 사라지고 자식이 도형이 된다
-		`name="shape s0.2"`,  // 도형은 남고 자식이 흡수된다
-	} {
-		if !strings.Contains(xml, want) {
-			t.Errorf("slide1.xml에 %q가 없다\n%s", want, xml)
-		}
-	}
-	for _, absent := range []string{
-		`name="col s0.1"`,      // 레이아웃 컨테이너는 도형이 아니다
-		`name="spacer s0.1.1"`, // spacer도 아니다
-		`name="li s0.0.0"`,     // li는 컨테이너의 도형에 담긴다
-		`name="p s0.2.0"`,      // 도형 안 텍스트는 도형의 txBody다
-	} {
-		if strings.Contains(xml, absent) {
-			t.Errorf("slide1.xml에 %q가 있다 — 도형이 되지 않아야 하는 요소가 도형을 냈다\n%s", absent, xml)
-		}
-	}
-	// 도형 id는 도형을 실제로 낸 자리에서만 오른다 (컨테이너·spacer·li·도형 안 텍스트는
-	// id를 소비하지 않는다).
-	for _, want := range []string{`id="2"`, `id="3"`, `id="4"`} {
-		if !strings.Contains(xml, want) {
-			t.Errorf("도형 id가 연속하지 않는다 — %q가 없다\n%s", want, xml)
-		}
-	}
-	if strings.Contains(xml, `id="5"`) {
-		t.Error("도형 3개인데 id가 5까지 갔다 — 도형이 아닌 요소가 id를 소비했다")
-	}
-	// 문서 순서 = spTree 순서 = z-순서 (도형이 섞인 중첩에서도).
-	if strings.Index(xml, `name="ul s0.0"`) > strings.Index(xml, `name="text s0.1.0"`) ||
-		strings.Index(xml, `name="text s0.1.0"`) > strings.Index(xml, `name="shape s0.2"`) {
-		t.Error("spTree 순서가 문서 순서가 아니다")
-	}
-}
-
-// 도형이 든 덱도 같은 입력이 같은 바이트를 내야 한다 — 조정값·색 조립에 맵 순회가 새면
-// 여기서 잡힌다 (shapePresets가 맵이지만 순회는 어휘 목록이 정한다).
-func TestRenderShapeDeckIsByteIdentical(t *testing.T) {
-	render := func() []byte {
-		deck := resolvedDeck(t, `<slide>
-  <shape type="rounded-rect" fill="accent1" border="2 dashed muted" radius="lg" shadow="soft" opacity="0.6" rotate="30" flip="hv" w="300" h="160" pad="md">
-    <h3>제목</h3>
-    <p anchor="center">본문</p>
-  </shape>
-</slide>`)
-		g := measuredGeometry(t, deck,
-			geom.Rect{X: 64, Y: 64, W: 300, H: 160},
-			geom.Rect{X: 88, Y: 88, W: 252, H: 30},
-			geom.Rect{X: 88, Y: 124, W: 252, H: 24},
-		)
-		files, err := NewWithGeometry(g).Render(deck)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return files[FileName(deck)]
-	}
-	if !bytes.Equal(render(), render()) {
-		t.Error("같은 덱이 다른 바이트를 냈다")
 	}
 }
 

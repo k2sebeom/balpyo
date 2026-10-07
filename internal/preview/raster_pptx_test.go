@@ -1,6 +1,6 @@
 // 이 파일만 외부 테스트 패키지(preview_test)인 이유: 도구가 없을 때 건너뛸지 실패할지는
 // **테스트 정책**이고 그 정책의 주인은 internal/testkit이다 (BALPYO_TEST_STRICT). 같은 판단을
-// 여기에 다시 적으면 호스트에서는 건너뛰고 이미지 안에서는 실패한다는 약속이 두 벌이 된다.
+// 여기에 다시 적으면 도구가 없을 때의 약속이 두 벌이 된다.
 // 외부 테스트 패키지는 testkit을 임포트할 수 있다 — testkit이 preview를 임포트해도 순환이
 // 아니다.
 package preview_test
@@ -69,9 +69,8 @@ func buildPPTX(t testing.TB, projectDir string) (pptxPath string, size image.Poi
 
 // TestRasterizerSlidesRenderEveryPageAtStageSize는 PPTX → PNG의 **산출물·장수·크기**를 못 박는다.
 //
-// 크기를 따로 보는 이유: 웹 스크린샷과 픽셀 비교할 수 있는 것이 이 래스터화의 존재 이유이고,
-// DPI로 맞추면 페이지 크기 반올림 때문에 한두 px씩 어긋난다 (ADR 0047 결정 7). 한 px만 어긋나도
-// Diff는 "크기가 다르다"로 멈추므로, 그 실패가 갤러리 생성 도중이 아니라 여기서 먼저 보여야 한다.
+// 크기를 따로 보는 이유: 갤러리는 웹 스크린샷과 같은 크기로 나란히 놓고, DPI로 맞추면 페이지 크기
+// 반올림 때문에 한두 px씩 어긋난다 (ADR 0047 결정 7).
 func TestRasterizerSlidesRenderEveryPageAtStageSize(t *testing.T) {
 	raster := &preview.Rasterizer{
 		Soffice:  testkit.RequireSoffice(t),
@@ -99,10 +98,9 @@ func TestRasterizerSlidesRenderEveryPageAtStageSize(t *testing.T) {
 // TestRasterizerSlidesAreDeterministic은 같은 PPTX를 두 번 래스터화하면 **같은 픽셀**이 나오는지
 // 본다.
 //
-// 이것을 못 박아야 하는 이유: 검수 갤러리의 숫자는 "웹과 PPTX가 얼마나 다른가"로 읽힌다.
-// 래스터화 자체가 실행마다 흔들리면 그 숫자에 원인을 알 수 없는 잡음이 섞이고, 사람은 고친 것이
-// 없는데 수치가 바뀌는 것을 보게 된다. 실행마다 새 사용자 프로필을 쓰는 것(Rasterizer.PDF)이
-// 지켜야 하는 성질이 바로 이것이다.
+// 이것을 못 박아야 하는 이유: 래스터화 자체가 실행마다 흔들리면 사람은 고친 것이 없는데 갤러리가
+// 바뀌는 것을 보게 된다. 실행마다 새 사용자 프로필을 쓰는 것(Rasterizer.PDF)이 지켜야 하는 성질이
+// 바로 이것이다.
 //
 // PDF 바이트가 아니라 PNG 픽셀을 비교한다 — PDF에는 생성 시각이 들어가 실행마다 다르다.
 func TestRasterizerSlidesAreDeterministic(t *testing.T) {
@@ -124,14 +122,25 @@ func TestRasterizerSlidesAreDeterministic(t *testing.T) {
 		t.Fatalf("장수가 다르다: %d vs %d", len(first), len(second))
 	}
 	// 0 오차로 본다 — 여기서는 렌더러 둘을 비교하는 것이 아니라 같은 렌더러를 두 번 돌린 것이다.
-	exact := preview.DiffOptions{Channel: 0, MaxRatio: 0}
 	for i := range first {
-		result, err := preview.Diff(first[i], second[i], exact)
-		if err != nil {
-			t.Fatalf("%d번째 페이지: %v", i+1, err)
+		if a, b := first[i].Bounds(), second[i].Bounds(); a != b {
+			t.Fatalf("%d번째 페이지 크기가 다르다: %v vs %v", i+1, a, b)
 		}
-		if result.Changed != 0 {
-			t.Errorf("%d번째 페이지가 실행마다 다르다: %s", i+1, result)
+		if x, y, ok := firstPixelDifference(first[i], second[i]); !ok {
+			t.Errorf("%d번째 페이지가 실행마다 다르다 — (%d, %d)부터", i+1, x, y)
 		}
 	}
+}
+
+// firstPixelDifference는 두 이미지가 같으면 ok, 다르면 처음 다른 픽셀의 자리를 돌려준다.
+func firstPixelDifference(a, b image.Image) (x, y int, ok bool) {
+	bounds := a.Bounds()
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			if preview.RGB8(a.At(x, y)) != preview.RGB8(b.At(x, y)) {
+				return x, y, false
+			}
+		}
+	}
+	return 0, 0, true
 }

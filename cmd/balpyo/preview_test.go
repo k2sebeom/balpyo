@@ -11,11 +11,12 @@ import (
 	"github.com/k2sebeom/balpyo/internal/testkit"
 )
 
-// `balpyo preview`의 CLI 계약이다 (ADR 0047).
+// `balpyo preview`의 CLI 계약이다 (ADR 0047 · ADR 0066).
 //
 //  1. 갤러리 경로를 **찍는다** — 사람이 그 줄을 열어 눈으로 본다.
-//  2. 허용 오차를 넘어도 **종료 코드는 0이다**: 두 렌더가 달라야 정답인 슬라이드가 있다.
-//  3. 도구가 없으면 빌드 전에 멈춘다 — 조용히 웹 열만 있는 갤러리를 내지 않는다.
+//  2. 판정하지 않는다 — 픽셀 diff도 허용 오차도 없다 (ADR 0066).
+//  3. `--target`을 주지 않으면 도구가 없을 때 웹 열만으로 갤러리를 내고 그 사실을 말한다.
+//     pptx를 **명시했는데** 도구가 없으면 빌드 전에 멈춘다.
 
 func TestPreviewCommandWritesGallery(t *testing.T) {
 	testkit.RequireChromium(t)
@@ -44,7 +45,7 @@ func TestPreviewCommandWritesGallery(t *testing.T) {
 	}
 }
 
-// 웹만 보는 검수는 LibreOffice 없이 돈다 — 저작 루프가 컨테이너에 묶이지 않아야 한다.
+// 웹만 보는 검수는 LibreOffice 없이 돈다 — 저작 루프가 래스터 도구에 묶이지 않아야 한다.
 func TestPreviewCommandWebOnlyNeedsNoLibreOffice(t *testing.T) {
 	testkit.RequireChromium(t)
 	t.Setenv(preview.EnvSoffice, filepath.Join(t.TempDir(), "없는-soffice"))
@@ -64,7 +65,26 @@ func TestPreviewCommandWebOnlyNeedsNoLibreOffice(t *testing.T) {
 	}
 }
 
-// 도구가 없으면 **빌드 전에** 멈추고, 다음에 할 일을 문장으로 말한다.
+// 기본 렌더는 도구가 없으면 웹 열로 물러서고, 그 사실을 출력에 남긴다.
+func TestPreviewCommandDefaultFallsBackToWebWithoutTools(t *testing.T) {
+	testkit.RequireChromium(t)
+	t.Setenv(preview.EnvSoffice, filepath.Join(t.TempDir(), "없는-soffice"))
+
+	dir := newProject(t)
+	var stdout, stderr bytes.Buffer
+	if err := run([]string{"preview", "--project", dir}, &stdout, &stderr); err != nil {
+		t.Fatalf("%v\nstderr: %s", err, stderr.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "PPTX 열을 뺀다") {
+		t.Errorf("PPTX 열을 뺐다고 말하지 않는다:\n%s", out)
+	}
+	if strings.Contains(out, "직접 열어 확인한다") {
+		t.Errorf("pptx를 만들지 않았는데 직접 열어 보라고 한다:\n%s", out)
+	}
+}
+
+// pptx를 명시했는데 도구가 없으면 **빌드 전에** 멈추고, 다음에 할 일을 문장으로 말한다.
 func TestPreviewCommandStopsWhenToolsAreMissing(t *testing.T) {
 	dir := newProject(t)
 	t.Setenv(preview.EnvSoffice, filepath.Join(t.TempDir(), "없는-soffice"))
@@ -74,7 +94,7 @@ func TestPreviewCommandStopsWhenToolsAreMissing(t *testing.T) {
 	if err == nil {
 		t.Fatal("도구가 없으면 에러여야 한다")
 	}
-	for _, want := range []string{preview.EnvSoffice, "make shell"} {
+	for _, want := range []string{preview.EnvSoffice, "--target html"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("에러에 %q가 없다: %v", want, err)
 		}

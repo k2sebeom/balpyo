@@ -178,7 +178,7 @@ accent1, …)`). 그래서 **토큰 이름은 테마가 소유하는 어휘**다
 LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`에서 이 규칙이 눈에 보인다:
 **고정폭 라틴에는 고정폭 CJK `ea`가 필요하다**(`minimal`은 `Noto Sans Mono CJK KR`이다).
 비례폭 면을 적어 두면 코드 블록의 한글 주석 한 줄이 두 엔진에서 다른 폭으로 그려진다 (측정
-−7.9% → 짝을 맞춘 뒤 +0.6% — [알려진 차이](../guides/known-differences.md)).
+−7.9% → 짝을 맞춘 뒤 +0.6% — [계약 밖의 차이](../guides/known-differences.md)).
 
 ### 강조색 여섯의 규칙
 
@@ -227,9 +227,9 @@ LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`�
 `justify-items`가 `stretch`(기본값)가 아니면 grid 항목이 **내용 폭**으로 줄어든다. 그러면 두
 가지를 잃는다: 저자가 `align`으로 문단을 움직일 폭(
 [ADR 0043](../decisions/0043-explicit-width-belongs-to-the-placement-context.md))과, 잰 박스와
-글줄 사이의 **여유 폭**이다. 여유가 0인 줄은 PPTX에서 접힐 수 있다 — LibreOffice·PowerPoint가
-한글과 라틴 글자 사이에 넣는 간격이 PPTX 박스의 안전 여유(4%)보다 클 수 있기 때문이다
-([알려진 차이](../guides/known-differences.md)). 그래서 **가운데는 값을 내고 쓰고, 왼쪽은
+글줄 사이의 **여유 폭**이다. 여유가 0인 줄은 PowerPoint가 조금만 넓게 그려도 한 줄 더 접히고,
+그러면 `normAutofit`이 글자를 줄여 박스에 맞춘다 ([계약 밖의 차이](../guides/known-differences.md)).
+그래서 **가운데는 값을 내고 쓰고, 왼쪽은
 선언하지 않는다**: 가운데가 곧 뜻인 자리(표지·`stat`의 수치 한 개·마무리)에서만 그 대가를
 받아들인다.
 
@@ -434,13 +434,15 @@ minimal"), 테마를 프로젝트 파일시스템 안에서만 읽으므로 `..`
 | `components.json`의 `text.roles`에 역할 5종 중 하나가 없다 | **에러** | `components.json의 text.roles에 역할 "code"가 없다 (필수: title, heading, body, caption, code)` |
 | 역할의 `size`·`lineHeight`가 0 이하이거나 `align`이 없다 | **에러** | `역할은 캐스케이드의 바닥이라 완전한 값이어야 한다` |
 | 역할의 `font`·`color`가 이 테마의 토큰이 아니다 | **에러** | 이 테마가 가진 이름을 함께 나열한다 |
+| 컴포넌트 기본값·variant·이미지·표의 `color`·`fill`·`border` 색이 이 테마의 색 토큰 이름이 아니다 (그라디언트·`#RRGGBB` 리터럴 포함) | **에러** | 자리와 값을 가리키고 이 테마의 색 토큰을 나열한다 — 그 variant를 쓴 슬라이드가 없어도 로딩에서 멈춘다 |
 | `components.json`에 모르는 키가 있다 | **에러** | 미지원 키를 가리킨다 (오타·미구현 키) |
 | `code.tabSize`가 1 미만이다 | **에러** | `tabSize는 1 이상이어야 한다` |
 | `code.tokens`에 모르는 종류가 있다 | **에러** | `알 수 없는 코드 토큰 종류 "kw" (쓸 수 있는 종류: keyword, name, attr, string, number, comment, punct)` |
 | `code.tokens`에 같은 종류가 두 번 | **에러** | `코드 토큰 종류 "keyword"가 두 번 적혀 있다` |
 | 코드 토큰 색이 리터럴·색 함수다 | **에러** | `…의 색은 색 토큰 이름이어야 한다 … 리터럴 색은 참조를 끊는다` |
 | 코드 토큰 색이 이 테마에 없는 토큰이다 | **에러** | 쓸 수 있는 색 토큰 이름을 함께 나열한다 |
-| 레이아웃 CSS에 배치 아닌 프로퍼티(색·글꼴 등)가 있다 | **경고** (내장 테마는 테스트가 전수로 막는다) | 외관은 `components.json`의 몫이다 — 그 프로퍼티는 PPTX에 도달하지 않는다 |
+| 로컬 테마의 레이아웃 CSS에 배치 아닌 프로퍼티(색·배경·글꼴 등)가 있다 | **경고** (내장 테마는 테스트가 전수로 막는다) | 그 파일(`themes/<이름>/layouts/….css`)을 가리킨다 — 외관은 `components.json`의 몫이고 그 프로퍼티는 PPTX에 도달하지 않는다. `extends` 체인에서는 병합 결과에 남은 파일만 본다 |
+| 로컬 테마의 레이아웃 CSS 선언에 콜론·이름·값이 없다 | **에러** | `레이아웃 CSS 선언 "…"에 콜론이 없다` |
 | 설정이 켠 크롬을 테마가 선언하지 않았다 | **경고** + 미탑재 | `balpyo.json`을 가리킨다 — 고칠 자리가 거기다 |
 
 에러는 테마 로딩에서 나므로 **어느 슬라이드도 렌더되기 전에** 멈춘다. 크롬 선언은 토큰·컴포넌트

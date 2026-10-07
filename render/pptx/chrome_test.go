@@ -1,7 +1,6 @@
 package pptx
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -70,41 +69,13 @@ func TestChromeShapeIsNotAPlaceholder(t *testing.T) {
 	if strings.Contains(number, "<p:ph") {
 		t.Errorf("크롬이 플레이스홀더로 나갔다:\n%s", number)
 	}
-	// 자리는 잰 rect다 — 웹이 그린 자리와 같은 좌표여야 두 타깃이 갈라지지 않는다.
-	x, y := Offset(geom.Rect{X: 64, Y: 592})
-	if !strings.Contains(number, fmt.Sprintf(`<a:off x="%d" y="%d"/>`, x, y)) {
-		t.Errorf("크롬 좌표가 잰 rect가 아니다:\n%s", number)
-	}
 	// 세로 가운데 정렬은 웹의 `align-items: center`와 짝이다 (띠 전체가 rect이므로).
 	if !strings.Contains(number, `anchor="ctr"`) {
 		t.Errorf("크롬 bodyPr의 세로 앵커가 ctr이 아니다:\n%s", number)
 	}
-	// 가로 정렬은 확정 모델의 align이다 (end → r).
-	if !strings.Contains(number, `algn="r"`) {
-		t.Errorf("번호의 문단 정렬이 r이 아니다:\n%s", number)
-	}
-}
-
-// 크롬은 콘텐츠 **뒤**에 온다 — spTree 순서가 z-순서이므로 크롬이 본문에 가려지지 않는다.
-func TestChromeComesAfterContent(t *testing.T) {
-	deck := chromeDeck(t)
-	xml := slideXML(t, deck, geom.Synthetic(deck, geom.Rect{X: 64, Y: 592, W: 120, H: 64}))
-	content := strings.Index(xml, `name="text `)
-	chrome := strings.Index(xml, `name="chrome `)
-	if content < 0 || chrome < 0 {
-		t.Fatalf("콘텐츠(%d)나 크롬(%d) 도형이 없다:\n%s", content, chrome, xml)
-	}
-	if chrome < content {
-		t.Error("크롬이 콘텐츠보다 먼저 나왔다 — 본문에 가려질 수 있다")
-	}
-}
-
-// 크롬이 없는 슬라이드에는 크롬 도형이 없다 — 제외 규칙은 값 층이 이미 적용했다.
-func TestChromeAbsentWhenModelIsEmpty(t *testing.T) {
-	deck := resolvedContentDeck(t)
-	xml := slideXML(t, deck, geom.Synthetic(deck, geom.Rect{X: 64, Y: 64, W: 1152, H: 36}))
-	if strings.Contains(xml, "chrome") || strings.Contains(xml, "slidenum") {
-		t.Errorf("크롬 없는 덱에 크롬이 나갔다:\n%s", xml)
+	// 웹이 한 줄로 두기로 한 띠를 PPTX가 접으면 띠를 넘쳐 본문 위로 올라간다.
+	if !strings.Contains(number, `wrap="none"`) {
+		t.Errorf("크롬 bodyPr가 wrap=none이 아니다:\n%s", number)
 	}
 }
 

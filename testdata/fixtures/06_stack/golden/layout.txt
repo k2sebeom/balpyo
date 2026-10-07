@@ -1,0 +1,106 @@
+# slide 1 anchors
+textbox "h2 s0.0"
+  ¶ start | "9지점 앵커"{heading 27pt b fg}
+shape:roundRect "shape s0.1.0" fill=surface line=muted
+shape:rect "shape s0.1.1" fill=accent1 line=muted
+shape:rect "shape s0.1.2" fill=accent1 line=muted
+shape:rect "shape s0.1.3" fill=accent1 line=muted
+shape:rect "shape s0.1.4" fill=accent1 line=muted
+shape:rect "shape s0.1.5" fill=accent1 line=muted
+shape:rect "shape s0.1.6" fill=accent1 line=muted
+shape:rect "shape s0.1.7" fill=accent1 line=muted
+shape:rect "shape s0.1.8" fill=accent1 line=muted
+shape:rect "shape s0.1.9" fill=accent1 line=muted
+# slide 2 badge-overlay
+textbox "h2 s1.0"
+  ¶ start | "배지 오버레이"{heading 27pt b fg}
+pic "image s1.1.0" alt="배경 그림"
+shape:roundRect "shape s1.1.1" fill=muted line=muted
+  ¶ start | "NEW"{body 10.5pt bg}
+# slide 3 watermark
+shape:rect "shape s2.0.0" fill=muted line=muted
+  ¶ center | "DRAFT"{body 72pt muted}
+textbox "h1 s2.0.1.0"
+  ¶ start | "분기 실적 보고"{heading 42pt b fg}
+textbox "p s2.0.1.1"
+  ¶ start | "이 슬라이드는 초안이다 — 워터마크가 본문 아래에 깔린다."{body 18pt fg}
+# slide 4 z-order
+textbox "h2 s3.0"
+  ¶ start | "z-순서"{heading 27pt b fg}
+shape:rect "shape s3.1.0" fill=muted line=muted
+shape:rect "shape s3.1.1" fill=accent1 line=muted
+shape:rect "shape s3.1.2" fill=fg line=muted
+textbox "text s3.1.3"
+  ¶ start | "가운데"{body 13.5pt bg}
+# slide 5 absolute
+textbox "h2 s4.0"
+  ¶ start | "절대 배치"{heading 27pt b fg}
+shape:roundRect "shape s4.1.0" fill=surface line=muted
+shape:ellipse "shape s4.1.1" fill=accent1 line=muted
+shape:star5 "shape s4.1.2" fill=accent1 line=muted
+shape:rect "shape s4.1.3" fill=muted line=muted
+textbox "text s4.1.4"
+  ¶ start | "좌상단에서 12px"{body 10.5pt muted}
+# slide 6 in-container
+textbox "h2 s5.0"
+  ¶ start | "컨테이너 안의 겹침"{heading 27pt b fg}
+pic "image s5.1.0.0" alt="카드 1"
+textbox "text s5.1.0.1"
+  ¶ start | "하나"{body 10.5pt bg}
+pic "image s5.1.1.0" alt="카드 2"
+textbox "text s5.1.1.1"
+  ¶ start | "둘"{body 10.5pt bg}
+pic "image s5.1.2.0" alt="카드 3"
+textbox "text s5.1.2.1"
+  ¶ start | "셋"{body 10.5pt bg}
+shape:rect "shape s5.2.0.0" fill=surface line=muted
+textbox "text s5.2.0.1"
+  ¶ center | "가로 열 안의 겹침"{body 18pt fg}
+textbox "p s5.2.1"
+  ¶ start | "겹침은 흐름 배치의 한 칸이 될 수 있다."{body 18pt fg}
+# slide 7 nested
+textbox "h2 s6.0"
+  ¶ start | "중첩 겹침"{heading 27pt b fg}
+shape:rect "shape s6.1.0" fill=surface line=muted
+shape:roundRect "shape s6.1.1.0" fill=accent1 line=muted
+shape:ellipse "shape s6.1.1.1" fill=fg line=muted
+textbox "text s6.1.1.2"
+  ¶ start | "중심"{body 10.5pt bg}
+# slide 8 canvas-free
+textbox "h2 s7.0"
+  ¶ start | "자유 배치"{heading 27pt b fg}
+shape:roundRect "shape s7.1" fill=surface line=muted
+shape:ellipse "shape s7.2" fill=accent1 line=muted
+textbox "text s7.3"
+  ¶ start | "캔버스"{body 13.5pt bg}
+shape:star5 "shape s7.4" fill=accent1 line=muted
+# slide 9 canvas-stack
+textbox "h2 s8.0"
+  ¶ start | "캔버스 위 겹침"{heading 27pt b fg}
+shape:roundRect "shape s8.1.0" fill=surface line=muted
+shape:ellipse "shape s8.1.1" fill=muted line=muted
+textbox "text s8.1.2"
+  ¶ start | "배지"{body 10.5pt muted}
+shape:rect "shape s8.2" fill=accent1 line=muted
+# slide 10 content-explicit
+textbox "h1 s9.0"
+  ¶ start | "명시한 content"{heading 42pt b fg}
+textbox "p s9.1"
+  ¶ start | "layout=\"content\"는 기본 스테이지(세로 스택)의 이름이다."{body 18pt fg}
+textbox "ul s9.2"
+  ¶ start ul | "속성이 없을 때의 기본값과 같은 이름"{body 18pt fg}
+  ¶ start ul | "산출물은 layout 없는 덱과 바이트가 같다"{body 18pt fg}
+# slide 11 canvas-labels
+textbox "h2 s10.0"
+  ¶ start | "주 단위 배포"{heading 27pt b fg}
+shape:rect "shape s10.1" fill=accent1 line=muted
+shape:rect "shape s10.2" fill=accent1 line=muted
+shape:rect "shape s10.3" fill=accent1 line=muted
+textbox "text s10.4"
+  ¶ center | "9월 1주"{body 10.5pt muted}
+textbox "text s10.5"
+  ¶ center | "9월 2주"{body 10.5pt muted}
+textbox "text s10.6"
+  ¶ center | "9월 3주"{body 10.5pt muted}
+textbox "p s10.7"
+  ¶ end | "폭을 정하면 줄바꿈 자리도 저자가 정한다."{body 18pt fg}

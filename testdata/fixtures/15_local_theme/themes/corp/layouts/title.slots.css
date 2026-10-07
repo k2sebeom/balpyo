@@ -13,3 +13,7 @@ display: grid;
 grid-template-columns: 1fr;
 grid-template-rows: 1fr auto auto auto auto auto;
 grid-template-areas: "." "kicker" "title" "subtitle" "author" "date";
+
+/* 아래 한 줄은 레이아웃 CSS 린터의 증인이다 — 배치가 아닌 프로퍼티는 로컬 테마 로딩에서 경고가
+   되고 진단은 이 파일을 가리킨다 (golden/diagnostics.txt). inherit라 그림은 바뀌지 않는다. */
+color: inherit;

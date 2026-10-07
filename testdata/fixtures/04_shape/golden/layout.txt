@@ -1,0 +1,180 @@
+# slide 1 shape-types
+textbox "h2 s0.0"
+  ¶ start | "도형 프리셋 12종"{heading 27pt b fg}
+shape:rect "shape s0.1.0.0" fill=surface line=muted
+textbox "text s0.1.0.1"
+  ¶ center | "rect"{body 18pt fg}
+shape:roundRect "shape s0.1.1.0" fill=surface line=muted
+textbox "text s0.1.1.1"
+  ¶ center | "rounded-rect"{body 18pt fg}
+shape:ellipse "shape s0.1.2.0" fill=surface line=muted
+textbox "text s0.1.2.1"
+  ¶ center | "ellipse"{body 18pt fg}
+shape:diamond "shape s0.1.3.0" fill=surface line=muted
+textbox "text s0.1.3.1"
+  ¶ center | "diamond"{body 18pt fg}
+shape:can "shape s0.1.4.0" fill=surface line=muted
+textbox "text s0.1.4.1"
+  ¶ center | "cylinder"{body 18pt fg}
+shape:chevron "shape s0.1.5.0" fill=surface line=muted
+textbox "text s0.1.5.1"
+  ¶ center | "chevron"{body 18pt fg}
+shape:rightArrow "shape s0.1.6.0" fill=surface line=muted
+textbox "text s0.1.6.1"
+  ¶ center | "arrow-right"{body 18pt fg}
+shape:hexagon "shape s0.1.7.0" fill=surface line=muted
+textbox "text s0.1.7.1"
+  ¶ center | "hexagon"{body 18pt fg}
+shape:parallelogram "shape s0.1.8.0" fill=surface line=muted
+textbox "text s0.1.8.1"
+  ¶ center | "parallelogram"{body 18pt fg}
+shape:wedgeRectCallout "shape s0.1.9.0" fill=surface line=muted
+textbox "text s0.1.9.1"
+  ¶ center | "callout"{body 18pt fg}
+shape:star5 "shape s0.1.10.0" fill=surface line=muted
+textbox "text s0.1.10.1"
+  ¶ center | "star"{body 18pt fg}
+shape:cloud "shape s0.1.11.0" fill=surface line=muted
+textbox "text s0.1.11.1"
+  ¶ center | "cloud"{body 18pt fg}
+# slide 2 shape-token-colors
+textbox "h2 s1.0"
+  ¶ start | "토큰 색은 테마 참조로 보존된다"{heading 27pt b fg}
+shape:roundRect "shape s1.1.0" fill=surface line=muted
+  ¶ start | "surface"{heading 21pt b fg}
+  ¶ start | "배경은 토큰 surface, 테두리는 muted다."{body 18pt fg}
+shape:roundRect "shape s1.1.1" fill=accent1 line=muted
+  ¶ start | "accent1"{heading 21pt b bg}
+  ¶ start | "글자색도 토큰(bg)이다."{body 18pt bg}
+shape:rect "shape s1.1.2" fill=none line=accent1
+  ¶ start | "fill=\"none\" — 채움 없는 테두리 도형."{body 18pt fg}
+# slide 3 shape-literal-colors
+textbox "h2 s2.0"
+  ¶ start | "리터럴 색은 테마를 따라가지 않는다"{heading 27pt b fg}
+shape:rect "shape s2.1.0" fill=#0F65F9 line=muted
+  ¶ start | "fill=\"#0F65F9\" — accent1과 같은 값이지만 테마 참조가 아니다."{body 18pt bg}
+shape:rect "shape s2.1.1" fill=none line=#6B7280
+  ¶ start | "테두리 색도 리터럴로 쓸 수 있다."{body 18pt fg}
+# slide 4 shape-appearance
+textbox "h2 s3.0"
+  ¶ start | "모서리·그림자·투명도·회전"{heading 27pt b fg}
+shape:roundRect "shape s3.1.0" fill=accent1 line=muted
+  ¶ center | "radius=sm"{body 18pt bg}
+shape:roundRect "shape s3.1.1" fill=accent1 line=muted
+  ¶ center | "radius=lg"{body 18pt bg}
+shape:roundRect "shape s3.1.2" fill=accent1 line=muted
+  ¶ center | "radius=32"{body 18pt bg}
+shape:rect "shape s3.2.0" fill=surface line=muted
+  ¶ center | "shadow=soft"{body 18pt fg}
+shape:rect "shape s3.2.1" fill=accent1 line=muted
+  ¶ center | "opacity=0.4"{body 18pt bg}
+shape:rect "shape s3.2.2" fill=accent1 line=muted
+shape:chevron "shape s3.2.3" fill=muted line=muted
+  ¶ center | "flip=h"{body 18pt bg}
+# slide 5 shape-text-anchor
+textbox "h2 s4.0"
+  ¶ start | "도형 안 텍스트의 세로 앵커"{heading 27pt b fg}
+shape:rect "shape s4.1.0" fill=surface line=muted
+  ¶ start | "anchor=top"{body 18pt fg}
+shape:rect "shape s4.1.1" fill=surface line=muted
+  ¶ start | "anchor=center"{body 18pt fg}
+shape:rect "shape s4.1.2" fill=surface line=muted
+  ¶ start | "anchor=bottom"{body 18pt fg}
+shape:rect "shape s4.2.0" fill=surface line=muted
+  ¶ start | "pad 없음 — 글자가 변에 붙는다"{body 18pt fg}
+shape:roundRect "shape s4.2.1" fill=surface line=muted
+  ¶ start | "문단 둘"{heading 21pt b fg}
+  ¶ start | "도형 하나에 자식 여럿은 문단 여럿이다."{body 18pt fg}
+# slide 6 shape-cards
+textbox "h2 s5.0"
+  ¶ start | "Responsible AI 4대 차원"{heading 27pt b fg}
+shape:roundRect "shape s5.1.0.0" fill=accent1 line=muted
+  ¶ center | "공정성"{body 18pt bg}
+shape:rect "shape s5.1.0.1" fill=surface line=muted
+  ¶ start | "데이터와 모델의 편향을 측정한다."{body 18pt fg}
+shape:roundRect "shape s5.1.1.0" fill=accent1 line=muted
+  ¶ center | "신뢰성"{body 18pt bg}
+shape:rect "shape s5.1.1.1" fill=surface line=muted
+  ¶ start | "실패 모드를 정의하고 회귀로 막는다."{body 18pt fg}
+shape:roundRect "shape s5.1.2.0" fill=accent1 line=muted
+  ¶ center | "투명성"{body 18pt bg}
+shape:rect "shape s5.1.2.1" fill=surface line=muted
+  ¶ start | "판단의 근거를 사람이 읽을 수 있게 남긴다."{body 18pt fg}
+shape:roundRect "shape s5.1.3.0" fill=accent1 line=muted
+  ¶ center | "책임성"{body 18pt bg}
+shape:rect "shape s5.1.3.1" fill=surface line=muted
+  ¶ start | "사고의 소유자와 대응 절차가 문서에 있다."{body 18pt fg}
+shape:roundRect "shape s5.1.4" fill=none line=accent1
+  ¶ start | "span=\"2\" — 도형도 컨테이너의 자식이므로 배치 속성을 받는다."{body 18pt fg}
+# slide 7 shape-variant
+textbox "h2 s6.0"
+  ¶ start | "variant는 테마의 외관 번들이다"{heading 27pt b fg}
+shape:roundRect "shape s6.1.0.0" fill=surface line=none
+  ¶ center | "card-header"{body 18pt fg}
+shape:rect "shape s6.1.0.1" fill=bg line=muted
+  ¶ start | "테마가 정한 배경·테두리·모서리를 그대로 쓴다."{body 18pt fg}
+shape:roundRect "shape s6.1.1.0" fill=muted line=none
+  ¶ center | "인라인 fill이 이긴다"{body 18pt bg}
+shape:rect "shape s6.1.1.1" fill=bg line=muted
+  ¶ start | "인라인 속성이 variant를 이긴다."{body 18pt fg}
+# slide 8 shape-variant-unknown
+textbox "h2 s7.0"
+  ¶ start | "모르는 variant는 경고다"{heading 27pt b fg}
+shape:rect "shape s7.1.0" fill=surface line=muted
+  ¶ start | "card-heder는 오타다 — 도형은 테마 기본값으로 그려진다."{body 18pt fg}
+textbox "text s7.1.1"
+  ¶ start | "텍스트의 모르는 variant도 같은 경고다."{body 18pt fg}
+# slide 9 shape-text-rect
+textbox "h2 s8.0"
+  ¶ start | "프리셋의 텍스트 영역 — 가운데"{heading 27pt b fg}
+shape:rect "shape s8.1.0" fill=surface line=none
+  ¶ center | "rect"{body 13.5pt fg}
+shape:roundRect "shape s8.1.1" fill=surface line=none
+  ¶ center | "rounded-rect"{body 13.5pt fg}
+shape:ellipse "shape s8.1.2" fill=surface line=none
+  ¶ center | "ellipse"{body 13.5pt fg}
+shape:diamond "shape s8.1.3" fill=surface line=none
+  ¶ center | "diamond"{body 13.5pt fg}
+shape:can "shape s8.1.4" fill=surface line=none
+  ¶ center | "cylinder"{body 13.5pt fg}
+shape:chevron "shape s8.1.5" fill=surface line=none
+  ¶ center | "chevron"{body 13.5pt fg}
+shape:rightArrow "shape s8.1.6" fill=surface line=none
+  ¶ center | "arrow"{body 13.5pt fg}
+shape:hexagon "shape s8.1.7" fill=surface line=none
+  ¶ center | "hexagon"{body 13.5pt fg}
+shape:parallelogram "shape s8.1.8" fill=surface line=none
+  ¶ center | "para"{body 13.5pt fg}
+shape:wedgeRectCallout "shape s8.1.9" fill=surface line=none
+  ¶ center | "callout"{body 13.5pt fg}
+shape:star5 "shape s8.1.10" fill=surface line=none
+  ¶ center | "star"{body 13.5pt fg}
+shape:cloud "shape s8.1.11" fill=surface line=none
+  ¶ center | "cloud"{body 13.5pt fg}
+# slide 10 shape-text-rect-corner
+textbox "h2 s9.0"
+  ¶ start | "프리셋의 텍스트 영역 — 왼쪽 위"{heading 27pt b fg}
+shape:rect "shape s9.1.0" fill=surface line=none
+  ¶ start | "rect"{body 13.5pt fg}
+shape:roundRect "shape s9.1.1" fill=surface line=none
+  ¶ start | "round"{body 13.5pt fg}
+shape:ellipse "shape s9.1.2" fill=surface line=none
+  ¶ start | "ellipse"{body 13.5pt fg}
+shape:diamond "shape s9.1.3" fill=surface line=none
+  ¶ start | "diamond"{body 13.5pt fg}
+shape:can "shape s9.1.4" fill=surface line=none
+  ¶ start | "cylinder"{body 13.5pt fg}
+shape:chevron "shape s9.1.5" fill=surface line=none
+  ¶ start | "chevron"{body 13.5pt fg}
+shape:rightArrow "shape s9.1.6" fill=surface line=none
+  ¶ start | "arrow"{body 13.5pt fg}
+shape:hexagon "shape s9.1.7" fill=surface line=none
+  ¶ start | "hexagon"{body 13.5pt fg}
+shape:parallelogram "shape s9.1.8" fill=surface line=none
+  ¶ start | "para"{body 13.5pt fg}
+shape:wedgeRectCallout "shape s9.1.9" fill=surface line=none
+  ¶ start | "callout"{body 13.5pt fg}
+shape:star5 "shape s9.1.10" fill=surface line=none
+  ¶ start | "star"{body 13.5pt fg}
+shape:cloud "shape s9.1.11" fill=surface line=none
+  ¶ start | "cloud"{body 13.5pt fg}

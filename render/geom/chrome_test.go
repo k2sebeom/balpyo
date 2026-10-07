@@ -45,9 +45,7 @@ func chromeMeasured(deck *soml.Deck, rects ...Rect) measurement {
 	return m
 }
 
-// 크롬 rect는 **Boxes가 아니라 곁 표**에 담긴다 (ADR 0045): Boxes는 덱 트리의 요소와 1:1이라
-// (Refs ↔ Boxes 자리 맞대기) 크롬을 끼우면 그 대조가 무너지고, 크롬은 배치 진단의 대상이
-// 저자의 요소와 다르다.
+// 크롬 rect는 Boxes가 아니라 곁 표에 담긴다 (ADR 0045) — Boxes는 덱 요소와 1:1이다.
 func TestChromeIsMeasuredIntoSideTable(t *testing.T) {
 	deck := testDeck([]soml.Node{textElem(chars("본문"))})
 	deck.Slides[0].Chrome = chromeItems()
@@ -75,8 +73,7 @@ func TestChromeIsMeasuredIntoSideTable(t *testing.T) {
 	}
 }
 
-// 잰 HTML의 크롬이 덱의 확정 모델과 어긋나면 **빌드를 멈춘다** — 좌표가 엉뚱한 크롬에 붙으면
-// 번호가 푸터 자리에 놓인 PPTX가 나오고, 그것은 열어 보기 전까지 정상으로 보인다.
+// 잰 HTML의 크롬이 덱의 확정 모델과 어긋나면 빌드를 멈춘다.
 func TestNewGeometryRejectsChromeMismatch(t *testing.T) {
 	deck := testDeck([]soml.Node{textElem(chars("본문"))})
 	deck.Slides[0].Chrome = chromeItems()
@@ -85,25 +82,9 @@ func TestNewGeometryRejectsChromeMismatch(t *testing.T) {
 		mutate  func(m *measurement)
 		wantMsg string
 	}{
-		{
-			name:    "HTML에 크롬이 없다",
-			mutate:  func(m *measurement) { m.Slides[0].Chrome = nil },
-			wantMsg: "크롬",
-		},
-		{
-			name: "kind가 어긋난다",
-			mutate: func(m *measurement) {
-				m.Slides[0].Chrome[1].Kind = string(soml.ChromeFooter)
-			},
-			wantMsg: "크롬",
-		},
-		{
-			name: "rect가 유효하지 않다",
-			mutate: func(m *measurement) {
-				m.Slides[0].Chrome[0].Rect = Rect{W: math.Inf(1)}
-			},
-			wantMsg: "유효하지 않다",
-		},
+		{"HTML에 크롬이 없다", func(m *measurement) { m.Slides[0].Chrome = nil }, "크롬"},
+		{"kind가 어긋난다", func(m *measurement) { m.Slides[0].Chrome[1].Kind = string(soml.ChromeFooter) }, "크롬"},
+		{"rect가 유효하지 않다", func(m *measurement) { m.Slides[0].Chrome[0].Rect = Rect{W: math.Inf(1)} }, "유효하지 않다"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -118,8 +99,7 @@ func TestNewGeometryRejectsChromeMismatch(t *testing.T) {
 	}
 }
 
-// 측정 스크립트는 웹 렌더러가 소유한 선택자·속성으로 크롬을 집는다 — 문자열이 두 벌이 되면
-// 크롬이 "못 찾았다"가 아니라 "PPTX에만 없다"로 조용히 사라진다.
+// 측정 스크립트는 웹 렌더러가 소유한 선택자·속성으로 크롬을 집는다 — 두 벌이면 조용히 사라진다.
 func TestMeasureExprReadsChrome(t *testing.T) {
 	expr := measureExpr()
 	for _, want := range []string{web.ChromeSelector(), web.ChromeKindAttr} {
@@ -129,71 +109,50 @@ func TestMeasureExprReadsChrome(t *testing.T) {
 	}
 }
 
-// 크롬의 판정은 둘이다 (ADR 0045): 슬라이드 이탈과 **크롬끼리의** 겹침. 콘텐츠 박스 판정은
-// 묻지 않는다 — 크롬은 여백 띠에 사는 것이 정의다.
-func TestDiagnoseChromeEscapesSlide(t *testing.T) {
-	deck := testDeck([]soml.Node{textElem(chars("본문"))})
-	// 푸터만 켠 덱이다 — 이탈만 보기 위해 겹침의 상대를 두지 않는다 (둘 다 나면 두 사실이
-	// 한 테스트에서 섞인다).
-	deck.Slides[0].Chrome = chromeItems()[:1]
-	// 푸터가 오른쪽으로 흘러 슬라이드를 나갔다 (긴 문자열).
-	g, err := newGeometry(deck, chromeMeasured(deck, chromeBand(64, 1300)))
-	if err != nil {
-		t.Fatal(err)
+// 크롬의 판정은 둘이다 (ADR 0045): 슬라이드 이탈과 크롬끼리의 겹침. 크롬은 여백 띠에 사는
+// 것이 정의이므로 콘텐츠 박스 판정은 묻지 않는다.
+func TestDiagnoseChrome(t *testing.T) {
+	tests := []struct {
+		name  string
+		items int // chromeItems()의 앞 몇 개를 켜는가
+		rects []Rect
+		want  []string
+	}{
+		{"띠 안의 크롬은 조용하다", 2, []Rect{chromeBand(64, 120), chromeBand(1180, 36)}, nil},
+		{"슬라이드 이탈", 1, []Rect{chromeBand(64, 1300)}, []string{"footer", "슬라이드", "오른쪽으로"}},
+		{"푸터가 번호를 덮는다", 2, []Rect{chromeBand(64, 1140), chromeBand(1180, 36)}, []string{"footer", "pageNumber", "겹친다"}},
 	}
-	diags := Diagnose(deck, g)
-	if len(diags) != 1 {
-		t.Fatalf("진단 %d건, want 1 (%v)", len(diags), diags)
-	}
-	msg := diags[0].Message
-	for _, want := range []string{"footer", "슬라이드", "오른쪽으로"} {
-		if !strings.Contains(msg, want) {
-			t.Errorf("진단 = %q, want substring %q", msg, want)
-		}
-	}
-	if diags[0].Severity != soml.SeverityWarning {
-		t.Errorf("심각도 = %v, want warning", diags[0].Severity)
-	}
-	if diags[0].File != deck.Slides[0].Source {
-		t.Errorf("진단 파일 = %q, want %q", diags[0].File, deck.Slides[0].Source)
-	}
-}
-
-// 푸터가 길어 번호를 덮으면 두 글자가 겹쳐 읽히지 않는다 — 열어 보지 않으면 모르는 사고다.
-func TestDiagnoseChromeOverlap(t *testing.T) {
-	deck := testDeck([]soml.Node{textElem(chars("본문"))})
-	deck.Slides[0].Chrome = chromeItems()
-	g, err := newGeometry(deck, chromeMeasured(deck, chromeBand(64, 1140), chromeBand(1180, 36)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	diags := Diagnose(deck, g)
-	if len(diags) != 1 {
-		t.Fatalf("진단 %d건, want 1 (%v)", len(diags), diags)
-	}
-	for _, want := range []string{"footer", "pageNumber", "겹친다"} {
-		if !strings.Contains(diags[0].Message, want) {
-			t.Errorf("진단 = %q, want substring %q", diags[0].Message, want)
-		}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			deck := testDeck([]soml.Node{textElem(chars("본문"))})
+			deck.Slides[0].Chrome = chromeItems()[:tc.items]
+			g, err := newGeometry(deck, chromeMeasured(deck, tc.rects...))
+			if err != nil {
+				t.Fatal(err)
+			}
+			diags := Diagnose(deck, g)
+			if tc.want == nil {
+				if len(diags) != 0 {
+					t.Errorf("진단 %d건, want 0 (%v)", len(diags), diags)
+				}
+				return
+			}
+			if len(diags) != 1 {
+				t.Fatalf("진단 %d건, want 1 (%v)", len(diags), diags)
+			}
+			for _, want := range tc.want {
+				if !strings.Contains(diags[0].Message, want) {
+					t.Errorf("진단 = %q, want substring %q", diags[0].Message, want)
+				}
+			}
+			if diags[0].Severity != soml.SeverityWarning || diags[0].File != deck.Slides[0].Source {
+				t.Errorf("진단 = %+v, want %s의 warning", diags[0], deck.Slides[0].Source)
+			}
+		})
 	}
 }
 
-// 띠 안에 얌전히 있는 크롬은 아무 말도 듣지 않는다 — 크롬이 여백에 있다는 이유로 콘텐츠 박스
-// 진단을 받으면 모든 덱이 고칠 수 없는 경고를 받는다.
-func TestDiagnoseChromeIsQuietInTheBand(t *testing.T) {
-	deck := testDeck([]soml.Node{textElem(chars("본문"))})
-	deck.Slides[0].Chrome = chromeItems()
-	g, err := newGeometry(deck, chromeMeasured(deck, chromeBand(64, 120), chromeBand(1180, 36)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if diags := Diagnose(deck, g); len(diags) != 0 {
-		t.Errorf("띠 안의 크롬이 진단을 받았다: %v", diags)
-	}
-}
-
-// Synthetic도 크롬을 채운다 — 소비 측(PPTX 조립)이 브라우저 없이 크롬 도형을 시험할 수 있어야
-// 한다 (Boxes를 채우는 것과 같은 근거).
+// Synthetic도 크롬을 채운다 — PPTX 조립이 브라우저 없이 크롬 도형을 시험한다.
 func TestSyntheticFillsChrome(t *testing.T) {
 	deck := testDeck([]soml.Node{textElem(chars("본문"))}, nil)
 	deck.Slides[0].Chrome = chromeItems()

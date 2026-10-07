@@ -543,11 +543,7 @@ func ChildPath(path []int, i int) []int {
 func contentCSS(feat features) string {
 	css := fmt.Sprintf(`
   /* 스테이지는 자식을 문서 순서대로 세로로 쌓는다. 여백 64px은 1280폭의 5%%로,
-     프로젝터의 오버스캔에서도 글자가 잘리지 않는다.
-
-     text-autospace는 잰 폭을 고정한다 — 브라우저가 한글↔라틴 경계에 간격을 넣기
-     시작하면(CSS Text 4는 그것을 기본값에 둔다) 잰 폭이 움직이고, 잰 폭이 곧 PPTX
-     좌표이므로 저자가 아무것도 고치지 않은 채 줄이 다시 접힌다 (D11, ADR 0005). */
+     프로젝터의 오버스캔에서도 글자가 잘리지 않는다. */
   .balpyo-stage {
     position: relative;
     width: 100%%;
@@ -556,7 +552,16 @@ func contentCSS(feat features) string {
     display: flex;
     flex-direction: column;
     gap: %dpx;
-    text-autospace: no-autospace;
+  }
+
+  /* 한국어는 어절에서 접는다 — 글자 사이에서 접는 브라우저 기본은 한국어 조판 관행이 아니다.
+     PPTX와 맞추려는 것이 아니다 (줄바꿈 위치는 계약 밖이다 — ADR 0064). overflow-wrap:
+     anywhere는 좁은 칸에서 한 어절이 칸보다 길 때만 그 어절을 자른다 — keep-all만 두면 그
+     어절이 칸을 넘친다. 중국어·일본어는 띄어쓰기가 없어 keep-all이 줄바꿈을 막으므로
+     lang이 ko일 때만이다. */
+  .balpyo-stage:lang(ko) {
+    word-break: keep-all;
+    overflow-wrap: anywhere;
   }
 
   /* 텍스트 블록은 콘텐츠 폭 전체를 갖는다 — 줄바꿈 폭이 확정되어야 브라우저가 잰 박스가

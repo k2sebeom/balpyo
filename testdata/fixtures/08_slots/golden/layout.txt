@@ -1,0 +1,33 @@
+# slide 1 content-slots
+textbox "h1 s0.0" ph=title/0
+  ¶ start | "분기 하이라이트"{heading 42pt b fg}
+textbox "p s0.1" ph=body/1
+  ¶ start | "매출이 전분기 대비 18% 늘었다. 남미 신규 시장이 성장을 이끌었다."{body 18pt fg}
+# slide 2 two-column-slots
+textbox "h1 s1.0" ph=title/0
+  ¶ start | "계획 대 실제"{heading 42pt b fg}
+textbox "p s1.1" ph=body/1
+  ¶ start | "계획: 세 개 팀을 하나로 통합한다."{body 18pt fg}
+textbox "p s1.2" ph=body/2
+  ¶ start | "실제: 두 개 팀을 통합하고 하나는 다음 분기로 이월했다."{body 18pt fg}
+# slide 3 content-flow
+textbox "text s2.0"
+  ¶ start | "흐름 모드"{heading 42pt b fg}
+textbox "text s2.1"
+  ¶ start | "슬롯을 쓰지 않은 슬라이드는 blank 레이아웃을 그대로 가리킨다."{body 18pt fg}
+# slide 4 title-slots
+textbox "p s3.0" ph=body/2
+  ¶ start | "2026 H1"{body 18pt fg}
+textbox "h1 s3.1" ph=ctrTitle/0
+  ¶ start | "플랫폼 재설계"{heading 42pt b fg}
+textbox "p s3.2" ph=subTitle/1
+  ¶ start | "모놀리스에서 서비스 경계로"{body 18pt fg}
+textbox "p s3.3" ph=body/3
+  ¶ start | "김서봄"{body 18pt fg}
+textbox "p s3.4" ph=body/4
+  ¶ start | "2026-09-20"{body 18pt fg}
+# slide 5 quote-slots
+textbox "blockquote s4.0" ph=body/1
+  ¶ start | "측정할 수 없는 것은 관리할 수 없다는 말은 절반만 맞다 — 측정한 것만 관리하면 측정하지 않은 것이 무너진다."{body 18pt muted}
+textbox "p s4.1" ph=body/2
+  ¶ end | "— 운영 회고, 2026 H1"{body 18pt fg}

@@ -18,7 +18,7 @@ import (
 // 다음 키가 다음 슬라이드로 가고, 뒤로 들어온 슬라이드는 **전부 전개된** 상태다,
 // (5) 문서 뷰와 오버뷰는 언제나 전부 보인다 (결정 3).
 func TestRevealSteps(t *testing.T) {
-	fixture := fixtureByName(t, textSubsetFixtureName)
+	fixture := fixtureByName(t, "02_text_subset")
 	result, err := pipeline.Build(pipeline.Options{
 		ProjectDir: fixture.Dir,
 		Targets:    []render.Target{render.TargetHTML},

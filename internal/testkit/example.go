@@ -59,15 +59,16 @@ func Examples(t testing.TB) []Example {
 // "경고는 무시해도 된다"를 가르친다 (ADR 0056).
 //
 // 산출물은 임시 디렉토리에 쓴다: 예제 디렉토리는 입력 전용이고 `examples/*/dist`는 커밋하지
-// 않는다. 도구 정책은 픽스처와 같은 자리에서 적용한다 (이미지 안에서는 실패, 브라우저 없는
+// 않는다. 도구 정책은 픽스처와 같은 자리에서 적용한다 (CI에서는 실패, 브라우저 없는
 // 호스트에서는 건너뛴다).
 func (e Example) Build(t testing.TB) *pipeline.Result {
 	t.Helper()
-	RequireChromium(t)
+	session := SharedSession(t)
 	result, err := pipeline.Build(pipeline.Options{
 		ProjectDir: e.Dir,
 		Targets:    []render.Target{render.TargetHTML, render.TargetPPTX},
 		OutDir:     t.TempDir(),
+		Measurer:   session,
 		Strict:     true,
 	})
 	if err != nil {

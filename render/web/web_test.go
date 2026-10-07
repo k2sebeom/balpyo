@@ -94,19 +94,54 @@ func TestRenderNotesAreHidden(t *testing.T) {
 	if strings.Count(out, `<div class="balpyo-notes"`) != 1 {
 		t.Error("노트 요소는 노트가 있는 슬라이드에만 있어야 한다")
 	}
+	// 노트는 스테이지에 한 번 더 그려지지 않는다 (파서가 Content에서 뺐다).
+	if got := strings.Count(out, "인사 30초"); got != 1 {
+		t.Errorf("노트 텍스트가 %d번 나온다, want 1 (숨은 노트 요소에만)", got)
+	}
 }
 
-func TestRenderEscapesText(t *testing.T) {
-	deck := testDeck()
-	deck.Title = `<script>alert("x")</script>`
-	out := renderString(t, deck)
-	// `<script>` 자체는 뷰어 런타임으로 정당하게 존재한다 — 저자 텍스트가 태그로 새는
-	// 것만 잡는다.
-	if strings.Contains(out, "<script>alert") {
-		t.Error("제목이 이스케이프되지 않았다")
+// 저자 텍스트는 어느 자리에서든 태그로 새지 않는다. `<script>` 자체는 뷰어 런타임으로
+// 정당하게 존재하므로 저자 텍스트의 흔적만 본다.
+func TestRenderEscapesAuthorText(t *testing.T) {
+	li := func(text string) *soml.Deck {
+		deck := contentDeck()
+		style := bodyStyle()
+		deck.Slides[0].Content = []soml.Node{&soml.Element{Name: "ul", Children: []soml.Node{&soml.Element{
+			Name: "li", Appearance: &soml.Appearance{Text: &style}, Children: []soml.Node{&soml.Text{Value: text}},
+		}}}}
+		return deck
 	}
-	if !strings.Contains(out, "&lt;script&gt;") {
-		t.Error("이스케이프된 제목이 문서에 없다")
+	for _, tc := range []struct {
+		name      string
+		deck      func() *soml.Deck
+		want, bad string
+	}{
+		{"덱 제목", func() *soml.Deck {
+			deck := testDeck()
+			deck.Title = `<script>alert("x")</script>`
+			return deck
+		}, "&lt;script&gt;", "<script>alert"},
+		{"텍스트", func() *soml.Deck {
+			deck := contentDeck()
+			deck.Slides[0].Content = []soml.Node{textElem(`<script>alert("x")</script> & 5 > 3`, bodyStyle())}
+			return deck
+		}, "&amp; 5 &gt; 3", "<script>alert"},
+		// 해석되지 않은 원문 문자가 그대로 온 트리 — 참조 경로는 TestRenderCharRefsEscapeOnce가 본다.
+		{"리스트 항목", func() *soml.Deck { return li("a < b & c") }, "a &lt; b &amp; c", "a < b"},
+		// &가 그대로 나가면 파싱에 따라 엔티티로 읽혀 목적지가 조용히 바뀐다.
+		{"href", func() *soml.Deck {
+			return subsetDeck(t, `<p><a href="https://example.com/?a=1&b=2">링크</a></p>`)
+		}, `href="https://example.com/?a=1&amp;b=2"`, `href="https://example.com/?a=1&b=2"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out := renderString(t, tc.deck())
+			if !strings.Contains(out, tc.want) {
+				t.Errorf("이스케이프된 %q가 없다", tc.want)
+			}
+			if strings.Contains(out, tc.bad) {
+				t.Errorf("원문 %q가 그대로 나갔다", tc.bad)
+			}
+		})
 	}
 }
 
@@ -120,11 +155,20 @@ func TestRenderRejectsInvalidDeck(t *testing.T) {
 	}
 }
 
+// 같은 입력은 바이트 단위로 같은 출력을 낸다 — 어휘가 많이 섞인 덱 하나로 본다.
 func TestRenderIsDeterministic(t *testing.T) {
-	// 골든 테스트가 성립하려면 같은 입력이 바이트 단위로 같은 출력을 내야 한다.
-	a, b := renderString(t, testDeck()), renderString(t, testDeck())
-	if a != b {
-		t.Error("렌더 결과가 실행마다 다르다")
+	body := `<grid cols="3" gap="lg" pad="md sm"><p span="2" order="-1">격자</p><spacer grow="1"/>
+    <shape type="cloud" fill="accent1" shadow="soft" rotate="15" h="160"><p anchor="center">구름</p></shape>
+    <shape type="cylinder" fill="none" border="2 dashed muted" flip="v"/></grid>`
+	for name, deck := range map[string]func() *soml.Deck{
+		"빈 덱":     testDeck,
+		"콘텐츠":     contentDeck,
+		"레이아웃·도형": func() *soml.Deck { return subsetDeck(t, body) },
+		"픽스처":     func() *soml.Deck { return fixtureDeck(t, textFixture) },
+	} {
+		if renderString(t, deck()) != renderString(t, deck()) {
+			t.Errorf("%s: 렌더 결과가 실행마다 다르다", name)
+		}
 	}
 }
 

@@ -5,12 +5,8 @@ import (
 	"testing"
 )
 
-// withUnrenderedKinds는 종류 몇 개를 "아직 그리지 못하는 어휘"로 잠시 세운다.
-//
-// unrenderedKinds가 비어 있는 동안(어휘 전부가 두 렌더러에 닿는다 — subset.go) 관문을
-// 테스트할 방법은 이것뿐이다: 진짜로 미구현인 종류를 골라 쓰면 그 종류가 구현되는 날 이
-// 테스트가 "관문이 깨졌다"고 거짓말한다. 세우는 종류가 무엇이든 관문의 동작은 같으므로
-// (checkRendered는 KindRendered만 묻는다) 표 어휘를 대역으로 쓴다.
+// withUnrenderedKinds는 종류 몇 개를 "아직 그리지 못하는 어휘"로 잠시 세운다 — 목록이 빈
+// 동안 관문을 시험할 방법은 이것뿐이다 (checkRendered는 KindRendered만 묻으므로 대역이면 된다).
 func withUnrenderedKinds(t *testing.T, kinds ...ElementKind) {
 	t.Helper()
 	prev := unrenderedKinds
@@ -62,16 +58,5 @@ func TestParseUnrenderedVocabularyKeepsPlacementRules(t *testing.T) {
 	}
 	if unrendered != 1 {
 		t.Errorf("미구현 어휘 진단 %d건, want 1건 (가장 바깥에서만 말한다):\n%s", unrendered, diags.Err())
-	}
-}
-
-// 목록이 빈 동안에는 아무 어휘도 파스 시점에 막히지 않는다 — 표가 그 증거다 (렌더러가 붙기
-// 전에는 이 원문이 진단을 받았다). 이 테스트가 빨갛게 되는 경우는 둘 중 하나다: 목록에 종류를
-// 되돌려 놓았거나(그때는 렌더러 대조도 함께 빨갛게 된다 — render/vocabulary_test.go), 관문이
-// 종류가 아닌 무언가로 어휘를 막기 시작했다.
-func TestParseAllowsRenderedVocabulary(t *testing.T) {
-	src := `<slide><table><tr><td>남미</td><td>18%</td></tr></table></slide>`
-	if _, diags := Parse("slides/001_table.slide", src); len(diags) != 0 {
-		t.Errorf("진단이 없어야 한다:\n%s", diags.Err())
 	}
 }

@@ -1,0 +1,111 @@
+# slide 1 row-col
+textbox "h2 s0.0"
+  ¶ start | "두 열로 나눈 회고"{heading 27pt b fg}
+textbox "h3 s0.1.0.0"
+  ¶ start | "잘된 것"{heading 21pt b fg}
+textbox "ul s0.1.0.1"
+  ¶ start ul | "모놀리스 분리 완료"{body 18pt fg}
+  ¶ start ul | "배포 파이프라인 "{body 18pt fg} · "자동화"{body 18pt b fg}
+textbox "h3 s0.1.1.0"
+  ¶ start | "아쉬운 것"{heading 21pt b fg}
+textbox "ul s0.1.1.1"
+  ¶ start ul | "관측성 도입이 늦었다"{body 18pt fg}
+  ¶ start ul | "온콜 문서가 흩어져 있다"{body 18pt fg}
+# slide 2 grid-cards
+textbox "h2 s1.0"
+  ¶ start | "플랫폼 지표"{heading 27pt b fg}
+textbox "h3 s1.1.0.0"
+  ¶ start | "8분"{heading 21pt b fg}
+textbox "p s1.1.0.1"
+  ¶ start | "배포 소요 시간"{body 18pt fg}
+textbox "h3 s1.1.1.0"
+  ¶ start | "99.95%"{heading 21pt b fg}
+textbox "p s1.1.1.1"
+  ¶ start | "가용성"{body 18pt fg}
+textbox "h3 s1.1.2.0"
+  ¶ start | "12회"{heading 21pt b fg}
+textbox "p s1.1.2.1"
+  ¶ start | "일 평균 배포"{body 18pt fg}
+textbox "h3 s1.1.3.0"
+  ¶ start | "3분"{heading 21pt b fg}
+textbox "p s1.1.3.1"
+  ¶ start | "평균 감지 시간"{body 18pt fg}
+textbox "h3 s1.1.4.0"
+  ¶ start | "두 칸 카드"{heading 21pt b fg}
+textbox "p s1.1.4.1"
+  ¶ start | "span=\"2\"는 grid-column: span 2다."{body 18pt fg}
+# slide 3 spacer
+textbox "h2 s2.0"
+  ¶ start | "여백이 배치다"{heading 27pt b fg}
+textbox "p s2.2"
+  ¶ start | "가운데 문단은 위아래 spacer가 밀어낸 자리에 놓인다."{body 18pt fg}
+textbox "p s2.4.0"
+  ¶ start | "왼쪽 꼬리글"{body 18pt fg}
+textbox "p s2.4.2"
+  ¶ start | "오른쪽 페이지 번호"{body 18pt fg}
+# slide 4 child-attrs
+textbox "h2 s3.0"
+  ¶ start | "자식이 자기 자리를 정한다"{heading 27pt b fg}
+textbox "text s3.1.0"
+  ¶ start | "grow=1 · self=center"{body 18pt fg}
+textbox "p s3.1.1"
+  ¶ start | "shrink=0 · basis=240 — 줄어들지 않는 열이다."{body 18pt fg}
+textbox "ul s3.1.2"
+  ¶ start ul | "order=-1이라 먼저 보인다"{body 18pt fg}
+  ¶ start ul | "선언은 세 번째"{body 18pt fg}
+textbox "p s3.1.3.0"
+  ¶ start | "중첩 컨테이너도 자식이다"{body 18pt fg}
+textbox "p s3.1.3.1"
+  ¶ start | "grow=2로 남은 폭을 더 받는다"{body 18pt fg}
+textbox "p s3.2.0"
+  ¶ start | "span=2"{body 18pt fg}
+textbox "p s3.2.1"
+  ¶ start | "한 칸"{body 18pt fg}
+# slide 5 sizing
+textbox "h2 s4.0"
+  ¶ start | "크기와 비율"{heading 27pt b fg}
+textbox "p s4.1.0.0"
+  ¶ start | "w=40% — 비율 폭"{body 18pt fg}
+textbox "p s4.1.0.1"
+  ¶ start | "부모 폭에 대한 백분율이다."{body 18pt fg}
+textbox "p s4.1.1.0"
+  ¶ start | "w=320 · max-w=360"{body 18pt fg}
+textbox "p s4.1.1.1"
+  ¶ start | "수치는 논리 스테이지 px다."{body 18pt fg}
+textbox "p s4.1.2.0"
+  ¶ start | "ratio=16:9"{body 18pt fg}
+textbox "p s4.2.0"
+  ¶ start | "wrap 1"{body 18pt fg}
+textbox "p s4.2.1"
+  ¶ start | "wrap 2"{body 18pt fg}
+textbox "p s4.2.2"
+  ¶ start | "wrap 3"{body 18pt fg}
+textbox "p s4.2.3"
+  ¶ start | "wrap 4"{body 18pt fg}
+textbox "p s4.2.4"
+  ¶ start | "wrap 5"{body 18pt fg}
+textbox "p s4.2.5"
+  ¶ start | "wrap 6"{body 18pt fg}
+# slide 6 style-placement
+textbox "h2 s5.0"
+  ¶ start | "탈출구는 배치까지다"{heading 27pt b fg}
+textbox "p s5.1.0"
+  ¶ start | "배치 선언은 경고 없이 통과한다."{body 18pt fg}
+textbox "p s5.1.1.0"
+  ¶ start | "레이아웃 속성으로 못 적는 배치가 여기로 온다."{body 18pt fg}
+textbox "p s5.2"
+  ¶ start | "블록에도 배치 탈출구가 열려 있다."{body 18pt fg}
+# slide 7 style-appearance-warning
+textbox "h2 s6.0"
+  ¶ start | "외관을 style로 쓰면 웹 전용이 된다"{heading 27pt b fg}
+textbox "p s6.1.0"
+  ¶ start | "배경색은 PPTX로 넘어가지 않는다 — 경고가 붙는다."{body 18pt fg}
+textbox "p s6.1.1"
+  ¶ start | "테두리도 외관이다."{body 18pt fg}
+# slide 8 slide-justify
+textbox "text s7.0"
+  ¶ start | "위에서 시작한다"{heading 27pt b fg}
+textbox "text s7.1"
+  ¶ start | "가운데 블록은 남은 공간이 나눠 준 자리에 앉는다. 랩퍼 없이 스테이지가 직접 분배하므로 이 세 블록은 모두 슬라이드 직계 자식이다."{body 18pt fg}
+textbox "text s7.2"
+  ¶ start | "아래 끝에 닿는다"{body 13.5pt muted}

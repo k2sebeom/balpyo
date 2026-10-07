@@ -140,6 +140,9 @@ type themePackage struct {
 	// 선언 순서가 곧 슬라이드에 실리는 순서이므로(웹 DOM · PPTX 도형 순서) 맵이 아니라
 	// 목록이다: 맵으로 두면 두 타깃의 산출물 순서가 실행마다 달라진다.
 	chrome []chromeDecl
+	// lint는 로컬 테마의 레이아웃 CSS 진단이다 (theme_lint.go). 로드를 멈추는 에러와 달리 경고가
+	// 섞이므로 error가 아니라 진단 목록으로 나르고, 값 층(Resolve)이 덱 진단의 맨 앞에 싣는다.
+	lint soml.Diagnostics
 }
 
 // chromeDecls는 이 테마의 크롬 선언이다 (선언 순서).
@@ -499,6 +502,9 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 		return pkg, err
 	}
 	if err := requireComponents(tokens, comps); err != nil {
+		return pkg, err
+	}
+	if err := requireComponentColors(tokens, comps); err != nil {
 		return pkg, err
 	}
 	pkg.components = comps

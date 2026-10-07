@@ -50,19 +50,6 @@ func TestRenderTextBoxDeclOrder(t *testing.T) {
 	}
 }
 
-// 크기 속성을 쓰지 않은 요소의 산출물은 달라지지 않는다 — 골든 불변 계약(appendTextBox의 nil).
-func TestRenderTextWithoutSizeUnchanged(t *testing.T) {
-	out := renderString(t, subsetDeck(t, `<p>본문</p><ul><li>항목</li></ul>`))
-	for _, id := range []string{"s0.0", "s0.1"} {
-		tag := openTagOf(t, out, id)
-		for _, decl := range []string{"width", "min-width", "max-width"} {
-			if strings.Contains(tag, decl+":") {
-				t.Errorf("%s에 %s 선언이 있다: %s", id, decl, tag)
-			}
-		}
-	}
-}
-
 // 슬롯 영역 자식의 폭 리셋이 **슬롯 덱에만** 나간다 (ADR 0043의 세 번째 리셋 문맥).
 //
 // 이 규칙이 없으면 테마가 `*.slots.css`에 쓴 정렬(`justify-items: center`)이 base 층

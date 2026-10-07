@@ -1,0 +1,16 @@
+# slide 1 code-go
+textbox "text s0.0" ph=title/0
+  ¶ start | "코드 하이라이팅 — go"{heading 27pt b fg}
+textbox "pre s0.1" ph=body/1
+  ¶ start | "// TTL에 지터를 준다 — 만료가 한 시각에 몰리지 않는다."{mono 15pt muted} · ⏎ · "func"{mono 15pt accent6} · " "{mono 15pt fg} · "warm"{mono 15pt accent1} · "(ctx context.Context, ids []"{mono 15pt fg} · "string"{mono 15pt accent6} · ") "{mono 15pt fg} · "error"{mono 15pt accent6} · " {"{mono 15pt fg} · ⏎ · "  "{mono 15pt fg} · "for"{mono 15pt accent6} · " _, id := "{mono 15pt fg} · "range"{mono 15pt accent6} · " ids {"{mono 15pt fg} · ⏎ · "    ttl := "{mono 15pt fg} · "30"{mono 15pt accent4} · "*time.Minute + "{mono 15pt fg} · "jitter"{mono 15pt accent1} · "(id)"{mono 15pt fg} · ⏎ · "    "{mono 15pt fg} · "if"{mono 15pt accent6} · " err := cache."{mono 15pt fg} · "Set"{mono 15pt accent1} · "(ctx, "{mono 15pt fg} · "key"{mono 15pt accent1} · "(id), "{mono 15pt fg} · "load"{mono 15pt accent1} · "(id), ttl); err != "{mono 15pt fg} · "nil"{mono 15pt accent6} · " {"{mono 15pt fg} · ⏎ · "      "{mono 15pt fg} · "return"{mono 15pt accent6} · " err"{mono 15pt fg} · ⏎ · "    }"{mono 15pt fg} · ⏎ · "  }"{mono 15pt fg} · ⏎ · "  "{mono 15pt fg} · "return"{mono 15pt accent6} · " "{mono 15pt fg} · "nil"{mono 15pt accent6} · ⏎ · "}"{mono 15pt fg}
+textbox "text s0.2" ph=body/2
+  ¶ start | "탭은 테마가 정한 폭으로 펴진다 — gofmt 출력을 그대로 붙인다."{body 13.5pt muted}
+# slide 2 code-markup
+textbox "h2 s1.0"
+  ¶ start | "마크업과 설정과 셸"{heading 27pt b fg}
+textbox "pre s1.1.0"
+  ¶ start | "<slide"{mono 15pt accent1} · " "{mono 15pt fg} · "layout="{mono 15pt accent2} · "\"code\""{mono 15pt accent3} · ">"{mono 15pt accent1} · ⏎ · "  "{mono 15pt fg} · "<text"{mono 15pt accent1} · " "{mono 15pt fg} · "slot="{mono 15pt accent2} · "\"title\""{mono 15pt accent3} · ">"{mono 15pt accent1} · "제목"{mono 15pt fg} · "</text>"{mono 15pt accent1} · ⏎ · "  "{mono 15pt fg} · "<pre"{mono 15pt accent1} · " "{mono 15pt fg} · "slot="{mono 15pt accent2} · "\"code\""{mono 15pt accent3} · " "{mono 15pt fg} · "lang="{mono 15pt accent2} · "\"go\""{mono 15pt accent3} · ">"{mono 15pt accent1} · "x := 1"{mono 15pt fg} · "</pre>"{mono 15pt accent1} · ⏎ · "</slide>"{mono 15pt accent1}
+textbox "pre s1.1.1"
+  ¶ start | "{"{mono 15pt fg} · ⏎ · "  "{mono 15pt fg} · "\"title\""{mono 15pt accent1} · ": "{mono 15pt fg} · "\"분기 리뷰\""{mono 15pt accent3} · ","{mono 15pt fg} · ⏎ · "  "{mono 15pt fg} · "\"aspect\""{mono 15pt accent1} · ": "{mono 15pt fg} · "\"16:9\""{mono 15pt accent3} · ","{mono 15pt fg} · ⏎ · "  "{mono 15pt fg} · "\"presenter\""{mono 15pt accent1} · ": "{mono 15pt fg} · "true"{mono 15pt accent6} · ⏎ · "}"{mono 15pt fg}
+textbox "pre s1.2"
+  ¶ start | "#!/bin/bash"{mono 15pt muted} · ⏎ · "balpyo build --target html,pptx   "{mono 15pt fg} · "# $PWD/dist 에 쓴다"{mono 15pt muted}

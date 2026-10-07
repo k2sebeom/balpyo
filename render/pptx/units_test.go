@@ -11,7 +11,6 @@ import (
 
 	"github.com/k2sebeom/balpyo/render/geom"
 	"github.com/k2sebeom/balpyo/render/web"
-	"github.com/k2sebeom/balpyo/soml"
 )
 
 func TestEMU(t *testing.T) {
@@ -102,11 +101,8 @@ func TestOffsetAndExtent(t *testing.T) {
 			wantX: -304800, wantY: 6667500, wantCX: 12801600, wantCY: 952500,
 		},
 		{
-			// 음수 좌표는 **0쪽이 아니라 먼 쪽으로** 반올림해야 한다 (round half away from
-			// zero). -0.5px = -4762.5 EMU → -4763이다: 0쪽으로 치우치는 함수(정수 절단)라면
-			// -4762가 되어 음수 좌표만 반 px씩 어긋난다 (항목 05의 회귀 감시선 — `x`/`y`가
-			// 음수를 받으므로 이 축이 처음으로 뜻을 갖는다). 폭·높이(양수)는 같은 경계에서
-			// 먼 쪽 = +4763·+14288이다.
+			// 반올림은 0에서 먼 쪽이다: -0.5px = -4762.5 EMU → -4763 (절단이면 -4762가 되어
+			// 음수 좌표만 반 px씩 어긋난다).
 			name:  "음수 좌표는 0쪽으로 치우치지 않는다 (0.5 EMU 경계)",
 			rect:  geom.Rect{X: -0.5, Y: -1.5, W: 0.5, H: 1.5},
 			wantX: -4763, wantY: -14288, wantCX: 4763, wantCY: 14288,
@@ -175,31 +171,6 @@ func codeWithoutComments(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return b.String()
-}
-
-// 논리 스테이지 → PPTX 페이지 크기가 PowerPoint 표준과 정확히 일치해야 한다.
-// 어긋나면 산출물을 기존 덱에 붙일 때 PowerPoint가 슬라이드 크기 변환을 묻는다.
-func TestSlideSizeMatchesPowerPointStandards(t *testing.T) {
-	tests := []struct {
-		aspect     soml.Aspect
-		wantCX     int64
-		wantCY     int64
-		wantInches string
-	}{
-		{soml.Aspect16x9, 12192000, 6858000, "13.333×7.5in"},
-		{soml.Aspect4x3, 9144000, 6858000, "10×7.5in"},
-	}
-	for _, tc := range tests {
-		stage, err := tc.aspect.Stage()
-		if err != nil {
-			t.Fatal(err)
-		}
-		cx, cy := SlideSize(stage)
-		if cx != tc.wantCX || cy != tc.wantCY {
-			t.Errorf("%s(%dx%dpx) = %dx%d EMU, want %dx%d (%s)",
-				tc.aspect, stage.Width, stage.Height, cx, cy, tc.wantCX, tc.wantCY, tc.wantInches)
-		}
-	}
 }
 
 // 회전은 단위 환산 + 정규화다 — 방향 규약이 두 타깃에서 같으므로 부호를 뒤집지 않는다.

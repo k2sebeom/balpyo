@@ -2,21 +2,19 @@ package soml
 
 import "testing"
 
+// 파일 전체를 가리키는 진단(빈 Span)은 위치 없이 포맷된다.
 func TestDiagnosticString(t *testing.T) {
 	span := SpanOf(Pos{Offset: 10, Line: 3, Col: 5}, Pos{Offset: 15, Line: 3, Col: 10})
-	got := Errorf("slides/001_title.slide", span, "알 수 없는 태그 %q", "sldie").String()
-	want := `slides/001_title.slide:3:5: error: 알 수 없는 태그 "sldie"`
-	if got != want {
-		t.Errorf("got  %q\nwant %q", got, want)
-	}
-}
-
-func TestDiagnosticStringWithoutPosition(t *testing.T) {
-	// 파일 전체를 가리키는 진단은 위치 없이 포맷된다.
-	got := Warningf("balpyo.json", Span{}, "테마를 찾지 못해 기본 테마로 폴백했다").String()
-	want := "balpyo.json: warning: 테마를 찾지 못해 기본 테마로 폴백했다"
-	if got != want {
-		t.Errorf("got  %q\nwant %q", got, want)
+	for _, tc := range []struct {
+		diag Diagnostic
+		want string
+	}{
+		{Errorf("slides/001_title.slide", span, "알 수 없는 태그 %q", "sldie"), `slides/001_title.slide:3:5: error: 알 수 없는 태그 "sldie"`},
+		{Warningf("balpyo.json", Span{}, "테마를 찾지 못해 기본 테마로 폴백했다"), "balpyo.json: warning: 테마를 찾지 못해 기본 테마로 폴백했다"},
+	} {
+		if got := tc.diag.String(); got != tc.want {
+			t.Errorf("got  %q\nwant %q", got, tc.want)
+		}
 	}
 }
 
