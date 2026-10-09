@@ -7,7 +7,7 @@ MKDOCS := $(VENV)/bin/mkdocs
 # Chromium/Chrome만 있으면 된다 (없으면 그 테스트는 건너뛴다 — BALPYO_TEST_STRICT=1이면 실패).
 GOFLAGS ?=
 
-.PHONY: help test examples golden dist docs docs-serve docs-clean clean
+.PHONY: help test examples showcase golden dist docs docs-serve docs-clean clean
 
 help: ## 사용 가능한 타깃 목록
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -20,6 +20,39 @@ test: ## 전체 테스트 (CI의 게이트와 같은 명령)
 # 픽스처 스위트 전체를 기다리지 않게 하는 입구다 — 새 CI 잡은 없다.
 examples: ## 예제 덱 · 예제 테마를 경고 0으로 빌드하는지 확인 (make test에도 포함)
 	go test ./internal/testkit -run 'TestExamplesBuildClean|TestExampleThemesBuildEveryDeck' -v -count=1
+
+# README의 쇼케이스: 예제 덱의 산출물(웹 · PPTX)과 슬라이드 스크린샷을 examples/showcase/에 만든다.
+# 커밋하는 산출물이라 렌더 결과가 바뀌면 이 타깃을 다시 돌려 함께 커밋한다. 스크린샷은 웹 렌더다
+# (balpyo preview --target html — 브라우저만 있으면 된다). 예제 테마는 덱마다 themes/에 넣어 둔다.
+SHOWCASE        := examples/showcase
+SHOWCASE_SLIDES := balpyo-intro:04 balpyo-intro:07 incident-postmortem:03 incident-postmortem:05 incident-postmortem:08 quarterly-review:05
+SHOWCASE_THEMED := balpyo-intro:01 balpyo-intro:06
+SHOWCASE_THEMES := minimal editorial ink harbor
+
+showcase: ## README 쇼케이스(예제 덱 산출물 · 스크린샷)를 examples/showcase/에 다시 만든다
+	@set -e; tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+	go build -o "$$tmp/balpyo" ./cmd/balpyo; \
+	rm -rf $(SHOWCASE)/decks $(SHOWCASE)/images; mkdir -p $(SHOWCASE)/images/themes; \
+	for dir in examples/decks/*/; do \
+		deck=$$(basename $$dir); proj="$$tmp/$$deck"; \
+		mkdir -p "$$proj/themes"; cp -R $$dir. "$$proj/"; cp -R examples/themes/. "$$proj/themes/"; \
+		"$$tmp/balpyo" build --project "$$proj" --target html,pptx --strict --out "$(CURDIR)/$(SHOWCASE)/decks/$$deck"; \
+		"$$tmp/balpyo" preview --project "$$proj" --target html --out "$$tmp/out-$$deck" --gallery "$$tmp/gallery-$$deck" >/dev/null; \
+	done; \
+	for pick in $(SHOWCASE_SLIDES); do \
+		deck=$${pick%%:*}; n=$${pick##*:}; \
+		cp "$$tmp"/gallery-$$deck/*/$$n-web.png $(SHOWCASE)/images/$$deck-$$n.png; \
+	done; \
+	for theme in $(SHOWCASE_THEMES); do \
+		for deck in $$(printf '%s\n' $(SHOWCASE_THEMED) | cut -d: -f1 | sort -u); do \
+			"$$tmp/balpyo" preview --project "$$tmp/$$deck" --theme $$theme --target html --out "$$tmp/out-$$deck-$$theme" --gallery "$$tmp/gallery-$$deck-$$theme" >/dev/null; \
+		done; \
+		for pick in $(SHOWCASE_THEMED); do \
+			deck=$${pick%%:*}; n=$${pick##*:}; \
+			cp "$$tmp"/gallery-$$deck-$$theme/*/$$n-web.png $(SHOWCASE)/images/themes/$$deck-$$n-$$theme.png; \
+		done; \
+	done; \
+	echo "쇼케이스: $(SHOWCASE)/"
 
 golden: ## 골든 갱신 (변경은 구현 커밋과 함께 검토한다)
 	BALPYO_UPDATE_GOLDEN=1 go test ./... -run 'TestFixtures|TestGolden' -count=1

@@ -29,5 +29,11 @@ cp -R examples/themes/harbor my-deck/themes/harbor
 balpyo build --project my-deck --theme harbor
 ```
 
+## `showcase/` — 렌더 결과
+
+저장소 [README](../README.md)의 쇼케이스다: 위의 덱을 렌더한 산출물(`decks/<덱>/index.html` ·
+`.pptx`)과 슬라이드 스크린샷(`images/`). `index.html`은 브라우저로, `.pptx`는 PowerPoint나
+Keynote로 열어 본다.
+
 포맷은 [테마 패키지 레퍼런스](../docs/reference/theme.md)에, 만드는 법은
 [테마 고르기·만들기](../docs/guides/theming.md)에 있다.
