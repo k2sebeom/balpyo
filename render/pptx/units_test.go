@@ -229,6 +229,7 @@ func TestAdjustValue(t *testing.T) {
 	radiusSpec := web.ShapeAdjust{Name: "adj", Base: 100000, Axis: web.AdjustAxisRadius, Max: 50000}
 	widthSpec := web.ShapeAdjust{Name: "adj", Base: 50000, Axis: web.AdjustAxisWidth}
 	heightSpec := web.ShapeAdjust{Name: "adj", Base: 25000, Axis: web.AdjustAxisHeight}
+	exceedSpec := web.ShapeAdjust{Name: "adj", Base: 50000, Axis: web.AdjustAxisWidth, Exceed: true}
 
 	tests := []struct {
 		name   string
@@ -255,6 +256,11 @@ func TestAdjustValue(t *testing.T) {
 		// 크기 0 도형은 그릴 것이 없다 — 0으로 나눈 Inf가 val에 실리면 파일이 열리지 않는다.
 		{"크기 0", radiusSpec, geom.Rect{}, 12, 0},
 		{"높이 0", widthSpec, geom.Rect{W: 200}, 0, 0},
+		// 한 단위 넘기기: 정확한 값이면 +1, 소수면 올림 + 1이다 — 반올림이 내렸을 자리에서도 공식의 값보다
+		// 언제나 크다.
+		{"넘기기/정확", exceedSpec, geom.Rect{W: 200, H: 100}, 0, 100001},
+		{"넘기기/좁음", exceedSpec, geom.Rect{W: 100, H: 300}, 0, 50001},
+		{"넘기기/소수", exceedSpec, geom.Rect{W: 100, H: 30}, 0, 166668},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

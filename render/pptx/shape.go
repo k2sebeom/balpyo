@@ -945,7 +945,7 @@ func shapeBodyXML(elem *soml.Element, style soml.ShapeStyle, rect geom.Rect, the
 	if err != nil {
 		return "", err
 	}
-	insets, err := bodyInsets(style.Pad, style.Type, rect)
+	insets, err := bodyInsets(style.Pad)
 	if err != nil {
 		return "", err
 	}
@@ -1024,11 +1024,9 @@ func bodyAnchorValue(anchor soml.TextAnchor) (string, error) {
 // 근사해서 내면 도형 안 글자 위치가 조용히 어긋나므로 — 두 타깃이 다른 값을 쓰는 것을
 // 렌더러가 아는 순간 멈추는 편이 낫다 (해석되지 않은 값을 에러로 두는 것과 같은 태도).
 //
-// 프리셋이 들고 있는 rect가 우리가 쓰는 텍스트 영역과 다르면 그 몫을 **뺀다**
-// (web.ShapeTextCancel — chevron 하나다): 인셋은 뷰어가 프리셋의 rect **안쪽으로** 더 들어가는
-// 값이므로, 음수 인셋이 그 rect를 우리 영역까지 되돌린다. 값이 잰 박스에 달렸기 때문에
-// (백분율) 이 함수가 rect를 받는다 — 조정값 보정(AdjustValue)과 같은 구조다.
-func bodyInsets(pad *soml.Pad, shapeType string, rect geom.Rect) (string, error) {
+// 프리셋의 텍스트 영역은 인셋으로 보정하지 않는다 — 웹이 그 영역을 읽어 맞추고(web.ShapeTextRect),
+// 프리셋 rect가 박스와 갈라질 조정값(chevron)은 조정값 쪽에서 피한다(web.ShapeAdjust.Exceed).
+func bodyInsets(pad *soml.Pad) (string, error) {
 	insets := [4]int64{}
 	if pad != nil {
 		for i, side := range [4]soml.Length{pad.Left, pad.Top, pad.Right, pad.Bottom} {
@@ -1037,18 +1035,6 @@ func bodyInsets(pad *soml.Pad, shapeType string, rect geom.Rect) (string, error)
 					side.Value)
 			}
 			insets[i] = EMU(side.Value)
-		}
-	}
-	cancel, ok := web.ShapeTextCancel(shapeType)
-	if !ok {
-		// 어휘에 있는데 표에 없는 프리셋이다 — 조용히 0으로 두면 그 도형의 글자만 뷰어의
-		// rect에 갇힌다 (shapeGeometryOf를 에러로 둔 것과 같은 근거).
-		return "", fmt.Errorf("도형 type %q의 텍스트 영역 보정이 없다", shapeType)
-	}
-	if cancel.HasPercent() {
-		left, top, right, bottom := cancel.Px(rect.W, rect.H, 0)
-		for i, px := range [4]float64{left, top, right, bottom} {
-			insets[i] -= EMU(px)
 		}
 	}
 	return fmt.Sprintf(`lIns="%d" tIns="%d" rIns="%d" bIns="%d"`,

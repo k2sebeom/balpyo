@@ -172,6 +172,11 @@ func AdjustValue(spec web.ShapeAdjust, rect geom.Rect, radius float64) (int64, e
 		return 0, nil
 	}
 	val := math.Round(spec.Base * value / ss)
+	if spec.Exceed {
+		// 공식의 값에서 정확히 0이 되는 분기를 어느 엔진이든 같은 쪽으로 읽게 한 단위 넘긴다
+		// (web.ShapeAdjust.Exceed).
+		val = math.Ceil(spec.Base*value/ss) + 1
+	}
 	if spec.Max > 0 && val > spec.Max {
 		val = spec.Max
 	}

@@ -2,6 +2,7 @@ package pptx
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 
@@ -119,7 +120,9 @@ func TestRenderShapeAdjustments(t *testing.T) {
 		{"rounded-rect", []string{`<a:gd name="adj" fmla="val 10909"/>`}},
 		// h가 곧 ss이므로 프리셋 기본값 그대로다 (25000).
 		{"cylinder", []string{`<a:gd name="adj" fmla="val 25000"/>`}},
-		{"chevron", []string{`<a:gd name="adj" fmla="val 100000"/>`}},
+		// 노치 = 폭/2가 정확히 100000이라 한 단위 넘긴다 — 텍스트 영역 분기(dx = 0)를 어느
+		// 엔진이든 박스 전체로 읽게 한다.
+		{"chevron", []string{`<a:gd name="adj" fmla="val 100001"/>`}},
 		// rightArrow는 adj2만 싣는다 — adj1은 h 기준이라 프리셋 기본값이 산다.
 		{"arrow-right", []string{`<a:gd name="adj2" fmla="val 100000"/>`}},
 		{"hexagon", []string{`<a:gd name="adj" fmla="val 50000"/>`}},
@@ -308,25 +311,20 @@ func TestRenderShapeRotateAndFlip(t *testing.T) {
 	}
 }
 
-// chevron의 프리셋 rect는 폭 0 열(`x1 = x2 = w/2`)이라 좌우 인셋이 **음수**로 그 폭을
-// 되돌린다 — 되돌리지 않으면 뷰어가 글자를 한 자씩 세로로 쌓는다.
-// 세로는 0이다 — chevron 프리셋의 rect는 위아래가 박스와 같다.
-func TestRenderChevronCancelsItsTextRect(t *testing.T) {
+// chevron의 텍스트 영역은 인셋으로 되돌리지 않는다 — 조정값이 노치를 폭의 절반보다 한 단위 넘겨
+// 프리셋 공식(`il = ?: dx x1 l`)의 dx가 음수가 되고, 명세대로 읽든 LibreOffice처럼 읽든 영역이
+// 박스 전체다. 음수 인셋으로 폭 0 열을 되돌리던 때는 명세대로 읽는 엔진(OnlyOffice)에서 글자가
+// 박스 왼쪽 밖으로 반 폭만큼 밀렸다.
+func TestRenderChevronTextIsTheWholeBox(t *testing.T) {
 	shape := geom.Rect{X: 64, Y: 64, W: 280, H: 120}
-	cancel := EMU(shape.W / 2)
 	for _, tc := range []struct {
 		name  string
 		attrs string
 		want  string
 	}{
-		{"pad 없는 chevron", `type="chevron"`,
-			fmt.Sprintf(`lIns="%d" tIns="0" rIns="%d" bIns="0"`, -cancel, -cancel)},
-		// `pad`는 보정 **위에** 더해진다 — 뜻이 "텍스트 영역 안쪽으로"이므로 두 값이 한 축에서
-		// 만나고, 웹에서도 같은 여백이 같은 자리에 들어간다.
+		{"pad 없는 chevron", `type="chevron"`, `lIns="0" tIns="0" rIns="0" bIns="0"`},
 		{"pad 있는 chevron", `type="chevron" pad="16"`,
-			fmt.Sprintf(`lIns="%d" tIns="%d" rIns="%d" bIns="%d"`,
-				EMU(16)-cancel, EMU(16), EMU(16)-cancel, EMU(16))},
-		{"보정 없는 프리셋", `type="rect"`, `lIns="0" tIns="0" rIns="0" bIns="0"`},
+			fmt.Sprintf(`lIns="%d" tIns="%d" rIns="%d" bIns="%d"`, EMU(16), EMU(16), EMU(16), EMU(16))},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			deck := resolvedDeck(t, fmt.Sprintf(`<slide>
@@ -338,6 +336,17 @@ func TestRenderChevronCancelsItsTextRect(t *testing.T) {
 				geom.Rect{X: 64, Y: 100, W: 280, H: 30}))
 			if !strings.Contains(xml, tc.want) {
 				t.Errorf("slide1.xml에 %q가 없다\n%s", tc.want, xml)
+			}
+			// 프리셋 공식으로 dx = w − 2·x1 = w − 2·ss·adj/100000 < 0이어야 한다.
+			var adj int64
+			at := strings.Index(xml, `<a:gd name="adj" fmla="val `)
+			if at < 0 {
+				t.Fatalf("chevron 조정값이 없다\n%s", xml)
+			}
+			fmt.Sscanf(xml[at+len(`<a:gd name="adj" fmla="val `):], "%d", &adj)
+			ss := math.Min(shape.W, shape.H)
+			if dx := shape.W - 2*ss*float64(adj)/100000; dx >= 0 {
+				t.Errorf("adj %d에서 dx = %v — 텍스트 영역이 엔진마다 갈린다 (음수여야 한다)", adj, dx)
 			}
 		})
 	}
