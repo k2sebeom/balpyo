@@ -185,13 +185,36 @@ func requireComponents(theme soml.Theme, comps components) error {
 // `check`는 렌더하지 않으므로 통과하고 `build`만 실패한다. 역할의 색(requireComponents)과 같은
 // 자리에서 같은 태도로 멈춰, 진단이 고칠 파일(components.json)과 자리를 가리킨다.
 func requireComponentColors(theme soml.Theme, comps components) error {
+	// 토큰 참조는 셋이다: 토큰 이름, 변형된 토큰(`shade(accent1, 20%)`), 스톱이 전부 토큰인 그라디언트.
+	// 셋 다 PPTX에서 `schemeClr` 참조로 남아 테마 색 편집을 따라간다. 리터럴(`#FF9900`, 리터럴 스톱)은 아니다.
+	// notRef는 참조가 아닌 조각(리터럴 · 모르는 이름)을 돌려준다 — 그라디언트면 그 스톱이다.
+	notRef := func(c soml.Color) (string, bool) {
+		one := func(c soml.Color) (string, bool) {
+			if !c.IsToken() {
+				return "#" + c.RGB, true
+			}
+			if _, ok := theme.Color(c.Token); !ok {
+				return c.Token, true
+			}
+			return "", false
+		}
+		if c.IsGradient() {
+			for _, stop := range c.Gradient.Stops {
+				if bad, ok := one(stop); ok {
+					return bad, true
+				}
+			}
+			return "", false
+		}
+		return one(c)
+	}
 	check := func(where string, color *soml.Color) error {
 		if color == nil {
 			return nil
 		}
-		if _, ok := theme.Color(color.Token); !color.IsToken() || !ok {
-			return fmt.Errorf("components.json의 %s %q가 이 테마의 색 토큰이 아니다 — 테마는 색 토큰 이름만 쓴다 (이 테마: %s)",
-				where, color.Token, strings.Join(theme.ColorNames(), ", "))
+		if bad, ok := notRef(*color); ok {
+			return fmt.Errorf("components.json의 %s %q가 이 테마의 색 토큰 참조가 아니다 — 테마는 색 토큰 이름(변형 · 토큰 그라디언트 포함)만 쓴다 (이 테마: %s)",
+				where, bad, strings.Join(theme.ColorNames(), ", "))
 		}
 		return nil
 	}

@@ -728,7 +728,10 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 			patch.weight = d.Weight
 		}
 		if d.Color != nil {
-			c := soml.TokenColor(*d.Color)
+			c, err := themeColor(theme, fmt.Sprintf("text.componentDefaults %q의 color", d.key()), *d.Color)
+			if err != nil {
+				return comps, err
+			}
 			patch.color = &c
 		}
 		switch {
@@ -758,7 +761,10 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 			patch.weight = v.Weight
 		}
 		if v.Color != nil {
-			c := soml.TokenColor(*v.Color)
+			c, err := themeColor(theme, fmt.Sprintf("text variant %q의 color", v.Name), *v.Color)
+			if err != nil {
+				return comps, err
+			}
 			patch.color = &c
 		}
 		comps.textVariants = append(comps.textVariants, textVariant{name: v.Name, patch: patch})
@@ -894,14 +900,14 @@ func shadowToken(theme soml.Theme, name string) *soml.ShadowToken {
 func shapePatchFromFile(theme soml.Theme, fill, border, radius, shadow string) (shapePatch, error) {
 	var patch shapePatch
 	if fill != "" {
-		f, err := fillFromString(fill)
+		f, err := themeFill(theme, fill)
 		if err != nil {
 			return patch, err
 		}
 		patch.fill = f
 	}
 	if border != "" {
-		b, err := borderFromString(border)
+		b, err := themeBorder(theme, border)
 		if err != nil {
 			return patch, err
 		}
@@ -936,7 +942,7 @@ func shapeVariantPatchFromFile(theme soml.Theme, v shapeVariantFile) (shapePatch
 func imageVariantPatchFromFile(theme soml.Theme, v imageVariantFile) (imagePatch, error) {
 	var patch imagePatch
 	if v.Border != nil {
-		b, err := borderFromString(*v.Border)
+		b, err := themeBorder(theme, *v.Border)
 		if err != nil {
 			return patch, err
 		}
@@ -949,6 +955,56 @@ func imageVariantPatchFromFile(theme soml.Theme, v imageVariantFile) (imagePatch
 		patch.shadow = shadowToken(theme, *v.Shadow)
 	}
 	return patch, nil
+}
+
+// themeFill · themeBorder · themeColor는 테마 파일의 외관 문자열을 **저자의 값 문법 그대로** 읽는다 —
+// 인라인 `fill`·`border`·`color`를 해석하는 같은 함수(resolver)를 지난다.
+//
+// 같은 함수인 이유: 테마가 `gradient(accent1 accent6)`·`shade(accent1, 20%)`·`4 gradient(accent1 muted)`를
+// 쓰려면 그 문법이 테마에서도 같은 뜻이어야 한다. 테마용 축약 파서를 따로 두면 그 파서가 아는 것만
+// 테마에 열리고(그라디언트가 그렇게 막혀 있었다), 같은 값이 자리에 따라 다르게 읽힌다. 진단은 파일
+// 위치가 없으므로 메시지만 에러로 올린다 — 위치는 호출자가 감싸는 자리 이름이 말한다. 토큰 참조만
+// 쓰는지(리터럴 금지)는 이 문법의 몫이 아니라 requireComponentColors의 몫이다.
+func themeFill(theme soml.Theme, raw string) (*soml.Fill, error) {
+	r := &resolver{theme: theme}
+	f, ok := r.fill(soml.Attr{Name: "fill", Value: raw, HasValue: true})
+	if err := themeValueErr(r, ok); err != nil {
+		return nil, err
+	}
+	return &f, nil
+}
+
+func themeBorder(theme soml.Theme, raw string) (*soml.Border, error) {
+	r := &resolver{theme: theme}
+	b, ok := r.border(soml.Attr{Name: "border", Value: raw, HasValue: true})
+	if err := themeValueErr(r, ok); err != nil {
+		return nil, err
+	}
+	return &b, nil
+}
+
+func themeColor(theme soml.Theme, where, raw string) (soml.Color, error) {
+	r := &resolver{theme: theme}
+	c, ok := r.colorValue(where, raw, soml.Span{})
+	if err := themeValueErr(r, ok); err != nil {
+		return soml.Color{}, err
+	}
+	return c, nil
+}
+
+// themeValueErr는 테마 값 하나를 읽은 resolver의 진단을 에러 하나로 모은다.
+func themeValueErr(r *resolver, ok bool) error {
+	if len(r.diags) == 0 && ok {
+		return nil
+	}
+	msgs := make([]string, 0, len(r.diags))
+	for _, d := range r.diags {
+		msgs = append(msgs, d.Message)
+	}
+	if len(msgs) == 0 {
+		msgs = append(msgs, "값을 해석할 수 없다")
+	}
+	return errors.New(strings.Join(msgs, "; "))
 }
 
 // fillFromString은 `none` 또는 색 토큰명을 *soml.Fill로 눕힌다 (colorFill/soml.NoFill과 같은

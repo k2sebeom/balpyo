@@ -23,6 +23,12 @@
         "name": "tagline",
         "size": 28,
         "color": "accent1"
+      },
+      {
+        "name": "brand",
+        "size": 40,
+        "weight": 700,
+        "color": "gradient(accent1 accent6, 90deg)"
       }
     ]
   },
@@ -30,7 +36,15 @@
     "default": {
       "fill": "surface",
       "radius": "xl"
-    }
+    },
+    "variants": [
+      {
+        "name": "hero",
+        "fill": "gradient(accent1 accent6, 135deg)",
+        "border": "4 gradient(accent6 accent1)",
+        "radius": "xl"
+      }
+    ]
   },
   "code": {
     "tokens": [

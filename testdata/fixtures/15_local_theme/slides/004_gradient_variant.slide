@@ -1,0 +1,15 @@
+<!-- 테마가 그라디언트를 소유한다. corp의 `hero` 도형 variant는 채움과 테두리가 토큰 그라디언트이고,
+     `brand` 텍스트 variant는 글자색이 그라디언트다 — 원고에는 variant 이름만 있다. 스톱이 전부
+     토큰이라 PPTX에서 `schemeClr` 스톱으로 남아 테마 색 편집을 따라간다 (리터럴 스톱은 로딩 에러다).
+     variant를 쓴 도형과 같은 값을 인라인으로 쓴 도형이 나란히 있다: 두 도형의 외관이 같아야 한다. -->
+<slide id="local-theme-gradient" layout="content">
+  <text slot="title" variant="brand">테마가 가진 그라디언트</text>
+  <row slot="body" gap="md">
+    <shape type="rounded-rect" variant="hero" w="360" h="160" pad="md">
+      <text color="bg" align="center" anchor="center">variant="hero"</text>
+    </shape>
+    <shape type="rounded-rect" fill="gradient(accent1 accent6, 135deg)" border="4 gradient(accent6 accent1)" radius="xl" w="360" h="160" pad="md">
+      <text color="bg" align="center" anchor="center">같은 값을 인라인으로</text>
+    </shape>
+  </row>
+</slide>
