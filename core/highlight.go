@@ -113,8 +113,9 @@ func (r *resolver) codeLexer(attr soml.Attr) (string, bool) {
 			return lang.lexer, true
 		}
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 %s %q (쓸 수 있는 값: %s)",
-		soml.LangAttr, attr.Value, strings.Join(codeLangNames(), ", "))
+	langs := strings.Join(codeLangNames(), ", ")
+	r.errorf(attr.ValueSpan, "알 수 없는 %s %q%s (쓸 수 있는 값: %s)",
+		soml.LangAttr, attr.Value, didYouMean(attr.Value, langs), langs)
 	return "", false
 }
 

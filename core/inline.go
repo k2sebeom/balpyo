@@ -132,6 +132,6 @@ func (r *resolver) weight(attr soml.Attr) (int, bool) {
 		}
 		return 0, false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 weight %q (쓸 수 있는 값: normal, bold)", raw)
+	r.errorf(attr.ValueSpan, "알 수 없는 weight %q%s (쓸 수 있는 값: normal, bold)", raw, didYouMean(raw, "normal, bold"))
 	return 0, false
 }

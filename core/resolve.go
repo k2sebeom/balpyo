@@ -151,7 +151,8 @@ func (r *resolver) slideLayout(slide *soml.Slide) {
 			return
 		}
 	}
-	r.errorf(slide.LayoutSpan, "알 수 없는 layout %q (쓸 수 있는 layout: %s)", string(slide.Layout), layoutList())
+	r.errorf(slide.LayoutSpan, "알 수 없는 layout %q%s (쓸 수 있는 layout: %s)",
+		string(slide.Layout), didYouMean(string(slide.Layout), layoutList()), layoutList())
 	slide.Layout = soml.DefaultSlideLayout
 }
 
@@ -311,8 +312,8 @@ func (r *resolver) resolveSlot(elem *soml.Element, parent *soml.Element) {
 		return
 	}
 	if _, ok := soml.LayoutSlot(r.layout, attr.Value); !ok {
-		r.errorf(attr.ValueSpan, "레이아웃 %q에 없는 슬롯 %q (쓸 수 있는 슬롯: %s)",
-			string(r.layout), attr.Value, slotList(r.layout))
+		r.errorf(attr.ValueSpan, "레이아웃 %q에 없는 슬롯 %q%s (쓸 수 있는 슬롯: %s)",
+			string(r.layout), attr.Value, didYouMean(attr.Value, slotList(r.layout)), slotList(r.layout))
 		return
 	}
 	if _, ok := r.theme.SlotLayouts[string(r.layout)]; !ok {
@@ -443,8 +444,14 @@ func (r *resolver) variantAttr(elem *soml.Element) (soml.Attr, bool) {
 // 갈라지면 저자가 두 경고를 다른 규칙으로 읽는다. 어휘 종류를 문구에 적지 않은 이유는
 // 나열된 목록이 이미 그것을 말하기 때문이다 (`variant: kicker, lead`).
 func (r *resolver) warnUnknownVariant(attr soml.Attr, names []string) {
-	r.warnf(attr.ValueSpan, "variant %q가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: %s)",
-		attr.Value, strings.Join(names, ", "))
+	list := strings.Join(names, ", ")
+	// 후보는 괄호로 단다 — 이 문장은 이미 대시로 "그래도 계속한다"를 잇고 있다.
+	hint := ""
+	if guess, ok := soml.Suggest(attr.Value, names); ok {
+		hint = " (혹시 " + strconv.Quote(guess) + "?)"
+	}
+	r.warnf(attr.ValueSpan, "variant %q가 테마에 없다%s — 기본 외관으로 계속한다 (이 테마의 variant: %s)",
+		attr.Value, hint, list)
 }
 
 // 아래 넷은 텍스트 캐스케이드의 컴포넌트 기본값·variant 단을 **로드된 표**(r.comps)에서 읽는다.
@@ -523,7 +530,7 @@ func (r *resolver) role(elem *soml.Element) soml.TextRole {
 			return role
 		}
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 role %q (쓸 수 있는 역할: %s)", attr.Value, roleList())
+	r.errorf(attr.ValueSpan, "알 수 없는 role %q%s (쓸 수 있는 역할: %s)", attr.Value, didYouMean(attr.Value, roleList()), roleList())
 	return soml.DefaultTextRole
 }
 
@@ -601,8 +608,9 @@ func (r *resolver) simpleColor(name, raw string, span soml.Span) (soml.Color, bo
 		return soml.LiteralColor(rgb), true
 	}
 	if _, known := r.theme.Color(raw); !known {
-		r.errorf(span, "%s의 색 토큰 %q가 테마에 없다 (쓸 수 있는 토큰: %s, 또는 #RRGGBB 리터럴)",
-			name, raw, strings.Join(r.theme.ColorNames(), ", "))
+		names := strings.Join(r.theme.ColorNames(), ", ")
+		r.errorf(span, "%s의 색 토큰 %q가 테마에 없다%s (쓸 수 있는 토큰: %s, 또는 #RRGGBB 리터럴)",
+			name, raw, didYouMean(raw, names), names)
 		return soml.Color{}, false
 	}
 	return soml.TokenColor(raw), true
@@ -635,7 +643,8 @@ func (r *resolver) colorFunc(name, raw string, span soml.Span) (soml.Color, bool
 	case string(soml.ModAlpha):
 		return r.alphaFunc(name, inner, span, raw)
 	}
-	r.errorf(span, "알 수 없는 색 함수 %q (쓸 수 있는 함수: gradient, shade, tint, alpha) — %q", fn, raw)
+	r.errorf(span, "알 수 없는 색 함수 %q%s (쓸 수 있는 함수: gradient, shade, tint, alpha) — %q",
+		fn, didYouMean(fn, "gradient, shade, tint, alpha"), raw)
 	return soml.Color{}, false
 }
 
@@ -770,7 +779,7 @@ func (r *resolver) align(attr soml.Attr) (soml.TextAlign, bool) {
 		r.errorf(attr.ValueSpan, "align은 논리 이름을 쓴다 — %q 대신 %q (RTL에서도 뜻이 유지된다)", raw, string(physical))
 		return "", false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 align %q (쓸 수 있는 값: %s)", raw, alignList())
+	r.errorf(attr.ValueSpan, "알 수 없는 align %q%s (쓸 수 있는 값: %s)", raw, didYouMean(raw, alignList()), alignList())
 	return "", false
 }
 
@@ -949,6 +958,22 @@ func alignList() string {
 		names = append(names, string(align))
 	}
 	return strings.Join(names, ", ")
+}
+
+// didYouMean은 닫힌 목록(진단에 싣는 쉼표 목록 그대로)에서 raw의 오타 후보를 골라 진단 문구의 꼬리로
+// 만든다 — 없으면 빈 문자열이다.
+//
+// 목록 **문자열**을 받는 이유: 진단은 이미 그 목록을 싣고 있고, 후보를 같은 문자열에서 고르면 "목록에
+// 없는 이름을 권하는" 일이 구조적으로 생기지 않는다. 실제 오타는 편집 거리 1–2였다
+// (`two-colum`→`two-column` · `heding`→`heading` · `elipse`→`ellipse`).
+func didYouMean(raw, list string) string {
+	if list == "" {
+		return ""
+	}
+	if guess, ok := soml.Suggest(raw, strings.Split(list, ", ")); ok {
+		return " — 혹시 " + strconv.Quote(guess) + "?"
+	}
+	return ""
 }
 
 // layoutList는 진단에 실을 슬라이드 레이아웃 어휘 목록이다 — 어휘 정의(soml.SlideLayouts)와

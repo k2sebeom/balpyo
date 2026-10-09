@@ -145,7 +145,7 @@ func (r *resolver) chartType(elem *soml.Element) bool {
 			return true
 		}
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 차트 type %q (쓸 수 있는 종류: %s)", attr.Value, chartTypeList())
+	r.errorf(attr.ValueSpan, "알 수 없는 차트 type %q%s (쓸 수 있는 종류: %s)", attr.Value, didYouMean(attr.Value, chartTypeList()), chartTypeList())
 	return false
 }
 

@@ -317,8 +317,9 @@ func (r *resolver) lengthValue(name, raw string, span soml.Span, syntax lengthSy
 			return soml.SpaceLength(raw, token.Px), true
 		}
 		if !startsNumeric(raw) {
-			r.errorf(span, "알 수 없는 공간 토큰 %q (쓸 수 있는 토큰: %s, 또는 수치·백분율)",
-				raw, strings.Join(r.theme.SpaceNames(), ", "))
+			names := strings.Join(r.theme.SpaceNames(), ", ")
+			r.errorf(span, "알 수 없는 공간 토큰 %q%s (쓸 수 있는 토큰: %s, 또는 수치·백분율)",
+				raw, didYouMean(raw, names), names)
 			return soml.Length{}, false
 		}
 	} else if !startsNumeric(raw) {
@@ -514,7 +515,7 @@ func (r *resolver) boxAlign(attr soml.Attr) (soml.BoxAlign, bool) {
 		r.errorf(attr.ValueSpan, "%s는 접두 없는 이름을 쓴다 — %q 대신 %q", attr.Name, raw, string(logical))
 		return "", false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 %s %q (쓸 수 있는 값: %s)", attr.Name, raw, boxAlignList())
+	r.errorf(attr.ValueSpan, "알 수 없는 %s %q%s (쓸 수 있는 값: %s)", attr.Name, raw, didYouMean(raw, boxAlignList()), boxAlignList())
 	return "", false
 }
 
@@ -539,7 +540,7 @@ func (r *resolver) boxJustify(attr soml.Attr) (soml.BoxJustify, bool) {
 		r.errorf(attr.ValueSpan, "justify는 접두 없는 이름을 쓴다 — %q 대신 %q", raw, string(logical))
 		return "", false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 justify %q (쓸 수 있는 값: %s)", raw, boxJustifyList())
+	r.errorf(attr.ValueSpan, "알 수 없는 justify %q%s (쓸 수 있는 값: %s)", raw, didYouMean(raw, boxJustifyList()), boxJustifyList())
 	return "", false
 }
 
@@ -659,7 +660,7 @@ func (r *resolver) stackAnchor(attr soml.Attr, parent *soml.Element, conflict bo
 			raw, string(suggestion), stackAnchorList())
 		return "", false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 at %q (쓸 수 있는 9지점 앵커: %s)", raw, stackAnchorList())
+	r.errorf(attr.ValueSpan, "알 수 없는 at %q%s (쓸 수 있는 9지점 앵커: %s)", raw, didYouMean(raw, stackAnchorList()), stackAnchorList())
 	return "", false
 }
 
