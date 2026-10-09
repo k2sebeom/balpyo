@@ -1,8 +1,9 @@
 # AGENTS.md — balpyo
 
-A guide for coding agents working in this repository. For the full product definition see
-`PRD.md`; for open work see `docs/backlog.md`; for the design rationale see
-`docs/decisions/` (ADRs). Project docs, ADRs, diagnostics and commit subjects are written in
+A guide for coding agents working in this repository. For the product overview see
+`docs/index.md`; for implemented behavior `docs/reference/`; for open work `docs/backlog.md`;
+for the design rationale `docs/decisions/` (ADRs — the pre-implementation decisions of the old
+PRD live in ADR 0067). Project docs, ADRs, diagnostics and commit subjects are written in
 **Korean** — keep new ones in Korean too.
 
 ## What balpyo is

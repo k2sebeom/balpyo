@@ -2,7 +2,8 @@
 
 구현 중 확정한 설계 결정을 번호 순으로 남긴다. 형식은 **맥락 → 선택지 → 결정 → 근거 →
 결과**이고, 한번 쓴 ADR은 고치지 않는다 — 결정을 뒤집을 때는 새 ADR을 쓰고 이 표에서
-관계를 밝힌다. PRD §13의 기존 결정을 뒤집는 경우 PRD 본문도 함께 갱신한다.
+관계를 밝힌다. 구현 전에 확정한 결정 12건(옛 PRD §13)은 [0067](0067-prd-is-retired-and-its-standing-decisions-move-here.md)이
+같은 번호로 들고 있다.
 
 | # | 결정 | Iteration | 상태 |
 |---|---|---|---|
@@ -32,10 +33,10 @@
 | [0024](0024-src-is-project-relative.md) | `src`는 프로젝트 루트 기준이고 프로젝트 밖·네트워크는 막는다 | 5 | 확정 |
 | [0025](0025-image-formats-are-png-and-jpeg.md) | 이미지 포맷은 PNG·JPEG 2종이고 내용으로 판정한다 | 5 | 확정 |
 | [0026](0026-contain-fits-the-box-to-the-picture.md) | `fit="contain"`은 박스를 그림에 맞춘다 (`object-fit`을 쓰지 않는다) | 5 | 확정 |
-| [0027](0027-open-alt-close-frame.md) | `alt`을 열고 `frame`을 닫는다 (PRD §7.5 표 갱신) | 5 | 확정 |
+| [0027](0027-open-alt-close-frame.md) | `alt`을 열고 `frame`을 닫는다 (처음 설계의 이미지 어휘 갱신) | 5 | 확정 |
 | [0028](0028-stack-is-a-flow-not-a-kind.md) | `<stack>`은 새 종류가 아니라 새 흐름이다 (`KindStack`을 만들지 않는다) | 6 | 확정 |
 | [0029](0029-paint-order-follows-pptx.md) | 겹침 칠 순서를 지키려고 stack 자식을 전부 위치 지정 요소로 만든다 | 6 | 확정 |
-| [0030](0030-canvas-origin-is-stage-padding-box.md) | 캔버스 좌표는 스테이지 패딩 박스 기준이다 (PRD §13-3 갱신) | 6 | 확정 |
+| [0030](0030-canvas-origin-is-stage-padding-box.md) | 캔버스 좌표는 스테이지 패딩 박스 기준이다 (0067 결정 3의 좌표 기준) | 6 | 확정 |
 | [0031](0031-position-is-one-channel.md) | 한 축의 위치는 한 채널이 정한다 (`at`⊕`x`/`y`, z-index 없음, 좌표는 음수) | 6 | 확정 |
 | [0032](0032-slide-layout-vocab-is-core-checked.md) | 슬라이드 수준 어휘는 값과 Span으로 core가 검사한다 (`layout`) | 6 | 확정 |
 | [0033](0033-color-variants-preserve-scheme-ref.md) | 색 변형은 참조를 보존한다 (lumMod/lumOff/alpha vs color-mix) | 8 | 확정 |
@@ -72,6 +73,7 @@
 | [0064](0064-the-contract-is-component-and-layout-parity-not-pixel-parity.md) | 두 타깃의 계약은 픽셀 동일성이 아니라 컴포넌트·레이아웃 동일성이다 | R0 | 확정 |
 | [0065](0065-pptx-validity-is-judged-by-the-ecma-376-schema-not-by-libreoffice.md) | PPTX의 유효성은 LibreOffice가 아니라 ECMA-376 스키마가 판정한다 (Docker를 걷어낸다) | R4 | 확정 |
 | [0066](0066-preview-only-places-renders-side-by-side.md) | `balpyo preview`는 두 렌더를 나란히 놓기만 한다 (diff · 허용 오차를 지운다) | R6 | 확정 |
+| [0067](0067-prd-is-retired-and-its-standing-decisions-move-here.md) | PRD.md를 지운다 — 남은 결정 12건은 이 ADR이 들고, 인용은 지금의 문서를 가리킨다 | 정리 | 확정 |
 
-PRD §13의 열린 질문 12건은 2026-08-16에 전부 확정되어 PRD 본문에 반영되었다. 그 결정들의
-색인은 PRD에 있고, 이 표는 **그 이후 구현 중에 새로 확정한 것**만 담는다.
+0066까지의 ADR에 나오는 `PRD §…` 인용은 커밋 `2121a0b`의 `PRD.md`를 뜻한다. 그 절이 지금 어디에
+있는지는 [0067](0067-prd-is-retired-and-its-standing-decisions-move-here.md)의 대응표가 적는다.

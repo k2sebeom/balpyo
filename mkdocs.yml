@@ -117,6 +117,7 @@ nav:
       - 0064 계약은 컴포넌트·레이아웃 동일성이다: decisions/0064-the-contract-is-component-and-layout-parity-not-pixel-parity.md
       - 0065 PPTX 유효성은 ECMA-376 스키마가 판정한다: decisions/0065-pptx-validity-is-judged-by-the-ecma-376-schema-not-by-libreoffice.md
       - 0066 preview는 두 렌더를 나란히 놓기만 한다: decisions/0066-preview-only-places-renders-side-by-side.md
+      - 0067 PRD를 지우고 남은 결정을 옮긴다: decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md
 
 # 빌드 의존성 파일은 사이트에 복사하지 않는다.
 exclude_docs: |
