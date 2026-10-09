@@ -7,7 +7,7 @@ MKDOCS := $(VENV)/bin/mkdocs
 # Chromium/Chrome만 있으면 된다 (없으면 그 테스트는 건너뛴다 — BALPYO_TEST_STRICT=1이면 실패).
 GOFLAGS ?=
 
-.PHONY: help test examples qa showcase golden dist docs docs-serve docs-clean clean
+.PHONY: help test examples qa showcase golden install uninstall dist docs docs-serve docs-clean clean
 
 help: ## 사용 가능한 타깃 목록
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -72,6 +72,24 @@ showcase: ## README 쇼케이스(예제 덱 산출물 · 스크린샷)를 exampl
 golden: ## 골든 갱신 (변경은 구현 커밋과 함께 검토한다)
 	BALPYO_UPDATE_GOLDEN=1 go test ./... -run 'TestFixtures|TestGolden' -count=1
 	@git status --short -- '*/golden/*' testdata || true
+
+# 로컬 설치: `balpyo`를 빌드해 $(BINDIR)에 둔다. 기본값은 sudo 없이 쓸 수 있는 ~/.local/bin이다
+# (PATH에 있어야 한다). 다른 곳에 두려면 PREFIX나 BINDIR을 준다 — `sudo make install PREFIX=/usr/local`.
+# 태그는 릴리스 빌드와 같은 방식으로 주입한다: VERSION을 주지 않으면 HEAD에 붙은 태그를 읽고, 없으면
+# 개발 빌드다 (커밋은 툴체인이 박은 vcs.*에서 `balpyo version`이 읽는다).
+PREFIX  ?= $(HOME)/.local
+BINDIR  ?= $(PREFIX)/bin
+INSTALL_VERSION = $(or $(VERSION),$(shell git describe --tags --exact-match 2>/dev/null))
+
+install: ## balpyo를 빌드해 ~/.local/bin(BINDIR)에 설치 (PREFIX=… · BINDIR=… · VERSION=…)
+	@set -e; tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+	go build -trimpath $(if $(INSTALL_VERSION),-ldflags "-X main.version=$(INSTALL_VERSION)",) -o "$$tmp/balpyo" ./cmd/balpyo; \
+	mkdir -p "$(BINDIR)"; install -m 0755 "$$tmp/balpyo" "$(BINDIR)/balpyo"; \
+	echo "설치: $(BINDIR)/balpyo"; \
+	case ":$$PATH:" in *":$(BINDIR):"*) ;; *) echo "주의: $(BINDIR)가 PATH에 없다";; esac
+
+uninstall: ## make install이 둔 balpyo 삭제
+	rm -f "$(BINDIR)/balpyo"
 
 # 릴리스의 재현성(같은 태그 → 같은 바이트)은 툴체인이 지킨다 — go.mod의 Go 버전과 internal/release가
 # 거는 CGO_ENABLED=0 · -trimpath. VERSION을 주지 않으면 HEAD에 붙은 태그를 읽는다.
