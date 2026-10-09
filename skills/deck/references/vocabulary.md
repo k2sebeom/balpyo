@@ -159,6 +159,19 @@ splits the leftover space. They are different results and both are often right.
 A literal (`#1a1a1a`, `size="31"`) is accepted but opts that element out of the design system —
 a theme swap will not touch it. Reach for one only when the deck needs a one-off.
 
+Colour attributes (`color`, `fill`, `border`'s colour) also take four **colour functions** whose
+arguments are tokens or single literals — they keep the token reference on both targets:
+
+| Function | Example |
+|---|---|
+| `gradient(c1 c2 [c3 …] [, Ndeg])` | `fill="gradient(accent1 accent6, 135deg)"` — even stops, default `180deg` (top→bottom) |
+| `shade(c, p%)` / `tint(c, p%)` | `fill="tint(accent1, 40%)"` — darker / lighter by HSL lightness, `0 < p ≤ 100` |
+| `alpha(c, 0–1)` | `color="alpha(fg, 0.6)"` — a fraction, not a percentage |
+
+They do not nest (`shade(gradient(…), …)` is an error). A gradient border is two pieces:
+`border="4 gradient(accent6 accent1)"`. If the same treatment repeats across slides, it belongs
+in a theme variant (`variant="hero"`), not on every element.
+
 ## Variants present in all three built-in themes
 
 | Where | Variants |

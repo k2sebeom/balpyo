@@ -47,6 +47,13 @@ measures every box, and the PPTX uses those exact rects. Without one you get
 An HTML-only build never launches a browser. If no browser is available, say so and build
 `--target html`; do not quietly drop the PPTX the user asked for.
 
+**The theme's fonts must be installed where the build runs.** A measuring build checks every
+font token against the browser and warns about each missing one (`테마 "minimal"의 글꼴 "…"가
+측정 브라우저에 없다`) — the boxes were measured with a substitute, so PowerPoint's text will not
+fit them. `--strict` turns that into an error. The built-in themes use Noto Sans, Noto Sans Mono,
+Noto Sans CJK KR and Noto Sans Mono CJK KR (Debian/Ubuntu: `fonts-noto-core`
+`fonts-noto-mono` `fonts-noto-cjk`). Install them, or tell the user why the gate fails.
+
 ## 1. Outline before markup
 
 Write the outline first — as a table, in your reply, before any file. One row per slide:
@@ -103,8 +110,9 @@ and the value vocabularies.
 
 Standing rules while writing:
 
-- **Look a name up; don't infer it.** Diagnostics list the whole legal set for that position,
-  but they offer no "did you mean" — a one-letter typo costs a full round trip.
+- **Look a name up; don't infer it.** Diagnostics list the legal set for that position and,
+  for a near miss, suggest one candidate (`알 수 없는 role "heding" — 혹시 "heading"?`) — but
+  each guess still costs a round trip.
 - **Write meaning, not pixels.** `role=`, `variant=`, and token names (`accent1`, `lg`,
   `surface`) are what make a theme swap work. A literal `#RRGGBB` or `size="31"` is legal but
   it opts that element out of the design system.
@@ -124,9 +132,9 @@ balpyo check --project my-talk --check-layout --strict
 Repeat until it exits 0. Triage in this order:
 
 1. **Errors before warnings** — a parse or vocabulary error means later judgements never ran.
-2. **Containers before their children.** One overflowing list reports as a warning on the
-   `<ul>` *and* on each `<li>` past the edge. Fixing the container clears all of them; fixing
-   the children one at a time does nothing.
+2. **One accident is one warning.** An overflowing list is reported once, on the `<ul>`, with
+   the escaped descendants counted at the end (`… (안의 <li> 6개도 함께 벗어난다)`). Fix the box
+   the warning names; its children come back with it.
 3. **Re-run after each fix.** Geometry is measured, so one change moves every box below it.
 
 Diagnostics are `file:line:col: severity: message`, 1-based, columns counted in runes.
@@ -153,20 +161,24 @@ the stage, with "background graphics" enabled.
 
 ## 6. Review when it matters
 
-`balpyo preview` builds a gallery putting each web render beside its PPTX render with a
-magenta pixel diff. It needs LibreOffice (`soffice`) and `pdftoppm` as well as a browser, so
-check before promising it. **`--gallery` must not equal `--out`** — the gallery wipes its own
-directory and the build output disappears.
+`balpyo preview` builds a gallery putting each web render beside its PPTX render. The PPTX
+column needs a rasterizer: **OnlyOffice Document Builder** first (`BALPYO_ONLYOFFICE`, default
+`/opt/onlyoffice/documentbuilder`; it reads OOXML with PowerPoint's defaults), otherwise
+LibreOffice (`soffice`) plus `pdftoppm`. Without either it builds a web-only gallery and says
+so — unless you passed `--target pptx` explicitly, which then fails before building. Check the
+tools before promising a side-by-side. `--gallery` and `--out` may not overlap; `preview`
+refuses before building.
 
-A diff percentage is not a failure: `style=` is web-only by contract, and the gallery's own
-numbers overstate divergence (viewer letter-spacing that is not in the file). Judge it by eye.
+There is no pixel diff and no score — `preview` is never a gate. Line breaks and glyphs may
+differ between the columns (outside the two targets' contract), and `style=` is web-only.
+Look for what *is* in the contract: a missing or misplaced object, a wrong colour, wrong order.
 
 ## Reference files
 
 - `references/vocabulary.md` — the complete closed vocabulary: 11 layouts and their slots,
   every tag with its legal attributes, and the value sets. Read it before writing markup.
-- `references/pitfalls.md` — known rough edges worth steering around (CJK line breaking,
-  `quote` and `stat` defaults, warning fan-out) and the two targets' known differences.
+- `references/pitfalls.md` — what the build will not catch (centred slots, line breaking
+  in PPTX), what diagnostics tell you, how to fix overflow, and CLI traps.
 
 Deeper detail lives in the Korean reference docs shipped with this plugin:
 `${CLAUDE_PLUGIN_ROOT}/docs/reference/` (one page per tag under `soml/`, plus `appearance.md`,
