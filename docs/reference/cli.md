@@ -1,7 +1,7 @@
 # CLI
 
 바이너리 하나가 모든 서브커맨드를 담는다. 지금 구현된 표면은 `init`·`build`·
-`check`·`watch`·`preview`·`version`이다 — `format`/`lsp`는 아직 열리지 않았고, 열리면 이
+`check`·`watch`·`preview`·`theme`·`version`이다 — `format`/`lsp`는 아직 열리지 않았고, 열리면 이
 문서에 함께 실린다.
 
 ## `balpyo init`
@@ -95,7 +95,7 @@ balpyo build --project my-talk --target html,pptx
 | `--project <dir>` | `.` | 프로젝트 루트 — `balpyo.json`과 `slides/`가 있는 곳 |
 | `--target <목록>` | `html` | 렌더 타깃. 쉼표로 여러 개: `html,pptx` |
 | `--out <dir>` | `balpyo.json`의 `outDir` (기본 `dist`) | 출력 디렉토리. 상대 경로는 프로젝트 루트 기준 |
-| `--theme <이름>` | `balpyo.json`의 `theme` (기본 `minimal`) | 테마 **이름**. 내장 셋(`minimal`·`editorial`·`ink`) ∪ 이 프로젝트의 `themes/<이름>/` |
+| `--theme <이름>` | `balpyo.json`의 `theme` (기본 `minimal`) | 테마 **이름**. 내장 셋(`minimal`·`editorial`·`ink`) ∪ 이 프로젝트의 `themes/<이름>/` ∪ 설치한 테마 ([`balpyo theme`](#balpyo-theme)) |
 | `--strict` | 꺼짐 | 경고를 에러로 승격한다 |
 | `--check-layout` | 꺼짐 | 배치를 검사한다 (넘침·스테이지 이탈·겹침). 브라우저를 띄운다 |
 
@@ -105,7 +105,7 @@ balpyo build --project my-talk --target html,pptx
 `--theme`가 플래그인 이유는 테마를 고르는 방법이 **같은 덱을 두 테마로 내서 견주는 것**이라는
 것이다 (자세히는 [테마 고르기·만들기](../guides/theming.md)). `balpyo.json`을 고쳐서 하면
 되돌리기를 잊는다. 없는 이름은 렌더 전에 멈춘다 — 쓸 수 있는 이름을 함께 나열하고, 그 목록에는
-이 프로젝트의 로컬 테마가 함께 들어간다 (`themes/<이름>/` —
+이 프로젝트의 로컬 테마와 설치한 테마가 함께 들어간다 (`themes/<이름>/` —
 [외부 테마](theme.md)). **경로는 받지 않는다**: 값은 언제나 이름이다.
 
 `--target html,pptx`처럼 PPTX가 포함되고 덱에 좌표가 필요한 요소가 있으면 빌드가
@@ -400,6 +400,9 @@ balpyo watch --project examples/decks/quarterly-review
 출력 디렉토리와 `.`으로 시작하는 디렉토리(`.git`)는 걷지 않는다. 출력 디렉토리를 보면 빌드가
 쓴 파일이 다음 빌드를 부르고 루프가 멈추지 않는다.
 
+걷는 것은 프로젝트뿐이다 — 설치한 테마(`~/.balpyo/themes/`)를 `balpyo theme update`로 바꿨으면
+프로젝트 파일을 한 번 저장하거나 감시를 다시 띄운다.
+
 측정이 필요한 감시(`--check-layout`, `--target html,pptx`)는 브라우저 **하나**를 계속 쓴다.
 기동이 지오메트리 패스 비용의 대부분이므로(~0.6초) 저장마다 다시 띄우면 검사를 켜고 쓸 수
 없다. `--target html`만 쓰는 감시는 브라우저를 아예 띄우지 않는다.
@@ -503,6 +506,50 @@ BALPYO_SOFFICE=/path/to/soffice BALPYO_PDFTOPPM=/path/to/pdftoppm balpyo preview
 
 갤러리를 감시하지 않고(고치면 `preview`를 다시 돈다), PDF 타깃과 슬라이드 범위 지정, 브라우저
 자동 열기는 열지 않았다.
+
+## `balpyo theme`
+
+GitHub 저장소에서 테마를 설치하고, 설치한 테마를 다룬다. 설치한 테마는
+`~/.balpyo/themes/<이름>/`에 놓이고(`BALPYO_HOME`이 있으면 그 디렉토리 아래), `balpyo.json`의
+`theme`와 `--theme`가 그 **이름**을 받는다. 이름은 테마의 `theme.json`이 정한다. 규칙 전체는
+[설치한 테마](theme.md#설치한-테마-github에서-받는다)에 있다.
+
+```bash
+balpyo theme install <GitHub 주소> [이름...] [--force]
+balpyo theme list [--project .]
+balpyo theme remove <이름...>
+balpyo theme update [이름...]
+```
+
+| 명령 | 하는 일 |
+|---|---|
+| `install` | 저장소를 받아 테마를 설치한다. 이름을 주지 않으면 찾은 테마 전부, 주면 그 테마와 같은 저장소 안의 `extends` 부모. `--force`는 다른 출처에서 설치한 같은 이름을 갈아 끼운다 |
+| `list` | 쓸 수 있는 테마를 자리별로 나열한다 — 내장, 설치한 테마(출처·커밋), `--project`의 `themes/`. 겹치는 이름을 표시한다 |
+| `remove` | 설치한 테마를 지운다. 남는 설치한 테마가 상속하는 테마는 지우지 않는다 |
+| `update` | 설치한 테마를 기록한 출처·ref에서 다시 받는다 (이름을 주지 않으면 출처를 아는 테마 전부). 같은 저장소의 테마는 한 번에 받는다 |
+
+받는 주소 모양:
+
+| 주소 | 뜻 |
+|---|---|
+| `github.com/acme/themes` | 저장소 루트, 기본 브랜치 |
+| `https://github.com/acme/themes.git` · `git@github.com:acme/themes.git` | 같다 (스킴·`.git`은 떼어 낸다) |
+| `github.com/acme/themes@v1.2.0` | 브랜치·태그·커밋 |
+| `github.com/acme/themes/brand/dark@v1.2.0` | 하위 경로 아래만 찾는다 |
+| `https://github.com/acme/themes/tree/main/brand` | 브라우저 주소창의 모양 (ref에 `/`가 있으면 `@ref`를 쓴다) |
+
+`git`은 필요 없다 — 저장소를 GitHub의 tarball 하나로 받는다. 공개 저장소만 받는다. 설치한 뒤
+빌드는 네트워크를 쓰지 않는다.
+
+```
+$ balpyo theme install github.com/acme/slide-themes@v1.2.0
+github.com/acme/slide-themes@v1.2.0 (3f2a91c)에서 테마 2개를 설치했다 → /home/me/.balpyo/themes
+  acme       themes/light
+  acme-dark  themes/dark
+balpyo.json에 "theme": "acme"처럼 이름을 쓴다.
+```
+
+종료 코드는 성공 0, 실패 1이다. 실패한 설치는 홈을 바꾸지 않는다.
 
 ## `balpyo version`
 

@@ -61,7 +61,9 @@ Vocabulary (closed — unknown tags/attributes are diagnostics):
 - Layout: `row`, `col`, `grid`, `spacer`, `stack` (overlap; `at`, `x`/`y`), plus a `style` escape hatch
 - `<shape>` (12 preset types), `<image>` (`src`, `fit`, `alt`), `<table>`/`tr`/`th`/`td`, `<chart>`/`<point>` (desugared into shapes + text, not a native chart part)
 - Layouts (11): `content`, `title`, `section-divider`, `two-column`, `image-full`, `image-text`, `quote`, `code`, `stat`, `canvas`, `end` — each with named **slots** (`slot="title"` …) that become web `grid-area`s and PPTX `p:ph` placeholders
-- Built-in themes: `minimal` (default), `editorial`, `ink` (`core/themes/`)
+- Built-in themes: `minimal` (default), `editorial`, `ink` (`core/themes/`). A theme name resolves to
+  built-in ∪ project `themes/<name>/` ∪ installed `~/.balpyo/themes/<name>/` (`BALPYO_HOME`); `balpyo.json`
+  only ever holds a name — installing from GitHub is `balpyo theme install`, never the build
 
 Authoritative reference: `docs/reference/` (only implemented behavior is documented there).
 
@@ -73,6 +75,7 @@ go run ./cmd/balpyo build --project my-talk --target html,pptx   # --strict, --c
 go run ./cmd/balpyo check --project my-talk --check-layout --strict   # build without writing (CI gate)
 go run ./cmd/balpyo watch --project my-talk                      # rebuild + live reload on http://127.0.0.1:4600
 go run ./cmd/balpyo preview --project my-talk                    # side-by-side web/PPTX review gallery
+go run ./cmd/balpyo theme install github.com/acme/themes@v1      # install themes into ~/.balpyo (list/remove/update)
 ```
 
 Precedence: CLI flag > `balpyo.json` > default. `--check-layout` reports overflow / off-stage /
@@ -97,6 +100,7 @@ balpyo.json + slides/*.slide → soml.Collect → soml parse → deck model (som
 | `render/pptx/` | OOXML assembly, unit conversion (1px = 9525 EMU, pt = px × 0.75) | `core`, `render/web` |
 | `internal/pipeline/` | wiring + file writes (`pipeline.Build` — used by both CLI and tests) | — |
 | `internal/{preview,watch,scaffold,release,testkit}` | gallery, watch server, `init` template, release, test harness | — |
+| `internal/themestore/` | installed-theme home: GitHub tarball fetch, theme discovery, atomic install, `themes.json` | renderers |
 | `cmd/balpyo/` | CLI surface only (flags, output) | build logic |
 
 Invariants to preserve:
