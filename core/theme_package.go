@@ -451,7 +451,7 @@ type rawTheme struct {
 	// 않고 문자열로 나르는 이유는 병합이 파일을 통째로 갈아 끼우기 때문이다.
 	layouts     map[string]string
 	slotLayouts map[string]string
-	// assets는 `assets/` 아래 파일이다 (테마 루트 기준 경로 → 원문 · 주인). 파일 단위로 병합된다.
+	// assets는 `assets/` 아래 파일의 색인이다 (테마 루트 기준 경로 → 자리 · 주인). 파일 단위로 병합된다.
 	assets map[string]rawAsset
 	// origin은 이 선언을 읽은 자리다 (내장 · 로컬 · 설치) — 병합에는 쓰이지 않는다.
 	origin themeOrigin

@@ -20,19 +20,29 @@ import (
 // 테마 로딩이 바이트를 읽는다 (에셋 패스가 아니다): 테마 파일(JSON · CSS)을 읽는 자리가 이미 여기이고,
 // 내장 테마의 자산은 프로젝트 파일 시스템에 없다. 읽은 그림은 soml.Theme.Assets에 실리고, 에셋 패스가
 // 슬라이드가 실제로 쓴 것만 덱의 에셋 표로 옮긴다 — 렌더러는 지금처럼 덱의 표 하나만 읽는다.
+//
+// 로딩이 `assets/`에서 미리 하는 일은 **경로 색인**뿐이다 — 바이트는 선언이 가리킨 파일만 그때 읽는다.
+// 아이콘 수천 장을 담은 테마도 덱이 쓰는 몇 장만큼만 읽혀야 테마 로드 비용이 라이브러리 크기와
+// 무관해진다 (watch는 저장할 때마다 테마를 다시 로드한다).
 
 // themeAssetDir는 테마 패키지에서 자산이 사는 디렉토리다.
 const themeAssetDir = "assets"
 
-// rawAsset은 테마 패키지 하나가 가진 자산 파일 하나다 — 상속 병합 전의 원문이다.
+// rawAsset은 테마 패키지 하나가 가진 자산 파일 하나다 — 상속 병합 전의 원문이다. 바이트가 아니라
+// **자리**를 담는다 (read가 읽는다).
 type rawAsset struct {
 	// owner는 이 파일을 가진 테마 이름이다 — 에셋 키(`themes/<owner>/assets/…`)가 여기서 나온다.
 	// 자식이 부모의 선언을 물려받아도 그림은 부모의 것이므로 키도 부모의 자리다.
 	owner string
-	data  []byte
+	// fsys · path는 파일의 자리다 — 주인 테마의 FS다 (내장은 임베드 FS, 로컬은 프로젝트, 설치는 홈).
+	fsys fs.FS
+	path string
 }
 
-// readThemeAssets는 dir/assets 아래 파일을 전부 읽는다 (없으면 빈 표). 키는 테마 루트 기준
+// read는 파일의 바이트를 읽는다.
+func (a rawAsset) read() ([]byte, error) { return fs.ReadFile(a.fsys, a.path) }
+
+// readThemeAssets는 dir/assets 아래 파일을 색인한다 (없으면 빈 표). 키는 테마 루트 기준
 // 상대 경로(`assets/bg.png`)다 — 선언이 그 이름으로 가리킨다.
 func readThemeAssets(fsys fs.FS, dir, owner string) (map[string]rawAsset, error) {
 	root := path.Join(dir, themeAssetDir)
@@ -47,12 +57,8 @@ func readThemeAssets(fsys fs.FS, dir, owner string) (map[string]rawAsset, error)
 		if err != nil || d.IsDir() {
 			return err
 		}
-		data, err := fs.ReadFile(fsys, p)
-		if err != nil {
-			return err
-		}
 		rel := strings.TrimPrefix(p, dir+"/")
-		assets[rel] = rawAsset{owner: owner, data: data}
+		assets[rel] = rawAsset{owner: owner, fsys: fsys, path: p}
 		return nil
 	})
 	if err != nil {
@@ -104,7 +110,11 @@ func (a *assetResolver) resolve(where, rel string) (string, error) {
 			return key, nil
 		}
 	}
-	asset, msg := decodeImageAsset(key, file.data)
+	data, err := file.read()
+	if err != nil {
+		return "", fmt.Errorf("%s: %s를 읽을 수 없다: %w", where, key, err)
+	}
+	asset, msg := decodeImageAsset(key, data)
 	if msg != "" {
 		return "", fmt.Errorf("%s: %s", where, msg)
 	}

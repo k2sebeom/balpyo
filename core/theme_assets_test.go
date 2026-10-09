@@ -1,6 +1,7 @@
 package core
 
 import (
+	"io/fs"
 	"os"
 	"strings"
 	"testing"
@@ -109,6 +110,34 @@ func TestThemeAssetsFollowTheOwner(t *testing.T) {
 	pkg = mustLoadLocal(t, mergeFS(parent, child), "brand-dark")
 	if bg := pkg.backgrounds.For(soml.LayoutTitle); bg == nil || bg.Image != "themes/brand-dark/assets/cover.png" {
 		t.Errorf("자식이 덮은 배경 그림 = %+v, want 자식의 키", bg)
+	}
+}
+
+// openLog는 열린 파일 이름을 적는 파일 시스템이다 (디렉토리 목록은 적지 않는다).
+type openLog struct {
+	fs.FS
+	opened map[string]bool
+}
+
+func (o *openLog) Open(name string) (fs.File, error) {
+	o.opened[name] = true
+	return o.FS.Open(name)
+}
+
+func (o *openLog) ReadDir(name string) ([]fs.DirEntry, error) { return fs.ReadDir(o.FS, name) }
+
+// 테마 로드는 `assets/`를 색인만 한다 — 선언이 가리키지 않은 파일은 열지 않는다. 아이콘 수천 장을 가진
+// 테마도 로드 비용이 덱이 쓰는 몇 장만큼이어야 한다.
+func TestThemeLoadReadsOnlyDeclaredAssets(t *testing.T) {
+	log := &openLog{FS: brandProject(t, brandManifest), opened: map[string]bool{}}
+	if _, err := loadThemeNamed(log, "brand"); err != nil {
+		t.Fatal(err)
+	}
+	if !log.opened["themes/brand/assets/cover.png"] {
+		t.Error("선언이 가리킨 cover.png를 읽지 않았다")
+	}
+	if log.opened["themes/brand/assets/unused.png"] {
+		t.Error("선언이 가리키지 않은 unused.png를 열었다")
 	}
 }
 
