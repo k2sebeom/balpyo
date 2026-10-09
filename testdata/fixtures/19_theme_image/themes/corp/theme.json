@@ -1,0 +1,6 @@
+{
+  "$comment": "corp는 minimal을 물려받아 그림 라이브러리(assets/icons/)와 표지 배경을 가진다. 슬라이드는 theme: 경로로 그 그림을 가리킨다 — 테마의 이름도 자리도 적지 않는다.",
+  "name": "corp",
+  "extends": "minimal",
+  "backgrounds": [{ "layouts": ["title"], "image": "assets/cover.png" }]
+}

@@ -226,3 +226,35 @@ func TestThemeInstallFromLocalPath(t *testing.T) {
 		t.Error("산출물이 상속한 ink의 bg 토큰을 들고 있지 않다")
 	}
 }
+
+// 설치한 테마의 그림을 `theme:`으로 가리킨다 — 프로젝트에는 themes/가 없다. 부모에만 있는 그림은 부모의
+// 자리, 자식이 덮은 그림은 자식의 자리로 산출물에 놓이고, 쓰지 않은 그림은 나가지 않는다.
+func TestInstalledThemeImagesBuildWithoutProjectThemes(t *testing.T) {
+	isolatedHome(t)
+	var stdout, stderr bytes.Buffer
+	if err := run([]string{"theme", "install", filepath.Join("..", "..", "testdata", "fixtures", "19_theme_image", "themes")}, &stdout, &stderr); err != nil {
+		t.Fatalf("%v\nstderr: %s", err, stderr.String())
+	}
+	dir := newProject(t)
+	if err := os.WriteFile(filepath.Join(dir, "balpyo.json"), []byte(`{"title":"t","theme":"corp-dark"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	slide := `<slide><image src="theme:icons/check.png" w="64"/><image src="theme:icons/arrow.png" w="64"/></slide>`
+	if err := os.WriteFile(filepath.Join(dir, "slides", "001_title.slide"), []byte(slide), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := run([]string{"build", "--project", dir, "--target", "html", "--strict"}, &stdout, &stderr); err != nil {
+		t.Fatalf("설치한 테마의 그림으로 빌드되지 않았다: %v\nstderr: %s", err, stderr.String())
+	}
+	for path, want := range map[string]bool{
+		"themes/corp/assets/icons/check.png":      true,
+		"themes/corp-dark/assets/icons/arrow.png": true,
+		"themes/corp/assets/icons/arrow.png":      false,
+		"themes/corp/assets/cover.png":            false,
+	} {
+		_, err := os.Stat(filepath.Join(dir, "dist", filepath.FromSlash(path)))
+		if (err == nil) != want {
+			t.Errorf("dist/%s 있음 = %v, want %v", path, err == nil, want)
+		}
+	}
+}

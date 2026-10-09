@@ -1,0 +1,11 @@
+# slide 1 image-cover
+bg image
+textbox "h1 s0.0" ph=ctrTitle/0
+  ¶ start | "테마의 그림"{heading 42pt b fg}
+pic "image s0.1" ph=subTitle/1 alt="표지 그림"
+# slide 2 image-icons
+textbox "h2 s1.0"
+  ¶ start | "아이콘 라이브러리"{heading 27pt b fg}
+pic "image s1.1.0" alt="확인"
+pic "image s1.1.1" alt="화살표"
+pic "image s1.1.2" alt="확인 (작게)"

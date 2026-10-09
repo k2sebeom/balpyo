@@ -1,0 +1,5 @@
+{
+  "$comment": "corp-dark는 corp를 물려받고 아이콘 하나(icons/arrow.png)만 같은 경로의 파일로 덮는다. 원고의 src는 그대로다.",
+  "name": "corp-dark",
+  "extends": "corp"
+}
