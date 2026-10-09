@@ -185,13 +185,15 @@ func requireComponents(theme soml.Theme, comps components) error {
 // `check`는 렌더하지 않으므로 통과하고 `build`만 실패한다. 역할의 색(requireComponents)과 같은
 // 자리에서 같은 태도로 멈춰, 진단이 고칠 파일(components.json)과 자리를 가리킨다.
 func requireComponentColors(theme soml.Theme, comps components) error {
+	// 토큰 참조는 셋이다: 토큰 이름, 변형된 토큰(`shade(accent1, 20%)`), 스톱이 전부 토큰인 그라디언트.
+	// 셋 다 PPTX에서 `schemeClr` 참조로 남아 테마 색 편집을 따라간다. 리터럴(`#FF9900`, 리터럴 스톱)은 아니다.
 	check := func(where string, color *soml.Color) error {
 		if color == nil {
 			return nil
 		}
-		if _, ok := theme.Color(color.Token); !color.IsToken() || !ok {
-			return fmt.Errorf("components.json의 %s %q가 이 테마의 색 토큰이 아니다 — 테마는 색 토큰 이름만 쓴다 (이 테마: %s)",
-				where, color.Token, strings.Join(theme.ColorNames(), ", "))
+		if bad, ok := notTokenRef(theme, *color); ok {
+			return fmt.Errorf("components.json의 %s %q가 이 테마의 색 토큰 참조가 아니다 — 테마는 색 토큰 이름(변형 · 토큰 그라디언트 포함)만 쓴다 (이 테마: %s)",
+				where, bad, strings.Join(theme.ColorNames(), ", "))
 		}
 		return nil
 	}
@@ -216,6 +218,14 @@ func requireComponentColors(theme soml.Theme, comps components) error {
 	var errs []error
 	for _, tag := range tags {
 		errs = append(errs, check(fmt.Sprintf("text.componentDefaults %q의 color", tag), comps.textComponentDefaults[tag].color))
+	}
+	slots := make([]string, 0, len(comps.textSlotDefaults))
+	for slot := range comps.textSlotDefaults {
+		slots = append(slots, slot)
+	}
+	sort.Strings(slots)
+	for _, slot := range slots {
+		errs = append(errs, check(fmt.Sprintf("text.componentDefaults 슬롯 %q의 color", slot), comps.textSlotDefaults[slot].color))
 	}
 	for _, v := range comps.textVariants {
 		errs = append(errs, check(fmt.Sprintf("text variant %q의 color", v.name), v.patch.color))

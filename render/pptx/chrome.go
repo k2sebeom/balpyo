@@ -38,7 +38,7 @@ const chromeFieldID = "{B9A1C0E4-6F3D-4A5B-8C7E-2D1F0A9B8C7D}"
 // 뒤 형제인 것과 같은 그림).
 //
 // 도형 id는 콘텐츠와 **같은 카운터**를 쓴다 (id는 슬라이드 안에서 유일해야 한다).
-func writeChromeShapes(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, id *int, g *geom.Geometry) error {
+func writeChromeShapes(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, id *int, g *geom.Geometry, rels *slideRels) error {
 	for _, item := range slide.Chrome {
 		rect, ok := g.ChromeRect(slide.Index, item.Kind)
 		if !ok {
@@ -46,6 +46,13 @@ func writeChromeShapes(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, i
 			// 나란히 볼 때까지 드러나지 않는다.
 			return fmt.Errorf("%s: 크롬 %s의 측정된 좌표가 없다 — 잰 HTML이 이 덱의 산출물이 아니다",
 				slide.Source, item.Kind)
+		}
+		if item.Kind == soml.ChromeLogo {
+			if err := writeChromeLogo(b, deck, item, *id, rect, rels); err != nil {
+				return fmt.Errorf("%s: 크롬 %s: %w", slide.Source, item.Kind, err)
+			}
+			*id++
+			continue
 		}
 		body, err := chromeBodyXML(item, deck.Theme)
 		if err != nil {
@@ -132,4 +139,24 @@ func writeChromeRun(w func(depth int, line string), item soml.ChromeItem, theme 
 	w(4, fmt.Sprintf("<a:t>%s</a:t>", escapeXML(item.Text)))
 	w(3, "</"+tag+">")
 	return nil
+}
+
+// writeChromeLogo는 그림 크롬 하나를 `p:pic`으로 쓴다 — 좌표는 잰 그림 rect 그대로이고(웹의 `<img>`가
+// 크롬 클래스를 가져 그림 자신이 재진다), 대체 텍스트가 `cNvPr@descr`이다. 그림 외관은 `<image fit="contain">`과
+// 같다: 잰 rect가 이미 그림의 비율이라 크롭이 없다.
+func writeChromeLogo(b *strings.Builder, deck *soml.Deck, item soml.ChromeItem, id int, rect geom.Rect, rels *slideRels) error {
+	n, asset, ok := mediaOf(deck, item.Image)
+	if !ok {
+		return fmt.Errorf("에셋 표에 %q가 없다 — core.ResolveAssets를 거치지 않은 덱이다", item.Image)
+	}
+	ext := asset.Format.Ext()
+	if ext == "" {
+		return fmt.Errorf("포맷 %q의 확장자를 모른다", string(asset.Format))
+	}
+	style := soml.ImageStyle{Src: item.Image, Fit: soml.FitContain, Alt: item.Alt}
+	spec, err := picSpec(id, "chrome "+string(item.Kind), rect, style, asset, rels.mediaID(mediaTarget(n, ext)))
+	if err != nil {
+		return err
+	}
+	return writePic(b, spec, deck.Theme)
 }

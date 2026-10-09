@@ -153,8 +153,8 @@ CI에서는 경고를 통과시키지 않는다. 산출물이 필요 없는 검�
 ```
 
 두 산출물이 같은지 **눈으로** 보려면 검수 갤러리를 만든다 — 슬라이드마다 웹 스크린샷과 PPTX
-렌더가 나란히 놓인다. PPTX를 그림으로 되돌리는 데 LibreOffice와 `pdftoppm`이 필요하며, 없으면
-PPTX 열을 빼고 웹 열만 만든다
+렌더가 나란히 놓인다. PPTX를 그림으로 되돌리는 데 OnlyOffice Document Builder가, 없으면 LibreOffice와
+`pdftoppm`이 필요하며, 둘 다 없으면 PPTX 열을 빼고 웹 열만 만든다
 ([`balpyo preview`](../reference/cli.md#balpyo-preview)).
 
 ```bash

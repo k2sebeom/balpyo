@@ -93,6 +93,8 @@ type themeManifest struct {
 	// footer·pageNumber다. 테마가 어떤 kind를 선언하지 않으면 그 크롬은 값 층에서 경고와
 	// 함께 미탑재된다 (슬롯 규칙 그대로) — "테마가 받아야 뜻이 있다".
 	Chrome []chromeDeclFile `json:"chrome"`
+	// Backgrounds는 레이아웃별 슬라이드 배경이다 (theme_assets.go). 비면 모든 슬라이드가 `bg` 색이다.
+	Backgrounds []backgroundFile `json:"backgrounds"`
 }
 
 // chromeDeclFile은 theme.json의 크롬 선언 하나다 (원문 문자열). 값 어휘 검사는 loadChrome이
@@ -103,6 +105,10 @@ type chromeDeclFile struct {
 	Align       string   `json:"align"`
 	Role        string   `json:"role"`
 	SkipLayouts []string `json:"skipLayouts"`
+	// Image · Height · Alt는 그림 크롬(logo)의 자리다 — 글자 크롬에는 쓸 수 없다.
+	Image  string  `json:"image"`
+	Height float64 `json:"height"`
+	Alt    string  `json:"alt"`
 }
 
 // chromeDecl은 검사가 끝난 크롬 선언 하나다.
@@ -113,6 +119,10 @@ type chromeDecl struct {
 	// skip은 이 크롬을 싣지 않을 레이아웃 집합이다 (표지·섹션 구분 등). 값 층이 슬라이드마다
 	// 이 집합을 보고 확정 모델에서 뺀다 — 렌더러는 규칙을 모른다.
 	skip map[soml.SlideLayout]bool
+	// image · height · alt는 그림 크롬의 판정된 값이다 (image는 에셋 키).
+	image  string
+	height float64
+	alt    string
 }
 
 // themePackage는 로드된 테마 하나다 — 토큰 표(soml.Theme)와 매니페스트를 함께 담는다.
@@ -120,7 +130,9 @@ type chromeDecl struct {
 // 필드를 더한다.
 type themePackage struct {
 	manifest themeManifest
-	tokens   soml.Theme
+	// backgrounds는 레이아웃별 슬라이드 배경이다 (theme.json의 backgrounds).
+	backgrounds backgroundDecls
+	tokens      soml.Theme
 	// components는 로드·변환된 컴포넌트 외관 표다 (components.json). tokens와 달리 값 문법을
 	// 캐스케이드 내부 타입으로 이미 눕혀 담는다 — resolveText/Shape/Image가 재변환 없이 읽는다.
 	components components
@@ -280,10 +292,33 @@ type textRoleFile struct {
 	Align      string  `json:"align"`
 }
 
+// textComponentDefaultFile은 컴포넌트 기본값 한 줄이다 — 주인은 **태그**(`tag`)이거나 레이아웃의
+// **슬롯**(`layout` + `slot`)이다. 둘 중 하나만 쓴다.
+//
+// 슬롯이 주인이 될 수 있는 이유: 크기를 정하는 것이 역할이 아니라 자리인 경우가 있다. 인용
+// 레이아웃의 `quote` 슬롯은 한 문장을 크게 세우는 자리이지만, 흐름 속 `<blockquote>`는 문단 사이의
+// 인용이라 본문 크기여야 한다 — 태그 기본값으로는 둘을 가를 수 없다. 키에 레이아웃이 들어가는
+// 이유는 슬롯 이름이 레이아웃마다 겹치기 때문이다 (`body`는 content · image-text · stat에 있다).
 type textComponentDefaultFile struct {
-	Tag   string   `json:"tag"`
-	Size  *float64 `json:"size"`
-	Color *string  `json:"color"`
+	Tag    string   `json:"tag"`
+	Layout string   `json:"layout"`
+	Slot   string   `json:"slot"`
+	Size   *float64 `json:"size"`
+	Weight *int     `json:"weight"`
+	Color  *string  `json:"color"`
+}
+
+// key는 기본값 한 줄의 주인 이름이다 — 상속 병합과 로드가 같은 열쇠를 쓴다.
+func (d textComponentDefaultFile) key() string {
+	if d.Slot != "" || d.Layout != "" {
+		return slotDefaultKey(soml.SlideLayout(d.Layout), d.Slot)
+	}
+	return d.Tag
+}
+
+// slotDefaultKey는 슬롯 기본값 표의 열쇠다.
+func slotDefaultKey(layout soml.SlideLayout, slot string) string {
+	return string(layout) + "/" + slot
 }
 
 type textVariantFile struct {
@@ -378,13 +413,16 @@ type imageVariant struct {
 type components struct {
 	textRoles             map[soml.TextRole]soml.TextStyle
 	textComponentDefaults map[string]textPatch
-	textVariants          []textVariant
-	shapeDefault          shapePatch
-	shapeVariants         []shapeVariant
-	imageDefault          imagePatch
-	imageVariants         []imageVariant
-	table                 tableComponents
-	code                  codeComponents
+	// textSlotDefaults는 레이아웃 슬롯의 기본값이다 (열쇠 slotDefaultKey) — 태그 기본값 위,
+	// variant 아래 단이다.
+	textSlotDefaults map[string]textPatch
+	textVariants     []textVariant
+	shapeDefault     shapePatch
+	shapeVariants    []shapeVariant
+	imageDefault     imagePatch
+	imageVariants    []imageVariant
+	table            tableComponents
+	code             codeComponents
 }
 
 // tableComponents는 변환된 표 셀 외관 표다 (캐스케이드 내부 타입). shape/image의 default·
@@ -413,6 +451,8 @@ type rawTheme struct {
 	// 않고 문자열로 나르는 이유는 병합이 파일을 통째로 갈아 끼우기 때문이다.
 	layouts     map[string]string
 	slotLayouts map[string]string
+	// assets는 `assets/` 아래 파일이다 (테마 루트 기준 경로 → 원문 · 주인). 파일 단위로 병합된다.
+	assets map[string]rawAsset
 }
 
 // loadTheme는 fsys의 dir/ 아래 테마 패키지를 **상속 없이** 읽는다. dir은 fs 경로다 (내장은
@@ -462,6 +502,9 @@ func readRawTheme(fsys fs.FS, dir string) (rawTheme, error) {
 	if raw.layouts, raw.slotLayouts, err = readLayoutCSS(fsys, dir, optional); err != nil {
 		return raw, err
 	}
+	if raw.assets, err = readThemeAssets(fsys, dir, raw.manifest.Name); err != nil {
+		return raw, err
+	}
 	return raw, nil
 }
 
@@ -473,7 +516,8 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 
 	// 크롬 선언은 토큰·컴포넌트보다 **먼저** 검사한다 — 선언만으로 판정할 수 있는 값 어휘이고,
 	// 먼저 멈추면 "테마의 오타"와 "토큰 표의 문제"가 한 메시지에 섞이지 않는다.
-	chrome, err := loadChrome(pkg.manifest)
+	assets := &assetResolver{files: raw.assets}
+	chrome, err := loadChrome(pkg.manifest, assets)
 	if err != nil {
 		return pkg, err
 	}
@@ -511,6 +555,15 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 	}
 	pkg.layouts = raw.layouts
 	pkg.slotLayouts = raw.slotLayouts
+
+	// 배경은 토큰 표 **뒤**다 — 채움이 색 토큰을 가리킨다.
+	backgrounds, err := loadBackgrounds(pkg.manifest, tokens, assets)
+	if err != nil {
+		return pkg, err
+	}
+	pkg.backgrounds = backgrounds
+	// 선언이 가리킨 그림만 싣는다 (가리킨 순서) — `assets/` 안의 쓰지 않는 파일은 산출물에 나가지 않는다.
+	pkg.tokens.Assets = assets.used
 	return pkg, nil
 }
 
@@ -520,7 +573,7 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 // "표지에 번호가 왜 찍히는가"를 자기 슬라이드에서 찾게 되고, 테마는 저자가 고칠 수 없는
 // 자리다. 같은 이유로 skipLayouts의 이름은 **이 테마가 구현하는 레이아웃**이어야 한다 —
 // 오타 하나가 제외 규칙을 조용히 무효로 만든다.
-func loadChrome(manifest themeManifest) ([]chromeDecl, error) {
+func loadChrome(manifest themeManifest, assets *assetResolver) ([]chromeDecl, error) {
 	if len(manifest.Chrome) == 0 {
 		return nil, nil
 	}
@@ -531,7 +584,7 @@ func loadChrome(manifest themeManifest) ([]chromeDecl, error) {
 	seen := map[soml.ChromeKind]bool{}
 	decls := make([]chromeDecl, 0, len(manifest.Chrome))
 	for i, raw := range manifest.Chrome {
-		decl, err := chromeDeclOf(raw, layouts)
+		decl, err := chromeDeclOf(raw, layouts, assets)
 		if err != nil {
 			return nil, fmt.Errorf("theme.json의 chrome[%d]: %w", i, err)
 		}
@@ -547,7 +600,7 @@ func loadChrome(manifest themeManifest) ([]chromeDecl, error) {
 // chromeDeclOf는 선언 하나의 값 어휘를 검사한다. align·role은 **생략할 수 없다** — 테마가
 // 자리와 타이포그래피를 소유하므로 기본값을 엔진에 두면 그 소유가 반으로
 // 쪼개진다.
-func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool) (chromeDecl, error) {
+func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool, assets *assetResolver) (chromeDecl, error) {
 	var decl chromeDecl
 	kinds := make([]string, 0, len(soml.ChromeKinds()))
 	for _, kind := range soml.ChromeKinds() {
@@ -574,6 +627,28 @@ func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool) (chromeDecl, erro
 		return decl, fmt.Errorf("알 수 없는 align %q (쓸 수 있는 align: %s)", raw.Align, strings.Join(aligns, ", "))
 	}
 
+	if decl.kind == soml.ChromeLogo {
+		// 그림 크롬은 역할이 아니라 그림과 높이를 갖는다 — 글자 외관이 없으므로 role은 뜻이 없다.
+		if raw.Role != "" {
+			return decl, fmt.Errorf("logo에는 role을 쓸 수 없다 (%q) — 그림 크롬은 글자 외관이 없다. 크기는 height가 정한다", raw.Role)
+		}
+		if raw.Image == "" {
+			return decl, fmt.Errorf("logo에 image가 없다 — 테마 패키지의 그림을 가리킨다 (예: %s/logo.png)", themeAssetDir)
+		}
+		if raw.Height <= 0 {
+			return decl, fmt.Errorf("logo의 height가 없거나 0 이하다 (%g) — 논리 px 높이를 준다. 폭은 그림의 비율이 정한다", raw.Height)
+		}
+		key, err := assets.resolve("logo의 image", raw.Image)
+		if err != nil {
+			return decl, err
+		}
+		decl.image, decl.height, decl.alt = key, raw.Height, raw.Alt
+		return decl, chromeSkips(&decl, raw, layouts)
+	}
+	if raw.Image != "" || raw.Height != 0 || raw.Alt != "" {
+		return decl, fmt.Errorf("%s에는 image · height · alt를 쓸 수 없다 — 그림 크롬(logo)의 자리다", decl.kind)
+	}
+
 	roles := make([]string, 0, len(soml.TextRoles()))
 	for _, role := range soml.TextRoles() {
 		roles = append(roles, string(role))
@@ -587,18 +662,23 @@ func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool) (chromeDecl, erro
 		}
 		return decl, fmt.Errorf("알 수 없는 role %q (쓸 수 있는 role: %s)", raw.Role, strings.Join(roles, ", "))
 	}
+	return decl, chromeSkips(&decl, raw, layouts)
+}
 
-	if len(raw.SkipLayouts) > 0 {
-		decl.skip = make(map[soml.SlideLayout]bool, len(raw.SkipLayouts))
-		for _, name := range raw.SkipLayouts {
-			if !layouts[name] {
-				return decl, fmt.Errorf("skipLayouts의 %q는 이 테마의 레이아웃이 아니다 (이 테마의 레이아웃: %s)",
-					name, strings.Join(sortedKeys(layouts), ", "))
-			}
-			decl.skip[soml.SlideLayout(name)] = true
-		}
+// chromeSkips는 제외 레이아웃 목록을 검사해 선언에 싣는다 — 이 테마의 레이아웃 이름만 받는다.
+func chromeSkips(decl *chromeDecl, raw chromeDeclFile, layouts map[string]bool) error {
+	if len(raw.SkipLayouts) == 0 {
+		return nil
 	}
-	return decl, nil
+	decl.skip = make(map[soml.SlideLayout]bool, len(raw.SkipLayouts))
+	for _, name := range raw.SkipLayouts {
+		if !layouts[name] {
+			return fmt.Errorf("skipLayouts의 %q는 이 테마의 레이아웃이 아니다 (이 테마의 레이아웃: %s)",
+				name, strings.Join(sortedKeys(layouts), ", "))
+		}
+		decl.skip[soml.SlideLayout(name)] = true
+	}
+	return nil
 }
 
 // sortedKeys는 진단 문구가 실행마다 같도록 이름 집합을 정렬해 돌려준다.
@@ -692,16 +772,38 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 	}
 
 	comps.textComponentDefaults = map[string]textPatch{}
+	comps.textSlotDefaults = map[string]textPatch{}
 	for _, d := range file.Text.ComponentDefaults {
 		var patch textPatch
 		if d.Size != nil {
 			patch.size = d.Size
 		}
+		if d.Weight != nil {
+			patch.weight = d.Weight
+		}
 		if d.Color != nil {
-			c := soml.TokenColor(*d.Color)
+			c, err := themeColor(theme, fmt.Sprintf("text.componentDefaults %q의 color", d.key()), *d.Color)
+			if err != nil {
+				return comps, err
+			}
 			patch.color = &c
 		}
-		comps.textComponentDefaults[d.Tag] = patch
+		switch {
+		case d.Slot == "" && d.Layout == "":
+			if d.Tag == "" {
+				return comps, fmt.Errorf("text.componentDefaults의 한 줄에 주인이 없다 — tag나 layout + slot을 쓴다")
+			}
+			comps.textComponentDefaults[d.Tag] = patch
+		case d.Tag != "":
+			return comps, fmt.Errorf("text.componentDefaults의 tag %q와 slot을 함께 쓸 수 없다 — 한 줄의 주인은 하나다", d.Tag)
+		default:
+			layout := soml.SlideLayout(d.Layout)
+			if _, ok := soml.LayoutSlot(layout, d.Slot); !ok {
+				return comps, fmt.Errorf("text.componentDefaults의 슬롯 %q/%q가 레이아웃 어휘에 없다 (레이아웃 %q의 슬롯: %s)",
+					d.Layout, d.Slot, d.Layout, strings.Join(soml.SlotNames(layout), ", "))
+			}
+			comps.textSlotDefaults[d.key()] = patch
+		}
 	}
 
 	for _, v := range file.Text.Variants {
@@ -713,7 +815,10 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 			patch.weight = v.Weight
 		}
 		if v.Color != nil {
-			c := soml.TokenColor(*v.Color)
+			c, err := themeColor(theme, fmt.Sprintf("text variant %q의 color", v.Name), *v.Color)
+			if err != nil {
+				return comps, err
+			}
 			patch.color = &c
 		}
 		comps.textVariants = append(comps.textVariants, textVariant{name: v.Name, patch: patch})
@@ -849,14 +954,14 @@ func shadowToken(theme soml.Theme, name string) *soml.ShadowToken {
 func shapePatchFromFile(theme soml.Theme, fill, border, radius, shadow string) (shapePatch, error) {
 	var patch shapePatch
 	if fill != "" {
-		f, err := fillFromString(fill)
+		f, err := themeFill(theme, fill)
 		if err != nil {
 			return patch, err
 		}
 		patch.fill = f
 	}
 	if border != "" {
-		b, err := borderFromString(border)
+		b, err := themeBorder(theme, border)
 		if err != nil {
 			return patch, err
 		}
@@ -891,7 +996,7 @@ func shapeVariantPatchFromFile(theme soml.Theme, v shapeVariantFile) (shapePatch
 func imageVariantPatchFromFile(theme soml.Theme, v imageVariantFile) (imagePatch, error) {
 	var patch imagePatch
 	if v.Border != nil {
-		b, err := borderFromString(*v.Border)
+		b, err := themeBorder(theme, *v.Border)
 		if err != nil {
 			return patch, err
 		}
@@ -904,6 +1009,56 @@ func imageVariantPatchFromFile(theme soml.Theme, v imageVariantFile) (imagePatch
 		patch.shadow = shadowToken(theme, *v.Shadow)
 	}
 	return patch, nil
+}
+
+// themeFill · themeBorder · themeColor는 테마 파일의 외관 문자열을 **저자의 값 문법 그대로** 읽는다 —
+// 인라인 `fill`·`border`·`color`를 해석하는 같은 함수(resolver)를 지난다.
+//
+// 같은 함수인 이유: 테마가 `gradient(accent1 accent6)`·`shade(accent1, 20%)`·`4 gradient(accent1 muted)`를
+// 쓰려면 그 문법이 테마에서도 같은 뜻이어야 한다. 테마용 축약 파서를 따로 두면 그 파서가 아는 것만
+// 테마에 열리고(그라디언트가 그렇게 막혀 있었다), 같은 값이 자리에 따라 다르게 읽힌다. 진단은 파일
+// 위치가 없으므로 메시지만 에러로 올린다 — 위치는 호출자가 감싸는 자리 이름이 말한다. 토큰 참조만
+// 쓰는지(리터럴 금지)는 이 문법의 몫이 아니라 requireComponentColors의 몫이다.
+func themeFill(theme soml.Theme, raw string) (*soml.Fill, error) {
+	r := &resolver{theme: theme}
+	f, ok := r.fill(soml.Attr{Name: "fill", Value: raw, HasValue: true})
+	if err := themeValueErr(r, ok); err != nil {
+		return nil, err
+	}
+	return &f, nil
+}
+
+func themeBorder(theme soml.Theme, raw string) (*soml.Border, error) {
+	r := &resolver{theme: theme}
+	b, ok := r.border(soml.Attr{Name: "border", Value: raw, HasValue: true})
+	if err := themeValueErr(r, ok); err != nil {
+		return nil, err
+	}
+	return &b, nil
+}
+
+func themeColor(theme soml.Theme, where, raw string) (soml.Color, error) {
+	r := &resolver{theme: theme}
+	c, ok := r.colorValue(where, raw, soml.Span{})
+	if err := themeValueErr(r, ok); err != nil {
+		return soml.Color{}, err
+	}
+	return c, nil
+}
+
+// themeValueErr는 테마 값 하나를 읽은 resolver의 진단을 에러 하나로 모은다.
+func themeValueErr(r *resolver, ok bool) error {
+	if len(r.diags) == 0 && ok {
+		return nil
+	}
+	msgs := make([]string, 0, len(r.diags))
+	for _, d := range r.diags {
+		msgs = append(msgs, d.Message)
+	}
+	if len(msgs) == 0 {
+		msgs = append(msgs, "값을 해석할 수 없다")
+	}
+	return errors.New(strings.Join(msgs, "; "))
 }
 
 // fillFromString은 `none` 또는 색 토큰명을 *soml.Fill로 눕힌다 (colorFill/soml.NoFill과 같은

@@ -193,14 +193,15 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 
 	for i, slide := range deck.Slides {
 		n := i + 1
-		shapes, rels, err := shapesXML(deck, slide, g)
+		shapes, background, rels, err := shapesXML(deck, slide, g)
 		if err != nil {
 			return nil, err
 		}
 		rendered, err := renderTemplate(slidePart(n), slideTemplate, struct {
 			*soml.Slide
-			Shapes string
-		}{slide, shapes})
+			Shapes     string
+			Background string
+		}{slide, shapes, background})
 		if err != nil {
 			return nil, err
 		}
@@ -607,7 +608,7 @@ const slotLayoutTemplate = xmlDecl + `<p:sldLayout xmlns:a="http://schemas.openx
 // 슬라이드의 spTree는 shapesXML이 컴파일한 도형 목록을 담는다 (문서 순서 = z-순서).
 // name 속성에 슬라이드 ID를 넣어 PowerPoint의 선택 창에서 어느 슬라이드인지 보이게 한다.
 const slideTemplate = xmlDecl + `<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-  <p:cSld name="{{xml .ID}}">
+  <p:cSld name="{{xml .ID}}">{{.Background}}
     <p:spTree>
       <p:nvGrpSpPr>
         <p:cNvPr id="1" name=""/>

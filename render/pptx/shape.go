@@ -38,21 +38,28 @@ const firstShapeID = 2
 // slideTemplate의 `{{.Shapes}}` 자리에 그대로 들어간다. 함께 돌려주는 rels는 순회가 배정한
 // 관계 목록이다 — 슬라이드 rels 파트가 같은 배정을 실어야 `hlinkClick@r:id`와
 // `blip@r:embed`가 살아난다 (buildParts).
-func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, *slideRels, error) {
+//
+// 배경(`p:bg`)도 여기서 만든다 — 그림 배경의 관계가 도형들과 **한 카운터**를 나눠 써야 해서다 (slideRels).
+// 칠 순서대로 맨 먼저 배정한다.
+func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, string, *slideRels, error) {
 	var b strings.Builder
 	rels := &slideRels{}
+	background, err := backgroundXML(deck, slide, rels)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("%s: 배경: %w", slide.Source, err)
+	}
 	id := firstShapeID
 	for i, node := range slide.Content {
 		if err := writeShapeNode(&b, deck, slide, node, []int{i}, &id, g, rels); err != nil {
-			return "", nil, err
+			return "", "", nil, err
 		}
 	}
 	// 덱 크롬은 콘텐츠 뒤다 — 확정 모델이 비어 있으면 아무것도 나가지 않으므로
 	// 크롬을 켜지 않은 덱의 바이트가 움직이지 않는다 (chrome.go).
-	if err := writeChromeShapes(&b, deck, slide, &id, g); err != nil {
-		return "", nil, err
+	if err := writeChromeShapes(&b, deck, slide, &id, g, rels); err != nil {
+		return "", "", nil, err
 	}
-	return b.String(), rels, nil
+	return b.String(), background, rels, nil
 }
 
 // slideRels는 슬라이드 하나가 배정한 관계 목록이다 — 외부 하이퍼링크(`hlinkClick`)와
@@ -303,7 +310,7 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 		return fmt.Errorf("%s:%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
 			slide.Source, elem.Span, elem.Name)
 	}
-	body, err := textBodyXML(elem, *style, deck.Theme, rels)
+	body, err := textBodyXML(elem, *style, deck.Theme, rels, fillsOneLine(box))
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
@@ -823,11 +830,36 @@ func prstDashValue(style soml.BorderStyle) (string, error) {
 	return "", fmt.Errorf("테두리 스타일 %q는 어휘 밖이다", string(style))
 }
 
+// fullLineRatio는 "한 줄이 박스를 채웠다"의 문턱이다 — 잰 줄 폭이 박스 폭의 이 비율 이상이면
+// 다른 엔진에서 접힐 수 있는 박스로 본다.
+//
+// 비율이 4%인 이유: 엔진 사이의 글줄 폭 차이는 커닝(우리 PPTX는 `kern`을 쓰지 않아 PowerPoint가
+// 커닝 없이 놓는다)과 글리프 전진 폭의 반올림에서 오고, 굵은 라틴 제목에서 1–2% 남짓이다. 그
+// 두 배를 두면 내용 폭 박스(`<col align="center">` 안의 제목처럼 박스가 곧 글줄인 자리)는 모두
+// 걸리고, 폭이 넉넉한 박스의 짧은 한 줄은 걸리지 않는다 — 그쪽은 접힐 일이 없고, 저자가
+// PowerPoint에서 글을 늘리면 박스 안에서 줄이 바뀌는 편이 낫다.
+const fullLineRatio = 0.96
+
+// fillsOneLine은 잰 텍스트가 **한 줄**이고 그 줄이 박스 폭을 채웠는지 본다.
+//
+// 그런 박스는 PPTX에서 `wrap="none"`이다. 웹이 접지 않은 글줄이므로 접지 않는 것이 두 타깃의 같은
+// 결정이고, 접기를 엔진에 맡기면 글줄 폭이 몇 px 넓은 엔진에서 마지막 낱말이 둘째 줄로 떨어져
+// 아래 형제와 겹친다 (`normAutofit`은 PowerPoint가 글을 고칠 때 다시 계산하므로 연 순간의 넘침을
+// 받아 주지 않는다). 박스의 자리와 크기는 잰 그대로다 — 바뀌는 것은 줄바꿈 여부 하나다.
+func fillsOneLine(box geom.Box) bool {
+	if len(box.Lines) != 1 || box.Rect.W <= 0 {
+		return false
+	}
+	return box.Lines[0].W >= box.Rect.W*fullLineRatio
+}
+
 // textBodyXML은 해석된 텍스트 외관과 블록의 자식들을 p:txBody로 컴파일한다 (외관 매핑 표의
 // 텍스트 외관 행과 인라인 서식 표).
 // 문단 서식은 블록의 확정 스타일에서, 런 서식은 잎을 감싼 가장 안쪽 요소의 확정 스타일에서
 // 나온다 — 요소의 Attrs를 다시 읽지 않는다 (render/web.textStyleCSS와 같은 계약).
-func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rels *slideRels) (string, error) {
+//
+// oneLine은 잰 텍스트가 박스를 채운 한 줄이라는 뜻이다 (fillsOneLine) — 그 박스는 접지 않는다.
+func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rels *slideRels, oneLine bool) (string, error) {
 	var b strings.Builder
 	w := func(depth int, line string) {
 		b.WriteString("\n" + shapeIndent + strings.Repeat("  ", depth) + line)
@@ -837,7 +869,8 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rel
 	// 그대로 두면 좌표는 맞는데 글자만 몇 px 밀린다. wrap="square"는 박스 폭 안에서 줄을 바꾸는 웹과 같은 결정이고, normAutofit은
 	// 박스 고정 + 넘치면 PowerPoint가 줄여 맞춤이다: 줄이 어디서 접히는지는 엔진의
 	// 몫이라 PowerPoint가 한 줄 더 접어도 글자는 잰 박스 안에 머물고, 저자가 PowerPoint에서
-	// 글을 고친 뒤에도 그렇다. pre만 wrap="none" + noAutofit이다: 웹이 줄바꿈하지 않기로
+	// 글을 고친 뒤에도 그렇다. 예외가 둘이다 — 박스를 채운 한 줄은 wrap="none"이고(fillsOneLine),
+	// pre는 wrap="none" + noAutofit이다: 웹이 줄바꿈하지 않기로
 	// 했으므로(render/web.writeBlock의 white-space: pre) 줄 수가 원문의 줄 수로 정해져 있고,
 	// 코드의 글자 크기를 엔진이 줄이면 형제 코드 블록과 크기가 갈라진다.
 	//
@@ -845,8 +878,13 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rel
 	// 앵커가 움직일 여백이 없다 (soml.TextStyle.Anchor). 앵커가 뜻을 갖는 자리는 도형
 	// 안이고, 그쪽 bodyPr은 shapeBodyXML이 낸다.
 	wrap, autofit := "square", "<a:normAutofit/>"
-	if elem.Name == "pre" {
+	switch {
+	case elem.Name == "pre":
 		wrap, autofit = "none", "<a:noAutofit/>"
+	case oneLine:
+		// 줄 수는 하나로 정해져 있다 — 넘침을 받을 일이 없지만 normAutofit을 남기는 이유는 저자가
+		// PowerPoint에서 줄을 더하면(Enter) 박스 안으로 줄여 맞추는 편집 동작이다.
+		wrap = "none"
 	}
 	w(1, `<p:txBody>`)
 	w(2, fmt.Sprintf(`<a:bodyPr wrap="%s" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">`, wrap))
@@ -914,7 +952,7 @@ func shapeBodyXML(elem *soml.Element, style soml.ShapeStyle, rect geom.Rect, the
 	if err != nil {
 		return "", err
 	}
-	insets, err := bodyInsets(style.Pad, style.Type, rect)
+	insets, err := bodyInsets(style.Pad)
 	if err != nil {
 		return "", err
 	}
@@ -993,11 +1031,9 @@ func bodyAnchorValue(anchor soml.TextAnchor) (string, error) {
 // 근사해서 내면 도형 안 글자 위치가 조용히 어긋나므로 — 두 타깃이 다른 값을 쓰는 것을
 // 렌더러가 아는 순간 멈추는 편이 낫다 (해석되지 않은 값을 에러로 두는 것과 같은 태도).
 //
-// 프리셋이 들고 있는 rect가 우리가 쓰는 텍스트 영역과 다르면 그 몫을 **뺀다**
-// (web.ShapeTextCancel — chevron 하나다): 인셋은 뷰어가 프리셋의 rect **안쪽으로** 더 들어가는
-// 값이므로, 음수 인셋이 그 rect를 우리 영역까지 되돌린다. 값이 잰 박스에 달렸기 때문에
-// (백분율) 이 함수가 rect를 받는다 — 조정값 보정(AdjustValue)과 같은 구조다.
-func bodyInsets(pad *soml.Pad, shapeType string, rect geom.Rect) (string, error) {
+// 프리셋의 텍스트 영역은 인셋으로 보정하지 않는다 — 웹이 그 영역을 읽어 맞추고(web.ShapeTextRect),
+// 프리셋 rect가 박스와 갈라질 조정값(chevron)은 조정값 쪽에서 피한다(web.ShapeAdjust.Exceed).
+func bodyInsets(pad *soml.Pad) (string, error) {
 	insets := [4]int64{}
 	if pad != nil {
 		for i, side := range [4]soml.Length{pad.Left, pad.Top, pad.Right, pad.Bottom} {
@@ -1006,18 +1042,6 @@ func bodyInsets(pad *soml.Pad, shapeType string, rect geom.Rect) (string, error)
 					side.Value)
 			}
 			insets[i] = EMU(side.Value)
-		}
-	}
-	cancel, ok := web.ShapeTextCancel(shapeType)
-	if !ok {
-		// 어휘에 있는데 표에 없는 프리셋이다 — 조용히 0으로 두면 그 도형의 글자만 뷰어의
-		// rect에 갇힌다 (shapeGeometryOf를 에러로 둔 것과 같은 근거).
-		return "", fmt.Errorf("도형 type %q의 텍스트 영역 보정이 없다", shapeType)
-	}
-	if cancel.HasPercent() {
-		left, top, right, bottom := cancel.Px(rect.W, rect.H, 0)
-		for i, px := range [4]float64{left, top, right, bottom} {
-			insets[i] -= EMU(px)
 		}
 	}
 	return fmt.Sprintf(`lIns="%d" tIns="%d" rIns="%d" bIns="%d"`,
@@ -1527,4 +1551,61 @@ func typefaceValues(role soml.FontRole, theme soml.Theme) (latin, ea string, err
 	}
 	return "", "", fmt.Errorf("폰트 토큰 %q의 fontScheme 슬롯 %q를 모른다 (major/minor/빈 문자열)",
 		string(role), token.Scheme)
+}
+
+// backgroundXML은 테마가 정한 슬라이드 배경을 `p:bg`로 쓴다 (nil이면 빈 문자열 — 마스터의 bg1이 산다).
+//
+// 슬라이드의 배경이고 도형이 아니다: PowerPoint에서 "배경 서식"으로 고치는 자리이고, 끌어 옮길 수 있는 객체가
+// 아니다 — 웹에서 그것이 슬라이드 요소의 배경인 것과 같은 자리다. 채움은 도형 채움과 같은 함수(writeFill)를
+// 지나 토큰이 `schemeClr`로 남는다. 그림은 `blipFill`이고 슬라이드를 덮는다: 비율이 다르면 넘치는 축의
+// 양쪽을 잘라 낸다 (coverCrop — `<image fit="cover">`와 같은 계산이고 웹의 `background-size: cover`와 같은
+// 영역이다). 효과 목록(`a:effectLst`)은 비어 있어도 낸다 — CT_BackgroundProperties가 요구한다.
+func backgroundXML(deck *soml.Deck, slide *soml.Slide, rels *slideRels) (string, error) {
+	bg := slide.Background
+	if bg == nil {
+		return "", nil
+	}
+	if (bg.Fill == nil) == (bg.Image == "") {
+		return "", fmt.Errorf("배경은 채움이거나 그림이다 (둘 다 없거나 둘 다 있다) — core.Resolve를 거치지 않은 덱이다")
+	}
+	var b strings.Builder
+	w := func(depth int, line string) {
+		b.WriteString("\n    " + strings.Repeat("  ", depth) + line)
+	}
+	w(0, "<p:bg>")
+	w(1, "<p:bgPr>")
+	if bg.Fill != nil {
+		if bg.Fill.None {
+			return "", fmt.Errorf("배경 채움에 none은 뜻이 없다")
+		}
+		if err := writeFill(w, 2, *bg.Fill, nil, deck.Theme); err != nil {
+			return "", err
+		}
+	} else {
+		n, asset, ok := mediaOf(deck, bg.Image)
+		if !ok {
+			return "", fmt.Errorf("에셋 표에 %q가 없다 — core.ResolveAssets를 거치지 않은 덱이다", bg.Image)
+		}
+		ext := asset.Format.Ext()
+		if ext == "" {
+			return "", fmt.Errorf("포맷 %q의 확장자를 모른다", string(asset.Format))
+		}
+		crop, err := coverCrop(asset, geom.Rect{W: float64(deck.Stage.Width), H: float64(deck.Stage.Height)})
+		if err != nil {
+			return "", err
+		}
+		w(2, `<a:blipFill dpi="0" rotWithShape="1">`)
+		w(3, fmt.Sprintf(`<a:blip r:embed="%s"/>`, rels.mediaID(mediaTarget(n, ext))))
+		if attrs := crop.attrs(); attrs != "" {
+			w(3, "<a:srcRect"+attrs+"/>")
+		}
+		w(3, "<a:stretch>")
+		w(4, "<a:fillRect/>")
+		w(3, "</a:stretch>")
+		w(2, "</a:blipFill>")
+	}
+	w(2, "<a:effectLst/>")
+	w(1, "</p:bgPr>")
+	w(0, "</p:bg>")
+	return b.String(), nil
 }

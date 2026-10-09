@@ -1,0 +1,21 @@
+#!/bin/sh
+# Reject commits that credit Claude as a co-author.
+#
+# This repo's convention is that commit messages carry no AI/author
+# attribution lines (see AGENTS.md "Workflow conventions"). This hook is the
+# enforcement point: git only hands a hook the finished commit message at the
+# commit-msg stage (pre-commit runs before the message exists), so that's
+# where this check lives despite the common "pre-commit hook" phrasing.
+#
+# Install (per clone, not tracked by git):
+#   git config core.hooksPath githooks
+
+msg_file="$1"
+
+if grep -iE 'co-authored-by:.*claude' "$msg_file" >/dev/null 2>&1; then
+    echo "error: commit message credits Claude as a co-author." >&2
+    echo "Remove the 'Co-authored-by: Claude ...' line and commit again." >&2
+    exit 1
+fi
+
+exit 0

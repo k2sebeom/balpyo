@@ -317,3 +317,27 @@ func TestBuiltinThemesAreLoadable(t *testing.T) {
 		t.Error(`IsBuiltinTheme("corp") = true — 없는 테마를 받아들인다`)
 	}
 }
+
+// 컴포넌트 기본값 한 줄의 주인은 하나다 — 태그이거나 레이아웃 슬롯이다. 슬롯은 레이아웃 어휘에 있어야
+// 한다: 오타가 조용히 아무 데도 안 먹는 줄이 되면 테마 작성자는 왜 크기가 안 바뀌는지 모른다.
+func TestLoadComponentsSlotDefaults(t *testing.T) {
+	withDefaults := func(defaults string) string {
+		return strings.Replace(fullComponents, `"text": { "roles": [`,
+			`"text": { "componentDefaults": [`+defaults+`], "roles": [`, 1)
+	}
+	if _, err := loadTheme(memTheme(fullTokens, withDefaults(`{"layout":"quote","slot":"quote","size":40}`)), "t"); err != nil {
+		t.Fatalf("유효한 슬롯 기본값이 실패했다: %v", err)
+	}
+	for _, tc := range []struct{ name, defaults, want string }{
+		{"없는 슬롯", `{"layout":"quote","slot":"qoute","size":40}`, `"quote"/"qoute"가 레이아웃 어휘에 없다`},
+		{"태그와 슬롯을 함께", `{"tag":"p","layout":"quote","slot":"quote","size":40}`, "tag \"p\"와 slot을 함께 쓸 수 없다"},
+		{"주인 없음", `{"size":40}`, "주인이 없다"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := loadTheme(memTheme(fullTokens, withDefaults(tc.defaults)), "t")
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("에러 = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}

@@ -289,7 +289,7 @@ func (r *resolver) imageFit(attr soml.Attr) (soml.ImageFit, bool) {
 			attr.Value, imageFitList())
 		return "", false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 fit %q (쓸 수 있는 값: %s)", attr.Value, imageFitList())
+	r.errorf(attr.ValueSpan, "알 수 없는 fit %q%s (쓸 수 있는 값: %s)", attr.Value, didYouMean(attr.Value, imageFitList()), imageFitList())
 	return "", false
 }
 

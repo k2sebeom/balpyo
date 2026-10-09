@@ -127,7 +127,10 @@ reference.
     ],
     "componentDefaults": [
       { "tag": "h3", "size": 28 },
-      { "tag": "blockquote", "color": "muted" }
+      { "tag": "blockquote", "color": "muted" },
+      { "layout": "quote", "slot": "quote", "size": 40, "color": "fg" },
+      { "layout": "stat",  "slot": "value", "size": 96, "weight": 700, "color": "accent1" },
+      { "layout": "stat",  "slot": "label", "size": 28, "weight": 700 }
     ],
     "variants": [
       { "name": "kicker", "size": 18, "weight": 700, "color": "accent1" },
@@ -171,6 +174,18 @@ Things worth knowing about this file:
 - **`body` is 24px / 1.5 in every theme.** The 720px stage is exactly 20 body lines; that is a
   product fact, not a theme choice. What themes vary is the heading hierarchy and the fonts.
 - **Three separate variant namespaces** — text, shape, image. They do not know each other.
+- **Colors in components.json use the authoring grammar.** A theme can own gradients and color
+  variants (`"fill": "gradient(accent1 accent6, 135deg)"`, `"border": "4 gradient(accent6 accent1)"`,
+  `"color": "tint(accent1, 40%)"`) so the deck only says `variant="hero"`. Every color must stay a
+  token reference — no `#RRGGBB`, no literal gradient stops. Table cells take single tokens only.
+- **Themes own pictures.** Put PNG/JPEG files under `assets/` and point at them from `theme.json`:
+  `backgrounds` (per layout, `fill` *or* `image` — never both; an entry without `layouts` is the
+  default) and a `logo` chrome entry (`image`, `height`, `alt`; it is on whenever declared).
+  The deck never mentions them, so switching themes switches the backgrounds and the logo.
+- **A component default belongs to a tag or to a layout slot**, never both. A slot default sits
+  above the tag default and below variants: `<blockquote slot="quote">` gets quote size, a
+  `<blockquote>` in a flow slide stays body size. The built-in themes keep three slot contracts:
+  `quote/quote` ≥ 32px, `stat/value` > title, `stat/label` ≥ body.
 - **A shape variant does not style its children.** `card-header` will not embolden the text
   inside it; put the typography on the child (`<h3>`, `<text role="heading">`).
 - **`image.default` is deliberately empty.** Pictures have their own pixels; a default border

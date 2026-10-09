@@ -75,6 +75,11 @@
 | [0066](0066-preview-only-places-renders-side-by-side.md) | `balpyo preview`는 두 렌더를 나란히 놓기만 한다 (diff · 허용 오차를 지운다) | R6 | 확정 |
 | [0067](0067-prd-is-retired-and-its-standing-decisions-move-here.md) | PRD.md를 지운다 — 남은 결정 12건은 이 ADR이 들고, 인용은 지금의 문서를 가리킨다 | 정리 | 확정 |
 | [0068](0068-missing-theme-fonts-are-a-measurement-warning.md) | 측정 브라우저에 없는 테마 글꼴은 배치 경고다 (`init`의 경고 0은 글꼴이 깔린 기계의 약속이다) | 백로그 | 확정 |
+| [0069](0069-onlyoffice-is-the-pptx-review-renderer.md) | PPTX 검수 렌더는 OnlyOffice가 먼저다 (LibreOffice는 물러설 자리) — `make qa` | 백로그 | 확정 |
+| [0070](0070-a-box-filled-by-one-line-does-not-wrap.md) | 한 줄이 채운 텍스트 박스는 PPTX에서 접지 않는다 (`wrap="none"`) | 백로그 | 확정 (0064를 좁힌다) |
+| [0071](0071-chevron-adjust-exceeds-half-so-every-reader-sees-the-whole-box.md) | chevron 조정값은 절반을 한 단위 넘긴다 (음수 인셋을 지운다) | 백로그 | 확정 (0041을 대체한다) |
+| [0072](0072-text-component-defaults-can-belong-to-a-layout-slot.md) | 텍스트 컴포넌트 기본값의 주인은 태그이거나 레이아웃 슬롯이다 | 백로그 | 확정 |
+| [0073](0073-themes-own-assets-backgrounds-and-a-logo.md) | 테마가 자산을 소유한다: 레이아웃별 배경과 로고 크롬 | 백로그 | 확정 |
 
 0066까지의 ADR에 나오는 `PRD §…` 인용은 커밋 `2121a0b`의 `PRD.md`를 뜻한다. 그 절이 지금 어디에
 있는지는 [0067](0067-prd-is-retired-and-its-standing-decisions-move-here.md)의 대응표가 적는다.

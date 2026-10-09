@@ -180,6 +180,10 @@ type Slide struct {
 	// 대상이 되어 배치 판정이 저자가 고칠 수 없는 경고를 낸다). 제외 규칙이 이미 적용된
 	// 목록이므로 표지·섹션 구분에서는 비어 있다 — 렌더러는 이 목록을 그대로 그린다.
 	Chrome []ChromeItem
+	// Background는 테마가 이 슬라이드의 레이아웃에 정한 배경이다 (nil이면 테마의 `bg` 색 그대로 —
+	// 배경을 선언하지 않은 테마의 산출물은 예전과 같다). Chrome처럼 덱의 사실을 슬라이드마다 확정한
+	// 값이고, 렌더러는 규칙을 모르고 이 값만 그린다.
+	Background *Background
 	// Content는 슬라이드 콘텐츠 트리다 (`<note>`는 여기 없다 — Notes로 간다).
 	Content []Node
 	// Tokens는 이 슬라이드를 만든 원문 토큰 열이다. format이 원문을 되돌려 쓰고,
@@ -191,4 +195,17 @@ type Slide struct {
 type Node interface {
 	// NodeSpan은 이 노드를 만든 원문 구간이다 — 렌더 단계의 진단도 위치를 갖는다.
 	NodeSpan() Span
+}
+
+// Background는 슬라이드 배경 하나다 — 채움이거나 그림이다 (정확히 하나).
+//
+// 배경은 슬라이드의 **내용이 아니다**: 콘텐츠 트리에 넣으면 도형이 되어 저자가 PowerPoint에서 그것을
+// 끌어 옮기고, 배치 판정이 그것을 잰다. 웹은 슬라이드 요소의 배경, PPTX는 슬라이드의 `p:bg`다 —
+// 둘 다 "슬라이드 바탕"이라는 같은 자리다.
+type Background struct {
+	// Fill은 바탕 채움이다 (단색 · 그라디언트 — 토큰 참조). 그림 배경이면 nil이다.
+	Fill *Fill
+	// Image는 바탕 그림의 에셋 키다 (비면 그림 없음). 그림은 슬라이드를 **덮는다**(cover):
+	// 비율을 지키고 넘치는 쪽을 가운데 기준으로 잘라 낸다.
+	Image string
 }

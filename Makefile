@@ -7,7 +7,7 @@ MKDOCS := $(VENV)/bin/mkdocs
 # Chromium/Chrome만 있으면 된다 (없으면 그 테스트는 건너뛴다 — BALPYO_TEST_STRICT=1이면 실패).
 GOFLAGS ?=
 
-.PHONY: help test examples showcase golden dist docs docs-serve docs-clean clean
+.PHONY: help test examples qa showcase golden dist docs docs-serve docs-clean clean
 
 help: ## 사용 가능한 타깃 목록
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -20,6 +20,21 @@ test: ## 전체 테스트 (CI의 게이트와 같은 명령)
 # 픽스처 스위트 전체를 기다리지 않게 하는 입구다 — 새 CI 잡은 없다.
 examples: ## 예제 덱 · 예제 테마를 경고 0으로 빌드하는지 확인 (make test에도 포함)
 	go test ./internal/testkit -run 'TestExamplesBuildClean|TestExampleThemesBuildEveryDeck' -v -count=1
+
+# 저장소 전체의 PPTX 검수: 예제 덱과 픽스처마다 `balpyo preview` 갤러리를 만든다 — 웹 스크린샷과
+# OnlyOffice로 되돌린 PPTX가 나란히 놓인다 (없으면 LibreOffice). 판정은 하지 않는다. 렌더러를 고친
+# 커밋은 이 갤러리를 보고 낸다. 한 프로젝트가 실패해도 나머지는 만들고, 실패는 첫 줄과 함께 알린다.
+QA := preview/qa
+
+qa: ## 예제 덱 · 픽스처마다 웹 · PPTX 검수 갤러리 → preview/qa/<이름>/index.html
+	@set -e; tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+	go build -o "$$tmp/balpyo" ./cmd/balpyo; rm -rf $(QA); mkdir -p $(QA); \
+	for dir in examples/decks/*/ testdata/fixtures/*/; do \
+		name=$$(basename $$dir); \
+		if out=$$("$$tmp/balpyo" preview --project $$dir --target html,pptx --out "$$tmp/out-$$name" --gallery $(QA)/$$name 2>&1); \
+			then echo "  $$name"; else echo "  $$name 실패: $$(echo "$$out" | head -n 1)"; fi; \
+	done; \
+	echo "검수 갤러리: $(QA)/<이름>/index.html"
 
 # README의 쇼케이스: 예제 덱의 산출물(웹 · PPTX)과 슬라이드 스크린샷을 examples/showcase/에 만든다.
 # 커밋하는 산출물이라 렌더 결과가 바뀌면 이 타깃을 다시 돌려 함께 커밋한다. 스크린샷은 웹 렌더다

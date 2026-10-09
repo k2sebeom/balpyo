@@ -42,6 +42,18 @@ SOML에는 선언 채널이 **둘**이다: 이 페이지가 담는 **외관 채�
 - **컴포넌트 기본값 단은 태그별**이다: `<h3>`은 크기 28, `<blockquote>`는 색 `muted`,
   나머지 태그와 `<text>`는 빈 패치다 — 그래서 `<p>` ≡ `<text role="body">` 등가가 깊은
   비교로 성립한다 ([텍스트 서브셋](soml/text-subset.md)의 등가 표).
+- **슬롯에 놓인 요소는 그 자리의 기본값을 하나 더 받는다** — 같은 단 안에서 태그 기본값 위다.
+  크기를 정하는 것이 역할이 아니라 자리인 경우다: 인용 레이아웃의 `quote` 슬롯에 놓인
+  `<blockquote>`는 인용 크기(minimal 40px · `fg`)이고, 흐름 슬라이드의 `<blockquote>`는 본문 크기
+  그대로다. 내장 테마 셋이 같은 세 자리를 정한다:
+
+  | 레이아웃 / 슬롯 | 기본값 (minimal) | 계약 (세 테마 공통) |
+  |---|---|---|
+  | `quote` / `quote` | 40px · `fg` | lead(32px) 이상 |
+  | `stat` / `value` | 96px · 700 · `accent1` | 제목보다 크다 |
+  | `stat` / `label` | 28px · 700 | 본문(24px) 이상 — 숫자를 설명하는 줄이 아래 산문보다 작지 않다 |
+
+  `variant`와 인라인 속성은 자리를 이긴다 (`<blockquote slot="quote" size="48">`).
 - **병합은 파싱·해석 시점에 `core.Resolve`에서 한 번 일어나고 타깃 무관이다** — 웹과
   PPTX 렌더러는 확정 값만 읽으므로 캐스케이드 규칙이 렌더러마다 갈라질 수 없다. 인라인
   태그(strong/em …)의 런 스타일은 이 캐스케이드의 재적용이 아니라 블록 확정 스타일의
@@ -217,7 +229,7 @@ PowerPoint에서 확인한다**.
 | (역할에서) 폰트 | 폰트 토큰 이름 | `font-family: var(--balpyo-font-<토큰>)` | `a:latin`/`a:ea` 테마 참조 (`+mj-lt`·`+mj-ea` / `+mn-lt`·`+mn-ea`), mono는 리터럴 typeface |
 | `color` (토큰) | 토큰 이름 | `color: var(--balpyo-color-<토큰>)` | `a:solidFill/a:schemeClr@val` = 토큰의 Ref |
 | `color` (리터럴) | 대문자 6자리 hex | `color: #RRGGBB` | `a:solidFill/a:srgbClr@val="RRGGBB"` |
-| `color` (변형) | 밑색 + shade/tint/alpha | `color: color-mix(…)` (밑색 var()/#hex 유지) | `a:solidFill/…Clr` + `a:lumMod`/`a:lumOff`/`a:alpha` |
+| `color` (변형) | 밑색 + shade/tint/alpha | `color: hsl(from …)` · alpha는 `color-mix(…)` (밑색 var()/#hex 유지) | `a:solidFill/…Clr` + `a:lumMod`/`a:lumOff`/`a:alpha` |
 | `color` (그라디언트) | 스톱 목록 + 각도 | `background-image: linear-gradient(…)` + `background-clip: text` + `color: transparent` | `a:rPr/a:gradFill` (스톱마다 `a:gs`) |
 | `align` | 논리 이름 | `text-align: start\|center\|end\|justify` | `a:pPr@algn` = `l`\|`ctr`\|`r`\|`just` |
 | `anchor` | `top` `center` `bottom` | (부모 도형의) `justify-content: start\|center\|end` | (부모 도형의) `a:bodyPr@anchor` = `t`\|`ctr`\|`b` |
@@ -243,7 +255,7 @@ PowerPoint에서 확인한다**.
 |---|---|---|---|
 | `fill` (토큰) | 토큰 이름 | 그림 svg의 `fill: var(--balpyo-color-<토큰>)` | `a:solidFill/a:schemeClr@val` |
 | `fill` (리터럴) | hex | `fill: #RRGGBB` | `a:solidFill/a:srgbClr@val` |
-| `fill` (변형) | 밑색 + shade/tint/alpha | `fill: color-mix(…)` | `a:solidFill/…Clr` + `a:lumMod`/`a:lumOff`/`a:alpha` |
+| `fill` (변형) | 밑색 + shade/tint/alpha | `fill: hsl(from …)` · alpha는 `color-mix(…)` | `a:solidFill/…Clr` + `a:lumMod`/`a:lumOff`/`a:alpha` |
 | `fill` (그라디언트) | 스톱 목록 + 각도 | 그림 svg의 `<defs><linearGradient>` + `fill: url(#…)` | `a:gradFill/a:gsLst` (스톱마다 `a:gs pos`) + `a:lin@ang` |
 | `fill="none"` | `none` 상태 | `fill: none` | `a:noFill` |
 | `border` (굵기) | 논리 px | `stroke-width: <px>px` | `a:ln@w` = px × 9525 (EMU) |
@@ -305,14 +317,15 @@ PowerPoint에서 확인한다**.
 
 | 변형 | 웹 (CSS) | PPTX (색 요소 자식) |
 |---|---|---|
-| `shade(색, p%)` 어둡게 | `color-mix(in srgb, <밑색>, black p%)` | `a:lumMod val="(100−p)×1000"` |
-| `tint(색, p%)` 밝게 | `color-mix(in srgb, <밑색>, white p%)` | `a:lumMod val="(100−p)×1000"` + `a:lumOff val="p×1000"` |
+| `shade(색, p%)` 어둡게 | `hsl(from <밑색> h s calc(l * (100−p)/100))` | `a:lumMod val="(100−p)×1000"` |
+| `tint(색, p%)` 밝게 | `hsl(from <밑색> h s calc(l * (100−p)/100 + p))` | `a:lumMod val="(100−p)×1000"` + `a:lumOff val="p×1000"` |
 | `alpha(색, a)` 투명 | `color-mix(in srgb, transparent, <밑색> (a×100)%)` | `a:alpha val="a×100000"` |
 
-- 웹은 `color-mix()`가 sRGB 공간에서 섞고 PPTX는 광도 공간(`lumMod`/`lumOff`)에서 조절하므로
-  **미세한 색 차가 남는다** — 두 표기가 픽셀 단위로 같지 않은 것을 알고 고른 매핑이다: 목적은
-  색을 눕히지 않고 **`schemeClr` 참조를 살려 테마 색 편집을 따라가게** 하는 것이다. 실측상 shade/tint/alpha의
-  색 차는 텍스트 안티앨리어싱 잔차 수준이다.
+- shade/tint는 두 타깃에서 **같은 식**이다: HSL의 광도 L에 (100−p)%를 곱하고, tint는 p를 더한다.
+  PPTX의 `lumMod`/`lumOff`가 그 연산이고(PowerPoint 테마 색의 "어둡게/밝게 p%"), 웹은 같은 식을 CSS 상대
+  색 문법으로 쓴다. 색상(H)과 채도(S)는 그대로라 tint는 흰색과 섞은 색보다 선명하다 — `tint(#15803D, 40%)`은
+  밝은 초록 `#45E07F`이지 회녹색이 아니다. 두 표기 모두 색을 눕히지 않으므로 **`schemeClr` 참조가 살아
+  테마 색 편집을 따라간다.**
 - **도형 불투명도(`opacity`)와 변형 `alpha()`가 함께 있으면 곱한다** — 웹은 svg `opacity` ×
   색 알파, PPTX는 그 곱을 색 안의 `a:alpha` 하나로 낸다.
 

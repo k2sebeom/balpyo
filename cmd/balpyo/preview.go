@@ -75,8 +75,8 @@ func runPreview(args []string, stdout, stderr io.Writer) error {
 
 	fmt.Fprintf(stdout, "슬라이드 %d장 → %s\n", len(result.Slides), result.Index)
 	// 갤러리로 판정할 수 없는 확인이 남는다 — PPTX를 PowerPoint/Keynote로 열어 텍스트 박스가
-	// 진짜 텍스트 박스인지, 테마 색 편집이 먹는지 보는 일. LibreOffice 렌더는 그 확인을 대신하지
-	// 못한다 (다중 스톱 그라디언트 같은 자리에서 뷰어끼리 갈라진다 — 07_gradient 픽스처의 기록).
+	// 진짜 텍스트 박스인지, 테마 색 편집이 먹는지 보는 일. 어느 엔진의 렌더도 그 확인을 대신하지
+	// 못한다 (그라디언트 선 · 다중 스톱 같은 자리에서 뷰어끼리 갈라진다).
 	if hasTarget(result.Renders, render.TargetPPTX) {
 		fmt.Fprintf(stdout, "PPTX는 PowerPoint·Keynote로 직접 열어 확인한다: %s\n", result.OutDir)
 	}

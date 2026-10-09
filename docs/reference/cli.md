@@ -157,13 +157,19 @@ PDF 산출 명령은 아직 없다. 브라우저에서 **그대로 인쇄하면*
 진단은 stderr에 한 줄씩, 에디터가 클릭할 수 있는 관례적 형태로 나온다:
 
 ```
-slides/002_overview.slide:3:9: error: 알 수 없는 role "heding" (쓸 수 있는 역할: title, heading, body, caption, code)
+slides/002_overview.slide:3:9: error: 알 수 없는 role "heding" — 혹시 "heading"? (쓸 수 있는 역할: title, heading, body, caption, code)
 ```
 
 형태는 `파일:행:열: 심각도: 메시지`다. 행·열은 1-based이고 열은 룬(문자) 기준이다 —
 한글 한 글자가 세 칸으로 세어지지 않는다. 심각도는 `error`(빌드 실패)와 `warning`
 (통과하되 출력, `--strict`가 에러로 승격) 두 가지다. 경고는 빌드가 실패한 경우에도
 출력된다.
+
+어휘는 닫혀 있으므로 이름이 틀린 진단은 **그 자리에 쓸 수 있는 목록**을 함께 싣는다 — 태그는 부모가
+받는 자식(`<ul>` 안이면 `<li>`), 속성은 그 태그의 속성, 값은 그 속성의 어휘다. 철자가 목록의 이름과
+한두 글자 다르면(네 글자 이하의 이름은 한 글자) `— 혹시 "heading"?`처럼 후보를 하나 단다. `<b>`·`<i>`·
+`<img>`·`<h4>`–`<h6>`처럼 HTML에서 온 태그 이름은 철자 대신 SOML의 같은 뜻(`<strong>`·`<em>`·
+`<image>`·`<h3>`)을 권한다.
 
 진단은 **소스 순서**로 나온다 — 파일은 슬라이드 순서(파일명 순, 장 디렉토리 포함)이고, 한
 파일 안에서는 행 → 열 순이다. 위치가 없는 진단(파일 전체에 대한 것)은 그 파일의 앞에 선다.
@@ -317,7 +323,7 @@ balpyo watch --project examples/decks/quarterly-review
 ✓ 14:31:02  슬라이드 6개 · 파일 1개 (41ms)
 ✓ 14:31:18  슬라이드 6개 · 파일 1개 (38ms)
 ✗ 14:31:33  빌드 실패: 에러 1건 (12ms)
-  slides/003_kpis.slide:7:6: error: 알 수 없는 태그 <txt> (쓸 수 있는 태그: …)
+  slides/003_kpis.slide:7:6: error: 알 수 없는 태그 <txt> — 혹시 <text>? (<col> 안에 쓸 수 있는 태그: …)
 ```
 
 주소 줄을 브라우저에 붙이면 그 탭이 빌드마다 스스로 새로고침한다. 빌드 하나가 터미널에
@@ -366,7 +372,7 @@ balpyo watch --project examples/decks/quarterly-review
       "file": "slides/003_kpis.slide",
       "line": 7,
       "column": 6,
-      "message": "알 수 없는 태그 <txt>"
+      "message": "알 수 없는 태그 <txt> — 혹시 <text>? (<col> 안에 쓸 수 있는 태그: …)"
     }
   ],
   "slides": 0,
@@ -422,7 +428,7 @@ PPTX는 PowerPoint·Keynote로 직접 열어 확인한다: /path/to/dist
 ```
 
 `preview/index.html`을 브라우저로 열면 슬라이드마다 두 칸이 나란히 있다: 웹 스크린샷과
-LibreOffice로 되돌린 PPTX. 줄바꿈 · 글리프가 두 칸에서 다른 것은 계약 밖의 차이다
+OnlyOffice(없으면 LibreOffice)로 되돌린 PPTX — 갤러리 안내가 어느 엔진의 그림인지 밝힌다. 줄바꿈 · 글리프가 두 칸에서 다른 것은 계약 밖의 차이다
 ([계약 밖의 차이](../guides/known-differences.md)). 산출물(`*.pptx`·`index.html`)도 갤러리 옆에
 복사되므로 PPTX를 그 자리에서 PowerPoint·Keynote로 열 수 있다.
 
@@ -452,11 +458,17 @@ LibreOffice로 되돌린 PPTX. 줄바꿈 · 글리프가 두 칸에서 다른 �
 `검수 갤러리 디렉토리 …가 빌드 출력 디렉토리 …와 겹친다 — 갤러리는 만들 때 디렉토리를 비우므로
 빌드 산출물이 지워진다. --gallery나 --out을 서로 겹치지 않는 곳으로 준다`.
 
-### PPTX 칸은 도구 둘이 필요하다
+### PPTX 칸은 래스터 엔진이 필요하다
 
-PPTX를 그림으로 되돌리려면 **LibreOffice(`soffice`)**와 **`pdftoppm`(poppler-utils)**이 필요하다.
-이 둘은 balpyo가 산출물을 만드는 데 쓰는 도구가 아니라 **만든 산출물을 다시 그림으로 보는** 데만
-쓰는 도구다 — 빌드는 여전히 바이너리 하나로 끝난다.
+PPTX를 그림으로 되돌리는 엔진은 둘 중 하나다. 앞의 것이 있으면 그것을 쓴다:
+
+1. **OnlyOffice Document Builder** — 설치 디렉토리(`x2t`와 `docbuilder`가 있는 곳)를 찾는다:
+   `BALPYO_ONLYOFFICE` → `/opt/onlyoffice/documentbuilder`. OOXML을 직접 읽어 PowerPoint와 같은 기본값으로
+   그리므로 PPTX에서만 생기는 접힘 · 겹침이 더 잘 보인다.
+2. **LibreOffice(`soffice`)**와 **`pdftoppm`(poppler-utils)**.
+
+이 도구들은 balpyo가 산출물을 만드는 데 쓰는 것이 아니라 **만든 산출물을 다시 그림으로 보는** 데만
+쓴다 — 빌드는 여전히 바이너리 하나로 끝난다.
 
 - `--target`을 **주지 않았는데** 도구를 못 찾으면 웹 칸만으로 갤러리를 만든다. 조용히 빼지 않는다 —
   출력에 `PPTX 열을 뺀다 — <이유>`가, 갤러리 안내에 PPTX 열을 뺐다는 문장이 남는다.
@@ -464,8 +476,9 @@ PPTX를 그림으로 되돌리려면 **LibreOffice(`soffice`)**와 **`pdftoppm`(
   보려고 친 명령이 웹만 내면 사람은 두 타깃을 다 봤다고 읽는다.
 
 ```bash
-# 설치한다 (macOS: brew install --cask libreoffice; brew install poppler)
-# 또는 경로를 준다
+# OnlyOffice Document Builder를 다른 자리에 풀었으면 그 디렉토리를 준다
+BALPYO_ONLYOFFICE=/path/to/documentbuilder balpyo preview
+# 또는 LibreOffice를 설치하거나(macOS: brew install --cask libreoffice; brew install poppler) 경로를 준다
 BALPYO_SOFFICE=/path/to/soffice BALPYO_PDFTOPPM=/path/to/pdftoppm balpyo preview
 ```
 
@@ -483,7 +496,7 @@ BALPYO_SOFFICE=/path/to/soffice BALPYO_PDFTOPPM=/path/to/pdftoppm balpyo preview
 `normAutofit`이라 PowerPoint가 넘치는 글자를 줄여 맞춘다), `style`에 쓴 외관은 웹에만 적용된다
 ([외관 속성](appearance.md)) — 그 차이를 숫자로 내면 고칠 자리처럼 읽힌다.
 
-LibreOffice가 파일을 열며 경고나 복구를 냈다면 그 출력도 그대로 보여 준다 — 복구가
+엔진이 파일을 열며 경고나 복구를 냈다면 그 출력도 그대로 보여 준다 — 복구가
 일어났다면 사용자도 파일을 열 때마다 같은 경고를 볼 수 있다.
 
 ### 아직 아닌 것

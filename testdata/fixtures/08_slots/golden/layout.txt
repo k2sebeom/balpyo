@@ -28,6 +28,6 @@ textbox "p s3.4" ph=body/4
   ¶ start | "2026-09-20"{body 18pt fg}
 # slide 5 quote-slots
 textbox "blockquote s4.0" ph=body/1
-  ¶ start | "측정할 수 없는 것은 관리할 수 없다는 말은 절반만 맞다 — 측정한 것만 관리하면 측정하지 않은 것이 무너진다."{body 18pt muted}
+  ¶ start | "측정할 수 없는 것은 관리할 수 없다는 말은 절반만 맞다 — 측정한 것만 관리하면 측정하지 않은 것이 무너진다."{body 30pt fg}
 textbox "p s4.1" ph=body/2
   ¶ end | "— 운영 회고, 2026 H1"{body 18pt fg}

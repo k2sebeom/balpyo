@@ -14,41 +14,66 @@ import (
 )
 
 // toolTimeout은 변환 하나에 주는 시간이다. LibreOffice는 실패할 때 대화창을 띄우려 시도하며
-// 멈추는 쪽이라 상한이 필요하다.
+// 멈추는 쪽이라 상한이 필요하다 (OnlyOffice도 같은 상한을 받는다).
 const toolTimeout = 120 * time.Second
 
-// Rasterizer는 PPTX를 슬라이드별 그림으로 되돌린다 (soffice → PDF → pdftoppm → PNG).
+// Rasterizer는 PPTX를 슬라이드별 그림으로 되돌리는 엔진이다.
+//
+// 엔진이 둘인 이유: OnlyOffice(OnlyOffice)는 OOXML을 직접 읽어 명세대로 그리는 쪽이라 검수의
+// 기본이고, LibreOffice(LibreOffice)는 OnlyOffice가 없는 호스트의 물러설 자리다. 갤러리 · 로그는
+// 어느 엔진의 그림인지 Name으로 밝힌다 — 엔진마다 제 버릇이 있어(LibreOffice의 한글↔라틴 간격)
+// 그림을 읽는 사람이 그것을 알아야 한다.
+type Rasterizer interface {
+	// Name은 엔진 이름이다 (갤러리 안내 · 로그).
+	Name() string
+	// Slides는 pptx를 슬라이드별 PNG로 렌더한다. size는 논리 스테이지 크기다. noise는 엔진이 낸
+	// 무해하지 않은 출력이고, 판정은 호출자가 한다.
+	Slides(pptxPath string, size image.Point, workDir string) (pages []image.Image, noise string, err error)
+}
+
+// LibreOffice는 PPTX를 슬라이드별 그림으로 되돌린다 (soffice → PDF → pdftoppm → PNG).
 //
 // 도구 경로를 값으로 들고 있는 이유: 탐색은 한 번이면 충분하고, 무엇보다 **없을 때 멈추는
 // 자리**가 명령 시작 지점이어야 한다 — 6장을 빌드한 뒤에 "soffice가 없다"를 아는 것은 낭비다.
-type Rasterizer struct {
+type LibreOffice struct {
 	Soffice  string
 	Pdftoppm string
 }
 
-// NewRasterizer는 도구를 찾아 래스터라이저를 만든다. 없으면 어디서 구하는지를 말한다.
+// Name은 갤러리와 로그에 쓰는 엔진 이름이다.
+func (r *LibreOffice) Name() string { return "LibreOffice" }
+
+// NewRasterizer는 엔진을 찾아 래스터라이저를 만든다 — OnlyOffice가 먼저, 없으면 LibreOffice다.
+// 둘 다 없으면 어디서 구하는지를 말한다.
 //
 // 조용히 웹만 내는 길을 두지 않는 이유: PPTX를 보려고 명령을 쳤는데 PPTX 열이
 // 없는 갤러리가 나오면 사람은 **두 타깃이 같다고 읽는다**.
-func NewRasterizer() (*Rasterizer, error) {
+func NewRasterizer() (Rasterizer, error) {
+	dir, ooErr := LookOnlyOffice()
+	if ooErr == nil {
+		return &OnlyOffice{Dir: dir}, nil
+	}
 	soffice, err := LookSoffice()
 	if err != nil {
-		return nil, toolError("LibreOffice(soffice)", EnvSoffice, err)
+		return nil, toolError(ooErr, "LibreOffice(soffice)", EnvSoffice, err)
 	}
 	pdftoppm, err := LookPdftoppm()
 	if err != nil {
-		return nil, toolError("pdftoppm(poppler-utils)", EnvPdftoppm, err)
+		return nil, toolError(ooErr, "pdftoppm(poppler-utils)", EnvPdftoppm, err)
 	}
-	return &Rasterizer{Soffice: soffice, Pdftoppm: pdftoppm}, nil
+	return &LibreOffice{Soffice: soffice, Pdftoppm: pdftoppm}, nil
 }
 
 // toolError는 도구를 못 찾았을 때의 안내다 — 사용자가 다음에 할 일이 문장 안에 있어야 한다.
-func toolError(name, env string, err error) error {
-	return fmt.Errorf("%s가 필요하다: %w\n"+
-		"PPTX를 그림으로 되돌리는 데만 쓰는 도구다 — 설치하거나(macOS: brew install --cask libreoffice; "+
-		"brew install poppler) %s로 경로를 주거나, `--target html`로 웹만 본다. "+
+// 두 엔진의 탐색 결과를 모두 말한다: OnlyOffice가 없다는 사실을 빼면 사람은 LibreOffice만
+// 설치하면 된다고 읽고 더 나은 쪽을 모른 채 지난다.
+func toolError(onlyOffice error, name, env string, err error) error {
+	return fmt.Errorf("PPTX를 그림으로 되돌릴 엔진이 없다 — OnlyOffice: %v; %s: %v\n"+
+		"PPTX를 그림으로 되돌리는 데만 쓰는 도구다. OnlyOffice Document Builder를 설치하거나"+
+		"(%s로 설치 디렉토리를 준다), LibreOffice와 poppler를 설치하거나(macOS: brew install --cask libreoffice; "+
+		"brew install poppler — %s로 경로를 준다), `--target html`로 웹만 본다. "+
 		"PowerPoint·Keynote가 있으면 산출물을 직접 여는 쪽이 더 정확하다",
-		name, err, env)
+		onlyOffice, name, err, EnvOnlyOffice, env)
 }
 
 // PDF는 pptx를 PDF로 바꾸고 경로를 돌려준다. noise는 LibreOffice가 낸 무해하지 않은 출력이다.
@@ -56,7 +81,7 @@ func toolError(name, env string, err error) error {
 // "열린다"로는 부족하다. PowerPoint와 LibreOffice는 깨진 패키지를 조용히 복구해서 열어 주기
 // 때문에, 복구가 일어나면 사용자는 파일을 열 때마다 경고를 보게 된다. 그래서 그 흔적을 따로
 // 돌려주고 판정은 호출자가 한다 (하네스는 테스트 실패로, CLI는 경고 줄로).
-func (r *Rasterizer) PDF(pptxPath, workDir string) (pdfPath, noise string, err error) {
+func (r *LibreOffice) PDF(pptxPath, workDir string) (pdfPath, noise string, err error) {
 	outDir := filepath.Join(workDir, "pdf")
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return "", "", fmt.Errorf("변환 디렉토리를 만들 수 없다: %w", err)
@@ -85,7 +110,7 @@ func (r *Rasterizer) PDF(pptxPath, workDir string) (pdfPath, noise string, err e
 //
 // size는 논리 스테이지 크기다. 웹 스크린샷과 픽셀 비교하려면 같은 크기여야 하므로 pdftoppm에
 // 목표 크기를 직접 준다 — DPI로 맞추면 페이지 크기 반올림 때문에 한두 px씩 어긋난다.
-func (r *Rasterizer) Pages(pdfPath string, size image.Point, workDir string) ([]image.Image, error) {
+func (r *LibreOffice) Pages(pdfPath string, size image.Point, workDir string) ([]image.Image, error) {
 	if size.X <= 0 || size.Y <= 0 {
 		return nil, fmt.Errorf("렌더 크기가 유효하지 않다: %dx%d", size.X, size.Y)
 	}
@@ -99,12 +124,12 @@ func (r *Rasterizer) Pages(pdfPath string, size image.Point, workDir string) ([]
 // 것이 아니라 **종이 크기**를 본다 (한 장이 한 페이지인지). 크기를 주고 렌더하면
 // 페이지가 letter로 나왔어도 PNG는 원하는 크기가 되어 그 실패가 사라진다. 72dpi를 주면
 // PNG의 픽셀 수가 곧 페이지의 pt 크기다 (실측 — pdftoppm -r 72는 1pt를 1px로 낸다).
-func (r *Rasterizer) PagesAtPointScale(pdfPath, workDir string) ([]image.Image, error) {
+func (r *LibreOffice) PagesAtPointScale(pdfPath, workDir string) ([]image.Image, error) {
 	return r.render(pdfPath, filepath.Join(workDir, "png-pt"), "-r", "72")
 }
 
 // render는 pdftoppm을 돌리고 나온 PNG를 페이지 순서로 읽는다 (크기 인자는 호출자가 준다).
-func (r *Rasterizer) render(pdfPath, outDir string, scale ...string) ([]image.Image, error) {
+func (r *LibreOffice) render(pdfPath, outDir string, scale ...string) ([]image.Image, error) {
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return nil, fmt.Errorf("렌더 디렉토리를 만들 수 없다: %w", err)
 	}
@@ -138,7 +163,7 @@ func (r *Rasterizer) render(pdfPath, outDir string, scale ...string) ([]image.Im
 }
 
 // Slides는 pptx를 슬라이드별 PNG로 렌더한다 (PDF를 거친다).
-func (r *Rasterizer) Slides(pptxPath string, size image.Point, workDir string) (pages []image.Image, noise string, err error) {
+func (r *LibreOffice) Slides(pptxPath string, size image.Point, workDir string) (pages []image.Image, noise string, err error) {
 	pdfPath, noise, err := r.PDF(pptxPath, workDir)
 	if err != nil {
 		return nil, noise, err
@@ -181,11 +206,20 @@ func SofficeNoise(stderr string) string {
 
 // runTool은 외부 도구를 시간 제한 안에서 돌리고 출력을 나눠 돌려준다.
 func runTool(bin string, args ...string) (stdout, stderr string, err error) {
+	return runToolIn("", nil, bin, args...)
+}
+
+// runToolIn은 runTool에 작업 디렉토리와 더할 환경 변수를 준다 (빈 dir은 현재 디렉토리다).
+func runToolIn(dir string, env []string, bin string, args ...string) (stdout, stderr string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), toolTimeout)
 	defer cancel()
 
 	var outBuf, errBuf bytes.Buffer
 	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd.Dir = dir
+	if len(env) > 0 {
+		cmd.Env = append(os.Environ(), env...)
+	}
 	cmd.Stdout = &outBuf
 	cmd.Stderr = &errBuf
 	err = cmd.Run()

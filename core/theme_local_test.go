@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -318,12 +319,14 @@ func TestExtendsOverridesLayoutCSSByFile(t *testing.T) {
 // 쓴 슬라이드가 렌더될 때가 아니라 테마 로딩에서 멈춘다 (check가 build와 같은 판정을 하는 이유).
 func TestComponentColorsMustBeThemeTokens(t *testing.T) {
 	cases := []struct{ name, comps, want string }{
-		{"shape variant 그라디언트", `{"shape":{"variants":[{"name":"chip","fill":"gradient(accent6 accent1, 90deg)"}]}}`,
-			`shape variant "chip"의 fill "gradient(accent6 accent1, 90deg)"`},
+		// 토큰 그라디언트는 참조로 남으므로 받는다 (아래 TestThemeGradientTokens) — 리터럴 스톱이 섞이면
+		// 그 스톱만 테마 색 편집을 따라가지 못하므로 막는다.
+		{"shape variant 리터럴 스톱 그라디언트", `{"shape":{"variants":[{"name":"chip","fill":"gradient(#FF9900 accent1, 90deg)"}]}}`,
+			`shape variant "chip"의 fill "#FF9900"`},
 		{"shape variant 테두리 리터럴", `{"shape":{"variants":[{"name":"badge","border":"2 solid #FF9900"}]}}`,
 			`shape variant "badge"의 border "#FF9900"`},
 		{"text variant 오타", `{"text":{"variants":[{"name":"kicker","color":"acent1"}]}}`,
-			`text variant "kicker"의 color "acent1"`},
+			`text variant "kicker"의 color의 색 토큰 "acent1"가 테마에 없다 — 혹시 "accent1"?`},
 		{"표 줄무늬", `{"table":{"stripe":"zebra"}}`, `table.stripe의 fill "zebra"`},
 	}
 	for _, tc := range cases {
@@ -516,4 +519,44 @@ func mustLoadLocal(t *testing.T, project fstest.MapFS, name string) themePackage
 		t.Fatalf("테마 %q 로드 실패: %v", name, err)
 	}
 	return pkg
+}
+
+// 테마는 그라디언트를 소유할 수 있다 — 스톱이 전부 토큰이면 PPTX에서 `schemeClr` 스톱으로 남아 테마 색
+// 편집을 따라간다. 문법은 저자의 인라인 값과 같다: 채움 `gradient(…)`, 테두리 `<굵기> gradient(…)`,
+// 글자 `color`의 그라디언트와 변형. 그 variant를 쓴 요소는 인라인으로 같은 값을 쓴 요소와 같은 외관이다.
+func TestThemeGradientTokens(t *testing.T) {
+	comps := `{
+  "text":  {"variants":[{"name":"brand","color":"gradient(accent1 accent6, 90deg)"},{"name":"soft","color":"tint(accent1, 40%)"}]},
+  "shape": {"variants":[{"name":"hero","fill":"gradient(accent1 accent6, 135deg)","border":"3 gradient(accent1 accent2)"}]}
+}`
+	project := localTheme("corp", `{"name":"corp","extends":"minimal"}`, "", comps, nil)
+	deck, diags := themeDeckIn(t, project, "corp", `<slide>
+  <shape type="rect" variant="hero" w="200" h="100"><text variant="brand">브랜드</text></shape>
+  <shape type="rect" fill="gradient(accent1 accent6, 135deg)" border="3 gradient(accent1 accent2)" w="200" h="100"/>
+  <text variant="soft">연한 글자</text>
+</slide>`)
+	if len(diags) != 0 {
+		t.Fatalf("진단이 없어야 한다: %v", diags)
+	}
+	var shapes []*soml.ShapeStyle
+	for _, node := range deck.Slides[0].Content {
+		if e, ok := node.(*soml.Element); ok && e.Name == "shape" {
+			shapes = append(shapes, e.ShapeStyle())
+		}
+	}
+	if len(shapes) != 2 {
+		t.Fatalf("도형 %d개, want 2", len(shapes))
+	}
+	themed, inline := shapes[0], shapes[1]
+	if themed == nil || inline == nil {
+		t.Fatal("도형 외관이 해석되지 않았다")
+	}
+	if !reflect.DeepEqual(themed.Fill, inline.Fill) || !reflect.DeepEqual(themed.Border, inline.Border) {
+		t.Errorf("테마 variant와 인라인의 같은 값이 갈린다:\nvariant %+v %+v\ninline  %+v %+v",
+			themed.Fill, themed.Border, inline.Fill, inline.Border)
+	}
+	text := findElement(t, deck, "text").TextStyle()
+	if text == nil || !text.Color.IsGradient() || len(text.Color.Gradient.Stops) != 2 {
+		t.Errorf("text variant의 그라디언트 색이 실리지 않았다: %+v", text)
+	}
 }

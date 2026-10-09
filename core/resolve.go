@@ -81,6 +81,12 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 		// 크롬 확정도 layout이 정해진 **뒤**다 — 제외 규칙의 입력이 확정된 레이아웃이라서,
 		// 어휘 밖 이름이 content로 폴백한 슬라이드도 폴백된 레이아웃으로 판정된다.
 		slide.Chrome = slideChrome(chromePlan, pkg, slide)
+		// 배경도 확정 레이아웃의 것이다. 값을 복사해 싣는 이유는 확정 모델이 슬라이드마다 독립이어야
+		// 한다는 것이다 — 테마의 선언 값을 슬라이드들이 나눠 가리키면 한 슬라이드를 고친 코드가 전부를 고친다.
+		if bg := pkg.backgrounds.For(slide.Layout); bg != nil {
+			copied := *bg
+			slide.Background = &copied
+		}
 		for _, node := range slide.Content {
 			// 슬라이드 직속 노드의 부모는 없다 — 배치 해석이 부모를 보는 이유는
 			// resolveLayout의 주석에 있다 (span은 <grid>의 자식에서만 뜻이 있다).
@@ -151,7 +157,8 @@ func (r *resolver) slideLayout(slide *soml.Slide) {
 			return
 		}
 	}
-	r.errorf(slide.LayoutSpan, "알 수 없는 layout %q (쓸 수 있는 layout: %s)", string(slide.Layout), layoutList())
+	r.errorf(slide.LayoutSpan, "알 수 없는 layout %q%s (쓸 수 있는 layout: %s)",
+		string(slide.Layout), didYouMean(string(slide.Layout), layoutList()), layoutList())
 	slide.Layout = soml.DefaultSlideLayout
 }
 
@@ -257,7 +264,7 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 		return
 	}
 	if role, ok := r.textRole(elem); ok {
-		r.resolveText(elem, role, textPatch{})
+		r.resolveText(elem, role, textPatch{}, placedSlot(elem))
 		if elem.Name == soml.PreElement {
 			// 일곱 번째 갈래다. `<pre>`의 문자 데이터는 탭이 펴지고, `lang`이 있으면
 			// **합성 인라인 런**이 된다 — 확정 스타일이 채워진 뒤이므로 합성 런은 그것을 부모로
@@ -311,8 +318,8 @@ func (r *resolver) resolveSlot(elem *soml.Element, parent *soml.Element) {
 		return
 	}
 	if _, ok := soml.LayoutSlot(r.layout, attr.Value); !ok {
-		r.errorf(attr.ValueSpan, "레이아웃 %q에 없는 슬롯 %q (쓸 수 있는 슬롯: %s)",
-			string(r.layout), attr.Value, slotList(r.layout))
+		r.errorf(attr.ValueSpan, "레이아웃 %q에 없는 슬롯 %q%s (쓸 수 있는 슬롯: %s)",
+			string(r.layout), attr.Value, didYouMean(attr.Value, slotList(r.layout)), slotList(r.layout))
 		return
 	}
 	if _, ok := r.theme.SlotLayouts[string(r.layout)]; !ok {
@@ -336,10 +343,12 @@ func (r *resolver) textRole(elem *soml.Element) (soml.TextRole, bool) {
 
 // resolveText는 텍스트 요소(`<text>`·블록·<li>)의 외관을 4단 캐스케이드로 확정한다:
 //
-//	인라인 속성 > variant > 컴포넌트 기본값 > 역할/토큰
+//	인라인 속성 > variant > 컴포넌트 기본값(슬롯 > 태그) > 역할/토큰
 //
 // 역할 기본값(완전한 외관)을 바닥에 깔고, 위 세 단을 낮은 단부터 부분 패치로 얹는다.
-// 컴포넌트 기본값 단은 태그별이다 (textComponentDefault — h3의 크기, blockquote의 색).
+// 컴포넌트 기본값 단은 둘로 겹친다: 태그별(textComponentDefault — h3의 크기, blockquote의 색)
+// 위에 **놓인 자리**(textSlotDefault — 인용 레이아웃의 quote 슬롯)가 온다. 자리가 태그보다 구체적이다:
+// 같은 `<blockquote>`가 흐름에서는 본문 크기, 인용 슬롯에서는 인용 크기다.
 // 병합은 mergeText(cascade.go) 한 곳에서만 일어난다 — 우선순위는 아래 네 줄의 순서가
 // 전부이고, 다른 어디에도 없다.
 //
@@ -348,9 +357,12 @@ func (r *resolver) textRole(elem *soml.Element) (soml.TextRole, bool) {
 // 외관 속성을 받지 않으므로(여는 속성은 순서인 `reveal` 하나다) 두 단이 겹치는
 // 경우가 아직 없지만, 순서를 여기서 못 박아 두면 `<li>`에 외관 속성을 여는 날 우선순위를
 // 다시 논의할 필요가 없다.
-func (r *resolver) resolveText(elem *soml.Element, role soml.TextRole, inherited textPatch) {
+//
+// slot은 요소가 놓인 슬롯이다 (없으면 빈 문자열) — 리스트 항목은 컨테이너의 슬롯을 받는다.
+func (r *resolver) resolveText(elem *soml.Element, role soml.TextRole, inherited textPatch, slot string) {
 	style := r.textRoleDefaults(role)
 	mergeText(&style, r.textComponentDefault(elem.Name))
+	mergeText(&style, r.textSlotDefault(slot))
 	mergeText(&style, r.variantPatch(elem))
 	mergeText(&style, inherited)
 	mergeText(&style, r.inlinePatch(elem))
@@ -383,7 +395,7 @@ func (r *resolver) resolveList(list *soml.Element) {
 			// 파서를 거치지 않은 덱이고, 렌더러가 매핑 없음으로 멈춘다.
 			continue
 		}
-		r.resolveText(item, role, patch)
+		r.resolveText(item, role, patch, placedSlot(list))
 		r.resolveInlines(item, item.Appearance.Text)
 		// 순서는 외관 뒤에 본다 — 항목의 유일한 자기 속성이고 외관 패치와
 		// 겹치지 않는다.
@@ -443,8 +455,14 @@ func (r *resolver) variantAttr(elem *soml.Element) (soml.Attr, bool) {
 // 갈라지면 저자가 두 경고를 다른 규칙으로 읽는다. 어휘 종류를 문구에 적지 않은 이유는
 // 나열된 목록이 이미 그것을 말하기 때문이다 (`variant: kicker, lead`).
 func (r *resolver) warnUnknownVariant(attr soml.Attr, names []string) {
-	r.warnf(attr.ValueSpan, "variant %q가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: %s)",
-		attr.Value, strings.Join(names, ", "))
+	list := strings.Join(names, ", ")
+	// 후보는 괄호로 단다 — 이 문장은 이미 대시로 "그래도 계속한다"를 잇고 있다.
+	hint := ""
+	if guess, ok := soml.Suggest(attr.Value, names); ok {
+		hint = " (혹시 " + strconv.Quote(guess) + "?)"
+	}
+	r.warnf(attr.ValueSpan, "variant %q가 테마에 없다%s — 기본 외관으로 계속한다 (이 테마의 variant: %s)",
+		attr.Value, hint, list)
 }
 
 // 아래 넷은 텍스트 캐스케이드의 컴포넌트 기본값·variant 단을 **로드된 표**(r.comps)에서 읽는다.
@@ -461,6 +479,24 @@ func (r *resolver) textComponentDefault(tag string) textPatch {
 		return patch
 	}
 	return textPatch{}
+}
+
+// textSlotDefault는 이 슬라이드 레이아웃의 슬롯 기본값이다 (슬롯이 없으면 빈 패치).
+func (r *resolver) textSlotDefault(slot string) textPatch {
+	if slot == "" {
+		return textPatch{}
+	}
+	return r.comps.textSlotDefaults[slotDefaultKey(r.layout, slot)]
+}
+
+// placedSlot은 요소에 **실린** 슬롯이다 — resolveSlot이 검증을 지나 확정 모델에 실은 값만 본다. 테마가
+// 그 레이아웃의 슬롯 영역을 갖지 않아 흐름 배치로 렌더되는 슬라이드에서는 비어 있고, 그때는 슬롯
+// 기본값도 얹지 않는다 (자리가 없는데 자리의 크기를 받을 이유가 없다).
+func placedSlot(elem *soml.Element) string {
+	if elem.Appearance == nil {
+		return ""
+	}
+	return elem.Appearance.Slot
 }
 
 func (r *resolver) textVariantPatch(name string) (textPatch, bool) {
@@ -523,7 +559,7 @@ func (r *resolver) role(elem *soml.Element) soml.TextRole {
 			return role
 		}
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 role %q (쓸 수 있는 역할: %s)", attr.Value, roleList())
+	r.errorf(attr.ValueSpan, "알 수 없는 role %q%s (쓸 수 있는 역할: %s)", attr.Value, didYouMean(attr.Value, roleList()), roleList())
 	return soml.DefaultTextRole
 }
 
@@ -601,8 +637,9 @@ func (r *resolver) simpleColor(name, raw string, span soml.Span) (soml.Color, bo
 		return soml.LiteralColor(rgb), true
 	}
 	if _, known := r.theme.Color(raw); !known {
-		r.errorf(span, "%s의 색 토큰 %q가 테마에 없다 (쓸 수 있는 토큰: %s, 또는 #RRGGBB 리터럴)",
-			name, raw, strings.Join(r.theme.ColorNames(), ", "))
+		names := strings.Join(r.theme.ColorNames(), ", ")
+		r.errorf(span, "%s의 색 토큰 %q가 테마에 없다%s (쓸 수 있는 토큰: %s, 또는 #RRGGBB 리터럴)",
+			name, raw, didYouMean(raw, names), names)
 		return soml.Color{}, false
 	}
 	return soml.TokenColor(raw), true
@@ -635,7 +672,8 @@ func (r *resolver) colorFunc(name, raw string, span soml.Span) (soml.Color, bool
 	case string(soml.ModAlpha):
 		return r.alphaFunc(name, inner, span, raw)
 	}
-	r.errorf(span, "알 수 없는 색 함수 %q (쓸 수 있는 함수: gradient, shade, tint, alpha) — %q", fn, raw)
+	r.errorf(span, "알 수 없는 색 함수 %q%s (쓸 수 있는 함수: gradient, shade, tint, alpha) — %q",
+		fn, didYouMean(fn, "gradient, shade, tint, alpha"), raw)
 	return soml.Color{}, false
 }
 
@@ -770,7 +808,7 @@ func (r *resolver) align(attr soml.Attr) (soml.TextAlign, bool) {
 		r.errorf(attr.ValueSpan, "align은 논리 이름을 쓴다 — %q 대신 %q (RTL에서도 뜻이 유지된다)", raw, string(physical))
 		return "", false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 align %q (쓸 수 있는 값: %s)", raw, alignList())
+	r.errorf(attr.ValueSpan, "알 수 없는 align %q%s (쓸 수 있는 값: %s)", raw, didYouMean(raw, alignList()), alignList())
 	return "", false
 }
 
@@ -949,6 +987,22 @@ func alignList() string {
 		names = append(names, string(align))
 	}
 	return strings.Join(names, ", ")
+}
+
+// didYouMean은 닫힌 목록(진단에 싣는 쉼표 목록 그대로)에서 raw의 오타 후보를 골라 진단 문구의 꼬리로
+// 만든다 — 없으면 빈 문자열이다.
+//
+// 목록 **문자열**을 받는 이유: 진단은 이미 그 목록을 싣고 있고, 후보를 같은 문자열에서 고르면 "목록에
+// 없는 이름을 권하는" 일이 구조적으로 생기지 않는다. 실제 오타는 편집 거리 1–2였다
+// (`two-colum`→`two-column` · `heding`→`heading` · `elipse`→`ellipse`).
+func didYouMean(raw, list string) string {
+	if list == "" {
+		return ""
+	}
+	if guess, ok := soml.Suggest(raw, strings.Split(list, ", ")); ok {
+		return " — 혹시 " + strconv.Quote(guess) + "?"
+	}
+	return ""
 }
 
 // layoutList는 진단에 실을 슬라이드 레이아웃 어휘 목록이다 — 어휘 정의(soml.SlideLayouts)와

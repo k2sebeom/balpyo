@@ -3,6 +3,7 @@ package geom
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/k2sebeom/balpyo/render/web"
 	"github.com/k2sebeom/balpyo/soml"
@@ -71,7 +72,9 @@ func stageRect(stage soml.Stage) Rect {
 //
 // 요소 하나가 받는 이탈 진단은 하나다. 스테이지 → 부모 → 콘텐츠 박스 순으로 **가장 바깥
 // 사고부터** 보고 하나를 말한다: 같은 사고를 세 이름으로 부르면 저자는 세 줄을 읽고 한 곳을
-// 고친다. 글줄 넘침과 형제 겹침은 다른 사실이므로 따로 붙는다.
+// 고친다. 같은 이유로 **사고 하나도 경고 하나다** — 이탈 경고를 받은 요소 안에서 함께 벗어난
+// 자손은 따로 말하지 않고 그 경고에 세어 붙인다 (escapedAncestor). 글줄 넘침과 형제 겹침은
+// 다른 사실이므로 따로 붙는다.
 //
 // 덱과 지오메트리가 어긋나면(잰 덱이 다른 덱이다) 아무 말도 하지 않는다 — 그 어긋남은 이미
 // 빌드를 멈추는 에러이고(newGeometry·Verify), 엉뚱한 요소를 가리키는 경고를 더하면 진짜 원인이
@@ -92,16 +95,22 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 	// 부모 식별자는 전부 ""이고 좌표는 슬라이드 상대이므로, 슬라이드를 빼면 모든 장의 첫
 	// 요소가 서로 겹친 것으로 보인다.
 	siblings := map[sibGroup][]int{}
+	// 이탈 경고를 받은 요소 → 그 경고의 자리(diags 안)다. 자손의 이탈은 가장 가까운 그런 조상의
+	// 경고에 세어 붙인다 (foldInto) — 스테이지를 넘친 목록 하나가 항목마다 경고를 내지 않게.
+	escaped := map[int]int{}
+	folds := map[int]*escapeFold{}
 	for i, ref := range refs {
 		index[ref.ID] = i
 		box := g.Boxes[i]
 		parent, hasParent := index[ref.Parent]
 
+		var warning *soml.Diagnostic
 		switch dir, over := escape(box.Rect, stage); {
 		case over > overflowTolerance:
-			diags = append(diags, soml.Warningf(ref.Source, ref.Span,
+			d := soml.Warningf(ref.Source, ref.Span,
 				"<%s>가 스테이지를 %s %s 벗어난다 — 스테이지 밖은 화면에서 잘리고 PPTX에서는 슬라이드 밖에 놓인다",
-				ref.El, dir, px(over)))
+				ref.El, dir, px(over))
+			warning = &d
 		case ref.Free:
 			// 좌표를 직접 쓴 요소(와 그 자손)는 부모 변과 여백을 넘어서는 것이 저작 수단이다.
 		case soml.KindOf(ref.El) == soml.KindTableCell:
@@ -115,9 +124,10 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 			// 그대로 본다: 행이 표를 넘치는 것은 격자가 설명하지 않는 일이다.
 		case hasParent:
 			if dir, over := escape(box.Rect, g.Boxes[parent].Rect); over > overflowTolerance {
-				diags = append(diags, soml.Warningf(ref.Source, ref.Span,
+				d := soml.Warningf(ref.Source, ref.Span,
 					"<%s>가 부모 <%s>를 %s %s 넘친다 — 부모 박스 크기가 내용을 담기에 모자란다",
-					ref.El, refs[parent].El, dir, px(over)))
+					ref.El, refs[parent].El, dir, px(over))
+				warning = &d
 			}
 		default:
 			// 콘텐츠 박스는 **이 슬라이드에서 잰** 것이다 — 여백은 테마가 레이아웃마다 정하므로
@@ -125,9 +135,19 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 			// 그림마다 저자가 고칠 수 없는 경고가 나온다 (Geometry.Content).
 			content := g.ContentBox(ref.Slide)
 			if dir, over := escape(box.Rect, content); over > overflowTolerance {
-				diags = append(diags, soml.Warningf(ref.Source, ref.Span,
+				d := soml.Warningf(ref.Source, ref.Span,
 					"<%s>가 콘텐츠 박스를 %s %s 넘친다 — 이 레이아웃의 콘텐츠 박스는 %s다 (여백은 테마가 정한다)",
-					ref.El, dir, px(over), content))
+					ref.El, dir, px(over), content)
+				warning = &d
+			}
+		}
+		if warning != nil {
+			if ancestor, ok := escapedAncestor(refs, index, escaped, ref); ok {
+				folds[ancestor].add(ref.El)
+			} else {
+				escaped[i] = len(diags)
+				folds[len(diags)] = &escapeFold{}
+				diags = append(diags, *warning)
 			}
 		}
 
@@ -153,7 +173,58 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 		}
 		siblings[group] = append(siblings[group], i)
 	}
+	for at, fold := range folds {
+		diags[at].Message += fold.suffix()
+	}
 	return append(diags, diagnoseChrome(deck, g)...)
+}
+
+// escapedAncestor는 ref의 조상 가운데 이미 이탈 경고를 받은 가장 가까운 것의 경고 자리다.
+//
+// 자손의 이탈을 그 경고에 접는 이유: 조상이 스테이지 · 부모 · 콘텐츠 박스를 벗어나면 그 안의
+// 박스가 함께 나가는 것은 같은 사고의 결과다. 저자는 조상 하나를 고치고(목록을 줄이거나 박스를
+// 키운다), 자손 경고는 그 사이에 저절로 사라진다. 판정의 종류가 달라도(목록은 스테이지, 항목은
+// 부모) 접는다 — 고칠 자리가 하나라는 것이 기준이다.
+func escapedAncestor(refs []Ref, index map[string]int, escaped map[int]int, ref Ref) (int, bool) {
+	for id := ref.Parent; id != ""; {
+		i, ok := index[id]
+		if !ok {
+			return 0, false
+		}
+		if at, ok := escaped[i]; ok {
+			return at, true
+		}
+		id = refs[i].Parent
+	}
+	return 0, false
+}
+
+// escapeFold는 한 이탈 경고에 접힌 자손들이다 — 태그별 개수 (처음 나온 순서).
+type escapeFold struct {
+	tags   []string
+	counts map[string]int
+}
+
+func (f *escapeFold) add(tag string) {
+	if f.counts == nil {
+		f.counts = map[string]int{}
+	}
+	if f.counts[tag] == 0 {
+		f.tags = append(f.tags, tag)
+	}
+	f.counts[tag]++
+}
+
+// suffix는 접힌 자손을 경고 끝에 붙일 구절이다 (없으면 빈 문자열).
+func (f *escapeFold) suffix() string {
+	if len(f.tags) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(f.tags))
+	for _, tag := range f.tags {
+		parts = append(parts, fmt.Sprintf("<%s> %d개", tag, f.counts[tag]))
+	}
+	return " (안의 " + strings.Join(parts, " · ") + "도 함께 벗어난다)"
 }
 
 // diagnoseChrome은 덱 크롬의 배치 사고를 찾는다. 질문은 둘뿐이다:

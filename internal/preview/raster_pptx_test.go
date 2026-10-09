@@ -71,19 +71,41 @@ func buildPPTX(t testing.TB, projectDir string) (pptxPath string, size image.Poi
 //
 // 크기를 따로 보는 이유: 갤러리는 웹 스크린샷과 같은 크기로 나란히 놓고, DPI로 맞추면 페이지 크기
 // 반올림 때문에 한두 px씩 어긋난다.
+// engines는 래스터 엔진마다의 생성자다 — 같은 판정을 두 엔진이 받는다. 생성자가 도구 정책
+// (없으면 건너뛰기)을 지므로 한 엔진만 깔린 호스트에서도 다른 엔진의 판정은 돈다.
+var engines = []struct {
+	name string
+	make func(t testing.TB) preview.Rasterizer
+}{
+	{"OnlyOffice", func(t testing.TB) preview.Rasterizer {
+		return &preview.OnlyOffice{Dir: testkit.RequireOnlyOffice(t)}
+	}},
+	{"LibreOffice", func(t testing.TB) preview.Rasterizer {
+		return &preview.LibreOffice{
+			Soffice:  testkit.RequireSoffice(t),
+			Pdftoppm: testkit.RequirePdftoppm(t),
+		}
+	}},
+}
+
 func TestRasterizerSlidesRenderEveryPageAtStageSize(t *testing.T) {
-	raster := &preview.Rasterizer{
-		Soffice:  testkit.RequireSoffice(t),
-		Pdftoppm: testkit.RequirePdftoppm(t),
+	for _, engine := range engines {
+		t.Run(engine.name, func(t *testing.T) {
+			raster := engine.make(t)
+			pptxPath, size, slides := buildPPTX(t, twoSlideProject(t))
+			slidesRenderEveryPageAtStageSize(t, raster, pptxPath, size, slides)
+		})
 	}
-	pptxPath, size, slides := buildPPTX(t, twoSlideProject(t))
+}
+
+func slidesRenderEveryPageAtStageSize(t *testing.T, raster preview.Rasterizer, pptxPath string, size image.Point, slides int) {
 
 	pages, noise, err := raster.Slides(pptxPath, size, t.TempDir())
 	if err != nil {
 		t.Fatalf("래스터화 실패: %v", err)
 	}
 	if noise != "" {
-		t.Errorf("LibreOffice가 경고·복구를 냈다 — 사용자도 파일을 열 때마다 본다:\n%s", noise)
+		t.Errorf("%s가 경고·복구를 냈다 — 사용자도 파일을 열 때마다 본다:\n%s", raster.Name(), noise)
 	}
 	if len(pages) != slides {
 		t.Fatalf("PNG %d장, 덱 슬라이드 %d장", len(pages), slides)
@@ -99,16 +121,21 @@ func TestRasterizerSlidesRenderEveryPageAtStageSize(t *testing.T) {
 // 본다.
 //
 // 이것을 못 박아야 하는 이유: 래스터화 자체가 실행마다 흔들리면 사람은 고친 것이 없는데 갤러리가
-// 바뀌는 것을 보게 된다. 실행마다 새 사용자 프로필을 쓰는 것(Rasterizer.PDF)이 지켜야 하는 성질이
-// 바로 이것이다.
+// 바뀌는 것을 보게 된다. LibreOffice가 실행마다 새 사용자 프로필을 쓰는 것(LibreOffice.PDF)과
+// OnlyOffice가 실행마다 글꼴 색인을 대조하는 것(OnlyOffice.Slides)이 지켜야 하는 성질이 바로 이것이다.
 //
 // PDF 바이트가 아니라 PNG 픽셀을 비교한다 — PDF에는 생성 시각이 들어가 실행마다 다르다.
 func TestRasterizerSlidesAreDeterministic(t *testing.T) {
-	raster := &preview.Rasterizer{
-		Soffice:  testkit.RequireSoffice(t),
-		Pdftoppm: testkit.RequirePdftoppm(t),
+	for _, engine := range engines {
+		t.Run(engine.name, func(t *testing.T) {
+			raster := engine.make(t)
+			pptxPath, size, _ := buildPPTX(t, twoSlideProject(t))
+			slidesAreDeterministic(t, raster, pptxPath, size)
+		})
 	}
-	pptxPath, size, _ := buildPPTX(t, twoSlideProject(t))
+}
+
+func slidesAreDeterministic(t *testing.T, raster preview.Rasterizer, pptxPath string, size image.Point) {
 
 	first, _, err := raster.Slides(pptxPath, size, t.TempDir())
 	if err != nil {

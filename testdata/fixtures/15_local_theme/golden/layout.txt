@@ -38,3 +38,14 @@ textbox "chrome footer"
   ¶ center | "2026 · 사내 발표"{body 13.5pt muted}
 textbox "chrome pageNumber"
   ¶ end | "3"{field body 13.5pt muted}
+# slide 4 local-theme-gradient
+textbox "text s3.0" ph=title/0
+  ¶ start | "테마가 가진 그라디언트"{body 30pt b gradient(accent1,accent6)}
+shape:roundRect "shape s3.1.0" fill=gradient(accent1,accent6) line=gradient(accent6,accent1)
+  ¶ center | "variant=\"hero\""{body 18pt bg}
+shape:roundRect "shape s3.1.1" fill=gradient(accent1,accent6) line=gradient(accent6,accent1)
+  ¶ center | "같은 값을 인라인으로"{body 18pt bg}
+textbox "chrome footer"
+  ¶ center | "2026 · 사내 발표"{body 13.5pt muted}
+textbox "chrome pageNumber"
+  ¶ end | "4"{field body 13.5pt muted}

@@ -11,7 +11,10 @@
     ],
     "componentDefaults": [
       { "tag": "h3",         "size": 28, "color": "accent1" },
-      { "tag": "blockquote", "size": 32, "color": "fg" }
+      { "tag": "blockquote", "size": 32, "color": "fg" },
+      { "layout": "quote", "slot": "quote", "size": 40, "color": "fg" },
+      { "layout": "stat",  "slot": "value", "size": 96, "weight": 700, "color": "accent1" },
+      { "layout": "stat",  "slot": "label", "size": 28, "weight": 700 }
     ],
     "variants": [
       { "name": "kicker", "size": 18, "weight": 800, "color": "accent5" },

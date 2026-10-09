@@ -335,3 +335,30 @@ func TestContentBox(t *testing.T) {
 		t.Errorf("ContentBox = %s, want %s", got, want)
 	}
 }
+
+// 사고 하나는 경고 하나다: 스테이지를 넘친 목록은 `<ul>` 한 줄로 말하고, 함께 벗어난 `<li>`들은 그
+// 줄에 세어 붙인다. 항목마다 경고를 내면 한 곳을 고칠 일이 일곱 줄이 되고, 읽히지 않는 경고는 없는
+// 것과 같다. 벗어나지 않은 항목은 세지 않는다.
+func TestDiagnoseFoldsDescendantsIntoTheirAncestorsEscape(t *testing.T) {
+	items := make([]soml.Node, 0, 4)
+	for _, text := range []string{"하나", "둘", "셋", "넷"} {
+		items = append(items, &soml.Element{Name: "li", Children: []soml.Node{chars(text)}})
+	}
+	deck := testDeck([]soml.Node{&soml.Element{Name: "ul", Children: items}})
+	if diags := core.Resolve(deck, nil); len(diags) > 0 {
+		t.Fatalf("외관 해석 진단: %v", diags)
+	}
+	// 목록이 스테이지 바닥(720)을 120px 넘는다. 첫 항목은 안에 있고 셋은 바닥 아래로 나갔다.
+	rects := map[string]Rect{
+		"s0.0":   {X: 64, Y: 440, W: 600, H: 400},
+		"s0.0.0": {X: 64, Y: 440, W: 600, H: 100},
+		"s0.0.1": {X: 64, Y: 540, W: 600, H: 100},
+		"s0.0.2": {X: 64, Y: 640, W: 600, H: 100},
+		"s0.0.3": {X: 64, Y: 740, W: 600, H: 100},
+	}
+	g := measured(t, deck, rects, nil)
+	wantDiags(t, Diagnose(deck, g), "<ul>가 스테이지를 아래로 120px 벗어난다")
+	if msg := Diagnose(deck, g)[0].Message; !strings.Contains(msg, "안의 <li> 2개도 함께 벗어난다") {
+		t.Errorf("함께 벗어난 항목을 세지 않는다: %q", msg)
+	}
+}

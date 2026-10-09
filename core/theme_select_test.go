@@ -142,6 +142,26 @@ func TestBuiltinThemesShareContract(t *testing.T) {
 		if !ok || body.Size != 24 || body.LineHeight != 1.5 {
 			t.Errorf("%s의 body = %gpx/%g, want 24px/1.5", name, body.Size, body.LineHeight)
 		}
+		// 자리가 크기를 정하는 슬롯: 인용 레이아웃의 인용문은 lead(32px) 이상이고, 통계 레이아웃은
+		// 수치가 제목보다 크며 그 수치를 설명하는 라벨이 아래 산문(body)보다 작지 않다 — 숫자를
+		// 설명하는 줄이 산문보다 작으면 위계가 뒤집힌다.
+		size := func(layout soml.SlideLayout, slot string) float64 {
+			patch := comps.textSlotDefaults[slotDefaultKey(layout, slot)]
+			if patch.size == nil {
+				t.Errorf("%s에 %s/%s 슬롯 크기가 없다", name, layout, slot)
+				return 0
+			}
+			return *patch.size
+		}
+		if got := size(soml.LayoutQuote, "quote"); got < 32 {
+			t.Errorf("%s의 quote/quote = %gpx, want ≥ 32", name, got)
+		}
+		if got := size(soml.LayoutStat, "label"); got < body.Size {
+			t.Errorf("%s의 stat/label = %gpx, want ≥ body %gpx", name, got, body.Size)
+		}
+		if got, title := size(soml.LayoutStat, "value"), comps.textRoles[soml.RoleTitle].Size; got <= title {
+			t.Errorf("%s의 stat/value = %gpx, want > title %gpx", name, got, title)
+		}
 	}
 }
 

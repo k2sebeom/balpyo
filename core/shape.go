@@ -236,7 +236,7 @@ func (r *resolver) shapeType(elem *soml.Element) string {
 			return name
 		}
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 도형 type %q (쓸 수 있는 종류: %s)", attr.Value, shapeTypeList())
+	r.errorf(attr.ValueSpan, "알 수 없는 도형 type %q%s (쓸 수 있는 종류: %s)", attr.Value, didYouMean(attr.Value, shapeTypeList()), shapeTypeList())
 	return ""
 }
 
@@ -390,8 +390,8 @@ func (r *resolver) borderStyle(part valuePart, attr soml.Attr) (soml.BorderStyle
 			return style, true
 		}
 	}
-	r.errorf(part.span(attr), "알 수 없는 border 스타일 %q (쓸 수 있는 값: %s) — 조각 순서는 `<굵기> <스타일> <색>`이다",
-		part.text, borderStyleList())
+	r.errorf(part.span(attr), "알 수 없는 border 스타일 %q%s (쓸 수 있는 값: %s) — 조각 순서는 `<굵기> <스타일> <색>`이다",
+		part.text, didYouMean(part.text, borderStyleList()), borderStyleList())
 	return "", false
 }
 
@@ -437,8 +437,9 @@ func (r *resolver) radiusValue(attr soml.Attr) (soml.Radius, bool) {
 		return soml.TokenRadius(attr.Value, token.Px), true
 	}
 	if !startsNumeric(attr.Value) {
-		r.errorf(attr.ValueSpan, "알 수 없는 radius 토큰 %q (쓸 수 있는 토큰: %s, 또는 수치)",
-			attr.Value, strings.Join(r.theme.RadiusNames(), ", "))
+		names := strings.Join(r.theme.RadiusNames(), ", ")
+		r.errorf(attr.ValueSpan, "알 수 없는 radius 토큰 %q%s (쓸 수 있는 토큰: %s, 또는 수치)",
+			attr.Value, didYouMean(attr.Value, names), names)
 		return soml.Radius{}, false
 	}
 	if unit := numberSuffix(attr.Value); unit != "" {
@@ -474,8 +475,9 @@ func (r *resolver) shadow(attr soml.Attr) (soml.ShadowToken, bool) {
 	}
 	token, ok := r.theme.Shadow(attr.Value)
 	if !ok {
-		r.errorf(attr.ValueSpan, "알 수 없는 shadow 토큰 %q (쓸 수 있는 토큰: %s) — 그림자는 수치가 아니라 토큰으로 쓴다 (두 타깃의 번짐 정의가 달라 같은 수치가 다르게 그려진다)",
-			attr.Value, strings.Join(r.theme.ShadowNames(), ", "))
+		names := strings.Join(r.theme.ShadowNames(), ", ")
+		r.errorf(attr.ValueSpan, "알 수 없는 shadow 토큰 %q%s (쓸 수 있는 토큰: %s) — 그림자는 수치가 아니라 토큰으로 쓴다 (두 타깃의 번짐 정의가 달라 같은 수치가 다르게 그려진다)",
+			attr.Value, didYouMean(attr.Value, names), names)
 		return soml.ShadowToken{}, false
 	}
 	return token, true
@@ -546,8 +548,8 @@ func (r *resolver) flip(attr soml.Attr) (soml.Flip, bool) {
 			return flip, true
 		}
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 flip %q (쓸 수 있는 값: %s — %q는 두 축 모두다)",
-		attr.Value, flipList(), string(soml.FlipBoth))
+	r.errorf(attr.ValueSpan, "알 수 없는 flip %q%s (쓸 수 있는 값: %s — %q는 두 축 모두다)",
+		attr.Value, didYouMean(attr.Value, flipList()), flipList(), string(soml.FlipBoth))
 	return "", false
 }
 
@@ -575,7 +577,7 @@ func (r *resolver) anchor(attr soml.Attr) (soml.TextAnchor, bool) {
 			attr.Value, string(physical))
 		return "", false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 anchor %q (쓸 수 있는 값: %s)", attr.Value, anchorList())
+	r.errorf(attr.ValueSpan, "알 수 없는 anchor %q%s (쓸 수 있는 값: %s)", attr.Value, didYouMean(attr.Value, anchorList()), anchorList())
 	return "", false
 }
 

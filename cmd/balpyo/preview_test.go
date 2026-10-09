@@ -49,6 +49,7 @@ func TestPreviewCommandWritesGallery(t *testing.T) {
 func TestPreviewCommandWebOnlyNeedsNoLibreOffice(t *testing.T) {
 	testkit.RequireChromium(t)
 	t.Setenv(preview.EnvSoffice, filepath.Join(t.TempDir(), "없는-soffice"))
+	t.Setenv(preview.EnvOnlyOffice, filepath.Join(t.TempDir(), "없는-onlyoffice"))
 
 	dir := newProject(t)
 	var stdout, stderr bytes.Buffer
@@ -69,6 +70,7 @@ func TestPreviewCommandWebOnlyNeedsNoLibreOffice(t *testing.T) {
 func TestPreviewCommandDefaultFallsBackToWebWithoutTools(t *testing.T) {
 	testkit.RequireChromium(t)
 	t.Setenv(preview.EnvSoffice, filepath.Join(t.TempDir(), "없는-soffice"))
+	t.Setenv(preview.EnvOnlyOffice, filepath.Join(t.TempDir(), "없는-onlyoffice"))
 
 	dir := newProject(t)
 	var stdout, stderr bytes.Buffer
@@ -88,13 +90,14 @@ func TestPreviewCommandDefaultFallsBackToWebWithoutTools(t *testing.T) {
 func TestPreviewCommandStopsWhenToolsAreMissing(t *testing.T) {
 	dir := newProject(t)
 	t.Setenv(preview.EnvSoffice, filepath.Join(t.TempDir(), "없는-soffice"))
+	t.Setenv(preview.EnvOnlyOffice, filepath.Join(t.TempDir(), "없는-onlyoffice"))
 
 	var stdout, stderr bytes.Buffer
 	err := run([]string{"preview", "--project", dir, "--target", "pptx"}, &stdout, &stderr)
 	if err == nil {
 		t.Fatal("도구가 없으면 에러여야 한다")
 	}
-	for _, want := range []string{preview.EnvSoffice, "--target html"} {
+	for _, want := range []string{preview.EnvOnlyOffice, preview.EnvSoffice, "--target html"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("에러에 %q가 없다: %v", want, err)
 		}
@@ -128,7 +131,7 @@ func TestPreviewCommandRejectsBadInput(t *testing.T) {
 func TestUsageMentionsPreview(t *testing.T) {
 	var out bytes.Buffer
 	usage(&out)
-	for _, want := range []string{"balpyo preview", "--gallery", "LibreOffice"} {
+	for _, want := range []string{"balpyo preview", "--gallery", "OnlyOffice", "LibreOffice"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("사용법에 %q가 없다:\n%s", want, out.String())
 		}

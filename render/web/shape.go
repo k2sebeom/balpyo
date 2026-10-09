@@ -185,14 +185,6 @@ type shapeGeometry struct {
 	Adjust []ShapeAdjust
 	// TextRect는 프리셋의 **텍스트 영역**이다 — 비어 있으면 박스 전체다.
 	TextRect ShapeInsets
-	// TextCancel은 뷰어가 들고 있는 rect 중 **우리가 쓰지 않는 몫**이다 — 비어
-	// 있으면 프리셋의 rect가 위 TextRect와 같아서 되돌릴 것이 없다 (11종).
-	//
-	// Adjust와 같은 자리에 같은 이유로 둔다: 웹이 정한 것을 PPTX가 보정하고, 그 보정의
-	// 공식은 유도 옆에 적혀 있어야 한다. 평가는 PPTX가 잰 박스로 한다 — `bodyPr` 인셋에서
-	// 이 백분율을 빼면 뷰어의 텍스트 영역이 우리 영역으로 돌아온다
-	// (ShapeTextCancel → render/pptx.bodyInsets).
-	TextCancel ShapeInsets
 }
 
 // ShapeAdjustAxis는 조정값 비율의 분자다 — 늘린 정규 공간을 되돌리는 값의 출처.
@@ -230,6 +222,13 @@ type ShapeAdjust struct {
 	// Max는 조정값의 상한이다 (0이면 상한 없음 — 그 프리셋의 `maxAdj`가 같은 축의 비율로
 	// 커져 이 공식이 구조적으로 그 안에 있다는 뜻이다).
 	Max float64
+	// Exceed면 값을 공식보다 **한 단위 넘겨** 낸다 (올림 + 1, 100000분의 1).
+	//
+	// 프리셋 공식의 조건 분기(`?: x y z` — x > 0이면 y, 아니면 z)가 공식의 값에서 정확히 0이 되는
+	// 자리에 쓴다. 0은 명세로는 "아니면" 쪽이지만 엔진마다 경계를 다르게 읽고(LibreOffice는
+	// 0을 양수 쪽으로 읽는다), 반올림이 값을 조금 내리면 모든 엔진이 반대쪽으로 간다. 한 단위
+	// 넘기면 x < 0이 되어 어느 엔진이든 같은 쪽을 읽는다 — 실루엣은 0.01px도 움직이지 않는다.
+	Exceed bool
 }
 
 // ShapeInsets는 프리셋의 텍스트 영역이다 — 도형 박스에서 **글자가 쓸 수 있는 사각형**
@@ -280,20 +279,6 @@ func ShapeTextRect(shapeType string) (ShapeInsets, bool) {
 		return ShapeInsets{}, false
 	}
 	return geom.TextRect, true
-}
-
-// ShapeTextCancel은 PPTX가 `bodyPr` 인셋에서 빼야 할 백분율이다 — ok=false는
-// 모르는 `type`이다 (ShapeTextRect와 같은 계약).
-//
-// 왜 웹 쪽 표에 있는가: 되돌릴 양은 **우리가 어느 영역에 글을 흘리기로 했는가**와 프리셋이
-// 들고 있는 rect의 차이이고, 그 둘이 다 이 표의 열이다 (TextRect·TextCancel). PPTX가 자기
-// 목록을 따로 들면 웹이 영역을 바꿀 때 PPTX만 옛 보정으로 남는다.
-func ShapeTextCancel(shapeType string) (ShapeInsets, bool) {
-	geom, err := shapeGeometryOf(shapeType)
-	if err != nil {
-		return ShapeInsets{}, false
-	}
-	return geom.TextCancel, true
 }
 
 // shapeGeometries는 12종의 기하 유도표다 (순서 = soml.ShapeTypes의 순서).
@@ -370,14 +355,13 @@ func shapeGeometries() []shapeGeometry {
 			// 경로는 (l,t) → (x2,t) → (r,vc) → (x2,b) → (l,b) → (x1,vc).
 			// Adjust: adj = 50000·w/ss (프리셋의 maxAdj = 100000·w/ss라 언제나 그 절반이다).
 			Type: "chevron", Preset: "chevron", Space: spaceNormalized,
-			// 텍스트 영역: **박스 전체**다. 프리셋의 rect는 `x1`~`x2`인데 우리가 내는 조정값
-			// (adj = 50000·w/ss)에서 `x1 = ss·adj/100000 = w/2`이고 `x2 = r − x1 = w/2`라, 그
-			// rect는 **어느 박스에서도 박스 가운데의 폭 0 열**이다. 뷰어는 그것을 박스로
-			// 되돌리지 않는다 (LibreOffice는 한 글자씩 세로로 쌓는다) — 그래서 PPTX가 `bodyPr`
-			// 인셋으로 폭 0을 되돌리고(TextCancel), 웹은 박스 전체에 글을 흘린다.
-			Paths:      []shapePath{{D: "M0,0 L50,0 L100,50 L50,100 L0,100 L50,50 Z"}},
-			Adjust:     []ShapeAdjust{{Name: "adj", Base: 50000, Axis: AdjustAxisWidth}},
-			TextCancel: ShapeInsets{L: 50, R: 50},
+			// 텍스트 영역: **박스 전체**다. 프리셋의 rect는 `il`~`ir`이고 `dx = x2 − x1`에서
+			// `il = ?: dx x1 l` · `ir = ?: dx x2 r`이다 — 노치가 폭의 절반이면 dx = 0이라 명세로는
+			// 박스 전체(l~r)지만, LibreOffice는 0을 양수로 읽어 폭 0 열(x1~x2)에 한 글자씩 쌓고,
+			// 반올림이 adj를 조금 내리면 모든 엔진이 가는 열이 된다. 그래서 조정값을 한 단위
+			// 넘긴다(Exceed): dx < 0이면 어느 엔진이든 박스 전체다.
+			Paths:  []shapePath{{D: "M0,0 L50,0 L100,50 L50,100 L0,100 L50,50 Z"}},
+			Adjust: []ShapeAdjust{{Name: "adj", Base: 50000, Axis: AdjustAxisWidth, Exceed: true}},
 		},
 		{
 			// rightArrow: `adj1=50000` → `dy1 = h·adj1/200000` = 25(축 절반, h 기준),

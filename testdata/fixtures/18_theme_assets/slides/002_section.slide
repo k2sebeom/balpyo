@@ -1,0 +1,5 @@
+<!-- 섹션 구분의 배경은 토큰 그라디언트다 — PPTX에서 `p:bg`의 `gradFill` 스톱이 `schemeClr`로 남는다.
+     로고는 표지에서만 빠지므로 여기에 있다. -->
+<slide id="assets-section" layout="section-divider">
+  <h1 slot="title" color="bg">1부 · 자산</h1>
+</slide>
