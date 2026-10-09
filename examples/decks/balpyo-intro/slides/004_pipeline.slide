@@ -1,35 +1,48 @@
 <!-- 파이프라인 — 흐름 모드 content. 네 단계를 chevron 넷으로, 두 타깃을 카드 둘로 놓는다.
-     grid·col은 PPTX에서 도형이 0개다 — 남는 것은 자식의 절대 좌표뿐이다. -->
+     grid·col은 PPTX에서 도형이 0개다 — 남는 것은 자식의 절대 좌표뿐이다.
+
+     카드 그리드가 `grow="1"`로 chevron 줄과 캡션 사이를 다 갖는다 — 카드 높이를 숫자로 적지
+     않으므로 카드 안 목록이 길어지면 카드가 아니라 남은 여백이 준다. -->
 <slide id="pipeline">
   <h1>한 소스, 두 산출물</h1>
   <grid cols="4" gap="sm">
     <col gap="sm">
       <shape type="chevron" fill="surface" w="fill" h="72"/>
-      <text size="18" align="center">1 · SOML 파싱</text>
+      <text size="20" align="center">1 · SOML 파싱</text>
     </col>
     <col gap="sm">
       <shape type="chevron" fill="surface" w="fill" h="72"/>
-      <text size="18" align="center">2 · 외관·배치 해석</text>
+      <text size="20" align="center">2 · 외관·배치 해석</text>
     </col>
     <col gap="sm">
       <shape type="chevron" fill="surface" w="fill" h="72"/>
-      <text size="18" align="center">3 · 지오메트리 측정</text>
+      <text size="20" align="center">3 · 지오메트리 측정</text>
     </col>
     <col gap="sm">
       <shape type="chevron" fill="accent1" w="fill" h="72"/>
-      <text size="18" color="accent1" align="center">4 · 두 타깃 렌더</text>
+      <text size="20" color="accent1" align="center"><strong>4 · 두 타깃 렌더</strong></text>
     </col>
   </grid>
-  <grid cols="2" gap="lg">
-    <shape variant="card" type="rounded-rect" fill="surface" w="fill" h="200" pad="lg">
-      <text role="heading" size="28" color="accent1">웹</text>
-      <p size="20" anchor="top">HTML 한 장 + 인라인 발표 런타임. 확정된 외관은 요소의
-      style 선언으로, 색과 폰트는 테마 CSS 변수 참조로 나간다.</p>
+  <grid cols="2" gap="lg" grow="1">
+    <shape variant="card" type="rounded-rect" fill="surface" w="fill" pad="lg">
+      <col gap="sm" h="fill">
+        <text role="heading" size="30" color="accent1">웹 · index.html 한 장</text>
+        <ul size="22">
+          <li>CSS와 발표 런타임이 인라인 — 파일 하나로 배포한다</li>
+          <li>발표자 화면 · 개요 그리드 · 노트 · 장 링크</li>
+          <li>브라우저 인쇄가 곧 PDF다</li>
+        </ul>
+      </col>
     </shape>
-    <shape variant="card" type="rounded-rect" fill="surface" w="fill" h="200" pad="lg">
-      <text role="heading" size="28" color="accent1">PPTX</text>
-      <p size="20" anchor="top">네이티브 OOXML. 텍스트 박스는 p:sp, 도형은 prstGeom,
-      슬롯은 p:ph다 — 슬라이드를 이미지로 찍지 않는다.</p>
+    <shape variant="card" type="rounded-rect" fill="surface" w="fill" pad="lg">
+      <col gap="sm" h="fill">
+        <text role="heading" size="30" color="accent1">PPTX · 편집 가능한 원본</text>
+        <ul size="22">
+          <li>텍스트 박스는 p:sp, 도형은 prstGeom, 표는 a:tbl</li>
+          <li>슬롯은 p:ph 플레이스홀더 — 레이아웃이 살아 있다</li>
+          <li>테마 색은 schemeClr — 이미지로 찍지 않는다</li>
+        </ul>
+      </col>
     </shape>
   </grid>
   <text role="caption">같은 SOML 트리가 두 번 렌더된다. 갈라지는 지점은 마지막 단계 하나뿐이다.</text>

@@ -1,23 +1,39 @@
 <!-- 문제 — two-column 레이아웃의 슬롯 모드 (title은 두 열에 걸치고 left·right가 나란히).
      컨테이너에 실린 슬롯은 웹 영역일 뿐이고 p:ph가 되지 않는다 — 여기서는 그것이 맞다:
-     칸마다 kicker + 목록 두 프레임이 들어간다. -->
+     칸마다 카드 한 장(배경 도형)에 kicker · 목록 · 결론이 들어간다.
+
+     슬롯 영역은 제목 아래 남은 높이를 다 갖는 grid 칸이고 (`two-column.slots.css`의 `1fr`
+     행), 카드가 `h="fill"`로 그 칸을 채운다. 결론 줄은 `justify="between"`으로 카드 아래 끝에
+     선다 — 두 칸의 결론이 같은 높이에 있어야 "둘 중 하나"가 나란히 읽힌다. -->
 <slide id="problem" layout="two-column">
   <h1 slot="title">텍스트로 슬라이드를 쓰면 둘 중 하나를 잃는다</h1>
-  <col slot="left" gap="md">
-    <text variant="kicker">Markdown 계열 · Marp · Slidev</text>
-    <ul>
-      <li>Markdown은 문서 마크업이라 2단·도형·겹침 같은 슬라이드 어휘가 없다</li>
-      <li>PPTX 내보내기는 슬라이드를 이미지로 찍는다 — 열리지만 고칠 수 없다</li>
-    </ul>
-    <text role="heading" size="24" color="accent1">→ 편집 가능한 산출물을 잃는다</text>
+  <col slot="left" h="fill">
+    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" h="fill" pad="lg">
+      <col gap="md" h="fill" justify="between">
+        <col gap="md">
+          <text variant="kicker">Markdown 계열 · Marp · Slidev</text>
+          <ul>
+            <li>Markdown은 문서 마크업이라 2단·도형·겹침 같은 슬라이드 어휘가 없다</li>
+            <li>PPTX 내보내기는 슬라이드를 이미지로 찍는다 — 열리지만 고칠 수 없다</li>
+          </ul>
+        </col>
+        <text role="heading" size="28" color="accent1">→ 편집 가능한 산출물을 잃는다</text>
+      </col>
+    </shape>
   </col>
-  <col slot="right" gap="md">
-    <text variant="kicker">라이브러리 계열 · python-pptx</text>
-    <ul>
-      <li>모든 요소를 EMU 절대 좌표로 손으로 배치한다</li>
-      <li>그라디언트 테두리처럼 "디자인된 느낌"에는 API조차 없어 raw XML을 조립한다</li>
-    </ul>
-    <text role="heading" size="24" color="accent1">→ 쓰기 쉬움을 잃는다</text>
+  <col slot="right" h="fill">
+    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" h="fill" pad="lg">
+      <col gap="md" h="fill" justify="between">
+        <col gap="md">
+          <text variant="kicker">라이브러리 계열 · python-pptx</text>
+          <ul>
+            <li>모든 요소를 EMU 절대 좌표로 손으로 배치한다</li>
+            <li>그라디언트 테두리처럼 "디자인된 느낌"에는 API조차 없어 raw XML을 조립한다</li>
+          </ul>
+        </col>
+        <text role="heading" size="28" color="accent1">→ 쓰기 쉬움을 잃는다</text>
+      </col>
+    </shape>
   </col>
   <note>둘 중 하나를 잃는다: 표현력이냐, 편집 가능한 산출물이냐.</note>
 </slide>

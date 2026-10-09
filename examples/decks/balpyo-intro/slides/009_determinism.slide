@@ -1,21 +1,39 @@
-<!-- 결정성 — two-column 슬롯 모드. 두 렌더가 같은 컴포넌트를 낸다는 것을 무엇이 판정하는가. -->
+<!-- 결정성 — two-column 슬롯 모드. 두 렌더가 같은 컴포넌트를 낸다는 것을 무엇이 판정하는가.
+
+     슬롯 영역은 제목 아래 남은 높이를 다 갖는 grid 칸이고 (`two-column.slots.css`의 `1fr`
+     행), 칸마다 카드 하나가 `h="fill"`로 그 칸을 채운다. 오른쪽 카드만 accent1로 칠한다 —
+     왼쪽은 약속이고 오른쪽은 그 약속을 지키는 장치라, 눈이 먼저 갈 곳이 오른쪽이다. -->
 <slide id="determinism" layout="two-column">
   <h1 slot="title">두 렌더가 같은 컴포넌트를 낸다</h1>
-  <col slot="left" gap="md">
-    <text variant="kicker">무엇이 같은가</text>
-    <ul>
-      <li>요소 하나는 두 타깃에서 같은 종류의 객체다</li>
-      <li>자리는 브라우저가 잰 rect, 외관은 해석된 값이다</li>
-      <li>줄이 어디서 접히는지는 각 엔진의 몫이다</li>
-    </ul>
+  <col slot="left" h="fill">
+    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" h="fill" pad="lg">
+      <col gap="md" h="fill" justify="between">
+        <col gap="md">
+          <text variant="kicker">무엇이 같은가</text>
+          <ul>
+            <li>요소 하나는 두 타깃에서 같은 종류의 객체다</li>
+            <li>자리는 브라우저가 잰 rect, 외관은 해석된 값이다</li>
+            <li>문서 순서가 곧 도형 순서다</li>
+          </ul>
+        </col>
+        <text role="caption">줄이 어디서 접히는지는 각 엔진의 몫이다 — 약속 밖이다.</text>
+      </col>
+    </shape>
   </col>
-  <col slot="right" gap="md">
-    <text variant="kicker">무엇이 판정하는가</text>
-    <ul>
-      <li>PPTX에서 읽은 트리가 웹이 잰 트리와 같다</li>
-      <li>모든 XML 파트가 ECMA-376 스키마를 통과한다</li>
-      <li>같은 입력은 같은 바이트를 낸다</li>
-    </ul>
+  <col slot="right" h="fill">
+    <shape type="rounded-rect" fill="accent1" border="none" radius="lg" w="fill" h="fill" pad="lg">
+      <col gap="md" h="fill" justify="between">
+        <col gap="md">
+          <text variant="kicker" color="bg">무엇이 판정하는가</text>
+          <ul color="bg">
+            <li>PPTX에서 읽은 트리가 웹이 잰 트리와 같다</li>
+            <li>모든 XML 파트가 ECMA-376 스키마를 통과한다</li>
+            <li>같은 입력은 같은 바이트를 낸다</li>
+          </ul>
+        </col>
+        <text role="caption" color="bg">셋 다 go test ./... 한 줄에 들어 있다.</text>
+      </col>
+    </shape>
   </col>
   <note>골든은 좌표 없는 레이아웃 트리와 진단 둘뿐이다 — 좌표는 동일성 판정이 매번 다시 재므로, diff에는 "도형이 하나 늘었다"만 남는다.</note>
 </slide>
