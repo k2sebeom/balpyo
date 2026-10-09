@@ -1,0 +1,57 @@
+#!/bin/sh
+# Reject a push if any commit being pushed credits Claude as a co-author.
+#
+# This repo's convention is that commit messages carry no AI/author
+# attribution lines (see AGENTS.md "Workflow conventions"). The commit-msg
+# hook in this same directory stops new commits from introducing the line;
+# this one is the backstop for commits that slipped in some other way
+# (cherry-pick, rebase, a commit made without hooks enabled, etc.) before
+# they reach the remote.
+#
+# Install (per clone, not tracked by git):
+#   git config core.hooksPath githooks
+#
+# Called by "git push" with:
+#   $1 -- name of the remote
+#   $2 -- URL of the remote
+# and one line per ref on stdin: <local ref> <local oid> <remote ref> <remote oid>
+
+zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
+found=0
+
+while read local_ref local_oid remote_ref remote_oid
+do
+    if test "$local_oid" = "$zero"
+    then
+        # Deleting a ref: nothing to check.
+        continue
+    fi
+
+    if test "$remote_oid" = "$zero"
+    then
+        # New branch: examine every commit it introduces.
+        range="$local_oid"
+    else
+        # Existing branch: examine only the new commits.
+        range="$remote_oid..$local_oid"
+    fi
+
+    commits=$(git rev-list -i --grep 'co-authored-by:.*claude' "$range")
+    if test -n "$commits"
+    then
+        echo "error: refusing to push $local_ref - these commits credit Claude as a co-author:" >&2
+        for commit in $commits
+        do
+            echo "  $(git log -1 --format='%h %s' "$commit")" >&2
+        done
+        found=1
+    fi
+done
+
+if test "$found" -eq 1
+then
+    echo "Rewrite the offending commit message(s) (e.g. 'git rebase -i') and push again." >&2
+    exit 1
+fi
+
+exit 0
