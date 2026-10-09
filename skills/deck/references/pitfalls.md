@@ -115,7 +115,9 @@ does not fit shows up as the `<table>` frame overflowing instead.
   `--target pptx` with no rasterizer, output that does not match the deck).
 - **`watch` needs `html` in `--target`** and refuses to start without it.
 - **`init --theme` takes built-ins only** (`minimal` · `editorial` · `ink`); other commands
-  also accept a local `themes/<name>/`, and never a path.
+  also accept a local `themes/<name>/` or an installed theme (`balpyo theme install`), and
+  never a path. Builds don't download: an installed theme missing on CI is `알 수 없는 테마` —
+  add the same `balpyo theme install` step before the build.
 
 ## What is known to work — don't go looking for trouble here
 

@@ -15,7 +15,7 @@ Identity and resolution
 - [ ] `theme.json` has a non-empty `name`, and it **equals the directory name**.
 - [ ] The local theme does not shadow a built-in name (`themes/minimal/` is an error even when
       building another theme).
-- [ ] `extends` names an existing theme (built-in ∪ project-local) and the chain does not cycle.
+- [ ] `extends` names an existing theme (built-in ∪ project-local ∪ installed) and the chain does not cycle.
 - [ ] `balpyo.json`'s `theme` (or `--theme`) is this name. An unknown name is an error, never a
       silent fallback to `minimal`.
 

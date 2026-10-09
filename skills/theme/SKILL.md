@@ -54,6 +54,10 @@ Two naming rules, both hard errors: `theme.json`'s `name` must equal the directo
 local theme **may not shadow a built-in name** (`themes/minimal/` is an error even when
 building `--theme ink`). There is no path syntax — the value is always a name.
 
+A name resolves in **built-in ∪ project `themes/<name>/` ∪ installed themes** (step 5). Run
+`balpyo theme list --project my-deck` before picking a name: a project theme and an installed
+theme with the same name stop every build that requests that name.
+
 ## 2. Write the design spec before the files
 
 State, in your reply: the voice in one line; background and foreground; the heading/body/mono
@@ -161,6 +165,38 @@ building.
 
 When the user is happy, write the name into `balpyo.json` (`{ "theme": "corp" }`) — until then
 keep it on the flag so reverting is free.
+
+## 5. Share it — install, don't copy
+
+When several decks should use the theme, move `themes/<name>/` out of the project into its own
+directory or GitHub repository and **install** it. `balpyo.json` keeps holding just the name.
+
+```bash
+balpyo theme install github.com/acme/slide-themes@v1.2.0      # public GitHub only; no git needed
+balpyo theme install ./slide-themes                           # a local directory — copied, not linked
+balpyo theme install github.com/acme/slide-themes acme-dark   # one theme + its same-repo extends parents
+balpyo theme list --project my-deck                           # built-in / installed / project, overlaps flagged
+balpyo theme update [name...]                                 # re-fetch / re-copy from the recorded source
+balpyo theme remove <name...>
+```
+
+- Installed themes land in `~/.balpyo/themes/<name>/` (`$BALPYO_HOME/themes/` if set), sources in
+  `~/.balpyo/themes.json`. The **name comes from `theme.json`**, not the repo or directory name.
+- Install finds every directory holding a `theme.json` under the source (or the sub-path:
+  `github.com/acme/themes/brand/dark@v1`), skipping `.`-prefixed directories. It loads each with
+  the build's own loader and is **all-or-nothing**: a built-in name, two themes of one name in
+  the source, a symlink inside a theme, or a theme that does not load installs nothing. A name
+  already installed from a different source needs `--force`.
+- **Delete the project's `themes/<name>/` after installing** — the same name in both places is
+  a build error (`테마 "acme"가 프로젝트의 themes/acme/에도, 설치한 테마에도 있다 — …`).
+- A path install is a **snapshot**: edits to the source show up only after `balpyo theme update`
+  (and `watch` does not see them — save a project file or restart it). While still iterating,
+  keep the theme in the project's `themes/`.
+- **Builds never touch the network.** On another machine or in CI, run the same
+  `balpyo theme install` first; otherwise the build stops with `알 수 없는 테마`. Private repos
+  and non-GitHub hosts: check them out and install the directory by path.
+- Layout-CSS appearance-property warnings for an installed theme are reported **at install
+  time**, not by builds — so fix them before publishing; deck authors can't.
 
 ## Reference files
 

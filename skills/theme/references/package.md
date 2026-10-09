@@ -26,8 +26,8 @@ Four file groups whose jobs do not overlap. The complete Korean original is
 
 | Key | Value | Notes |
 |---|---|---|
-| `name` | string | must equal the directory name; empty is an error |
-| `extends` | a theme name or `""` | resolved in the same vocabulary as `theme` (built-in ∪ project-local). Chains are allowed (`corp-dark` → `corp` → `minimal`); cycles are errors |
+| `name` | string | must equal the directory name under a project's `themes/`; for an installed theme it *is* the installed name (the source directory name is irrelevant); empty is an error |
+| `extends` | a theme name or `""` | resolved in the same vocabulary as `theme` (built-in ∪ project-local ∪ installed). Chains are allowed (`corp-dark` → `corp` → `minimal`); cycles are errors |
 | `layouts` | list of layout names | must contain **all eleven** standard names. Inherited — omit it when extending. Names outside the catalogue are meaningless, since no slide can request them |
 | `chrome` | array of declarations | below |
 | `backgrounds` | array of background declarations (optional) | below; inherited as a list — if the child writes it, the child's list wins |

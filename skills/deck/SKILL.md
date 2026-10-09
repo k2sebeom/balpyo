@@ -77,7 +77,9 @@ balpyo init my-talk --author "Name" --theme minimal --lang en --aspect 16:9
 ```
 
 `--theme` takes a built-in only (`minimal` · `editorial` · `ink`); `minimal` is the right
-default when unsure. `init` refuses to touch a directory that already holds a project — there
+default when unsure. To use a shared team theme, install it once per machine
+(`balpyo theme install github.com/acme/slide-themes@v1`, or a local directory path), then put
+its name in `balpyo.json`; `balpyo theme list` shows what is available. `init` refuses to touch a directory that already holds a project — there
 is no `--force`.
 
 **Then delete the three scaffold slides before writing your own.** They carry ids `cover`,
