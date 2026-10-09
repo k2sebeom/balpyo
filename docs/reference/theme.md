@@ -49,7 +49,7 @@ editorial, ink, minimal)`), 값 층도 같은 문구로 **그 덱의 해석을 �
 minimal/
 ├── theme.json            # 매니페스트 — 이름 · 레이아웃 목록 · 덱 크롬 선언
 ├── tokens.json           # 디자인 토큰 (색 · 폰트 · 공간 · 반경 · 그림자)
-├── components.json       # 컴포넌트 외관 — 텍스트 역할 · 태그 기본값 · variant
+├── components.json       # 컴포넌트 외관 — 텍스트 역할 · 태그/슬롯 기본값 · variant
 └── layouts/
     ├── content.css       # 레이아웃 배치 CSS (흐름 모드)
     ├── content.slots.css #   같은 레이아웃의 슬롯 영역 CSS (슬롯 모드 — 선택)
