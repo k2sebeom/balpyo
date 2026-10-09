@@ -37,7 +37,7 @@ type Fixture struct {
 // GoldenDir는 이 픽스처의 골든 디렉토리다.
 func (f Fixture) GoldenDir() string { return filepath.Join(f.Dir, goldenDirName) }
 
-// Fixtures는 픽스처 목록을 이름 순으로 돌려준다. 이름의 숫자 접두사가 iteration 순서이자
+// Fixtures는 픽스처 목록을 이름 순으로 돌려준다. 이름의 숫자 접두사가
 // 실행 순서다.
 func Fixtures(t testing.TB) []Fixture {
 	t.Helper()
@@ -90,7 +90,7 @@ func (f Fixture) AssertGolden(t testing.TB, result *pipeline.Result) {
 	AssertGoldenTree(t, f.GoldenDir(), f.goldenFiles(t, result))
 }
 
-// goldenFiles는 골든으로 남길 파일 묶음을 만든다 — 두 종뿐이다 (ADR 0064, TASKS R2).
+// goldenFiles는 골든으로 남길 파일 묶음을 만든다 — 두 종뿐이다.
 //
 // 구조 스냅샷(`layout.txt`)은 rect 없는 컴포넌트 트리라 폰트와 무관하고, 어느 호스트에서도 같은
 // 바이트다. 웹 HTML과 PPTX 파트 XML은 남기지 않는다: CSS 한 줄에도 수십 파일이 움직여 diff가

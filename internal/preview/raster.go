@@ -28,7 +28,7 @@ type Rasterizer struct {
 
 // NewRasterizer는 도구를 찾아 래스터라이저를 만든다. 없으면 어디서 구하는지를 말한다.
 //
-// 조용히 웹만 내는 길을 두지 않는 이유는 ADR 0047이다: PPTX를 보려고 명령을 쳤는데 PPTX 열이
+// 조용히 웹만 내는 길을 두지 않는 이유: PPTX를 보려고 명령을 쳤는데 PPTX 열이
 // 없는 갤러리가 나오면 사람은 **두 타깃이 같다고 읽는다**.
 func NewRasterizer() (*Rasterizer, error) {
 	soffice, err := LookSoffice()
@@ -84,8 +84,7 @@ func (r *Rasterizer) PDF(pptxPath, workDir string) (pdfPath, noise string, err e
 // Pages는 PDF를 페이지별 PNG로 렌더한다.
 //
 // size는 논리 스테이지 크기다. 웹 스크린샷과 픽셀 비교하려면 같은 크기여야 하므로 pdftoppm에
-// 목표 크기를 직접 준다 — DPI로 맞추면 페이지 크기 반올림 때문에 한두 px씩 어긋난다
-// (ADR 0047 결정 7).
+// 목표 크기를 직접 준다 — DPI로 맞추면 페이지 크기 반올림 때문에 한두 px씩 어긋난다.
 func (r *Rasterizer) Pages(pdfPath string, size image.Point, workDir string) ([]image.Image, error) {
 	if size.X <= 0 || size.Y <= 0 {
 		return nil, fmt.Errorf("렌더 크기가 유효하지 않다: %dx%d", size.X, size.Y)
@@ -97,7 +96,7 @@ func (r *Rasterizer) Pages(pdfPath string, size image.Point, workDir string) ([]
 // PagesAtPointScale은 PDF를 **종이 크기 그대로** 페이지별 PNG로 렌더한다 — 1pt이 1px이다.
 //
 // 목표 크기를 아는 Pages와 다른 이유는 판정이 다르기 때문이다: 인쇄 게이트는 그림을 대조하는
-// 것이 아니라 **종이 크기**를 본다 (한 장이 한 페이지인지, ADR 0062). 크기를 주고 렌더하면
+// 것이 아니라 **종이 크기**를 본다 (한 장이 한 페이지인지). 크기를 주고 렌더하면
 // 페이지가 letter로 나왔어도 PNG는 원하는 크기가 되어 그 실패가 사라진다. 72dpi를 주면
 // PNG의 픽셀 수가 곧 페이지의 pt 크기다 (실측 — pdftoppm -r 72는 1pt를 1px로 낸다).
 func (r *Rasterizer) PagesAtPointScale(pdfPath, workDir string) ([]image.Image, error) {

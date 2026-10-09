@@ -6,27 +6,27 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 `style` **배치 CSS 탈출구**다 (PRD §7.9).
+// 이 파일은 `style` **배치 CSS 탈출구**다.
 //
 // 계약은 "우리가 보지 않는다"이지 "안전하다"가 아니다: 선언을 `프로퍼티: 값`으로 쪼개
 // 정규화하고 프로퍼티 이름만 allowlist와 대조한다. **값은 검증하지 않는다** — 엔진이 CSS 값
 // 문법을 재구현하기 시작하면 탈출구가 탈출구이기를 멈춘다 (그러면 그것은 그냥 또 하나의
-// 속성 어휘다). 이 사실은 문서에도 남아야 한다 (항목 06).
+// 속성 어휘다). 이 사실은 문서에도 남아야 한다.
 //
 // allowlist 밖의 프로퍼티는 **에러가 아니라 경고**다. 에러로 두려면 엔진이 CSS 프로퍼티
 // 전체 목록을 알아야 하고, 그것은 탈출구의 존재 이유(엔진이 아직 모르는 배치를 저자가
 // 통과시킨다)와 정면으로 모순된다. 경고는 모르는 variant 경고와 같은 경로를 탄다 —
-// 기본 빌드를 통과시키고 `--strict`가 에러로 승격한다 (PRD §13-6, soml.Diagnostics.Strict).
+// 기본 빌드를 통과시키고 `--strict`가 에러로 승격한다 (soml.Diagnostics.Strict).
 
 // layoutStyleProperties는 **배치 CSS 프로퍼티 allowlist**다. 순서 있는 한 곳에 두고 문서가
-// 같은 목록을 인용한다 (항목 06) — 목록이 두 벌이 되면 경고 조건과 문서가 갈라진다.
+// 같은 목록을 인용한다 — 목록이 두 벌이 되면 경고 조건과 문서가 갈라진다.
 //
 // `*`로 끝나는 항목은 접두 가족이다 (`flex-*`는 flex-grow·flex-basis·flex-direction …).
 // 가족으로 적는 이유: CSS는 축약과 개별 프로퍼티가 짝을 이루고(예: `padding`과
 // `padding-inline-start`), 개별 이름을 전수로 적으면 목록이 CSS 명세를 베끼기 시작한다.
 //
 // 목록의 기준은 하나다: **지오메트리 패스가 재는 박스를 움직이는 프로퍼티**. 배치는
-// 브라우저가 잰 좌표로 구워져 PPTX에 남으므로(PRD §9.3) 이 프로퍼티들은 양 타깃에 도달한다.
+// 브라우저가 잰 좌표로 구워져 PPTX에 남으므로 이 프로퍼티들은 양 타깃에 도달한다.
 // 색·테두리·그림자는 CSS에만 남는다 — 그것이 경고의 이유다.
 //
 // `translate`가 목록에 있고 `rotate`/`scale`은 없는 것이 이 기준의 좋은 시험이다:
@@ -109,7 +109,7 @@ func (r *resolver) placementStyle(attr soml.Attr) (string, bool) {
 			continue
 		}
 		if !isLayoutStyleProperty(property) {
-			r.warnf(part.span(attr), "style의 %q 선언은 배치가 아니다 — 웹에만 적용되고 PPTX에는 이식되지 않는다 (PRD §7.9). 색·테두리 같은 외관은 컴포넌트 속성으로 쓴다",
+			r.warnf(part.span(attr), "style의 %q 선언은 배치가 아니다 — 웹에만 적용되고 PPTX에는 이식되지 않는다. 색·테두리 같은 외관은 컴포넌트 속성으로 쓴다",
 				property)
 		}
 		decls = append(decls, property+": "+declaration)

@@ -1,12 +1,12 @@
-// Package scaffold는 `balpyo init`이 쓰는 프로젝트 하나를 소유한다 (ADR 0048).
+// Package scaffold는 `balpyo init`이 쓰는 프로젝트 하나를 소유한다.
 //
-// 왜 예제를 복사하지 않는가: `examples/*`는 회귀 테스트다 (도그푸딩 덱 — 12·10·6장에 마찰
+// 왜 예제를 복사하지 않는가: `examples/decks/*`는 회귀 테스트다 (도그푸딩 덱 — 12·10·6장에 마찰
 // 기록 주석까지 들어 있다). 스캐폴딩은 반대로 **작고 지루해야** 하고, 완료 조건이 "파일이
 // 생긴다"가 아니라 **"그 덱이 경고 0으로 빌드된다"**이므로 따로 소유하고 따로 판정한다
 // (scaffold_test.go · cmd/balpyo/init_test.go).
 //
 // 템플릿은 `//go:embed`로 바이너리에 들어간다 — `balpyo init`은 네트워크도 저장소 체크아웃도
-// 요구하지 않는다 (PRD §10의 "바이너리 하나"가 스캐폴딩에도 적용된다).
+// 요구하지 않는다 (CLI의 "바이너리 하나" 계약이 스캐폴딩에도 적용된다).
 package scaffold
 
 import (
@@ -92,7 +92,7 @@ type slideVars struct {
 
 // Write는 프로젝트를 만든다.
 //
-// 기존 파일은 **덮어쓰지 않는다** (ADR 0048): balpyo.json이 있거나 슬라이드 디렉토리에
+// 기존 파일은 **덮어쓰지 않는다**: balpyo.json이 있거나 슬라이드 디렉토리에
 // `.slide`가 있으면 아무것도 쓰지 않고 멈춘다. 되돌릴 수단이 저자의 git뿐인데 init은 git이
 // 있다고 가정할 수 없다.
 func Write(opts Options) (*Result, error) {
@@ -126,9 +126,8 @@ func Write(opts Options) (*Result, error) {
 	if file.Aspect == "" {
 		file.Aspect = soml.DefaultAspect
 	}
-	// 테마 이름은 **내장 목록**에 대조한다. 값 층은 아직 balpyo.json의 theme를 읽지 않으므로
-	// (core.Resolve가 minimal을 고정 로드한다 — 테마 선택은 P4.2다), 임의 이름을 써 주면
-	// 사용자는 적용되지 않은 테마가 적용됐다고 읽는다.
+	// 테마 이름은 **내장 목록**에 대조한다. 스캐폴딩이 만드는 프로젝트에는 로컬 테마(themes/)가
+	// 없으므로, 내장 테마가 아닌 이름을 써 주면 첫 빌드가 그 테마를 찾지 못하고 실패한다.
 	if !core.IsBuiltinTheme(file.Theme) {
 		return nil, fmt.Errorf("내장 테마가 아니다: %q (쓸 수 있는 테마: %s)",
 			file.Theme, strings.Join(core.BuiltinThemes(), ", "))

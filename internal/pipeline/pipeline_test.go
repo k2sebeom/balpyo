@@ -170,7 +170,7 @@ func TestLoadDeckWithoutConfig(t *testing.T) {
 }
 
 // TestLoadDeckCarriesTheThemeRequest는 `balpyo.json`의 theme가 **덱을 통해 값 층에 닿는다**는
-// 배선을 잇는다 (P4.2 · ADR 0052). 그전에는 이 필드가 설정 검사만 받고 버려졌다 — 파이프라인이
+// 배선을 잇는다. 그전에는 이 필드가 설정 검사만 받고 버려졌다 — 파이프라인이
 // 옮기지 않으면 core는 언제나 기본 테마를 로드한다.
 func TestLoadDeckCarriesTheThemeRequest(t *testing.T) {
 	dir := newProject(t, map[string]string{
@@ -210,8 +210,8 @@ func TestLoadDeckRejectsUnknownTheme(t *testing.T) {
 	}
 }
 
-// TestLoadDeckThemeOptionOverridesConfig는 Options.Theme가 설정을 덮음을 못 박는다 (ADR 0052의
-// 결정 9 — `balpyo build --theme`의 값 경로). OutDir과 같은 태도다: 플래그는 설정의 한 값을
+// TestLoadDeckThemeOptionOverridesConfig는 Options.Theme가 설정을 덮음을 못 박는다
+// (`balpyo build --theme`의 값 경로). OutDir과 같은 태도다: 플래그는 설정의 한 값을
 // 이 실행에 한해 갈아 끼우고, 파일은 그대로 남는다.
 func TestLoadDeckThemeOptionOverridesConfig(t *testing.T) {
 	dir := newProject(t, map[string]string{
@@ -249,7 +249,7 @@ func TestLoadDeckRejectsUnknownThemeOption(t *testing.T) {
 }
 
 // TestLoadDeckUsesAProjectLocalTheme는 프로젝트의 `themes/<이름>/`이 설정과 플래그 **양쪽**에서
-// 이름으로 불림을 못 박는다 (P4.3 · ADR 0054). 파이프라인이 프로젝트 파일시스템을 값 층에
+// 이름으로 불림을 못 박는다. 파이프라인이 프로젝트 파일시스템을 값 층에
 // 넘기지 않으면 로컬 테마는 core에서 보이지 않는다.
 func TestLoadDeckUsesAProjectLocalTheme(t *testing.T) {
 	files := map[string]string{
@@ -351,7 +351,7 @@ func TestLoadDeckErrors(t *testing.T) {
 	}
 }
 
-// 모르는 variant 경고는 기본 빌드를 통과시키고 --strict가 에러로 승격한다 (PRD §13-6).
+// 모르는 variant 경고는 기본 빌드를 통과시키고 --strict가 에러로 승격한다.
 // core의 경고가 pipeline의 승격 경로를 실제로 타는지 여기서 잇는다.
 func TestLoadDeckStrictPromotesUnknownVariantWarning(t *testing.T) {
 	files := map[string]string{
@@ -513,7 +513,7 @@ func TestLoadDeckResolvesAssets(t *testing.T) {
 	}
 }
 
-// 없는 `src`는 **빌드 에러**다 (TASKS Iteration 5) — 산출물이 빈 그림 자리를 갖고 나가면
+// 없는 `src`는 **빌드 에러**다 — 산출물이 빈 그림 자리를 갖고 나가면
 // 저자는 발표 직전에 그것을 발견한다.
 func TestLoadDeckRejectsMissingAsset(t *testing.T) {
 	dir := newProject(t, map[string]string{
@@ -604,15 +604,12 @@ func filesEqual(t *testing.T, a, b render.Files) {
 
 // layout="content"는 기본 스테이지(세로 스택)의 이름이므로 그 **웹 산출물**은 layout 없는
 // 덱과 바이트가 같아야 한다 (DefaultSlideLayout == content — 이름을 명시해도 아무것도 바뀌지
-// 않는다). **canvas는 다르다**: 항목 04가 캔버스를 실제 스테이지(balpyo-stage-canvas = 단일 셀
-// grid 겹침)로 구현했으므로 웹 산출물이 base와 갈라지는 것이 정답이다 — 그 갈라짐의 내용
+// 않는다). **canvas는 다르다**: 캔버스는 실제 스테이지(balpyo-stage-canvas = 단일 셀
+// grid 겹침)이므로 웹 산출물이 base와 갈라지는 것이 정답이다 — 그 갈라짐의 내용
 // (스테이지 클래스 + 조건부 stack CSS)은 render/web의 TestCanvasStageIsStack·
 // TestContentStageIsNotCanvas·TestStackCSSOnlyWhenStackOrCanvasUsed가 소유한다. 여기서는
 // 파이프라인 수준에서 content가 여전히 무변경이고 canvas만 갈라지는지를 결정적으로 못 박는다
 // (웹 렌더는 브라우저가 필요 없다).
-//
-// (항목 06의 발견: 이 검사는 항목 02가 canvas를 무변경으로 단정한 채 남았고, 항목 04가 캔버스
-// 스테이지를 구현하면서 갱신하지 않아 커밋 시점에 빨간 채였다 — NOTES 06/06 "앞 항목의 버그".)
 func TestBuildLayoutWebOutputInvariant(t *testing.T) {
 	webFiles := func(attr string) render.Files {
 		dir := newProject(t, map[string]string{
@@ -634,7 +631,7 @@ func TestBuildLayoutWebOutputInvariant(t *testing.T) {
 	filesEqual(t, base, webFiles(` layout="content"`))
 	// canvas는 실제 스테이지 — base와 달라야 한다 (갈라짐의 내용 판정은 render/web의 몫).
 	if canvas := webFiles(` layout="canvas"`); bytes.Equal(canvas["index.html"], base["index.html"]) {
-		t.Error(`layout="canvas"의 웹 산출물이 base와 같다 — 항목 04의 캔버스 스테이지가 웹에 닿지 않았다`)
+		t.Error(`layout="canvas"의 웹 산출물이 base와 같다 — 캔버스 스테이지가 웹에 닿지 않았다`)
 	}
 }
 

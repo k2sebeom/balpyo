@@ -8,7 +8,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 덱 크롬(페이지 번호·푸터)의 PPTX 조립이다 (ADR 0045).
+// 이 파일은 덱 크롬(페이지 번호·푸터)의 PPTX 조립이다.
 //
 // 두 결정이 이 파일의 내용 전부다.
 //

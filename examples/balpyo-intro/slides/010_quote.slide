@@ -1,7 +1,0 @@
-<!-- 인용 — quote 레이아웃(세로 가운데)의 흐름 모드. blockquote의 기본 색은 muted다. -->
-<slide id="quote" layout="quote">
-  <blockquote size="36" color="fg" align="center">“열리는 파일”과 “편집 가능한 파일”의
-  차이가 이 제품의 핵심이다.</blockquote>
-  <text role="caption" align="center">— 테스트 문서, 사람이 직접 pptx를 열어 확인하는 단계를 자동화하지 않는 이유</text>
-  <note>그래서 매 iteration마다 PowerPoint나 Keynote로 직접 연다.</note>
-</slide>

@@ -2,7 +2,7 @@ package core
 
 import "github.com/k2sebeom/balpyo/soml"
 
-// 이 파일은 **표 외관의 값 해석**이다 (PRD §7 · ADR 0036) — 파서가 이름만 본 표 프레임·행·셀을
+// 이 파일은 **표 외관의 값 해석**이다 — 파서가 이름만 본 표 프레임·행·셀을
 // 확정된 표 외관(soml.TableStyle·CellStyle)으로 눕힌다.
 //
 // 도형·이미지 해석(resolveShape·resolveImage)과 나란한 다섯 번째 갈래이되 **서브트리를 통째로**
@@ -18,7 +18,7 @@ import "github.com/k2sebeom/balpyo/soml"
 //
 // 프레임 변형(줄무늬)은 셀마다 다른 variant가 아니라 프레임 하나가 켜는 **행 채움**이다:
 // `<table variant="striped">`가 홀수 본문 행의 비헤더 셀에 stripe 채움을 얹는다. 줄무늬를
-// PPTX에서 명시 tcPr 채움으로 굽는 것이 ADR 0036의 "스타일 없음 + 명시 tcPr"이다 — 표 스타일
+// PPTX에서 명시 tcPr 채움으로 굽는다(표 스타일 없음 + 명시 tcPr) — 표 스타일
 // 상속에 기대면 뷰어마다 다른 색이 나온다.
 
 // tableStripedVariant는 표 프레임이 아는 유일한 변형 이름이다 (v1). 줄무늬는 셀 variant가
@@ -34,7 +34,7 @@ func tableVariantNames() []string { return []string{tableStripedVariant} }
 //
 // 프레임 자체에 실을 외관은 변형 이름뿐이다 (좌표는 잰 박스가, 셀은 CellStyle이 소유한다 —
 // soml.TableStyle). 모르는 variant는 에러가 아니라 경고 + 빈 값이다 (도형·텍스트와 같은 정책 —
-// 콘텐츠의 테마 간 이식성, PRD §13-6).
+// 콘텐츠의 테마 간 이식성).
 func (r *resolver) resolveTable(elem *soml.Element) {
 	style := soml.TableStyle{}
 	if attr, ok := elem.Attr("alt"); ok {
@@ -106,13 +106,13 @@ func tableCells(row *soml.Element) []*soml.Element {
 	return cells
 }
 
-// checkTableGrid은 병합이 직사각 격자를 정확히 덮는지 검증한다 (ADR 0036이 값 층에 맡긴 일).
+// checkTableGrid은 병합이 직사각 격자를 정확히 덮는지 검증한다.
 //
 // **왜 값 층인가**: 두 타깃이 깨진 격자를 다르게 복구한다. 웹 `<table>`은 칸이 남으면 조용히
 // 비우고 넘치면 열을 늘리지만, PPTX `a:tbl`은 `a:tblGrid`의 열 수와 행마다의 `a:tc` 수
 // (`gridSpan`·`hMerge`·`vMerge` 포함)가 **정확히** 맞아야 열린다. 여기서 막지 않으면 웹만 보고
 // 넘긴 표가 PowerPoint에서 복구 대화상자를 띄운다 — 두 렌더러가 하나의 확정 모델을 읽는다는
-// 약속(PRD §7)은 그 모델이 격자로서 성립할 때만 지켜진다.
+// 약속은 그 모델이 격자로서 성립할 때만 지켜진다.
 //
 // 규칙은 HTML 표와 같다: **첫 행이 열 수를 정하고**, 이후 행은 위에서 내려온 rowspan이 덮은
 // 칸을 건너뛰며 왼쪽부터 채운다. 열 수를 첫 행이 정하는 이유는 저자가 읽는 순서이기 때문이다
@@ -266,7 +266,7 @@ func (r *resolver) resolveCell(cell *soml.Element, stripe bool) (spansValid bool
 	elemAppearance(cell).Cell = cs
 
 	// 셀 안 인라인 런(strong/em/code/a/span)은 셀 텍스트를 상속한다 — 텍스트 요소의 인라인
-	// 해석과 같은 기계다 (resolveInlines). 텍스트 전용 콘텐츠 모델이라(ADR 0036) 셀 아래에는
+	// 해석과 같은 기계다 (resolveInlines). 텍스트 전용 콘텐츠 모델이라 셀 아래에는
 	// 문자 데이터와 인라인 태그만 있다.
 	r.resolveInlines(cell, cs.Text)
 	return spansValid

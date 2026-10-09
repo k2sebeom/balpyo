@@ -48,7 +48,7 @@ func wantImageStyle(delta soml.ImageStyle) soml.ImageStyle {
 	return style
 }
 
-// PRD §7.5·§7.6 image 행 전수 — 속성 → 확정 ImageStyle 필드.
+// image 속성 표 전수 — 속성 → 확정 ImageStyle 필드.
 func TestResolveImageStyle(t *testing.T) {
 	softShadow := minimalShadows()[0]
 	const src = `src="assets/wide.png"`
@@ -73,7 +73,7 @@ func TestResolveImageStyle(t *testing.T) {
 				Width: 1, Style: soml.BorderSolid, Color: soml.TokenColor("muted")}}},
 		{"border none", "border", src + ` border="none"`,
 			soml.ImageStyle{Src: "assets/wide.png", Border: ptr(soml.NoBorder())}},
-		// radius는 그림에서 프리셋 제약 없이 유효하다 — 그림은 자기 클립을 갖는다 (ADR 0019는 도형).
+		// radius는 그림에서 프리셋 제약 없이 유효하다 — 그림은 자기 클립을 갖는다 (프리셋 제약은 도형의 것).
 		{"radius 토큰", "radius", src + ` radius="lg"`,
 			soml.ImageStyle{Src: "assets/wide.png", Radius: ptr(soml.TokenRadius("lg", 24))}},
 		{"radius 수치", "radius", src + ` radius="12"`,
@@ -138,7 +138,7 @@ func TestResolveImageSrcNormalization(t *testing.T) {
 		{"assets//wide.png", "assets/wide.png"},
 		{"assets/deep/../wide.png", "assets/wide.png"},
 		{"wide.png", "wide.png"},
-		// assets/ 아래일 것을 강제하지 않는다 (PRD §6.1의 구조는 관례다).
+		// assets/ 아래일 것을 강제하지 않는다 (프로젝트 구조는 관례다).
 		{"img/ch1/Photo.JPG", "img/ch1/Photo.JPG"},
 	}
 	for _, tc := range cases {
@@ -306,7 +306,7 @@ func TestResolveImageAppearanceSharesShapeSyntax(t *testing.T) {
 	}
 }
 
-// 모르는 variant는 경고 + 빈 패치다 (PRD §13-6). 나열하는 어휘는 그림의 것이어야 한다 — 도형
+// 모르는 variant는 경고 + 빈 패치다 (variant 이름은 테마의 것이다). 나열하는 어휘는 그림의 것이어야 한다 — 도형
 // 목록을 나열하면 저자를 그 테마에 없는 방향으로 보낸다.
 func TestResolveImageUnknownVariantWarns(t *testing.T) {
 	attrs := `src="assets/wide.png" variant="framd"`

@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>INC-2431 장애 회고</title>
+<meta name="author" content="Platform Team">
+<style>
+@layer balpyo.base, balpyo.theme, balpyo.author;
+
+@layer balpyo.base {
+  :root {
+    --balpyo-stage-width: 1280px;
+    --balpyo-stage-height: 720px;
+  }
+
+  * { box-sizing: border-box; }
+
+  /* 뷰어 크롬의 바탕 — 슬라이드 밖의 색이므로 덱의 색이 아니다 (테마 토큰이 아닌 유일한 색). */
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #111;
+  }
+
+  .balpyo-deck {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 24px;
+  }
+
+  /* 슬라이드는 논리 스테이지 크기를 그대로 갖는다. 저자·웹·지오메트리 패스가 같은
+     좌표계를 쓰므로 지오메트리 패스가 읽은 rect가 곧 PPTX 좌표다 (환산 분기 없음). */
+  .balpyo-slide {
+    position: relative;
+    width: var(--balpyo-stage-width);
+    height: var(--balpyo-stage-height);
+    overflow: hidden;
+  }
+
+  /* 스테이지는 자식을 문서 순서대로 세로로 쌓는다. 여백 64px은 1280폭의 5%로,
+     프로젝터의 오버스캔에서도 글자가 잘리지 않는다. */
+  .balpyo-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* 한국어는 어절에서 접는다 — 글자 사이에서 접는 브라우저 기본은 한국어 조판 관행이 아니다.
+     PPTX와 맞추려는 것이 아니다 (줄바꿈 위치는 계약 밖이다). overflow-wrap:
+     anywhere는 좁은 칸에서 한 어절이 칸보다 길 때만 그 어절을 자른다 — keep-all만 두면 그
+     어절이 칸을 넘친다. 중국어·일본어는 띄어쓰기가 없어 keep-all이 줄바꿈을 막으므로
+     lang이 ko일 때만이다. */
+  .balpyo-stage:lang(ko) {
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
+  /* 텍스트 블록은 콘텐츠 폭 전체를 갖는다 — 줄바꿈 폭이 확정되어야 브라우저가 잰 박스가
+     PPTX 텍스트 박스로 그대로 간다. flex: 0 0 auto는 스택이 스테이지보다 길 때 박스가
+     눌리는 것을 막는다 (기본 정책은 박스 고정 + 오버플로 허용). */
+  .balpyo-text {
+    margin: 0;
+    width: 100%;
+    flex: 0 0 auto;
+  }
+
+  /* 레이아웃 태그 = CSS flex/grid의 이름 바꾸기 층. 여기 있는 것은 태그의
+     정의 그 자체이고, 요소마다 다른 값(gap·align·pad·cols…)은 인라인 style로 나간다. */
+  .balpyo-row { display: flex; flex-direction: row; }
+  .balpyo-col { display: flex; flex-direction: column; }
+  .balpyo-grid { display: grid; }
+
+  /* <spacer>는 밀어내기가 내용인 빈 박스다. flex: 1은 남은 공간을 전부 받는다는 뜻이고,
+     저자가 적은 배치 속성(<spacer grow="2">)은 인라인 style로 이 값을 덮는다. */
+  .balpyo-spacer { flex: 1; }
+
+  /* 레이아웃 컨테이너의 자식은 **브라우저 기본값**으로 돌아간다.
+     스테이지의 세로 스택은 텍스트·리스트에 확정 폭(width: 100%)과 눌리지 않는
+     flex(0 0 auto)를 준다 (contentCSS) — 스택 안에서 줄바꿈을 결정적으로 만들기 위한
+     규칙이다. 그 규칙이 컨테이너 안까지 따라오면 자식마다 부모 폭 전체를 요구하는 셈이 되어
+     가로 컨테이너를 넘치고, <spacer>가 받을 "남은 공간"이 사라진다 (실측으로 드러났다 —
+     render/geom의 spacer 테스트). 컨테이너 안에서 폭을 정하는 것은 컨테이너다: 트랙,
+     교차축 정렬(stretch), 그리고 자식이 적은 basis/grow가 그 값을 만든다.
+     폭이 확정된다는 사실은 그대로다 — 브라우저가 정하고 지오메트리 패스가 그 값을 잰다. */
+  :is(.balpyo-row, .balpyo-col, .balpyo-grid) > :is(.balpyo-text, .balpyo-list) {
+    width: auto;
+    flex: 0 1 auto;
+  }
+
+  /* <shape>는 **박스 하나와 그림 하나**다. 박스가 잰 rect(=PPTX xfrm)이고 그림은 절대
+     배치로 흐름에서 빠지므로, 프리셋 기하가 배치에 영향을 주지 않는다. 세로 flex인 이유는
+     도형 안 텍스트가 문서 순서대로 쌓이고 세로 앵커가 주축 분배가 되기 때문이다. */
+  .balpyo-shape {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 그림은 박스를 덮는다. overflow: visible이어야 하는 이유가 둘이다 — 선이 경로 중앙에
+     그려져 굵기의 절반이 박스 밖으로 번지고(OOXML a:ln과 같은 규약), callout의 꼬리가
+     박스 아래로 나간다. UA는 바깥 <svg>에 overflow: hidden을 걸므로 명시한다. */
+  .balpyo-shape-ink {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  /* 그림이 절대 배치라 흐름 콘텐츠보다 위에 칠해진다 — 자식을 position: relative로 올려
+     글자가 그림 위에 오게 한다. z-index로 그림을 내리는 길은 스택 문맥에 따라 슬라이드
+     바탕 아래로 사라질 수 있어 쓰지 않는다.
+
+     목록이 다섯 줄인 이유는 **배경 모드**다: 도형이 컨테이너를 담으면 올릴 것이
+     글자가 아니라 컨테이너다. 자식 전부를 한 줄로 집는 길(> :not(.balpyo-shape-ink))은 쓰지
+     않는다 — 특정도 (0,2,0)이 아래 .balpyo-shape-body (0,1,0)를 이겨 프리셋 텍스트 영역의
+     절대 배치가 풀린다 (텍스트 영역 래퍼가 흐름으로 돌아간다). */
+  .balpyo-shape > .balpyo-text,
+  .balpyo-shape > .balpyo-row,
+  .balpyo-shape > .balpyo-col,
+  .balpyo-shape > .balpyo-grid,
+  .balpyo-shape > .balpyo-stack {
+    position: relative;
+  }
+
+  /* 프리셋의 텍스트 영역. 네 변의 인셋은 인라인 백분율이고, 이 규칙은 "그
+     사각형이 박스 안의 절대 배치 상자이며 텍스트가 세로로 쌓인다"는 정의만 갖는다.
+     그림보다 문서 순서에서 뒤에 오므로 글자가 그림 위에 칠해진다 (위 규칙과 같은 이유로
+     z-index를 쓰지 않는다). */
+  .balpyo-shape-body {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 회전 — 선언은 여기, 각도는 인라인 커스텀 프로퍼티다. 측정 뷰가 이 선언을 무효화해야
+     잰 rect가 **회전 전** 박스가 된다 (getBoundingClientRect는 회전된 bbox를 준다: 45도에서
+     1.41배). 인라인 style은 층 밖에서 이기므로 선언이 요소 쪽에 있으면 덮을 수 없다. */
+  .balpyo-shape-rotate {
+    transform: rotate(var(--balpyo-shape-rotate, 0deg));
+  }
+  html[data-balpyo-view="measure"] .balpyo-shape-rotate {
+    transform: none;
+  }
+
+  /* 표 — 프레임은 콘텐츠 폭 전체이고 열 너비는 브라우저의 표 알고리즘이 정한다. 그 잰 값이
+     PPTX a:tblGrid의 열 너비가 되므로 격자 기하를 엔진이 계산하지 않는다.
+
+     border-collapse: collapse는 이웃한 셀의 테두리를 한 줄로 합친다 — PPTX의 a:tc 테두리도
+     격자선 하나를 공유하므로, 합치지 않으면 웹에서만 선이 2px로 겹쳐 보인다. */
+  .balpyo-table {
+    width: 100%;
+    flex: 0 0 auto;
+    border-collapse: collapse;
+    table-layout: auto;
+  }
+
+  /* 셀 여백은 엔진 상수다 (TableCellPadX·TableCellPadY) — PPTX a:tcPr의 mar*가 같은 값을
+     쓴다. 나머지 셀 외관은 인라인 style이 전부 명시한다 (cellStyleCSS). */
+  .balpyo-table th,
+  .balpyo-table td {
+    padding: 8px 12px;
+  }
+
+  /* 이 파일은 뷰어 CSS다 (render/web.viewerCSS가 go:embed로 싣는다). index.html의 <style>
+     안, `@layer balpyo.base` 블록 **안에** 그대로 들어가므로 규칙이 2칸 들여쓰기로 시작한다.
+     닫는 style 태그를 담으면(주석 안이어도) 문서가 그 자리에서 끝난다 — runtime_test가 막는다. */
+
+  /* ── 발표자 뷰 ── 런타임 JS가 <html>에 data-balpyo-view="presenter"를 켠다.
+     속성이 없으면(JS 꺼짐, 또는 지오메트리 패스가 지운 상태) 위의 세로 스택 그대로다. */
+  .balpyo-viewer-bar, .balpyo-viewer-notes { display: none; }
+
+  html[data-balpyo-view="presenter"] { height: 100%; }
+  html[data-balpyo-view="presenter"] body { height: 100%; overflow: hidden; }
+  html[data-balpyo-view="presenter"] .balpyo-deck {
+    position: fixed;
+    inset: 0;
+    padding: 0;
+    display: block;
+  }
+
+  /* 슬라이드는 전부 화면 가운데 겹쳐 두고 활성 슬라이드만 보인다. display가 아니라
+     visibility인 이유와 transform 스케일인 이유는 파일 머리 주석에 있다. */
+  html[data-balpyo-view="presenter"] .balpyo-slide {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(var(--balpyo-view-scale, 1));
+    visibility: hidden;
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-active {
+    visibility: visible;
+  }
+
+  /* 순차 등장 — 스텝을 가진 항목은 **발표자 뷰에서만** 숨는다. 게이트 안에 있다는
+     것이 계약의 전부다: 문서 뷰·측정 뷰·오버뷰·인쇄는 전개된 상태를 보므로 지오메트리 패스가
+     재는 배치와 PPTX 좌표가 reveal을 쓰기 전과 한 픽셀도 다르지 않다. 숨기는 수단이
+     visibility인 이유는 슬라이드와 같다 — display: none은 항목이 나타날 때마다 아래 줄을 밀어
+     올려, 저자가 짠 한 배치가 발표 중에 여러 배치가 된다.
+     되돌리는 규칙을 활성 슬라이드 안으로 좁히는 이유: 겹쳐 둔 다른 장의 항목이 visible이면
+     숨은 슬라이드 위에 글자가 떠오른다 (visibility는 자식에서 되살아난다). */
+  html[data-balpyo-view="presenter"] [data-balpyo-reveal] { visibility: hidden; }
+  html[data-balpyo-view="presenter"] .balpyo-viewer-active [data-balpyo-reveal].balpyo-viewer-revealed {
+    visibility: visible;
+  }
+
+  /* 컨트롤 바는 오버뷰에서도 보인다 — 키보드를 모르는 사람이 오버뷰에서 나갈 길이 그것이다.
+     값을 묻지 않는 선택자(html[data-balpyo-view])를 쓰지 않는 이유는 측정 뷰다: 재는 동안
+     크롬이 그려지면 그 뒤에 찍는 스크린샷이 산출물이 아닌 측정 상태를 본다. */
+  html[data-balpyo-view="presenter"] .balpyo-viewer-bar,
+  html[data-balpyo-view="overview"] .balpyo-viewer-bar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    position: fixed;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    z-index: 10;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(20, 20, 22, 0.88);
+    color: #ddd;
+    font: 14px/1 system-ui, sans-serif;
+  }
+  .balpyo-viewer-bar button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    padding: 8px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .balpyo-viewer-bar button:hover { background: rgba(255, 255, 255, 0.12); }
+  .balpyo-viewer-bar button:disabled { opacity: 0.35; cursor: default; background: transparent; }
+  .balpyo-viewer-bar button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.18); }
+  .balpyo-viewer-counter {
+    padding: 0 10px;
+    color: #aaa;
+    font-variant-numeric: tabular-nums;
+  }
+
+  html[data-balpyo-view="presenter"] .balpyo-viewer-notes {
+    display: block;
+    position: fixed;
+    left: 50%;
+    bottom: 64px;
+    transform: translateX(-50%);
+    z-index: 10;
+    width: min(640px, calc(100vw - 48px));
+    max-height: 40vh;
+    overflow-y: auto;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: rgba(20, 20, 22, 0.92);
+    color: #e6e6e6;
+    font: 15px/1.6 system-ui, sans-serif;
+    white-space: pre-wrap;
+  }
+  /* hidden 속성이 이겨야 한다 — 위의 display: block이 UA 스타일을 덮으므로 명시한다. */
+  html[data-balpyo-view="presenter"] .balpyo-viewer-notes[hidden] { display: none; }
+  .balpyo-viewer-notes.balpyo-viewer-empty { color: #999; font-style: italic; }
+
+  /* ── 오버뷰 ── 슬라이드 전부를 격자로 줄여 놓고 하나를 골라 들어간다.
+     줄이는 수단은 zoom이다: transform은 부모가 보는 칸 크기를 줄이지 않아 타일마다 감싸는
+     요소가 필요하고, 그 요소는 지오메트리 패스가 읽는 부모 사슬을 바꾼다. zoom 아래에서도
+     레이아웃 크기(offsetWidth)는 논리 스테이지 그대로이므로 화면 맞춤 배율 계산에 되먹임이
+     없다. 열 수와 배율은 런타임이 창에 맞춰 계산해 넣는다 — CSS는 슬라이드 수를 모른다. */
+  html[data-balpyo-view="overview"] { height: 100%; }
+  html[data-balpyo-view="overview"] body { height: 100%; overflow: hidden; }
+  html[data-balpyo-view="overview"] .balpyo-deck {
+    display: grid;
+    grid-template-columns: repeat(var(--balpyo-overview-columns, 4), max-content);
+    justify-content: center;
+    align-content: center;
+    height: 100%;
+    gap: 16px;
+    /* 아래쪽은 컨트롤 바 높이만큼 더 비운다 — 런타임의 열 계산이 같은 값을 쓴다. */
+    padding: 16px 16px 64px;
+  }
+  html[data-balpyo-view="overview"] .balpyo-slide {
+    zoom: var(--balpyo-overview-zoom, 0.2);
+    cursor: pointer;
+    outline: 12px solid transparent;
+  }
+  /* 활성 슬라이드는 **나갈 자리**다 (오버뷰는 이동이 아니라 보기다) — 테두리로 표시한다.
+     테두리도 zoom을 받으므로 12px은 화면에서 3px 남짓이고, 흰 슬라이드와 어두운 바탕 **양쪽**에
+     보이는 색이어야 한다 (흰 테두리는 밝은 슬라이드에 묻힌다 — 실물에서 보이지 않았다). */
+  html[data-balpyo-view="overview"] .balpyo-slide.balpyo-viewer-active {
+    outline-color: #4c8dff;
+  }
+
+  /* ── 인쇄 ── 어느 뷰에서 눌러도 문서 뷰의 그림이 나온다.
+     인쇄는 뷰가 아니라 **미디어**다: 사람은 뷰를 바꾸고 인쇄하지 않고 보고 있는 화면에서
+     누른다 (그래서 인쇄 CSS가 없으면 발표자 뷰에서 누른 사람은 활성 슬라이드 한 장만 담긴
+     letter PDF를 받는다 — 실측). 그러므로 켜진 뷰를 되돌려야 하고, 이 절은 뷰 규칙 **뒤**에
+     온다: 게이트와 같은 명시도의 선택자(값을 묻지 않는 html[data-balpyo-view])를 뒤에 두면
+     !important 없이 이긴다. 종이 크기(@page)는 스테이지가 덱마다 달라 baseCSS가 만든다. */
+  @media print {
+    html, html[data-balpyo-view] { height: auto; background: #fff; }
+    body, html[data-balpyo-view] body { height: auto; overflow: visible; background: #fff; }
+    .balpyo-deck, html[data-balpyo-view] .balpyo-deck {
+      position: static;
+      display: block;
+      height: auto;
+      gap: 0;
+      padding: 0;
+    }
+    /* 한 장이 한 페이지다 — 겹쳐 둔 슬라이드를 세로 스택으로 돌리고 페이지를 나눈다. */
+    .balpyo-slide, html[data-balpyo-view] .balpyo-slide {
+      position: relative;
+      left: auto;
+      top: auto;
+      transform: none;
+      visibility: visible;
+      zoom: 1;
+      outline: none;
+      break-inside: avoid;
+      break-after: page;
+    }
+    /* 순차 등장은 종이에서 전부 전개된다 — 발표 중에 Cmd+P를 누른 사람의
+       종이에서 아직 말하지 않은 항목이 빠지면 안 된다. 선택자의 명시도가 발표자 뷰 게이트와
+       같고 자리가 뒤이므로 그대로 이긴다 (위 슬라이드 되돌리기와 같은 수법). */
+    [data-balpyo-reveal], html[data-balpyo-view] [data-balpyo-reveal] { visibility: visible; }
+    /* 마지막 장 뒤에 빈 페이지를 하나 더 만들지 않는다. */
+    .balpyo-slide:last-child, html[data-balpyo-view] .balpyo-slide:last-child { break-after: auto; }
+    /* 오버뷰의 활성 테두리는 종이에 남지 않는다 (테두리 규칙이 한 단계 더 구체적이다). */
+    .balpyo-slide.balpyo-viewer-active,
+    html[data-balpyo-view] .balpyo-slide.balpyo-viewer-active { outline-color: transparent; }
+    .balpyo-viewer-bar, html[data-balpyo-view] .balpyo-viewer-bar,
+    .balpyo-viewer-notes, html[data-balpyo-view] .balpyo-viewer-notes { display: none; }
+  }
+
+  @media print {
+    @page { size: 1280px 720px; margin: 0; }
+  }
+}
+
+@layer balpyo.theme {
+  /* 테마 "minimal"의 토큰 표 — 웹 변수와 PPTX 테마 파트가 이 한 표에서 나온다. */
+  :root {
+    --balpyo-color-fg: #1A1A1A;
+    --balpyo-color-bg: #FFFFFF;
+    --balpyo-color-muted: #6B7280;
+    --balpyo-color-surface: #F3F4F6;
+    --balpyo-color-accent1: #0F65F9;
+    --balpyo-color-accent2: #0E8174;
+    --balpyo-color-accent3: #15803D;
+    --balpyo-color-accent4: #B45309;
+    --balpyo-color-accent5: #DC2626;
+    --balpyo-color-accent6: #9333EA;
+    --balpyo-font-heading: "Noto Sans", "Noto Sans CJK KR", sans-serif;
+    --balpyo-font-body: "Noto Sans", "Noto Sans CJK KR", sans-serif;
+    --balpyo-font-mono: "Noto Sans Mono", "Noto Sans Mono CJK KR", monospace;
+    --balpyo-space-xs: 6px;
+    --balpyo-space-sm: 12px;
+    --balpyo-space-md: 24px;
+    --balpyo-space-lg: 36px;
+    --balpyo-space-xl: 48px;
+    --balpyo-space-2xl: 72px;
+    --balpyo-shadow-soft: 0px 4px 16px color-mix(in srgb, var(--balpyo-color-fg) 15%, transparent);
+  }
+
+  .balpyo-slide { background: var(--balpyo-color-bg); }
+
+  .balpyo-stage.balpyo-slots > :is(.balpyo-text, .balpyo-list) { width: auto; }
+  .balpyo-stage.balpyo-layout-end.balpyo-slots { display: grid; grid-template-columns: 1fr; grid-template-rows: auto auto; grid-template-areas: "title" "contact"; align-content: center; justify-items: center; }
+  .balpyo-stage.balpyo-layout-quote.balpyo-slots { display: grid; grid-template-columns: 1fr; grid-template-rows: auto auto; grid-template-areas: "quote" "attribution"; align-content: center; }
+  .balpyo-stage.balpyo-layout-title.balpyo-slots { display: grid; grid-template-columns: 1fr; grid-template-rows: auto auto auto 1fr auto auto; grid-template-areas: "kicker" "title" "subtitle" "." "author" "date"; justify-items: center; align-content: center; }
+  .balpyo-stage.balpyo-layout-two-column.balpyo-slots { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; grid-template-areas: "title title" "left right"; align-content: start; }
+}
+</style>
+</head>
+<body>
+<div class="balpyo-deck" data-aspect="16:9" data-slides="10">
+<section class="balpyo-slide" id="cover" data-slide-index="0" data-slide-source="slides/001_cover.slide">
+<div class="balpyo-stage balpyo-layout-title balpyo-slots">
+<div class="balpyo-text" data-balpyo-id="s0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start; grid-area: kicker">INCIDENT REVIEW · INC-2431</div>
+<div class="balpyo-text" data-balpyo-id="s0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 80px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start; grid-area: title">결제 API 5xx, 47분</div>
+<div class="balpyo-text" data-balpyo-id="s0.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 30px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-muted); text-align: start; grid-area: subtitle">캐시 스탬피드 — 무슨 일이 있었고 무엇을 바꾸는가</div>
+<div class="balpyo-text" data-balpyo-id="s0.3" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; grid-area: author">Platform Team</div>
+<div class="balpyo-text" data-balpyo-id="s0.4" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start; grid-area: date">2026-09-18</div>
+</div>
+<div class="balpyo-notes" hidden>회고의 규칙 먼저: 사람이 아니라 시스템을 본다. 30초.</div>
+</section>
+<section class="balpyo-slide" id="summary" data-slide-index="1" data-slide-source="slides/002_summary.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s1.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">한 장 요약</h2>
+<div class="balpyo-grid" data-balpyo-id="s1.1" data-balpyo-el="grid" style="gap: var(--balpyo-space-md); grid-template-columns: repeat(3, 1fr); flex-grow: 1">
+<div class="balpyo-shape" data-balpyo-id="s1.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none; filter: drop-shadow(var(--balpyo-shadow-soft))"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s1.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s1.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 72px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent5); text-align: start">47분</div>
+<div class="balpyo-text" data-balpyo-id="s1.1.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">결제 API 5xx 지속</div>
+<div class="balpyo-text" data-balpyo-id="s1.1.0.0.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">14:02 – 14:49 KST</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s1.1.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none; filter: drop-shadow(var(--balpyo-shadow-soft))"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s1.1.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s1.1.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 72px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent5); text-align: start">8.4%</div>
+<div class="balpyo-text" data-balpyo-id="s1.1.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">최대 오류율</div>
+<div class="balpyo-text" data-balpyo-id="s1.1.1.0.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">평시 0.02%</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s1.1.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none; filter: drop-shadow(var(--balpyo-shadow-soft))"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s1.1.2.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s1.1.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 72px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent4); text-align: start">12분</div>
+<div class="balpyo-text" data-balpyo-id="s1.1.2.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">탐지까지 걸린 시간</div>
+<div class="balpyo-text" data-balpyo-id="s1.1.2.0.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">경보가 5분 평균이었다</div>
+</div>
+</div>
+</div>
+<div class="balpyo-grid" data-balpyo-id="s1.2" data-balpyo-el="grid" style="gap: var(--balpyo-space-lg); grid-template-columns: repeat(2, 1fr)">
+<div class="balpyo-col" data-balpyo-id="s1.2.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s1.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">무슨 일</div>
+<p class="balpyo-text" data-balpyo-id="s1.2.0.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">결제 캐시 키 12만 개가 같은 초에 만료되면서 DB로 요청이 쏟아졌다. 읽기 풀이 고갈되고 결제 API가 5xx를 반환했다.</p>
+</div>
+<div class="balpyo-col" data-balpyo-id="s1.2.1" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s1.2.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent3); text-align: start">어떻게 멈췄나</div>
+<p class="balpyo-text" data-balpyo-id="s1.2.1.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">롤백이 아니라 <strong style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">부하 차단</strong>으로 멈췄다. 캐시가 다시 차자 14:49에 오류율이 평시로 돌아왔다.</p>
+</div>
+</div>
+</div>
+<div class="balpyo-notes" hidden>숫자 셋만 읽고 다음으로. 자세한 것은 뒤에 있다.</div>
+</section>
+<section class="balpyo-slide" id="timeline" data-slide-index="2" data-slide-source="slides/003_timeline.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s2.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">타임라인 (KST)</h2>
+<div class="balpyo-grid" data-balpyo-id="s2.1" data-balpyo-el="grid" style="gap: var(--balpyo-space-sm); grid-template-columns: repeat(5, 1fr); flex-grow: 1">
+<div class="balpyo-col" data-balpyo-id="s2.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
+<div class="balpyo-shape" data-balpyo-id="s2.1.0.0" data-balpyo-el="shape" style="width: 100%; height: 64px">
+<svg class="balpyo-shape-ink" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="fill: var(--balpyo-color-accent5); stroke: var(--balpyo-color-muted); stroke-width: 1px"><path d="M0,0 L50,0 L100,50 L50,100 L0,100 L50,50 Z" vector-effect="non-scaling-stroke"/></svg>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s2.1.0.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px); width: 100%; flex-grow: 1">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-col" data-balpyo-id="s2.1.0.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s2.1.0.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s2.1.0.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 44px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">14:02</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.0.1.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">키 동시 만료</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.0.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">배포 예열 30분 뒤, 12만 키가 같은 초에</div>
+</div>
+</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s2.1.1" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
+<div class="balpyo-shape" data-balpyo-id="s2.1.1.0" data-balpyo-el="shape" style="width: 100%; height: 64px">
+<svg class="balpyo-shape-ink" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="fill: var(--balpyo-color-accent4); stroke: var(--balpyo-color-muted); stroke-width: 1px"><path d="M0,0 L50,0 L100,50 L50,100 L0,100 L50,50 Z" vector-effect="non-scaling-stroke"/></svg>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s2.1.1.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px); width: 100%; flex-grow: 1">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-col" data-balpyo-id="s2.1.1.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s2.1.1.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s2.1.1.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 44px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">14:14</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.1.1.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">5xx 경보</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.1.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">5분 평균 임계값이 12분 늦게 울렸다</div>
+</div>
+</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s2.1.2" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
+<div class="balpyo-shape" data-balpyo-id="s2.1.2.0" data-balpyo-el="shape" style="width: 100%; height: 64px">
+<svg class="balpyo-shape-ink" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-muted); stroke-width: 1px"><path d="M0,0 L50,0 L100,50 L50,100 L0,100 L50,50 Z" vector-effect="non-scaling-stroke"/></svg>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s2.1.2.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px); width: 100%; flex-grow: 1">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-col" data-balpyo-id="s2.1.2.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s2.1.2.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s2.1.2.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 44px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">14:23</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.2.1.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">DB 풀 고갈 확인</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.2.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">읽기 풀 40/40, 대기열 1,900</div>
+</div>
+</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s2.1.3" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
+<div class="balpyo-shape" data-balpyo-id="s2.1.3.0" data-balpyo-el="shape" style="width: 100%; height: 64px">
+<svg class="balpyo-shape-ink" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="fill: var(--balpyo-color-accent3); stroke: var(--balpyo-color-muted); stroke-width: 1px"><path d="M0,0 L50,0 L100,50 L50,100 L0,100 L50,50 Z" vector-effect="non-scaling-stroke"/></svg>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s2.1.3.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px); width: 100%; flex-grow: 1">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-col" data-balpyo-id="s2.1.3.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s2.1.3.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s2.1.3.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 44px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">14:31</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.3.1.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">부하 차단 적용</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.3.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">결제 외 캐시 미스 경로를 끊었다</div>
+</div>
+</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s2.1.4" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
+<div class="balpyo-shape" data-balpyo-id="s2.1.4.0" data-balpyo-el="shape" style="width: 100%; height: 64px">
+<svg class="balpyo-shape-ink" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-muted); stroke-width: 1px"><path d="M0,0 L50,0 L100,50 L50,100 L0,100 L50,50 Z" vector-effect="non-scaling-stroke"/></svg>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s2.1.4.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px); width: 100%; flex-grow: 1">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-col" data-balpyo-id="s2.1.4.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s2.1.4.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s2.1.4.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 44px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">14:49</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.4.1.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">오류율 정상</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.4.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">캐시 적중률 97%로 회복</div>
+</div>
+</div>
+</div>
+</div>
+<div class="balpyo-grid" data-balpyo-id="s2.2" data-balpyo-el="grid" style="gap: var(--balpyo-space-sm); grid-template-columns: 12fr 17fr 18fr">
+<div class="balpyo-shape" data-balpyo-id="s2.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent4); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s2.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center; font-style: normal; text-decoration: none">탐지 12분</strong></div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s2.2.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s2.2.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">완화 17분</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s2.2.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s2.2.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">복구 18분</div>
+</div>
+</div>
+</div>
+<div class="balpyo-notes" hidden>경보가 늦은 이유는 5xx 임계값이 5분 평균이어서다. 액션 1번이 여기서 나온다.</div>
+</section>
+<section class="balpyo-slide" id="impact" data-slide-index="3" data-slide-source="slides/004_impact.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s3.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">영향 범위</h2>
+<table class="balpyo-table balpyo-table-striped" data-balpyo-id="s3.1" data-balpyo-el="table">
+<tr data-balpyo-id="s3.1.0" data-balpyo-el="tr">
+<th data-balpyo-id="s3.1.0.0" data-balpyo-el="th" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start; background-color: var(--balpyo-color-accent1); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">서비스</th>
+<th data-balpyo-id="s3.1.0.1" data-balpyo-el="th" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: end; background-color: var(--balpyo-color-accent1); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">오류율 최대</th>
+<th data-balpyo-id="s3.1.0.2" data-balpyo-el="th" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: end; background-color: var(--balpyo-color-accent1); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">영향 요청</th>
+<th data-balpyo-id="s3.1.0.3" data-balpyo-el="th" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start; background-color: var(--balpyo-color-accent1); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">사용자 체감</th>
+</tr>
+<tr data-balpyo-id="s3.1.1" data-balpyo-el="tr">
+<td data-balpyo-id="s3.1.1.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">결제 API</td>
+<td data-balpyo-id="s3.1.1.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">8.4%</td>
+<td data-balpyo-id="s3.1.1.2" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">41,200</td>
+<td data-balpyo-id="s3.1.1.3" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">결제 실패 후 재시도</td>
+</tr>
+<tr data-balpyo-id="s3.1.2" data-balpyo-el="tr">
+<td data-balpyo-id="s3.1.2.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">주문 조회</td>
+<td data-balpyo-id="s3.1.2.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">1.1%</td>
+<td data-balpyo-id="s3.1.2.2" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">6,800</td>
+<td data-balpyo-id="s3.1.2.3" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">조회 지연 2~4초</td>
+</tr>
+<tr data-balpyo-id="s3.1.3" data-balpyo-el="tr">
+<td data-balpyo-id="s3.1.3.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">장바구니</td>
+<td data-balpyo-id="s3.1.3.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">0.3%</td>
+<td data-balpyo-id="s3.1.3.2" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">1,450</td>
+<td data-balpyo-id="s3.1.3.3" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">담기 실패 (드묾)</td>
+</tr>
+<tr data-balpyo-id="s3.1.4" data-balpyo-el="tr">
+<td data-balpyo-id="s3.1.4.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">정산 배치</td>
+<td data-balpyo-id="s3.1.4.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">0%</td>
+<td data-balpyo-id="s3.1.4.2" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">0</td>
+<td data-balpyo-id="s3.1.4.3" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">없음</td>
+</tr>
+</table>
+<div class="balpyo-grid" data-balpyo-id="s3.2" data-balpyo-el="grid" style="gap: var(--balpyo-space-md); grid-template-columns: repeat(3, 1fr); flex-grow: 1">
+<div class="balpyo-shape" data-balpyo-id="s3.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s3.2.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s3.2.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 48px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent5); text-align: start">41,200</div>
+<div class="balpyo-text" data-balpyo-id="s3.2.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">결제 실패 요청</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s3.2.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s3.2.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s3.2.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 48px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent3); text-align: start">39,900</div>
+<div class="balpyo-text" data-balpyo-id="s3.2.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">재시도로 성공 (96.8%)</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s3.2.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s3.2.2.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s3.2.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 48px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent5); text-align: start">34건</div>
+<div class="balpyo-text" data-balpyo-id="s3.2.2.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">CS 문의 · 이중 결제 0건</div>
+</div>
+</div>
+</div>
+</div>
+<div class="balpyo-notes" hidden>돈이 빠진 건은 없다. CS 문의 34건.</div>
+</section>
+<section class="balpyo-slide" id="root-cause" data-slide-index="4" data-slide-source="slides/005_root_cause.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s4.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">근본 원인 — 만료가 한 시각에 몰렸다</h2>
+<div class="balpyo-shape" data-balpyo-id="s4.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; flex-grow: 1">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s4.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<pre class="balpyo-text" data-balpyo-id="s4.1.0.0" data-balpyo-el="pre" style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; white-space: pre"><span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start; font-style: normal; text-decoration: none">// 배포 때 캐시를 한 번에 채운다 — TTL이 전부 같은 시각이 된다.</span>
+<span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent6); text-align: start; font-style: normal; text-decoration: none">func</span> <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">warm</span>(ctx context.Context, ids []<span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent6); text-align: start; font-style: normal; text-decoration: none">string</span>) <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent6); text-align: start; font-style: normal; text-decoration: none">error</span> {
+  <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent6); text-align: start; font-style: normal; text-decoration: none">for</span> _, id := <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent6); text-align: start; font-style: normal; text-decoration: none">range</span> ids {
+    <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent6); text-align: start; font-style: normal; text-decoration: none">if</span> err := cache.<span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">Set</span>(ctx, <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">key</span>(id), <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">load</span>(id), <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent4); text-align: start; font-style: normal; text-decoration: none">30</span>*time.Minute); err != <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent6); text-align: start; font-style: normal; text-decoration: none">nil</span> {
+      <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent6); text-align: start; font-style: normal; text-decoration: none">return</span> err
+    }
+  }
+  <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent6); text-align: start; font-style: normal; text-decoration: none">return</span> <span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent6); text-align: start; font-style: normal; text-decoration: none">nil</span>
+}</pre>
+<div class="balpyo-text" data-balpyo-id="s4.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">payments/cache/warm.go — 배포 훅이 부른다</div>
+</div>
+</div>
+<div class="balpyo-grid" data-balpyo-id="s4.2" data-balpyo-el="grid" style="gap: var(--balpyo-space-md); grid-template-columns: repeat(3, 1fr)">
+<div class="balpyo-col" data-balpyo-id="s4.2.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s4.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">① 일괄 예열</div>
+<div class="balpyo-text" data-balpyo-id="s4.2.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">배포가 12만 키를 몇 초 안에 채운다.</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s4.2.1" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s4.2.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">② 고정 TTL 30분</div>
+<div class="balpyo-text" data-balpyo-id="s4.2.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">지터가 없어 만료 시각이 하나로 모인다.</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s4.2.2" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s4.2.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent5); text-align: start">③ 같은 초에 전부 미스</div>
+<div class="balpyo-text" data-balpyo-id="s4.2.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">단일 비행이 없어 미스 하나가 DB 질의 하나가 된다.</div>
+</div>
+</div>
+</div>
+<div class="balpyo-notes" hidden>고정 TTL + 일괄 예열 = 스탬피드. 지터와 단일 비행(single-flight) 둘 다 없었다.</div>
+</section>
+<section class="balpyo-slide" id="factors" data-slide-index="5" data-slide-source="slides/006_factors.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s5.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">기여 요인 넷</h2>
+<div class="balpyo-grid" data-balpyo-id="s5.1" data-balpyo-el="grid" style="gap: var(--balpyo-space-md); grid-template-columns: repeat(2, 1fr); flex-grow: 1">
+<div class="balpyo-shape" data-balpyo-id="s5.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s5.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s5.1.0.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s5.1.0.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 26px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">고정 TTL</div>
+<div class="balpyo-text" data-balpyo-id="s5.1.0.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">예열이 모든 키에 같은 만료 시각을 준다.</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s5.1.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-accent3); text-align: start">→ TTL에 ±10% 지터</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s5.1.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s5.1.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s5.1.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s5.1.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 26px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">단일 비행 없음</div>
+<div class="balpyo-text" data-balpyo-id="s5.1.1.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">캐시 미스가 그대로 DB 질의가 된다 (<code style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">cache.Get</code> 실패 경로에 잠금이 없다).</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s5.1.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-accent3); text-align: start">→ 캐시 미스에 단일 비행 잠금</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s5.1.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s5.1.2.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s5.1.2.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s5.1.2.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 26px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">읽기 풀이 작다</div>
+<div class="balpyo-text" data-balpyo-id="s5.1.2.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">풀 상한 40, 평시 피크 26. 여유가 14개뿐이었다.</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s5.1.2.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-accent3); text-align: start">→ 풀 상한 96, 사용률 80%에 경보</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s5.1.3" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s5.1.3.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s5.1.3.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s5.1.3.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 26px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">경보가 5분 평균</div>
+<div class="balpyo-text" data-balpyo-id="s5.1.3.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">임계값이 평균이라 급한 스파이크를 늦게 본다.</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s5.1.3.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-accent3); text-align: start">→ 1분 p99 경보로 교체</div>
+</div>
+</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s5.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">넷 중 하나만 없었어도 47분이 아니라 5분이었다.</div>
+</div>
+<div class="balpyo-notes" hidden>순서는 고치는 비용 순이다. 1번과 4번이 이번 주, 2번이 다음 스프린트.</div>
+</section>
+<section class="balpyo-slide" id="actions" data-slide-index="6" data-slide-source="slides/007_actions.slide">
+<div class="balpyo-stage balpyo-layout-two-column balpyo-slots">
+<div class="balpyo-text" data-balpyo-id="s6.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start; grid-area: title">재발 방지 액션</div>
+<div class="balpyo-col" data-balpyo-id="s6.1" data-balpyo-el="col" style="height: 100%; grid-area: left">
+<div class="balpyo-shape" data-balpyo-id="s6.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s6.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: space-between; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s6.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent3); text-align: start">이번 주</div>
+<div class="balpyo-col" data-balpyo-id="s6.1.0.0.1" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s6.1.0.0.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">1.</strong> TTL에 ±10% 지터 (결제 캐시 전부)</div>
+<div class="balpyo-text" data-balpyo-id="s6.1.0.0.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">고정 TTL을 막는다</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s6.1.0.0.2" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s6.1.0.0.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">2.</strong> 5xx 경보를 1분 p99로 교체</div>
+<div class="balpyo-text" data-balpyo-id="s6.1.0.0.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">탐지 12분 → 목표 3분</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s6.1.0.0.3" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s6.1.0.0.3.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">3.</strong> 읽기 풀 상한 40 → 96, 경보 80%</div>
+<div class="balpyo-text" data-balpyo-id="s6.1.0.0.3.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">여유 14개 → 70개</div>
+</div>
+</div>
+</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s6.2" data-balpyo-el="col" style="height: 100%; grid-area: right">
+<div class="balpyo-shape" data-balpyo-id="s6.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s6.2.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: space-between; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s6.2.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent3); text-align: start">다음 스프린트</div>
+<div class="balpyo-col" data-balpyo-id="s6.2.0.0.1" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s6.2.0.0.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">4.</strong> 캐시 미스에 단일 비행 잠금</div>
+<div class="balpyo-text" data-balpyo-id="s6.2.0.0.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">미스 하나가 질의 하나가 되는 경로를 끊는다</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s6.2.0.0.2" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s6.2.0.0.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">5.</strong> 부하 차단을 수동 → 자동 (오류율 2%)</div>
+<div class="balpyo-text" data-balpyo-id="s6.2.0.0.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">이번에 사람이 17분 걸린 일을 기계가 한다</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s6.2.0.0.3" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s6.2.0.0.3.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">6.</strong> 스탬피드 부하 시험을 배포 게이트에</div>
+<div class="balpyo-text" data-balpyo-id="s6.2.0.0.3.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">예열 직후 30분 뒤를 재현한다</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="balpyo-notes" hidden>담당과 기한은 이슈에 있다. 여기서는 순서만 합의한다.</div>
+</section>
+<section class="balpyo-slide" id="detection" data-slide-index="7" data-slide-source="slides/008_detection.slide">
+<div class="balpyo-stage">
+<h2 class="balpyo-text" data-balpyo-id="s7.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">평균 탐지 시간이 줄고 있다 — 아직 느리다</h2>
+<div class="balpyo-shape" data-balpyo-id="s7.1" data-balpyo-el="shape" style="width: 100%; height: 440px">
+<svg class="balpyo-shape-ink" role="img" aria-label="월별 평균 탐지 시간 — 5월 22분에서 이번 장애 12분까지" style="fill: none; stroke: none"><rect width="100%" height="100%"/></svg>
+<div class="balpyo-row" data-balpyo-id="s7.1.0" data-balpyo-el="row" style="gap: 0px; align-items: stretch; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s7.1.0.0" data-balpyo-el="col" style="gap: 0px; align-items: center; height: 100%; flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-col" data-balpyo-id="s7.1.0.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); align-items: center; justify-content: end; width: 100%; flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-text" data-balpyo-id="s7.1.0.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: center; width: 100%">22분</div>
+<div class="balpyo-shape" data-balpyo-id="s7.1.0.0.0.1" data-balpyo-el="shape" style="width: 70%; height: 90%; flex-shrink: 0">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%"/></svg>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s7.1.0.0.1" data-balpyo-el="shape" style="width: 100%; height: 1px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-muted); stroke: none"><rect width="100%" height="100%"/></svg>
+</div>
+<div class="balpyo-text" data-balpyo-id="s7.1.0.0.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: center; width: 100%">5월</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s7.1.0.1" data-balpyo-el="col" style="gap: 0px; align-items: center; height: 100%; flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-col" data-balpyo-id="s7.1.0.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); align-items: center; justify-content: end; width: 100%; flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-text" data-balpyo-id="s7.1.0.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: center; width: 100%">19분</div>
+<div class="balpyo-shape" data-balpyo-id="s7.1.0.1.0.1" data-balpyo-el="shape" style="width: 70%; height: 77.73%; flex-shrink: 0">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%"/></svg>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s7.1.0.1.1" data-balpyo-el="shape" style="width: 100%; height: 1px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-muted); stroke: none"><rect width="100%" height="100%"/></svg>
+</div>
+<div class="balpyo-text" data-balpyo-id="s7.1.0.1.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: center; width: 100%">6월</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s7.1.0.2" data-balpyo-el="col" style="gap: 0px; align-items: center; height: 100%; flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-col" data-balpyo-id="s7.1.0.2.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); align-items: center; justify-content: end; width: 100%; flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-text" data-balpyo-id="s7.1.0.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: center; width: 100%">15분</div>
+<div class="balpyo-shape" data-balpyo-id="s7.1.0.2.0.1" data-balpyo-el="shape" style="width: 70%; height: 61.36%; flex-shrink: 0">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%"/></svg>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s7.1.0.2.1" data-balpyo-el="shape" style="width: 100%; height: 1px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-muted); stroke: none"><rect width="100%" height="100%"/></svg>
+</div>
+<div class="balpyo-text" data-balpyo-id="s7.1.0.2.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: center; width: 100%">7월</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s7.1.0.3" data-balpyo-el="col" style="gap: 0px; align-items: center; height: 100%; flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-col" data-balpyo-id="s7.1.0.3.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); align-items: center; justify-content: end; width: 100%; flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-text" data-balpyo-id="s7.1.0.3.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: center; width: 100%">13분</div>
+<div class="balpyo-shape" data-balpyo-id="s7.1.0.3.0.1" data-balpyo-el="shape" style="width: 70%; height: 53.18%; flex-shrink: 0">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%"/></svg>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s7.1.0.3.1" data-balpyo-el="shape" style="width: 100%; height: 1px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-muted); stroke: none"><rect width="100%" height="100%"/></svg>
+</div>
+<div class="balpyo-text" data-balpyo-id="s7.1.0.3.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: center; width: 100%">8월</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s7.1.0.4" data-balpyo-el="col" style="gap: 0px; align-items: center; height: 100%; flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-col" data-balpyo-id="s7.1.0.4.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); align-items: center; justify-content: end; width: 100%; flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-text" data-balpyo-id="s7.1.0.4.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-accent4); text-align: center; width: 100%">12분</div>
+<div class="balpyo-shape" data-balpyo-id="s7.1.0.4.0.1" data-balpyo-el="shape" style="width: 70%; height: 49.09%; flex-shrink: 0">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent4); stroke: none"><rect width="100%" height="100%"/></svg>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s7.1.0.4.1" data-balpyo-el="shape" style="width: 100%; height: 1px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-muted); stroke: none"><rect width="100%" height="100%"/></svg>
+</div>
+<div class="balpyo-text" data-balpyo-id="s7.1.0.4.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-accent4); text-align: center; width: 100%">이번 장애</div>
+</div>
+</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s7.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">목표는 3분(1분 p99 경보 + 2분 확인)이다. 액션 2번이 이 막대를 반으로 줄인다.</div>
+</div>
+<div class="balpyo-notes" hidden>추세는 좋지만 목표선이 없다. 다음 회고에 목표선을 그린다.</div>
+</section>
+<section class="balpyo-slide" id="lessons" data-slide-index="8" data-slide-source="slides/009_lessons.slide">
+<div class="balpyo-stage balpyo-layout-quote balpyo-slots">
+<blockquote class="balpyo-text" data-balpyo-id="s8.0" data-balpyo-el="blockquote" style="font-family: var(--balpyo-font-body); font-size: 48px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; grid-area: quote">캐시는 가용성 장치가 아니다. 캐시가 사라진 순간의 부하를 견딜 수 있을 때만 캐시다.</blockquote>
+<div class="balpyo-text" data-balpyo-id="s8.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: end; grid-area: attribution">— 회고에서 합의한 한 문장</div>
+</div>
+<div class="balpyo-notes" hidden>이 문장을 캐시 설계 리뷰 체크리스트 맨 위에 넣는다.</div>
+</section>
+<section class="balpyo-slide" id="end" data-slide-index="9" data-slide-source="slides/010_end.slide">
+<div class="balpyo-stage balpyo-layout-end balpyo-slots">
+<div class="balpyo-text" data-balpyo-id="s9.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 80px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: center; grid-area: title">질문과 반론</div>
+<div class="balpyo-text" data-balpyo-id="s9.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-muted); text-align: center; grid-area: contact">기록: <a href="https://example.com/inc-2431" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent1); text-align: center; font-style: normal; text-decoration: underline">INC-2431 회고 문서</a> · #incident-2431</div>
+</div>
+<div class="balpyo-notes" hidden>반론이 나오면 액션을 고친다. 회고는 합의가 아니라 수정이 목적이다.</div>
+</section>
+</div>
+<script>
+// 이 파일은 뷰어 런타임이다 (render/web.runtimeJS가 go:embed로 싣는다). index.html의 <body>
+// 끝에 script 태그로 인라인되므로 여닫는 태그 문자열을 담을 수 없다 — 닫는 태그는 문서를 그
+// 자리에서 끝내고, 여는 태그는 "런타임은 한 번만 실린다" 게이트를 속인다 (runtime_test가 막는다). 덱 데이터를 보간하지 않는 **고정 파일**이다: 슬라이드·노트는
+// 전부 DOM에서 읽으므로 저자 텍스트가 스크립트로 새는 경로가 없다.
+(() => {
+  "use strict";
+  const root = document.documentElement;
+  const slides = Array.from(document.querySelectorAll(".balpyo-slide"));
+  if (slides.length === 0) return;
+
+  const button = (cls, label, text) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = cls;
+    b.setAttribute("aria-label", label);
+    b.textContent = text;
+    return b;
+  };
+  const prev = button("balpyo-viewer-prev", "Previous slide", "‹");
+  const next = button("balpyo-viewer-next", "Next slide", "›");
+  const notesToggle = button("balpyo-viewer-notes-toggle", "Toggle speaker notes", "Notes");
+  notesToggle.setAttribute("aria-pressed", "false");
+  const overviewToggle = button("balpyo-viewer-overview", "Toggle slide overview", "Grid");
+  overviewToggle.setAttribute("aria-pressed", "false");
+  const counter = document.createElement("span");
+  counter.className = "balpyo-viewer-counter";
+
+  const bar = document.createElement("nav");
+  bar.className = "balpyo-viewer-bar";
+  bar.setAttribute("aria-label", "Presentation controls");
+  bar.append(prev, counter, next, overviewToggle, notesToggle);
+
+  const notes = document.createElement("aside");
+  notes.className = "balpyo-viewer-notes";
+  notes.setAttribute("aria-label", "Speaker notes");
+  notes.hidden = true;
+
+  document.body.append(notes, bar);
+
+  let current = -1;
+
+  // 배율은 창에 꽉 차는 fit이다. 레이아웃 크기(offsetWidth)는 transform과 무관하게 논리
+  // 스테이지이므로, 잰 값을 다시 스케일하는 되먹임이 없다.
+  const fit = () => {
+    const scale = Math.min(
+      window.innerWidth / slides[0].offsetWidth,
+      window.innerHeight / slides[0].offsetHeight);
+    root.style.setProperty("--balpyo-view-scale", String(scale));
+  };
+
+  // ── 순차 등장 ──
+  //
+  // 지금 스텝은 런타임의 것이다: 마크업은 항목마다 번호를 나르고, CSS는
+  // "번호를 가진 항목"까지만 겨눌 수 있어(수를 비교할 수 없다) 번호 ≤ 지금 스텝의 판정은
+  // 여기서 한다. 스텝은 슬라이드를 옮길 때마다 새로 정해지므로 상태는 수 하나면 된다.
+  const REVEAL_ATTR = "data-balpyo-reveal";
+  const REVEALED_CLASS = "balpyo-viewer-revealed";
+  let step = 0;
+
+  const revealItems = (slide) => Array.from(slide.querySelectorAll("[" + REVEAL_ATTR + "]"));
+  const stepOf = (el) => Number(el.getAttribute(REVEAL_ATTR)) || 0;
+  const lastStep = (slide) => revealItems(slide).reduce((max, el) => Math.max(max, stepOf(el)), 0);
+
+  // 표식은 지금 슬라이드에만 다시 칠한다 — 떠난 슬라이드의 표식은 그대로 남지만 CSS가
+  // 활성 슬라이드 안에서만 그것을 보므로(viewer.css) 겹쳐 둔 다른 장의 항목이 새지 않는다.
+  // 컨트롤 바의 활성 상태도 여기서 정한다: 스텝이 남아 있으면 마지막 장에서도 다음이 살아
+  // 있어야 하고, 스텝을 먹은 첫 장에서는 이전이 되감을 자리가 된다.
+  const applyReveal = () => {
+    const slide = slides[current];
+    revealItems(slide).forEach((el) => el.classList.toggle(REVEALED_CLASS, stepOf(el) <= step));
+    prev.disabled = current === 0 && step === 0;
+    next.disabled = current === slides.length - 1 && step === lastStep(slide);
+  };
+
+  const show = (index, writeHash, revealed) => {
+    const target = Math.min(Math.max(index, 0), slides.length - 1);
+    if (target === current) return;
+    if (current >= 0) slides[current].classList.remove("balpyo-viewer-active");
+    current = target;
+    const slide = slides[current];
+    slide.classList.add("balpyo-viewer-active");
+    counter.textContent = (current + 1) + " / " + slides.length;
+    // 들어가는 장의 스텝은 0이다 — 딥링크·오버뷰 타일·Home/End로 **곧장** 들어간 장은 아직
+    // 말하지 않은 장이다 (뒤로 들어온 장만 전개된 상태로 온다).
+    step = revealed ? lastStep(slide) : 0;
+    applyReveal();
+    const note = slide.querySelector(".balpyo-notes");
+    notes.textContent = note ? note.textContent : "No notes for this slide.";
+    notes.classList.toggle("balpyo-viewer-empty", !note);
+    if (writeHash) {
+      // 히스토리를 쌓지 않는다 — 뒤로 가기가 슬라이드를 되감으면 발표 중에 페이지를
+      // 떠나는 길이 없어진다. file://에서 막는 브라우저가 있어도 조용히 넘어간다.
+      try { history.replaceState(null, "", "#/" + encodeURIComponent(slide.id)); } catch (e) {}
+    }
+  };
+
+  // 다음은 스텝을 **먼저** 먹고 그 다음에 슬라이드를 넘긴다. 뒤로는 스텝을 하나 되감고,
+  // 스텝이 없으면 앞 슬라이드로 가되 그 장은 **전부 전개된** 상태로 들어간다:
+  // 이미 말한 장을 다시 한 단계씩 누르게 만들지 않는다.
+  const forward = () => {
+    if (step < lastStep(slides[current])) { step++; applyReveal(); return; }
+    show(current + 1, true);
+  };
+  const backward = () => {
+    if (step > 0) { step--; applyReveal(); return; }
+    show(current - 1, true, true);
+  };
+
+  // ── 오버뷰 ──
+  //
+  // 오버뷰는 발표자 뷰 안의 상태가 아니라 **같은 속성의 다른 값**이다. 드나드는
+  // 것으로 현재 슬라이드가 바뀌지 않는다 — 오버뷰는 이동이 아니라 보기이고, 나오면 보고 있던
+  // 자리로 돌아온다. 자리를 옮기는 것은 타일 클릭(과 오버뷰에서도 듣는 화살표)뿐이다.
+  const overviewOn = () => root.getAttribute("data-balpyo-view") === "overview";
+
+  // 격자는 **전부 한 화면에** 들어와야 한다: 열 수를 1..n으로 훑어 타일이 가장 커지는 값을
+  // 고르고 그 폭에서 zoom을 얻는다. 간격·여백은 viewer.css와 같은 값이고, 아래쪽은 컨트롤
+  // 바가 타일을 덮지 않도록 바 높이만큼 더 비운다.
+  const OVERVIEW_GAP = 16, OVERVIEW_PAD = 16, OVERVIEW_BAR = 48;
+  const overviewFit = () => {
+    const stageWidth = slides[0].offsetWidth, stageHeight = slides[0].offsetHeight;
+    const roomWidth = window.innerWidth - 2 * OVERVIEW_PAD;
+    const roomHeight = window.innerHeight - 2 * OVERVIEW_PAD - OVERVIEW_BAR;
+    let best = {columns: 1, width: 0};
+    for (let columns = 1; columns <= slides.length; columns++) {
+      const rows = Math.ceil(slides.length / columns);
+      const width = Math.min(
+        (roomWidth - (columns - 1) * OVERVIEW_GAP) / columns,
+        ((roomHeight - (rows - 1) * OVERVIEW_GAP) / rows) * (stageWidth / stageHeight));
+      if (width > best.width) best = {columns, width};
+    }
+    root.style.setProperty("--balpyo-overview-columns", String(best.columns));
+    root.style.setProperty("--balpyo-overview-zoom", String(Math.max(best.width, 1) / stageWidth));
+  };
+
+  const setOverview = (on) => {
+    if (on) overviewFit();
+    root.setAttribute("data-balpyo-view", on ? "overview" : "presenter");
+    overviewToggle.setAttribute("aria-pressed", String(on));
+  };
+
+  const fromHash = () => {
+    let raw = location.hash.replace(/^#\/?/, "");
+    try { raw = decodeURIComponent(raw); } catch (e) {}
+    if (raw === "") return 0;
+    const byID = slides.findIndex((s) => s.id === raw);
+    if (byID >= 0) return byID;
+    const n = Number(raw);
+    if (Number.isInteger(n) && n >= 1 && n <= slides.length) return n - 1;
+    return 0;
+  };
+
+  // 버튼과 키는 **같은 동작**이다 (스텝을 먼저 먹는다) — 둘이 갈라지면 마우스로 넘긴
+  // 사람만 순차 등장을 건너뛴다.
+  prev.addEventListener("click", () => backward());
+  next.addEventListener("click", () => forward());
+  notesToggle.addEventListener("click", () => {
+    notes.hidden = !notes.hidden;
+    notesToggle.setAttribute("aria-pressed", String(!notes.hidden));
+  });
+  overviewToggle.addEventListener("click", () => setOverview(!overviewOn()));
+  // 타일 클릭은 오버뷰에서만 슬라이드를 고른다 — 발표 중의 클릭은 넘기기가 아니다
+  // (링크·코드 선택을 삼키지 않는다).
+  slides.forEach((slide, index) => {
+    slide.addEventListener("click", () => {
+      if (!overviewOn()) return;
+      show(index, true);
+      setOverview(false);
+    });
+  });
+  window.addEventListener("hashchange", () => show(fromHash(), false));
+  window.addEventListener("resize", () => {
+    fit();
+    if (overviewOn()) overviewFit();
+  });
+  window.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    switch (e.key) {
+    case "ArrowRight": case "ArrowDown": case "PageDown": case " ":
+      e.preventDefault(); forward(); break;
+    case "ArrowLeft": case "ArrowUp": case "PageUp":
+      e.preventDefault(); backward(); break;
+    case "Home": e.preventDefault(); show(0, true); break;
+    case "End": e.preventDefault(); show(slides.length - 1, true); break;
+    case "n": case "N": notesToggle.click(); break;
+    case "o": case "O": e.preventDefault(); setOverview(!overviewOn()); break;
+    case "Escape": if (overviewOn()) { e.preventDefault(); setOverview(false); } break;
+    }
+  });
+
+  root.setAttribute("data-balpyo-view", "presenter");
+  fit();
+  // 해시가 있으면 그 슬라이드로 열되 해시는 손대지 않는다 — 사용자가 준 딥링크 형태
+  // (번호든 id든)를 열자마자 바꿔치지 않는다. 해시가 없으면 첫 슬라이드고 URL은 깨끗하다.
+  show(fromHash(), false);
+})();
+</script>
+</body>
+</html>

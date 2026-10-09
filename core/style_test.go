@@ -17,7 +17,7 @@ func styleOf(t *testing.T, decl string) string {
 	return placement.Style
 }
 
-// 배치 선언은 경고 없이 통과한다 — 탈출구의 정상 경로다 (PRD §7.9).
+// 배치 선언은 경고 없이 통과한다 — 탈출구의 정상 경로다.
 func TestResolveStyleAllowsPlacementDeclarations(t *testing.T) {
 	cases := []struct{ name, decl, want string }{
 		{"단일 선언", "align-content: space-evenly", "align-content: space-evenly"},
@@ -91,7 +91,7 @@ func TestResolveStyleWarnsOnAppearanceDeclarations(t *testing.T) {
 			if placement == nil || !strings.Contains(placement.Style, tc.prop) {
 				t.Errorf("경고 난 선언이 확정 배치에서 빠졌다: %+v", placement)
 			}
-			// --strict가 에러로 승격한다 (PRD §13-6의 기존 경로 — soml.Diagnostics.Strict).
+			// --strict가 에러로 승격한다 (모르는 variant와 같은 경로 — soml.Diagnostics.Strict).
 			if !diags.Strict().HasErrors() {
 				t.Error("--strict가 경고를 에러로 승격하지 않았다")
 			}
@@ -159,7 +159,7 @@ func TestResolveStyleEmpty(t *testing.T) {
 	}
 }
 
-// allowlist는 **순서 있는 한 곳**이고 문서(항목 06)가 같은 목록을 인용한다. 여기서 못 박는
+// allowlist는 **순서 있는 한 곳**이고 문서가 같은 목록을 인용한다. 여기서 못 박는
 // 것은 목록의 모양(중복·빈 항목 없음)과 가족 접두의 판정이다.
 func TestLayoutStylePropertyAllowlist(t *testing.T) {
 	seen := map[string]bool{}
@@ -172,7 +172,7 @@ func TestLayoutStylePropertyAllowlist(t *testing.T) {
 		}
 		seen[pattern] = true
 	}
-	// PRD §7.4의 배치 속성이 CSS로 컴파일되는 이름은 전부 목록에 있어야 한다 — 저자가
+	// 배치 속성이 CSS로 컴파일되는 이름은 전부 목록에 있어야 한다 — 저자가
 	// 레이아웃 속성으로 적을 수 있는 것을 style로 적었다고 경고하면 목록이 거짓말을 한다.
 	for _, property := range []string{
 		"display", "flex-direction", "flex-grow", "flex-basis", "flex-wrap",

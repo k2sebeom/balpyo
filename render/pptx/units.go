@@ -9,7 +9,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 단위 변환 상수 (PRD §13-5).
+// 단위 변환 상수.
 //
 // 저자와 지오메트리 패스는 논리 스테이지 px 하나만 쓴다. OOXML로 넘어가는 경계에서만
 // 아래 계수로 환산하므로 좌표계 분기가 없다.
@@ -44,11 +44,11 @@ func FontSize(px float64) int64 {
 
 // LineSpacing은 줄높이 배수와 폰트 크기(논리 px)를 OOXML `a:spcPts@val`(1/100 pt)로 바꾼다.
 //
-// 배수를 그대로 `spcPct`로 내지 않는 이유(Iteration 1의 측정, NOTES.md 01/07): 두 표기는
+// 배수를 그대로 `spcPct`로 내지 않는 이유: 두 표기는
 // 기준이 다르다. CSS line-height 배수는 **폰트 크기**의 배수이지만, LibreOffice(그리고
 // PowerPoint 계열의 구현들)는 spcPct를 **폰트 고유 줄 높이**(ascent+descent, Noto Sans는
 // ≈1.36em)의 배수로 해석한다 — 같은 150%가 웹에서는 1.5em, LibreOffice에서는 ≈2.04em이
-// 되어 모든 글줄이 8~13px 아래로 밀렸다. 절대값(pt)으로 눕히면 두 엔진이 같은 줄 전진
+// 되어 모든 글줄이 8~13px 아래로 밀린다. 절대값(pt)으로 눕히면 두 엔진이 같은 줄 전진
 // 폭을 쓴다.
 func LineSpacing(multiplier, sizePx float64) int64 {
 	return int64(math.Round(multiplier * sizePx * PointsPerPixel * 100))
@@ -56,13 +56,13 @@ func LineSpacing(multiplier, sizePx float64) int64 {
 
 // Offset은 지오메트리 패스가 잰 박스의 좌상단을 OOXML `a:off`(EMU)로 바꾼다.
 //
-// **단위 경계는 이 함수와 Extent·FontSize뿐이다** (PRD §13-5). 지오메트리 패스는 논리 px만
+// **단위 경계는 이 함수와 Extent·FontSize뿐이다**. 지오메트리 패스는 논리 px만
 // 알고 EMU를 모른다 (units_test.go가 그것을 못 박는다). 경계를 한 곳에 두는 이유: 환산이
 // 여러 곳에 흩어지면 어떤 값이 px이고 어떤 값이 EMU인지 타입으로 드러나지 않아, 두 번 환산된
 // 좌표(도형이 화면 밖으로 나간다)나 환산되지 않은 좌표(도형이 왼쪽 위 점에 뭉친다)가 생긴다.
 //
 // 좌표는 슬라이드 상대이므로 그대로 `a:off`가 된다 — 슬라이드 원점이 두 좌표계에서 같다.
-// 음수도 그대로 넘긴다: 스테이지를 넘어간 박스는 잘리지 않고 넘친다 (PRD §13-1).
+// 음수도 그대로 넘긴다: 스테이지를 넘어간 박스는 잘리지 않고 넘친다.
 func Offset(r geom.Rect) (x, y int64) {
 	return EMU(r.X), EMU(r.Y)
 }
@@ -114,7 +114,7 @@ func Alpha(v float64) int64 {
 // LumPct는 백분율(0~100)을 OOXML 광도 변조 값(100000분율)으로 바꾼다 — `a:lumMod`/`a:lumOff`의
 // `val`이다.
 //
-// **색 변형(shade/tint)이 여기로 온다** (PRD §9.4의 색 변형 행 — PPTX는 `lumMod`/`lumOff`):
+// **색 변형(shade/tint)이 여기로 온다** (외관 매핑 표의 색 변형 표 — PPTX는 `lumMod`/`lumOff`):
 // `shade(색, p%)`는 어둡게이므로 광도를 (100-p)%로 조절한다(`lumMod val`), `tint`은 밝게이므로
 // 같은 lumMod에 `lumOff val=p%`를 더한다. 이 표기가 PowerPoint의 테마 색 변형 UI가 쓰는
 // 것과 같아, 변형된 토큰 색도 `schemeClr` 참조를 유지한 채 테마 색 편집을 따라간다

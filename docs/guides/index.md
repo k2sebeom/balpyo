@@ -9,19 +9,10 @@
 | [테마 고르기·만들기](theming.md) | `--theme`로 견주기 · 내장 테마 셋의 성격 · 새 테마가 지켜야 하는 계약 |
 | [계약 밖의 차이](known-differences.md) | 엔진마다 다르게 그려도 되는 것 — 줄바꿈 위치 · 문장부호 앞뒤의 틈이 버그가 아닌 이유 |
 
-예정된 가이드와 그것을 가능하게 하는 iteration:
-
-| 가이드 | 다루는 것 | 생기는 시점 |
-|---|---|---|
-| `components.md` | 합성 컴포넌트 만들기 (`dim-card` 예제) | `<define>`/`<slot>` — Iteration 11 |
-
 [시작하기](getting-started.md)의 출발점은 `balpyo init`이다 — 세 장짜리 덱 하나가 경고 없이
-빌드되는 상태로 나온다. 저장소 안에서 읽을 수 있는 출발점도 둘 있다: `examples/`(완성된 덱,
-다만 어휘의 마찰점을 일부러 밟는다)와 픽스처다. 픽스처 하나가 곧 완전한 프로젝트이므로
-그대로 빌드해 볼 수 있다.
+빌드되는 상태로 나온다. 완성된 덱을 읽어 보고 싶다면 저장소의 `examples/decks/`가 있고, 혼자 서는
+테마 하나가 `examples/themes/`에 있다.
 
 ```bash
-go run ./cmd/balpyo build --project testdata/fixtures/00_empty --target html,pptx
+balpyo build --project examples/decks/balpyo-intro --target html,pptx
 ```
-
-픽스처의 구조와 규칙은 [테스트 환경](../internals/testing.md)에 있다.

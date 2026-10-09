@@ -59,7 +59,7 @@ func TestResolveSlotOmitted(t *testing.T) {
 
 // 레이아웃 어휘 밖 슬롯 이름은 **line:col을 가진** 진단이다 — 구간이 값을 가리키고 허용
 // 목록이 어휘 순서(soml.SlotNames)로 실린다. 폴백하지 않는 것이 계약이다 (layout과 같은
-// 태도, ADR 0032): `slot="titel"` 오타가 조용히 기본 슬롯으로 떨어지면 콘텐츠가 엉뚱한
+// 태도): `slot="titel"` 오타가 조용히 기본 슬롯으로 떨어지면 콘텐츠가 엉뚱한
 // 자리에 놓이고 그 실패는 렌더를 볼 때까지 안 보인다.
 func TestResolveSlotUnknown(t *testing.T) {
 	// 값 `bogus`는 `<slide layout="content"><p slot="`(33칸) 다음 34칸에서 시작한다.
@@ -114,14 +114,14 @@ func TestResolveSlotNested(t *testing.T) {
 	}
 }
 
-// 테마가 그 레이아웃의 슬롯 영역을 갖지 않으면 슬롯은 **경고 + 미탑재**다 (ADR 0044 D3).
+// 테마가 그 레이아웃의 슬롯 영역을 갖지 않으면 슬롯은 **경고 + 미탑재**다.
 //
 // 이 판정이 core에 있는 이유가 결정의 전부다: 렌더러 두 곳이 각자 조건을 적었을 때 그 둘이
 // 갈라졌다 (웹은 `Theme.SlotLayouts`를, PPTX는 슬롯 탑재 여부만 봤다). 확정 모델에 싣지
 // **않는** 쪽을 고르면 판정이 한 번만 일어나고 두 렌더러는 이미 그 하나의 입력을 읽는다.
 //
 // 에러가 아니라 경고인 이유: 슬롯 이름은 어휘에 있고 오타도 아니다 — 부족한 것은 테마이며
-// 테마를 바꾸면 같은 소스가 그대로 뜻을 얻는다 (모르는 variant의 선례, PRD §13-6).
+// 테마를 바꾸면 같은 소스가 그대로 뜻을 얻는다 (모르는 variant의 선례).
 // `--strict`가 승격한다.
 func TestResolveSlotWarnsWhenThemeHasNoArea(t *testing.T) {
 	doc, diags := soml.Parse("slides/001_slots.slide", `<slide layout="content"><p slot="body">x</p></slide>`)

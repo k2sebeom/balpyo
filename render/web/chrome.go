@@ -8,11 +8,11 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 덱 크롬(페이지 번호·푸터)의 웹 렌더다 (ADR 0045).
+// 이 파일은 덱 크롬(페이지 번호·푸터)의 웹 렌더다.
 //
 // 렌더러가 하는 일은 확정 모델을 옮기는 것뿐이다 — 제외 규칙도, 역할 → 외관 캐스케이드도,
 // 번호 문자열도 값 층이 이미 적용했다 (core/chrome.go). 여기서 조건을 다시 보면 웹과 PPTX가
-// 갈라진다 (ADR 0044의 D3).
+// 갈라진다.
 
 // 크롬 선택자다. export하는 이유는 StageClass와 같다: 지오메트리 패스가 이 선택자로 크롬을
 // 집어 rect를 읽고(render/geom), PPTX가 그 rect에 도형을 놓는다. 문자열이 두 벌이 되면
@@ -81,7 +81,7 @@ func chromeCSS(feat features) string {
 		return ""
 	}
 	return fmt.Sprintf(`
-  /* 덱 크롬은 스테이지의 형제다 (ADR 0045) — 흐름 밖에 있어 본문 높이를 먹지 않는다. */
+  /* 덱 크롬은 스테이지의 형제다 — 흐름 밖에 있어 본문 높이를 먹지 않는다. */
   .%[1]s {
     position: absolute;
     bottom: 0;

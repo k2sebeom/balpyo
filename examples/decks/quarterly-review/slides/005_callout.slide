@@ -1,0 +1,30 @@
+<!-- 겹침: stack으로 배경 위 배지 오버레이. 겹침 판은 `grow="1"`로 남은 높이를 다 갖고,
+     그 아래 숫자 둘이 콜아웃의 근거를 받친다 — 주장 한 줄과 증거 두 개가 한 장에 있어야
+     "가장 큰 학습"이 인상이 아니라 결론이 된다. -->
+<slide id="callout">
+  <h2>가장 큰 학습</h2>
+  <stack w="fill" grow="1">
+    <shape type="rounded-rect" fill="gradient(#0F65F9 #7C3AED, 45deg)" radius="lg" w="fill" h="fill"/>
+    <col gap="sm" at="center">
+      <text role="title" size="52" color="bg" align="center">추천 채널이 CAC를 4배 낮췄다</text>
+      <text role="heading" size="26" color="bg" align="center">같은 예산이면 사용자가 네 배 온다</text>
+    </col>
+    <shape variant="badge" type="rounded-rect" fill="bg" w="120" h="44" at="top-right" pad="xs">
+      <text color="accent1" align="center">NEW</text>
+    </shape>
+  </stack>
+  <grid cols="2" gap="lg">
+    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="md">
+      <row gap="md" align="center" justify="between">
+        <text role="body">검색 CAC</text>
+        <text role="title" size="44">12,000원</text>
+      </row>
+    </shape>
+    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="md">
+      <row gap="md" align="center" justify="between">
+        <text role="body">추천 CAC</text>
+        <text role="title" size="44" color="accent1">3,200원</text>
+      </row>
+    </shape>
+  </grid>
+</slide>

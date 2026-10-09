@@ -12,7 +12,7 @@ import (
 	"github.com/knroy/go-xml/xsd"
 )
 
-// 스키마 검증 (ADR 0065): 패키지의 XML 파트마다 ECMA-376 Transitional 스키마로 검증한다.
+// 스키마 검증: 패키지의 XML 파트마다 ECMA-376 Transitional 스키마로 검증한다.
 // PowerPoint가 복구를 묻는 흔한 원인 — 자식 순서 · 필수 속성 · 열거값 · 타입 · 범위 — 는 전부 스키마
 // 위반이고, LibreOffice는 그것을 조용히 받아 주었다. 스키마 원본은 ooxml/에 고치지 않고 둔다.
 

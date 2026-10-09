@@ -6,17 +6,17 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 덱 크롬(페이지 번호·푸터)의 값 층이다 (ADR 0045).
+// 이 파일은 덱 크롬(페이지 번호·푸터)의 값 층이다.
 //
 // 합치는 것은 셋이다: `balpyo.json`의 요청(내용·켜짐), 테마의 `chrome` 선언(자리·정렬·역할·
 // 제외 규칙), 그리고 슬라이드의 확정 레이아웃(제외 판정의 입력). 결과는 슬라이드마다의
 // []soml.ChromeItem 하나이고, **두 렌더러는 그 목록만 읽는다** — 제외 규칙도 역할 →
 // 외관 캐스케이드도 번호 문자열도 여기서 끝난다. 그 조건을 렌더러마다 적었을 때 웹과 PPTX가
-// 갈라진 것이 D3였다 (ADR 0044).
+// 같은 소스에서 서로 다른 입력을 보고 갈라진다.
 
 // resolveChrome은 덱의 크롬 요청과 테마 선언을 합쳐 **덱 수준의 계획**을 만든다 (선언 순서).
 //
-// 테마가 요청받은 kind를 선언하지 않았으면 경고 + 미탑재다 — 슬롯과 같은 규칙이고(ADR 0044)
+// 테마가 요청받은 kind를 선언하지 않았으면 경고 + 미탑재다 — 슬롯과 같은 규칙이고
 // 진단이 슬라이드가 아니라 `balpyo.json`을 가리키는 이유는 고칠 자리가 거기라는 것이다.
 // 경고는 **덱에 한 번** 낸다: 슬라이드마다 내면 12장 덱에서 같은 문장이 12번 나온다.
 func resolveChrome(deck *soml.Deck, pkg themePackage) ([]soml.ChromeItem, soml.Diagnostics) {
@@ -45,7 +45,7 @@ func resolveChrome(deck *soml.Deck, pkg themePackage) ([]soml.ChromeItem, soml.D
 		// 역할이 가져온 **정렬은 선언이 덮는다**: 그러지 않으면 확정 모델 하나에 정렬이 둘이
 		// 되고(선언의 align과 역할의 Align), 웹은 외관 쪽을 `text-align`으로 읽고 PPTX는 선언
 		// 쪽을 `algn`으로 읽어 같은 입력에서 두 산출물이 갈라진다. 한 줄 박스라 지금은
-		// 눈에 보이지 않을 뿐이고, 보이지 않는 갈라짐이 D3의 모양이었다 (ADR 0044·0045).
+		// 눈에 보이지 않을 뿐이고, 보이지 않는 갈라짐도 두 타깃의 불일치다.
 		style := chromeStyle(pkg, decl.role)
 		style.Align = decl.align
 		items = append(items, soml.ChromeItem{
@@ -62,7 +62,7 @@ func resolveChrome(deck *soml.Deck, pkg themePackage) ([]soml.ChromeItem, soml.D
 // 페이지 번호의 글자를 채운다.
 //
 // 번호는 **덱 안의 위치**다 (1-based, 제외된 장도 센다): PPTX의 `a:fld type="slidenum"`이
-// 주는 값이 그것이라, 표지를 세지 않는 번호를 웹에 찍으면 두 타깃이 갈린다 (ADR 0045).
+// 주는 값이 그것이라, 표지를 세지 않는 번호를 웹에 찍으면 두 타깃이 갈린다.
 func slideChrome(plan []soml.ChromeItem, pkg themePackage, slide *soml.Slide) []soml.ChromeItem {
 	if len(plan) == 0 {
 		return nil
@@ -94,7 +94,7 @@ func chromeRequest(req soml.DeckChrome, kind soml.ChromeKind) (string, bool) {
 }
 
 // chromeStyle은 역할에서 확정된 텍스트 외관이다 — 로드된 컴포넌트 표에서 읽는다
-// (resolver.textRoleDefaults와 같은 규칙이고, 폴백이 없는 근거도 같다: ADR 0052).
+// (resolver.textRoleDefaults와 같은 규칙이고, 폴백이 없는 것도 같다 — 빠진 값은 로드 시점에 잡힌다).
 func chromeStyle(pkg themePackage, role soml.TextRole) soml.TextStyle {
 	return pkg.components.textRoles[role]
 }

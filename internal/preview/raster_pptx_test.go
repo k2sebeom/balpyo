@@ -70,7 +70,7 @@ func buildPPTX(t testing.TB, projectDir string) (pptxPath string, size image.Poi
 // TestRasterizerSlidesRenderEveryPageAtStageSize는 PPTX → PNG의 **산출물·장수·크기**를 못 박는다.
 //
 // 크기를 따로 보는 이유: 갤러리는 웹 스크린샷과 같은 크기로 나란히 놓고, DPI로 맞추면 페이지 크기
-// 반올림 때문에 한두 px씩 어긋난다 (ADR 0047 결정 7).
+// 반올림 때문에 한두 px씩 어긋난다.
 func TestRasterizerSlidesRenderEveryPageAtStageSize(t *testing.T) {
 	raster := &preview.Rasterizer{
 		Soffice:  testkit.RequireSoffice(t),

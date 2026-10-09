@@ -29,7 +29,7 @@ type Options struct {
 	Targets []render.Target
 	// OutDir이 비면 설정의 outDir을 쓴다. 상대 경로는 ProjectDir 기준이다.
 	OutDir string
-	// Theme가 비지 않으면 설정의 theme를 덮는다 (ADR 0052의 결정 9 — `--theme`).
+	// Theme가 비지 않으면 설정의 theme를 덮는다 (`--theme`).
 	//
 	// 플래그가 있는 이유는 **한 덱을 두 테마로 보는 일**이 테마를 고르는 방법이라는 것이다:
 	// 설정을 고쳐 빌드하고 되돌리는 절차는 되돌리기를 잊는 순간 잘못된 테마를 커밋한다.
@@ -40,14 +40,14 @@ type Options struct {
 	// CheckLayout은 배치 진단(geom.Diagnose)을 위해 **지오메트리 패스를 강제**한다.
 	//
 	// 좌표를 쓰는 타깃이 있으면(pptx) 이미 재므로 배치 진단은 값을 공짜로 얻는다 — 이
-	// 플래그가 뜻을 갖는 자리는 `--target html`만 쓰는 저작 루프다 (ADR 0039). 기본을 끈
+	// 플래그가 뜻을 갖는 자리는 `--target html`만 쓰는 저작 루프다. 기본을 끈
 	// 이유는 브라우저 기동이 빌드의 가장 큰 고정 비용이고, 브라우저가 없는 환경에서도
 	// 웹 빌드는 돌아가야 하기 때문이다.
 	CheckLayout bool
 	// Measurer는 지오메트리 패스를 도는 것이다. nil이면 이 빌드가 브라우저를 직접 띄우고
 	// 닫는다 (`balpyo build`의 동작).
 	//
-	// 이 구멍이 있는 이유는 `balpyo watch`다 (ADR 0046): 기동이 빌드 고정 비용의 대부분이라
+	// 이 구멍이 있는 이유는 `balpyo watch`다: 기동이 빌드 고정 비용의 대부분이라
 	// 저작 루프는 브라우저 하나를 웜으로 재사용해야 하는데, 그 수명은 루프의 것이지 빌드
 	// 하나의 것이 아니다. 그래서 파이프라인은 **재는 일**만 받고 **띄우고 닫는 일**은 소유하지
 	// 않는다.
@@ -70,7 +70,7 @@ type Result struct {
 	Written []string
 	// Geometry는 지오메트리 패스가 잰 좌표다 (측정하지 않은 빌드에서는 nil).
 	//
-	// 결과에 남기는 이유: 리뷰와 다음 iteration의 좌표 스냅샷이 **이 빌드가 실제로 무엇을
+	// 결과에 남기는 이유: 호출자(검수 · 좌표 스냅샷)가 **이 빌드가 실제로 무엇을
 	// 쟀는지**를 알아야 하고, 그것을 다시 알아내려면 브라우저를 한 번 더 띄워야 한다.
 	Geometry *geom.Geometry
 }
@@ -104,7 +104,7 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 	}
 	// 프로젝트 루트를 **한 fs.FS로** 본다: 슬라이드 수집과 에셋 해석의 경로 기준이 하나라는
 	// 사실이 그 한 값으로 보인다 (`<image src>`는 프로젝트 루트 기준이다 — core.ResolveAssets).
-	// 테마 이름의 어휘도 이 기준을 쓴다 (`themes/<이름>/` — ADR 0054).
+	// 테마 이름의 어휘도 이 기준을 쓴다 (`themes/<이름>/`).
 	fsys := os.DirFS(projectDir)
 
 	// 테마 옵션은 설정을 **읽은 뒤** 갈아 끼운다 (OutDir과 같은 자리): 아래 흐름은 cfg 하나만
@@ -131,11 +131,11 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 		Lang:   cfg.Lang,
 		Aspect: cfg.Aspect,
 		Stage:  stage,
-		// 테마 요청도 크롬과 같은 태도로 옮긴다 (ADR 0052) — 이름을 패키지로 바꾸는 것은
+		// 테마 요청도 크롬과 같은 태도로 옮긴다 — 이름을 패키지로 바꾸는 것은
 		// core.Resolve다. 설정 로드가 이미 어휘를 검사했으므로 여기 도달한 이름은 내장 테마
-		// 아니면 이 프로젝트의 `themes/<이름>/`이다 (ADR 0054).
+		// 아니면 이 프로젝트의 `themes/<이름>/`이다.
 		ThemeName: cfg.Theme,
-		// 크롬 요청은 설정에서 그대로 옮긴다 (ADR 0045) — 테마 선언과 합치는 것은 core.Resolve다.
+		// 크롬 요청은 설정에서 그대로 옮긴다 — 테마 선언과 합치는 것은 core.Resolve다.
 		Chrome: soml.DeckChrome{Footer: cfg.Footer, PageNumber: cfg.PageNumber},
 		Slides: make([]*soml.Slide, 0, len(files)),
 	}
@@ -148,7 +148,7 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 		}
 		doc, fileDiags := soml.Parse(source, string(src))
 		diags = append(diags, fileDiags...)
-		// `<slide skip>`은 파일을 남기되 덱에서 뺀다 (PRD §7.1). Index를 남은 슬라이드로
+		// `<slide skip>`은 파일을 남기되 덱에서 뺀다. Index를 남은 슬라이드로
 		// 다시 세기 때문에 이 판단이 렌더러보다 앞에 있어야 한다 — 렌더러가 건너뛰면
 		// 슬라이드 번호에 구멍이 생긴다.
 		if doc.Skip {
@@ -165,7 +165,7 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 			Chapter:    file.Chapter,
 			Layout:     soml.SlideLayout(doc.Layout),
 			LayoutSpan: doc.LayoutSpan,
-			// justify도 layout처럼 원문·구간을 함께 옮긴다 — 어휘 검사는 core다 (ADR 0044).
+			// justify도 layout처럼 원문·구간을 함께 옮긴다 — 어휘 검사는 core다.
 			Justify:     soml.BoxJustify(doc.Justify),
 			JustifySpan: doc.JustifySpan,
 			Notes:       doc.Notes,
@@ -195,7 +195,7 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 
 // Render는 덱을 타깃별 산출 파일로 만든다 — 산출물을 디스크에 쓰지 않는다.
 //
-// 순서는 웹 렌더 → 지오메트리 → 나머지 렌더다 (PRD §9.3). 지오메트리 패스가 재는 것은 웹
+// 순서는 웹 렌더 → 지오메트리 → 나머지 렌더다. 지오메트리 패스가 재는 것은 웹
 // 타깃의 산출물이므로 웹 렌더가 앞에 와야 하고, PPTX 좌표가 그 측정에서 나오므로 PPTX가
 // 뒤에 온다.
 //
@@ -226,7 +226,7 @@ func Render(deck *soml.Deck, opts Options) (map[render.Target]render.Files, *geo
 			return nil, nil, nil, err
 		}
 		geometry = measured
-		// 잰 빌드는 배치를 **항상** 본다: 숫자가 이미 있는데 묻지 않는 것이 D9의 증상이었다.
+		// 잰 빌드는 배치를 **항상** 본다: 숫자가 이미 있는데 묻지 않을 이유가 없다.
 		diags = geom.Diagnose(deck, geometry)
 		if opts.Strict {
 			diags = diags.Strict()
@@ -255,7 +255,7 @@ func Render(deck *soml.Deck, opts Options) (map[render.Target]render.Files, *geo
 // 잴 요소가 하나라도 있고, **좌표를 쓰는 타깃**이 있거나(웹은 자기 좌표를 브라우저가 직접
 // 계산하므로 필요 없다) 저자가 배치 검사를 요청했어야 띄운다. 브라우저 기동은 빌드의 가장 큰
 // 고정 비용이므로, `--target html`만 쓰는 저작 루프가 그 비용을 내지 않는 것이 중요하다 —
-// 배치 진단을 그 루프에서도 받는 길이 `--check-layout`이다 (ADR 0039).
+// 배치 진단을 그 루프에서도 받는 길이 `--check-layout`이다.
 //
 // 판정을 pptx 렌더러와 같은 기준(geom.Refs가 비었는가)으로 두는 이유: 여기서는 재지 않기로
 // 했는데 렌더러는 좌표를 요구하면 빈 슬라이드 프로젝트가 브라우저 없이 못 돌아간다.
@@ -274,7 +274,7 @@ func needsGeometry(deck *soml.Deck, targets []render.Target, checkLayout bool) b
 	return false
 }
 
-// deckHasChrome은 확정된 덱 크롬이 실린 슬라이드가 있는지다 (ADR 0045).
+// deckHasChrome은 확정된 덱 크롬이 실린 슬라이드가 있는지다.
 //
 // 크롬도 잰 좌표를 쓰므로(PPTX가 rect에 도형을 놓는다) 콘텐츠가 없는 슬라이드만 있는 덱도
 // 크롬을 켜면 측정이 필요하다 — 판정을 pptx.checkGeometry와 같은 기준으로 둔다.
@@ -338,7 +338,7 @@ type CheckResult struct {
 	Measured bool
 }
 
-// Check는 산출물을 쓰지 않고 판정만 한다 — `balpyo check`다 (ADR 0048).
+// Check는 산출물을 쓰지 않고 판정만 한다 — `balpyo check`다.
 //
 // 판정은 Build와 **같은 코드**다: 설정 → 수집 → 파싱 → 값 해석 → 에셋 → 검증, 그리고
 // CheckLayout이면 측정 + 배치 진단. 빠른 길(파싱까지만)로 가지 않는 이유는 "check는 통과했는데

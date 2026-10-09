@@ -1,0 +1,24 @@
+<!-- 탐지 시간 추이: `<chart>` 하나다. 이 슬라이드가 손계산 도형 16개였다 — 막대 다섯, 기준선
+     하나, 라벨 열에 좌표 스물넷(x·y)이 붙어 있었고 값이 하나 바뀌면 여섯 숫자를 다시 셌다.
+     이제 값 하나가 속성 하나다 (`<point value>`).
+
+     막대 높이는 `값 ÷ 축 최대`의 백분율이고 픽셀은 브라우저가 잰다 — 그래서 `h`가 필요하다
+     (차트의 높이를 내용이 정하면 기준이 순환한다). `unit`은 값 라벨의 꼬리다: "22"는 데이터고
+     "분"은 표기이므로 값에 섞지 않는다.
+
+     색 규칙은 그대로다 (001_cover). 넉 달의 추세는 `series="surface"`로 배경에 가라앉히고,
+     이번 장애만 `<point fill="accent4">`로 앞에 세운다 — 점의 `fill`은 막대와 그 점의 두
+     라벨을 함께 칠하고, 계열색은 막대만 칠한다 (라벨은 캡션 색을 지킨다). 파랑
+     기본 계열색(`accent1`)은 이 덱에 없으므로 `series`를 적는다. -->
+<slide id="detection">
+  <h2>평균 탐지 시간이 줄고 있다 — 아직 느리다</h2>
+  <chart type="bar" unit="분" series="surface" alt="월별 평균 탐지 시간 — 5월 22분에서 이번 장애 12분까지" w="fill" h="440">
+    <point label="5월" value="22"/>
+    <point label="6월" value="19"/>
+    <point label="7월" value="15"/>
+    <point label="8월" value="13"/>
+    <point label="이번 장애" value="12" fill="accent4"/>
+  </chart>
+  <text role="caption" color="muted">목표는 3분(1분 p99 경보 + 2분 확인)이다. 액션 2번이 이 막대를 반으로 줄인다.</text>
+  <note>추세는 좋지만 목표선이 없다. 다음 회고에 목표선을 그린다.</note>
+</slide>

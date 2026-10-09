@@ -10,7 +10,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// runCheck는 `balpyo check`다: 판정만 하고 아무것도 쓰지 않는다 (ADR 0048).
+// runCheck는 `balpyo check`다: 판정만 하고 아무것도 쓰지 않는다.
 //
 // 종료 코드 규약은 `build`와 **같다** — 0은 "에러가 없다"이고 경고는 0에 실려 나온다.
 // `--strict`가 경고를 1로 바꾸는 유일한 채널이고, CI 레시피는
@@ -20,7 +20,7 @@ func runCheck(args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	projectDir := fs.String("project", ".", "프로젝트 루트")
-	// build와 같은 플래그다 (ADR 0052): 테마가 배치를 바꾸므로(editorial의 표지는 아래에 앉는다)
+	// build와 같은 플래그다: 테마가 배치를 바꾸므로(editorial의 표지는 아래에 앉는다)
 	// 검사도 빌드가 볼 테마를 봐야 한다 — 두 명령이 다른 테마를 보면 CI의 판정이 거짓이 된다.
 	theme := fs.String("theme", "", "테마 (기본: balpyo.json의 theme — 내장 테마만 받는다)")
 	strict := fs.Bool("strict", false, "경고를 에러로 승격한다")
@@ -49,7 +49,7 @@ func runCheck(args []string, stdout, stderr io.Writer) error {
 	}
 
 	// 무엇을 봤는지까지 말한다. "깨끗하다"와 "배치는 보지 않았다"는 다른 문장이고, 그 차이를
-	// 숨기면 사람은 재지 않은 판정을 다 본 판정으로 읽는다 (ADR 0039의 `--check-layout`이 있는 이유).
+	// 숨기면 사람은 재지 않은 판정을 다 본 판정으로 읽는다.
 	scope := "배치는 보지 않았다 (--check-layout)"
 	if result.Measured {
 		scope = "배치까지 봤다"

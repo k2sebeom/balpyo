@@ -10,7 +10,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **`<image>` → `p:pic` + 미디어 파트 + 관계**다 (PRD §7.5·§7.6, 매핑 표는 §9.4).
+// 이 파일은 **`<image>` → `p:pic` + 미디어 파트 + 관계**다.
 //
 // # 세 자리가 맞아야 그림이 나온다
 //
@@ -47,7 +47,7 @@ import (
 //
 // # `opacity`는 `a:alphaModFix`다
 //
-// ADR 0018("`opacity`는 합성 불투명도가 아니라 색 알파다")의 후속이다. 도형에서 `alphaModFix`를
+// 도형의 `opacity`는 합성 불투명도가 아니라 색 알파로 컴파일된다. 도형에서 `alphaModFix`를
 // 쓰지 않은 이유는 그것이 **도형 안 글자까지** 흐리게 하는데 웹의 `opacity`는 svg에만 걸려
 // 글자를 건드리지 않는다는 것이었다 (spSpec.alpha의 주석). 그림에는 담을 글자가 없으므로 그
 // 근거가 걸리지 않고, 여기서는 CSS `opacity`와 `alphaModFix`가 **정확한 대응**이다.
@@ -197,14 +197,14 @@ func (s srcRect) attrs() string {
 	return attrs
 }
 
-// picSpec은 확정 이미지 외관을 p:pic 명세로 컴파일한다 (PRD §9.4 표의 오른쪽 열).
+// picSpec은 확정 이미지 외관을 p:pic 명세로 컴파일한다 (외관 매핑 표의 PPTX 열).
 //
-// **순서는 PRD 표 순서다** (fit → border → radius → shadow → opacity → rotate → flip) —
+// **순서는 매핑 표의 행 순서다** (fit → border → radius → shadow → opacity → rotate → flip) —
 // 웹의 imageInkCSS와 나란히 읽을 수 있어야 "표에 있고 한쪽에만 있는 행"이 눈에 띈다.
 // `radius`는 여기서 **기하**가 된다 (`roundRect` + 조정값): OOXML에서 반경이 사는 자리가
 // 프리셋 지오메트리뿐이고, 웹에서 그것이 `border-radius`인 것과 짝이다. 도형과 달리
 // **프리셋 제약이 없다** — 그림의 기하는 사각형과 반경으로 끝나므로 반경은 언제나 실을 자리가
-// 있다 (ADR 0019의 적용 범위가 도형이라는 사실 — soml.ImageStyle.Radius).
+// 있다 (반경을 rounded-rect 프리셋에만 허용하는 제약은 도형의 것이다 — soml.ImageStyle.Radius).
 func picSpec(id int, name string, rect geom.Rect, style soml.ImageStyle, asset soml.Asset, embed string) (picInfo, error) {
 	if embed == "" {
 		return picInfo{}, fmt.Errorf("미디어 관계 id가 비었다")
@@ -228,7 +228,7 @@ func picSpec(id int, name string, rect geom.Rect, style soml.ImageStyle, asset s
 	// 테두리를 정하지 않은 그림(nil)은 **선 없음**이다 — 도형과 갈라지는 자리다: 도형의
 	// 확정 외관에는 테마 컴포넌트 기본값이 언제나 채워져 있지만(테마의 shape.default)
 	// 이미지 컴포넌트 기본값은 비어 있다 (그림은 자기 픽셀을 갖고, 기본으로 테두리를 두르면
-	// 스크린샷마다 이중 경계가 생긴다 — 05/02의 결정). 그래도 `a:ln`을 **명시한다**:
+	// 스크린샷마다 이중 경계가 생긴다). 그래도 `a:ln`을 **명시한다**:
 	// 비워 두면 테마 fmtScheme의 기본 선이 상속되어 웹에 없는 외곽선이 그려질 수 있고,
 	// `border="none"`과 "정하지 않음"이 같은 그림(선 없음)이므로 산출도 같아야 한다.
 	spec.border = soml.NoBorder()

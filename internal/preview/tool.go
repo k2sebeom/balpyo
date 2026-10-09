@@ -1,15 +1,15 @@
 // Package preview는 산출물을 사람이 볼 수 있는 그림으로 되돌린다 — PPTX를 슬라이드별 PNG로
 // 래스터화하고(`soffice` → PDF → `pdftoppm`), 웹 스크린샷과 나란히 놓은 갤러리 하나를 쓴다.
 //
-// 왜 `internal/testkit`이 아닌가 (ADR 0047): 같은 코드가 이미 그 안에 있었지만 진입점마다
+// 왜 `internal/testkit`이 아닌가: 같은 코드가 이미 그 안에 있었지만 진입점마다
 // `testing.TB`를 받아 **테스트에 묶여** 있었다. 저자가 PPTX 한 장을 눈으로 보려면 임시
-// 테스트 파일을 쓰는 우회를 해야 했고, 그것이 D8의 남은 절반이었다. CLI가 하네스를
+// 테스트 파일을 쓰는 우회를 해야 했다. CLI가 하네스를
 // 임포트하는 쪽은 답이 아니다 — 배포 바이너리에 `testing`이 들어오고, "도구가 없으면
 // 건너뛴다"는 테스트 정책이 사용자 명령의 동작이 된다.
 //
 // 그래서 방향을 뒤집었다: 검수 엔진은 이 패키지가 소유하고, `internal/testkit`이 그것을
-// `testing.TB`에 맞춰 감싼다. 구현은 한 벌이므로 `make review`의 갤러리와
-// `balpyo preview`의 갤러리는 같은 코드가 만든다.
+// `testing.TB`에 맞춰 감싼다. 구현은 한 벌이므로 테스트와
+// `balpyo preview`는 같은 코드를 지난다.
 package preview
 
 import (

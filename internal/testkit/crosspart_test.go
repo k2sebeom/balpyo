@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// 파트 사이 검사가 실제로 거르는지 못 박는다 (ADR 0065) — 변이마다 스키마는 통과하지만 PowerPoint가
+// 파트 사이 검사가 실제로 거르는지 못 박는다 — 변이마다 스키마는 통과하지만 PowerPoint가
 // 복구를 묻거나 자리를 잃는 패키지다.
 func TestCrossPartsRejectsMutations(t *testing.T) {
 	parts := schemaDeckParts(t)

@@ -11,7 +11,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 프로젝트 로컬 테마 (ADR 0054): 이름은 내장 ∪ `themes/<이름>/`에서 찾고 한 프로젝트에서 하나를
+// 프로젝트 로컬 테마: 이름은 내장 ∪ `themes/<이름>/`에서 찾고 한 프로젝트에서 하나를
 // 뜻한다. extends 병합은 "이름이 같으면 자식이 이기고 없던 이름은 부모 순서 뒤에" 하나이고
 // (싱글톤 절은 필드 단위, 레이아웃 CSS는 파일 단위), 완전성은 병합 결과의 성질이다.
 // 로더는 fs.FS 위에서 돌므로 프로젝트는 MapFS 하나로 충분하다.
@@ -56,7 +56,7 @@ func standaloneLocal(name string) fstest.MapFS {
 }
 
 // childOfMinimal은 minimal을 상속한 부분 패치 테마다 — 항목마다 덮기 하나와 더하기 하나를 갖고,
-// layouts 선언과 나머지는 부모가 깐다. 더하는 색 brand는 남은 clrScheme 자리(hlink)에 앉는다 (ADR 0055).
+// layouts 선언과 나머지는 부모가 깐다. 더하는 색 brand는 남은 clrScheme 자리(hlink)에 앉는다.
 func childOfMinimal() fstest.MapFS {
 	return localTheme("corp",
 		`{"name":"corp","extends":"minimal",
@@ -116,7 +116,7 @@ func TestUnknownThemeListsLocalAndBuiltinNames(t *testing.T) {
 
 // 로컬 테마가 멈추는 자리: 디렉토리 이름이 요청 키라 매니페스트 이름과 갈리면 에러, 내장과 겹치는
 // 이름은 요청이 무엇이든 에러(섀도잉하면 extends: "minimal"에 답이 없다), 상속하지 않은 테마는
-// 내장 테마와 같은 완전성 조건을 받는다 (폴백 테마가 없다 — ADR 0052).
+// 내장 테마와 같은 완전성 조건을 받는다 (폴백 테마가 없다).
 func TestLocalThemeLoadErrors(t *testing.T) {
 	cases := []struct {
 		name, request string
@@ -146,7 +146,7 @@ func TestLocalThemeLoadErrors(t *testing.T) {
 	}
 }
 
-// 모든 색 토큰은 겹치지 않는 clrScheme 슬롯(열둘)을 가져야 한다 (ADR 0055). 판정은 렌더가 아니라
+// 모든 색 토큰은 겹치지 않는 clrScheme 슬롯(열둘)을 가져야 한다. 판정은 렌더가 아니라
 // 테마 로딩에 있어 진단이 고칠 파일(tokens.json)과 남은 자리를 말한다.
 func TestLocalThemeColorNeedsAFreeClrSchemeSlot(t *testing.T) {
 	cases := []struct {
@@ -191,7 +191,7 @@ func TestLocalThemeColorNeedsAFreeClrSchemeSlot(t *testing.T) {
 	}
 }
 
-// 남은 자리가 없으면 나열할 것이 없으므로 "새 이름 대신 값을 갈아 끼운다"를 적는다 (ADR 0055).
+// 남은 자리가 없으면 나열할 것이 없으므로 "새 이름 대신 값을 갈아 끼운다"를 적는다.
 func TestFullColorTableLeavesNoFreeSlot(t *testing.T) {
 	owner := map[string]string{}
 	for _, slot := range soml.ColorSlots() {
@@ -206,7 +206,7 @@ func TestFullColorTableLeavesNoFreeSlot(t *testing.T) {
 	}
 }
 
-// 이름이 같으면 자식이 이기고 없던 이름은 부모 순서 뒤에 붙는다 (ADR 0054 결정 7) — 순서는
+// 이름이 같으면 자식이 이기고 없던 이름은 부모 순서 뒤에 붙는다 — 순서는
 // clrScheme 슬롯·CSS 변수·경고 목록으로 산출물에 보인다.
 func TestExtendsInheritsAndOverridesByName(t *testing.T) {
 	pkg := mustLoadLocal(t, childOfMinimal(), "corp")
@@ -288,7 +288,7 @@ func TestExtendsMergesSingletonSectionsByField(t *testing.T) {
 	}
 }
 
-// 레이아웃 CSS는 파일 단위로 갈린다 (ADR 0054 결정 9) — 선언 단위 병합은 저자가 두 파일을 함께
+// 레이아웃 CSS는 파일 단위로 갈린다 — 선언 단위 병합은 저자가 두 파일을 함께
 // 머리에 담아야 예측할 수 있다.
 func TestExtendsOverridesLayoutCSSByFile(t *testing.T) {
 	pkg := mustLoadLocal(t, childOfMinimal(), "corp")

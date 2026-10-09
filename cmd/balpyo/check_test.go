@@ -10,7 +10,7 @@ import (
 	"github.com/k2sebeom/balpyo/internal/testkit"
 )
 
-// `balpyo check`의 CLI 계약 (ADR 0048): 진단은 stderr에 build와 **같은 모양**으로, 요약은
+// `balpyo check`의 CLI 계약: 진단은 stderr에 build와 **같은 모양**으로, 요약은
 // stdout에 한 줄로, 그리고 디스크에는 아무것도.
 
 func TestCheckCommandPassesAndWritesNothing(t *testing.T) {

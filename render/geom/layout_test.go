@@ -82,7 +82,7 @@ func stackDeck(t *testing.T) *soml.Deck {
 }
 
 // 판정 하나하나의 경계다. 정상 덱이 조용한 것이 가장 중요하다 — 고칠 수 없는 경고가 나면
-// 저자는 경고를 읽지 않게 되고 나머지 판정 전부를 잃는다 (ADR 0039).
+// 저자는 경고를 읽지 않게 되고 나머지 판정 전부를 잃는다.
 func TestDiagnose(t *testing.T) {
 	one := func(t *testing.T) *soml.Deck { return textDeck(t, 1) }
 	two := func(t *testing.T) *soml.Deck { return textDeck(t, 2) }
@@ -216,7 +216,7 @@ func TestDiagnose(t *testing.T) {
 // 부모 박스 이탈이 "고정 크기 박스가 내용을 담지 못했다"의 모양이다 — 저자가 `h`를 준 도형에
 // 글이 넘치면 자식 박스가 부모 변을 넘어간다.
 func TestDiagnoseParentEscape(t *testing.T) {
-	// `<stack>`은 `x`를 쓸 수 있는 자리여서다 (ADR 0031).
+	// `<stack>`은 `x`를 쓸 수 있는 자리여서다.
 	shapeDeck := func(t *testing.T, attrs ...soml.Attr) *soml.Deck {
 		t.Helper()
 		shape := &soml.Element{

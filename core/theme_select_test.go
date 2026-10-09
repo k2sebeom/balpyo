@@ -10,7 +10,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 테마 선택의 계약 (ADR 0052): 덱의 이름이 로더를 고르고, 어휘 밖 이름은 에러이며, 내장 테마는
+// 테마 선택의 계약: 덱의 이름이 로더를 고르고, 어휘 밖 이름은 에러이며, 내장 테마는
 // 같은 계약을 받는다 — 테마를 갈면 다르게 보여야 하지만 깨지면 버그다.
 
 // themeDeck은 같은 원문을 주어진 내장 테마 이름으로 해석한다.
@@ -78,7 +78,7 @@ func TestBuiltinThemesRenderTheSameDeckDifferently(t *testing.T) {
 	}
 }
 
-// 이름 판정은 프로젝트를 아는 LoadConfig의 일이다 (로컬 테마 — ADR 0054). Validate는 기본값만 채운다.
+// 이름 판정은 프로젝트를 아는 LoadConfig의 일이다 (로컬 테마). Validate는 기본값만 채운다.
 func TestLoadConfigChecksThemeVocabulary(t *testing.T) {
 	write := func(t *testing.T, body string) string {
 		t.Helper()
@@ -117,8 +117,8 @@ func TestLoadConfigChecksThemeVocabulary(t *testing.T) {
 	}
 }
 
-// 공식 테마는 같은 variant 어휘(순서까지)와 본문 리듬(24px/1.5 — ADR 0002)을 공유한다
-// (PRD §13-6 · ADR 0052). 어긋나면 테마를 간 덱이 경고로 깨진다.
+// 공식 테마는 같은 variant 어휘(순서까지)와 본문 리듬(24px/1.5)을 공유한다.
+// 어긋나면 테마를 간 덱이 경고로 깨진다.
 func TestBuiltinThemesShareContract(t *testing.T) {
 	names := func(n int, at func(int) string) string {
 		out := make([]string, n)
@@ -145,7 +145,7 @@ func TestBuiltinThemesShareContract(t *testing.T) {
 	}
 }
 
-// ── 로더의 완전성 검사 (ADR 0052의 결정 3) ──
+// ── 로더의 완전성 검사 ──
 // 폴백 테마가 없으므로 필수 토큰·역할이 빠지면 로드가 실패한다 (theme.md의 "채워야 하는 이름" 표).
 
 // fullTokens는 완전한 tokens.json이다 — 아래 테스트가 여기서 한 조각씩 뺀다.

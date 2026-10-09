@@ -6,18 +6,17 @@ import (
 )
 
 // RootElement는 `slides/` 아래 파일의 루트 요소 이름이다. 파일의 역할은 확장자가 아니라
-// 루트 요소가 정한다 (PRD §13-2) — `components/`의 `<define>`은 Iteration 11에서 열린다.
+// 루트 요소가 정한다 — `components/`의 `<define>`은 아직 열리지 않았다.
 const RootElement = "slide"
 
 // noteElement는 발표자 노트 태그다. 콘텐츠가 아니라 슬라이드 메타데이터이므로 콘텐츠
 // 트리에서 빠지고 SlideDoc.Notes로 간다.
 const noteElement = "note"
 
-// elementSpecs는 **닫힌 어휘**다 (PRD §7.2). 여기 없는 태그 이름은 무시되지 않고 에러가 된다.
+// elementSpecs는 **닫힌 어휘**다. 여기 없는 태그 이름은 무시되지 않고 에러가 된다.
 //
-// 어휘는 iteration을 따라 열린다 — 텍스트 서브셋(subset.go의 카탈로그)은 Iteration 2,
-// 레이아웃 태그(layout.go의 카탈로그)는 Iteration 3, `<shape>`(shape.go의 카탈로그)는
-// Iteration 4, `<image>`(image.go의 카탈로그)는 Iteration 5, `<stack>`은 Iteration 6이다.
+// 어휘는 렌더 매핑과 함께 열린다 — 텍스트 서브셋은 subset.go, 레이아웃 태그는 layout.go,
+// `<shape>`는 shape.go, `<image>`는 image.go의 카탈로그가 소유한다.
 // 어휘를 미리 열어 두면 "파싱은 되는데 렌더는 안 되는" 상태가 생기고, 그것이 닫힌 어휘로
 // 막으려던 바로 그 조용한 실패다. 렌더 매핑이 아직 없는 태그는 렌더러가 명시적으로 멈춘다
 // (render/web.writeNode, render/pptx.writeShapeNode).
@@ -29,25 +28,26 @@ var elementSpecs = buildElementSpecs()
 func buildElementSpecs() map[string]elementSpec {
 	specs := map[string]elementSpec{
 		RootElement: {
-			// 순서는 PRD §7.1 표 순서다 — `layout` `id` `skip`(진단이 이 순서를 싣는다).
+			// 순서는 속성 표 순서다 — `layout` `id` `skip`
+			// (진단이 이 순서를 싣는다).
 			// `layout`은 슬라이드 수준 속성 중 **렌더러의 배치를 바꾸는 첫 속성**이다
 			// (id는 딥링크, skip은 덱에서 빠진다). 값 어휘(content·canvas)는 core가 본다 —
 			// fillSlide가 문법만 보는 이유와 같다.
-			// `justify`는 **흐름 모드 슬라이드의 세로 분배**다 (ADR 0044 D17) — 저자에게
+			// `justify`는 **흐름 모드 슬라이드의 세로 분배**다 — 저자에게
 			// 세로 리듬 채널이 없어서 `<col h="fill" justify="between">` 랩퍼가 그 자리를
 			// 대신하고 있었다. 값 어휘는 컨테이너와 같은 6종이고 검사는 core다.
 			attrs: []string{"layout", "id", "skip", "justify"},
 			model: modelElements,
-			// PRD §7.7의 `reveal` 속성은 열지 않는다 — 웹 런타임의 reveal은 Phase 2이고,
+			// `<slide>`에는 `reveal` 속성을 열지 않는다 — 웹 런타임의 reveal은 Phase 2이고,
 			// 렌더가 없는 속성을 어휘에 열면 닫힌 어휘가 막으려던 조용한 무시가 된다.
 			// 자식 배치 속성도 없다: `<slide>`는 컨테이너의 자식이 될 수 없고(루트다),
-			// 슬라이드 자신의 배치는 레이아웃(Iteration 10)과 테마가 소유한다.
+			// 슬라이드 자신의 배치는 레이아웃과 테마가 소유한다.
 			children: slideChildren(),
 		},
 		TextElement: {
 			// 외관 → 박스(가로 크기) → 자식 배치 → 슬롯 순이다 (withTextSize +
 			// withChildPlacement). `<text>`는 레이아웃 컨테이너의 자식이 될 수 있으므로
-			// `<row><text grow="1">`이 문법상 유효해야 하고, 가로 크기는 ADR 0043이 열었다 —
+			// `<row><text grow="1">`이 문법상 유효해야 하고, 가로 크기도 받는다 —
 			// 특정 폭 안에 라벨을 가운데 두려면 그 폭을 가진 박스가 필요하다.
 			attrs: withChildPlacement(withTextSize([]string{"role", "variant", "size", "color", "align", AnchorAttr})),
 			model: modelInline,
@@ -62,7 +62,7 @@ func buildElementSpecs() map[string]elementSpec {
 		ImageElement: {
 			// 고유 → 외관 → 박스(pad·크기) → 자식 배치 순이다 (ImageAttrs). 이미지도
 			// 레이아웃 컨테이너의 자식이 될 수 있으므로 `<grid><image span="2">`이 유효하고,
-			// 그림+텍스트 2단·그림 그리드가 Iteration 5의 흔한 장면이다.
+			// 그림+텍스트 2단·그림 그리드가 흔한 장면이다.
 			//
 			// void다 — `<image src="…" />` 하나가 전부이고 담을 것이 없다 (IsVoidElement의
 			// 주석에 근거가 있다). 자식을 넣은 `<image>`는 파서가 멈춘다.
@@ -79,7 +79,7 @@ func buildElementSpecs() map[string]elementSpec {
 		},
 		TableRowElement: {
 			// 행은 셀만 담는다 (modelElements, children=[th,td]). 속성을 갖지 않는다 —
-			// 행 단위 외관은 v1에 없고, 줄무늬는 셀 `fill`을 우리가 명시로 칠한다 (ADR 0036).
+			// 행 단위 외관은 v1에 없고, 줄무늬는 셀 `fill`을 우리가 명시로 칠한다.
 			// 자식 배치·슬롯도 없다: `<tr>`은 <table>의 자식으로만 오지 flex 항목이 아니다.
 			model:    modelElements,
 			children: tableRowChildren(),
@@ -88,7 +88,7 @@ func buildElementSpecs() map[string]elementSpec {
 			// 고유(type·unit·max·alt) → 박스 → 자식 배치 → 슬롯 순이다 (ChartAttrs +
 			// withChildPlacement). 차트는 슬라이드 직속이자 레이아웃 컨테이너의 자식이 될 수
 			// 있고(`<row><chart grow="1">`), 슬롯도 채운다 — 펼침의 뿌리가 도형이므로 배치
-			// 어휘가 `<shape>`와 같은 한 벌이다 (ADR 0059).
+			// 어휘가 `<shape>`와 같은 한 벌이다.
 			//
 			// 자식은 점뿐이다 (`<table>`의 자식이 행뿐인 것과 같다). 문법은 여기서 끝이고
 			// 값(종류 이름·수치·축)은 core가 본다 — `<chart>`의 특이한 점은 그 값 층이
@@ -107,8 +107,8 @@ func buildElementSpecs() map[string]elementSpec {
 		noteElement: {model: modelText},
 	}
 	for _, name := range tableCellElements {
-		// 셀은 텍스트+인라인을 담는다 (modelInline — `<li>`와 같은 콘텐츠 모델, ADR 0036의
-		// "셀은 텍스트 전용": OOXML `a:tc`가 하나의 `a:txBody`에 1:1로 맞는다). 속성은 병합
+		// 셀은 텍스트+인라인을 담는다 (modelInline — `<li>`와 같은 콘텐츠 모델. 셀은 텍스트
+		// 전용이다: OOXML `a:tc`가 하나의 `a:txBody`에 1:1로 맞는다). 속성은 병합
 		// (colspan/rowspan)과 외관(fill/border/color/align/anchor)이다 —
 		// 자식 배치·슬롯은 없다 (`<li>`가 childPlacement를 받지 않는 것과 같은 근거).
 		specs[name] = elementSpec{attrs: TableCellAttrs(), model: modelInline}
@@ -118,10 +118,10 @@ func buildElementSpecs() map[string]elementSpec {
 		var own []string
 		if name == "pre" {
 			// v1의 pre는 문자 데이터만 담는다 — <pre><code> 관용은 열지 않는다: 런은 저자가
-			// 아니라 토크나이저가 만든다 (ADR 0051의 결정 8). 하이라이팅이 인라인 서식과
+			// 아니라 토크나이저가 만든다. 하이라이팅이 인라인 서식과
 			// 만나는 문제를 여는 대신 **지우는** 쪽으로 풀었다.
 			model = modelPre
-			// lang은 `<pre>` 고유 속성이다 (ADR 0051) — 다른 블록에는 뜻이 없다. 어휘의
+			// lang은 `<pre>` 고유 속성이다 — 다른 블록에는 뜻이 없다. 어휘의
 			// 순서가 진단의 순서이므로 고유 속성이 외관·박스보다 앞이다. 값 어휘(닫힌
 			// 네 이름 + 별칭 하나)와 진단은 core가 소유한다 — 언어 이름은 값이다.
 			own = []string{LangAttr}
@@ -133,10 +133,10 @@ func buildElementSpecs() map[string]elementSpec {
 		// 값 어휘와 진단은 core가 소유한다 (값 층). `anchor`를 `<text>`에만 열지 않는
 		// 이유는 등가 표의 대칭이다: 블록이 받는 외관은 `<text>`가 받는 것과 같아야
 		// `<p>` ≡ `<text role="body">`가 속성 표에서도 성립한다. variant를 열지 **않는**
-		// 곳의 근거: 인라인 태그의 외관은 런 규칙(Iteration 2 항목 04)이 소유하고, 리스트
+		// 곳의 근거: 인라인 태그의 외관은 런 규칙이 소유하고, 리스트
 		// 컨테이너와 <li>의 위계는 역할이 소유한다 — 항목마다 다른 외관 번들이 붙으면
 		// 리스트의 타이포그래피가 리스트이기를 멈춘다.
-		// 가로 크기 속성도 같은 대칭으로 받는다 (withTextSize — ADR 0043).
+		// 가로 크기 속성도 같은 대칭으로 받는다 (withTextSize).
 		specs[name] = elementSpec{
 			attrs: withChildPlacement(withTextSize(append(own,
 				"variant", "size", "color", "align", AnchorAttr))),
@@ -144,7 +144,7 @@ func buildElementSpecs() map[string]elementSpec {
 		}
 	}
 	for _, name := range listContainerElements {
-		// 리스트 컨테이너는 블록과 **같은 외관 4종**을 받는다 (variant만 빠진다 — ADR 0038):
+		// 리스트 컨테이너는 블록과 **같은 외관 4종**을 받는다 (variant만 빠진다):
 		// 목록 글자 크기를 바꾸려고 레이아웃을 바꿀 이유가 없어야 한다. 속성이 컨테이너에
 		// 붙고 `<li>`는 상속만 받는 이유는 외관이 **목록 단위의 성질**이라는 것이다 —
 		// 항목마다 크기가 갈리면 그것은 목록이 아니라 문단 여럿이다.
@@ -153,7 +153,7 @@ func buildElementSpecs() map[string]elementSpec {
 		// 상속의 뜻이 "글자 하나"가 아니라 "역할 바꾸기"가 된다.
 		//
 		// 배치의 대상도 된다 — `<row><ul basis="360">`은 두 열에 리스트를 놓는 흔한 배치다.
-		// 가로 크기도 컨테이너의 것이다 (withTextSize — ADR 0043): `<ul w="480">`은 목록
+		// 가로 크기도 컨테이너의 것이다 (withTextSize): `<ul w="480">`은 목록
 		// 전체의 폭이고, `<li>`는 여기서도 상속만 받는다.
 		specs[name] = elementSpec{
 			attrs:    withChildPlacement(withTextSize([]string{"size", "color", "align", AnchorAttr})),
@@ -161,9 +161,9 @@ func buildElementSpecs() map[string]elementSpec {
 			children: []string{ListItemElement},
 		}
 	}
-	// `<li>`가 갖는 속성은 `reveal` **하나**다 — 외관은 컨테이너에서 상속하고(ADR 0038),
+	// `<li>`가 갖는 속성은 `reveal` **하나**다 — 외관은 컨테이너에서 상속하고,
 	// 자식 배치 속성도 없다 (리스트 항목은 flex 항목이 아니라 한 텍스트 흐름의 문단이다).
-	// `reveal`이 예외인 이유는 그것이 외관이 아니라 **순서**라는 것이다 (ADR 0063): 항목이
+	// `reveal`이 예외인 이유는 그것이 외관이 아니라 **순서**라는 것이다: 항목이
 	// 언제 나타나는지는 항목마다 갈리는 성질이라 컨테이너로 올릴 수 없다.
 	specs[ListItemElement] = elementSpec{attrs: []string{RevealAttr}, model: modelInline}
 	for _, name := range layoutContainerElements {
@@ -202,7 +202,7 @@ func buildElementSpecs() map[string]elementSpec {
 //
 // 컴포넌트(`<text>`·`<shape>`·`<image>`)가 앞에 오고 `<note>`·텍스트 서브셋·레이아웃이
 // 뒤따른다. 슬라이드 직속 도형은 세로 스택의 한 칸이다 — 표제 아래 구분면·배지가 그
-// 자리다. 슬라이드 직속 이미지도 같은 자리이고 그것이 전면 그림(PRD §7.3의 `image-full`)의
+// 자리다. 슬라이드 직속 이미지도 같은 자리이고 그것이 전면 그림(`image-full` 레이아웃)의
 // 표기다.
 //
 // 레이아웃 컨테이너와 `<spacer>`가 들어 있다: 슬라이드 직속 `<spacer>`는 세로 스택에서
@@ -256,18 +256,18 @@ type SlideDoc struct {
 	// ID는 `<slide id>`의 값이다. 속성이 없으면 빈 문자열 — 파일명 유도는 호출자 몫이다
 	// (SlideFile.DerivedID).
 	ID string
-	// Skip은 `<slide skip>`이다. true면 렌더에서 제외된다 (PRD §7.1). 제외 판정은 파서가
+	// Skip은 `<slide skip>`이다. true면 렌더에서 제외된다. 제외 판정은 파서가
 	// 노출하고 덱에서 빼는 것은 파이프라인이 한다 — Index가 남은 슬라이드 기준이어야 하므로.
 	Skip bool
 	// Layout은 `<slide layout>`의 값이다 (원문 그대로). 속성이 없으면 빈 문자열이다 —
-	// 어휘 검사(2종)는 core가 한다: 레이아웃 어휘는 테마(Iteration 10)와 함께 자라므로
+	// 어휘 검사(2종)는 core가 한다: 레이아웃 어휘는 테마와 함께 자라므로
 	// 파서가 알 수 있는 것이 아니다 (fillSlide의 주석과 같은 경계). 파서는 문법만 본다
 	// (값 없는 `<slide layout>`·빈 값 `layout=""`).
 	Layout string
 	// LayoutSpan은 layout 값 구간이다 — core의 어휘 진단이 값에 밑줄을 긋게 한다.
 	LayoutSpan Span
 	// Justify는 `<slide justify>`의 값이다 (원문 그대로, 속성이 없으면 빈 문자열). 어휘
-	// 6종과 "슬롯 모드에서는 에러"는 core가 본다 — layout과 같은 경계다 (ADR 0044).
+	// 6종과 "슬롯 모드에서는 에러"는 core가 본다 — layout과 같은 경계다.
 	Justify string
 	// JustifySpan은 justify 값 구간이다 (LayoutSpan과 같은 근거).
 	JustifySpan Span
@@ -308,7 +308,8 @@ func Parse(file, src string) (*SlideDoc, Diagnostics) {
 	return doc, p.diags
 }
 
-// parser는 토큰 열을 훑는 커서다. 트리비아는 건너뛰며 읽는다 (docs/decisions/0001).
+// parser는 토큰 열을 훑는 커서다. 트리비아는 건너뛰며 읽는다 (토큰 열은 무손실이라 원문을
+// 그대로 복원할 수 있다).
 type parser struct {
 	file  string
 	toks  Tokens
@@ -474,7 +475,7 @@ func (p *parser) charData(tok Token, parent *Element) {
 	}
 }
 
-// charDataValue는 문자 데이터 토큰이 모델에 싣는 값이다 (ADR 0037).
+// charDataValue는 문자 데이터 토큰이 모델에 싣는 값이다.
 //
 // CDATA는 **원문 그대로**다 — 그 안에서 참조를 풀지 않는 것이 CDATA의 뜻이다. 공백 접기만
 // 부모의 콘텐츠 모델을 따른다: `<pre>` 안에서는 보존되고 `<p>` 안에서는 접힌다. 같은 자리에
@@ -504,7 +505,7 @@ func (p *parser) parseStartTag() (elem *Element, stillOpen bool) {
 	if nameTok.Kind != TokenName {
 		// 렉서가 `<`를 여는 태그로 내는 것은 글자가 뒤따를 때뿐이므로(startsMarkup) 이
 		// 자리는 지금 닿지 않는다 — 두 층이 어긋나는 날을 위한 방어막으로 남긴다.
-		// 마크업이 아닌 `<`는 여기까지 오지 않고 문자 데이터가 된다 (ADR 0037).
+		// 마크업이 아닌 `<`는 여기까지 오지 않고 문자 데이터가 된다.
 		p.errorf(open.Span, "`<` 뒤에 태그 이름이 없다")
 		p.skipToTagEnd()
 		return nil, false
@@ -580,7 +581,7 @@ func (p *parser) parseAttr(elem *Element) {
 	}
 
 	if attr.HasValue {
-		// 속성 값도 문자 데이터와 같은 참조 규칙을 따른다 (ADR 0037) — `alt="a &lt; b"`가
+		// 속성 값도 문자 데이터와 같은 참조 규칙을 따른다 — `alt="a &lt; b"`가
 		// 동작하고 `href="?a=1&b=2"`는 그대로 남는다. 접지는 않는다: 값 안의 공백은 저자가
 		// 쓴 그대로가 뜻이고(`pad="sm md"`), 렉서가 줄 끝에서 멈추므로 접을 개행도 없다.
 		attr.Value = decodeCharData(attr.Value, attr.ValueSpan, false, p.reportCharRef)
@@ -716,10 +717,9 @@ func (p *parser) checkPlacement(elem *Element, stack []*Element, root *Element) 
 			p.errorf(elem.NameSpan, "<%s> 안에 블록 태그 <%s>는 올 수 없다 (블록은 겹치지 않는다)", parent.Name, elem.Name)
 			return
 		case KindBlock:
-			// 블록은 슬라이드 **또는 레이아웃 컨테이너** 직속이다 (Iteration 3에서
-			// 넓어졌다 — layoutChildren). 넓어진 것은 컨테이너의 자식 어휘뿐이고 블록
-			// 안의 블록은 여전히 에러다: "문단 안의 문단"은 두 타깃 어디에도 대응하는
-			// 구조가 없다. 이 비대칭이 의도다.
+			// 블록은 슬라이드 **또는 레이아웃 컨테이너** 직속이다 (layoutChildren).
+			// 컨테이너는 블록을 담지만 블록 안의 블록은 에러다: "문단 안의 문단"은
+			// 두 타깃 어디에도 대응하는 구조가 없다. 이 비대칭이 의도다.
 			p.errorf(elem.NameSpan, "<%s> 안에 블록 태그 <%s>는 올 수 없다 (블록은 겹치지 않는다)", parent.Name, elem.Name)
 			return
 		default:
@@ -744,11 +744,11 @@ const UnrenderedVocabMessage = "아직 구현되지 않은 어휘다"
 
 // checkRendered는 렌더러가 아직 그리지 못하는 어휘를 **파스 시점에** 막는다.
 //
-// 표를 다 쓴 뒤 렌더 단계에서 빌드가 죽는 것은 진단의 실패였다 (TASKS P0.2의 D2): 저자는
-// 자기 문서가 유효한 줄 알고 30줄을 썼고, 실패는 파일 이름도 줄 번호도 없는 렌더 에러로
-// 왔다. 어휘 카탈로그(KindRendered)가 그 사실을 이미 알고 있으므로 태그가 있는 자리에서
-// 말한다 — 같은 목록을 렌더러 디스패치와 대조하는 테스트가 카탈로그와 렌더러가 갈라지는
-// 것을 막는다 (render 패키지).
+// 표를 다 쓴 뒤 렌더 단계에서 빌드가 죽으면 진단의 실패다: 저자는 자기 문서가 유효한 줄
+// 알고 계속 쓰고, 실패는 파일 이름도 줄 번호도 없는 렌더 에러로 온다. 어휘
+// 카탈로그(KindRendered)가 그 사실을 이미 알고 있으므로 태그가 있는 자리에서 말한다 — 같은
+// 목록을 렌더러 디스패치와 대조하는 테스트가 카탈로그와 렌더러가 갈라지는 것을 막는다
+// (render 패키지).
 func (p *parser) checkRendered(elem *Element, stack []*Element) {
 	if KindRendered(KindOf(elem.Name)) {
 		return
@@ -775,7 +775,7 @@ func (p *parser) checkAttrName(elem *Element, attr Attr) {
 			return
 		}
 	}
-	// 예정된 속성은 오타와 **다른 문장으로** 말한다 (D16 — ADR 0051): 이름은 맞는데 구현이
+	// 예정된 속성은 오타와 **다른 문장으로** 말한다: 이름은 맞는데 구현이
 	// 아직인 자리를 "알 수 없는 속성"으로 말하면 저자가 이름을 의심하며 헤맨다 (plannedAttrs).
 	for _, planned := range plannedAttrs {
 		if planned.Tag == elem.Name && planned.Name == attr.Name {
@@ -806,7 +806,7 @@ func (p *parser) closeElement(elem *Element) {
 //
 // `id`와 `skip`은 외관이 아니라 **구조** 속성이다 — 어떤 슬라이드가 덱에 들어가고 어떤 앵커를
 // 갖는지를 정하므로 값 해석까지 파서가 한다. `<text>`의 role/size/color/align은 원문 그대로
-// 남겨 core가 해석한다: 외관 값의 어휘는 테마(Iteration 10)와 함께 자라기 때문에 파서가 알 수
+// 남겨 core가 해석한다: 외관 값의 어휘는 테마와 함께 자라기 때문에 파서가 알 수
 // 있는 것이 아니다.
 func (p *parser) fillSlide(doc *SlideDoc) {
 	root := doc.Root
@@ -960,7 +960,7 @@ func collapseSpace(s string) string {
 // trimEdgeSpace는 자식 목록 **양 끝**의 공백만 잘라낸다.
 //
 // 요소 경계의 공백은 저자가 들여쓰기로 넣은 것이지 내용이 아니다 — `<text>\n  제목\n</text>`는
-// "제목"이다. 반면 자식 사이의 공백은 남긴다: Iteration 2의 인라인 태그에서
+// "제목"이다. 반면 자식 사이의 공백은 남긴다: 인라인 태그에서
 // `<strong>배포</strong> 자동화`의 한 칸은 내용이다.
 func trimEdgeSpace(children []Node) []Node {
 	if len(children) == 0 {

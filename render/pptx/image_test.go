@@ -216,7 +216,7 @@ func TestRenderPicAppearance(t *testing.T) {
 		// shadow — 토큰의 극좌표를 그대로 낸다 (도형과 같은 writeEffect).
 		{"shadow", "토큰", `shadow="soft"`, []string{"<a:outerShdw", `rotWithShape="1"`}, nil},
 
-		// opacity — 그림에서는 `a:alphaModFix`다 (ADR 0018의 후속: 그림에는 흐려질 글자가 없다).
+		// opacity — 그림에서는 `a:alphaModFix`다 (그림에는 흐려질 글자가 없다).
 		{"opacity", "0.4", `opacity="0.4"`, []string{`<a:alphaModFix amt="40000"/>`}, nil},
 		{"opacity", "1", `opacity="1"`, []string{`<a:alphaModFix amt="100000"/>`}, nil},
 

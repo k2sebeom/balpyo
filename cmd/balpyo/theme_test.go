@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// `--theme`의 CLI 계약 (ADR 0052의 결정 9): 플래그가 `balpyo.json`의 theme를 덮는다.
+// `--theme`의 CLI 계약: 플래그가 `balpyo.json`의 theme를 덮는다.
 //
 // 이 플래그가 있는 이유는 **한 덱을 두 테마로 보는 일**이 테마를 고르는 방법이라는 것이다 —
 // 설정을 고쳐 빌드하고 되돌리는 것은 그 비교를 손으로 하는 일이고, 되돌리기를 잊으면 잘못된
@@ -71,7 +71,7 @@ func TestBuildThemeFlagRejectsUnknownName(t *testing.T) {
 	}
 }
 
-// check도 같은 플래그를 받는다 — 판정은 빌드와 같은 입력을 봐야 한다 (ADR 0048): 테마를
+// check도 같은 플래그를 받는다 — 판정은 빌드와 같은 입력을 봐야 한다: 테마를
 // 바꾸면 배치가 바뀌므로(editorial의 표지는 아래에 앉는다) `--check-layout`의 판정도 달라진다.
 func TestCheckAcceptsThemeFlag(t *testing.T) {
 	dir := newProject(t)

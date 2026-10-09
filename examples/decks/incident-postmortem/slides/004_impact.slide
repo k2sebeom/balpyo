@@ -1,0 +1,51 @@
+<!-- 영향 범위 — 표로 쓰고 싶은 자리에 표를 쓴다. 셀 20개가 셀 태그 20개이고, 격자선은 웹의
+     `border-collapse: collapse`와 PPTX의 공유 격자선이 한 줄로 합쳐 준다.
+
+     머리행 색과 줄무늬는 손으로 칠하지 않는다 — 머리 셀(`<th>`)은 테마의 header 델타를 받고,
+     `variant="striped"`가 홀수 본문 행에 줄무늬를 얹는다. 숫자 열은 `align="end"`로 오른쪽에
+     맞춘다 (셀 단위 외관 오버라이드). 열 폭은 트랙 목록이 아니라 **잰 값**이다.
+
+     표 아래 숫자 셋은 "그래서 사용자는 얼마나 다쳤나"의 답이다 — 표가 서비스별 피해를,
+     카드가 피해의 끝(재시도 · 문의)을 말한다. 피해 값은 `accent5`, 회복된 값은 `accent3`이다
+     (덱의 색 규칙 — 001_cover). 카드 줄이 `grow="1"`로 남은 높이를 갖는다. -->
+<slide id="impact">
+  <h2>영향 범위</h2>
+  <table variant="striped">
+    <tr>
+      <th>서비스</th><th align="end">오류율 최대</th><th align="end">영향 요청</th><th>사용자 체감</th>
+    </tr>
+    <tr>
+      <td>결제 API</td><td align="end">8.4%</td><td align="end">41,200</td><td>결제 실패 후 재시도</td>
+    </tr>
+    <tr>
+      <td>주문 조회</td><td align="end">1.1%</td><td align="end">6,800</td><td>조회 지연 2~4초</td>
+    </tr>
+    <tr>
+      <td>장바구니</td><td align="end">0.3%</td><td align="end">1,450</td><td>담기 실패 (드묾)</td>
+    </tr>
+    <tr>
+      <td>정산 배치</td><td align="end">0%</td><td align="end">0</td><td>없음</td>
+    </tr>
+  </table>
+  <grid cols="3" gap="md" grow="1">
+    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="md">
+      <col gap="xs" h="fill" justify="center">
+        <text role="title" size="48" color="accent5">41,200</text>
+        <text role="caption">결제 실패 요청</text>
+      </col>
+    </shape>
+    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="md">
+      <col gap="xs" h="fill" justify="center">
+        <text role="title" size="48" color="accent3">39,900</text>
+        <text role="caption">재시도로 성공 (96.8%)</text>
+      </col>
+    </shape>
+    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="md">
+      <col gap="xs" h="fill" justify="center">
+        <text role="title" size="48" color="accent5">34건</text>
+        <text role="caption">CS 문의 · 이중 결제 0건</text>
+      </col>
+    </shape>
+  </grid>
+  <note>돈이 빠진 건은 없다. CS 문의 34건.</note>
+</slide>

@@ -1,9 +1,0 @@
-<!-- 마무리 — end 레이아웃(세로 가운데)의 흐름 모드. -->
-<slide id="end" layout="end">
-  <text role="title" align="center">SOML로 한 번 쓴다</text>
-  <text role="heading" size="28" color="muted" align="center">나머지는 balpyo가 두 곳으로 렌더한다</text>
-  <shape variant="badge" type="rounded-rect" fill="surface" w="640" h="72" pad="sm" self="center">
-    <text role="code" align="center" anchor="center">balpyo build --target html,pptx</text>
-  </shape>
-  <note>질문을 받는다. 덱을 pptx로 내려받아 직접 고쳐 보라고 권한다.</note>
-</slide>

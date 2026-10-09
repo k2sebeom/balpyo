@@ -9,7 +9,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **`<image>` → 박스 + `<img>` + 에셋 파일**이다 (PRD §7.5·§7.6, 매핑 표는 §9.4).
+// 이 파일은 **`<image>` → 박스 + `<img>` + 에셋 파일**이다.
 //
 // # 그림 하나는 박스 하나와 `<img>` 하나다
 //
@@ -38,10 +38,10 @@ import (
 // `object-fit`은 요소 박스를 그대로 두고 그 안에 그림을 앉히므로 박스와 그림이 갈라지고,
 // 그러면 셋이 따라온다: (a) 잰 rect가 그림이 아니라 **여백을 포함한 박스**여서 PPTX가
 // letterbox를 다시 계산해야 한다 (좌표 계산은 브라우저가 한 번만 한다는 이 엔진의 전제와
-// 어긋난다 — PRD §9.3), (b) 웹의 `border`·`radius`·`shadow`는 그 박스에 붙고 PPTX `pic`의
+// 어긋난다), (b) 웹의 `border`·`radius`·`shadow`는 그 박스에 붙고 PPTX `pic`의
 // 선·그림자는 그림에 붙어 **두 타깃의 외관이 갈라진다**, (c) 갈라짐이 픽셀 비교에서만 보이고
 // 원인은 보이지 않는다. `max-*`로 내면 요소 박스가 곧 맞춰진 그림이 되어 셋이 함께 사라지고,
-// PPTX는 잰 rect를 `xfrm`으로 그대로 쓴다 (항목 04).
+// PPTX는 잰 rect를 `xfrm`으로 그대로 쓴다.
 //
 // **`max-*`는 위로 키우지 않는다** — 실측한 사실이고 결정의 일부다: 고유 크기 16×8 그림을
 // 560×420 박스에 `contain`으로 넣으면 잰 rect가 16×8로 남는다 (`object-fit: contain`이라면
@@ -49,7 +49,7 @@ import (
 // 아니다. 확대를 열려면 CSS에 그림의 고유 비율을 실어야 하는데(`aspect-ratio` + `width:100%`),
 // 그것도 실측에서 **비율을 보존하지 못했다**: 폭이 확정된 요소에서 `max-height`의 자름은
 // 폭으로 되돌지 않아 세로로 긴 그림이 늘어난다. 즉 "박스 = 맞춰진 그림"과 "확대"는 CSS만으로
-// 함께 얻을 수 없고, 그중 좌표를 한 곳에서 오게 하는 쪽을 골랐다 (NOTES 05/03에 수치를 적었다).
+// 함께 얻을 수 없고, 그중 좌표를 한 곳에서 오게 하는 쪽을 골랐다.
 //
 // # 크기 속성이 없는 그림
 //
@@ -164,7 +164,7 @@ func writeImage(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 //
 // 도형과 **같은 함수**에서 나온다 (padValue·boxSizeCSS·appendPlacement): soml.Box를 세 요소가
 // 임베드로 공유하므로 매핑도 하나여야 한다. `pad`가 박스에 걸리는 것이 `pad`를 이미지에 열어
-// 둔 결정(항목 01)의 실물이다 — `box-sizing: border-box`(baseCSS)와 함께 여백은 안쪽으로
+// 둔 것의 실물이다 — `box-sizing: border-box`(baseCSS)와 함께 여백은 안쪽으로
 // 들어가고, `100%`/`max-*`가 가리키는 공간이 그만큼 줄어들어 **그림 영역이 여백만큼 준다**.
 // 잰 rect는 그림이므로 PPTX가 `xfrm`에서 여백을 다시 뺄 일이 없다.
 func imageBoxCSS(style soml.ImageStyle, elem *soml.Element) ([]string, error) {
@@ -185,7 +185,7 @@ func imageBoxCSS(style soml.ImageStyle, elem *soml.Element) ([]string, error) {
 
 // imageInkCSS는 `<img>`의 CSS 선언이다 — `fit` 다음에 외관이 온다.
 //
-// **순서는 PRD §9.4 표 순서다** (border → radius → shadow → opacity → rotate → flip) —
+// **순서는 외관 매핑 표의 행 순서다** (border → radius → shadow → opacity → rotate → flip) —
 // 표와 코드를 나란히 읽을 수 있어야 "표에 있고 코드에 없는 행"이 눈에 띈다. 정하지 않은
 // 속성은 선언을 **하나도** 내지 않는다 (soml.ImageStyle의 nil 계약): 그림은 자기 픽셀을
 // 가지므로 두 타깃의 암묵 기본값이 갈라지지 않는다 — 그래서 테마의 이미지 컴포넌트 기본값도
@@ -217,8 +217,8 @@ func imageInkCSS(style soml.ImageStyle, theme soml.Theme) ([]string, error) {
 	if style.Radius != nil {
 		// 그림의 모양은 직사각형과 반경으로 끝난다 — 프리셋 기하가 없다는 것이 도형과 갈라지는
 		// 유일한 기하 차이다. `border-radius`는 `<img>`의 내용까지 자르므로(브라우저 계약)
-		// PPTX의 `pic/spPr/prstGeom prst="roundRect"`와 짝이 된다 (ADR 0019의 적용 범위가
-		// 도형이라는 사실 — soml.ImageStyle.Radius의 주석).
+		// PPTX의 `pic/spPr/prstGeom prst="roundRect"`와 짝이 된다 (반경을 rounded-rect에만
+		// 허용하는 제약은 도형의 것이다 — soml.ImageStyle.Radius의 주석).
 		decls = append(decls, "border-radius: "+formatNumber(style.Radius.Px)+"px")
 	}
 	if style.Shadow != nil {

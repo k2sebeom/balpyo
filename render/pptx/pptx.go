@@ -1,6 +1,6 @@
 // Package pptx는 덱 모델을 편집 가능한 네이티브 PPTX로 조립한다.
 //
-// 전략은 두 갈래다 (PRD §9.3):
+// 전략은 두 갈래다:
 //
 //	① 지오메트리 패스 — 웹 렌더러와 같은 HTML/CSS를 헤드리스 브라우저에 올려 요소별
 //	   rect만 읽고 EMU로 바꾼다. 읽는 것은 좌표뿐이다.
@@ -92,7 +92,7 @@ func (r *Renderer) Render(deck *soml.Deck) (render.Files, error) {
 // 빈 슬라이드 픽스처는 브라우저 없이 돈다 (internal/pipeline이 같은 판정을 쓴다).
 func (r *Renderer) checkGeometry(deck *soml.Deck) error {
 	refs := geom.Refs(deck)
-	// 덱 크롬도 잰 좌표를 쓴다 (ADR 0045) — 콘텐츠가 없는 슬라이드만 있는 덱도 크롬을 켜면
+	// 덱 크롬도 잰 좌표를 쓴다 — 콘텐츠가 없는 슬라이드만 있는 덱도 크롬을 켜면
 	// 측정이 필요하다. 여기서 세지 않으면 그 덱이 "좌표가 없다"가 아니라 "크롬 rect가 없다"로
 	// 늦게 멈추고, 그 문장은 저자에게 무엇을 하라는 것인지 말해 주지 않는다.
 	chrome := 0

@@ -7,7 +7,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **표의 웹 렌더**다 (ADR 0036) — 프레임은 진짜 `<table>`, 행은 `<tr>`, 셀은
+// 이 파일은 **표의 웹 렌더**다 — 프레임은 진짜 `<table>`, 행은 `<tr>`, 셀은
 // `<th>`/`<td>`다.
 //
 // CSS 그리드로 흉내지 않은 이유는 두 가지다: (1) 스크린 리더가 행·열 관계를 읽는다 (시맨틱
@@ -17,7 +17,7 @@ import (
 //
 // **셀 외관은 전부 인라인 style이다.** 브라우저 기본값(`th { font-weight: bold; text-align:
 // center }`, `td { vertical-align: middle }`)이나 표 스타일 상속이 셀 모양을 정할 자리를 남기지
-// 않는다 — PPTX 쪽에서 표 스타일을 가리키지 않고 `tcPr`을 명시로 굽는 것(ADR 0036)의 웹 절반이고,
+// 않는다 — PPTX 쪽에서 표 스타일을 가리키지 않고 `tcPr`을 명시로 굽는 것의 웹 절반이고,
 // 두 타깃이 같은 CellStyle 하나를 읽는다는 계약(soml.CellStyle)의 실물이다.
 
 // 셀 여백이다 (논리 px). export하는 이유는 ListTextIndent와 같다: PPTX 렌더러가 `a:tcPr`의
@@ -53,14 +53,14 @@ func writeTable(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	class := "balpyo-table"
 	if style.Variant != "" {
 		// 변형은 CSS 훅으로만 나간다 — 줄무늬 **색**은 core가 셀 채움에 이미 구워 놓았다
-		// (ADR 0036). 클래스는 저자 CSS(@layer balpyo.author)의 표적이다.
+		// 클래스는 저자 CSS(@layer balpyo.author)의 표적이다.
 		class += " balpyo-table-" + style.Variant
 	}
 	decls, err := appendPlacement(appendSlot(nil, elem), elem.Placement())
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	// 저자의 `alt`은 **표의 이름**이다 (ADR 0058) — 셀은 그대로 항해 가능하다 (labelAttr).
+	// 저자의 `alt`은 **표의 이름**이다 — 셀은 그대로 항해 가능하다 (labelAttr).
 	fmt.Fprintf(b, "<table class=%q %s=%q %s=%q%s%s>\n",
 		class, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name,
 		labelAttr(style.Alt), styleAttr(decls))
@@ -126,7 +126,7 @@ func writeTableCell(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, cell
 	fmt.Fprintf(b, "<%s %s=%q %s=%q%s%s>",
 		cell.Name, IDAttr, ElementID(slide.Index, path), ElAttr, cell.Name, spans, styleAttr(decls))
 	for i, child := range cell.Children {
-		// 셀의 콘텐츠 모델은 문자 데이터와 인라인뿐이다 (ADR 0036) — writeNode가 그 둘을 이미
+		// 셀의 콘텐츠 모델은 문자 데이터와 인라인뿐이다 — writeNode가 그 둘을 이미
 		// 다루므로 같은 코드를 지난다 (인라인 서식이 셀에서만 다르게 나갈 길을 막는다).
 		if err := writeNode(b, deck, slide, child, ChildPath(path, i)); err != nil {
 			return err
@@ -216,10 +216,10 @@ func cellAnchorValue(anchor soml.TextAnchor) (string, error) {
 func tableCSS() string {
 	return fmt.Sprintf(`
   /* 표 — 프레임은 콘텐츠 폭 전체이고 열 너비는 브라우저의 표 알고리즘이 정한다. 그 잰 값이
-     PPTX a:tblGrid의 열 너비가 되므로(ADR 0036) 격자 기하를 엔진이 계산하지 않는다.
+     PPTX a:tblGrid의 열 너비가 되므로 격자 기하를 엔진이 계산하지 않는다.
 
      border-collapse: collapse는 이웃한 셀의 테두리를 한 줄로 합친다 — PPTX의 a:tc 테두리도
-     격자선 하나를 공유하므로, 합치지 않으면 웹에서만 선이 2px로 겹쳐 보인다 (D20). */
+     격자선 하나를 공유하므로, 합치지 않으면 웹에서만 선이 2px로 겹쳐 보인다. */
   .balpyo-table {
     width: 100%%;
     flex: 0 0 auto;

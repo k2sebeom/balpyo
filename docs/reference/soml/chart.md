@@ -1,12 +1,11 @@
 # `<chart>` — 막대 차트
 
-`<chart>`는 데이터 한 줄을 그림으로 만든다 (PRD §7.5). 점마다 `<point label value/>` 한 줄이고,
+`<chart>`는 데이터 한 줄을 그림으로 만든다. 점마다 `<point label value/>` 한 줄이고,
 막대 높이는 **값 ÷ 축 최대**다 — 좌표를 적는 자리가 없다.
 
 다른 태그와 갈라지는 자리가 하나 있다: **산출물에 차트라는 물건이 없다.** 값 층(`core.Resolve`)이
 차트 하나를 배경 도형 + 막대·라벨의 하위 트리로 **펼치고**, 그 뒤의 파이프라인(지오메트리·웹·
-PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베드 워크북도, 그림(`p:pic`)도 없다
-([ADR 0059](../../decisions/0059-chart-is-desugared-into-shapes-and-text-not-a-native-chart-part.md)).
+PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베드 워크북도, 그림(`p:pic`)도 없다.
 
 네이티브 차트를 내지 않는 근거는 **같은 소스가 같은 그림이어야** 한다는 것이다: 네이티브 차트는
 값축·눈금·범례·라벨 타이포그래피를 뷰어가 고르므로 웹과 PPTX가 다른 컴포넌트가 되고, 동일성
@@ -48,7 +47,7 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 - **`type`이 필수인 이유**는 오타와의 구별이다: `<chart/>`가 조용히 막대가 되면 저자의
   `tpye="bar"`가 그림을 바꾸지 않고 지나간다.
 - **`fill`·`border`·`radius`·`shadow`·`variant`·`rotate`는 없다.** 펼침의 뿌리는 계약상
-  **배경**이므로(`fill="none" border="none"` — [ADR 0049](../../decisions/0049-a-shape-that-holds-layout-becomes-a-backdrop.md))
+  **배경**이므로(`fill="none" border="none"`)
   프레임에 면의 어휘를 열면 같은 이름이 "이 박스의 면"과 "막대의 면"을 동시에 뜻하게 된다.
   배경을 원하면 저자가 `<shape>`로 감싼다.
 - `alt`은 그림에 **이름**을 준다 (웹 `<svg aria-label>` · PPTX `p:cNvPr@descr`) — 막대와 라벨은
@@ -74,8 +73,7 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 
 ## 색 — 계열은 프레임이, 강조는 점이 갖는다
 
-채널이 둘인 것이 이 태그의 색 규칙이다
-([ADR 0060](../../decisions/0060-the-series-color-belongs-to-the-frame-and-a-point-fill-is-emphasis.md)):
+채널이 둘인 것이 이 태그의 색 규칙이다:
 
 | 채널 | 쓰는 자리 | 칠하는 것 |
 |---|---|---|
@@ -180,7 +178,7 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 </row>
 ```
 
-`examples/incident-postmortem/slides/008_detection.slide` — 두 채널을 함께 쓴 실물:
+`examples/decks/incident-postmortem/slides/008_detection.slide` — 두 채널을 함께 쓴 실물:
 
 ```html
 <chart type="bar" unit="분" series="surface" alt="월별 평균 탐지 시간 — 5월 22분에서 이번 장애 12분까지" w="fill" h="440">
@@ -254,8 +252,7 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 ```
 
 - **패키지에 차트 파트가 없다**: `ppt/charts/`도, `ppt/embeddings/`의 워크북도,
-  `[Content_Types].xml`의 차트 타입도 없다. 골든 패키지의 파일 목록이 그 사실을 고정한다
-  (`testdata/fixtures/17_chart/golden/pptx`).
+  `[Content_Types].xml`의 차트 타입도 없다.
 - **막대 하나가 도형 하나다** — 점 다섯인 차트는 도형 21개다 (배경 1 + 범주마다 막대·기준선·값
   라벨·범주 라벨 4개). 도형 번호도 그만큼 쓴다. 대신 PowerPoint에서 막대 하나를 끌어 옮기거나
   색을 바꿀 수 있다: **편집 가능한 그림**이다.

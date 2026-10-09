@@ -1,5 +1,5 @@
 // Command release는 `make dist` 한 줄이 부르는 실행부다 — 절차 자체는 internal/release가
-// 소유하고 테스트가 그것을 판정한다 (ADR 0061 결정 2).
+// 소유하고 테스트가 그것을 판정한다.
 package main
 
 import (
@@ -33,7 +33,7 @@ func run(args []string, stdout io.Writer) error {
 
 	tag := *version
 	if tag == "" {
-		// 버전은 **태그가 소유한다** (ADR 0061 결정 4). HEAD에 태그가 없으면 만들 버전이 없다 —
+		// 버전은 **태그가 소유한다**. HEAD에 태그가 없으면 만들 버전이 없다 —
 		// 커밋 해시를 버전 자리에 넣으면 아카이브 이름이 우리가 발표하지 않은 이름이 된다.
 		var err error
 		if tag, err = describeTag(); err != nil {

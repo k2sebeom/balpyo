@@ -1,6 +1,6 @@
 # 테마 패키지
 
-테마는 **덱의 디자인 시스템 하나**다 (PRD §8). 저자가 쓰는 SOML에는 색·크기·자리가 거의
+테마는 **덱의 디자인 시스템 하나**다. 저자가 쓰는 SOML에는 색·크기·자리가 거의
 없고(`role="heading"`처럼 **뜻**을 쓴다), 그 뜻을 실제 값으로 바꾸는 표가 테마다. 그래서
 테마를 갈면 같은 슬라이드가 다른 덱처럼 보인다.
 
@@ -10,8 +10,7 @@ v1에 실려 있는 테마는 **내장 셋**이다 — `minimal`(기본값)·`ed
 `extends`는 아래 **외부 테마 — 프로젝트 안의 이름** 절에 있다.
 
 엔진이 하드코딩한 외관 값은 **하나도 없다**: 토큰·컴포넌트 외관·레이아웃 CSS·크롬 선언이 전부
-아래 파일에서 로드되고, 그것이 빠지면 빌드가 **멈춘다** (폴백 테마가 없다 —
-[ADR 0052](../decisions/0052-theme-selection-is-a-deck-request-and-there-is-no-fallback-theme.md)).
+아래 파일에서 로드되고, 그것이 빠지면 빌드가 **멈춘다** (폴백 테마가 없다).
 그래서 이 포맷은 "언젠가 외부 테마가 쓸 규격"이 아니라 **지금 세 테마가 실제로 읽히는 규격**이고,
 외부 패키지가 열릴 때 같은 구조를 그대로 쓴다.
 
@@ -78,7 +77,7 @@ minimal/
 
 같은 이유로 로더는 **완전성**도 요구한다: 아래 "채워야 하는 이름" 표의 토큰과 텍스트 역할 5종이
 전부 있어야 하고, 역할이 가리키는 폰트·색은 **그 테마에 있는** 토큰이어야 한다. 폴백 테마를
-지운 대가가 이 검사다 (ADR 0052) — 엔진에 대체 값이 없으므로 빠진 값은 `size: 0`의 제목이나
+지운 대가가 이 검사다 — 엔진에 대체 값이 없으므로 빠진 값은 `size: 0`의 제목이나
 색이 없는 캡션으로 렌더된다.
 
 ## `theme.json` — 매니페스트
@@ -141,7 +140,7 @@ accent1, …)`). 그래서 **토큰 이름은 테마가 소유하는 어휘**다
 다섯 범주는 모두 **순서 있는 배열**이다 (JSON 객체의 키 순서에 기대지 않는다) — 그 순서가 CSS
 변수 선언 순서와 `clrScheme` 조립, 진단 메시지의 목록 순서를 결정적으로 만든다.
 
-아래 "채워야 하는 이름"은 문서의 권고가 아니라 **로더의 검사**다 (ADR 0052) — 하나라도 없으면
+아래 "채워야 하는 이름"은 문서의 권고가 아니라 **로더의 검사**다 — 하나라도 없으면
 테마 로드가 실패하고 덱은 렌더되지 않는다. 검사가 요구하는 것은 **이름**이지 값이 아니다:
 이름이 있어야 저자가 속성에 쓸 수 있고(`color="accent6"`·`gap="md"`), 그 이름이 무엇으로
 보이는지는 테마의 자유다.
@@ -150,7 +149,7 @@ accent1, …)`). 그래서 **토큰 이름은 테마가 소유하는 어휘**다
 |---|---|---|---|
 | `color` | `fg` · `bg` · `muted` · `surface` · `accent1` · `accent2` · `accent3` · `accent4` · `accent5` · `accent6` | `color` · `fill` · `border` · 그라디언트 스톱 · 색 변형의 밑색 | `clrScheme` 12자리 (`slot`) |
 | `font` | `heading` · `body` · `mono` | `font` · 코드 블록 | `fontScheme` major/minor (`scheme`) |
-| `space` | `xs` · `sm` · `md` · `lg` · `xl` · `2xl` | `gap` · `pad` | **없음** ([ADR 0012](../decisions/0012-space-tokens-have-no-theme-slot.md)) |
+| `space` | `xs` · `sm` · `md` · `lg` · `xl` · `2xl` | `gap` · `pad` | **없음** (OOXML 테마에 간격 자리가 없다 — 값으로 구워진다) |
 | `radius` | `sm` · `md` · `lg` | `radius` | **없음** (OOXML에 반경 개념이 없다) |
 | `shadow` | `soft` | `shadow` | 없음 (도형마다 `outerShdw`를 굽고 **색만** 참조로 남는다) |
 
@@ -166,8 +165,7 @@ accent1, …)`). 그래서 **토큰 이름은 테마가 소유하는 어휘**다
 로딩에서 — 진단이 `tokens.json`과 남은 자리를 나열한다): 슬롯이 없으면 그 색은 PowerPoint의 테마
 색 편집을 따라가지 못하고, 겹치면 어느 색이 그 자리를 차지하는지 정할 수 없다. **그래서 한 테마의
 색 이름은 최대 열둘이다** — 반경·공간·그림자·폰트에는 없는 상한이고, 상속하는 테마가 색을 더하는
-대신 갈아 끼우는 이유다
-([ADR 0055](../decisions/0055-a-child-theme-recolors-by-name-because-color-tokens-are-bounded-by-the-clrscheme.md)).
+대신 갈아 끼우는 이유다.
 `clrScheme`의 12자리 중 표가 채우지 않은 자리는 가장 가까운 토큰에서
 값을 **빌린다** (`accent2`~`accent6` → `accent1`, `hlink`/`folHlink` → `accent1`) — 자리를 비울
 수 없고, Office 기본 색으로 채우면 사용자가 편집 UI에서 그 자리를 골랐을 때 테마와 무관한
@@ -182,8 +180,7 @@ LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`�
 
 ### 강조색 여섯의 규칙
 
-강조색은 눈으로 고른 값이 아니라 **세 수치를 만족하는** 여섯이다
-([ADR 0050](../decisions/0050-six-accents-are-a-measured-palette-not-a-ranking.md)).
+강조색은 눈으로 고른 값이 아니라 **세 수치를 만족하는** 여섯이다.
 
 | 규칙 | 수치 | 막는 실패 |
 |---|---|---|
@@ -200,8 +197,8 @@ LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`�
 | `editorial` | 4.92 ~ 5.00 | 1.02 |
 | `ink` | 5.93 ~ 6.00 | 1.02 |
 
-이 규칙은 주석이 아니라 테스트가 소유한다 — `core/palette_test.go`가 WCAG 2.1 상대 휘도를 직접
-계산해 테마마다 전수로 판정하므로, 팔레트를 바꾸는 사람은 값과 규칙을 함께 읽는다. 노랑이
+내장 테마 셋은 이 수치를 WCAG 2.1 상대 휘도로 계산해 지킨다. 자기 테마에서는 로더가 이
+수치를 검사하지 않으므로 직접 잰다. 노랑이
 `minimal`의 팔레트에 없는 이유도 여기서 나온다: 흰 바탕에서 4.5:1을 만족하는 노랑은 이미
 갈색이다 — 어두운 바탕에서는 그 천장이 반대로 움직여서 `ink`의 따뜻한 강조색(`accent4`
 `CB8700`)이 `minimal`의 같은 자리(`B45309`)보다 밝다.
@@ -216,8 +213,7 @@ LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`�
 
 슬롯 영역 CSS(`layouts/<이름>.slots.css`)는 grid 하나다 — 영역 이름이 슬롯 이름이고, 자식은 그
 영역에 앉는다 ([레이아웃과 슬롯](layouts.md)). 그 파일에서 테마가 조심해야 하는 선언이
-**`justify-items`** 하나다
-([ADR 0053](../decisions/0053-a-theme-takes-the-horizontal-channel-only-to-center.md)).
+**`justify-items`** 하나다.
 
 | 하려는 것 | 쓰는 것 | 왜 |
 |---|---|---|
@@ -225,8 +221,7 @@ LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`�
 | 가운데로 모은다 | `justify-items: center` | 이 방법만 측정에 남아 PPTX까지 간다 — 슬롯 CSS의 `text-align`은 배치가 아니라 외관이라 린터가 짚고(아래 표), 통과시켜도 PPTX에는 닿지 않는다 |
 
 `justify-items`가 `stretch`(기본값)가 아니면 grid 항목이 **내용 폭**으로 줄어든다. 그러면 두
-가지를 잃는다: 저자가 `align`으로 문단을 움직일 폭(
-[ADR 0043](../decisions/0043-explicit-width-belongs-to-the-placement-context.md))과, 잰 박스와
+가지를 잃는다: 저자가 `align`으로 문단을 움직일 폭과, 잰 박스와
 글줄 사이의 **여유 폭**이다. 여유가 0인 줄은 PowerPoint가 조금만 넓게 그려도 한 줄 더 접히고,
 그러면 `normAutofit`이 글자를 줄여 박스에 맞춘다 ([계약 밖의 차이](../guides/known-differences.md)).
 그래서 **가운데는 값을 내고 쓰고, 왼쪽은
@@ -236,8 +231,7 @@ LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`�
 ## 덱 크롬 — `chrome`
 
 덱 크롬은 페이지 번호와 푸터다. 슬라이드마다 저자가 쓰는 것이 아니라 **덱의 사실**이고, 그래서
-어휘를 두 곳이 나눠 갖는다
-([ADR 0045](../decisions/0045-deck-chrome-is-config-text-in-a-theme-declared-band.md)).
+어휘를 두 곳이 나눠 갖는다.
 
 | 누가 | 무엇을 | 어디에 |
 |---|---|---|
@@ -247,8 +241,7 @@ LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`�
 둘 다 있어야 크롬이 나온다. 테마만 선언하면 아무것도 렌더되지 않고(내용이 없다), 설정만 켜면
 **경고 + 미탑재**다 — 테마가 그 종류를 선언하지 않았다는 것은 "이 디자인에는 그 자리가 없다"는
 뜻이므로, 엔진이 자리를 임의로 정해 넣는 대신 저자에게 알리고 넘어간다
-(슬롯이 없는 레이아웃에 `slot=`을 쓴 것과 같은 규칙 —
-[ADR 0044](../decisions/0044-slots-need-a-theme-and-vertical-rhythm-needs-an-owner.md)).
+(슬롯이 없는 레이아웃에 `slot=`을 쓴 것과 같은 규칙).
 
 `<footer>` 같은 **태그는 없다**. 태그로 열면 크롬이 슬라이드의 세로 흐름에 들어가 본문 높이를
 갉아먹고, 덱 전체에 같은 푸터를 넣는 일이 슬라이드 수만큼의 복사가 된다.
@@ -321,7 +314,7 @@ PPTX에서 **플레이스홀더(`p:ph type="sldNum"`)를 쓰지 않는다.** 제
 ## 외부 테마 — 프로젝트 안의 이름
 
 자기 테마는 **프로젝트 안에** 둔다. 디렉토리 이름이 곧 테마 이름이고, 그 이름을 `balpyo.json`이
-가리킨다 ([ADR 0054](../decisions/0054-an-external-theme-is-a-name-inside-the-project-and-extends-overrides-by-name.md)).
+가리킨다.
 
 ```text
 my-deck/
@@ -398,16 +391,14 @@ minimal"), 테마를 프로젝트 파일시스템 안에서만 읽으므로 `..`
 한다** — 모든 색 토큰은 슬롯을 가져야 PPTX 테마 색 편집이 따라오고, 그 자리는 열둘로 닫혀 있다
 (내장 테마가 열을 쓰므로 남는 자리는 링크 둘이다). 그래서 **자식 테마의 색 작업은 갈아 끼우기**다:
 부모의 이름(`accent1`·`surface`)을 다시 적어 값을 바꾼다. 판정은 테마 로딩에서 나므로 진단이
-`tokens.json`과 남은 자리를 가리킨다 (PPTX를 조립할 때가 아니다) —
-[ADR 0055](../decisions/0055-a-child-theme-recolors-by-name-because-color-tokens-are-bounded-by-the-clrscheme.md)가
-그 결정을 적는다. 반경·공간·그림자·폰트에는 이 상한이 없어 자유롭게 **더한다**.
+`tokens.json`과 남은 자리를 가리킨다 (PPTX를 조립할 때가 아니다). 반경·공간·그림자·폰트에는 이 상한이 없어 자유롭게 **더한다**.
 
 ### 예제
 
-`testdata/fixtures/15_local_theme`이 이것을 끝까지 하는 3장 덱이다: `themes/corp/`가 `minimal`을
-물려받고, 파일 넷(`theme.json` · 부분 `tokens.json` · 부분 `components.json` ·
-`layouts/title.slots.css` 하나)으로 표지 배치·제목 역할·강조색·크롬 자리를 갈아 끼운다. 나머지
-열 개 레이아웃과 역할 넷, 코드 색 다섯은 골든에서 **부모 것과 같다** — 그 같음이 상속의 증인이다.
+`themes/corp/`가 `minimal`을 물려받아 파일 넷(`theme.json` · 부분 `tokens.json` · 부분
+`components.json` · `layouts/title.slots.css` 하나)으로 표지 배치·제목 역할·강조색·크롬 자리를
+갈아 끼운다고 하자. 나머지 열 개 레이아웃과 역할 넷, 코드 색 다섯은 **부모 것과 같다** — 적지
+않은 것은 전부 물려받는다.
 
 원격 테마(`balpyo theme get`)는 아직 없다. 팀에서 테마를 나누려면 `themes/<이름>/`을 그대로
 복사하거나 git 서브모듈로 둔다 — 포맷이 데이터 전용(JSON + CSS)이라 받은 테마가 코드를 실행하는
@@ -429,7 +420,7 @@ minimal"), 테마를 프로젝트 파일시스템 안에서만 읽으므로 `..`
 | `layouts`에 선언했는데 `layouts/<이름>.css`가 없다 | **에러** | `layouts에 …가 있지만 layouts/….css가 없다` |
 | `layouts/<이름>.css`가 있는데 선언에 없다 | **에러** | `…css가 있지만 theme.json의 layouts 선언에 없다` |
 | `tokens.json`에 필수 토큰 이름이 없다 | **에러** | `tokens.json에 색 토큰 "accent6"가 없다 (필수: fg, bg, muted, surface, accent1, …)` |
-| 색 토큰에 `clrScheme` 슬롯이 없다 | **에러** | 남은 자리를 나열한다 — `… 슬롯이 없다 … (남은 슬롯: hlink, folHlink)`. 자리가 다 찼으면 `남은 슬롯이 없다 — 새 색 이름 대신 기존 이름의 값을 갈아 끼운다` (ADR 0055) |
+| 색 토큰에 `clrScheme` 슬롯이 없다 | **에러** | 남은 자리를 나열한다 — `… 슬롯이 없다 … (남은 슬롯: hlink, folHlink)`. 자리가 다 찼으면 `남은 슬롯이 없다 — 새 색 이름 대신 기존 이름의 값을 갈아 끼운다` |
 | 두 색 토큰이 같은 슬롯을 쓴다 | **에러** | `clrScheme 슬롯 "accent1"를 색 토큰 "accent1"와 "brand"가 나눠 쓴다 — 어느 색이 그 자리를 차지하는지 정할 수 없다` |
 | `components.json`의 `text.roles`에 역할 5종 중 하나가 없다 | **에러** | `components.json의 text.roles에 역할 "code"가 없다 (필수: title, heading, body, caption, code)` |
 | 역할의 `size`·`lineHeight`가 0 이하이거나 `align`이 없다 | **에러** | `역할은 캐스케이드의 바닥이라 완전한 값이어야 한다` |
@@ -451,10 +442,8 @@ minimal"), 테마를 프로젝트 파일시스템 안에서만 읽으므로 `..`
 
 ## 예제
 
-`testdata/fixtures/14_theme`가 `"theme": "ink"`로 렌더되는 3장 덱이다 — 같은 어휘로 쓴
-슬라이드가 다른 테마에서 어떻게 달라지는지는 그 골든(CSS 변수·`clrScheme`·슬롯 좌표)을 다른
-픽스처의 골든과 나란히 놓으면 보인다.
+같은 덱을 `--theme ink`로 내면 같은 어휘로 쓴 슬라이드가 다른 테마에서 어떻게 달라지는지 보인다 —
+견주는 순서는 [테마 고르기·만들기](../guides/theming.md)에 있다.
 
-`testdata/fixtures/10_chrome`이 크롬을 켠 4장 덱이다 — 표지(`title`)와 구역
-표지(`section-divider`)는 제외되고, 흐름 모드 두 장이 푸터와 번호 2·4를 받는다. 골든에는 두
-산출물이 그 숫자를 어떻게 담는지가 그대로 들어 있다.
+크롬을 켠 4장 덱(표지 · 본문 · 구역 표지 · 본문)이면 표지(`title`)와 구역 표지(`section-divider`)는
+제외되고, 흐름 모드 두 장이 푸터와 번호 2·4를 받는다.

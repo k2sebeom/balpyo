@@ -88,7 +88,7 @@ func TestRenderListMarkup(t *testing.T) {
 	}
 }
 
-// 리스트 배치 CSS는 엔진 상수에서 나온다 — PPTX의 marL/indent(항목 07)가 같은 상수를
+// 리스트 배치 CSS는 엔진 상수에서 나온다 — PPTX의 marL/indent가 같은 상수를
 // import하므로, CSS가 상수와 어긋나면 두 타깃의 들여쓰기가 갈라진다.
 func TestRenderListCSSComesFromConstants(t *testing.T) {
 	out := renderString(t, subsetDeck(t, "<ul><li>항목</li></ul>"))
@@ -159,7 +159,7 @@ func TestRenderBreak(t *testing.T) {
 	}
 }
 
-// 인라인 경계 공백 계약(항목 01)이 렌더까지 통과한다: `파이프라인 <strong>자동화</strong>와`의
+// 인라인 경계 공백 계약이 렌더까지 통과한다: `파이프라인 <strong>자동화</strong>와`의
 // 한 칸은 내용이다 — 렌더러가 태그 앞뒤에 개행·들여쓰기를 더하면 그 공백이 글자 사이에 낀다.
 func TestRenderPreservesInlineBoundarySpace(t *testing.T) {
 	out := renderString(t, subsetDeck(t, "<p>배포 파이프라인 <strong>자동화</strong>와 관측성</p>"))
@@ -173,13 +173,13 @@ func TestRenderPreservesInlineBoundarySpace(t *testing.T) {
 }
 
 // pre는 원문이 그대로 흐른다: white-space: pre + 줄바꿈 없음. wrap을 켜면 PPTX와 줄 수가
-// 갈라진다 (PPTX 짝은 항목 06의 bodyPr@wrap).
+// 갈라진다 (PPTX 짝은 bodyPr@wrap).
 func TestRenderPrePreservesWhitespace(t *testing.T) {
 	out := renderString(t, subsetDeck(t, "<pre>\nfunc main() {\n\tgo build()  // 연속  공백\n}\n</pre>"))
 	if !strings.Contains(out, "white-space: pre") {
 		t.Error("pre의 style에 white-space: pre가 없다")
 	}
-	// 탭은 값 층이 테마 폭(minimal은 2)으로 **펴서** 보낸다 (D15 · ADR 0051) — CSS tab-size와
+	// 탭은 값 층이 테마 폭(minimal은 2)으로 **펴서** 보낸다 — CSS tab-size와
 	// OOXML a:defTabSz는 같은 규칙이 아니어서, 탭을 그대로 흘리면 두 산출물의 줄이 갈라진다.
 	// 연속 공백은 그대로다 — 접히지 않는 것이 pre의 계약이다.
 	if !strings.Contains(out, "func main() {\n  go build()  // 연속  공백\n}") {
@@ -208,9 +208,9 @@ func TestRenderPreProtectsLeadingNewline(t *testing.T) {
 	}
 }
 
-// 원문의 문자 참조는 **한 번만** 이스케이프되어 나간다 (ADR 0037): `&lt;`(원문) →
-// `<`(모델) → `&lt;`(HTML). 두 번 이스케이프되면 화면에 `&lt;`가 그대로 보인다 — 도그푸딩
-// 덱이 자기 문법을 못 띄운 D1이 정확히 그 증상이었다.
+// 원문의 문자 참조는 **한 번만** 이스케이프되어 나간다: `&lt;`(원문) →
+// `<`(모델) → `&lt;`(HTML). 두 번 이스케이프되면 화면에 `&lt;`가 그대로 보인다 — SOML을
+// 소개하는 덱이 자기 문법을 못 띄운다.
 func TestRenderCharRefsEscapeOnce(t *testing.T) {
 	out := renderString(t, subsetDeck(t, `
   <p>&lt;slide id=&quot;x&quot;&gt; &amp; a &lt; b</p>

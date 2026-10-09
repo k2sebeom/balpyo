@@ -19,8 +19,8 @@ const IDAttr = "data-balpyo-id"
 // 더/덜 내는 경우) 좌표가 엉뚱한 요소에 붙는 대신 소리를 낸다.
 const ElAttr = "data-balpyo-el"
 
-// RevealAttr은 리스트 항목이 나타나는 스텝 번호다 (`<li reveal>`의 확정 값 — ADR 0063
-// 결정 5). 속성을 쓰지 않은 항목에는 **실리지 않는다**: 없음이 곧 "처음부터 보인다"라,
+// RevealAttr은 리스트 항목이 나타나는 스텝 번호다 (`<li reveal>`의 확정 값). 속성을 쓰지
+// 않은 항목에는 **실리지 않는다**: 없음이 곧 "처음부터 보인다"라,
 // reveal을 쓰지 않은 덱의 마크업이 이 기능 전과 같다.
 //
 // 스텝이 클래스가 아니라 속성인 이유는 판정의 주인이 둘이라는 것이다 — CSS는 "스텝을 가진
@@ -67,7 +67,7 @@ func StageSelector() string { return "." + StageClass }
 // 벌어진 리듬이 된다 — 역할 기본값의 수직 리듬(테마의 text.roles)과 같은 근거다.
 //
 // StagePadding을 export하는 이유는 ListTextIndent와 같다: 콘텐츠 박스(스테이지에서 이 여백을
-// 뺀 사각형)를 배치 진단이 판정 기준으로 쓴다 (render/geom의 ContentBox — ADR 0039). 값이 두
+// 뺀 사각형)를 배치 진단이 판정 기준으로 쓴다 (render/geom의 ContentBox). 값이 두
 // 벌이 되면 "여백을 침범했다"는 진단이 실제 여백과 어긋난 채 나가고, 그 어긋남은 진단을
 // 믿지 못하게 만든다.
 const (
@@ -76,7 +76,7 @@ const (
 	stackGap     = 24
 )
 
-// 리스트 배치 상수다 (논리 px). export하는 이유: PPTX 렌더러의 `marL`/`indent`(항목 07)가
+// 리스트 배치 상수다 (논리 px). export하는 이유: PPTX 렌더러의 `marL`/`indent`가
 // **같은 값**을 써야 두 타깃의 들여쓰기가 한 곳에서 나온다 — web.ElementID를 geom·pptx가
 // 쓰는 것과 같은 단일 구현 원칙이다. 값이 두 벌이 되면 갈라진 것은 두 산출물을 나란히
 // 볼 때까지 드러나지 않는다.
@@ -88,7 +88,7 @@ const (
 // 불가능하므로 웹이 맞추는 쪽이다 (contentCSS의 리스트 절).
 //
 // 값 36은 PowerPoint 1수준 기본(marL=342900 EMU, indent=-342900)과 정확히 같다 —
-// 342900 EMU ÷ 9525(EMU/px) = 36px (docs/decisions/0002의 환산 상수). 익숙한 기본값을
+// 342900 EMU ÷ 9525(EMU/px) = 36px. 익숙한 기본값을
 // 벗어날 이유가 없고, PPTX 쪽 환산이 정수로 떨어진다.
 const (
 	// ListTextIndent는 li 텍스트가 리스트 박스 왼쪽에서 들어와 시작하는 거리다 —
@@ -107,7 +107,7 @@ const (
 // ListBulletChar는 ul 마커 문자다. CSS `list-style-type: disc`의 원(브라우저가 그리는
 // 도형)이 아니라 **폰트 글리프**를 쓰는 이유: PPTX의 `buChar`는 이 문자를 텍스트 폰트로
 // 그리므로, 웹도 같은 글리프를 내야 두 타깃의 마커 모양이 같은 곳에서 나온다. ol은
-// `counter() "."`로 내며 PPTX `buAutoNum@type="arabicPeriod"`("1.")와 짝이다 (항목 07).
+// `counter() "."`로 내며 PPTX `buAutoNum@type="arabicPeriod"`("1.")와 짝이다.
 const ListBulletChar = "\u2022" // •
 
 // writeStage는 슬라이드의 콘텐츠 노드를 스테이지 div에 쓴다.
@@ -115,22 +115,21 @@ const ListBulletChar = "\u2022" // •
 // 자식 배치는 **문서 순서의 세로 스택**이다 — 레이아웃 태그(`<row>`/`<col>`/`<grid>`)를
 // 쓰지 않은 슬라이드의 기본 배치를 이 함수가 정의한다. 스테이지를 `<col>`로 재정의하면
 // 기본 배치의 출처가 한 곳이 되지만, 그러면 CSS 문자열이 바뀌어 골든 세 개가 움직이고 그
-// diff는 레이아웃 태그가 무엇을 하는지 말해 주지 못한다 — 그 통합은 스테이지가 테마의
-// 배치를 받는 Iteration 10(`layout=`/`slot=`)이 할 자리다. 세로 스택을 고른 이유:
+// diff는 레이아웃 태그가 무엇을 하는지 말해 주지 못한다 — 레이아웃마다 다른 배치는 테마의
+// 레이아웃 CSS가 스테이지에 얹는다 (layoutStagesCSS). 세로 스택을 고른 이유:
 //
 //   - 저자가 쓴 순서와 화면 순서가 같아야 SOML만 읽고 결과를 예측할 수 있다.
 //   - 자식마다 **확정된 폭**(스테이지 콘텐츠 폭)을 주면 브라우저의 줄바꿈이 결정적이다.
 //     지오메트리 패스가 잰 rect가 그대로 PPTX 텍스트 박스가 되고 autofit은 꺼지므로
-//     (PRD §9.3), 폭이 내용에 따라 변하는 배치는 PowerPoint에서 줄바꿈이 달라질 여지를
+//     폭이 내용에 따라 변하는 배치는 PowerPoint에서 줄바꿈이 달라질 여지를
 //     만든다. 폭을 고정하면 두 타깃이 같은 폭 안에서 줄을 나눈다.
 //   - 세로 정렬(가운데·아래)은 레이아웃의 선택이지 텍스트의 성질이 아니다 — 표지의 가운데
-//     정렬은 Iteration 10의 `layout="title"`이 소유한다. 그때까지 위에서 아래로 쌓는다.
+//     정렬은 `layout="title"`의 테마 배치가 소유한다. 기본은 위에서 아래로 쌓는다.
 func writeStage(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
-	// 캔버스 스테이지는 stack이다 (PRD §13-3) — 스테이지가 단일 셀 grid가 되어 자식이
+	// 캔버스 스테이지는 stack이다 — 스테이지가 단일 셀 grid가 되어 자식이
 	// `x`/`y`·`at`으로 자기 자리를 정한다. 세로 스택(기본)과 갈라지는 자리는 이 클래스
 	// 하나뿐이고, 겹침 CSS는 stack과 한 벌을 공유한다 (stackCSS). 스테이지를 `<col>`로
-	// 재정의하는 통합은 Iteration 10(`layout=`/`slot=`)의 몫이다 — 여기서는 canvas 분기만
-	// 넣고 그 통합까지 하지 않는다.
+	// 재정의하지 않는 이유는 위의 골든 근거와 같다.
 	stageClass := StageClass
 	if slide.Layout == soml.LayoutCanvas {
 		stageClass += " balpyo-stage-canvas"
@@ -140,10 +139,10 @@ func writeStage(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 	// 자유 배치는 렌더러가 소유)은 맵에 없으므로 클래스가 붙지 않는다 — 그래야 그 레이아웃의
 	// 산출물이 이 기능 때문에 움직이지 않는다 (soml.Theme.Layouts의 근거).
 	// 슬롯 모드는 **슬라이드마다** 판정하고, 판정의 입력은 확정 모델 하나다: 이 슬라이드의
-	// 직계 자식이 슬롯을 실었는가 (ADR 0035, 추가형 슬롯 결정). 테마에 슬롯 영역이 있는지는
+	// 직계 자식이 슬롯을 실었는가. 테마에 슬롯 영역이 있는지는
 	// **여기서 보지 않는다** — core가 그 조건을 이미 보고, 테마가 못 받는 슬롯은 경고와 함께
-	// 확정 모델에 싣지 않는다 (ADR 0044). 그 조건을 렌더러마다 적었을 때 웹과 PPTX가 갈라진
-	// 것이 D3였다. 슬롯을 쓰지 않은 슬라이드는 흐름 배치 그대로다 — 그래야 슬롯을 안 쓴 덱의
+	// 확정 모델에 싣지 않는다. 그 조건을 렌더러마다 적으면 웹과 PPTX가 갈라진다. 슬롯을
+	// 쓰지 않은 슬라이드는 흐름 배치 그대로다 — 그래야 슬롯을 안 쓴 덱의
 	// 산출물이 이 기능 때문에 움직이지 않는다 (골든 불변). 슬롯 모드에서도 레이아웃 클래스를
 	// 붙여 슬롯 영역 선택자(`.balpyo-layout-<이름>.balpyo-slots`)가 맞도록 한다.
 	_, hasFlow := deck.Theme.Layouts[string(slide.Layout)]
@@ -154,7 +153,7 @@ func writeStage(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 	if slotMode {
 		stageClass += " balpyo-slots"
 	}
-	// 슬라이드의 세로 분배는 스테이지의 인라인 선언이다 (`<slide justify>`, ADR 0044 D17).
+	// 슬라이드의 세로 분배는 스테이지의 인라인 선언이다 (`<slide justify>`).
 	// 흐름 스테이지는 세로 flex이므로(base 층의 `.balpyo-stage`) `justify-content`가 그대로
 	// 세로 분배다. 인라인인 이유는 요소마다 다른 값이라는 것이다 — 테마 층 CSS는 레이아웃마다
 	// 고정인 배치를 담고(layoutStagesCSS), 슬라이드 하나의 선택은 그 요소에 실린다
@@ -208,7 +207,7 @@ type nodeWriter func(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, ele
 // 같다: 어휘가 층마다 다른 속도로 자라므로 **대조할 수 있어야** 한다. `soml.KindRendered`가
 // 참인 종류는 전부 여기 있어야 하고 거짓인 종류는 없어야 한다 — 그 대조는 render 패키지의
 // 테스트가 하고, 목록과 writerFor가 어긋나지 않는지는 이 패키지의 테스트가 본다
-// (TASKS P0.2: `<table>`이 파싱·검증을 통과한 뒤 렌더에서 빌드를 죽인 사고).
+// (파싱·검증을 통과한 종류가 렌더에서 빌드를 죽이지 않게 한다).
 // `soml.KindNone`(`<slide>`·`<text>`·`<note>`)은 카탈로그 밖이라 여기 없다 — writeNode와
 // writeStage가 이름으로 직접 다룬다.
 var renderedKinds = []soml.ElementKind{
@@ -335,8 +334,8 @@ func writeBlock(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	decls := []string{text}
 	if elem.Name == "pre" {
 		// 접히지 않은 원문(soml.Parse의 pre 보존)이 그대로 흐른다. wrap을 켜면 PPTX와
-		// 줄 수가 갈라지므로 줄바꿈 없음 — 긴 줄은 오버플로 허용이다 (박스 고정 정책,
-		// PRD §13-1과 같은 태도. PPTX 쪽 짝 bodyPr@wrap은 항목 06이 맞춘다).
+		// 줄 수가 갈라지므로 줄바꿈 없음 — 긴 줄은 오버플로 허용이다 (박스 고정 정책과
+		// 같은 태도. PPTX 쪽 짝은 bodyPr@wrap이다).
 		decls = append(decls, "white-space: pre")
 	}
 	// 가로 크기는 외관 뒤, 슬롯·배치 앞이다 (appendTextBox — 속성 표의 순서와 같다).
@@ -373,7 +372,7 @@ func writeBlock(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 
 // revealAttr는 순차 등장 스텝 속성이다 (스텝이 없으면 속성 자체가 없다 — styleAttr와 같은
 // 태도). 웹이 이 값을 나르는 **유일한** 타깃이다: PPTX·인쇄는 Appearance.Reveal을 보지
-// 않는 것으로 평탄화를 구현한다 (ADR 0063 결정 3).
+// 않는 것으로 평탄화를 구현한다.
 func revealAttr(elem *soml.Element) string {
 	if elem.Appearance == nil || elem.Appearance.Reveal == 0 {
 		return ""
@@ -399,11 +398,10 @@ func firstText(elem *soml.Element) (string, bool) {
 // 흔한 배치이므로 자식 배치 속성이 열려 있고(soml.ChildPlacementAttrs), 그때 Appearance는
 // Placement만 채워진 상태로 온다.
 //
-// 식별자는 언제나 갖는다: 리스트는 PPTX에서 박스 하나가 되므로(항목 07) 이 rect가 곧
+// 식별자는 언제나 갖는다: 리스트는 PPTX에서 박스 하나가 되므로 이 rect가 곧
 // PPTX 텍스트 박스다. 마커·들여쓰기는 엔진 CSS가 상수로 명시한다 (contentCSS의 리스트 절).
 func writeList(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, path []int) error {
-	// 리스트 컨테이너도 가로 크기를 받는다 (ADR 0038의 대칭 — 외관이 컨테이너에 붙는 것과 같은
-	// 자리). 순서는 블록과 같다: 크기 → 슬롯 → 배치.
+	// 리스트 컨테이너도 가로 크기를 받는다 (리스트 외관이 컨테이너에 붙는 것과 같은 자리). 순서는 블록과 같다: 크기 → 슬롯 → 배치.
 	decls, err := appendTextBox(nil, elem.Box())
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
@@ -536,10 +534,10 @@ func ChildPath(path []int, i int) []int {
 // margin도 지운다 — writeBlock의 "브라우저 기본 스타일에 기대는 값이 없어야 한다" 조건의
 // 배치 절반이다 (메트릭 절반은 인라인 style이 명시한다).
 //
-// 여백(64px)과 간격(24px)은 지금 엔진 상수다. 테마의 space 토큰(`slidePadding`/`gap`,
-// PRD §8.4)이 Iteration 10에서 이 값을 대체한다 — 지금 스테이지 여백을 변수 참조로 바꾸면
-// 골든 세 개가 이 iteration과 무관한 이유로 움직인다 (core/themes/minimal/tokens.json의 공간 토큰 주석에
-// 같은 판단이 있다).
+// 여백(64px)과 간격(24px)은 엔진 상수다 (테마의 레이아웃 CSS가 레이아웃마다 다시 정할 수
+// 있다). 스테이지 여백을 space 토큰(`slidePadding`/`gap`)의 변수 참조로 바꾸면 레이아웃 태그를
+// 쓰지 않은 덱의 골든이 무관한 이유로 움직인다 (core/themes/minimal/tokens.json의 공간 토큰
+// 주석에 같은 판단이 있다).
 func contentCSS(feat features) string {
 	css := fmt.Sprintf(`
   /* 스테이지는 자식을 문서 순서대로 세로로 쌓는다. 여백 64px은 1280폭의 5%%로,
@@ -555,7 +553,7 @@ func contentCSS(feat features) string {
   }
 
   /* 한국어는 어절에서 접는다 — 글자 사이에서 접는 브라우저 기본은 한국어 조판 관행이 아니다.
-     PPTX와 맞추려는 것이 아니다 (줄바꿈 위치는 계약 밖이다 — ADR 0064). overflow-wrap:
+     PPTX와 맞추려는 것이 아니다 (줄바꿈 위치는 계약 밖이다). overflow-wrap:
      anywhere는 좁은 칸에서 한 어절이 칸보다 길 때만 그 어절을 자른다 — keep-all만 두면 그
      어절이 칸을 넘친다. 중국어·일본어는 띄어쓰기가 없어 keep-all이 줄바꿈을 막으므로
      lang이 ko일 때만이다. */
@@ -566,7 +564,7 @@ func contentCSS(feat features) string {
 
   /* 텍스트 블록은 콘텐츠 폭 전체를 갖는다 — 줄바꿈 폭이 확정되어야 브라우저가 잰 박스가
      PPTX 텍스트 박스로 그대로 간다. flex: 0 0 auto는 스택이 스테이지보다 길 때 박스가
-     눌리는 것을 막는다 (기본 정책은 박스 고정 + 오버플로 허용 — PRD §13-1). */
+     눌리는 것을 막는다 (기본 정책은 박스 고정 + 오버플로 허용). */
   .balpyo-text {
     margin: 0;
     width: 100%%;
@@ -631,7 +629,7 @@ func listCSS() string {
      가운데로 오는데, 절대 배치 마커는 들여쓰기 자리에 남아 두 타깃이 갈라진다.
      text-indent를 되돌리는 것은 inline-block이 블록 컨테이너라 li의 음수 값을 상속해
      자기 첫 줄에 다시 적용하기 때문이다. 확정 스타일(폰트·색·줄높이)은 그대로 상속하므로
-     마커와 첫 줄의 기준선이 맞는다 — PPTX의 마커도 런 서식을 따른다 (항목 07). */
+     마커와 첫 줄의 기준선이 맞는다 — PPTX의 마커도 런 서식을 따른다. */
   .balpyo-list > li::before {
     display: inline-block;
     width: %dpx;
@@ -653,7 +651,7 @@ func listCSS() string {
 // features는 덱이 실제로 쓴 어휘다 — 어느 CSS 절을 낼지 정하는 근거다.
 //
 // 조건부로 두는 이유는 골든이다: 쓰지 않은 어휘의 CSS가 산출물에 들어가면, 그 어휘를
-// 구현한 iteration에서 **모든** 골든이 움직이고 diff가 무엇이 변했는지 말해 주지 못한다
+// 구현한 커밋에서 **모든** 골든이 움직이고 diff가 무엇이 변했는지 말해 주지 못한다
 // (빈 스테이지를 빈 요소 하나로 낸 것과 같은 근거). 걸음을 한 번만 걷는 이유는 순회가
 // 두 벌이 되면 한쪽만 새 태그를 세게 되기 때문이다.
 type features struct {
@@ -698,7 +696,7 @@ type features struct {
 	// 레이아웃의 배치 규칙이 산출물에 들어가면 diff가 무엇이 변했는지 말해 주지 못한다.
 	layouts []string
 	// slotLayouts는 이 덱이 **슬롯 모드로** 쓴, 슬롯 영역 CSS를 가진 레이아웃 이름들이다
-	// (정렬·중복 제거, ADR 0035). layouts와 따로 두는 이유는 골든 불변이자 두 모드의 분리다:
+	// (정렬·중복 제거). layouts와 따로 두는 이유는 골든 불변이자 두 모드의 분리다:
 	// 슬롯 영역 규칙은 `.balpyo-slots` 모디파이어가 붙은 선택자로 나가고 흐름 규칙은
 	// `:not(.balpyo-slots)`로 나가, 한 레이아웃을 두 슬라이드가 각각 흐름·슬롯으로 써도
 	// 규칙이 서로 새지 않는다 (layoutStagesCSS).
@@ -734,8 +732,8 @@ func contentFeatures(deck *soml.Deck) features {
 			case soml.KindLayoutContainer, soml.KindSpacer:
 				feat.layout = true
 				// `<stack>`은 레이아웃 컨테이너이지만 겹침 CSS는 별도 절이다 — 흐름으로
-				// 가른다 (soml.FlowOf). 종류가 아니라 흐름으로 갈리는 것이 Iteration 6의
-				// 결정이고(soml.FlowStack), 그 결정의 렌더러 쪽 절반이 이 판정이다.
+				// 가른다 (soml.FlowOf). 종류가 아니라 흐름으로 갈린다는 계약(soml.FlowStack)의
+				// 렌더러 쪽 절반이 이 판정이다.
 				if soml.FlowOf(elem.Name) == soml.FlowStack {
 					feat.stack = true
 				}
@@ -753,12 +751,12 @@ func contentFeatures(deck *soml.Deck) features {
 	seenSlot := map[string]bool{}
 	for _, slide := range deck.Slides {
 		if slide.Layout == soml.LayoutCanvas {
-			// 캔버스 스테이지는 stack이다 (PRD §13-3) — 스테이지 CSS(stackCSS)가 이때만
+			// 캔버스 스테이지는 stack이다 — 스테이지 CSS(stackCSS)가 이때만
 			// 나간다. 슬라이드 수준 어휘라 콘텐츠 순회가 아니라 여기서 켠다.
 			feat.canvas = true
 		}
 		if len(slide.Chrome) > 0 {
-			// 크롬은 값 층이 이미 걸러 확정한 목록이다 (ADR 0045) — 설정이 켰는지도, 테마가
+			// 크롬은 값 층이 이미 걸러 확정한 목록이다 — 설정이 켰는지도, 테마가
 			// 선언했는지도 여기서 보지 않는다.
 			feat.chrome = true
 		}
@@ -766,7 +764,7 @@ func contentFeatures(deck *soml.Deck) features {
 		// 같은 판정): 슬롯 모드면 슬롯 영역 CSS를, 아니면 흐름 배치 CSS를 모은다. 한 슬라이드는
 		// 둘 중 하나뿐이므로 순수 흐름 덱은 슬롯 규칙을, 순수 슬롯 덱은 흐름 규칙을 내지 않아
 		// 양쪽 골든이 모두 이 기능 때문에 움직이지 않는다. 판정은 writeStage와 **같은 한 줄**이다
-		// (슬롯 탑재 여부만 본다 — ADR 0044, 테마 조건은 core가 이미 걸렀다): 여기서
+		// (슬롯 탑재 여부만 본다 — 테마 조건은 core가 이미 걸렀다): 여기서
 		// 조건이 갈리면 스테이지에 모디파이어는 붙었는데 그 규칙이 CSS에 없는(또는 반대의)
 		// 산출물이 나온다.
 		name := string(slide.Layout)

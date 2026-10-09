@@ -7,7 +7,7 @@ package soml
 
 import "fmt"
 
-// Aspect는 슬라이드 종횡비다. v1은 2종만 받는다 (PRD §13-9).
+// Aspect는 슬라이드 종횡비다. v1은 2종만 받는다 (16:9·4:3).
 type Aspect string
 
 const (
@@ -20,7 +20,7 @@ const (
 // DefaultAspect는 aspect를 지정하지 않은 덱의 비율이다.
 const DefaultAspect = Aspect16x9
 
-// Stage는 논리 스테이지 크기다. 단위는 px 하나뿐이며(PRD §13-5) 저자·웹 렌더러·지오메트리
+// Stage는 논리 스테이지 크기다. 단위는 px 하나뿐이며 저자·웹 렌더러·지오메트리
 // 패스가 모두 이 좌표계를 쓴다. 타깃 단위(EMU, pt) 변환은 렌더러가 소유한다.
 type Stage struct {
 	Width  int
@@ -31,7 +31,7 @@ type Stage struct {
 //
 // 두 비율은 높이 720을 공유한다 — 폰트 크기와 수직 리듬이 비율을 넘어 그대로 통하고,
 // px에 상수 9525를 곱하면 PowerPoint 표준 페이지 크기(13.333×7.5in / 10×7.5in)가
-// 정확히 나온다 (docs/decisions/0002-logical-stage-size.md).
+// 정확히 나온다.
 func (a Aspect) Stage() (Stage, error) {
 	switch a {
 	case Aspect16x9:
@@ -43,16 +43,15 @@ func (a Aspect) Stage() (Stage, error) {
 	}
 }
 
-// SlideLayout은 슬라이드의 배치 레이아웃이다 (`<slide layout>`). 어휘는 PRD §7.3의 표준
-// 카탈로그 11종이다 (Iteration 6에 content·canvas 2종으로 시작해 Iteration 10에 나머지 9종이
-// 슬롯·테마 레이아웃과 함께 열렸다).
+// SlideLayout은 슬라이드의 배치 레이아웃이다 (`<slide layout>`). 어휘는 표준 카탈로그
+// 11종이다.
 //
 // Aspect와 나란히 여기 있는 이유: 둘 다 슬라이드의 **구조**를 정하는 닫힌 어휘이고 외관이
 // 아니다. 외관 어휘(role·align)가 테마와 함께 자라 appearance.go에 있는 것과 갈라진다 —
 // 표준 레이아웃 카탈로그의 **이름**은 엔진이 소유하고(이 목록이 닫힌 어휘다), 테마가 더하는
 // 것은 그 위에 얹는 자체 레이아웃(`layout="corp-hero"`)이다. 표준 이름의 **배치 구현**은
 // 테마가 소유하며(layouts/*.css), 테마는 11종을 **전부** 구현해야 한다 — 빠뜨린 레이아웃을
-// 다른 테마로 폴백하지 않는 이유는 ADR 0052에 있다(한 덱이 두 디자인 시스템으로 나온다).
+// 다른 테마로 폴백하지 않는 이유: 한 덱이 두 디자인 시스템으로 나온다.
 // 어휘 밖 이름(오타·테마에도 없는 이름)은 빌드 에러다.
 type SlideLayout string
 
@@ -78,8 +77,7 @@ const (
 	// LayoutStat은 수치 강조 콜아웃이다 — 슬롯 title·value·label·body.
 	LayoutStat SlideLayout = "stat"
 	// LayoutCanvas는 자유 배치다 — 슬롯이 없고, 스테이지가 자식을 세로로 쌓지 않고 자식이
-	// `x`/`y`·`at`으로 자기 자리를 정한다 (배치 시맨틱은 Iteration 6 항목 04, 테마는
-	// 배경·여백·외관 기본값만 소유한다).
+	// `x`/`y`·`at`으로 자기 자리를 정한다 (테마는 배경·여백·외관 기본값만 소유한다).
 	LayoutCanvas SlideLayout = "canvas"
 	// LayoutEnd는 마무리다 — 슬롯 title·contact.
 	LayoutEnd SlideLayout = "end"
@@ -90,7 +88,7 @@ const (
 // 어휘 밖 layout 값의 **폴백 기준**이기도 하다 (core.slideLayout의 진단).
 const DefaultSlideLayout = LayoutContent
 
-// SlideLayouts는 표준 레이아웃 어휘 전체다 (PRD §7.3 카탈로그 순서). 순서가 진단 메시지에
+// SlideLayouts는 표준 레이아웃 어휘 전체다 (카탈로그 순서). 순서가 진단 메시지에
 // 실리는 순서이자 문서 순서다 — 표지(title)에서 마무리(end)로 발표의 흐름을 따른다.
 func SlideLayouts() []SlideLayout {
 	return []SlideLayout{
@@ -101,15 +99,15 @@ func SlideLayouts() []SlideLayout {
 }
 
 // SlotAttr는 슬롯 배정 속성이다 (`slot="title"`) — 레이아웃 슬라이드의 직계 자식이 어느
-// 슬롯에 들어갈지 정한다 (PRD §7.3). 슬롯 없는 직계 자식은 기본 슬롯(DefaultSlot)에 들어간다.
+// 슬롯에 들어갈지 정한다. 슬롯 없는 직계 자식은 기본 슬롯(DefaultSlot)에 들어간다.
 //
-// 채널을 넓게 열고 좁게 검증하는 것이 계약이다 (ADR 0031의 x/y와 같은 태도): 속성 allowlist는
+// 채널을 넓게 열고 좁게 검증하는 것이 계약이다 (`x`/`y`와 같은 태도): 속성 allowlist는
 // 태그별이라 위치를 모르므로(같은 `<text>` spec이 슬라이드 직속에도 컨테이너 안에도 쓰인다)
 // 슬라이드 직계 자식이 될 수 있는 요소 전부에 `slot`을 열고, "슬롯은 슬라이드 직계 자식에만",
 // "그 레이아웃에 그 슬롯이 있는가"는 부모와 레이아웃을 아는 값 층(core)이 검증한다.
 const SlotAttr = "slot"
 
-// DefaultSlot은 `slot`을 지정하지 않은 직계 자식이 들어가는 슬롯 이름이다 (PRD §7.3).
+// DefaultSlot은 `slot`을 지정하지 않은 직계 자식이 들어가는 슬롯 이름이다.
 const DefaultSlot = "body"
 
 // Deck은 정규화된 덱 모델이다. 렌더러가 보는 유일한 입력이며, 여기 도달한 시점에는
@@ -120,7 +118,7 @@ type Deck struct {
 	Lang   string
 	Aspect Aspect
 	Stage  Stage
-	// ThemeName은 **테마 요청**이다 (`balpyo.json`의 theme 또는 CLI의 -theme — ADR 0052).
+	// ThemeName은 **테마 요청**이다 (`balpyo.json`의 theme 또는 CLI의 -theme).
 	// 파이프라인이 설정에서 옮기고 core.Resolve가 이 이름으로 테마 패키지를 로드한다.
 	//
 	// 아래 Theme(결과)의 형제이고, 둘이 나란히 있는 모양은 크롬과 같다 (Chrome 요청 →
@@ -137,7 +135,7 @@ type Deck struct {
 	// 아니라 입력이고, 렌더 전에 결정적으로 한 번 채워지므로 타깃 순서와 무관하다
 	// (곁 표로 두지 않은 근거는 asset.go의 패키지 주석에 있다).
 	Assets Assets
-	// Chrome은 덱 크롬 요청이다 (`balpyo.json`의 footer·pageNumber — ADR 0045). 파이프라인이
+	// Chrome은 덱 크롬 요청이다 (`balpyo.json`의 footer·pageNumber). 파이프라인이
 	// 설정에서 옮기고 core.Resolve가 테마 선언과 합쳐 슬라이드마다 Slide.Chrome을 확정한다.
 	Chrome DeckChrome
 	Slides []*Slide
@@ -153,17 +151,17 @@ type Slide struct {
 	Source string
 	// Chapter는 슬라이드가 속한 하위 디렉토리 경로다. 루트 직속이면 빈 문자열이다.
 	Chapter string
-	// Layout은 슬라이드 배치 레이아웃이다 (`<slide layout>`, PRD §7.3). 파이프라인이
+	// Layout은 슬라이드 배치 레이아웃이다 (`<slide layout>`). 파이프라인이
 	// SlideDoc.Layout(원문)을 옮기고 core.Resolve가 2종 어휘를 확정한다 — 어휘 밖 값은
 	// 진단이 되고, 생략된 슬라이드는 DefaultSlideLayout(content)으로 채워진다. 렌더러는
-	// 문자열이 아니라 이 타입을 소비한다 (항목 04) — `"canvas"`가 세 렌더러에 흩어지지
+	// 문자열이 아니라 이 타입을 소비한다 — `"canvas"`가 세 렌더러에 흩어지지
 	// 않게 한다.
 	Layout SlideLayout
 	// LayoutSpan은 layout 값 구간이다 — core의 어휘 진단이 부호가 아니라 값을 가리키게
 	// 한다. Slide에 루트 요소 참조가 없으므로(덱 모델은 해석이 끝난 값이다) 값과 함께
 	// 구간을 나른다.
 	LayoutSpan Span
-	// Justify는 **흐름 모드** 스테이지의 세로 분배다 (`<slide justify>`, ADR 0044 D17).
+	// Justify는 **흐름 모드** 스테이지의 세로 분배다 (`<slide justify>`).
 	// 파이프라인이 원문을 옮기고 core.Resolve가 6종 어휘를 확정한다 (컨테이너의 justify와
 	// 같은 어휘 — BoxJustifies). 빈 값은 "선언 없음"이고 그때 스테이지는 위에서부터 쌓는다.
 	// 슬롯 모드 슬라이드에서는 에러이므로(세로 리듬은 테마의 `*.slots.css`가 소유한다)
@@ -173,7 +171,7 @@ type Slide struct {
 	JustifySpan Span
 	// Notes는 발표자 노트다 (`<note>`). PPTX에서는 노트 슬라이드가 된다.
 	Notes string
-	// Chrome은 이 슬라이드에 실릴 확정된 덱 크롬이다 (ADR 0045) — 테마 선언 순서를 지킨다.
+	// Chrome은 이 슬라이드에 실릴 확정된 덱 크롬이다 — 테마 선언 순서를 지킨다.
 	//
 	// Content의 형제이고 그 안이 아닌 이유: 크롬은 슬라이드의 내용이 아니라 덱의 사실이고,
 	// 콘텐츠 트리에 넣으면 스테이지 흐름에 끼어 본문 높이를 먹는다 (그리고 Refs가 재는

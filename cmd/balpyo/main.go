@@ -1,6 +1,6 @@
 // Command balpyo는 SOML 슬라이드를 웹과 네이티브 PPTX로 렌더하는 CLI다.
 //
-// 바이너리 하나가 모든 서브커맨드를 담는다는 계약을 유지한다 (PRD §10). 지금의 표면은
+// 바이너리 하나가 모든 서브커맨드를 담는다는 계약을 유지한다. 지금의 표면은
 // `init`·`build`·`check`·`watch`·`preview`·`version`이며, new/server/format/lsp는 아직이다.
 package main
 
@@ -118,13 +118,12 @@ func runBuild(args []string, stdout, stderr io.Writer) error {
 	targetList := fs.String("target", "", "렌더 타깃 (html, pptx — 쉼표로 여러 개)")
 	outDir := fs.String("out", "", "출력 디렉토리 (기본: balpyo.json의 outDir)")
 	projectDir := fs.String("project", ".", "프로젝트 루트")
-	// 테마 플래그가 설정을 덮는다 (ADR 0052) — 한 덱을 두 테마로 빌드해 견주는 것이 테마를
+	// 테마 플래그가 설정을 덮는다 — 한 덱을 두 테마로 빌드해 견주는 것이 테마를
 	// 고르는 방법이고, 그때 `balpyo.json`을 고쳐 되돌리는 절차는 되돌리기를 잊게 만든다.
 	theme := fs.String("theme", "", "테마 (기본: balpyo.json의 theme — 내장 테마만 받는다)")
 	strict := fs.Bool("strict", false, "경고를 에러로 승격한다")
 	// pptx 타깃은 이미 재므로 배치 검사를 공짜로 받는다 — 이 플래그가 뜻을 갖는 자리는 html만
-	// 쓰는 저작 루프다. 기본을 끈 이유는 브라우저 기동이 빌드의 가장 큰 고정 비용이라는 것이다
-	// (ADR 0039).
+	// 쓰는 저작 루프다. 기본을 끈 이유는 브라우저 기동이 빌드의 가장 큰 고정 비용이라는 것이다.
 	checkLayout := fs.Bool("check-layout", false, "배치를 검사한다 (넘침·스테이지 이탈·겹침)")
 	if err := fs.Parse(args); err != nil {
 		return err

@@ -46,7 +46,7 @@ func noBrowser(t *testing.T) {
 }
 
 // html 타깃만 빌드할 때는 브라우저를 띄우지 않는다 — 웹 렌더에 좌표가 필요하지 않고,
-// 브라우저 기동은 빌드 시간의 가장 큰 고정 비용이다 (~0.6초, PRD §9.3).
+// 브라우저 기동은 빌드 시간의 가장 큰 고정 비용이다 (~0.6초).
 func TestBuildHTMLOnlySkipsGeometryPass(t *testing.T) {
 	noBrowser(t)
 	dir := project(t, map[string]string{"slides/001_title.slide": textSlide})
@@ -111,7 +111,7 @@ func (m *recordingMeasurer) Measure(deck *soml.Deck, htmlPath string) (*geom.Geo
 }
 
 // 호출자가 준 측정기가 있으면 빌드는 그것을 쓴다 — `balpyo watch`가 브라우저 하나를 **웜으로**
-// 재사용하는 길이다 (ADR 0046). 기동이 저작 루프의 가장 큰 비용이므로 루프마다 다시 띄우지
+// 재사용하는 길이다. 기동이 저작 루프의 가장 큰 비용이므로 루프마다 다시 띄우지
 // 않는 것이 이 옵션의 전부이고, 측정기를 만들고 닫는 일은 루프가 소유한다.
 //
 // 측정기에 넘어가는 HTML은 **이 빌드가 낼 산출물 그대로**여야 한다 (그러지 않으면 잰 좌표가
@@ -139,9 +139,10 @@ func TestBuildUsesTheInjectedMeasurer(t *testing.T) {
 	}
 }
 
-// overflowProject는 배치 사고 3종을 담은 프로젝트다 (TASKS.md P1.1의 RED 목록).
+// overflowProject는 배치 사고 3종(콘텐츠 박스 이탈 · 작은 도형 안 텍스트 · 스테이지 이탈)을
+// 담은 프로젝트다.
 //
-// 세 사고를 슬라이드 하나에 섞지 않는 이유: 요소 하나가 받는 이탈 진단은 하나이므로(ADR 0039)
+// 세 사고를 슬라이드 하나에 섞지 않는 이유: 요소 하나가 받는 이탈 진단은 하나이므로
 // 섞으면 어느 규칙이 말했는지가 흐려진다. 넘친 양을 **선언한 px로** 정할 수 있게 도형 크기를
 // 쓴 것도 같은 이유다 — 폰트 줄바꿈에 기대면 판정이 아니라 폰트를 시험하게 된다.
 func overflowProject(t *testing.T) string {
@@ -153,7 +154,7 @@ func overflowProject(t *testing.T) string {
   <shape type="rect" fill="surface" w="1200" h="100"></shape>
 </slide>`,
 		// (2) 작은 도형 안 텍스트: 300×80 도형에 다섯 줄을 담는다. 줄은 `<br/>`가 정한다 —
-		// 문장이 몇 줄로 접히는지는 글꼴의 몫이라(ADR 0064) 그것에 기대면 측정 호스트의
+		// 문장이 몇 줄로 접히는지는 글꼴의 몫이라 그것에 기대면 측정 호스트의
 		// 글꼴에 따라 경고가 나오기도 하고 안 나오기도 한다 (CJK 글꼴이 없는 CI 러너).
 		"slides/002_small_shape.slide": `<slide id="small-shape">
   <shape type="rect" fill="surface" w="300" h="80">
@@ -168,7 +169,7 @@ func overflowProject(t *testing.T) string {
 }
 
 // `--check-layout`은 좌표를 쓰는 타깃이 없어도 지오메트리 패스를 켠다 — 저작 루프(html만)가
-// 배치 경고를 받는 길이다 (ADR 0039). 경고이므로 빌드는 성공하고 산출물도 나온다.
+// 배치 경고를 받는 길이다. 경고이므로 빌드는 성공하고 산출물도 나온다.
 func TestBuildCheckLayoutWarnsOnOverflow(t *testing.T) {
 	testkit.RequireChromium(t)
 	result, err := pipeline.Build(pipeline.Options{
@@ -246,8 +247,7 @@ func TestBuildCheckLayoutIsQuietOnAFittingDeck(t *testing.T) {
 	}
 }
 
-// 두 타깃을 함께 빌드하면 웹 렌더 → 지오메트리 → PPTX 순으로 돌고, 측정 결과가 결과에 남는다
-// (Iteration 1 리뷰와 다음 iteration의 좌표 스냅샷이 이 값을 본다).
+// 두 타깃을 함께 빌드하면 웹 렌더 → 지오메트리 → PPTX 순으로 돌고, 측정 결과가 결과에 남는다.
 func TestBuildPPTXRunsGeometryPass(t *testing.T) {
 	testkit.RequireChromium(t)
 	dir := project(t, map[string]string{

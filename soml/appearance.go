@@ -12,7 +12,7 @@ const TextElement = "text"
 // 적용한다. 이 계약이 깨지면 웹과 PPTX의 외관이 조용히 갈라지고, 그 종류의 버그는 두 타깃을
 // 나란히 렌더해 보기 전까지 드러나지 않는다.
 type Appearance struct {
-	// Text는 텍스트 외관이다. <text>와 (Iteration 2의) 텍스트 서브셋 태그에만 채워진다.
+	// Text는 텍스트 외관이다. <text>와 텍스트 서브셋 태그에만 채워진다.
 	Text *TextStyle
 	// Shape는 도형 외관이다 (shapestyle.go) — `<shape>`에만 채워진다. Text와 형제인 것이
 	// 이 계약이 텍스트 밖으로 처음 나간 자리다: 값 어휘·캐스케이드를 core가 한 번만
@@ -39,7 +39,7 @@ type Appearance struct {
 	// 연장이다: 렌더러가 href를 Attrs에서 찾기 시작하면 값 검증(core)을 지나지 않은 값이
 	// 산출물에 실릴 길이 생긴다.
 	Link string
-	// Reveal은 이 리스트 항목이 나타나는 스텝 번호다 (`<li reveal>`의 확정 값 — ADR 0063).
+	// Reveal은 이 리스트 항목이 나타나는 스텝 번호다 (`<li reveal>`의 확정 값).
 	// 0은 "순차 등장 없음"이고, 그 0이 reveal을 쓰지 않은 덱의 산출물을 이전과 같게 유지한다
 	// (Placement의 nil·Slot의 빈 문자열과 같은 태도).
 	//
@@ -53,7 +53,7 @@ type Appearance struct {
 	// 읽기만 한다. 배치가 값 층을 두 번 지나면 CSS와 지오메트리 패스가 갈라진다.
 	Container *ContainerLayout
 	// Box는 **텍스트 요소 자신의 박스**다 (`<text>`·블록·리스트 컨테이너의 `w`·`min-w`·
-	// `max-w` — ADR 0043). 크기 속성을 하나도 쓰지 않으면 nil로 남는다.
+	// `max-w`). 크기 속성을 하나도 쓰지 않으면 nil로 남는다.
 	//
 	// 컨테이너·도형은 이 필드를 쓰지 않는다 — 그쪽은 Container.Box·Shape.Box가 같은 구조체를
 	// 임베드로 갖는다. 텍스트에 세 번째 자리를 만든 이유는 TextStyle에 넣지 않은 이유와 같다:
@@ -64,7 +64,7 @@ type Appearance struct {
 	// Placement는 부모 안에서 자기 자리를 정하는 확정 배치다 — 배치 속성이 하나도 없으면
 	// nil로 남는다 (그 nil이 배치 없는 요소의 산출물을 이전과 같게 유지한다).
 	Placement *Placement
-	// Slot은 이 요소가 배정된 레이아웃 슬롯 이름이다 (`slot="title"`, PRD §7.3·ADR 0035).
+	// Slot은 이 요소가 배정된 레이아웃 슬롯 이름이다 (`slot="title"`).
 	// **슬라이드 직계 자식에만** 채워지고, 그 자식이 `slot` 속성을 쓴 경우에만 채워진다 —
 	// 슬롯 없는 직계 자식과 중첩 요소는 빈 문자열이다 (core.Resolve가 어휘를 검증하고 채운다).
 	// 빈 값이 곧 "슬롯 배치 없음"이라, 슬롯을 쓰지 않은 덱의 산출물이 이 필드 때문에 달라지지
@@ -89,7 +89,7 @@ type TextStyle struct {
 	// 문자열이 아니라 토큰 참조로 남는다 — PPTX fontScheme의 major/minor 참조가 되어야
 	// 내보낸 파일이 PowerPoint의 테마 폰트 변경을 따라간다.
 	Font FontRole
-	// Size는 논리 스테이지 px다 (PRD §13-5). pt·EMU 환산은 타깃 경계에서만 일어난다.
+	// Size는 논리 스테이지 px다. pt·EMU 환산은 타깃 경계에서만 일어난다.
 	Size float64
 	// Weight는 CSS font-weight 수치다 (400·700). OOXML은 굵기 단계가 없어 렌더러가
 	// 임계값으로 rPr@b를 판단한다 — 그 임계값은 렌더러의 몫이고 여기서는 수치를 보존한다.
@@ -103,13 +103,13 @@ type TextStyle struct {
 	// LineHeight는 폰트 크기 배수다 (무단위). 웹은 CSS line-height로 배수를 그대로 받지만
 	// PPTX는 **절대 줄간격**(lnSpc@spcPts)으로 환산해 낸다 (render/pptx.LineSpacing) —
 	// spcPct(배수)는 엔진마다 기준이 달라(CSS는 폰트 크기, LibreOffice는 폰트 고유 줄 높이)
-	// 같은 150%가 글줄을 밀었다 (PRD §13-1의 측정, NOTES.md 01/07). 배수 표현을 여기
+	// 같은 150%가 엔진마다 다른 높이로 글줄을 밀었다. 배수 표현을 여기
 	// 유지하는 이유: "크기의 몇 배"가 저자와 테마의 의도이고, 절대값 환산은 크기가 확정된
 	// 뒤 타깃 경계에서만 가능하다.
 	LineHeight float64
 	Color      Color
 	Align      TextAlign
-	// Anchor는 **세로 앵커**다 (PRD §7.6의 text 행). 정하지 않으면 빈 문자열이다.
+	// Anchor는 **세로 앵커**다 (`anchor`: top·center·bottom). 정하지 않으면 빈 문자열이다.
 	//
 	// 다른 필드와 달리 역할 기본값이 채우지 않는 유일한 자리다: 앵커가 뜻을 갖는 곳은
 	// 내용보다 큰 박스 안이고, 그런 박스는 도형뿐이다 (슬라이드 직속 텍스트 박스는 잰
@@ -120,7 +120,7 @@ type TextStyle struct {
 }
 
 // TextRole은 텍스트 역할이다 — 1층의 HTML 서브셋(`<p>`, `<h2>` …)과 2층의 `<text role>`이
-// 공유하는 타이포그래피 계약이다 (PRD §8.3). 어휘는 5종으로 닫혀 있다.
+// 공유하는 타이포그래피 계약이다. 어휘는 5종으로 닫혀 있다.
 type TextRole string
 
 const (
@@ -132,7 +132,7 @@ const (
 )
 
 // DefaultTextRole은 `role`을 생략한 `<text>`의 역할이다. `<p>` ≡ `<text role="body">`라는
-// 등가(PRD §7.7)의 다른 쪽 끝이다.
+// 등가의 다른 쪽 끝이다.
 const DefaultTextRole = RoleBody
 
 // TextRoles는 역할 어휘 전체다. 순서가 진단 메시지에 실리는 순서이자 문서 순서다 —
@@ -185,27 +185,27 @@ func TextAnchors() []TextAnchor {
 //
 // 토큰으로 선언된 색을 여기서 RGB로 눕히지 않는 것이 이 제품의 핵심 계약이다: PPTX
 // 렌더러는 토큰 색을 `schemeClr` 참조로 내보내고, 그래서 내보낸 파일이 PowerPoint 안에서도
-// 테마 색 편집을 따라간다 (PRD §9.4). RGB로 눕히면 그 참조를 복원할 방법이 없다.
+// 테마 색 편집을 따라간다. RGB로 눕히면 그 참조를 복원할 방법이 없다.
 type Color struct {
 	// Token은 테마 색 토큰 이름이다 (Theme.Color로 값을 찾는다). 비어 있으면 리터럴 색이다.
 	Token string
 	// RGB는 리터럴 색이다 — 대문자 6자리 16진수이고 `#`는 붙지 않는다. 웹은 `#`를,
 	// OOXML은 맨몸 16진수를 요구하므로 접두는 각 렌더러가 붙인다.
 	RGB string
-	// Mod는 색 변형 함수다 (`shade`/`tint`/`alpha` — PRD §7.6, Iteration 8). nil이면
+	// Mod는 색 변형 함수다 (`shade`/`tint`/`alpha`). nil이면
 	// 변형 없는 색이다. **변형은 토큰 참조를 눕히지 않는다**: 변형된 토큰 색은 Token을
 	// 그대로 두고 Mod만 얹으므로, PPTX가 `schemeClr` + `lumMod`/`lumOff`/`alpha`로 내어
-	// 테마 색 편집을 여전히 따라간다 (§9.4). 그래서 Mod는 Gradient와 달리 Token/RGB와
+	// 테마 색 편집을 여전히 따라간다. 그래서 Mod는 Gradient와 달리 Token/RGB와
 	// **함께** 산다 — 변형의 밑색이 곧 이 Color의 Token/RGB다.
 	Mod *ColorMod
-	// Gradient는 그라디언트다 (`gradient(…)` — PRD §7.6, Iteration 8). nil이면 단색이다.
+	// Gradient는 그라디언트다 (`gradient(…)`). nil이면 단색이다.
 	// 단색과 달리 Token/RGB를 쓰지 않는다: 그라디언트는 **여러 스톱**이라 한 색 참조에
 	// 담을 수 없다. 스톱 각각이 토큰·리터럴을 유지하므로 PPTX `gradFill`의 `gs`가 스톱마다
 	// `schemeClr`/`srgbClr`를 낸다.
 	Gradient *Gradient
 }
 
-// ColorMod는 단색에 얹는 색 변형이다 (PRD §7.6·§13-5의 `shade`/`tint`/`alpha`).
+// ColorMod는 단색에 얹는 색 변형이다 (`shade`/`tint`/`alpha`).
 //
 // **중첩은 없다** (v1): 변형의 밑색은 토큰·리터럴 단색뿐이고, 변형된 색을 다시 변형하거나
 // 그라디언트 스톱으로 쓰지 못한다. 이 제약이 매핑을 1:1로 유지한다 — 웹은 `color-mix()`
@@ -234,7 +234,7 @@ const (
 // ColorMods는 변형 어휘 전체다 (순서 = 진단 메시지 순서).
 func ColorMods() []ColorModKind { return []ColorModKind{ModShade, ModTint, ModAlpha} }
 
-// Gradient는 확정된 그라디언트다 (PRD §7.6·§13-5).
+// Gradient는 확정된 그라디언트다 (`gradient(색… [, 각도deg])`).
 //
 // 스톱은 **균등 배치**다 (스톱 위치 지정은 v2) — n개 스톱은 0, 1/(n-1), …, 1에 놓인다.
 // 각도는 CSS `linear-gradient` 시맨틱(0deg = 아래→위, 시계방향)이고, OOXML `gradFill@ang`
@@ -278,7 +278,7 @@ func VariantColor(base Color, kind ColorModKind, amount float64) Color {
 	return base
 }
 
-// FontRole은 폰트 토큰 이름이다 (PRD §8.4의 `font` 토큰 3종).
+// FontRole은 폰트 토큰 이름이다 (테마의 `font` 토큰 3종).
 type FontRole string
 
 const (
@@ -299,26 +299,26 @@ type Theme struct {
 	// clrScheme)과 진단 메시지가 결정적이어야 하기 때문이다.
 	Colors []ColorToken
 	Fonts  []FontToken
-	// Spaces는 공간 토큰이다 (PRD §8.4의 `space` 스케일) — 레이아웃 태그의 `gap`/`pad`
+	// Spaces는 공간 토큰이다 (테마의 `space` 스케일) — 레이아웃 태그의 `gap`/`pad`
 	// 값 어휘가 여기서 온다. 색·폰트와 함께 이 표에 있는 이유: 배치조차 테마의 리듬을
 	// 따라가야 두 타깃의 여백이 한 곳에서 나온다.
 	Spaces []SpaceToken
-	// Radii는 모서리 반경 토큰이다 (PRD §8.4의 `shape.radius-*`) — `radius="lg"`의 값
+	// Radii는 모서리 반경 토큰이다 (테마의 `radius` 토큰) — `radius="lg"`의 값
 	// 어휘다.
 	Radii []RadiusToken
-	// Shadows는 그림자 토큰이다 (PRD §8.4의 `shape.shadow-soft`) — `shadow="soft"`의 값
+	// Shadows는 그림자 토큰이다 (테마의 `shadow` 토큰) — `shadow="soft"`의 값
 	// 어휘이자 **유일한** 어휘다 (도형 외관은 그림자 수치를 받지 않는다 — ShadowToken).
 	Shadows []ShadowToken
 	// Layouts는 레이아웃 이름 → 스테이지에 얹는 **정규화된 배치 선언**이다 (`layouts/*.css`의
-	// 실체, PRD §7.3·§8.2). 색·폰트처럼 이 표에 있는 이유: 배치도 테마가 소유하고, 웹의 스테이지
+	// 실체). 색·폰트처럼 이 표에 있는 이유: 배치도 테마가 소유하고, 웹의 스테이지
 	// CSS와 지오메트리 패스가 재는 박스가 **같은 한 표**에서 나와야 두 타깃의 배치가 갈라지지
 	// 않는다. 값은 주석을 벗긴 `프로퍼티: 값; …` 문자열이고, 배치 CSS가 없는 레이아웃
 	// (content 세로 스택·canvas 자유 배치는 렌더러가 소유)은 **맵에 없다** — 없다는 것이 곧
 	// "스테이지에 레이아웃 클래스를 붙이지 않는다"는 신호다 (render/web writeStage).
 	Layouts map[string]string
-	// SlotLayouts는 레이아웃 이름 → **슬롯 영역 배치 선언**이다 (`layouts/*.slots.css`의 실체,
-	// PRD §7.3·ADR 0035). Layouts와 형제이지만 겨누는 선택자가 다르다: Layouts는 흐름 배치
-	// (문서 순서, M1.1)를 `.balpyo-layout-<이름>`에 얹고, 이 표는 **슬롯 영역**(grid-template-areas)을
+	// SlotLayouts는 레이아웃 이름 → **슬롯 영역 배치 선언**이다 (`layouts/*.slots.css`의 실체).
+	// Layouts와 형제이지만 겨누는 선택자가 다르다: Layouts는 흐름 배치
+	// (문서 순서)를 `.balpyo-layout-<이름>`에 얹고, 이 표는 **슬롯 영역**(grid-template-areas)을
 	// `.balpyo-layout-<이름>.balpyo-slots`에 얹는다 — 슬롯을 실제로 쓴 슬라이드에만 붙는
 	// 모디파이어라(render/web writeStage), 슬롯을 쓰지 않은 덱의 흐름 배치는 이 표 때문에
 	// 달라지지 않는다 (골든 불변). 슬롯 영역이 없는 레이아웃(canvas·content)은 맵에 없다.
@@ -420,9 +420,9 @@ func (t Theme) ShadowNames() []string {
 // 없다. PowerPoint에서 모서리를 바꾸는 것은 도형의 노란 핸들을 끄는 일이지 토큰을 바꾸는
 // 일이 아니다 — 배치가 좌표로 구워지는 것과 같은 종류의 손실이다.
 type RadiusToken struct {
-	// Name은 PRD §8.4의 `shape.radius-*` 어휘다: sm, md, lg.
+	// Name은 radius 토큰 어휘다: sm, md, lg.
 	Name string
-	// Px는 논리 스테이지 px다 (PRD §13-5).
+	// Px는 논리 스테이지 px다.
 	Px float64
 }
 
@@ -445,9 +445,9 @@ type RadiusToken struct {
 // 유지하므로 `outerShdw`가 `schemeClr`를 낼 수 있다). 테마 파트에 그림자를 실을 자리가
 // **없지는 않다** — `fmtScheme/effectStyleLst`가 그것이다. 그런데 그 목록은 스타일이 세
 // 개뿐이고 도형이 `style/effectRef`로 하나를 고르는 구조라, 도형마다 다른 그림자를 실을 수
-// 없다. 즉 "없다"가 아니라 **"있지만 v1은 쓰지 않는다"**다 (매핑의 실제 결정은 항목 05).
+// 없다. 즉 "없다"가 아니라 **"있지만 v1은 쓰지 않는다"**다.
 type ShadowToken struct {
-	// Name은 PRD §8.4의 `shape.shadow-*` 어휘다: soft.
+	// Name은 shadow 토큰 어휘다: soft.
 	Name string
 	// Dist는 그림자가 도형에서 밀려난 거리다 (논리 px).
 	Dist float64
@@ -459,9 +459,8 @@ type ShadowToken struct {
 	Blur float64
 	// Color는 그림자 색이다 — 토큰 참조가 유지된다 (PPTX가 `schemeClr`를 내려면 필요하다).
 	Color Color
-	// Alpha는 그림자 색의 불투명도다 (0~1). 색과 분리한 이유: 색 변형 함수 `alpha()`는
-	// Iteration 8이고, 그때까지 토큰 색에 투명도를 실을 표기가 값 문법에 없다. 그림자는
-	// 반투명이 기본이므로 표가 그 값을 직접 갖는다.
+	// Alpha는 그림자 색의 불투명도다 (0~1). 색과 분리한 이유: 그림자는 반투명이 기본이므로
+	// 색 값의 `alpha()` 변형에 기대지 않고 표가 그 값을 직접 갖는다.
 	Alpha float64
 }
 
@@ -473,9 +472,9 @@ type ShadowToken struct {
 // gap을 편집한다는 것은 도형을 옮긴다는 뜻이지 토큰을 바꾸는 일이 아니다. 이 비대칭은
 // 두 채널(외관/배치)이 타깃 경계에서 다르게 살아남는다는 사실의 직접적인 결과다.
 type SpaceToken struct {
-	// Name은 표준 토큰 어휘의 이름이다 (PRD §8.4): xs, sm, md, lg, xl, 2xl.
+	// Name은 표준 토큰 어휘의 이름이다: xs, sm, md, lg, xl, 2xl.
 	Name string
-	// Px는 논리 스테이지 px다 (PRD §13-5) — pt·EMU 환산은 타깃 경계에서만 일어난다.
+	// Px는 논리 스테이지 px다 — pt·EMU 환산은 타깃 경계에서만 일어난다.
 	Px float64
 }
 
@@ -485,7 +484,7 @@ type SpaceToken struct {
 // PowerPoint의 테마 색 편집을 따라가지 못해, 사용자가 색을 바꿨을 때 덱 안에서 색 하나가
 // 어긋난 채 남는다 — 그 상태는 파일을 열어 보기 전까지 보이지 않는다.
 type ColorToken struct {
-	// Name은 표준 토큰 어휘의 이름이다 (PRD §8.4): fg, bg, muted, accent1 ….
+	// Name은 표준 토큰 어휘의 이름이다: fg, bg, muted, accent1 ….
 	Name string
 	// RGB는 대문자 6자리 16진수다 (`#` 없음).
 	RGB string
@@ -499,7 +498,7 @@ type ColorToken struct {
 
 // ColorSlots는 OOXML clrScheme의 **열두 자리**다 — 스키마가 요구하는 순서 그대로.
 //
-// 이 목록이 색 토큰 표의 **상한**이다 (ADR 0055): 모든 색 토큰이 슬롯을 가져야 하고 슬롯은
+// 이 목록이 색 토큰 표의 **상한**이다: 모든 색 토큰이 슬롯을 가져야 하고 슬롯은
 // 겹칠 수 없으므로 한 테마의 색 이름은 최대 열둘이다. 그래서 부모를 물려받은 테마는 색을
 // 더하는 대신 **갈아 끼운다** — 반경·공간·그림자·폰트에는 이 상한이 없다 (SpaceToken의
 // 주석이 그 비대칭의 근거를 적는다).

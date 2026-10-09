@@ -2,7 +2,7 @@ package pptx
 
 import "fmt"
 
-// 이 파일은 저자의 `alt`이 OOXML의 어디에 붙는가다 (ADR 0058): `p:cNvPr@descr` — PowerPoint의
+// 이 파일은 저자의 `alt`이 OOXML의 어디에 붙는가다: `p:cNvPr@descr` — PowerPoint의
 // "대체 텍스트" 칸이다. 도형·그림·표 프레임 셋이 **같은 요소**를 쓰므로 방출도 한 자리다.
 
 // cNvPrXML은 `p:cNvPr` 한 줄이다 — 이름은 지오메트리 식별자이고(PowerPoint 선택 창과 진단

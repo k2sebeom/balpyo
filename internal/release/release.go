@@ -1,10 +1,10 @@
-// Package release는 **릴리스 절차**다 (ADR 0061): 플랫폼 표, 아카이브 이름, 체크섬 파일,
+// Package release는 **릴리스 절차**다: 플랫폼 표, 아카이브 이름, 체크섬 파일,
 // Homebrew 포뮬러, 그리고 빌드에 주입하는 플래그를 한 자리에서 소유한다.
 //
 // 왜 쉘 스크립트가 아닌가: 쉘에 든 절차는 테스트가 읽지 않는다. 플랫폼 표가 쉘 루프에 있으면
 // 타깃 하나를 지우는 커밋을 아무 게이트도 보지 못하고, 아카이브 이름을 바꾸는 커밋은 사람이
 // 받는 URL을 조용히 바꾼다. `make dist`는 이 패키지를 부르는 한 줄이고(internal/release/cmd),
-// 테스트는 사람이 받는 것과 **같은 코드**를 판정한다 (ADR 0047의 internal/preview와 같은 자리).
+// 테스트는 사람이 받는 것과 **같은 코드**를 판정한다 (internal/preview와 같은 자리).
 package release
 
 import (
@@ -23,14 +23,14 @@ import (
 )
 
 // binaryName은 아카이브 안에 들어가는 이름이자 설치되는 이름이다 — 바이너리 하나가 모든
-// 서브커맨드를 담는다 (PRD §10).
+// 서브커맨드를 담는다.
 const binaryName = "balpyo"
 
 // ChecksumsName은 체크섬 파일 하나의 이름이다. 형식은 `sha256sum -c`가 읽는 그것이다.
 const ChecksumsName = "SHA256SUMS"
 
 // FormulaName은 생성되는 Homebrew 포뮬러다. 이것을 tap 저장소에 올리는 일은 사람의 것이다
-// (우리 저장소가 아닌 곳에 쓰는 토큰을 CI에 두지 않는다 — ADR 0061 결정 7).
+// (우리 저장소가 아닌 곳에 쓰는 토큰을 CI에 두지 않는다).
 const FormulaName = "balpyo.rb"
 
 // Target은 아카이브 하나가 향하는 플랫폼이다.
@@ -41,7 +41,7 @@ type Target struct {
 
 func (t Target) String() string { return t.OS + "/" + t.Arch }
 
-// Targets는 아카이브를 놓는 플랫폼 표다 — **재본 넷**이다 (ADR 0061 결정 3).
+// Targets는 아카이브를 놓는 플랫폼 표다 — **재본 넷**이다.
 //
 // 윈도우가 없는 근거는 없음이 아니라 **재보지 않았음**이다: 경로 구분자·CRLF·폰트 대체·
 // `soffice` 위치를 한 번도 측정하지 않았고, 측정하지 않은 플랫폼의 아카이브를 놓는 것은
@@ -61,7 +61,7 @@ func ArchiveName(version string, t Target) string {
 }
 
 // LDFlags는 릴리스 빌드에 주입하는 **하나**다: 태그. 커밋·시각·더러움은 툴체인이 `vcs.*`에
-// 박으므로 여기서 다시 넣으면 같은 사실의 두 번째 출처가 생긴다 (ADR 0061 결정 4).
+// 박으므로 여기서 다시 넣으면 같은 사실의 두 번째 출처가 생긴다.
 func LDFlags(version string) string {
 	return "-X main.version=" + version
 }
@@ -159,7 +159,7 @@ type Result struct {
 
 // Build는 타깃마다 크로스 컴파일해 아카이브를 놓고, 체크섬 한 파일과 포뮬러 하나를 낸다.
 //
-// 재현성은 계약이다 (ADR 0061 결정 9): `CGO_ENABLED=0` · `-trimpath` · 주입은 태그 하나 ·
+// 재현성은 계약이다: `CGO_ENABLED=0` · `-trimpath` · 주입은 태그 하나 ·
 // tar 헤더에 시각과 소유자를 남기지 않는다. 같은 태그에서 두 번 빌드하면 같은 바이트가 나온다.
 func Build(ctx context.Context, opts Options) (Result, error) {
 	targets := opts.Targets

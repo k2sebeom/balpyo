@@ -11,10 +11,10 @@ import (
 	"github.com/k2sebeom/balpyo/internal/testkit"
 )
 
-// `balpyo preview`의 CLI 계약이다 (ADR 0047 · ADR 0066).
+// `balpyo preview`의 CLI 계약이다.
 //
 //  1. 갤러리 경로를 **찍는다** — 사람이 그 줄을 열어 눈으로 본다.
-//  2. 판정하지 않는다 — 픽셀 diff도 허용 오차도 없다 (ADR 0066).
+//  2. 판정하지 않는다 — 픽셀 diff도 허용 오차도 없다.
 //  3. `--target`을 주지 않으면 도구가 없을 때 웹 열만으로 갤러리를 내고 그 사실을 말한다.
 //     pptx를 **명시했는데** 도구가 없으면 빌드 전에 멈춘다.
 

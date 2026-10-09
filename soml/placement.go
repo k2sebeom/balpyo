@@ -29,12 +29,10 @@ const (
 	FlowColumn
 	// FlowGrid는 `<grid>`다 — `display:grid`.
 	FlowGrid
-	// FlowStack은 `<stack>`이다 — 단일 셀 `display:grid`로 모든 자식이 같은 칸에 겹친다
-	// (PRD §13-3). **KindStack이 아니라 흐름으로 갈리는** 것이 Iteration 6의 결정이다:
-	// 파서(콘텐츠 모델·자식 어휘)·core(컨테이너 속성 해석)·PPTX(도형 0개 + 자식 재귀)·
-	// 지오메트리(재지만 좌표 미소비)가 `<row>`와 전부 같고, 다른 것은 웹의 CSS 한 줄뿐이며
-	// 그 한 줄은 이미 종류가 아니라 흐름으로 갈린다. FlowOf의 존재가 곧 확장 지점이다
-	// (ADR — 항목 07).
+	// FlowStack은 `<stack>`이다 — 단일 셀 `display:grid`로 모든 자식이 같은 칸에 겹친다.
+	// **KindStack이 아니라 흐름으로 갈리는** 이유: 파서(콘텐츠 모델·자식 어휘)·core(컨테이너
+	// 속성 해석)·PPTX(도형 0개 + 자식 재귀)·지오메트리(재지만 좌표 미소비)가 `<row>`와 전부
+	// 같고, 다른 것은 웹의 CSS 한 줄뿐이며 그 한 줄은 이미 종류가 아니라 흐름으로 갈린다. FlowOf의 존재가 곧 확장 지점이다.
 	FlowStack
 )
 
@@ -53,9 +51,9 @@ func FlowOf(name string) ContainerFlow {
 	return FlowRow
 }
 
-// ContainerLayout은 레이아웃 컨테이너의 확정 배치다 (PRD §7.4 컨테이너 표).
+// ContainerLayout은 레이아웃 컨테이너의 확정 배치다.
 //
-// 필드 순서는 PRD 표 순서다. "정하지 않음"은 포인터의 nil과 닫힌 어휘의 빈 문자열로
+// 필드 순서는 컨테이너 속성 표의 순서다. "정하지 않음"은 포인터의 nil과 닫힌 어휘의 빈 문자열로
 // 나타낸다 — `gap="0"`은 저자가 정한 0이고 "gap을 말하지 않음"과 다르다 (textPatch가
 // 포인터를 쓰는 것과 같은 근거).
 type ContainerLayout struct {
@@ -74,7 +72,7 @@ type ContainerLayout struct {
 	Box
 }
 
-// Placement는 부모 컨테이너 안에서 자기 자리를 정하는 확정 값이다 (PRD §7.4 자식 표).
+// Placement는 부모 컨테이너 안에서 자기 자리를 정하는 확정 값이다.
 //
 // 요소 종류와 무관하게 **같은 표**가 채운다 — `<text>`·블록·리스트·컨테이너·`<spacer>`가
 // 전부 이 구조체를 받는다. 종류마다 다른 구조체를 두면 자식 속성 하나를 추가할 때 어느
@@ -101,19 +99,19 @@ type Placement struct {
 	// 밖으로 걸친 배지) — soml.Length가 이미 담을 수 있고, 그 부호 허용은 값 층이 gate한다.
 	X *Length
 	Y *Length
-	// Style은 정규화된 **배치 CSS 선언 목록**이다 (탈출구 — PRD §7.9). `prop: value`를
+	// Style은 정규화된 **배치 CSS 선언 목록**이다 (탈출구). `prop: value`를
 	// `; `로 이은 문자열이고, 빈 문자열이면 선언이 없다. 문자열인 이유: 웹 렌더러가 인라인
 	// style에 그대로 이어 붙이는 것이 이 값의 유일한 소비처이고, 값 문법은 엔진이 보지
 	// 않는다는 것이 탈출구의 계약이다 (core/style.go).
 	Style string
 }
 
-// Length는 확정된 길이 값이다 (PRD §13-5의 단위 계약).
+// Length는 확정된 길이 값이다.
 //
 // 수치(논리 스테이지 px)·백분율·**공간 토큰 참조** 세 상태다. `fill`은 값 층에서 **해당
 // 축의 100%**로 눕는다 (Percent=true, Value=100) — `fill`을 별도 상태로 남기지 않은 이유:
 // 두 상태가 같은 CSS를 내야 하는데 상태가 둘이면 렌더러마다 다르게 낼 자리가 생기고,
-// `flex-grow`는 이미 `grow` 속성으로 따로 있다 (ADR 감 — 항목 06).
+// `flex-grow`는 이미 `grow` 속성으로 따로 있다.
 type Length struct {
 	// Value는 Percent가 거짓이면 논리 스테이지 px, 참이면 백분율 수치다. 토큰 참조에도
 	// 해석된 px가 함께 담긴다 (Token 주석).
@@ -220,7 +218,7 @@ func BoxAligns() []BoxAlign {
 
 // BoxJustify는 주축 분배다 (`justify-content`).
 //
-// `between`·`around`·`evenly`는 CSS의 `space-*` 접두를 뗀 이름이다 (PRD §7.4 표) —
+// `between`·`around`·`evenly`는 CSS의 `space-*` 접두를 뗀 이름이다 —
 // 접두를 붙이는 번역은 렌더러의 몫이다.
 type BoxJustify string
 
@@ -239,13 +237,13 @@ func BoxJustifies() []BoxJustify {
 		BoxJustifyBetween, BoxJustifyAround, BoxJustifyEvenly}
 }
 
-// StackAnchor는 stack 셀 안 자식의 **9지점 앵커**다 (`at` — PRD §7.4·§7.4의 자식 표).
+// StackAnchor는 stack 셀 안 자식의 **9지점 앵커**다 (`at`).
 //
 // 어휘는 3×3 격자의 **합성 이름**이다 (`top-left`…`bottom-right`). 짧은 이름(`top`·`left`)과
 // 저울질했고 합성을 골랐다: 진단 목록이 3×3으로 읽히고, 저자가 표를 외우지 않아도 "세로 축
 // 하나 · 가로 축 하나를 잇는다"는 규칙에서 이름을 유도할 수 있다. `center`만 한 단어인 것이
 // 유일한 예외이며 `center-center`는 받지 않는다 — 같은 자리를 두 이름으로 받지 않는다는
-// 기준(ADR 0027)이다.
+// 기준이다.
 //
 // BoxAlign 두 개(align/justify 쌍)로 눕히는 길과도 저울질했고 닫는 쪽을 골랐다: 확정 값에서
 // 웹이 `place-self`로 내는 것이 정확히 그 일이지만, 어휘를 align×justify로 열면
@@ -284,7 +282,7 @@ func (e *Element) Container() *ContainerLayout {
 	return e.Appearance.Container
 }
 
-// Box는 이 요소의 확정 텍스트 박스다 (가로 크기 — ADR 0043). 크기 속성이 없거나 해석
+// Box는 이 요소의 확정 텍스트 박스다 (가로 크기). 크기 속성이 없거나 해석
 // 전이면 nil이고, 컨테이너·도형에서는 언제나 nil이다 (그쪽은 Container()·ShapeStyle()이
 // Box를 임베드로 갖는다).
 func (e *Element) Box() *Box {

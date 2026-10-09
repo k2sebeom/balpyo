@@ -1,4 +1,4 @@
-<!-- 병합 격자 — `colspan`/`rowspan`이 두 타깃에서 같은 격자가 되는가 (ADR 0036).
+<!-- 병합 격자 — `colspan`/`rowspan`이 두 타깃에서 같은 격자가 되는가.
 
      웹은 HTML 속성 그대로(`colspan`/`rowspan`) 내고 브라우저가 격자를 짠다. PPTX는 그
      격자를 **펼쳐서** 낸다: 병합 셀은 `gridSpan`/`rowSpan`을 갖고, 병합에 덮인 자리마다

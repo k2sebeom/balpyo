@@ -53,7 +53,7 @@ func liSteps(t *testing.T, out string) []string {
 	return steps
 }
 
-// 스텝 번호는 마크업이 나른다 (ADR 0063 결정 5) — 값 없는 reveal은 그 슬라이드에서 자기
+// 스텝 번호는 마크업이 나른다 — 값 없는 reveal은 그 슬라이드에서 자기
 // 차례를 받고, 번호는 슬라이드마다 1부터 다시 센다.
 func TestRevealStepsAreNumberedPerSlide(t *testing.T) {
 	out := renderString(t, revealDeck(t,
@@ -74,8 +74,7 @@ func TestRevealStepsAreNumberedPerSlide(t *testing.T) {
 	}
 }
 
-// 번호를 준 reveal은 자기 차례를 덮어쓰고, 같은 번호를 받은 항목들은 함께 나타난다
-// (ADR 0063 결정 2).
+// 번호를 준 reveal은 자기 차례를 덮어쓰고, 같은 번호를 받은 항목들은 함께 나타난다.
 func TestRevealExplicitStepOverridesItsTurn(t *testing.T) {
 	out := renderString(t, revealDeck(t,
 		`  <ul>
@@ -91,7 +90,7 @@ func TestRevealExplicitStepOverridesItsTurn(t *testing.T) {
 }
 
 // reveal을 쓰지 않은 덱의 마크업은 이 기능 전과 같다 — 속성이 없으면 렌더러가 아무것도
-// 싣지 않는다 (ADR 0063 결과).
+// 싣지 않는다.
 func TestRevealAbsentLeavesMarkupAlone(t *testing.T) {
 	out := renderString(t, revealDeck(t, `  <ul>
     <li>하나</li>
@@ -109,7 +108,7 @@ func TestRevealAbsentLeavesMarkupAlone(t *testing.T) {
 	}
 }
 
-// 숨기는 곳은 **발표자 뷰 하나**다 (ADR 0063 결정 3): 문서 뷰·측정 뷰·오버뷰·인쇄는 전부
+// 숨기는 곳은 **발표자 뷰 하나**다: 문서 뷰·측정 뷰·오버뷰·인쇄는 전부
 // 전개된 상태를 본다. 게이트 밖으로 새면 지오메트리 패스가 숨은 항목을 재고 그 좌표가
 // PPTX 텍스트 박스가 된다 — 조용한 실패의 전형이다.
 func TestRevealHidingIsPresenterOnly(t *testing.T) {
@@ -135,7 +134,7 @@ func TestRevealHidingIsPresenterOnly(t *testing.T) {
 			continue
 		}
 		hides++
-		// 숨기는 수단은 visibility다 (결정 4) — display: none은 등장마다 목록을 밀어 올린다.
+		// 숨기는 수단은 visibility다 — display: none은 등장마다 목록을 밀어 올린다.
 		if strings.Contains(rule.body, "display: none") {
 			t.Errorf("스텝을 display: none으로 숨긴다 (%q) — 등장마다 나머지 줄이 움직인다", rule.selector)
 		}
@@ -181,7 +180,7 @@ func revealRules(css string) []revealRule {
 	}
 }
 
-// 인쇄는 전개된 상태다 (ADR 0063 결정 3) — 발표 중에 Cmd+P를 누른 사람의 종이에 아직
+// 인쇄는 전개된 상태다 — 발표 중에 Cmd+P를 누른 사람의 종이에 아직
 // 나타나지 않은 항목이 빠지면 안 된다.
 func TestPrintShowsEveryRevealStep(t *testing.T) {
 	deck := revealDeck(t, `  <ul>
@@ -198,7 +197,7 @@ func TestPrintShowsEveryRevealStep(t *testing.T) {
 	}
 }
 
-// 지금 스텝의 판정은 런타임의 것이다 (ADR 0063 결정 5) — CSS는 수를 비교할 수 없다.
+// 지금 스텝의 판정은 런타임의 것이다 — CSS는 수를 비교할 수 없다.
 func TestRuntimeDrivesRevealSteps(t *testing.T) {
 	for _, want := range []string{RevealAttr, viewerRevealedClass} {
 		if !strings.Contains(runtimeJS, want) {

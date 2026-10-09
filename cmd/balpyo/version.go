@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// `balpyo version`은 **버그 리포트에 그대로 붙는 세 줄**이다 (ADR 0061 결정 5):
+// `balpyo version`은 **버그 리포트에 그대로 붙는 세 줄**이다:
 //
 //	balpyo v0.3.0
 //	커밋 feda13c (2026-09-21T01:27:36Z)
@@ -36,7 +36,7 @@ type buildInfo struct {
 }
 
 // collectBuildInfo는 실행 중인 바이너리의 사실을 모은다. 순수 함수와 갈라 두는 이유는 테스트다:
-// `go test -c`로 만든 바이너리에는 `vcs.*`가 하나도 없으므로(ADR 0061 실측) 판정은 아래
+// `go test -c`로 만든 바이너리에는 `vcs.*`가 하나도 없으므로 판정은 아래
 // buildInfoFrom에 값을 넣어서 한다.
 func collectBuildInfo() buildInfo {
 	info, ok := debug.ReadBuildInfo()

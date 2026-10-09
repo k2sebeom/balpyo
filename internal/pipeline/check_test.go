@@ -1,4 +1,4 @@
-// `balpyo check`의 판정 계약이다 (ADR 0048): Build와 **같은 판정**, 디스크에는 **아무것도**.
+// `balpyo check`의 판정 계약이다: Build와 **같은 판정**, 디스크에는 **아무것도**.
 package pipeline_test
 
 import (

@@ -1,0 +1,25 @@
+<!-- 수치 한 장 — 흐름 모드. 수치는 기업 덱의 카드 그리드 한 장을 python-pptx로 다시 만든 역분석에서
+     왔다. 왼쪽 판이 그 비용(128)을, 오른쪽 판이 같은 그림의 SOML 한 줄을 보여 준다 — 숫자 하나만
+     가운데 띄우면 듣는 사람은 "128회가 무엇과 비교해서인가"를 묻는다. 두 판이 `grow="1"` 그리드의
+     stretch로 제목 아래 높이를 다 받는다. -->
+<slide id="cost">
+  <text role="caption">기업 덱의 카드 그리드 슬라이드 한 장을 python-pptx로 다시 만들었을 때</text>
+  <grid cols="3fr 2fr" gap="lg" grow="1">
+    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="lg">
+      <col gap="sm" h="fill" justify="center">
+        <text variant="kicker">python-pptx</text>
+        <text role="title" size="180" color="accent1">128</text>
+        <text role="heading" size="30">수동 좌표 계산 · 그리고 raw XML 수술 10회</text>
+      </col>
+    </shape>
+    <shape type="rounded-rect" fill="accent1" border="none" radius="lg" w="fill" pad="lg">
+      <col gap="md" h="fill" justify="center">
+        <text variant="kicker" color="bg">balpyo</text>
+        <text role="title" size="88" color="bg">1줄</text>
+        <text role="code" size="22" color="bg">&lt;grid cols="4"&gt;</text>
+        <text role="body" color="bg">좌표는 브라우저가 잰다.</text>
+      </col>
+    </shape>
+  </grid>
+  <note>여기가 제품의 출발점이다. 저자가 계산할 것이 남아 있으면 자동화가 아니다.</note>
+</slide>

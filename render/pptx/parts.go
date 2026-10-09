@@ -55,8 +55,8 @@ type part struct {
 
 // buildParts는 덱 하나를 OOXML 파트 목록으로 만든다: 프레젠테이션 + 마스터 + 빈 레이아웃 +
 // 테마(토큰 표에서 컴파일) + **미디어 파트**(에셋 표에서 — 유일하게 XML이 아닌 파트다) +
-// 슬라이드당 spTree + 노트가 있으면 노트 마스터와 노트 슬라이드. 레이아웃 카탈로그·
-// 플레이스홀더는 Iteration 10이다.
+// 슬라이드당 spTree + 노트가 있으면 노트 마스터와 노트 슬라이드. 슬롯을 쓴 슬라이드가 있으면
+// 그 레이아웃마다 플레이스홀더 파트가 더해진다.
 //
 // g는 지오메트리 패스가 잰 좌표다. 좌표가 필요한 요소가 없는 덱(빈 슬라이드만)은 nil로 온다 —
 // 요소가 있는데 nil이면 Renderer.checkGeometry가 이미 멈췄다.
@@ -127,7 +127,7 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		return nil, err
 	}
 	data.MediaDefaults = mediaDefs
-	// 슬롯을 쓴 슬라이드가 있으면 그 레이아웃마다 플레이스홀더 파트를 낸다 (ADR 0035) —
+	// 슬롯을 쓴 슬라이드가 있으면 그 레이아웃마다 플레이스홀더 파트를 낸다 —
 	// 없으면 nil이라 마스터·Content_Types·슬라이드 관계가 예전과 바이트 동일하다 (골든 불변).
 	data.SlotLayouts = deckSlotLayouts(deck)
 	if len(data.SlotLayouts) > 0 {
@@ -521,8 +521,8 @@ const masterRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.openx
 </Relationships>
 `
 
-// 레이아웃은 아직 빈 레이아웃 하나뿐이다. 표준 레이아웃 카탈로그 11종과 슬롯 →
-// 플레이스홀더 매핑은 Iteration 10이다.
+// layoutTemplate은 흐름 모드 슬라이드가 공유하는 빈 레이아웃 하나다. 슬롯 모드 슬라이드의
+// 레이아웃은 slotLayoutTemplate이다.
 const layoutTemplate = xmlDecl + `<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank" preserve="1">
   <p:cSld name="Blank">
     <p:spTree>
@@ -552,7 +552,7 @@ const layoutRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.openx
 </Relationships>
 `
 
-// slotLayoutTemplate은 슬롯 레이아웃 파트 하나다 (ADR 0035). 이 레이아웃이 선언하는 슬롯마다
+// slotLayoutTemplate은 슬롯 레이아웃 파트 하나다. 이 레이아웃이 선언하는 슬롯마다
 // 플레이스홀더 `<p:sp>`를 낸다 — 슬라이드 도형의 `<p:ph type/idx>`가 이것에 연결되어야
 // PowerPoint가 진짜 플레이스홀더로 인식한다 (buildParts의 슬롯 파트 주석).
 //
@@ -652,9 +652,8 @@ const slideRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.openxm
 // 노트 마스터는 하나다. 플레이스홀더 좌표는 notesMasterLayout이 정하고, 노트 슬라이드는
 // xfrm 없이 이 마스터에서 상속받는다 — 노트는 화면에 렌더되지 않으므로 잰 박스가 없다.
 //
-// notesStyle의 타이포그래피(12pt)는 자리 표시자다 — 테마 토큰 표에서 컴파일하는 일은
-// Iteration 10의 테마 패키지 포맷이 맡는다 (노트는 발표자 화면 전용이라 웹·PPTX 픽셀
-// 일치 계약 밖이고, 지금 하드코딩해도 두 타깃이 갈라지지 않는다).
+// notesStyle의 타이포그래피(12pt)는 테마 토큰 표에서 컴파일하지 않고 하드코딩한다 (노트는
+// 발표자 화면 전용이라 두 타깃의 계약 밖이고, 하드코딩해도 두 타깃이 갈라지지 않는다).
 const notesMasterTemplate = xmlDecl + `<p:notesMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
   <p:cSld>
     <p:bg>
@@ -811,8 +810,8 @@ const notesSlideRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.o
 // 테마 파트의 clrScheme·fontScheme은 덱의 토큰 표에서 컴파일된다 (theme.go) — 웹의
 // CSS 변수와 같은 한 표다. 값이 두 곳에 있으면 `color="accent1"` 텍스트가 웹과 PPTX에서
 // 다른 색으로 나오고, 토큰 보존 계약이 겉으로만 지켜진다. fmtScheme만 하드코딩으로 남는다
-// (도형 기본 스타일 — 테마 패키지 포맷이 Iteration 10에서 해체한다).
-// 폰트는 테마 표가 Noto를 가리킨다 — v1은 폰트를 임베드하지 않는다 (PRD §13-10).
+// (도형 기본 스타일).
+// 폰트는 테마 표가 Noto를 가리킨다 — v1은 폰트를 임베드하지 않는다.
 const themeTemplate = xmlDecl + `<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="{{xml .Deck.Theme.Name}}">
   <a:themeElements>
 {{.ClrScheme}}

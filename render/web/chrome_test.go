@@ -7,7 +7,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// captionStyle은 크롬이 받는 외관이다 — core가 캡션 역할에서 확정해 넘긴다 (ADR 0045).
+// captionStyle은 크롬이 받는 외관이다 — core가 캡션 역할에서 확정해 넘긴다.
 func captionStyle() soml.TextStyle {
 	return soml.TextStyle{Role: soml.RoleCaption, Font: soml.FontBody, Size: 16, Weight: 400,
 		LineHeight: 1.4, Color: soml.TokenColor("muted"), Align: soml.AlignStart}
@@ -32,7 +32,7 @@ func chromeDeck() *soml.Deck {
 	}
 }
 
-// 크롬은 **스테이지의 형제**다 (ADR 0045): 스테이지 안에 넣으면 흐름에 끼어 본문 높이를
+// 크롬은 **스테이지의 형제**다: 스테이지 안에 넣으면 흐름에 끼어 본문 높이를
 // 먹고, 지오메트리 패스가 재는 Ref가 되어 저자가 고칠 수 없는 배치 경고가 나온다.
 func TestChromeIsStageSibling(t *testing.T) {
 	out := renderString(t, chromeDeck())

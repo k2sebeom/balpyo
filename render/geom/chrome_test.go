@@ -9,7 +9,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// chromeItems는 확정된 크롬 둘이다 (값 층이 이미 걸렀다 — ADR 0045).
+// chromeItems는 확정된 크롬 둘이다 (값 층이 이미 걸렀다).
 func chromeItems() []soml.ChromeItem {
 	style := soml.TextStyle{Role: soml.RoleCaption, Font: soml.FontBody, Size: 16, Weight: 400,
 		LineHeight: 1.4, Color: soml.TokenColor("muted"), Align: soml.AlignStart}
@@ -45,7 +45,7 @@ func chromeMeasured(deck *soml.Deck, rects ...Rect) measurement {
 	return m
 }
 
-// 크롬 rect는 Boxes가 아니라 곁 표에 담긴다 (ADR 0045) — Boxes는 덱 요소와 1:1이다.
+// 크롬 rect는 Boxes가 아니라 곁 표에 담긴다 — Boxes는 덱 요소와 1:1이다.
 func TestChromeIsMeasuredIntoSideTable(t *testing.T) {
 	deck := testDeck([]soml.Node{textElem(chars("본문"))})
 	deck.Slides[0].Chrome = chromeItems()
@@ -109,7 +109,7 @@ func TestMeasureExprReadsChrome(t *testing.T) {
 	}
 }
 
-// 크롬의 판정은 둘이다 (ADR 0045): 슬라이드 이탈과 크롬끼리의 겹침. 크롬은 여백 띠에 사는
+// 크롬의 판정은 둘이다: 슬라이드 이탈과 크롬끼리의 겹침. 크롬은 여백 띠에 사는
 // 것이 정의이므로 콘텐츠 박스 판정은 묻지 않는다.
 func TestDiagnoseChrome(t *testing.T) {
 	tests := []struct {

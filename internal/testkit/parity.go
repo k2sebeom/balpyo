@@ -16,7 +16,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 동일성 판정 (ADR 0064): 두 타깃에서 각각 뽑은 **컴포넌트 트리**가 같은가.
+// 동일성 판정: 두 타깃에서 각각 뽑은 **컴포넌트 트리**가 같은가.
 //
 // 웹 쪽 트리는 덱 모델 + 지오메트리 side table에서, PPTX 쪽 트리는 산출된 슬라이드 XML의
 // `spTree`를 다시 읽어서 만든다. 두 트리는 같은 줄 형식으로 직렬화되고 줄 단위로 비교된다 —
@@ -104,7 +104,7 @@ func FormatLayout(slides []LayoutSlide, withRect bool) string {
 // 웹 쪽 요약이 수치를 굵기 여부로 접을 때 쓴다.
 const parityBoldWeight = 600
 
-// layoutGolden은 픽스처 골든의 구조 스냅샷이다 (rect 없는 트리 — R1-b).
+// layoutGolden은 픽스처 골든의 구조 스냅샷이다 (rect 없는 트리).
 const layoutGolden = "layout.txt"
 
 // Layouts는 빌드 결과에서 두 트리를 뽑는다 — 웹 쪽(덱 + 지오메트리)과 PPTX 쪽(spTree).
@@ -224,7 +224,7 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 			}
 			n.X, n.Y, n.W, n.H = rectEMU(rect)
 			s.Nodes = append(s.Nodes, n)
-			// 배경 모드 도형의 자식은 형제 객체다 (ADR 0049).
+			// 배경 모드 도형의 자식은 형제 객체다.
 			if kind == soml.KindShape && soml.ShapeHoldsLayout(elem) {
 				for i, child := range elem.Children {
 					if err := walk(child, web.ChildPath(p, i)); err != nil {

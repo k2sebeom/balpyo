@@ -96,7 +96,7 @@ func TestOffsetAndExtent(t *testing.T) {
 			wantX: 4763, wantY: 11906, wantCX: 4763, wantCY: 953691,
 		},
 		{
-			name:  "스테이지를 넘어간 박스도 그대로 간다 (오버플로 허용 — PRD §13-1)",
+			name:  "스테이지를 넘어간 박스도 그대로 간다 (오버플로 허용)",
 			rect:  geom.Rect{X: -32, Y: 700, W: 1344, H: 100},
 			wantX: -304800, wantY: 6667500, wantCX: 12801600, wantCY: 952500,
 		},
@@ -127,7 +127,7 @@ func TestOffsetAndExtent(t *testing.T) {
 	}
 }
 
-// EMU·pt 환산은 이 패키지 경계에서만 일어난다 (PRD §13-5). 지오메트리 패스가 EMU를 알게
+// EMU·pt 환산은 이 패키지 경계에서만 일어난다. 지오메트리 패스가 EMU를 알게
 // 되면 좌표계가 둘로 갈라지고, 어느 쪽이 논리 px인지 코드를 읽어 봐야 알게 된다.
 //
 // 주석은 검사에서 뺀다 — 경계를 **설명하는** 문장(render/geom의 패키지 주석)은 있어야 하고,

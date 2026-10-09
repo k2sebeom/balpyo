@@ -1,0 +1,50 @@
+<!-- 액션: two-column 레이아웃의 슬롯 둘에 "이번 주 / 다음 스프린트"를 나눈다. 슬롯 영역은 제목
+     아래 남은 높이를 다 갖는 grid 칸이고 (`two-column.slots.css`의 `1fr` 행), 칸마다 카드
+     하나가 `h="fill"`로 그 칸을 채운다. 카드 안의 액션 셋은 `justify="between"`으로 카드 높이에
+     고르게 서고, 줄마다 무엇을 막는지가 캡션으로 붙는다.
+
+     두 소제목은 `accent3`다 — 이 장은 전부 "우리가 할 것"이므로 덱의 색 규칙에서 초록
+     하나만 쓴다 (001_cover). 급한 쪽을 빨강으로 칠하는 선택지도 있었지만, 빨강은 이 덱에서
+     장애가 낸 값을 뜻하므로 계획에 쓰면 뜻이 둘이 된다. -->
+<slide id="actions" layout="two-column">
+  <text slot="title" role="heading">재발 방지 액션</text>
+  <col slot="left" h="fill">
+    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" h="fill" pad="lg">
+      <col gap="md" h="fill" justify="between">
+        <text role="heading" size="28" color="accent3">이번 주</text>
+        <col gap="xs">
+          <text role="body"><strong>1.</strong> TTL에 ±10% 지터 (결제 캐시 전부)</text>
+          <text role="caption">고정 TTL을 막는다</text>
+        </col>
+        <col gap="xs">
+          <text role="body"><strong>2.</strong> 5xx 경보를 1분 p99로 교체</text>
+          <text role="caption">탐지 12분 → 목표 3분</text>
+        </col>
+        <col gap="xs">
+          <text role="body"><strong>3.</strong> 읽기 풀 상한 40 → 96, 경보 80%</text>
+          <text role="caption">여유 14개 → 70개</text>
+        </col>
+      </col>
+    </shape>
+  </col>
+  <col slot="right" h="fill">
+    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" h="fill" pad="lg">
+      <col gap="md" h="fill" justify="between">
+        <text role="heading" size="28" color="accent3">다음 스프린트</text>
+        <col gap="xs">
+          <text role="body"><strong>4.</strong> 캐시 미스에 단일 비행 잠금</text>
+          <text role="caption">미스 하나가 질의 하나가 되는 경로를 끊는다</text>
+        </col>
+        <col gap="xs">
+          <text role="body"><strong>5.</strong> 부하 차단을 수동 → 자동 (오류율 2%)</text>
+          <text role="caption">이번에 사람이 17분 걸린 일을 기계가 한다</text>
+        </col>
+        <col gap="xs">
+          <text role="body"><strong>6.</strong> 스탬피드 부하 시험을 배포 게이트에</text>
+          <text role="caption">예열 직후 30분 뒤를 재현한다</text>
+        </col>
+      </col>
+    </shape>
+  </col>
+  <note>담당과 기한은 이슈에 있다. 여기서는 순서만 합의한다.</note>
+</slide>

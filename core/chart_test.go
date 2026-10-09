@@ -9,7 +9,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// `<chart>`의 펼침 (ADR 0059): 값 층이 차트를 저자가 쓸 수 있는 SOML(도형·텍스트)로 바꾸고,
+// `<chart>`의 펼침: 값 층이 차트를 저자가 쓸 수 있는 SOML(도형·텍스트)로 바꾸고,
 // 그 뒤의 파이프라인은 차트를 모른다.
 
 // chartSlide는 차트 하나를 담은 슬라이드다 — `<chart>`는 2행 3열이고 점은 3행부터다.
@@ -72,7 +72,7 @@ func chartBars(deck *soml.Deck) []*soml.Element {
 	return bars
 }
 
-// chartTexts는 펼침이 낸 라벨들이다 (문서 순서 = 읽기 순서 — ADR 0058).
+// chartTexts는 펼침이 낸 라벨들이다 (문서 순서 = 읽기 순서).
 func chartTexts(deck *soml.Deck) []*soml.Element {
 	var texts []*soml.Element
 	for _, elem := range chartElements(deck) {
@@ -111,7 +111,7 @@ func dumpTree(nodes []soml.Node) string {
 	return strings.Join(parts, " ")
 }
 
-// 펼침 등가 — 차트와 손으로 쓴 같은 뜻의 덱이 해석 후 같은 트리다 (ADR 0059 결정 2). 이 한
+// 펼침 등가 — 차트와 손으로 쓴 같은 뜻의 덱이 해석 후 같은 트리다. 이 한
 // 장면이 기본 축(데이터 최대 ÷ 0.9 — 값 라벨의 헤드룸), 값+unit 라벨, 점 fill이 막대와 라벨을
 // 함께 칠하는 것, alt이 배경 뿌리 도형에 실리는 것을 모두 못 박는다.
 func TestChartExpandsToHandWrittenDeck(t *testing.T) {
@@ -190,7 +190,7 @@ func TestChartAxisLabelsAndZero(t *testing.T) {
 	}
 }
 
-// 계열색(series — ADR 0060)은 모든 막대를 칠하되 라벨은 칠하지 않는다 — 면과 글은 대비 요구가
+// 계열색(series)은 모든 막대를 칠하되 라벨은 칠하지 않는다 — 면과 글은 대비 요구가
 // 달라(surface 글자는 흰 배경에서 사라진다) 같은 채널이 될 수 없다. 점의 fill은 계열을 이긴다.
 func TestChartSeriesColorsEveryBarButNotTheLabels(t *testing.T) {
 	deck := resolvedChart(t, `type="bar" series="surface" h="420"`,
@@ -230,7 +230,7 @@ func TestResolvedTreeHasNoDesugaredKinds(t *testing.T) {
 }
 
 // 진단 — 값 어휘와 데이터의 요구는 값 층이 소유하고, 자리는 합성 노드가 아니라 저자가 쓴
-// `<chart>`/`<point>`의 속성이다 (ADR 0059 결정 11).
+// `<chart>`/`<point>`의 속성이다.
 func TestChartDiagnostics(t *testing.T) {
 	p := chartPoint(`label="5월" value="22"`)
 	tests := []struct {
@@ -259,7 +259,7 @@ func TestChartDiagnostics(t *testing.T) {
 		{"점의 fill이 테마에 없다", `type="bar" h="420"`, chartPoint(`label="5월" value="22" fill="brand"`),
 			[]string{`fill의 색 토큰 "brand"가 테마에 없다`}},
 		{"series가 테마에 없다", `type="bar" series="brand" h="420"`, p, []string{`series의 색 토큰 "brand"가 테마에 없다`}},
-		// 그리지 않는 막대는 데이터가 아니라 none만 빠진다 (ADR 0060 결정 6).
+		// 그리지 않는 막대는 데이터가 아니라 none만 빠진다.
 		{"series가 none이다", `type="bar" series="none" h="420"`, p, []string{`series에 none을 쓸 수 없다`, `value="0"`}},
 		{"점의 fill이 none이다", `type="bar" h="420"`, chartPoint(`label="5월" value="22" fill="none"`), []string{`fill에 none을 쓸 수 없다`}},
 		{"series에 값이 없다", `type="bar" series h="420"`, p, []string{"series 속성에는 값이 필요하다"}},

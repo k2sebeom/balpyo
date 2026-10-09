@@ -19,7 +19,7 @@ import (
 // 도구가 있는 환경에서도 도는 테스트다 (환경 변수로 없는 경로를 준다) — 이 판단은 도구 유무가
 // 아니라 순서에 대한 것이기 때문이다. 여섯 장을 빌드하고 브라우저까지 띄운 뒤에 "soffice가
 // 없다"를 알려 주면 사람의 시간을 버린다. pptx를 **명시한** 검수는 웹 열만으로 물러서지 않는다 —
-// 그 사람은 PPTX를 보려고 명령을 쳤다 (ADR 0066). 기본 렌더의 물러서기는
+// 그 사람은 PPTX를 보려고 명령을 쳤다. 기본 렌더의 물러서기는
 // TestRunDefaultRendersFallBackToWebWithoutTools가 본다.
 func TestRunStopsBeforeBuildingWhenToolsAreMissing(t *testing.T) {
 	project := twoSlideProject(t)
@@ -58,7 +58,7 @@ func TestRunRejectsUnknownRenderTarget(t *testing.T) {
 }
 
 // TestRunBuildsGalleryWithBothRenders는 갤러리 한 장에 웹·PPTX가 슬라이드마다 들어가는지
-// 본다 — `make review`가 손으로 만들던 것과 같은 산출물이다.
+// 본다.
 func TestRunBuildsGalleryWithBothRenders(t *testing.T) {
 	testkit.RequireChromium(t)
 	testkit.RequireSoffice(t)
@@ -99,7 +99,7 @@ func TestRunBuildsGalleryWithBothRenders(t *testing.T) {
 		}
 	}
 	if _, err := os.Stat(filepath.Join(result.Dir, "raster-deck", fmtName(0, "diff"))); err == nil {
-		t.Error("diff 칸이 남았다 — 검수는 판정하지 않는다 (ADR 0066)")
+		t.Error("diff 칸이 남았다 — 검수는 판정하지 않는다")
 	}
 	// 산출물도 손에 잡히는 곳에 있어야 한다 (PowerPoint/Keynote로 직접 여는 확인).
 	for _, name := range []string{"raster-deck.pptx", "index.html"} {
@@ -110,7 +110,7 @@ func TestRunBuildsGalleryWithBothRenders(t *testing.T) {
 }
 
 // TestRunDefaultRendersFallBackToWebWithoutTools는 Renders를 주지 않은 검수가 래스터 도구 없이
-// 웹 열만으로 갤러리를 만들고, 그 사실을 로그 · 결과 · 갤러리 안내에 남기는지 본다 (ADR 0066).
+// 웹 열만으로 갤러리를 만들고, 그 사실을 로그 · 결과 · 갤러리 안내에 남기는지 본다.
 //
 // soffice가 **있는** 환경에서도 도는 테스트다 (환경 변수로 없는 경로를 준다): 도구가 없는 호스트에서도
 // 저작 루프가 웹 갤러리까지는 가야 한다.

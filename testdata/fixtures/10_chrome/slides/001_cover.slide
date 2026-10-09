@@ -1,4 +1,4 @@
-<!-- 표지에는 크롬이 **없다** (ADR 0045). 이 슬라이드에 `footer`도 `pageNumber`도 쓰여 있지
+<!-- 표지에는 크롬이 **없다**. 이 슬라이드에 `footer`도 `pageNumber`도 쓰여 있지
      않다는 것이 요점이다: 켠 자리는 `balpyo.json`이고 표지를 빼는 규칙은 테마의
      `chrome.skipLayouts`이며, 둘을 합쳐 확정 모델을 만드는 것은 값 층이다 (core/chrome.go).
      그래서 이 슬라이드의 골든에는 `data-chrome-kind`도 `slidenum`도 0건이어야 한다.

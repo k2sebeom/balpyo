@@ -1,0 +1,34 @@
+<!-- 현황과 다음 — two-column 슬롯 모드. 슬롯 영역은 제목 아래 남은 높이를 다 갖는 grid 칸이고
+     (`two-column.slots.css`의 `1fr` 행), 칸마다 카드 하나가 `h="fill"`로 그 칸을 채운다. -->
+<slide id="status" layout="two-column">
+  <h1 slot="title">지금 되는 것과 다음</h1>
+  <col slot="left" h="fill">
+    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" h="fill" pad="lg">
+      <col gap="md" h="fill">
+        <text variant="kicker">동작한다</text>
+        <ul size="20">
+          <li>파싱에서 두 타깃까지 전 구간 — 웹 + 편집 가능한 네이티브 PPTX</li>
+          <li>텍스트 서브셋 · 레이아웃 컨테이너 · 도형 12종 · 그림 · 겹침 · 그라디언트</li>
+          <li>레이아웃 11종과 슬롯 — 슬롯은 PPTX에서 진짜 플레이스홀더가 된다</li>
+          <li>표와 차트 · 코드 강조 · 단계별 공개</li>
+          <li>내장 테마 셋과 외부 테마 패키지</li>
+          <li>init · build · check · watch · preview</li>
+        </ul>
+      </col>
+    </shape>
+  </col>
+  <col slot="right" h="fill">
+    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" h="fill" pad="lg">
+      <col gap="md" h="fill">
+        <text variant="kicker">다음</text>
+        <ul size="20">
+          <li>테마가 소유하는 배경과 자산 — 배경 그림 · 로고</li>
+          <li>테마 variant의 그라디언트 토큰</li>
+          <li>측정 브라우저에 없는 테마 글꼴 경고</li>
+          <li>진단 다듬기 — 오타 후보 · 정렬 · 한 사고 한 경고</li>
+        </ul>
+      </col>
+    </shape>
+  </col>
+  <note>오른쪽 열이 다음에 할 일이다.</note>
+</slide>

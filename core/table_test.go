@@ -61,7 +61,7 @@ func tableCellBorder() *soml.Border {
 	return &soml.Border{Width: 1, Style: soml.BorderSolid, Color: soml.TokenColor("muted")}
 }
 
-// 있는 변형은 이름이 남고(웹 CSS 훅), 없으면 빈 값, 모르는 변형은 경고 + 빈 값이다 (PRD §13-6).
+// 있는 변형은 이름이 남고(웹 CSS 훅), 없으면 빈 값, 모르는 변형은 경고 + 빈 값이다.
 func TestResolveTableFrameVariant(t *testing.T) {
 	for _, tc := range []struct {
 		attrs, want string
@@ -208,7 +208,7 @@ func TestResolveCellInlineRunsInherit(t *testing.T) {
 	}
 }
 
-// 격자 검증 (ADR 0036): 웹은 어긋난 표를 조용히 복구하지만 PPTX a:tbl은 열 수가 맞아야 열린다.
+// 격자 검증: 웹은 어긋난 표를 조용히 복구하지만 PPTX a:tbl은 열 수가 맞아야 열린다.
 // 진단은 원인 하나에 하나 — span 값이 틀린 표에는 격자 진단을 덧붙이지 않는다.
 func TestResolveTableGridIsRectangular(t *testing.T) {
 	valid := "<tr><th>h0</th><th>h1</th><th>h2</th></tr>" +

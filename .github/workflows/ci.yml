@@ -1,6 +1,6 @@
-# CI는 로컬과 **같은 명령**을 돈다: `go test ./...` (ADR 0065).
+# CI는 로컬과 **같은 명령**을 돈다: `go test ./...`.
 #
-# 계약은 컴포넌트 · 레이아웃 동일성이고(ADR 0064) PPTX의 유효성은 ECMA-376 스키마가 판정하므로,
+# 계약은 컴포넌트 · 레이아웃 동일성이고 PPTX의 유효성은 ECMA-376 스키마가 판정하므로,
 # 렌더 환경을 고정할 컨테이너가 없다. 빌드(지오메트리 패스)는 러너에 깔린 Chrome을 쓴다.
 name: CI
 
@@ -46,7 +46,7 @@ jobs:
           cache: pip
           cache-dependency-path: docs/requirements.txt
 
-      # --strict: 끊긴 링크와 nav에 없는 문서를 에러로 잡는다. 문서 갱신은 iteration의
+      # --strict: 끊긴 링크와 nav에 없는 문서를 에러로 잡는다. 문서 갱신은 변경의
       # 완료 조건이므로 CI가 검사한다.
       - name: 문서 빌드
         run: make docs

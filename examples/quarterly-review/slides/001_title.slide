@@ -1,7 +1,0 @@
-<!-- 표지: 표준 title 레이아웃을 써 본다. -->
-<slide id="cover" layout="title">
-  <text role="caption" color="muted" align="center">GROWTH TEAM · 2026 Q3</text>
-  <text role="title" color="gradient(#0F65F9 #7C3AED, 90deg)" align="center">Q3 비즈니스 리뷰</text>
-  <text role="body" color="muted" align="center">성장 지표 회고와 Q4 계획</text>
-  <note>인사 30초. 오늘 다룰 세 가지: 지표, 학습, 계획.</note>
-</slide>

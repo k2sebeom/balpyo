@@ -43,7 +43,7 @@ func schemaDeckParts(t *testing.T) map[string][]byte {
 	return AssertValidPPTX(t, files[pptx.FileName(deck)])
 }
 
-// 검증기가 실제로 거르는지 못 박는다 (ADR 0065) — 판정이 조용히 느슨해지면(스키마 적재가 lax로
+// 검증기가 실제로 거르는지 못 박는다 — 판정이 조용히 느슨해지면(스키마 적재가 lax로
 // 떨어지거나 의존성이 바뀌면) 렌더러의 결함보다 이 테스트가 먼저 빨개진다. 변이 하나가 PowerPoint가
 // 복구를 묻는 흔한 원인 하나다.
 func TestSchemaRejectsMutatedParts(t *testing.T) {

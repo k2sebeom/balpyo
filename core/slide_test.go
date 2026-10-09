@@ -98,8 +98,8 @@ func TestResolveSlideLayoutUnknown(t *testing.T) {
 	}
 }
 
-// SlideLayouts 어휘는 PRD §7.3 카탈로그 11종이고 기본값은 content다. 순서가 진단 목록의
-// 순서다.
+// SlideLayouts 어휘는 레이아웃 카탈로그 11종이고 기본값은
+// content다. 순서가 진단 목록의 순서다.
 func TestSlideLayoutVocabulary(t *testing.T) {
 	got := soml.SlideLayouts()
 	want := []soml.SlideLayout{
@@ -120,7 +120,7 @@ func TestSlideLayoutVocabulary(t *testing.T) {
 	}
 }
 
-// `<slide justify>`는 흐름 모드 슬라이드의 세로 분배를 저자에게 주는 채널이다 (ADR 0044 D17).
+// `<slide justify>`는 흐름 모드 슬라이드의 세로 분배를 저자에게 주는 채널이다.
 // 어휘는 컨테이너와 **같은 6종**이다 — 같은 뜻에 두 이름을 두지 않는다 (soml.BoxJustifies).
 func TestResolveSlideJustify(t *testing.T) {
 	for _, want := range soml.BoxJustifies() {
@@ -162,7 +162,7 @@ func TestResolveSlideJustifyUnknown(t *testing.T) {
 	}
 }
 
-// **슬롯 모드 슬라이드의 justify는 에러다** (ADR 0044 D17). 두 근거가 겹친다: 그 문맥의 세로
+// **슬롯 모드 슬라이드의 justify는 에러다**. 두 근거가 겹친다: 그 문맥의 세로
 // 리듬은 테마의 `*.slots.css`가 소유하고(align-content), grid에서 `justify-content`는 **가로
 // 축**이라 같은 표기가 문맥마다 다른 축을 뜻하게 된다. 조용히 무시하면 저자는 왜 아무 일도
 // 일어나지 않는지(또는 왜 가로로 움직이는지) 알 수 없다.

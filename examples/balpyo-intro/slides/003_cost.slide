@@ -1,8 +1,0 @@
-<!-- 수치 한 장 — stat 레이아웃(세로 가운데)의 흐름 모드. 근거는 PRD §1.1(b)의 역분석이다. -->
-<slide id="cost" layout="stat">
-  <text role="caption" align="center">기업 덱의 카드 그리드 슬라이드 한 장을 python-pptx로 다시 만들었을 때</text>
-  <text role="title" size="180" color="accent1" align="center">128</text>
-  <text role="heading" align="center">수동 좌표 계산 · 그리고 raw XML 수술 10회</text>
-  <text role="body" color="muted" align="center">balpyo는 그 128회를 <code>&lt;grid cols="4"&gt;</code> 한 줄로 대체한다.</text>
-  <note>여기가 제품의 출발점이다. 저자가 계산할 것이 남아 있으면 자동화가 아니다.</note>
-</slide>

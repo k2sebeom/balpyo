@@ -1,0 +1,22 @@
+<!-- 표지: title 레이아웃의 슬롯 5종을 다 쓴다. 정렬은 **하나도 쓰지 않는다** —
+     가운데 맞춤은 테마의 title.slots.css가 소유한다.
+
+     **이 덱의 색 규칙** — 강조색 여섯 가운데 세 색만 쓰고,
+     각자 한 가지 뜻만 갖는다:
+
+       - `accent5`(빨강) = **장애가 낸 값** — 지속 시간·오류율·사고의 시작.
+       - `accent4`(호박) = **우리가 늦은 곳** — 탐지 시간.
+       - `accent3`(초록) = **우리가 한 것과 할 것** — 완화 조치와 액션.
+
+     파랑(`accent1`)은 이 덱에 없다. 전에는 눈에 띄어야 하는 것 전부가 파랑이어서 47분(피해)
+     과 부하 차단(대응)과 액션 목록(계획)이 같은 색이었다 — 색이 하나면 "중요하다"밖에 말할
+     수 없고, 회고에서 중요한 것은 **무엇이 피해이고 무엇이 대응인가**다. 색 수를 셋으로
+     제한한 것도 같은 이유다: 뜻이 넷이 되면 듣는 사람이 색표를 외워야 한다. -->
+<slide id="cover" layout="title">
+  <text slot="kicker" role="caption" color="muted">INCIDENT REVIEW · INC-2431</text>
+  <text slot="title" role="title" size="80">결제 API 5xx, 47분</text>
+  <text slot="subtitle" role="heading" size="30" color="muted">캐시 스탬피드 — 무슨 일이 있었고 무엇을 바꾸는가</text>
+  <text slot="author" role="body">Platform Team</text>
+  <text slot="date" role="caption" color="muted">2026-09-18</text>
+  <note>회고의 규칙 먼저: 사람이 아니라 시스템을 본다. 30초.</note>
+</slide>

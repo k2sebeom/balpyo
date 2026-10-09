@@ -141,7 +141,7 @@ func tagStyle(t *testing.T, src, tag string) *soml.TextStyle {
 	return style
 }
 
-// PRD §7.7의 등가 계약: 블록 태그는 텍스트 역할의 축약이라 정확히 같은 외관에 도달한다.
+// 역할 등가 계약: 블록 태그는 텍스트 역할의 축약이라 정확히 같은 외관에 도달한다.
 func TestResolveBlockRoleEquivalence(t *testing.T) {
 	cases := []struct {
 		tag  string
@@ -230,7 +230,7 @@ func TestResolveListItemRole(t *testing.T) {
 	}
 }
 
-// 모르는 variant는 경고 + 컴포넌트 기본 외관 폴백이다 (PRD §13-6 — 테마 간 이식성). 인라인
+// 모르는 variant는 경고 + 컴포넌트 기본 외관 폴백이다 (테마 간 이식성). 인라인
 // 속성은 계속 해석한다.
 func TestResolveUnknownVariantWarnsAndFallsBack(t *testing.T) {
 	deck, diags := resolveSlide(t, "<slide>\n  <text variant=\"hero\" align=\"center\">내용</text>\n</slide>\n")
@@ -254,7 +254,7 @@ func TestResolveUnknownVariantWarnsAndFallsBack(t *testing.T) {
 	}
 }
 
-// 토큰 색은 참조로 남는다 — RGB로 눕히면 PPTX schemeClr를 복원할 수 없다 (PRD §9.4).
+// 토큰 색은 참조로 남는다 — RGB로 눕히면 PPTX schemeClr를 복원할 수 없다.
 func TestResolveKeepsTokenColorAsReference(t *testing.T) {
 	deck, diags := resolveSlide(t, "<slide>\n  <text color=\"accent1\">내용</text>\n</slide>\n")
 	if len(diags) != 0 {

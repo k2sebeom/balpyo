@@ -2,12 +2,12 @@ package core
 
 import "github.com/k2sebeom/balpyo/soml"
 
-// 이 파일은 외관 캐스케이드(PRD §8.3)의 병합 기계다.
+// 이 파일은 외관 캐스케이드의 병합 기계다.
 //
 //	인라인 속성 > variant > 컴포넌트 기본값 > 역할/토큰
 //
 // 역할 기본값(완전한 외관, 테마의 components.json)을 바닥에 깔고, 위 세 단은 **부분 패치**로 얹는다.
-// variant와 컴포넌트 기본값은 일부 필드만 정하기 때문이다 (PRD §8.3의 components.json —
+// variant와 컴포넌트 기본값은 일부 필드만 정하기 때문이다 (예: components.json의
 // `"card-header": { "font": "heading", "size": 24 }`는 color를 건드리지 않는다).
 //
 // 채널이 둘이다 (텍스트 외관·도형 외관). 두 채널은 **같은 기계를 복제해서** 쓴다
@@ -73,7 +73,7 @@ func ptr[T any](v T) *T { return &v }
 // **Type·ID·Box는 없다.** Type은 외관 값이 아니라 어느 프리셋을 그리는가이고(variant가
 // 종류를 바꿀 수 있으면 저자가 쓴 `type`이 테마에 따라 다른 그림이 된다 — textPatch에 Role이
 // 없는 것과 같은 자리의 결정), ID는 참조 이름이라 테마가 붙일 수 없고, Box는 배치 채널이다
-// (테마가 배치를 담지 않는다 — Iteration 3이 닫아 둔 질문, PRD §7.4).
+// (테마는 배치를 담지 않는다).
 type shapePatch struct {
 	fill    *soml.Fill
 	border  *soml.Border
@@ -95,9 +95,9 @@ type shapePatch struct {
 // 대입한다"는 한 줄뿐이고, 그걸 위해 필드마다 접근자나 리플렉션을 끼우면 얻는 것 없이 읽기가
 // 어려워진다. 병합이 **한눈에 보이는 대입 목록**인 것이 이 파일의 값이다.
 func mergeShape(style *soml.ShapeStyle, patch shapePatch) {
-	// 포인터를 그대로 대입하지 않고 **값을 복사한다**: 지금은 테마 표가 호출마다 새로 만들어져
-	// 차이가 없지만, 표가 파일에서 한 번 읽혀 캐시되는 날(Iteration 10) 여러 도형이 같은
-	// Fill을 가리키게 되고 한 도형을 고치는 코드가 테마를 고친다.
+	// 포인터를 그대로 대입하지 않고 **값을 복사한다**: 테마 표는 덱에 한 번 로드되어 모든
+	// 슬라이드가 함께 읽으므로, 포인터를 나누면 여러 도형이 같은 Fill을 가리키게 되고 한 도형을
+	// 고치는 코드가 테마를 고친다.
 	if patch.fill != nil {
 		style.Fill = ptr(*patch.fill)
 	}
@@ -171,8 +171,8 @@ func mergeCell(style *soml.CellStyle, patch cellPatch) {
 
 // imagePatch는 이미지 외관의 부분 지정이다 — shapePatch의 이미지 판이고 규약이 같다.
 //
-// **fill이 없다**: PRD §7.6 표의 `fill` 적용 대상에 image가 없고, 그림 뒤의 칠이 보이는
-// 자리는 `fit="contain"`의 여백뿐인데 그 여백은 PPTX에서 `pic`의 박스 밖이다 (soml/image.go의
+// **fill이 없다**: `<image>`의 외관 속성에 `fill`이 없고, 그림
+// 뒤의 칠이 보이는 자리는 `fit="contain"`의 여백뿐인데 그 여백은 PPTX에서 `pic`의 박스 밖이다 (soml/image.go의
 // 근거). shapePatch를 그대로 재사용하면 테마 표가 그림에 fill을 정할 수 있게 되고, 그 값은
 // 웹에서만 그려지거나 조용히 버려진다 — 어느 쪽이든 표를 읽는 사람이 뜻을 알 수 없다.
 //
@@ -195,7 +195,7 @@ type imagePatch struct {
 // 도형 패치의 부분집합(fill 하나 차이)이라 "도형 패치를 재사용하고 fill만 버린다"가 가능해
 // 보이지만, 그러면 **버리는 코드**가 생기고 그 코드가 곧 "테마가 정할 수 있는 것"의 두 번째
 // 정의가 된다 (imagePatch의 필드 목록이 첫 번째다). 병합이 한눈에 보이는 대입 목록인 것이
-// 이 파일의 값이고, 구조를 뽑는 것은 네 번째 채널(`<group>` — Iteration 9)에서 한다.
+// 이 파일의 값이다.
 func mergeImage(style *soml.ImageStyle, patch imagePatch) {
 	// 포인터를 그대로 대입하지 않고 값을 복사한다 (mergeShape와 같은 근거 — 테마 표가
 	// 캐시되는 날 한 그림을 고치는 코드가 테마를 고친다).

@@ -17,7 +17,7 @@
 
 규칙:
 
-- 접두 숫자는 iteration 순서이자 스위트 실행 순서다.
+- 접두 숫자는 스위트 실행 순서다.
 - `_`로 시작하는 디렉토리는 수집되지 않는다 (작업 중 픽스처).
 - 골든은 손으로 쓰지 않고 `make golden`으로 갱신한다. 골든 변경은 구현 변경과 같은
   커밋에 담아 "무엇이 왜 움직였는지"를 기록에 남긴다.
@@ -27,4 +27,4 @@
 - **에셋은 작게 만든다.** 05_image의 네 장이 합쳐 6.3KB인 것이 그 기준이다: 2색 그림을 8비트
   팔레트 PNG(1200×600 = 460B)와 JPEG로 저장했다.
 
-자세한 규칙은 [`docs/internals/testing.md`](../../docs/internals/testing.md)에 있다.
+자세한 규칙은 [`contributing/internals/testing.md`](../../contributing/internals/testing.md)에 있다.

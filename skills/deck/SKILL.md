@@ -170,5 +170,5 @@ numbers overstate divergence (viewer letter-spacing that is not in the file). Ju
 
 Deeper detail lives in the Korean reference docs shipped with this plugin:
 `${CLAUDE_PLUGIN_ROOT}/docs/reference/` (one page per tag under `soml/`, plus `appearance.md`,
-`layouts.md`, `cli.md`). Worked decks: `${CLAUDE_PLUGIN_ROOT}/examples/` and
+`layouts.md`, `cli.md`). Worked decks: `${CLAUDE_PLUGIN_ROOT}/examples/decks/` and
 `${CLAUDE_PLUGIN_ROOT}/testdata/fixtures/`.
