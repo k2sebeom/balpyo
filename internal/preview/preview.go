@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/k2sebeom/balpyo/internal/pipeline"
 	"github.com/k2sebeom/balpyo/render"
@@ -137,6 +138,9 @@ func Run(opts Options) (*Result, error) {
 	dir := opts.Dir
 	if dir == "" {
 		dir = filepath.Join(projectDir, DefaultDirName)
+	}
+	if err := checkSeparateDirs(dir, opts.Build, projectDir); err != nil {
+		return nil, err
 	}
 
 	// 웹 열이 있으면 세션을 우리가 띄우고 **지오메트리 패스에 넘긴다**: 스크린샷을 찍으려면
@@ -254,6 +258,40 @@ func Run(opts Options) (*Result, error) {
 	}
 	result.Index = written
 	return result, nil
+}
+
+// checkSeparateDirs는 갤러리와 빌드 출력이 겹치지 않는지 빌드 **전에** 본다.
+//
+// 갤러리는 만들 때 디렉토리를 통째로 비운다 (NewGallery). 출력 디렉토리가 그와 같거나 그 안에
+// 있으면 방금 쓴 PPTX와 웹 문서가 지워진 뒤 래스터화가 "파일이 없다"로 실패한다 — 원인이 경로
+// 겹침이라는 사실은 어디에도 나오지 않는다. 갤러리가 출력 안에 있는 반대 방향도 막는다: 출력의
+// 하위 디렉토리(그림 사본 같은)를 갤러리가 지울 수 있고, 두 산출물이 섞여 무엇이 무엇인지
+// 읽기 어려워진다.
+func checkSeparateDirs(galleryDir string, build pipeline.Options, projectDir string) error {
+	build.ProjectDir = projectDir
+	outDir, err := pipeline.OutDirPath(build)
+	if err != nil {
+		return err
+	}
+	gallery, err := filepath.Abs(galleryDir)
+	if err != nil {
+		return fmt.Errorf("갤러리 디렉토리 경로를 정할 수 없다: %w", err)
+	}
+	if within(outDir, gallery) || within(gallery, outDir) {
+		return fmt.Errorf("검수 갤러리 디렉토리 %s가 빌드 출력 디렉토리 %s와 겹친다 — 갤러리는 만들 때 "+
+			"디렉토리를 비우므로 빌드 산출물이 지워진다. --gallery나 --out을 서로 겹치지 않는 곳으로 준다",
+			gallery, outDir)
+	}
+	return nil
+}
+
+// within은 path가 dir 자신이거나 그 아래인지 본다 (둘 다 절대 경로).
+func within(path, dir string) bool {
+	rel, err := filepath.Rel(dir, path)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
 }
 
 // screenshot은 슬라이드 하나를 찍는다.

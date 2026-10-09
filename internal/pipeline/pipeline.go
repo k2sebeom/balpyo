@@ -419,8 +419,10 @@ func OutDir(opts Options) (string, error) {
 	return resolveOutDir(opts)
 }
 
-// resolveOutDir은 출력 디렉토리 절대 경로를 정하고 만든다.
-func resolveOutDir(opts Options) (string, error) {
+// OutDirPath는 이 옵션이 산출물을 쓸 디렉토리의 절대 경로다 — OutDir과 같은 규칙이지만
+// 디렉토리를 만들지 않는다. 빌드 전에 경로만 견주는 호출자(`balpyo preview`가 갤러리와 출력이
+// 겹치는지 보는 자리)가 판정하다가 디스크를 건드리지 않게 한다.
+func OutDirPath(opts Options) (string, error) {
 	projectDir := opts.ProjectDir
 	if projectDir == "" {
 		projectDir = "."
@@ -439,6 +441,15 @@ func resolveOutDir(opts Options) (string, error) {
 	abs, err := filepath.Abs(outDir)
 	if err != nil {
 		return "", fmt.Errorf("출력 디렉토리 경로를 정할 수 없다: %w", err)
+	}
+	return abs, nil
+}
+
+// resolveOutDir은 출력 디렉토리 절대 경로를 정하고 만든다.
+func resolveOutDir(opts Options) (string, error) {
+	abs, err := OutDirPath(opts)
+	if err != nil {
+		return "", err
 	}
 	if err := os.MkdirAll(abs, 0o755); err != nil {
 		return "", fmt.Errorf("출력 디렉토리 %s를 만들 수 없다: %w", abs, err)

@@ -46,6 +46,61 @@ func TestRunStopsBeforeBuildingWhenToolsAreMissing(t *testing.T) {
 	}
 }
 
+// TestRunRejectsOverlappingGalleryAndOutDir는 갤러리와 빌드 출력이 겹치면 **빌드 전에** 멈추고
+// 원인을 말하는지 본다. 갤러리는 만들 때 디렉토리를 비우므로, 겹친 채 진행하면 방금 쓴 PPTX가
+// 지워진 뒤 "파일이 없다"로 실패한다. 이름이 접두로만 같은 형제(`preview` · `preview-out`)는
+// 겹침이 아니다.
+func TestRunRejectsOverlappingGalleryAndOutDir(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		config  string // balpyo.json의 outDir (비면 기본 dist)
+		out     string // --out (프로젝트 기준, 비면 주지 않는다)
+		gallery string // --gallery (프로젝트 기준, 비면 기본 preview)
+		overlap bool
+	}{
+		{name: "같은 디렉토리", out: "review", gallery: "review", overlap: true},
+		{name: "설정의 outDir가 기본 갤러리", config: "preview", overlap: true},
+		{name: "출력이 갤러리 안", out: "review/out", gallery: "review", overlap: true},
+		{name: "갤러리가 출력 안", out: "dist", gallery: "dist/gallery", overlap: true},
+		{name: "접두만 같은 형제", out: "preview-out", overlap: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			project := twoSlideProject(t)
+			if tc.config != "" {
+				cfg := fmt.Sprintf(`{"title": "raster deck", "outDir": %q}`, tc.config)
+				if err := os.WriteFile(filepath.Join(project, "balpyo.json"), []byte(cfg), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			build := pipeline.Options{ProjectDir: project}
+			if tc.out != "" {
+				build.OutDir = filepath.Join(project, tc.out)
+			}
+			opts := preview.Options{Build: build, Renders: []render.Target{render.TargetHTML}}
+			if tc.gallery != "" {
+				opts.Dir = filepath.Join(project, tc.gallery)
+			}
+			if !tc.overlap {
+				// 겹치지 않는 경우는 검사를 지나 빌드로 간다 — 여기서는 브라우저가 필요하다.
+				testkit.RequireChromium(t)
+			}
+			_, err := preview.Run(opts)
+			if !tc.overlap {
+				if err != nil {
+					t.Fatalf("겹치지 않는 디렉토리를 막았다: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), "겹친다") {
+				t.Fatalf("겹침을 원인으로 말해야 한다: %v", err)
+			}
+			if _, statErr := os.Stat(filepath.Join(project, "dist")); !os.IsNotExist(statErr) {
+				t.Error("겹침을 알면서 빌드를 시작했다")
+			}
+		})
+	}
+}
+
 // TestRunRejectsUnknownRenderTarget은 검수할 수 없는 타깃을 먼저 거른다.
 func TestRunRejectsUnknownRenderTarget(t *testing.T) {
 	_, err := preview.Run(preview.Options{

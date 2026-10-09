@@ -426,6 +426,11 @@ LibreOffice로 되돌린 PPTX. 줄바꿈 · 글리프가 두 칸에서 다른 �
 아니라는 것이다 — `dist/`를 그대로 올리는 사람이 스크린샷 수십 장을 함께 올리게 된다.
 `.gitignore`에 `preview/`를 넣어 두면 좋다.
 
+그래서 갤러리와 빌드 출력은 **겹칠 수 없다** — 같은 디렉토리이거나 한쪽이 다른 쪽 안에 있으면
+(`--gallery dist`, `balpyo.json`의 `outDir`가 `preview` 등) 빌드를 시작하기 전에 멈춘다:
+`검수 갤러리 디렉토리 …가 빌드 출력 디렉토리 …와 겹친다 — 갤러리는 만들 때 디렉토리를 비우므로
+빌드 산출물이 지워진다. --gallery나 --out을 서로 겹치지 않는 곳으로 준다`.
+
 ### PPTX 칸은 도구 둘이 필요하다
 
 PPTX를 그림으로 되돌리려면 **LibreOffice(`soffice`)**와 **`pdftoppm`(poppler-utils)**이 필요하다.
