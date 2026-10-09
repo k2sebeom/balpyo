@@ -449,7 +449,7 @@ PPTX는 **같은 도형의 본문**(`txBody`)이다. 그래서 도형 안 텍스
 | 모르는 `shadow` 토큰 | `알 수 없는 shadow 토큰 "hard" (쓸 수 있는 토큰: soft) — 그림자는 수치가 아니라 토큰으로 쓴다 (두 타깃의 번짐 정의가 달라 같은 수치가 다르게 그려진다)` |
 | `opacity`에 `%`를 썼다 | `opacity에 %는 쓸 수 없다 ("40%") — 0~1 실수로 쓴다 (색 변형 alpha()와 표기를 하나로 유지한다)` |
 | `opacity`가 0~1 밖이다 | `opacity는 0~1 사이다 ("1.5")` |
-| `rotate`에 단위를 붙였다 | `rotate는 단위 없는 각도 수치다 ("45deg"의 "deg"를 뗀다) — 허용 접미사는 % 하나다 (PRD §13-5)` |
+| `rotate`에 단위를 붙였다 | `rotate는 단위 없는 각도 수치다 ("45deg"의 "deg"를 뗀다) — 허용 접미사는 % 하나다` |
 | **배경 모드 도형에 `rotate`를 썼다** | `배치를 담은 도형은 rotate를 쓸 수 없다 — PPTX에서 자식은 형제 도형이 되어 도형의 회전을 물려받지 않는데 웹은 박스를 돌려 자식까지 돌리므로, 같은 SOML이 두 타깃에서 다른 그림이 된다 (회전을 지우거나 컨테이너를 빼고 텍스트만 담는다)` |
 | 어휘 밖의 `flip` | `알 수 없는 flip "both" (쓸 수 있는 값: h, v, hv — "hv"는 두 축 모두다)` |
 | 모르는 `variant` | **경고** — `variant "card-heder"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: card, card-header, card-body, card-backdrop, stat-card, badge)` |

@@ -142,7 +142,7 @@ CSS 선언(`font-family` `font-size` `font-weight` `line-height` `color` `text-a
 | 조건 | 진단 메시지 |
 |---|---|
 | 어휘 밖의 역할 | `알 수 없는 role "…" (쓸 수 있는 역할: title, heading, body, caption, code)` |
-| `size`에 단위가 붙었다 | `size는 단위 없는 논리 px 수치다 (…의 …를 뗀다) — px·pt·em 접미사는 쓸 수 없다 (PRD §13-5)` |
+| `size`에 단위가 붙었다 | `size는 단위 없는 논리 px 수치다 (…의 …를 뗀다) — px·pt·em 접미사는 쓸 수 없다` |
 | `size`에 `%`를 썼다 | `size에 %는 쓸 수 없다 (…) — PPTX 폰트 크기는 절대값이라 상대 크기를 번역할 곳이 없다. 논리 px 수치나 role을 쓴다` |
 | `size`가 수치가 아니다 | `size 값이 수치가 아니다 (…)` |
 | `size`가 0 이하 | `size는 0보다 커야 한다 (…)` |

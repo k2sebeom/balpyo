@@ -109,7 +109,7 @@ func (r *resolver) placementStyle(attr soml.Attr) (string, bool) {
 			continue
 		}
 		if !isLayoutStyleProperty(property) {
-			r.warnf(part.span(attr), "style의 %q 선언은 배치가 아니다 — 웹에만 적용되고 PPTX에는 이식되지 않는다 (PRD §7.9). 색·테두리 같은 외관은 컴포넌트 속성으로 쓴다",
+			r.warnf(part.span(attr), "style의 %q 선언은 배치가 아니다 — 웹에만 적용되고 PPTX에는 이식되지 않는다. 색·테두리 같은 외관은 컴포넌트 속성으로 쓴다",
 				property)
 		}
 		decls = append(decls, property+": "+declaration)
