@@ -7,7 +7,7 @@ Hugo가 Markdown 콘텐츠를 테마로 렌더링하는 정적 사이트 생성�
 balpyo는 SOML 슬라이드를 테마로 렌더링하는 **프레젠테이션 생성기**다.
 
 !!! note "이 문서는 목표 명세다"
-    이 페이지는 제품 정의(PRD)이고 **아직 없는 어휘와 명령까지 함께** 적는다 — 아래 로드맵의
+    이 페이지는 제품 개요이고 **아직 없는 어휘와 명령까지 함께** 적는다 — 아래 로드맵의
     남은 iteration(`<arrow>`/`<line>`, `<group>`, 그라디언트, 합성 컴포넌트)과
     `balpyo server`·`format`·`lsp`, PDF 타깃, 테마 워크플로우 명령이 그렇다.
 
@@ -598,7 +598,6 @@ ls examples/quarterly-review/dist/     # index.html + <덱 제목>.pptx
 | [아키텍처](internals/architecture.md) | 파이프라인, 패키지 경계, 덱 모델, 두 렌더러 |
 | [테스트 환경](internals/testing.md) | Docker 이미지, make 타깃, 골든·픽셀 비교 규칙 |
 | [설계 결정](decisions/index.md) | 구현 중 확정한 ADR 색인 |
-| [PRD.md](https://github.com/k2sebeom/balpyo/blob/main/PRD.md) | 제품 정의 전문 — SOML 명세, 테마 시스템, 렌더러, 확정된 설계 결정, 리스크 |
 | [백로그](backlog.md) | 아직 하지 않은 일 — 순서를 정하지 않은 목록 |
 
 ### 이 문서 사이트 빌드하기

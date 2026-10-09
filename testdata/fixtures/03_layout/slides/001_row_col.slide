@@ -1,5 +1,5 @@
 <!-- 중첩 레이아웃의 기본 장면: <row> 안의 <col>. 이 iteration의 핵심 계약("레이아웃
-     태그 = CSS flex 이름 바꾸기 층", PRD §7.4)이 두 타깃에서 같은 좌표를 내는지의
+     태그 = CSS flex 이름 바꾸기 층", docs/reference/soml/layout.md)이 두 타깃에서 같은 좌표를 내는지의
      시험대다. gap은 공간 토큰으로만 쓴다 — 수치 gap은 005에서 함께 본다. -->
 <slide id="row-col">
   <h2>두 열로 나눈 회고</h2>

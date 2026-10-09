@@ -1,7 +1,7 @@
 # 지오메트리 패스
 
 PPTX 렌더러는 좌표 계산을 하지 않는다. 웹 렌더러가 만든 HTML을 헤드리스 브라우저에 올려
-**요소별 좌표를 읽고**, 그 값을 그대로 OOXML `xfrm`으로 눕힌다 (PRD §9.3). 이 문서는 그
+**요소별 좌표를 읽고**, 그 값을 그대로 OOXML `xfrm`으로 눕힌다. 이 문서는 그
 패스의 전체 그림과 순서를 담는다 — 개별 결정의 *왜*는 코드 주석(`render/geom`의 패키지
 주석, `measureScript`, `pptx.Offset`, `pipeline.needsGeometry`)이 소유하고, 여기서는
 어디에 무엇이 있는지를 잇는다.
@@ -11,8 +11,11 @@ PPTX 렌더러는 좌표 계산을 하지 않는다. 웹 렌더러가 만든 HTM
 저자가 좌표를 만지지 않게 하려는 것이 이 제품의 핵심이다. flex/grid로 선언한 배치를
 계산할 엔진이 필요하고, 웹 타깃은 어차피 브라우저가 그린다 — 같은 엔진이 PPTX의 배치도
 정하면 두 타깃의 배치가 **구조적으로** 일치한다. 레이아웃 엔진을 하나 더 구현하면(예:
-Yoga) 텍스트 메트릭과 flex 기본값의 차이가 조용한 편차로 쌓인다 (PRD §17의 벤치마크,
-인프로세스 백엔드는 P2 — PRD §13-8).
+Yoga) 텍스트 메트릭과 flex 기본값의 차이가 조용한 편차로 쌓인다. 설계 단계의 벤치마크에서
+Yoga는 156배 빨랐지만 텍스트 엔진이 없어 최대 34px 어긋났고, `flex-shrink` 기본값이 달라
+경고 없이 어긋났으며, CSS grid를 지원하지 않았다. 시스템 브라우저를 CDP로 제어하는 쪽은
+슬라이드당 약 1.5ms, 콜드 스타트 0.6초였다. 인프로세스 백엔드는 세 조건이 모두 갖춰지기
+전에는 착수하지 않는다 ([ADR 0067](../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 8).
 
 브라우저는 다운로드하지 않고 시스템에 있는 것을 CDP로 직접 제어한다 (`render/geom/browser.go`
 의 `Candidates` — 환경 변수 `BALPYO_CHROMIUM` > PATH > 알려진 설치 경로).
@@ -170,7 +173,7 @@ pptx.NewWithGeometry(g).Render  xfrm = TextBoxRect(측정 rect, 정렬) → EMU
 
 ## 단위 경계 — EMU·pt는 render/pptx만 안다
 
-패스가 주고받는 수치는 전부 **논리 스테이지 px**다 (PRD §13-5). EMU·pt 환산은
+패스가 주고받는 수치는 전부 **논리 스테이지 px**다 ([ADR 0067](../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 5). EMU·pt 환산은
 `render/pptx/units.go`의 `Offset`/`Extent`/`FontSize`/`LineSpacing`에서만 일어난다
 (`1px = 9525 EMU`, `pt = px × 0.75`). `render/geom`의 코드에 EMU가 나오지 않는 것을
 테스트가 감시한다 (`TestGeometryPassKnowsNoEMU`) — 환산이 흩어지면 두 번 환산된 좌표나

@@ -1,4 +1,4 @@
-<!-- 채움 그라디언트 (PRD §9.4의 `fill=gradient` 행) — 웹은 svg `<linearGradient>` +
+<!-- 채움 그라디언트 (docs/reference/appearance.md 매핑 표의 `fill` 그라디언트 행) — 웹은 svg `<linearGradient>` +
      `fill: url(#…)`, PPTX는 `a:gradFill`. 토큰 스톱(accent1·surface·muted)은 두 타깃 모두
      참조를 유지하고(웹 var()·PPTX schemeClr), 리터럴 스톱은 그 자리에 리터럴로 남는다.
      각도는 CSS 시맨틱(0deg=아래→위)이고 생략 시 180deg다 — 마지막 두 도형이 90·45deg로

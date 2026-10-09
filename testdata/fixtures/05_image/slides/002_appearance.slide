@@ -1,5 +1,5 @@
 <!-- 외관 속성 전수: `border`(토큰 색), `radius`, `shadow`, `opacity`, `rotate`, `flip`
-     (PRD §7.6의 image 행). 한 슬라이드에 모으는 이유는 04_shape/004_appearance와 같다 —
+     (docs/reference/soml/image.md). 한 슬라이드에 모으는 이유는 04_shape/004_appearance와 같다 —
      각각이 **한 속성만** 다른 그림이어야 항목 03·04의 CSS/OOXML 매핑이 서로를 덮어쓰지
      않는지 보인다. 그래서 나머지 조건(같은 에셋·같은 박스·contain)을 고정한다.
      `border`가 토큰 색인 것이 픽스처 색 계약의 시험대다: 슬라이드 파트에 `srgbClr`가 없어야

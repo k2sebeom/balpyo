@@ -1,5 +1,5 @@
 <!-- 외관 속성 나머지 전수: `radius`(토큰·수치), `shadow`, `opacity`, `rotate`, `flip`
-     (PRD §7.6). 한 슬라이드에 모으는 이유는 각각이 **한 속성만** 다른 도형을 만들기
+     (docs/reference/appearance.md). 한 슬라이드에 모으는 이유는 각각이 **한 속성만** 다른 도형을 만들기
      때문이다 — 항목 04·05의 CSS/OOXML 매핑이 서로를 덮어쓰지 않는지 보려면 나머지 조건이
      같아야 한다. 그래서 12종 슬라이드와 달리 type은 전부 rounded-rect·rect로 고정한다.
      `flip`은 좌우 대칭이 아닌 프리셋에서만 눈에 보이므로 chevron을 쓴다.

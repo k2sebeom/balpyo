@@ -4,7 +4,7 @@
 모서리·그림자·투명도·변형을 정하며, 자식으로 텍스트나 **레이아웃 컨테이너**를 담을 수 있다.
 
 이 페이지의 중심은 아래 **12종 표**다. 어휘를 12종으로 닫은 기준은 하나다: **OOXML 프리셋
-지오메트리에 대응이 있는 것만** 넣는다 (PRD §7.5). 그래서 도형은 PPTX에서 그림이 아니라
+지오메트리에 대응이 있는 것만** 넣는다. 그래서 도형은 PPTX에서 그림이 아니라
 `prstGeom` 도형이 되고, PowerPoint에서 "도형 모양 변경"으로 다른 프리셋이 될 수 있다.
 
 ## `type` 12종
@@ -31,7 +31,7 @@
 
 - `type`은 **생략할 수 없다**. `<shape/>`가 조용히 사각형이 되면 저자의 오타
   (`type="elipse"`)와 구별되지 않는다. `<p>` ≡ `<text role="body">`처럼 언어가 정한 등가가
-  도형에는 없다 (PRD §7.7과 갈라지는 자리).
+  도형에는 없다 ([텍스트 서브셋](text-subset.md)과 갈라지는 자리).
 - **기하의 출처는 OOXML 프리셋 정의다** (ECMA-376의 `presetShapeDefinitions`). 눈대중 SVG를
   그리지 않은 이유와 그 유도가 어떻게 검증되는지는
   [ADR 0017](../../decisions/0017-shape-geometry-from-ooxml-presets.md)에 있다.
@@ -80,7 +80,7 @@
 
 도형은 `variant`가 없어도 **외관이 확정된다**: 테마의 컴포넌트 기본값이 캐스케이드의 바닥에
 있어 `<shape type="rect"/>`도 `fill: surface` + `border: 1 solid muted` + `radius: md`를
-받는다 (PRD §8.3). 도형에는 텍스트의 `role`에 해당하는 단이 없으므로 그 자리를 컴포넌트
+받는다. 도형에는 텍스트의 `role`에 해당하는 단이 없으므로 그 자리를 컴포넌트
 기본값이 대신한다.
 
 - **`radius`는 `rounded-rect`에서만 쓴다.** 다른 프리셋에는 반경 조정값을 실을 자리가 없어
@@ -228,7 +228,7 @@ PPTX는 **같은 도형의 본문**(`txBody`)이다. 그래서 도형 안 텍스
 **배경 모드는 그 비대칭을 걷어낸다**: 자식은 두 타깃 모두 자기 박스를 가지므로 잰 rect가 그대로
 좌표가 된다 (웹은 도형 div 안의 흐름 요소, PPTX는 도형 **뒤에 오는 형제** `p:sp`다 — 문서 순서가
 곧 z 순서이므로 배경이 먼저 그려진다). 그룹 도형(`p:grpSp`)을 쓰지 않은 이유는 그룹의
-`chOff`/`chExt`가 두 번째 좌표 공간을 만들어 "잰 rect가 곧 좌표다"(PRD §9.3)를 깨기 때문이다
+`chOff`/`chExt`가 두 번째 좌표 공간을 만들어 "잰 rect가 곧 좌표다"를 깨기 때문이다
 ([ADR 0049](../../decisions/0049-a-shape-that-holds-layout-becomes-a-backdrop.md)).
 
 ## 예제
@@ -333,7 +333,7 @@ PPTX는 **같은 도형의 본문**(`txBody`)이다. 그래서 도형 안 텍스
   `solidFill` 안에 있으므로 그림이다.
 - **그림자는 `box-shadow`가 아니라 `filter: drop-shadow`다.** box-shadow는 박스의 사각형을
   따르므로 열두 종 중 아홉이 엉뚱한 사각 그림자를 얻는다 — drop-shadow는 실루엣의 알파를
-  따라가 `outerShdw`와 같은 그림이 된다. (PRD §9.4 표의 `box-shadow` 칸을 이 결정이 갱신한다.)
+  따라가 `outerShdw`와 같은 그림이 된다.
 - 회전은 엔진 CSS의 클래스(`.balpyo-shape-rotate`)와 인라인 커스텀 프로퍼티로 갈라져 있다 —
   측정 뷰가 변형을 끌 수 있어야 하기 때문이다
   ([ADR 0021](../../decisions/0021-measure-view-disables-transforms.md)).
@@ -458,5 +458,5 @@ PPTX는 **같은 도형의 본문**(`txBody`)이다. 그래서 도형 안 텍스
 문구**다 — 목록이 한 벌이므로 진단도 한 벌이다.
 
 모르는 `variant`만 경고인 이유: variant 어휘는 테마의 사유물이라 다른 테마로 만든 덱이
-빌드되지 않으면 콘텐츠의 이식성이 깨진다 (PRD §13-6). `--strict`가 경고를 에러로 승격한다
+빌드되지 않으면 콘텐츠의 이식성이 깨진다 ([ADR 0067](../../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 6). `--strict`가 경고를 에러로 승격한다
 ([CLI](../cli.md)).

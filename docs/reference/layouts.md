@@ -1,13 +1,13 @@
 # `layout=` — 슬라이드 레이아웃 11종
 
 슬라이드의 `layout` 속성은 그 슬라이드의 **스테이지 배치**를 고른다. 값 어휘는 표준 카탈로그
-11종으로 닫혀 있고(PRD §7.3), 어휘 밖 값은 `line:col`을 가진 빌드 에러다 (`core.slideLayout`).
+11종으로 닫혀 있고, 어휘 밖 값은 `line:col`을 가진 빌드 에러다 (`core.slideLayout`).
 생략하면 `content`다.
 
 배치의 **실체는 테마가 소유한다**: 각 레이아웃은 테마 패키지의 `layouts/<이름>.css`에
 **배치 전용 CSS 선언**으로 정의되고, 렌더러는 그 선언을 슬라이드 스테이지에 얹는다. 웹의
 스테이지 CSS와 PPTX 좌표가 **같은 한 표**(`soml.Theme.Layouts`)에서 나오므로 두 타깃의
-배치가 갈라지지 않는다 — 브라우저가 잰 박스가 그대로 PPTX 좌표가 된다 (PRD §9.3).
+배치가 갈라지지 않는다 — 브라우저가 잰 박스가 그대로 PPTX 좌표가 된다 ([지오메트리 패스](../internals/geometry-pass.md)).
 
 ## 11종 카탈로그 (minimal 테마)
 
@@ -30,7 +30,7 @@
 | `image-text` | 그림 + 글 | `display: grid; grid-template-columns: 1fr 1fr; align-content: center` |
 | `image-full` | 전면 그림 | `padding: 0` (가장자리까지) |
 | `code` | 코드 | *(없음 — 세로 스택. 코드 블록은 위에서 쌓는다)* |
-| `canvas` | 자유 배치 | *(없음 — 스테이지가 stack이 되어 자식이 `x`/`y`·`at`으로 자리를 정한다, PRD §13-3)* |
+| `canvas` | 자유 배치 | *(없음 — 스테이지가 stack이 되어 자식이 `x`/`y`·`at`으로 자리를 정한다, [ADR 0067](../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 3)* |
 
 2단 계열(`two-column`·`image-text`)은 자식을 **문서 순서대로** 두 열에 채운다 — 좌우 배치는
 저자가 쓴 자식 순서가 정한다. 세로 가운데 계열은 스테이지가 flex column이므로
