@@ -267,7 +267,7 @@ balpyo version           # 버전 · 커밋 · 플랫폼
 |---|---|---|
 | [`examples/decks/balpyo-intro`](https://github.com/k2sebeom/balpyo/tree/main/examples/decks/balpyo-intro) | 12 | 이 도구 자체의 소개 덱 — 파이프라인 도형, `<table>`, 인용 레이아웃, 장마다 `<note>` |
 | [`examples/decks/incident-postmortem`](https://github.com/k2sebeom/balpyo/tree/main/examples/decks/incident-postmortem) | 10 | 장애 회고 — 타임라인, 영향 표, `lang="go"` 코드 블록, `layout="canvas"`의 손그림 막대 |
-| [`examples/decks/quarterly-review`](https://github.com/k2sebeom/balpyo/tree/main/examples/decks/quarterly-review) | 6 | 분기 리뷰 — KPI 카드 그리드, `<table>`, `<stack>` 콜아웃 |
+| [`examples/decks/quarterly-review`](https://github.com/k2sebeom/balpyo/tree/main/examples/decks/quarterly-review) | 7 | 분기 리뷰 — KPI 카드 그리드, `<table>`, `<stack>` 콜아웃, two-column 계획 |
 
 ```bash
 ./balpyo build --project examples/decks/quarterly-review --target html,pptx --strict

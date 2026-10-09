@@ -18,7 +18,7 @@ import (
 var exampleSlideCounts = map[string]int{
 	"balpyo-intro":        12,
 	"incident-postmortem": 10,
-	"quarterly-review":    6,
+	"quarterly-review":    7,
 }
 
 // TestExamplesBuildClean은 예제의 게이트다: 예제 덱이 **두 타깃으로 빌드되고 진단이

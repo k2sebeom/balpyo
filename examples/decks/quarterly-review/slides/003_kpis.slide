@@ -1,21 +1,43 @@
-<!-- KPI 카드. shape는 type이 필수이고(종류는 추측할 수 없다), 숫자와 라벨은 도형 안 문단으로
-     쌓는다 — 세로로 쌓는 것이 문단의 기본이라 <col>을 쓸 이유가 없다. 배치가 필요한 도형은
-     컨테이너를 자식으로 받는다(그때 도형은 배경이 된다). -->
+<!-- KPI 카드. 카드 높이를 숫자로 적지 않는다 — 그리드가 `grow="1"`로 제목 아래 남은 높이를 다
+     갖고, grid 항목은 기본이 stretch라 카드 셋이 그 높이를 나눠 받는다. 그래서 카드 안 내용은
+     `justify="between"`으로 위(지표 이름) · 가운데(숫자) · 아래(비교) 세 띠에 놓인다.
+
+     shape는 type이 필수이고(종류는 추측할 수 없다), 배치가 필요한 도형은 컨테이너를 자식으로
+     받는다 — 그때 도형은 배경이 된다. -->
 <slide id="kpis">
   <h2>핵심 지표</h2>
-  <grid cols="3" gap="lg">
-    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" h="200" pad="lg">
-      <text role="title" color="accent1" align="center">+38%</text>
-      <p align="center">월간 활성 사용자</p>
+  <grid cols="3" gap="lg" grow="1">
+    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
+      <col gap="sm" h="fill" justify="between">
+        <text variant="kicker">월간 활성 사용자</text>
+        <text role="title" size="88" color="accent1">+38%</text>
+        <col gap="xs">
+          <p>2.1M → 2.9M</p>
+          <text role="caption">Q2 대비 · 목표 +30%</text>
+        </col>
+      </col>
     </shape>
-    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" h="200" pad="lg">
-      <text role="title" color="accent1" align="center">1.2B</text>
-      <p align="center">분기 매출(원)</p>
+    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
+      <col gap="sm" h="fill" justify="between">
+        <text variant="kicker">분기 매출</text>
+        <text role="title" size="88" color="accent1">1.2B</text>
+        <col gap="xs">
+          <p>목표 대비 108%</p>
+          <text role="caption">원 · 구독 74% · 광고 26%</text>
+        </col>
+      </col>
     </shape>
-    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" h="200" pad="lg">
-      <text role="title" color="accent1" align="center">4.6</text>
-      <p align="center">앱스토어 평점</p>
+    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
+      <col gap="sm" h="fill" justify="between">
+        <text variant="kicker">앱스토어 평점</text>
+        <text role="title" size="88" color="accent1">4.6</text>
+        <col gap="xs">
+          <p>리뷰 18,400건</p>
+          <text role="caption">Q2 4.3 · 1점 리뷰 −41%</text>
+        </col>
+      </col>
     </shape>
   </grid>
-  <note>매출은 목표 대비 108%.</note>
+  <text role="caption">세 지표 모두 목표를 넘겼다. 사용자 증가의 절반 이상이 추천 채널에서 왔다.</text>
+  <note>매출은 목표 대비 108%. 평점 상승은 결제 오류 수정 이후다.</note>
 </slide>
