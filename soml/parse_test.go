@@ -296,10 +296,53 @@ func TestParseErrors(t *testing.T) {
 			want: []string{"2:4 알 수 없는 태그 <txt>"},
 		},
 		{
-			// 닫힌 어휘 위반이면 허용 어휘 전부를 함께 낸다 — 카탈로그가 닫혀 있다는 증거다.
-			name: "어휘 밖 태그는 허용 어휘를 싣는다",
+			// 닫힌 어휘 위반이면 **그 자리에** 쓸 수 있는 태그를 낸다 — 어휘 전체가 아니다.
+			// 가까운 이름이 있으면 후보를 하나 말한다.
+			name: "어휘 밖 태그는 부모의 자식 어휘를 싣는다",
 			src:  "<slide><h6>제목</h6></slide>",
-			want: []string{"1:9 알 수 없는 태그 <h6> (쓸 수 있는 태그: <a>, <blockquote>, <br>, <chart>, <code>, <col>, <em>, <grid>, <h1>, <h2>, <h3>, <image>, <li>, <note>, <ol>, <p>, <point>, <pre>, <row>, <shape>, <slide>, <spacer>, <span>, <stack>, <strong>, <table>, <td>, <text>, <th>, <tr>, <ul>)"},
+			want: []string{"1:9 알 수 없는 태그 <h6> — 혹시 <h3>? (<slide> 안에 쓸 수 있는 태그: <text>, <shape>, <image>, <table>, <chart>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
+		},
+		{
+			// `<ul>` 안의 오타에 답은 `<li>` 하나다.
+			name: "리스트 안의 어휘 밖 태그",
+			src:  "<slide><ul><il>항목</il></ul></slide>",
+			want: []string{"1:13 알 수 없는 태그 <il> — 혹시 <li>? (<ul> 안에 쓸 수 있는 태그: <li>)"},
+		},
+		{
+			// 자리 목록에 후보가 없으면 어휘 전체에서 찾는다 — 리스트 안의 그림은 자리가 틀렸지만
+			// 이름의 답은 있다.
+			name: "실제 오타 img — 자리 밖 후보",
+			src:  `<slide><row><img src="a.png"/></row></slide>`,
+			want: []string{"1:14 알 수 없는 태그 <img> — 혹시 <image>? (<row> 안에 쓸 수 있는 태그: <text>, <shape>, <image>, <table>, <chart>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
+		},
+		{
+			// 인라인을 담는 블록 안에서는 인라인 태그가 목록이다. `<bold>`는 오타가 아니라 HTML
+			// 습관이라 편집 거리 대신 별칭이 답한다 (거리로는 `<col>`에 닿는다).
+			name: "문단 안의 어휘 밖 태그",
+			src:  "<slide><p>a <bold>b</bold></p></slide>",
+			want: []string{"1:14 알 수 없는 태그 <bold> — 혹시 <strong>? (<p> 안에 쓸 수 있는 태그: <strong>, <em>, <code>, <a>, <br>, <span>)"},
+		},
+		{
+			// 자리 밖 후보는 거리 1까지만 — 멀리 있는 자리 밖 이름은 엉뚱한 답이 되기 쉽다.
+			name: "자리 밖의 먼 이름은 후보가 아니다",
+			src:  "<slide><ul><imgs/></ul></slide>",
+			want: []string{"1:13 알 수 없는 태그 <imgs> (<ul> 안에 쓸 수 있는 태그: <li>)"},
+		},
+		{
+			name: "루트의 어휘 밖 태그",
+			src:  "<slid></slid>",
+			want: []string{"1:2 알 수 없는 태그 <slid> — 혹시 <slide>? (루트에 쓸 수 있는 태그: <slide>)"},
+		},
+		{
+			name: "문자 데이터만 담는 부모",
+			src:  "<slide><note>a <b>b</b></note></slide>",
+			want: []string{"1:17 알 수 없는 태그 <b> (<note> 안에는 문자 데이터만 올 수 있다)"},
+		},
+		{
+			// 속성 이름의 오타도 후보를 얻는다 — 목록은 그 태그의 속성이다.
+			name: "속성 이름의 오타",
+			src:  `<slide layot="title"></slide>`,
+			want: []string{"1:8 알 수 없는 속성 layot — 혹시 layout? (쓸 수 있는 속성: layout, id, skip, justify)"},
 		},
 		{
 			name: "알 수 없는 속성",

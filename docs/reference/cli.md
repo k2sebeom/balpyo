@@ -317,7 +317,7 @@ balpyo watch --project examples/decks/quarterly-review
 ✓ 14:31:02  슬라이드 6개 · 파일 1개 (41ms)
 ✓ 14:31:18  슬라이드 6개 · 파일 1개 (38ms)
 ✗ 14:31:33  빌드 실패: 에러 1건 (12ms)
-  slides/003_kpis.slide:7:6: error: 알 수 없는 태그 <txt> (쓸 수 있는 태그: …)
+  slides/003_kpis.slide:7:6: error: 알 수 없는 태그 <txt> — 혹시 <text>? (<col> 안에 쓸 수 있는 태그: …)
 ```
 
 주소 줄을 브라우저에 붙이면 그 탭이 빌드마다 스스로 새로고침한다. 빌드 하나가 터미널에
@@ -366,7 +366,7 @@ balpyo watch --project examples/decks/quarterly-review
       "file": "slides/003_kpis.slide",
       "line": 7,
       "column": 6,
-      "message": "알 수 없는 태그 <txt>"
+      "message": "알 수 없는 태그 <txt> — 혹시 <text>? (<col> 안에 쓸 수 있는 태그: …)"
     }
   ],
   "slides": 0,

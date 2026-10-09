@@ -376,6 +376,7 @@ func (p *parser) parseDocument() *Element {
 				continue
 			}
 			parent := parentOf(stack)
+			p.checkKnown(elem, parent)
 			p.checkPlacement(elem, stack, root)
 			p.checkRendered(elem, stack)
 			switch {
@@ -520,10 +521,6 @@ func (p *parser) parseStartTag() (elem *Element, stillOpen bool) {
 		NameSpan: nameTok.Span,
 		Span:     SpanOf(open.Span.Start, nameTok.Span.End),
 	}
-	if _, known := elementSpecs[elem.Name]; !known {
-		p.errorf(elem.NameSpan, "알 수 없는 태그 <%s> (쓸 수 있는 태그: %s)", elem.Name, knownElements())
-	}
-
 	for {
 		switch tok := p.peek(); tok.Kind {
 		case TokenTagEnd:
@@ -792,8 +789,12 @@ func (p *parser) checkAttrName(elem *Element, attr Attr) {
 		p.errorf(attr.NameSpan, "<%s>에는 속성을 쓸 수 없다 (%s)", elem.Name, attr.Name)
 		return
 	}
-	p.errorf(attr.NameSpan, "<%s>에 알 수 없는 속성 %s (쓸 수 있는 속성: %s)",
-		elem.Name, attr.Name, strings.Join(spec.attrs, ", "))
+	hint := ""
+	if guess, ok := Suggest(attr.Name, spec.attrs); ok {
+		hint = " — 혹시 " + guess + "?"
+	}
+	p.errorf(attr.NameSpan, "<%s>에 알 수 없는 속성 %s%s (쓸 수 있는 속성: %s)",
+		elem.Name, attr.Name, hint, strings.Join(spec.attrs, ", "))
 }
 
 // closeElement는 요소를 닫으며 콘텐츠 모델에 따른 정규화를 마친다.
@@ -919,14 +920,58 @@ func parentOf(stack []*Element) *Element {
 	return stack[len(stack)-1]
 }
 
-// knownElements는 진단에 실을 태그 어휘 목록이다. 정렬해서 메시지가 결정적이게 한다.
-func knownElements() string {
+// knownElementNames는 태그 어휘 전체다. 정렬해서 메시지가 결정적이게 한다.
+func knownElementNames() []string {
 	names := make([]string, 0, len(elementSpecs))
 	for name := range elementSpecs {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	return tagList(names)
+	return names
+}
+
+// checkKnown은 어휘 밖의 태그를 진단한다 — **그 자리에 쓸 수 있는 태그**를 나열하고, 오타로 보이면
+// 후보를 하나 말한다.
+//
+// 목록을 부모가 정하는 이유: 어휘 전체(50개 남짓)를 나열하면 저자는 그 안에서 지금 자리에 맞는 것을
+// 다시 골라야 한다 — `<ul>` 안의 오타에 답은 `<li>` 하나다. 슬롯 · 속성 진단이 이미 부모의 목록을
+// 말하는 것과 같은 태도다. 후보는 HTML 습관 · 그 자리의 목록 · 어휘 전체 순서로 찾는다 (SuggestTag).
+func (p *parser) checkKnown(elem *Element, parent *Element) {
+	if _, known := elementSpecs[elem.Name]; known {
+		return
+	}
+	where, allowed := allowedHere(parent)
+	if len(allowed) == 0 {
+		// 태그가 올 수 없는 자리다 — 어떤 태그 이름을 권해도 다음 진단이 될 뿐이다.
+		p.errorf(elem.NameSpan, "알 수 없는 태그 <%s> (%s 안에는 문자 데이터만 올 수 있다)", elem.Name, where)
+		return
+	}
+	hint := ""
+	if guess, ok := SuggestTag(elem.Name, allowed, knownElementNames()); ok {
+		hint = " — 혹시 <" + guess + ">?"
+	}
+	p.errorf(elem.NameSpan, "알 수 없는 태그 <%s>%s (%s 쓸 수 있는 태그: %s)", elem.Name, hint, where, tagList(allowed))
+}
+
+// allowedHere는 부모 아래에 쓸 수 있는 태그와 그 자리를 말하는 구절이다. 문자 데이터만 담는 부모는
+// 빈 목록이다.
+func allowedHere(parent *Element) (where string, allowed []string) {
+	if parent == nil {
+		return "루트에", []string{RootElement}
+	}
+	spec, known := elementSpecs[parent.Name]
+	if !known {
+		// 부모도 어휘 밖이다 (이미 진단됐다) — 자리를 모르므로 어휘 전체를 말한다.
+		return "어디서든", knownElementNames()
+	}
+	where = "<" + parent.Name + "> 안에"
+	switch spec.model {
+	case modelElements:
+		return where, spec.children
+	case modelInline:
+		return where, inlineElements
+	}
+	return "<" + parent.Name + ">", nil
 }
 
 func tagList(names []string) string {
