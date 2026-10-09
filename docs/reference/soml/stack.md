@@ -1,6 +1,6 @@
 # `<stack>` — 겹침 컨테이너
 
-`<stack>`은 자식을 **같은 칸에 겹쳐 쌓는** 레이아웃 컨테이너다 ([ADR 0067](../../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 3). `<row>`가
+`<stack>`은 자식을 **같은 칸에 겹쳐 쌓는** 레이아웃 컨테이너다. `<row>`가
 자식을 가로로, `<col>`이 세로로 늘어놓는다면 `<stack>`은 **한 자리에 층으로** 놓는다 —
 그림 위의 배지, 본문 아래의 워터마크, 카드 위의 라벨이 그 자리다.
 
@@ -11,8 +11,7 @@ PPTX에서 사라진다, 자식만 절대 좌표 도형이 된다)을 그대로 
 두 가지 — **9지점 앵커(`at`)와 z-순서** — 를 담는다.
 
 `<stack>`은 새 요소 **종류**가 아니라 새 **흐름**이다 — `<row>`와 파서·값 층·PPTX·지오메트리
-패스에서 산출이 전부 같고, 다른 것은 웹 CSS 한 줄(단일 셀 grid)뿐이다
-([ADR 0028](../../decisions/0028-stack-is-a-flow-not-a-kind.md)).
+패스에서 산출이 전부 같고, 다른 것은 웹 CSS 한 줄(단일 셀 grid)뿐이다.
 
 ## 컨테이너 속성
 
@@ -73,7 +72,7 @@ PPTX에서 사라진다, 자식만 절대 좌표 도형이 된다)을 그대로 
   `x="0" y="0"`은 여백 안쪽 좌상단이다.
 - **음수를 받는다.** 크기 속성(`w`/`h`/`gap`)은 음수가 에러이지만 좌표는 음수가 정당하다 —
   박스 밖으로 반쯤 걸친 배지(전면 블리드)가 오버레이의 가장 흔한 장면이다. `x="-16"`은 박스
-  왼쪽 밖 16px이고, 산출물까지 부호 그대로 흐른다 (자르지 않는다 — [ADR 0067](../../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 1의 오버플로 허용).
+  왼쪽 밖 16px이고, 산출물까지 부호 그대로 흐른다 (자르지 않는다 — 오버플로는 허용이다).
 - **`%`는 부모 축 기준이다** — `x="50%"`는 부모 폭의 절반, `y="100%"`는 부모 높이의 전부다
   (박스 아래 모서리에 얹는 표기).
 - **공간 토큰(`x="md"`)과 `fill`은 받지 않는다.** 토큰은 여백·간격의 어휘라 테마를 따라
@@ -99,15 +98,13 @@ PPTX에서 사라진다, 자식만 절대 좌표 도형이 된다)을 그대로 
 </stack>
 ```
 
-- **`z-index`를 열지 않은 이유**는 순서가 이미 z축이기 때문이다 ([ADR 0067](../../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 3). 저자용 z-index를
+- **`z-index`를 열지 않은 이유**는 순서가 이미 z축이기 때문이다. 저자용 z-index를
   열면 문서 순서와 중복된 채널이 되고, 둘이 어긋날 때 누가 이기는지 저자가 외워야 한다 —
-  한 축의 위치는 한 채널이 정한다는 기준의 적용이다
-  ([ADR 0031](../../decisions/0031-position-is-one-channel.md)). `style` 탈출구의
+  한 축의 위치는 한 채널이 정한다는 기준의 적용이다. `style` 탈출구의
   allowlist에도 `z-index`는 없다.
 - **이 순서가 그대로 PPTX `spTree` 순서가 된다** — OOXML은 나중 도형을 위에 그리므로, 저자가
   SOML만 읽고 두 타깃의 겹침 순서를 예측할 수 있다. 웹은 이 계약을 지키려고 stack의 모든
-  자식을 위치 지정 요소로 만든다 (아래 렌더 결과 절,
-  [ADR 0029](../../decisions/0029-paint-order-follows-pptx.md)).
+  자식을 위치 지정 요소로 만든다 (아래 렌더 결과 절).
 
 ## `at`과 `x`/`y`는 함께 쓸 수 없다
 
@@ -119,8 +116,7 @@ slides/…:3:29: at과 x를 함께 쓸 수 없다 (x는 3:40에 있다) — 둘 
 ```
 
 진단은 두 속성의 자리를 모두 가리켜 저자가 어느 하나를 지울지 고르게 한다 — `variant`와
-`frame`을 함께 받지 않은 것과 같은 기준이다
-([ADR 0031](../../decisions/0031-position-is-one-channel.md)).
+`frame`을 함께 받지 않은 것과 같은 기준이다.
 
 ## 예제
 
@@ -204,8 +200,7 @@ slides/…:3:29: at과 x를 함께 쓸 수 없다 (x는 3:40에 있다) — 둘 
 </div>
 ```
 
-엔진 CSS는 `<stack>`이나 캔버스 스테이지를 실제로 쓴 덱에만 나간다 (안 쓴 골든이 이
-iteration 때문에 움직이지 않게 — [레이아웃 태그](layout.md)의 `layoutCSS`와 별도 절):
+엔진 CSS는 `<stack>`이나 캔버스 스테이지를 실제로 쓴 덱에만 나간다 ([레이아웃 태그](layout.md)의 `layoutCSS`와 별도 절):
 
 ```css
 .balpyo-stack { display: grid; position: relative; }
@@ -215,16 +210,14 @@ iteration 때문에 움직이지 않게 — [레이아웃 태그](layout.md)의 
 ```
 
 - **단일 셀 grid + `grid-area: 1/1`**: 자식이 같은 칸에 겹치되 in-flow로 남아 stack 크기가
-  가장 큰 자식에 맞춰 결정된다 (absolute 전면 방식은 컨테이너 크기가 소실되어 배제 — [ADR 0067](../../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 3).
+  가장 큰 자식에 맞춰 결정된다 (absolute 전면 방식은 컨테이너 크기가 소실되어 쓰지 않는다).
 - **stack 자신의 `position: relative`**: `x`/`y` 자식의 포함 블록을 stack의 패딩 박스로 만든다.
   오프셋이 없는 relative는 잰 rect를 움직이지 않는다.
 - **자식의 `position: relative`가 칠 순서를 문서 순서로 되돌린다.** CSS는 같은 쌓임 문맥에서
   **위치 지정된 자손을 정적 자손보다 나중에** 칠하므로, `x`/`y` 자식(absolute)과 정적 자식이
   섞이면 겹침 순서가 PPTX(문서 순서)와 반대가 된다. 모든 자식을 위치 지정 요소로 만들면
-  형제끼리 문서 순서로 칠해져 계약이 복원된다 — 엔진이 `z-index`를 내지 않는다
-  ([ADR 0029](../../decisions/0029-paint-order-follows-pptx.md)).
-- **`x`/`y`는 `left`/`top`이지 `transform: translate`가 아니다.** 측정 뷰가 변형을 끄므로
-  ([ADR 0021](../../decisions/0021-measure-view-disables-transforms.md)), 변형으로 위치를
+  형제끼리 문서 순서로 칠해져 계약이 복원된다 — 엔진이 `z-index`를 내지 않는다.
+- **`x`/`y`는 `left`/`top`이지 `transform: translate`가 아니다.** 측정 뷰가 변형을 끄므로, 변형으로 위치를
   내면 지오메트리 패스가 잰 rect에 위치가 남지 않고 PPTX가 겹치지 않은 좌표를 받는다. 음수·
   백분율도 그대로다: `left: -16px`, `left: 50%; top: 100%`.
 - **캔버스 스테이지는 stack과 같은 규칙을 쓴다** — `:is(.balpyo-stack, .balpyo-stage-canvas)`
@@ -249,17 +242,8 @@ iteration 때문에 움직이지 않게 — [레이아웃 태그](layout.md)의 
 - **음수 좌표는 부호 있는 `a:off`로 나간다** — `x="-24"` → `<a:off x="-228600"/>` (0쪽으로
   자르지 않는다).
 
-**`<stack>`은 `<group>`과 여기서 갈라진다:**
-
-| | 산출물 | 편집 단위 | 좌표 |
-|---|---|---|---|
-| `<stack>` | 도형 0개 — 배치 후 **소멸** | 없음 (자식이 낱개 도형) | 자식은 슬라이드 절대 좌표 |
-| `<group>` (Iteration 9) | `grpSp` — **남는다** | 그룹 하나 | 그룹 상대 좌표 |
-
-`<stack>`은 겹침을 **배치**로 표현하고, `<group>`은 겹침을 **편집 단위**로 묶는다. 겹친
-도형이 PowerPoint에서 각각 선택·이동되어야 하면 `<stack>`이고, 한 덩어리로 움직여야 하면
-`<group>`이다 ([ADR 0028](../../decisions/0028-stack-is-a-flow-not-a-kind.md),
-[ADR 0011](../../decisions/0011-layout-containers-are-not-shapes.md)).
+**`<stack>`은 배치 후 소멸한다** — 도형 0개이고 그룹(`grpSp`)도 만들지 않는다. 겹친 자식은
+PowerPoint에서 각각 선택·이동되는 낱개 도형이고, 좌표는 슬라이드 절대 좌표다.
 
 ## 빌드 에러가 나는 조건
 

@@ -25,8 +25,7 @@ balpyo preview --theme ink       --gallery preview-ink
 { "theme": "ink" }
 ```
 
-없는 이름은 렌더 전에 멈추고 쓸 수 있는 이름을 나열한다 — 조용히 기본 테마로 그리지 않는다
-([ADR 0052](../decisions/0052-theme-selection-is-a-deck-request-and-there-is-no-fallback-theme.md)).
+없는 이름은 렌더 전에 멈추고 쓸 수 있는 이름을 나열한다 — 조용히 기본 테마로 그리지 않는다.
 
 ## 내장 테마 셋
 
@@ -41,7 +40,7 @@ balpyo preview --theme ink       --gallery preview-ink
 | 어울리는 자리 | 대부분 — 판단이 서지 않으면 이것이다 | 글이 많은 덱, 발표 후 읽히는 문서 | 무대·어두운 방·코드가 많은 덱 |
 
 세 테마의 강조색은 서로 다르지만 **같은 세 수치**를 만족한다 (바탕 대비 4.5:1 이상 · 색상 간격
-25° 이상 · 휘도 띠 1.25 이하 — [ADR 0050](../decisions/0050-six-accents-are-a-measured-palette-not-a-ranking.md)).
+25° 이상 · 휘도 띠 1.25 이하).
 어두운 바탕에서 수치가 커지는 것(`ink`는 5.93~6.00)은 규칙이 뒤집히지 않았다는 뜻이다.
 
 ### 갈리는 것과 갈리지 않는 것
@@ -76,8 +75,8 @@ balpyo check --theme ink --check-layout --strict
 
 ## 자기 테마 만들기 — 프로젝트 안에서
 
-자기 테마는 **프로젝트 안에** 둔다. 이 저장소를 고치거나 다시 빌드하지 않고, 디렉토리 이름으로
-`balpyo.json`이 가리킨다 ([ADR 0054](../decisions/0054-an-external-theme-is-a-name-inside-the-project-and-extends-overrides-by-name.md)).
+자기 테마는 **프로젝트 안에** 둔다. balpyo를 고치거나 다시 빌드하지 않고, 디렉토리 이름으로
+`balpyo.json`이 가리킨다.
 
 ```text
 my-deck/
@@ -120,25 +119,12 @@ my-deck/
 (자세히: [테마 패키지](../reference/theme.md)). 세 줄만 외우면 된다.
 
 - **색은 갈아 끼운다.** 새 색 **이름**을 더하려면 남은 `clrScheme` 슬롯이 있어야 하고, 내장
-  테마가 열둘 중 열을 쓴다
-  ([ADR 0055](../decisions/0055-a-child-theme-recolors-by-name-because-color-tokens-are-bounded-by-the-clrscheme.md)).
+  테마가 열둘 중 열을 쓴다 — 색 이름 하나가 PPTX 테마의 색 슬롯 하나이기 때문이다.
   반경·공간·그림자·폰트에는 그 상한이 없다.
 - **역할과 `variant`는 한 벌 통째로** 갈린다 (`title`을 다시 적었으면 그 역할의 크기·색·정렬을
   전부 자기가 정한 것이다). `shape.default` 같은 이름 없는 절만 필드 단위다.
 - **레이아웃 CSS는 파일 단위**다. `layouts/title.slots.css` 하나만 두면 표지 배치만 갈리고 나머지
   열은 부모 것이 그대로 실린다. `layouts` 선언도 물려받으므로 11종을 다시 적지 않는다.
-
-끝까지 한 번 돌려 보는 증인이 저장소에 있다 — `testdata/fixtures/15_local_theme`가 `themes/corp/`
-파일 넷으로 `minimal`을 물려받는 3장 덱이다.
-
-### 내장 테마를 하나 더 만들 때
-
-제품에 실리는 테마는 `core/themes/<이름>/`에 산다 — 디렉토리를 더하면 `BuiltinThemes()`가 그것을
-돌려주므로 `--theme`과 `init --theme`의 어휘가 함께 열린다 (`init`은 프로젝트를 **만드는** 명령
-이라 로컬 테마를 받지 않는다). 내장 테마는 `extends`를 쓰지 않는다: 셋이 서로 독립이어야 "무엇이
-테마의 것인가"를 비교로 답할 수 있고, 아래 전수 테스트가 셋 모두에 같은 조건을 요구한다. 그래서
-파일 넷이 전부 필요하다 (색 10 · 폰트 3 · space 6 · radius 3 · shadow 1 · 역할 5종 · 레이아웃
-11개 CSS + 슬롯 영역 10개 CSS).
 
 ### 로더가 요구하는 것 (없으면 빌드가 멈춘다)
 
@@ -153,31 +139,32 @@ my-deck/
 
 문구와 전체 목록은 [테마 패키지](../reference/theme.md)의 "빌드가 멈추거나 경고하는 조건"에 있다.
 
-### 테스트가 요구하는 것 (내장 테마 전수)
+### 내장 테마 셋이 지키는 것
+
+로더가 막지는 않지만 내장 테마 셋이 모두 지키는 조건이다. 자기 테마도 따르면 덱이 테마를 바꿔도
+덜 흔들린다.
 
 - 표준 레이아웃 **11종 전부** 구현 — 빠뜨린 레이아웃을 다른 테마로 폴백하지 않는다.
 - 슬롯이 있는 레이아웃 10종의 **슬롯 영역 CSS 전수**, 그리고 각 파일이 `display: grid`와 그
   레이아웃의 슬롯 이름 전부를 스스로 가질 것.
-- 레이아웃 CSS는 **배치 전용** — 색·글꼴 선언은 PPTX 마스터에 도달하지 않는다
-  ([ADR 0014](../decisions/0014-style-escape-hatch-boundary.md)).
+- 레이아웃 CSS는 **배치 전용** — 색·글꼴 선언은 PPTX 마스터에 도달하지 않는다.
 - 강조색 여섯이 세 수치를 만족할 것 (위 팔레트 규칙).
 - `variant` 어휘가 다른 내장 테마와 **같을** 것 (이름과 순서까지).
 - 본문 역할이 **24px · 1.5**일 것.
 
 ### 손으로 챙겨야 하는 것
 
-로더도 테스트도 잡아 주지 않지만 산출물에서 드러나는 것들이다.
+로더가 잡아 주지 않지만 산출물에서 드러나는 것들이다.
 
 | 규칙 | 어기면 |
 |---|---|
 | `mono` 토큰의 `ea`는 **고정폭 CJK 면**이어야 한다 (`Noto Sans Mono CJK KR`) | 코드 블록의 한글 주석 한 줄이 두 엔진에서 다른 폭이 된다 (측정 −7.9%) |
-| 슬롯 영역에서 **왼쪽 정렬은 선언하지 않는다** — 가운데만 `justify-items: center` | `justify-items: start`는 그림을 바꾸지 않고 여유 폭만 0으로 만들어 PPTX에서 줄이 접힌다 ([ADR 0053](../decisions/0053-a-theme-takes-the-horizontal-channel-only-to-center.md)) |
+| 슬롯 영역에서 **왼쪽 정렬은 선언하지 않는다** — 가운데만 `justify-items: center` | `justify-items: start`는 그림을 바꾸지 않고 여유 폭만 0으로 만들어 PPTX에서 줄이 접힌다 |
 | 색 토큰 12자리 `clrScheme` 슬롯은 **밝기가 아니라 관례**다 — 어두운 테마도 `fg`를 `dk1`, `bg`를 `lt1`에 앉힌다 | PowerPoint의 테마 색 편집이 어두운 덱에서 뒤집힌다 |
 | 어두운 바탕에서는 면과 선을 `muted`가 아니라 `surface`로 (`ink`의 표 셀 테두리가 그렇다) | 검은 바탕 위의 회색 선이 글자보다 튄다 |
 
-세 파일을 다 채웠으면 픽스처로 끝까지 한 번 돌린다 — `testdata/fixtures/14_theme`가 `ink`로
-렌더되는 3장 덱이고, 같은 방법으로 새 테마의 골든을 만들면 무엇이 테마의 것인지 그 차이가
-곧 대답이다.
+파일을 다 채웠으면 위 "고르는 법"처럼 같은 덱을 내장 테마와 나란히 내서 견준다 — 무엇이 테마의
+것인지 그 차이가 곧 대답이다.
 
 ## 아직 아닌 것
 

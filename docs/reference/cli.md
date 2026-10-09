@@ -70,8 +70,7 @@ balpyo init my-talk --author "이세범"
 ### 아직 아닌 것
 
 템플릿 선택(`--template`), 예제 덱 복사, 슬라이드 추가 명령(`balpyo new slide`)은 열지 않았다.
-근거는 [ADR 0048](../decisions/0048-init-owns-its-deck-and-check-is-build-without-writing.md)에
-있다. 저장소의 `examples/`는 스캐폴딩이 아니라 **회귀 테스트**다 — 어휘의 마찰점을 일부러
+저장소의 `examples/`는 스캐폴딩이 아니라 **회귀 테스트**다 — 어휘의 마찰점을 일부러
 밟고 다니므로 출발점으로는 시끄럽다.
 
 ## `balpyo build`
@@ -79,7 +78,7 @@ balpyo init my-talk --author "이세범"
 프로젝트를 읽어 타깃별 산출물을 쓴다.
 
 ```bash
-balpyo build --project testdata/fixtures/01_text --target html,pptx
+balpyo build --project my-talk --target html,pptx
 ```
 
 ```
@@ -110,7 +109,7 @@ balpyo build --project testdata/fixtures/01_text --target html,pptx
 
 `--target html,pptx`처럼 PPTX가 포함되고 덱에 좌표가 필요한 요소가 있으면 빌드가
 지오메트리 패스를 위해 시스템 브라우저(Chromium/Chrome)를 띄운다 —
-[지오메트리 패스](../internals/geometry-pass.md) 참조. `--target html`만 쓰는 저작
+브라우저가 잰 박스가 그대로 PPTX 좌표가 된다. `--target html`만 쓰는 저작
 루프는 브라우저 비용을 내지 않는다. `--check-layout`은 그 루프에서도 측정을 켜는
 플래그다 (아래 배치 경고).
 
@@ -198,8 +197,7 @@ slides/003_kpis.slide:7:6: warning: <p>가 부모 <shape>를 아래로 34px 넘�
 의도한 겹침과 의도한 이탈은 묻지 않는다: `at`·`x`·`y`를 쓴 요소(와 그 자손), `layout="canvas"`
 슬라이드의 요소는 부모 변과 여백을 넘어도 조용하고, `<stack>`·canvas의 겹침도 조용하다.
 스테이지 이탈만은 예외가 없다 — 화면 밖은 웹에서 잘리고 PPTX에서는 슬라이드 밖에 놓인다.
-판정의 근거와 한계는 [ADR 0039](../decisions/0039-layout-warnings-are-box-containment.md)에
-있고, 경고를 읽고 고치는 순서는 [배치 경고 읽기](../guides/layout-warnings.md)에 있다.
+판정의 한계와 경고를 읽고 고치는 순서는 [배치 경고 읽기](../guides/layout-warnings.md)에 있다.
 
 ```bash
 # 저작 루프에서 한 번 확인한다 (브라우저를 띄운다)
@@ -280,8 +278,7 @@ balpyo check --check-layout --strict
 
 ### 아직 아닌 것
 
-기계가 읽는 출력(JSON·SARIF), 슬라이드 범위 지정, 진단 규칙 끄기는 열지 않았다. 근거는
-[ADR 0048](../decisions/0048-init-owns-its-deck-and-check-is-build-without-writing.md)에 있다.
+기계가 읽는 출력(JSON·SARIF), 슬라이드 범위 지정, 진단 규칙 끄기는 열지 않았다.
 
 ## `balpyo watch`
 
@@ -383,8 +380,7 @@ Ctrl+C로 끝낸다 — 웜 브라우저를 닫고 서버를 내린 뒤 코드 0
 
 브라우저를 자동으로 열지 않고(주소를 찍는다), 폴링 간격은 플래그가 아니며, 성공한 빌드는
 페이지를 **통째로** 새로고침한다 (부분 갱신 HMR이 아니다 — 화면이 파일과 같다는 보장을 잃지
-않는 쪽을 골랐다). 근거는
-[ADR 0046](../decisions/0046-watch-polls-the-project-and-injects-its-reload-client.md)에 있다.
+않는 쪽을 골랐다).
 
 ## `balpyo preview`
 
@@ -393,7 +389,7 @@ Ctrl+C로 끝낸다 — 웜 브라우저를 닫고 서버를 내린 뒤 코드 0
 사람 앞에 놓는 것까지다.
 
 ```bash
-balpyo preview --project testdata/fixtures/04_shape
+balpyo preview --project my-talk
 ```
 
 ```
@@ -456,8 +452,7 @@ BALPYO_SOFFICE=/path/to/soffice BALPYO_PDFTOPPM=/path/to/pdftoppm balpyo preview
 
 픽셀 diff · 비율 · 허용 오차는 없다. 두 렌더는 줄바꿈과 글리프가 다를 수 있고(PPTX 텍스트 몸체는
 `normAutofit`이라 PowerPoint가 넘치는 글자를 줄여 맞춘다), `style`에 쓴 외관은 웹에만 적용된다
-([외관 속성](appearance.md)) — 그 차이를 숫자로 내면 고칠 자리처럼 읽힌다. 근거는
-[ADR 0066](../decisions/0066-preview-only-places-renders-side-by-side.md)에 있다.
+([외관 속성](appearance.md)) — 그 차이를 숫자로 내면 고칠 자리처럼 읽힌다.
 
 LibreOffice가 파일을 열며 경고나 복구를 냈다면 그 출력도 그대로 보여 준다 — 복구가
 일어났다면 사용자도 파일을 열 때마다 같은 경고를 볼 수 있다.
@@ -465,8 +460,7 @@ LibreOffice가 파일을 열며 경고나 복구를 냈다면 그 출력도 그�
 ### 아직 아닌 것
 
 갤러리를 감시하지 않고(고치면 `preview`를 다시 돈다), PDF 타깃과 슬라이드 범위 지정, 브라우저
-자동 열기는 열지 않았다. 근거는
-[ADR 0047](../decisions/0047-review-gallery-lives-in-internal-preview.md)에 있다.
+자동 열기는 열지 않았다.
 
 ## `balpyo version`
 
@@ -487,15 +481,11 @@ linux/amd64 · go1.26
 | `linux/amd64 · go1.26` | OS/아키텍처와 툴체인 | 실행 중인 런타임 |
 
 - **커밋은 주입하지 않는다.** 툴체인이 박고 `-trimpath`도 그것을 지우지 않으므로,
-  `go install`로 받은 바이너리도 자기 커밋을 안다. 같은 사실의 두 번째 출처를 만들면 릴리스
-  스크립트를 거치지 않은 빌드에서 그 자리가 조용히 빈다
-  ([ADR 0061](../decisions/0061-release-is-built-by-make-and-the-go-toolchain-and-the-version-belongs-to-the-tag.md)).
+  `go install`로 받은 바이너리도 자기 커밋을 안다.
 - **커밋되지 않은 트리에서 빌드하면 그렇게 말한다**: `커밋 feda13c+dirty (…)`.
 - **아는 것만 적는다.** 태그도 모듈 버전도 없으면 첫 줄이 `balpyo (devel)`이고, 커밋을 모르는
   빌드(예: `go build`로 만든 저장소 밖의 사본)는 **그 줄이 없다** — `알 수 없음`을 찍으면
   리포트에 쓸모없는 줄이 하나 늘 뿐이다. 마지막 줄은 언제나 있다.
-
-릴리스 아카이브를 만드는 쪽은 [릴리스](../internals/release.md)에 있다.
 
 ## `balpyo help`
 
