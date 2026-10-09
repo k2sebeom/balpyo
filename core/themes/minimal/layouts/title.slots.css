@@ -1,13 +1,13 @@
-/* title(표지) 슬롯 영역 — 제목 그룹을 스테이지 세로 가운데에 둔다 (흐름 title과
-   같은 뜻). 위에서부터 kicker·title·subtitle, 아래쪽에 author·date. 가운데 빈 행(1fr)이
-   위 제목 그룹과 아래 저자 그룹을 벌린다 (`.`은 이름 없는 빈 셀이다).
+/* title(표지) 슬롯 영역 — 표지 전체(kicker·title·subtitle과 author·date)를 한 덩이로 스테이지 세로
+   가운데에 둔다 (흐름 title과 같은 뜻). 제목 묶음과 저자 묶음 사이는 공간 토큰 2xl 한 칸이다 —
+   빈 행을 1fr로 두면 두 묶음이 스테이지 위아래 끝으로 갈라져 그 사이가 크게 빈다.
 
    가운데는 대가를 치른다: grid가 항목을 내용 폭으로 줄이므로 텍스트 박스의
-   여유 폭이 0이고, 한글 사이 문장부호가 있는 줄은 PPTX에서 접힐 수 있다.
+   여유 폭이 0이다 (PPTX는 그 한 줄을 접지 않는다 — 박스를 채운 한 줄의 규칙).
    가운데가 곧 뜻인 자리에서만 그 값을 낸다 — 왼쪽은 기본값이므로 선언하지 않는다. */
 display: grid;
 grid-template-columns: 1fr;
-grid-template-rows: auto auto auto 1fr auto auto;
+grid-template-rows: auto auto auto var(--balpyo-space-2xl) auto auto;
 grid-template-areas: "kicker" "title" "subtitle" "." "author" "date";
 justify-items: center;
 align-content: center;
