@@ -286,13 +286,19 @@ func colorValue(color soml.Color, theme soml.Theme) (string, error) {
 		return base, nil
 	}
 	// 변형은 base(var()·#hex 무엇이든)를 감싸므로 변수 참조가 살아남는다 — 테마 색을 바꾸면
-	// 변형된 색도 따라 움직인다. `color-mix(in srgb, …)`는 sRGB 공간에서 섞는다 (PPTX
-	// lumMod는 광도 공간이라 미세한 색 차가 남지만, 참조 보존이 매핑의 목적이다).
+	// 변형된 색도 따라 움직인다.
+	//
+	// shade/tint는 **HSL 광도**를 바꾼다 — PPTX가 같은 변형을 `lumMod`/`lumOff`로 내고(PowerPoint
+	// 테마 색 UI의 "어둡게/밝게 p%"), 그 둘은 HSL의 L에 곱하고 더하는 연산이다. 그래서 웹도 같은
+	// 공간의 같은 식을 쓴다 (CSS 상대 색 문법): shade는 L × (1−p), tint는 L × (1−p) + p. sRGB에서
+	// 흰색과 섞으면(`color-mix`) 채도까지 빠져, 채도 높은 어두운 색의 tint가 두 타깃에서 다른 색이
+	// 된다 (#15803D의 tint 40%가 웹은 회녹색, PPTX는 밝은 초록).
 	switch color.Mod.Kind {
 	case soml.ModShade:
-		return fmt.Sprintf("color-mix(in srgb, %s, black %s%%)", base, formatNumber(color.Mod.Amount)), nil
+		return fmt.Sprintf("hsl(from %s h s calc(l * %s))", base, formatNumber((100-color.Mod.Amount)/100)), nil
 	case soml.ModTint:
-		return fmt.Sprintf("color-mix(in srgb, %s, white %s%%)", base, formatNumber(color.Mod.Amount)), nil
+		return fmt.Sprintf("hsl(from %s h s calc(l * %s + %s))", base,
+			formatNumber((100-color.Mod.Amount)/100), formatNumber(color.Mod.Amount)), nil
 	case soml.ModAlpha:
 		// transparent와 base를 섞으면 base가 (a×100)%만큼 남아 그 알파가 된다.
 		return fmt.Sprintf("color-mix(in srgb, transparent, %s %s%%)", base, formatNumber(color.Mod.Amount*100)), nil

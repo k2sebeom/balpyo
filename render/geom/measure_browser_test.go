@@ -302,6 +302,119 @@ func TestMeasureShapeInkStylesResolve(t *testing.T) {
 	}
 }
 
+// 색 변형(shade/tint)은 웹에서 PPTX와 **같은 색**이 된다. PPTX는 `lumMod`/`lumOff`로 내고 그 둘은
+// HSL의 L에 곱하고 더하는 연산이다 — 기대값을 그 식으로 Go에서 따로 계산해 브라우저가 계산한 색과
+// 맞댄다 (한 채널 ±1은 반올림 몫). 채도 높은 어두운 색(accent3 #15803D)이 증인이다: sRGB에서
+// 흰색과 섞으면 채도가 빠져 PPTX의 밝은 초록과 다른 회녹색이 된다.
+func TestMeasureColorVariantsMatchLumModLumOff(t *testing.T) {
+	testkit.RequireChromium(t)
+	deck := layoutDeck(t, `<row gap="md">
+    <shape type="rect" fill="tint(accent3, 40%)" border="none" w="80" h="80"/>
+    <shape type="rect" fill="shade(accent3, 40%)" border="none" w="80" h="80"/>
+    <shape type="rect" fill="tint(accent1, 25%)" border="none" w="80" h="80"/>
+    <shape type="rect" fill="shade(#F59E0B, 70%)" border="none" w="80" h="80"/>
+  </row>`)
+	browser := testkit.NewBrowser(t)
+	browser.Load(t, renderHTML(t, deck, nil))
+	var fills []string
+	browser.Eval(t, `Array.from(document.querySelectorAll('[data-balpyo-el="shape"] > svg')).map((svg) => getComputedStyle(svg).fill)`, &fills)
+
+	accent1, _ := deck.Theme.Color("accent1")
+	accent3, _ := deck.Theme.Color("accent3")
+	want := []struct {
+		name     string
+		base     string
+		mod, off float64
+	}{
+		{"tint(accent3, 40%)", accent3.RGB, 0.6, 0.4},
+		{"shade(accent3, 40%)", accent3.RGB, 0.6, 0},
+		{"tint(accent1, 25%)", accent1.RGB, 0.75, 0.25},
+		{"shade(#F59E0B, 70%)", "F59E0B", 0.3, 0},
+	}
+	if len(fills) != len(want) {
+		t.Fatalf("도형 %d개, want %d", len(fills), len(want))
+	}
+	for i, w := range want {
+		r, g, b := lumModOff(t, w.base, w.mod, w.off)
+		gr, gg, gb := computedRGB(t, fills[i])
+		if absInt(gr-r) > 1 || absInt(gg-g) > 1 || absInt(gb-b) > 1 {
+			t.Errorf("%s: 웹 %s, PPTX(lumMod %v + lumOff %v) rgb(%d, %d, %d)", w.name, fills[i], w.mod, w.off, r, g, b)
+		}
+	}
+}
+
+// lumModOff는 OOXML `lumMod`/`lumOff`를 #RRGGBB에 적용한다 — RGB → HSL, L' = L·mod + off, → RGB.
+func lumModOff(t *testing.T, hex string, mod, off float64) (r, g, b int) {
+	t.Helper()
+	hex = strings.TrimPrefix(hex, "#")
+	var ri, gi, bi int
+	if _, err := fmt.Sscanf(hex, "%02x%02x%02x", &ri, &gi, &bi); err != nil {
+		t.Fatalf("색 %q: %v", hex, err)
+	}
+	rf, gf, bf := float64(ri)/255, float64(gi)/255, float64(bi)/255
+	hi, lo := math.Max(rf, math.Max(gf, bf)), math.Min(rf, math.Min(gf, bf))
+	l := (hi + lo) / 2
+	var h, s float64
+	if d := hi - lo; d > 0 {
+		if l > 0.5 {
+			s = d / (2 - hi - lo)
+		} else {
+			s = d / (hi + lo)
+		}
+		switch hi {
+		case rf:
+			h = math.Mod((gf-bf)/d+6, 6)
+		case gf:
+			h = (bf-rf)/d + 2
+		default:
+			h = (rf-gf)/d + 4
+		}
+		h /= 6
+	}
+	l = math.Min(1, math.Max(0, l*mod+off))
+	channel := func(p, q, t float64) float64 {
+		t = math.Mod(t+1, 1)
+		switch {
+		case t < 1.0/6:
+			return p + (q-p)*6*t
+		case t < 0.5:
+			return q
+		case t < 2.0/3:
+			return p + (q-p)*(2.0/3-t)*6
+		}
+		return p
+	}
+	q := l * (1 + s)
+	if l >= 0.5 {
+		q = l + s - l*s
+	}
+	p := 2*l - q
+	to := func(v float64) int { return int(math.Round(v * 255)) }
+	return to(channel(p, q, h+1.0/3)), to(channel(p, q, h)), to(channel(p, q, h-1.0/3))
+}
+
+// computedRGB는 계산된 색을 8비트 RGB로 읽는다. 상대 색 문법의 결과는 `rgb()`가 아니라
+// `color(srgb r g b)`(0–1 실수)로 직렬화된다.
+func computedRGB(t *testing.T, value string) (r, g, b int) {
+	t.Helper()
+	if _, err := fmt.Sscanf(value, "rgb(%d, %d, %d)", &r, &g, &b); err == nil {
+		return r, g, b
+	}
+	var rf, gf, bf float64
+	if _, err := fmt.Sscanf(value, "color(srgb %g %g %g)", &rf, &gf, &bf); err != nil {
+		t.Fatalf("계산된 색 %q를 읽을 수 없다", value)
+	}
+	to := func(v float64) int { return int(math.Round(v * 255)) }
+	return to(rf), to(gf), to(bf)
+}
+
+func absInt(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
 // 잰 rect는 저자가 준 박스가 아니라 **그려진 그림**이다 — PPTX가 letterbox를 다시 계산하지
 // 않는다. wide.png 1200×600, tall.png 세로 1:2, dot.png 16×8.
 func TestMeasureImageFitRects(t *testing.T) {

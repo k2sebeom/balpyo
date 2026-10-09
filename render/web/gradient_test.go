@@ -8,7 +8,7 @@ import (
 
 // 이 파일은 **외관 매핑 표의 그라디언트·색 변형 행 회귀
 // 장치**다. 도형 채움·테두리 그라디언트는 svg `<defs>`의 `linearGradient`를 만들고 `url(#…)`로 가리키며, 텍스트
-// 색 그라디언트는 `background-clip: text`, 색 변형은 `color-mix()`다.
+// 색 그라디언트는 `background-clip: text`, 색 변형은 HSL 광도(`hsl(from …)`)와 `color-mix()`(alpha)다.
 
 // 도형 채움 그라디언트 → svg linearGradient def + fill: url(#…).
 func TestShapeFillGradientEmitsSVGDef(t *testing.T) {
@@ -62,17 +62,17 @@ func TestShapeBorderGradientEmitsStrokeURL(t *testing.T) {
 	}
 }
 
-// 색 변형 → color-mix() (토큰 변수 참조가 살아남는다).
+// 색 변형 → HSL 광도(shade/tint)와 color-mix()(alpha). 토큰 변수 참조가 살아남는다.
 func TestColorVariantsCompileToColorMix(t *testing.T) {
 	cases := []struct {
 		name string
 		fill string
 		want string
 	}{
-		{"shade", `shade(accent1, 40%)`, "fill: color-mix(in srgb, var(--balpyo-color-accent1), black 40%)"},
-		{"tint", `tint(muted, 25%)`, "fill: color-mix(in srgb, var(--balpyo-color-muted), white 25%)"},
+		{"shade", `shade(accent1, 40%)`, "fill: hsl(from var(--balpyo-color-accent1) h s calc(l * 0.6))"},
+		{"tint", `tint(muted, 25%)`, "fill: hsl(from var(--balpyo-color-muted) h s calc(l * 0.75 + 25))"},
 		{"alpha", `alpha(fg, 0.6)`, "fill: color-mix(in srgb, transparent, var(--balpyo-color-fg) 60%)"},
-		{"shade 리터럴", `shade(#0F65F9, 30%)`, "fill: color-mix(in srgb, #0F65F9, black 30%)"},
+		{"shade 리터럴", `shade(#0F65F9, 30%)`, "fill: hsl(from #0F65F9 h s calc(l * 0.7))"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

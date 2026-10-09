@@ -118,8 +118,8 @@ func Alpha(v float64) int64 {
 // `shade(색, p%)`는 어둡게이므로 광도를 (100-p)%로 조절한다(`lumMod val`), `tint`은 밝게이므로
 // 같은 lumMod에 `lumOff val=p%`를 더한다. 이 표기가 PowerPoint의 테마 색 변형 UI가 쓰는
 // 것과 같아, 변형된 토큰 색도 `schemeClr` 참조를 유지한 채 테마 색 편집을 따라간다
-// (soml.ColorMod). 웹은 같은 값을 `color-mix()`로 낸다 (render/web) — 두 엔진의 광도 공간이
-// 정확히 같지는 않아 미세한 색 차가 남지만, 스키마 참조 보존이 이 매핑의 목적이다.
+// (soml.ColorMod). 웹은 같은 공간의 같은 식을 CSS 상대 색(`hsl(from … h s calc(l …))`)으로 낸다
+// (render/web) — lumMod/lumOff는 HSL의 L에 곱하고 더하는 연산이다.
 func LumPct(pct float64) int64 {
 	return int64(math.Round(pct / 100 * PercentScale))
 }
