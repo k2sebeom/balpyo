@@ -20,6 +20,11 @@ make docs      # mkdocs build --strict
 LibreOffice가 아니라 저장소에 둔 ECMA-376 스키마가 판정하므로([아래](#pptx-유효성)) 다른 것은
 설치하지 않는다.
 
+도구는 아니지만 **글꼴**도 필요하다. 잰 빌드는 테마 글꼴이 측정 브라우저에 없으면 경고를 내고
+([글꼴 경고](../../docs/reference/cli.md#글꼴-경고)), 픽스처 골든과 예제 게이트(경고 0)는 내장 ·
+예제 테마의 Noto 글꼴이 깔려 있다고 본다. Debian/Ubuntu에서는 `fonts-noto-core` ·
+`fonts-noto-mono` · `fonts-noto-cjk`다 (CI가 설치한다).
+
 Chromium이 없으면 빌드가 필요한 테스트는 메시지와 함께 **건너뛴다** — 픽스처 · 예제 스위트
 전체가 여기에 든다 (`Fixture.Build`가 정책을 적용하는 자리다). 도구가 없는 호스트에서 초록이
 판정하는 것은 파서 · 모델 · 렌더러의 단위 테스트와 스키마 변이 테스트까지다.
@@ -239,7 +244,7 @@ RGB여도 그렇다.
 
 | 잡 | 하는 일 |
 |---|---|
-| `test` | `setup-go` + 러너의 Chrome → `make test` (`BALPYO_TEST_STRICT=1` · `BALPYO_CHROMIUM_NO_SANDBOX=1`) |
+| `test` | `setup-go` + 러너의 Chrome + Noto 글꼴 → `make test` (`BALPYO_TEST_STRICT=1` · `BALPYO_CHROMIUM_NO_SANDBOX=1`) |
 | `docs` | `make docs` (`mkdocs build --strict`) |
 
 로컬과 CI는 **같은 명령**을 돈다. 둘의 차이는 설치된 폰트와 브라우저 버전뿐이고, 판정이 그 둘에

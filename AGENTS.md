@@ -122,7 +122,10 @@ Vocabulary must exist in four layers at once: `soml` catalog (`soml/subset.go` `
 
 The gate is plain `go test ./...` on the host — no container. The only external tool
 is Chromium/Chrome, because the build itself needs it (geometry pass). Tests that need it skip
-when it is missing; `BALPYO_TEST_STRICT=1` (set in CI) turns those skips into failures.
+when it is missing; `BALPYO_TEST_STRICT=1` (set in CI) turns those skips into failures. The
+built-in and example themes' Noto fonts must be installed too (`fonts-noto-core`,
+`fonts-noto-mono`, `fonts-noto-cjk`) — a measuring build warns about theme fonts the browser
+lacks, and the example gate requires zero warnings.
 
 What the suite judges, per fixture (`TestFixtures`) and per example (`TestExamplesBuildClean`):
 

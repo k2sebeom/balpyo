@@ -31,6 +31,11 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      # 내장 · 예제 테마의 글꼴이다. 측정 브라우저에 없으면 잰 빌드가 글꼴 경고를 내고, 예제
+      # 게이트는 경고 0이어야 하므로 러너의 설치 목록에 따라 결과가 갈리면 안 된다.
+      - name: 테마 글꼴
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-noto-core fonts-noto-mono fonts-noto-cjk
+
       - name: 테스트
         run: make test
 

@@ -242,6 +242,11 @@ type Geometry struct {
 	// 무너지고, 배치 진단도 크롬에는 다른 질문을 한다 (여백 띠에 사는 것이 정의다).
 	// Content가 곁 표인 것과 같은 자리다.
 	Chrome []ChromeBox `json:"chrome,omitempty"`
+	// MissingFonts는 테마의 글꼴 가운데 측정 브라우저가 쓰지 못한 이름이다 (테마 선언 순서,
+	// 중복 없음). 좌표와 같은 측정의 사실이다 — 이 이름들 대신 대체 글꼴로 잰 좌표라는 뜻이고,
+	// PowerPoint는 테마에 적힌 글꼴로 그리므로 텍스트 박스가 그 차이만큼 어긋난다. 비어 있으면
+	// 다 있었거나 묻지 않은 측정이다 (Synthetic · JSON에서 되읽은 값).
+	MissingFonts []string `json:"missingFonts,omitempty"`
 
 	// index는 식별자 → Boxes 위치다. 생성자가 채우고 그 뒤로는 읽기만 한다 — Box에서
 	// 지연 생성하면 지오메트리를 여러 goroutine이 읽는 순간(픽스처 병렬 실행) 경쟁이 된다.

@@ -238,5 +238,29 @@ func (s *Session) Measure(deck *soml.Deck, htmlPath string) (*Geometry, error) {
 		// 에러만 보고 원인을 찾게 된다.
 		return nil, fmt.Errorf("%s: %w", htmlPath, err)
 	}
+	// 글꼴은 좌표를 읽은 **같은 문서**에서 묻는다 — 그 좌표를 만든 글꼴 해석이 이 문서의 것이다.
+	missing, err := s.MissingFonts(ThemeFontProbes(deck.Theme))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", htmlPath, err)
+	}
+	g.MissingFonts = missing
 	return g, nil
+}
+
+// ThemeFontProbes는 테마의 글꼴 토큰에서 물어볼 글꼴을 뽑는다 (토큰 순서, latin → ea).
+//
+// 토큰을 전부 묻는다 — 덱이 그 역할을 지금 쓰는지는 보지 않는다. 테마의 글꼴은 PPTX 테마
+// 파트에 통째로 실려 저자가 PowerPoint에서 고쳐 쓰는 순간에도 쓰이고, 덱이 쓰는지를 따지면
+// 코드 블록 하나를 더하는 편집이 처음 보는 경고를 낸다. 경고는 테마의 사실이다.
+func ThemeFontProbes(theme soml.Theme) []FontProbe {
+	var probes []FontProbe
+	for _, token := range theme.Fonts {
+		if token.Latin != "" {
+			probes = append(probes, FontProbe{Family: token.Latin, Sample: LatinSample})
+		}
+		if token.EastAsian != "" {
+			probes = append(probes, FontProbe{Family: token.EastAsian, Sample: EastAsianSample})
+		}
+	}
+	return probes
 }

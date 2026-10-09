@@ -74,6 +74,7 @@
 | [0065](0065-pptx-validity-is-judged-by-the-ecma-376-schema-not-by-libreoffice.md) | PPTX의 유효성은 LibreOffice가 아니라 ECMA-376 스키마가 판정한다 (Docker를 걷어낸다) | R4 | 확정 |
 | [0066](0066-preview-only-places-renders-side-by-side.md) | `balpyo preview`는 두 렌더를 나란히 놓기만 한다 (diff · 허용 오차를 지운다) | R6 | 확정 |
 | [0067](0067-prd-is-retired-and-its-standing-decisions-move-here.md) | PRD.md를 지운다 — 남은 결정 12건은 이 ADR이 들고, 인용은 지금의 문서를 가리킨다 | 정리 | 확정 |
+| [0068](0068-missing-theme-fonts-are-a-measurement-warning.md) | 측정 브라우저에 없는 테마 글꼴은 배치 경고다 (`init`의 경고 0은 글꼴이 깔린 기계의 약속이다) | 백로그 | 확정 |
 
 0066까지의 ADR에 나오는 `PRD §…` 인용은 커밋 `2121a0b`의 `PRD.md`를 뜻한다. 그 절이 지금 어디에
 있는지는 [0067](0067-prd-is-retired-and-its-standing-decisions-move-here.md)의 대응표가 적는다.

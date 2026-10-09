@@ -83,7 +83,8 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 	refs := Refs(deck)
 	stage := stageRect(deck.Stage)
 
-	var diags soml.Diagnostics
+	// 글꼴 경고가 먼저다: 대체 글꼴로 잰 덱이면 아래의 배치 경고도 그 글꼴의 숫자다.
+	diags := FontDiagnostics(deck.Theme, g.MissingFonts)
 	// 식별자 → refs 색인이다. 부모는 문서 순서에서 자식보다 앞에 오므로(Refs) 순회하며 채우면
 	// 자식이 볼 때 부모가 이미 들어 있다.
 	index := map[string]int{}
