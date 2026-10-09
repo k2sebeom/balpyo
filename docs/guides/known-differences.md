@@ -1,8 +1,8 @@
 # 계약 밖의 차이 — 엔진마다 다르게 그려도 되는 것
 
-balpyo의 두 산출물이 지키는 약속은 **컴포넌트와 배치**다 ([ADR 0064](../decisions/0064-the-contract-is-component-and-layout-parity-not-pixel-parity.md)):
-같은 요소는 같은 종류의 객체가 되어, 브라우저가 잰 자리(`a:off`/`a:ext`)에, 같은 외관으로, 같은
-순서로 나온다. 테스트가 판정하는 것도 그것이다 ([테스트 환경](../internals/testing.md)).
+balpyo의 두 산출물이 지키는 약속은 **컴포넌트와 배치**다: 같은 요소는 같은 종류의 객체가 되어,
+브라우저가 잰 자리(`a:off`/`a:ext`)에, 같은 외관으로, 같은 순서로 나온다. 픽셀이 같다는 약속은
+아니다.
 
 그 박스 **안에서** 글자를 그리는 일은 각 엔진 — 브라우저, 그리고 PPTX를 여는 프로그램 — 의 몫이다.
 이 문서는 그렇게 계약 밖에 남은 차이를 적는다. 버그 보고를 받기 전에 저자가 "이건 계약 밖"이라고
@@ -53,7 +53,7 @@ DrawingML의 `a:pPr`에는 대응 속성이 없어 PPTX 쪽에서 끌 수 없다
 
 `ink` 테마를 만들 때 실제로 그랬다: 표지 부제 `같은 원문, 다른 테마`가 LibreOffice에서 두 줄이 됐다.
 원인은 왼쪽 정렬을 하려고 쓴 `justify-items: start`였고, 왼쪽은 기본값이므로 그 선언을 지우자 박스가
-슬롯 영역 폭을 되찾았다 ([ADR 0053](../decisions/0053-a-theme-takes-the-horizontal-channel-only-to-center.md)).
+슬롯 영역 폭을 되찾았다. 그래서 테마는 슬롯의 가로 정렬로 가운데만 선언한다.
 
 | 자리 | 박스 폭 | 뜻 |
 |---|---|---|
@@ -69,14 +69,13 @@ DrawingML의 `a:pPr`에는 대응 속성이 없어 PPTX 쪽에서 끌 수 없다
 
 이것은 계약 밖이지만 **테마가 줄일 수 있는 차이**다. 테마가 고정폭 라틴(`Noto Sans Mono`)에 비례폭
 CJK(`Noto Sans CJK KR`)를 짝지어 놓으면 코드 블록의 한글 주석 한 줄이 두 엔진에서 다른 폭으로
-그려진다 — 13_code 픽스처의 주석 줄에서 −7.9%였다.
+그려진다 — 주석 줄 하나가 −7.9%였다.
 
 원인은 **글리프가 없을 때 누가 고르는가**다. 브라우저는 스택의 `Noto Sans Mono`에 한글이 없으면
 fontconfig에 물어보고, 고정폭 요청에는 고정폭 CJK 면이 돌아온다. LibreOffice·PowerPoint는 `a:rPr`의
 `a:ea`에 적힌 이름을 그대로 쓴다 — 비례폭 면이다.
 
-그래서 `minimal`의 `mono` 토큰은 `ea`를 고정폭 면으로 둔다 (`Noto Sans Mono CJK KR` —
-`core/themes/minimal/tokens.json`). 같은 줄이 +0.6%가 됐다. 테마를 만들 때의 규칙이다: **`mono` 토큰의
+그래서 `minimal`의 `mono` 토큰은 `ea`를 고정폭 면으로 둔다 (`Noto Sans Mono CJK KR`). 같은 줄이 +0.6%가 됐다. 테마를 만들 때의 규칙이다: **`mono` 토큰의
 `ea`는 고정폭 CJK 면이어야 한다.** 코드의 글자가 고정폭이라는 약속은 한글에도 걸린다.
 
 ## 저자가 할 일

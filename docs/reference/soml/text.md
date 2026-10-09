@@ -28,7 +28,7 @@
 | `caption` | 18 | 400 | 1.4 | `muted` | `body` |
 | `code` | 20 | 400 | 1.5 | `fg` | `mono` |
 
-- `size`는 **단위 없는 논리 스테이지 px**다 ([ADR 0067](../../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 5). `px`·`pt`·`em` 접미사와 `%`는
+- `size`는 **단위 없는 논리 스테이지 px**다. `px`·`pt`·`em` 접미사와 `%`는
   파스 에러다 — 상대 크기는 PPTX의 절대 폰트 크기(`rPr@sz`)로 번역할 곳이 없다.
 - `align`이 논리 이름인 이유: CSS `text-align: start|end`와 OOXML `a:pPr@algn`이 둘 다
   문단 방향(RTL)에 따라 뜻이 유지되는 논리 값을 받는다. `left`를 쓰면 진단이 대응하는
@@ -45,11 +45,9 @@
   `<ul size="20">`은 그 목록의 `<li>` 전부에 상속된다 (`<li>` 자신은 속성을 받지 않는다).
   `role`과 `variant`만 `<text>`·블록의 것이다: 목록의 위계는 등가 표가 정하고
   (`<li>` ≡ body), 번들을 상속시키면 항목들의 역할이 바뀐다
-  ([텍스트 서브셋](text-subset.md),
-  [ADR 0038](../../decisions/0038-list-appearance-lives-on-the-container.md)).
+  ([텍스트 서브셋](text-subset.md)).
 - **크기 속성은 가로 축만 있다** (`w`·`min-w`·`max-w`) — 세로 축(`h`·`min-h`·`max-h`)과
-  `pad`·`ratio`는 [컨테이너](layout.md)·[도형](shape.md)의 것이다
-  ([ADR 0043](../../decisions/0043-explicit-width-belongs-to-the-placement-context.md)).
+  `pad`·`ratio`는 [컨테이너](layout.md)·[도형](shape.md)의 것이다.
   근거는 `anchor`와 같다: 텍스트 박스의 높이는 글줄 수가 정하고, 저자가 만든 세로 여백 안에서
   글을 움직이는 채널(`anchor`)은 도형 안에서만 뜻을 갖는다 — 높이만 열면 닿을 수 없는 공간이
   생긴다. 가로 세로를 다 정하고 싶으면 `<shape>`나 컨테이너로 감싼다.
@@ -67,7 +65,7 @@
 - `balpyo.json`의 `lang`이 `ko`이면 웹은 **어절에서** 줄을 접는다 (`word-break: keep-all`) —
   칸보다 긴 어절만 글자 사이에서 자른다 (`overflow-wrap: anywhere`). 다른 언어는 브라우저
   기본이다 (중국어·일본어는 띄어쓰기가 없어 어절 규칙이 줄바꿈을 막는다). 줄이 어디서 접히는지는
-  두 타깃이 맞추는 대상이 아니다 — PowerPoint는 자기 규칙으로 접는다 (ADR 0064).
+  두 타깃이 맞추는 대상이 아니다 — PowerPoint는 자기 규칙으로 접는다.
 - `<`와 `&`는 [문자 참조](text-subset.md)(`&lt;`·`&amp;` + 수치 참조)나 CDATA로 쓴다 —
   둘 다 [텍스트 서브셋](text-subset.md)이 레퍼런스를 갖는다. 다만 참조로 **읽는** 자리는
   `;`로 닫힌 참조 모양일 때뿐이고 태그를 여는 `<`는 영문자·`/` 앞의 `<`뿐이므로 `R&D`와
@@ -91,7 +89,7 @@
 
 **웹** — `<div class="balpyo-text">` 하나가 된다. 확정된 외관은 인라인 `style` 속성의
 CSS 선언(`font-family` `font-size` `font-weight` `line-height` `color` `text-align`)으로
-나간다 ([ADR 0003](../../decisions/0003-inline-style-appearance.md)). 색·폰트 값은
+나간다. 색·폰트 값은
 리터럴이 아니라 테마 변수 참조다 — `color="accent1"`은
 `color: var(--balpyo-color-accent1)`이 된다. 요소에는 `data-balpyo-id`(지오메트리
 식별자)와 `data-balpyo-el="text"`가 붙는다. 크기 속성은 같은 인라인 style의
@@ -101,7 +99,7 @@ CSS 선언(`font-family` `font-size` `font-weight` `line-height` `color` `text-a
 **PPTX** — `p:sp` 텍스트 박스 하나가 된다 (`p:cNvSpPr@txBox="1"`, 프리셋 `rect`,
 채움·선 없음). 좌표(`a:xfrm`)는 지오메트리 패스가 브라우저에서 잰 박스 그대로이고,
 몸체는 `a:normAutofit`이다 — 박스는 잰 크기로 고정되고, 글자가 넘치면 PowerPoint가 줄여
-맞춘다 (줄이 어디서 접히는지는 엔진의 몫이다 — ADR 0064). `<pre>`만 `wrap="none"` +
+맞춘다 (줄이 어디서 접히는지는 엔진의 몫이다). `<pre>`만 `wrap="none"` +
 `a:noAutofit`이다 (원문의 줄이 곧 글줄이다). `w`로 폭을 정하면 그 폭이 잰 박스가 되어
 `a:ext@cx`로 실린다. 외관 매핑:
 
@@ -109,7 +107,7 @@ CSS 선언(`font-family` `font-size` `font-weight` `line-height` `color` `text-a
 |---|---|
 | 크기 | `a:rPr@sz` (px × 0.75 × 100 = 1/100 pt) |
 | 굵기 | `a:rPr@b` (600 이상이면 `1`) |
-| 줄높이 | `a:lnSpc/a:spcPts` (절대 pt — [ADR 0005](../../decisions/0005-line-spacing-and-slack.md)) |
+| 줄높이 | `a:lnSpc/a:spcPts` (절대 pt) |
 | 토큰 색 | `a:solidFill/a:schemeClr` — **리터럴 RGB로 눕히지 않는다** |
 | 리터럴 색 | `a:solidFill/a:srgbClr` |
 | 폰트 토큰 | `a:latin`/`a:ea`의 테마 참조 (`+mj-lt`/`+mn-lt` 등, mono만 리터럴) |
@@ -148,7 +146,6 @@ CSS 선언(`font-family` `font-size` `font-weight` `line-height` `color` `text-a
 | `size`가 0 이하 | `size는 0보다 커야 한다 (…)` |
 | 테마에 없는 색 토큰 | `color의 색 토큰 "…"가 테마에 없다 (쓸 수 있는 토큰: fg, bg, muted, surface, accent1, accent2, accent3, accent4, accent5, accent6, 또는 #RRGGBB 리터럴)` |
 | 색 리터럴 형식 오류 | `색 리터럴은 #RRGGBB 또는 #RGB 형태다 (…)` |
-| 색 함수를 썼다 | `색 함수 …(…)는 아직 쓸 수 없다 (gradient·shade·tint·alpha는 Iteration 8) — 토큰 이름이나 #RRGGBB 리터럴을 쓴다` |
 | 물리 정렬 이름 | `align은 논리 이름을 쓴다 — "left" 대신 "start" (RTL에서도 뜻이 유지된다)` |
 | 어휘 밖의 정렬 | `알 수 없는 align "…" (쓸 수 있는 값: start, center, end, justify)` |
 | 외관 속성에 값이 없다 | `… 속성에는 값이 필요하다 (…="…")` / `… 속성이 비어 있다 (지우면 기본값을 쓴다)` |

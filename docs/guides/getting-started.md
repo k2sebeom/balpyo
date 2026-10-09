@@ -30,17 +30,16 @@ sha256sum -c SHA256SUMS                        # 같은 디렉토리에 두고 �
 ```
 
 Homebrew tap(`brew install k2sebeom/balpyo/balpyo`)의 포뮬러도 릴리스마다 생성된다 — 아카이브를
-만들고 발행하는 절차는 [릴리스](../internals/release.md)에 있다.
+받는 방법만 다르고 안의 바이너리는 같다.
 
 !!! note "아직 첫 태그가 없다"
 
     이 저장소에는 아직 `v*` 태그가 없으므로 위 두 경로(아카이브·tap)는 **첫 릴리스부터**
-    열린다. 그때까지는 위의 `go build`가 유일한 길이다. 윈도우 아카이브는 없다 — 그 플랫폼을
-    한 번도 측정하지 않았으므로 놓지 않는다
-    ([ADR 0061](../decisions/0061-release-is-built-by-make-and-the-go-toolchain-and-the-version-belongs-to-the-tag.md)).
+    열린다. 그때까지는 위의 `go build`가 유일한 길이다. 윈도우 아카이브는 없다 — 그 플랫폼에서
+    검증한 적이 없기 때문이다.
 
 PPTX 타깃과 `--check-layout`은 시스템 브라우저(Chromium/Chrome)를 하나 띄운다 —
-[지오메트리 패스](../internals/geometry-pass.md)가 배치를 그 브라우저로 잰다. 웹 타깃만 쓰면
+배치를 그 브라우저로 재서 PPTX 좌표로 옮기기 때문이다. 웹 타깃만 쓰면
 브라우저는 필요 없다.
 
 ## 2. 프로젝트 하나
