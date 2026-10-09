@@ -14,8 +14,8 @@ balpyo는 SOML 슬라이드를 테마로 렌더링하는 **프레젠테이션 �
     **지금 동작하는 것의 목록은 한 곳에만 있다**: [레퍼런스](reference/index.md)의 "현재 상태".
     여기에 같은 목록을 한 벌 더 두었더니 낡았으므로 이 문서는 세지 않고 가리킨다
     ([ADR 0057](decisions/0057-docs-are-hand-written-but-closed-lists-are-read-from-them-by-a-test.md)).
-    실물로 보고 싶으면 아래 **예제 덱** 절의 명령을 그대로 돌린다. 진행 중인 항목은
-    [TASKS.md](https://github.com/k2sebeom/balpyo/blob/main/TASKS.md)에 있다.
+    실물로 보고 싶으면 아래 **예제 덱** 절의 명령을 그대로 돌린다. 남은 일은
+    [백로그](backlog.md)에 있다.
 
 ---
 
@@ -599,7 +599,7 @@ ls examples/quarterly-review/dist/     # index.html + <덱 제목>.pptx
 | [테스트 환경](internals/testing.md) | Docker 이미지, make 타깃, 골든·픽셀 비교 규칙 |
 | [설계 결정](decisions/index.md) | 구현 중 확정한 ADR 색인 |
 | [PRD.md](https://github.com/k2sebeom/balpyo/blob/main/PRD.md) | 제품 정의 전문 — SOML 명세, 테마 시스템, 렌더러, 확정된 설계 결정, 리스크 |
-| [TASKS.md](https://github.com/k2sebeom/balpyo/blob/main/TASKS.md) | 구현 플랜 — iteration별 테스트/구현/리뷰 체크리스트, 설계 결정 로그 |
+| [백로그](backlog.md) | 아직 하지 않은 일 — 순서를 정하지 않은 목록 |
 
 ### 이 문서 사이트 빌드하기
 

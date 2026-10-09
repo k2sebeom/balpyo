@@ -1,4 +1,4 @@
-<!-- 현황과 다음 — two-column 슬롯 모드. 로드맵은 TASKS.md의 마일스톤 순서를 따른다. -->
+<!-- 현황과 다음 — two-column 슬롯 모드. 남은 일은 docs/backlog.md에 있다. -->
 <slide id="status" layout="two-column">
   <h1 slot="title">지금 되는 것과 다음</h1>
   <col slot="left" gap="md">
@@ -19,5 +19,5 @@
       <li>커넥터 · 그룹, 그리고 작성 도구 (init · server · check)</li>
     </ul>
   </col>
-  <note>남은 우선순위는 저장소의 TASKS.md가 마일스톤 단위로 들고 있다.</note>
+  <note>남은 일은 저장소의 docs/backlog.md에 있다.</note>
 </slide>
