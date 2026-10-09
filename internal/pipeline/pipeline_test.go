@@ -368,6 +368,27 @@ func TestLoadDeckDuplicateIDHasPositions(t *testing.T) {
 	}
 }
 
+// 진단은 층(파서 → 값 층 → 검증) 순서가 아니라 소스 순서로 나온다: 뒤 파일의 파서 진단이 앞
+// 파일의 값 층 진단보다 먼저 쌓이지만, 결과는 파일 → 줄 → 열이다.
+func TestLoadDeckSortsDiagnosticsBySource(t *testing.T) {
+	dir := newProject(t, map[string]string{
+		"slides/001_a.slide": "<slide>\n  <text role=\"heding\">가</text>\n</slide>\n",
+		"slides/002_b.slide": "<slide>\n  <img/>\n  <text role=\"titel\">나</text>\n</slide>\n",
+	})
+	_, diags, err := LoadDeck(Options{ProjectDir: dir})
+	if err == nil {
+		t.Fatal("진단 에러여야 한다")
+	}
+	var got []string
+	for _, d := range diags {
+		got = append(got, d.File+":"+d.Span.Start.String())
+	}
+	want := []string{"slides/001_a.slide:2:15", "slides/002_b.slide:2:4", "slides/002_b.slide:3:15"}
+	if strings.Join(got, " ") != strings.Join(want, " ") {
+		t.Errorf("순서\n got: %v\nwant: %v\n%v", got, want, err)
+	}
+}
+
 // 모르는 variant 경고는 기본 빌드를 통과시키고 --strict가 에러로 승격한다.
 // core의 경고가 pipeline의 승격 경로를 실제로 타는지 여기서 잇는다.
 func TestLoadDeckStrictPromotesUnknownVariantWarning(t *testing.T) {

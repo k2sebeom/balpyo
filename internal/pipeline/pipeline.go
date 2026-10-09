@@ -180,6 +180,8 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 	// 수 있는 것(존재·포맷·고유 크기)을 본다. 파일 시스템이 여기서만 core로 넘어간다.
 	diags = append(diags, core.ResolveAssets(deck, fsys)...)
 	diags = append(diags, core.Validate(deck)...)
+	// 층 순서로 쌓인 진단을 소스 순서로 편다 — build · check · watch가 같은 순서를 본다.
+	diags = diags.Sorted()
 	if opts.Strict {
 		diags = diags.Strict()
 	}
@@ -369,7 +371,7 @@ func Check(opts Options) (*CheckResult, error) {
 	if opts.Strict {
 		layoutDiags = layoutDiags.Strict()
 	}
-	result.Diagnostics = append(result.Diagnostics, layoutDiags...)
+	result.Diagnostics = append(result.Diagnostics, layoutDiags...).Sorted()
 	return result, layoutDiags.Err()
 }
 
@@ -386,7 +388,7 @@ func Build(opts Options) (*Result, error) {
 	}
 	rendered, geometry, layoutDiags, err := Render(deck, opts)
 	// 배치 진단은 렌더가 실패해도 사람에게 보여야 한다 — 승격된 경고가 곧 그 실패의 이유다.
-	diags = append(diags, layoutDiags...)
+	diags = append(diags, layoutDiags...).Sorted()
 	if err != nil {
 		return &Result{Deck: deck, Diagnostics: diags, Geometry: geometry}, err
 	}

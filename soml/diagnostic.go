@@ -2,6 +2,7 @@ package soml
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -105,6 +106,29 @@ func (ds Diagnostics) Err() error {
 		}
 	}
 	return &DiagnosticsError{Errors: errs}
+}
+
+// Sorted는 파일 → 줄 → 열 순으로 정렬한 새 목록을 돌려준다.
+//
+// 진단은 여러 층(파서 · 값 층 · 에셋 · 검증 · 배치)에서 나와 층 순서로 쌓인다. 그대로 찍으면
+// 한 파일의 진단이 흩어지고 줄 번호가 뒤로 갔다 앞으로 온다 — 저자는 위에서 아래로 고친다.
+// 파일 순서는 슬라이드 수집 순서(lessPath)와 같아서 목록이 덱 순서로 읽힌다. 같은 파일에서
+// 위치가 없는 진단(파일 전체에 대한 것)이 앞에 선다. 같은 자리의 진단은 원래 순서를 지킨다
+// (안정 정렬) — 결정적 출력이 필요하다.
+func (ds Diagnostics) Sorted() Diagnostics {
+	out := make(Diagnostics, len(ds))
+	copy(out, ds)
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if a.File != b.File {
+			return lessPath(a.File, b.File)
+		}
+		if a.Span.Start.Line != b.Span.Start.Line {
+			return a.Span.Start.Line < b.Span.Start.Line
+		}
+		return a.Span.Start.Col < b.Span.Start.Col
+	})
+	return out
 }
 
 // Strict는 경고를 에러로 승격한 새 목록을 돌려준다 (`--strict`).

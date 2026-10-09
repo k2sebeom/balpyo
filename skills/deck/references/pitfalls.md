@@ -61,8 +61,6 @@ counts match the web, and PowerPoint and Keynote may not do it at all. It is als
 - **An unknown *tag* lists the whole 31-tag global vocabulary**, not the tags legal at that
   position — so inside `<ul>` you get 31 names when the answer is `<li>`. Slot and attribute
   diagnostics *do* narrow correctly. Child-position errors (`<ul>` holding a `<p>`) narrow too.
-- **Diagnostics are not sorted by source position.** Across several files they can arrive
-  `002:3` · `002:5` · `001:2`. Read the whole list before you start editing.
 - **A slide-ID collision is reported on the later slide** and names the earlier one by
   `file:line:col`: `슬라이드 ID "cover"가 slides/001_title.slide:1:12와 충돌한다`. A slide
   without `id=` takes its ID from the filename, so the position is its `<slide>` tag. Give one
