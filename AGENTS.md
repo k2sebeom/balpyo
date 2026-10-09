@@ -1,10 +1,13 @@
 # AGENTS.md — balpyo
 
-A guide for coding agents working in this repository. For the product overview see
-`docs/index.md`; for implemented behavior `docs/reference/`; for open work `docs/backlog.md`;
-for the design rationale `docs/decisions/` (ADRs — the pre-implementation decisions of the old
-PRD live in ADR 0067). Project docs, ADRs and diagnostics are written in
-**Korean** — keep new ones in Korean too. Commit messages are written in **English**.
+A guide for coding agents working in this repository. Two audiences, two directories:
+
+- `docs/` — the public user documentation (the mkdocs site): overview, guides, reference.
+- `contributing/` — for people changing balpyo: `internals/` (architecture, geometry pass,
+  testing, release), `decisions/` (ADRs), `backlog.md` (open work).
+
+Docs, ADRs and diagnostics are written in **Korean** — keep new ones in Korean too. Commit
+messages are written in **English**.
 
 ## What balpyo is
 
@@ -20,7 +23,7 @@ The core idea: authors lay out slides with flow layout (`<row>`/`<col>`/`<grid>`
 a headless browser computes the geometry (the **geometry pass**), and the PPTX renderer bakes
 those measured rects into EMU coordinates. Authors never touch coordinates.
 
-**The two targets agree on components and layout, not pixels** (ADR 0064): the same element
+**The two targets agree on components and layout, not pixels** (see `contributing/decisions/0064-*`): the same element
 becomes the same kind of object, at the measured rect, with the same resolved appearance, in the
 same order. Where a line wraps inside a box is each engine's business — PPTX text bodies use
 `normAutofit`. Don't add fixes or tests whose goal is glyph/line-break/pixel parity. Themes are
@@ -106,7 +109,7 @@ Invariants to preserve:
 5. **Geometry is a side table** (`geom.Geometry`) injected into the PPTX renderer, not stored in the deck.
 6. **Determinism**: same input → same bytes (zip timestamps fixed to 1980-01-01, ordered lists not maps).
 7. **Diagnostics come from one place** (parser for in-file, `core.Validate` for cross-file) with `line:col`, shared by `build`/`check`/`watch`.
-8. **Component/layout parity** (ADR 0064): both targets emit the same component tree — kind, rect, resolved appearance, document order, text runs. Line breaks are outside the contract.
+8. **Component/layout parity**: both targets emit the same component tree — kind, rect, resolved appearance, document order, text runs. Line breaks are outside the contract.
 
 ### Adding a tag / vocabulary
 
@@ -117,13 +120,13 @@ Vocabulary must exist in four layers at once: `soml` catalog (`soml/subset.go` `
 
 ## Testing
 
-The gate is plain `go test ./...` on the host — no container (ADR 0065). The only external tool
+The gate is plain `go test ./...` on the host — no container. The only external tool
 is Chromium/Chrome, because the build itself needs it (geometry pass). Tests that need it skip
 when it is missing; `BALPYO_TEST_STRICT=1` (set in CI) turns those skips into failures.
 
 What the suite judges, per fixture (`TestFixtures`) and per example (`TestExamplesBuildClean`):
 
-- **Parity** (ADR 0064): the component tree read back from the PPTX XML equals the one derived
+- **Parity**: the component tree read back from the PPTX XML equals the one derived
   from the deck + measured geometry — kind, rect (EMU), resolved appearance, order, text runs.
 - **Goldens**: only `golden/layout.txt` (the tree without rects) and `golden/diagnostics.txt`.
 - **PPTX validity** (`testkit.AssertValidPPTX`): every XML part validates against the vendored
@@ -150,11 +153,16 @@ make docs        # mkdocs build --strict (new pages must be in mkdocs.yml nav)
 
 ## Workflow conventions
 
-- Open work lives in `docs/backlog.md` (unordered). Each item is tests → implementation
+- Open work lives in `contributing/backlog.md` (unordered). Each item is tests → implementation
   (`soml` → `core` → renderers) → docs; delete the entry when it lands.
-- Decisions that change a contract get an ADR in `docs/decisions/` (Korean; context → options →
-  decision → rationale → consequences). **ADRs are never edited after the fact** — a later ADR supersedes.
-- `docs/reference/` documents implemented behavior only.
+- Decisions that change a contract get an ADR in `contributing/decisions/` (Korean; context →
+  options → decision → rationale → consequences). **ADRs are never edited after the fact** — a
+  later ADR supersedes.
+- **Code comments are self-sufficient.** Say the reason in the comment itself; don't cite ADRs,
+  docs pages, or planning artifacts (task/iteration/milestone ids). The same goes for test names,
+  fixture comments and emitted CSS comments.
+- **`docs/` is self-sufficient and user-facing.** It documents implemented behavior only and never
+  links to `contributing/`, ADRs, or planning artifacts. Contributor docs may link to `docs/`.
 - Diagnostic-wording changes keep the input that produced the message as a fixture.
 - Micro commits with `feat:` / `fix:` / `refactor:` / `test:` / `doc:` prefixes, written in English
   (older history is in Korean — don't rewrite it); no AI/author attribution in commit messages.
