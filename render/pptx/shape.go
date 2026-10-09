@@ -303,7 +303,7 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 		return fmt.Errorf("%s:%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
 			slide.Source, elem.Span, elem.Name)
 	}
-	body, err := textBodyXML(elem, *style, deck.Theme, rels)
+	body, err := textBodyXML(elem, *style, deck.Theme, rels, fillsOneLine(box))
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
@@ -823,11 +823,36 @@ func prstDashValue(style soml.BorderStyle) (string, error) {
 	return "", fmt.Errorf("테두리 스타일 %q는 어휘 밖이다", string(style))
 }
 
+// fullLineRatio는 "한 줄이 박스를 채웠다"의 문턱이다 — 잰 줄 폭이 박스 폭의 이 비율 이상이면
+// 다른 엔진에서 접힐 수 있는 박스로 본다.
+//
+// 비율이 4%인 이유: 엔진 사이의 글줄 폭 차이는 커닝(우리 PPTX는 `kern`을 쓰지 않아 PowerPoint가
+// 커닝 없이 놓는다)과 글리프 전진 폭의 반올림에서 오고, 굵은 라틴 제목에서 1–2% 남짓이다. 그
+// 두 배를 두면 내용 폭 박스(`<col align="center">` 안의 제목처럼 박스가 곧 글줄인 자리)는 모두
+// 걸리고, 폭이 넉넉한 박스의 짧은 한 줄은 걸리지 않는다 — 그쪽은 접힐 일이 없고, 저자가
+// PowerPoint에서 글을 늘리면 박스 안에서 줄이 바뀌는 편이 낫다.
+const fullLineRatio = 0.96
+
+// fillsOneLine은 잰 텍스트가 **한 줄**이고 그 줄이 박스 폭을 채웠는지 본다.
+//
+// 그런 박스는 PPTX에서 `wrap="none"`이다. 웹이 접지 않은 글줄이므로 접지 않는 것이 두 타깃의 같은
+// 결정이고, 접기를 엔진에 맡기면 글줄 폭이 몇 px 넓은 엔진에서 마지막 낱말이 둘째 줄로 떨어져
+// 아래 형제와 겹친다 (`normAutofit`은 PowerPoint가 글을 고칠 때 다시 계산하므로 연 순간의 넘침을
+// 받아 주지 않는다). 박스의 자리와 크기는 잰 그대로다 — 바뀌는 것은 줄바꿈 여부 하나다.
+func fillsOneLine(box geom.Box) bool {
+	if len(box.Lines) != 1 || box.Rect.W <= 0 {
+		return false
+	}
+	return box.Lines[0].W >= box.Rect.W*fullLineRatio
+}
+
 // textBodyXML은 해석된 텍스트 외관과 블록의 자식들을 p:txBody로 컴파일한다 (외관 매핑 표의
 // 텍스트 외관 행과 인라인 서식 표).
 // 문단 서식은 블록의 확정 스타일에서, 런 서식은 잎을 감싼 가장 안쪽 요소의 확정 스타일에서
 // 나온다 — 요소의 Attrs를 다시 읽지 않는다 (render/web.textStyleCSS와 같은 계약).
-func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rels *slideRels) (string, error) {
+//
+// oneLine은 잰 텍스트가 박스를 채운 한 줄이라는 뜻이다 (fillsOneLine) — 그 박스는 접지 않는다.
+func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rels *slideRels, oneLine bool) (string, error) {
 	var b strings.Builder
 	w := func(depth int, line string) {
 		b.WriteString("\n" + shapeIndent + strings.Repeat("  ", depth) + line)
@@ -837,7 +862,8 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rel
 	// 그대로 두면 좌표는 맞는데 글자만 몇 px 밀린다. wrap="square"는 박스 폭 안에서 줄을 바꾸는 웹과 같은 결정이고, normAutofit은
 	// 박스 고정 + 넘치면 PowerPoint가 줄여 맞춤이다: 줄이 어디서 접히는지는 엔진의
 	// 몫이라 PowerPoint가 한 줄 더 접어도 글자는 잰 박스 안에 머물고, 저자가 PowerPoint에서
-	// 글을 고친 뒤에도 그렇다. pre만 wrap="none" + noAutofit이다: 웹이 줄바꿈하지 않기로
+	// 글을 고친 뒤에도 그렇다. 예외가 둘이다 — 박스를 채운 한 줄은 wrap="none"이고(fillsOneLine),
+	// pre는 wrap="none" + noAutofit이다: 웹이 줄바꿈하지 않기로
 	// 했으므로(render/web.writeBlock의 white-space: pre) 줄 수가 원문의 줄 수로 정해져 있고,
 	// 코드의 글자 크기를 엔진이 줄이면 형제 코드 블록과 크기가 갈라진다.
 	//
@@ -845,8 +871,13 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rel
 	// 앵커가 움직일 여백이 없다 (soml.TextStyle.Anchor). 앵커가 뜻을 갖는 자리는 도형
 	// 안이고, 그쪽 bodyPr은 shapeBodyXML이 낸다.
 	wrap, autofit := "square", "<a:normAutofit/>"
-	if elem.Name == "pre" {
+	switch {
+	case elem.Name == "pre":
 		wrap, autofit = "none", "<a:noAutofit/>"
+	case oneLine:
+		// 줄 수는 하나로 정해져 있다 — 넘침을 받을 일이 없지만 normAutofit을 남기는 이유는 저자가
+		// PowerPoint에서 줄을 더하면(Enter) 박스 안으로 줄여 맞추는 편집 동작이다.
+		wrap = "none"
 	}
 	w(1, `<p:txBody>`)
 	w(2, fmt.Sprintf(`<a:bodyPr wrap="%s" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">`, wrap))

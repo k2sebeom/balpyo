@@ -97,6 +97,42 @@ func TestRenderTextBody(t *testing.T) {
 	}
 }
 
+// 박스를 채운 한 줄은 접지 않는다 — 내용 폭 박스는 잰 폭에 여유가 0이라, 글줄이 몇 px 넓게 놓이는
+// 엔진(커닝 없는 PowerPoint)에서 마지막 낱말이 둘째 줄로 떨어져 아래 형제와 겹친다. 박스가 넉넉한
+// 짧은 한 줄과 여러 줄 문단은 그대로 square다 — 저자가 글을 늘리면 박스 안에서 줄이 바뀌어야 한다.
+func TestRenderTextBodyFullLineDoesNotWrap(t *testing.T) {
+	deck := resolvedDeck(t, `<slide>
+  <text role="title">balpyo</text>
+</slide>`)
+	rect := geom.Rect{X: 493, Y: 115, W: 294.2, H: 105.6}
+	cases := []struct {
+		name  string
+		lines []geom.Rect
+		wrap  string
+	}{
+		{"내용 폭 한 줄", []geom.Rect{{X: 493, Y: 115, W: 294.2, H: 105.6}}, "none"},
+		{"문턱 위의 한 줄", []geom.Rect{{X: 493, Y: 115, W: 283, H: 105.6}}, "none"},
+		{"넉넉한 박스의 짧은 한 줄", []geom.Rect{{X: 493, Y: 115, W: 200, H: 105.6}}, "square"},
+		{"두 줄", []geom.Rect{{X: 493, Y: 115, W: 294, H: 52}, {X: 493, Y: 167, W: 120, H: 52}}, "square"},
+		{"잰 줄 없음", nil, "square"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			g := measuredGeometry(t, deck, rect)
+			g.Boxes[0].Lines = tc.lines
+			xml := slideXML(t, deck, g)
+			want := `<a:bodyPr wrap="` + tc.wrap + `" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">`
+			if !strings.Contains(xml, want) {
+				t.Errorf("slide1.xml에 %q가 없다", want)
+			}
+			// 자리와 크기는 잰 그대로다 — 바뀌는 것은 줄바꿈 여부 하나다.
+			if !strings.Contains(xml, `<a:ext cx="2802255" cy="1005840"/>`) {
+				t.Errorf("rect가 잰 값이 아니다:\n%s", xml)
+			}
+		})
+	}
+}
+
 // algn은 논리 이름의 OOXML 대응이다 — l/r은 rtl에서 뜻이 뒤집히는 논리 값이라
 // start/end와 짝이 맞는다 (soml.TextAlign의 주석).
 func TestAlgnValue(t *testing.T) {
