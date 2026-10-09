@@ -436,107 +436,274 @@
 
   .balpyo-slide { background: var(--balpyo-color-bg); }
 
+  .balpyo-stage.balpyo-slots > :is(.balpyo-text, .balpyo-list) { width: auto; }
   .balpyo-stage.balpyo-layout-end:not(.balpyo-slots) { justify-content: center; }
   .balpyo-stage.balpyo-layout-title:not(.balpyo-slots) { justify-content: center; }
-  .balpyo-stage.balpyo-layout-two-column:not(.balpyo-slots) { display: grid; grid-template-columns: 1fr 1fr; align-content: start; }
+  .balpyo-stage.balpyo-layout-two-column.balpyo-slots { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; grid-template-areas: "title title" "left right"; align-content: start; }
 }
 </style>
 </head>
 <body>
-<div class="balpyo-deck" data-aspect="16:9" data-slides="6">
+<div class="balpyo-deck" data-aspect="16:9" data-slides="7">
 <section class="balpyo-slide" id="cover" data-slide-index="0" data-slide-source="slides/001_title.slide">
 <div class="balpyo-stage balpyo-layout-title">
 <div class="balpyo-text" data-balpyo-id="s0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: center">GROWTH TEAM · 2026 Q3</div>
-<div class="balpyo-text" data-balpyo-id="s0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; background-image: linear-gradient(90deg, #0F65F9, #7C3AED); -webkit-background-clip: text; background-clip: text; color: transparent; text-align: center">Q3 비즈니스 리뷰</div>
-<div class="balpyo-text" data-balpyo-id="s0.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: center">성장 지표 회고와 Q4 계획</div>
+<div class="balpyo-text" data-balpyo-id="s0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 72px; font-weight: 700; line-height: 1.2; background-image: linear-gradient(90deg, #0F65F9, #7C3AED); -webkit-background-clip: text; background-clip: text; color: transparent; text-align: center">Q3 비즈니스 리뷰</div>
+<div class="balpyo-text" data-balpyo-id="s0.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-muted); text-align: center">성장 지표 회고와 Q4 계획</div>
 </div>
 <div class="balpyo-notes" hidden>인사 30초. 오늘 다룰 세 가지: 지표, 학습, 계획.</div>
 </section>
 <section class="balpyo-slide" id="agenda" data-slide-index="1" data-slide-source="slides/002_agenda.slide">
-<div class="balpyo-stage balpyo-layout-two-column">
+<div class="balpyo-stage">
 <h2 class="balpyo-text" data-balpyo-id="s1.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">오늘의 아젠다</h2>
-<div class="balpyo-row" data-balpyo-id="s1.1" data-balpyo-el="row" style="gap: var(--balpyo-space-xl); align-items: start; justify-content: space-between">
-<div class="balpyo-col" data-balpyo-id="s1.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md)">
-<div class="balpyo-text" data-balpyo-id="s1.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start">돌아보기</div>
-<ul class="balpyo-list" data-balpyo-id="s1.1.0.1" data-balpyo-el="ul">
-<li class="balpyo-text" data-balpyo-id="s1.1.0.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">핵심 지표 3종</li>
-<li class="balpyo-text" data-balpyo-id="s1.1.0.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">가장 큰 학습</li>
-</ul>
-</div>
-<div class="balpyo-col" data-balpyo-id="s1.1.1" data-balpyo-el="col" style="gap: var(--balpyo-space-md)">
-<div class="balpyo-text" data-balpyo-id="s1.1.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start">내다보기</div>
-<ul class="balpyo-list" data-balpyo-id="s1.1.1.1" data-balpyo-el="ul">
-<li class="balpyo-text" data-balpyo-id="s1.1.1.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">Q4 목표</li>
-<li class="balpyo-text" data-balpyo-id="s1.1.1.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">필요한 투자</li>
-</ul>
+<div class="balpyo-grid" data-balpyo-id="s1.1" data-balpyo-el="grid" style="gap: var(--balpyo-space-md); grid-template-columns: repeat(4, 1fr); flex-grow: 1">
+<div class="balpyo-shape" data-balpyo-id="s1.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s1.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s1.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 64px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: start">01</div>
+<div class="balpyo-col" data-balpyo-id="s1.1.0.0.1" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s1.1.0.0.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">핵심 지표</div>
+<div class="balpyo-text" data-balpyo-id="s1.1.0.0.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">사용자 · 매출 · 평점</div>
 </div>
 </div>
 </div>
+<div class="balpyo-shape" data-balpyo-id="s1.1.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s1.1.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s1.1.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 64px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: start">02</div>
+<div class="balpyo-col" data-balpyo-id="s1.1.1.0.1" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s1.1.1.0.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">채널별 성과</div>
+<div class="balpyo-text" data-balpyo-id="s1.1.1.0.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">전환율과 획득 비용</div>
+</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s1.1.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s1.1.2.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s1.1.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 64px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: start">03</div>
+<div class="balpyo-col" data-balpyo-id="s1.1.2.0.1" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s1.1.2.0.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">가장 큰 학습</div>
+<div class="balpyo-text" data-balpyo-id="s1.1.2.0.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">추천 채널의 CAC</div>
+</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s1.1.3" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s1.1.3.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s1.1.3.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 64px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-bg); text-align: start">04</div>
+<div class="balpyo-col" data-balpyo-id="s1.1.3.0.1" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s1.1.3.0.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-bg); text-align: start">Q4 계획</div>
+<div class="balpyo-text" data-balpyo-id="s1.1.3.0.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-bg); text-align: start">목표와 필요한 투자</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="balpyo-notes" hidden>앞의 셋은 돌아보기, 마지막 하나가 오늘 결정할 것이다.</div>
 </section>
 <section class="balpyo-slide" id="kpis" data-slide-index="2" data-slide-source="slides/003_kpis.slide">
 <div class="balpyo-stage">
 <h2 class="balpyo-text" data-balpyo-id="s2.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">핵심 지표</h2>
-<div class="balpyo-grid" data-balpyo-id="s2.1" data-balpyo-el="grid" style="gap: var(--balpyo-space-lg); grid-template-columns: repeat(3, 1fr)">
-<div class="balpyo-shape" data-balpyo-id="s2.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 200px">
+<div class="balpyo-grid" data-balpyo-id="s2.1" data-balpyo-el="grid" style="gap: var(--balpyo-space-lg); grid-template-columns: repeat(3, 1fr); flex-grow: 1">
+<div class="balpyo-shape" data-balpyo-id="s2.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
 <svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none; filter: drop-shadow(var(--balpyo-shadow-soft))"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-text" data-balpyo-id="s2.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: center">+38%</div>
-<p class="balpyo-text" data-balpyo-id="s2.1.0.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">월간 활성 사용자</p>
+<div class="balpyo-col" data-balpyo-id="s2.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s2.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start">월간 활성 사용자</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 88px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: start">+38%</div>
+<div class="balpyo-col" data-balpyo-id="s2.1.0.0.2" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<p class="balpyo-text" data-balpyo-id="s2.1.0.0.2.0" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">2.1M → 2.9M</p>
+<div class="balpyo-text" data-balpyo-id="s2.1.0.0.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">Q2 대비 · 목표 +30%</div>
 </div>
-<div class="balpyo-shape" data-balpyo-id="s2.1.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 200px">
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s2.1.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
 <svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none; filter: drop-shadow(var(--balpyo-shadow-soft))"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-text" data-balpyo-id="s2.1.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: center">1.2B</div>
-<p class="balpyo-text" data-balpyo-id="s2.1.1.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">분기 매출(원)</p>
+<div class="balpyo-col" data-balpyo-id="s2.1.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s2.1.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start">분기 매출</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 88px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: start">1.2B</div>
+<div class="balpyo-col" data-balpyo-id="s2.1.1.0.2" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<p class="balpyo-text" data-balpyo-id="s2.1.1.0.2.0" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">목표 대비 108%</p>
+<div class="balpyo-text" data-balpyo-id="s2.1.1.0.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">원 · 구독 74% · 광고 26%</div>
 </div>
-<div class="balpyo-shape" data-balpyo-id="s2.1.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 200px">
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s2.1.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
 <svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none; filter: drop-shadow(var(--balpyo-shadow-soft))"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-text" data-balpyo-id="s2.1.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: center">4.6</div>
-<p class="balpyo-text" data-balpyo-id="s2.1.2.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">앱스토어 평점</p>
+<div class="balpyo-col" data-balpyo-id="s2.1.2.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s2.1.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start">앱스토어 평점</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.2.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 88px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: start">4.6</div>
+<div class="balpyo-col" data-balpyo-id="s2.1.2.0.2" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<p class="balpyo-text" data-balpyo-id="s2.1.2.0.2.0" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">리뷰 18,400건</p>
+<div class="balpyo-text" data-balpyo-id="s2.1.2.0.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">Q2 4.3 · 1점 리뷰 −41%</div>
 </div>
 </div>
 </div>
-<div class="balpyo-notes" hidden>매출은 목표 대비 108%.</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s2.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">세 지표 모두 목표를 넘겼다. 사용자 증가의 절반 이상이 추천 채널에서 왔다.</div>
+</div>
+<div class="balpyo-notes" hidden>매출은 목표 대비 108%. 평점 상승은 결제 오류 수정 이후다.</div>
 </section>
 <section class="balpyo-slide" id="table" data-slide-index="3" data-slide-source="slides/004_table.slide">
 <div class="balpyo-stage">
 <h2 class="balpyo-text" data-balpyo-id="s3.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">채널별 성과</h2>
-<table class="balpyo-table balpyo-table-striped" data-balpyo-id="s3.1" data-balpyo-el="table">
-<tr data-balpyo-id="s3.1.0" data-balpyo-el="tr">
-<th data-balpyo-id="s3.1.0.0" data-balpyo-el="th" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start; background-color: var(--balpyo-color-accent1); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">채널</th>
-<th data-balpyo-id="s3.1.0.1" data-balpyo-el="th" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: end; background-color: var(--balpyo-color-accent1); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">전환율</th>
-<th data-balpyo-id="s3.1.0.2" data-balpyo-el="th" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: end; background-color: var(--balpyo-color-accent1); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">CAC</th>
+<div class="balpyo-grid" data-balpyo-id="s3.1" data-balpyo-el="grid" style="gap: var(--balpyo-space-lg); grid-template-columns: 2fr 1fr; flex-grow: 1">
+<table class="balpyo-table balpyo-table-striped" data-balpyo-id="s3.1.0" data-balpyo-el="table">
+<tr data-balpyo-id="s3.1.0.0" data-balpyo-el="tr">
+<th data-balpyo-id="s3.1.0.0.0" data-balpyo-el="th" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start; background-color: var(--balpyo-color-accent1); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">채널</th>
+<th data-balpyo-id="s3.1.0.0.1" data-balpyo-el="th" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: end; background-color: var(--balpyo-color-accent1); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">신규 사용자</th>
+<th data-balpyo-id="s3.1.0.0.2" data-balpyo-el="th" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: end; background-color: var(--balpyo-color-accent1); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">전환율</th>
+<th data-balpyo-id="s3.1.0.0.3" data-balpyo-el="th" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: end; background-color: var(--balpyo-color-accent1); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">CAC (원)</th>
 </tr>
-<tr data-balpyo-id="s3.1.1" data-balpyo-el="tr">
-<td data-balpyo-id="s3.1.1.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">검색</td>
-<td data-balpyo-id="s3.1.1.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">4.2%</td>
-<td data-balpyo-id="s3.1.1.2" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">12,000</td>
+<tr data-balpyo-id="s3.1.0.1" data-balpyo-el="tr">
+<td data-balpyo-id="s3.1.0.1.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">검색</td>
+<td data-balpyo-id="s3.1.0.1.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">312K</td>
+<td data-balpyo-id="s3.1.0.1.2" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">4.2%</td>
+<td data-balpyo-id="s3.1.0.1.3" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">12,000</td>
 </tr>
-<tr data-balpyo-id="s3.1.2" data-balpyo-el="tr">
-<td data-balpyo-id="s3.1.2.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">추천</td>
-<td data-balpyo-id="s3.1.2.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">7.8%</td>
-<td data-balpyo-id="s3.1.2.2" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">3,200</td>
+<tr data-balpyo-id="s3.1.0.2" data-balpyo-el="tr">
+<td data-balpyo-id="s3.1.0.2.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">추천</td>
+<td data-balpyo-id="s3.1.0.2.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">268K</td>
+<td data-balpyo-id="s3.1.0.2.2" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">7.8%</td>
+<td data-balpyo-id="s3.1.0.2.3" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">3,200</td>
+</tr>
+<tr data-balpyo-id="s3.1.0.3" data-balpyo-el="tr">
+<td data-balpyo-id="s3.1.0.3.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">소셜</td>
+<td data-balpyo-id="s3.1.0.3.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">141K</td>
+<td data-balpyo-id="s3.1.0.3.2" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">2.9%</td>
+<td data-balpyo-id="s3.1.0.3.3" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">9,400</td>
+</tr>
+<tr data-balpyo-id="s3.1.0.4" data-balpyo-el="tr">
+<td data-balpyo-id="s3.1.0.4.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">제휴</td>
+<td data-balpyo-id="s3.1.0.4.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">63K</td>
+<td data-balpyo-id="s3.1.0.4.2" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">3.5%</td>
+<td data-balpyo-id="s3.1.0.4.3" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">7,100</td>
+</tr>
+<tr data-balpyo-id="s3.1.0.5" data-balpyo-el="tr">
+<td data-balpyo-id="s3.1.0.5.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">디스플레이 광고</td>
+<td data-balpyo-id="s3.1.0.5.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">38K</td>
+<td data-balpyo-id="s3.1.0.5.2" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">1.1%</td>
+<td data-balpyo-id="s3.1.0.5.3" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">21,500</td>
+</tr>
+<tr data-balpyo-id="s3.1.0.6" data-balpyo-el="tr">
+<td data-balpyo-id="s3.1.0.6.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">합계</strong></td>
+<td data-balpyo-id="s3.1.0.6.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; font-style: normal; text-decoration: none">822K</strong></td>
+<td data-balpyo-id="s3.1.0.6.2" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; font-style: normal; text-decoration: none">4.6%</strong></td>
+<td data-balpyo-id="s3.1.0.6.3" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-fg); text-align: end; font-style: normal; text-decoration: none">8,900</strong></td>
 </tr>
 </table>
+<div class="balpyo-shape" data-balpyo-id="s3.1.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s3.1.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s3.1.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md)">
+<div class="balpyo-text" data-balpyo-id="s3.1.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start">읽는 법</div>
+<ul class="balpyo-list" data-balpyo-id="s3.1.1.0.0.1" data-balpyo-el="ul">
+<li class="balpyo-text" data-balpyo-id="s3.1.1.0.0.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start"><strong style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">추천</strong>은 전환율 1위, CAC 최저</li>
+<li class="balpyo-text" data-balpyo-id="s3.1.1.0.0.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start"><strong style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">검색</strong>은 규모 1위지만 CAC가 추천의 4배</li>
+<li class="balpyo-text" data-balpyo-id="s3.1.1.0.0.1.2" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start"><strong style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">디스플레이</strong>는 CAC가 평균의 2.4배</li>
+</ul>
 </div>
+<div class="balpyo-text" data-balpyo-id="s3.1.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 26px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent1); text-align: start">→ 디스플레이 예산을 추천으로</div>
+</div>
+</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s3.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">CAC = 채널 비용 ÷ 신규 사용자. 합계 행의 전환율과 CAC는 가중 평균이다.</div>
+</div>
+<div class="balpyo-notes" hidden>디스플레이 광고 예산은 Q4에 추천 보상으로 옮긴다 — 다음 장의 근거다.</div>
 </section>
 <section class="balpyo-slide" id="callout" data-slide-index="4" data-slide-source="slides/005_callout.slide">
 <div class="balpyo-stage">
 <h2 class="balpyo-text" data-balpyo-id="s4.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">가장 큰 학습</h2>
-<div class="balpyo-stack" data-balpyo-id="s4.1" data-balpyo-el="stack" style="width: 100%; height: 320px">
+<div class="balpyo-stack" data-balpyo-id="s4.1" data-balpyo-el="stack" style="width: 100%; flex-grow: 1">
 <div class="balpyo-shape" data-balpyo-id="s4.1.0" data-balpyo-el="shape" style="width: 100%; height: 100%">
 <svg class="balpyo-shape-ink" aria-hidden="true" style="fill: url(#s4.1.0-fill-grad); stroke: var(--balpyo-color-muted); stroke-width: 1px"><defs><linearGradient id="s4.1.0-fill-grad" x1="0.1464" y1="0.8536" x2="0.8536" y2="0.1464"><stop offset="0" style="stop-color: #0F65F9"/><stop offset="1" style="stop-color: #7C3AED"/></linearGradient></defs><rect width="100%" height="100%" rx="24"/></svg>
 </div>
-<div class="balpyo-text" data-balpyo-id="s4.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-bg); text-align: start; place-self: center center">추천 채널이 CAC를 4배 낮췄다</div>
+<div class="balpyo-col" data-balpyo-id="s4.1.1" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); place-self: center center">
+<div class="balpyo-text" data-balpyo-id="s4.1.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 52px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-bg); text-align: center">추천 채널이 CAC를 4배 낮췄다</div>
+<div class="balpyo-text" data-balpyo-id="s4.1.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 26px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-bg); text-align: center">같은 예산이면 사용자가 네 배 온다</div>
+</div>
 <div class="balpyo-shape" data-balpyo-id="s4.1.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px); width: 120px; height: 44px; place-self: start end">
 <svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
 <div class="balpyo-text" data-balpyo-id="s4.1.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: center">NEW</div>
 </div>
 </div>
+<div class="balpyo-grid" data-balpyo-id="s4.2" data-balpyo-el="grid" style="gap: var(--balpyo-space-lg); grid-template-columns: repeat(2, 1fr)">
+<div class="balpyo-shape" data-balpyo-id="s4.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-row" data-balpyo-id="s4.2.0.0" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center; justify-content: space-between">
+<div class="balpyo-text" data-balpyo-id="s4.2.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">검색 CAC</div>
+<div class="balpyo-text" data-balpyo-id="s4.2.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 44px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">12,000원</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s4.2.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-row" data-balpyo-id="s4.2.1.0" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center; justify-content: space-between">
+<div class="balpyo-text" data-balpyo-id="s4.2.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">추천 CAC</div>
+<div class="balpyo-text" data-balpyo-id="s4.2.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 44px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: start">3,200원</div>
+</div>
+</div>
+</div>
 </div>
 </section>
-<section class="balpyo-slide" id="end" data-slide-index="5" data-slide-source="slides/006_end.slide">
+<section class="balpyo-slide" id="plan" data-slide-index="5" data-slide-source="slides/006_plan.slide">
+<div class="balpyo-stage balpyo-layout-two-column balpyo-slots">
+<h2 class="balpyo-text" data-balpyo-id="s5.0" data-balpyo-el="h2" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start; grid-area: title">Q4 목표와 필요한 투자</h2>
+<div class="balpyo-col" data-balpyo-id="s5.1" data-balpyo-el="col" style="height: 100%; grid-area: left">
+<div class="balpyo-shape" data-balpyo-id="s5.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s5.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: space-between; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s5.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start">목표</div>
+<div class="balpyo-row" data-balpyo-id="s5.1.0.0.1" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center; justify-content: space-between">
+<div class="balpyo-col" data-balpyo-id="s5.1.0.0.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s5.1.0.0.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">월간 활성 사용자</div>
+<div class="balpyo-text" data-balpyo-id="s5.1.0.0.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">Q3 2.9M</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s5.1.0.0.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 48px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: start">3.4M</div>
+</div>
+<div class="balpyo-row" data-balpyo-id="s5.1.0.0.2" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center; justify-content: space-between">
+<div class="balpyo-col" data-balpyo-id="s5.1.0.0.2.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s5.1.0.0.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">분기 매출</div>
+<div class="balpyo-text" data-balpyo-id="s5.1.0.0.2.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">Q3 1.2B원</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s5.1.0.0.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 48px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: start">1.4B</div>
+</div>
+<div class="balpyo-row" data-balpyo-id="s5.1.0.0.3" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center; justify-content: space-between">
+<div class="balpyo-col" data-balpyo-id="s5.1.0.0.3.0" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s5.1.0.0.3.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">평균 CAC</div>
+<div class="balpyo-text" data-balpyo-id="s5.1.0.0.3.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">Q3 8,900원</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s5.1.0.0.3.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 48px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: start">7,000</div>
+</div>
+</div>
+</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s5.2" data-balpyo-el="col" style="height: 100%; grid-area: right">
+<div class="balpyo-shape" data-balpyo-id="s5.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s5.2.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: space-between; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s5.2.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start">투자</div>
+<div class="balpyo-col" data-balpyo-id="s5.2.0.0.1" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s5.2.0.0.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">추천 보상 예산 2배</div>
+<div class="balpyo-text" data-balpyo-id="s5.2.0.0.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">디스플레이 광고 예산에서 옮긴다</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s5.2.0.0.2" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s5.2.0.0.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">온보딩 개선 · 엔지니어 2명</div>
+<div class="balpyo-text" data-balpyo-id="s5.2.0.0.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">첫 주 이탈률 31% → 24%</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s5.2.0.0.3" data-balpyo-el="col" style="gap: var(--balpyo-space-xs)">
+<div class="balpyo-text" data-balpyo-id="s5.2.0.0.3.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">추천 어트리뷰션 정비</div>
+<div class="balpyo-text" data-balpyo-id="s5.2.0.0.3.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">링크 경유 가입의 18%가 미집계</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s5.2.0.0.4" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">추가 예산 0원 — 재배치만 한다</strong></div>
+</div>
+</div>
+</div>
+</div>
+<div class="balpyo-notes" hidden>오늘 결정할 것은 오른쪽 첫 줄 하나다.</div>
+</section>
+<section class="balpyo-slide" id="end" data-slide-index="6" data-slide-source="slides/007_end.slide">
 <div class="balpyo-stage balpyo-layout-end">
-<div class="balpyo-text" data-balpyo-id="s5.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: center">감사합니다</div>
-<div class="balpyo-text" data-balpyo-id="s5.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: center">질문은 #growth 채널로</div>
+<div class="balpyo-text" data-balpyo-id="s6.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 72px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: center">감사합니다</div>
+<div class="balpyo-text" data-balpyo-id="s6.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-muted); text-align: center">질문은 #growth 채널로</div>
 </div>
 </section>
 </div>
