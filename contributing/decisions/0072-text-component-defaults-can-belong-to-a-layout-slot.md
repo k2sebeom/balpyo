@@ -3,7 +3,7 @@
 - 상태: 확정
 - 날짜: 2026-10-09
 - 관련: [ADR 0007](0007-block-tag-role-ownership.md)(블록 태그의 역할은 언어가, 태그별 기본값은 테마가),
-  [appearance.md](../../docs/reference/appearance.md#캐스케이드--해석-순서), [layouts.md](../../docs/reference/layouts.md)
+  [appearance.md](../../docs/reference/appearance.md#캐스케이드-해석-순서), [layouts.md](../../docs/reference/layouts.md)
 
 ## 맥락
 
