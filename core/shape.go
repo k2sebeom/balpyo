@@ -367,7 +367,7 @@ const gradientBorderParts = 2
 func (r *resolver) borderWidth(part valuePart, attr soml.Attr) (float64, bool) {
 	span := part.span(attr)
 	if unit := numberSuffix(part.text); unit != "" {
-		r.errorf(span, "border의 굵기는 단위 없는 논리 px 수치다 (%q의 %q를 뗀다) — px·pt·em 접미사는 쓸 수 없다 (PRD §13-5)",
+		r.errorf(span, "border의 굵기는 단위 없는 논리 px 수치다 (%q의 %q를 뗀다) — px·pt·em 접미사는 쓸 수 없다",
 			part.text, unit)
 		return 0, false
 	}
@@ -443,7 +443,7 @@ func (r *resolver) radiusValue(attr soml.Attr) (soml.Radius, bool) {
 		return soml.Radius{}, false
 	}
 	if unit := numberSuffix(attr.Value); unit != "" {
-		r.errorf(attr.ValueSpan, "radius는 단위 없는 논리 px 수치다 (%q의 %q를 뗀다) — px·pt·em 접미사는 쓸 수 없다 (PRD §13-5)",
+		r.errorf(attr.ValueSpan, "radius는 단위 없는 논리 px 수치다 (%q의 %q를 뗀다) — px·pt·em 접미사는 쓸 수 없다",
 			attr.Value, unit)
 		return soml.Radius{}, false
 	}
@@ -525,7 +525,7 @@ func (r *resolver) rotate(attr soml.Attr) (float64, bool) {
 	}
 	raw := attr.Value
 	if unit := numberSuffix(raw); unit != "" {
-		r.errorf(attr.ValueSpan, "rotate는 단위 없는 각도 수치다 (%q의 %q를 뗀다) — 허용 접미사는 %% 하나다 (PRD §13-5)",
+		r.errorf(attr.ValueSpan, "rotate는 단위 없는 각도 수치다 (%q의 %q를 뗀다) — 허용 접미사는 %% 하나다",
 			raw, unit)
 		return 0, false
 	}

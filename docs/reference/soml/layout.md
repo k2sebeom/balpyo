@@ -373,7 +373,7 @@ translate
 ```
 
 ```
-slides/007_style_appearance.slide:8:24: warning: style의 "background" 선언은 배치가 아니다 — 웹에만 적용되고 PPTX에는 이식되지 않는다 (PRD §7.9). 색·테두리 같은 외관은 컴포넌트 속성으로 쓴다
+slides/007_style_appearance.slide:8:24: warning: style의 "background" 선언은 배치가 아니다 — 웹에만 적용되고 PPTX에는 이식되지 않는다. 색·테두리 같은 외관은 컴포넌트 속성으로 쓴다
 ```
 
 경고인 이유는 에러로 두면 엔진이 CSS 프로퍼티 전체를 알아야 하고, 그것이 탈출구의 존재
@@ -405,7 +405,7 @@ slides/007_style_appearance.slide:8:24: warning: style의 "background" 선언은
 | 조건 | 진단 메시지 |
 |---|---|
 | 모르는 공간 토큰 | `알 수 없는 공간 토큰 "huge" (쓸 수 있는 토큰: xs, sm, md, lg, xl, 2xl, 또는 수치·백분율)` |
-| 단위 접미사를 붙였다 | `gap는 단위 없는 논리 px 수치다 ("16px"의 "px"를 뗀다) — px·pt·em 접미사는 쓸 수 없다 (PRD §13-5)` |
+| 단위 접미사를 붙였다 | `gap는 단위 없는 논리 px 수치다 ("16px"의 "px"를 뗀다) — px·pt·em 접미사는 쓸 수 없다` |
 | 음수 길이 | `gap는 0보다 작을 수 없다 ("-4")` |
 | 크기에 공간 토큰을 썼다 | `공간 토큰 "md"는 gap·pad에만 쓴다 — w는 수치·백분율·fill이다` |
 | 어휘 밖의 `align`/`self` | `알 수 없는 align "centre" (쓸 수 있는 값: start, center, end, stretch, baseline)` |

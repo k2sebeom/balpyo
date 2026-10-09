@@ -190,7 +190,7 @@ func (r *resolver) imageSrc(elem *soml.Element) string {
 			r.errorf(attr.ValueSpan, "src에 data: URL은 쓸 수 없다 — 그림은 파일로 커밋한다 (원문에 바이트를 실으면 슬라이드를 사람이 읽을 수도, 진단이 자리를 가리킬 수도 없다)")
 			return ""
 		}
-		r.errorf(attr.ValueSpan, "src에 URL은 쓸 수 없다 (%q) — 빌드가 네트워크에 의존하면 같은 덱이 CI에서 다르게 빌드되고 오프라인 발표 약속이 깨진다 (PRD §9.1). 파일을 프로젝트 안에 두고 상대 경로로 가리킨다",
+		r.errorf(attr.ValueSpan, "src에 URL은 쓸 수 없다 (%q) — 빌드가 네트워크에 의존하면 같은 덱이 CI에서 다르게 빌드되고 오프라인 발표 약속이 깨진다. 파일을 프로젝트 안에 두고 상대 경로로 가리킨다",
 			raw)
 		return ""
 	}

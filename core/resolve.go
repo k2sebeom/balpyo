@@ -547,7 +547,7 @@ func (r *resolver) size(attr soml.Attr) (float64, bool) {
 		// 수치 뒤에 붙은 것만 "단위"라고 부른다. 수치가 아예 없으면 아래의 수치 진단으로
 		// 내려보낸다 — `size="큼"`에 단위를 떼라고 하면 저자가 무엇을 고칠지 알 수 없다
 		// (numberSuffix가 그 판정을 소유한다).
-		r.errorf(attr.ValueSpan, "size는 단위 없는 논리 px 수치다 (%q의 %q를 뗀다) — px·pt·em 접미사는 쓸 수 없다 (PRD §13-5)", raw, unit)
+		r.errorf(attr.ValueSpan, "size는 단위 없는 논리 px 수치다 (%q의 %q를 뗀다) — px·pt·em 접미사는 쓸 수 없다", raw, unit)
 		return 0, false
 	}
 	px, err := strconv.ParseFloat(raw, 64)

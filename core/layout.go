@@ -335,7 +335,7 @@ func (r *resolver) lengthValue(name, raw string, span soml.Span, syntax lengthSy
 		value = strings.TrimSuffix(value, "%")
 	}
 	if unit := numberSuffix(value); unit != "" {
-		r.errorf(span, "%s는 단위 없는 논리 px 수치다 (%q의 %q를 뗀다) — px·pt·em 접미사는 쓸 수 없다 (PRD §13-5)",
+		r.errorf(span, "%s는 단위 없는 논리 px 수치다 (%q의 %q를 뗀다) — px·pt·em 접미사는 쓸 수 없다",
 			name, raw, unit)
 		return soml.Length{}, false
 	}
