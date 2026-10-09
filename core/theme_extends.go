@@ -275,7 +275,7 @@ func mergeComponentsFile(parent, child componentsFile) componentsFile {
 	out.Text.Roles = mergeNamed(parent.Text.Roles, child.Text.Roles,
 		func(r textRoleFile) string { return r.Name })
 	out.Text.ComponentDefaults = mergeNamed(parent.Text.ComponentDefaults, child.Text.ComponentDefaults,
-		func(d textComponentDefaultFile) string { return d.Tag })
+		func(d textComponentDefaultFile) string { return d.key() })
 	out.Text.Variants = mergeNamed(parent.Text.Variants, child.Text.Variants,
 		func(v textVariantFile) string { return v.Name })
 

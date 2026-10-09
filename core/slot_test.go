@@ -203,3 +203,40 @@ func TestResolveSlotOnShapeAndImage(t *testing.T) {
 		})
 	}
 }
+
+// 슬롯 기본값은 **자리**가 정하는 외관이다: 같은 `<blockquote>`가 인용 레이아웃의 quote 슬롯에서는 인용
+// 크기(minimal 40px · fg)이고, 흐름 슬라이드에서는 태그 기본값(본문 24px · muted) 그대로다. 단은 태그
+// 기본값 위, variant 아래다 — 저자가 쓴 variant와 인라인 속성이 자리를 이긴다.
+func TestResolveSlotDefaultsSitBetweenTagAndVariant(t *testing.T) {
+	tests := []struct {
+		name      string
+		src       string
+		tag       string
+		wantSize  float64
+		wantColor string
+	}{
+		{"인용 슬롯", `<slide layout="quote"><blockquote slot="quote">인용</blockquote></slide>`, "blockquote", 40, "fg"},
+		{"흐름의 인용", `<slide><blockquote>인용</blockquote></slide>`, "blockquote", 24, "muted"},
+		{"슬롯 없는 인용 레이아웃", `<slide layout="quote"><blockquote>인용</blockquote></slide>`, "blockquote", 24, "muted"},
+		{"variant가 자리를 이긴다", `<slide layout="quote"><blockquote slot="quote" variant="lead">인용</blockquote></slide>`, "blockquote", 32, "fg"},
+		{"인라인이 자리를 이긴다", `<slide layout="quote"><blockquote slot="quote" size="48" color="muted">인용</blockquote></slide>`, "blockquote", 48, "muted"},
+		{"통계 수치", `<slide layout="stat"><p slot="value">42%</p></slide>`, "p", 96, "accent1"},
+		{"통계 라벨", `<slide layout="stat"><p slot="label">전환율</p></slide>`, "p", 28, "fg"},
+		{"리스트 항목은 컨테이너의 자리를 받는다", `<slide layout="stat"><ul slot="label"><li>전환율</li></ul></slide>`, "li", 28, "fg"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			deck, diags := resolveSlide(t, tc.src)
+			if len(diags) != 0 {
+				t.Fatalf("진단이 없어야 한다: %v", diags)
+			}
+			style := findElement(t, deck, tc.tag).TextStyle()
+			if style == nil {
+				t.Fatalf("<%s>의 외관이 해석되지 않았다", tc.tag)
+			}
+			if style.Size != tc.wantSize || style.Color.Token != tc.wantColor {
+				t.Errorf("<%s> = %gpx %s, want %gpx %s", tc.tag, style.Size, style.Color.Token, tc.wantSize, tc.wantColor)
+			}
+		})
+	}
+}

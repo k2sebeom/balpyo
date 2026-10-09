@@ -217,6 +217,14 @@ func requireComponentColors(theme soml.Theme, comps components) error {
 	for _, tag := range tags {
 		errs = append(errs, check(fmt.Sprintf("text.componentDefaults %q의 color", tag), comps.textComponentDefaults[tag].color))
 	}
+	slots := make([]string, 0, len(comps.textSlotDefaults))
+	for slot := range comps.textSlotDefaults {
+		slots = append(slots, slot)
+	}
+	sort.Strings(slots)
+	for _, slot := range slots {
+		errs = append(errs, check(fmt.Sprintf("text.componentDefaults 슬롯 %q의 color", slot), comps.textSlotDefaults[slot].color))
+	}
 	for _, v := range comps.textVariants {
 		errs = append(errs, check(fmt.Sprintf("text variant %q의 color", v.name), v.patch.color))
 	}

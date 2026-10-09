@@ -258,7 +258,7 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 		return
 	}
 	if role, ok := r.textRole(elem); ok {
-		r.resolveText(elem, role, textPatch{})
+		r.resolveText(elem, role, textPatch{}, placedSlot(elem))
 		if elem.Name == soml.PreElement {
 			// 일곱 번째 갈래다. `<pre>`의 문자 데이터는 탭이 펴지고, `lang`이 있으면
 			// **합성 인라인 런**이 된다 — 확정 스타일이 채워진 뒤이므로 합성 런은 그것을 부모로
@@ -337,10 +337,12 @@ func (r *resolver) textRole(elem *soml.Element) (soml.TextRole, bool) {
 
 // resolveText는 텍스트 요소(`<text>`·블록·<li>)의 외관을 4단 캐스케이드로 확정한다:
 //
-//	인라인 속성 > variant > 컴포넌트 기본값 > 역할/토큰
+//	인라인 속성 > variant > 컴포넌트 기본값(슬롯 > 태그) > 역할/토큰
 //
 // 역할 기본값(완전한 외관)을 바닥에 깔고, 위 세 단을 낮은 단부터 부분 패치로 얹는다.
-// 컴포넌트 기본값 단은 태그별이다 (textComponentDefault — h3의 크기, blockquote의 색).
+// 컴포넌트 기본값 단은 둘로 겹친다: 태그별(textComponentDefault — h3의 크기, blockquote의 색)
+// 위에 **놓인 자리**(textSlotDefault — 인용 레이아웃의 quote 슬롯)가 온다. 자리가 태그보다 구체적이다:
+// 같은 `<blockquote>`가 흐름에서는 본문 크기, 인용 슬롯에서는 인용 크기다.
 // 병합은 mergeText(cascade.go) 한 곳에서만 일어난다 — 우선순위는 아래 네 줄의 순서가
 // 전부이고, 다른 어디에도 없다.
 //
@@ -349,9 +351,12 @@ func (r *resolver) textRole(elem *soml.Element) (soml.TextRole, bool) {
 // 외관 속성을 받지 않으므로(여는 속성은 순서인 `reveal` 하나다) 두 단이 겹치는
 // 경우가 아직 없지만, 순서를 여기서 못 박아 두면 `<li>`에 외관 속성을 여는 날 우선순위를
 // 다시 논의할 필요가 없다.
-func (r *resolver) resolveText(elem *soml.Element, role soml.TextRole, inherited textPatch) {
+//
+// slot은 요소가 놓인 슬롯이다 (없으면 빈 문자열) — 리스트 항목은 컨테이너의 슬롯을 받는다.
+func (r *resolver) resolveText(elem *soml.Element, role soml.TextRole, inherited textPatch, slot string) {
 	style := r.textRoleDefaults(role)
 	mergeText(&style, r.textComponentDefault(elem.Name))
+	mergeText(&style, r.textSlotDefault(slot))
 	mergeText(&style, r.variantPatch(elem))
 	mergeText(&style, inherited)
 	mergeText(&style, r.inlinePatch(elem))
@@ -384,7 +389,7 @@ func (r *resolver) resolveList(list *soml.Element) {
 			// 파서를 거치지 않은 덱이고, 렌더러가 매핑 없음으로 멈춘다.
 			continue
 		}
-		r.resolveText(item, role, patch)
+		r.resolveText(item, role, patch, placedSlot(list))
 		r.resolveInlines(item, item.Appearance.Text)
 		// 순서는 외관 뒤에 본다 — 항목의 유일한 자기 속성이고 외관 패치와
 		// 겹치지 않는다.
@@ -468,6 +473,24 @@ func (r *resolver) textComponentDefault(tag string) textPatch {
 		return patch
 	}
 	return textPatch{}
+}
+
+// textSlotDefault는 이 슬라이드 레이아웃의 슬롯 기본값이다 (슬롯이 없으면 빈 패치).
+func (r *resolver) textSlotDefault(slot string) textPatch {
+	if slot == "" {
+		return textPatch{}
+	}
+	return r.comps.textSlotDefaults[slotDefaultKey(r.layout, slot)]
+}
+
+// placedSlot은 요소에 **실린** 슬롯이다 — resolveSlot이 검증을 지나 확정 모델에 실은 값만 본다. 테마가
+// 그 레이아웃의 슬롯 영역을 갖지 않아 흐름 배치로 렌더되는 슬라이드에서는 비어 있고, 그때는 슬롯
+// 기본값도 얹지 않는다 (자리가 없는데 자리의 크기를 받을 이유가 없다).
+func placedSlot(elem *soml.Element) string {
+	if elem.Appearance == nil {
+		return ""
+	}
+	return elem.Appearance.Slot
 }
 
 func (r *resolver) textVariantPatch(name string) (textPatch, bool) {

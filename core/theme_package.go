@@ -280,10 +280,33 @@ type textRoleFile struct {
 	Align      string  `json:"align"`
 }
 
+// textComponentDefaultFile은 컴포넌트 기본값 한 줄이다 — 주인은 **태그**(`tag`)이거나 레이아웃의
+// **슬롯**(`layout` + `slot`)이다. 둘 중 하나만 쓴다.
+//
+// 슬롯이 주인이 될 수 있는 이유: 크기를 정하는 것이 역할이 아니라 자리인 경우가 있다. 인용
+// 레이아웃의 `quote` 슬롯은 한 문장을 크게 세우는 자리이지만, 흐름 속 `<blockquote>`는 문단 사이의
+// 인용이라 본문 크기여야 한다 — 태그 기본값으로는 둘을 가를 수 없다. 키에 레이아웃이 들어가는
+// 이유는 슬롯 이름이 레이아웃마다 겹치기 때문이다 (`body`는 content · image-text · stat에 있다).
 type textComponentDefaultFile struct {
-	Tag   string   `json:"tag"`
-	Size  *float64 `json:"size"`
-	Color *string  `json:"color"`
+	Tag    string   `json:"tag"`
+	Layout string   `json:"layout"`
+	Slot   string   `json:"slot"`
+	Size   *float64 `json:"size"`
+	Weight *int     `json:"weight"`
+	Color  *string  `json:"color"`
+}
+
+// key는 기본값 한 줄의 주인 이름이다 — 상속 병합과 로드가 같은 열쇠를 쓴다.
+func (d textComponentDefaultFile) key() string {
+	if d.Slot != "" || d.Layout != "" {
+		return slotDefaultKey(soml.SlideLayout(d.Layout), d.Slot)
+	}
+	return d.Tag
+}
+
+// slotDefaultKey는 슬롯 기본값 표의 열쇠다.
+func slotDefaultKey(layout soml.SlideLayout, slot string) string {
+	return string(layout) + "/" + slot
 }
 
 type textVariantFile struct {
@@ -378,13 +401,16 @@ type imageVariant struct {
 type components struct {
 	textRoles             map[soml.TextRole]soml.TextStyle
 	textComponentDefaults map[string]textPatch
-	textVariants          []textVariant
-	shapeDefault          shapePatch
-	shapeVariants         []shapeVariant
-	imageDefault          imagePatch
-	imageVariants         []imageVariant
-	table                 tableComponents
-	code                  codeComponents
+	// textSlotDefaults는 레이아웃 슬롯의 기본값이다 (열쇠 slotDefaultKey) — 태그 기본값 위,
+	// variant 아래 단이다.
+	textSlotDefaults map[string]textPatch
+	textVariants     []textVariant
+	shapeDefault     shapePatch
+	shapeVariants    []shapeVariant
+	imageDefault     imagePatch
+	imageVariants    []imageVariant
+	table            tableComponents
+	code             codeComponents
 }
 
 // tableComponents는 변환된 표 셀 외관 표다 (캐스케이드 내부 타입). shape/image의 default·
@@ -692,16 +718,35 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 	}
 
 	comps.textComponentDefaults = map[string]textPatch{}
+	comps.textSlotDefaults = map[string]textPatch{}
 	for _, d := range file.Text.ComponentDefaults {
 		var patch textPatch
 		if d.Size != nil {
 			patch.size = d.Size
 		}
+		if d.Weight != nil {
+			patch.weight = d.Weight
+		}
 		if d.Color != nil {
 			c := soml.TokenColor(*d.Color)
 			patch.color = &c
 		}
-		comps.textComponentDefaults[d.Tag] = patch
+		switch {
+		case d.Slot == "" && d.Layout == "":
+			if d.Tag == "" {
+				return comps, fmt.Errorf("text.componentDefaults의 한 줄에 주인이 없다 — tag나 layout + slot을 쓴다")
+			}
+			comps.textComponentDefaults[d.Tag] = patch
+		case d.Tag != "":
+			return comps, fmt.Errorf("text.componentDefaults의 tag %q와 slot을 함께 쓸 수 없다 — 한 줄의 주인은 하나다", d.Tag)
+		default:
+			layout := soml.SlideLayout(d.Layout)
+			if _, ok := soml.LayoutSlot(layout, d.Slot); !ok {
+				return comps, fmt.Errorf("text.componentDefaults의 슬롯 %q/%q가 레이아웃 어휘에 없다 (레이아웃 %q의 슬롯: %s)",
+					d.Layout, d.Slot, d.Layout, strings.Join(soml.SlotNames(layout), ", "))
+			}
+			comps.textSlotDefaults[d.key()] = patch
+		}
 	}
 
 	for _, v := range file.Text.Variants {
