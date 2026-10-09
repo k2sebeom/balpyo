@@ -22,17 +22,23 @@ import (
 // shapePatch·cellPatch…)를 병합하면 "이 필드는 상속되는가"를 여덟 타입에서 따로 답해야 하고,
 // 그만큼 흩어진 규칙은 문서가 정확히 적을 수 없다.
 
-// ThemeNames는 이 프로젝트에서 쓸 수 있는 테마 이름이다 — **내장 ∪ 프로젝트 로컬**, 정렬.
+// ThemeNames는 이 프로젝트에서 쓸 수 있는 테마 이름이다 — **내장 ∪ 프로젝트 로컬 ∪ 설치한
+// 테마**, 정렬, 중복 없음.
 //
-// fsys는 프로젝트 루트다 (nil이면 내장 테마만). 공개하는 이유는 BuiltinThemes와 같다 (어휘
-// 단일 출처): `--theme`의 진단과 설정 검사가 같은 목록을 말해야 한다.
+// fsys는 프로젝트 루트다 (nil이면 내장 테마만, WithInstalledThemes로 감쌌으면 설치한 테마도).
+// 공개하는 이유는 BuiltinThemes와 같다 (어휘 단일 출처): `--theme`의 진단과 설정 검사가 같은
+// 목록을 말해야 한다.
 func ThemeNames(fsys fs.FS) []string {
-	names := BuiltinThemes()
-	for _, name := range localThemeNames(fsys) {
-		// 내장과 겹치는 이름은 여기서 두 번 실리지 않는다 — 그 겹침 자체는 CheckThemeName이
-		// 에러로 잡는다 (목록을 만드는 자리가 판정하지 않는다).
-		if !IsBuiltinTheme(name) {
-			names = append(names, name)
+	seen := map[string]bool{}
+	var names []string
+	// 겹치는 이름은 여기서 두 번 실리지 않는다 — 그 겹침 자체는 판정하는 자리
+	// (checkThemeShadowing·locateTheme)가 에러로 잡는다 (목록을 만드는 자리가 판정하지 않는다).
+	for _, group := range [][]string{BuiltinThemes(), localThemeNames(fsys), InstalledThemeNames(fsys)} {
+		for _, name := range group {
+			if !seen[name] {
+				seen[name] = true
+				names = append(names, name)
+			}
 		}
 	}
 	sort.Strings(names)
@@ -43,6 +49,15 @@ func ThemeNames(fsys fs.FS) []string {
 // `themes/`가 없으면 빈 목록이다 — 로컬 테마가 없는 프로젝트가 정상이고, 그 사실이 에러가
 // 되어서는 안 된다.
 func localThemeNames(fsys fs.FS) []string {
+	if p, ok := fsys.(*projectFS); ok {
+		return themeDirNames(p.root)
+	}
+	return themeDirNames(fsys)
+}
+
+// themeDirNames는 fsys의 `themes/` 아래 디렉토리 이름이다 (정렬, 없으면 빈 목록). 프로젝트와
+// 설치한 테마의 홈이 같은 구조를 갖기 때문에 한 함수가 둘을 읽는다.
+func themeDirNames(fsys fs.FS) []string {
 	if fsys == nil {
 		return nil
 	}
@@ -69,11 +84,21 @@ func CheckThemeName(fsys fs.FS, name string) error {
 	if err := checkThemeShadowing(fsys); err != nil {
 		return err
 	}
-	if _, _, ok := themeSource(fsys, name); !ok {
-		return fmt.Errorf("알 수 없는 테마 %q (쓸 수 있는 테마: %s)",
-			name, strings.Join(ThemeNames(fsys), ", "))
+	_, ok, err := locateTheme(fsys, name)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return unknownThemeError(fsys, name)
 	}
 	return nil
+}
+
+// unknownThemeError는 세 자리 어디에도 없는 이름의 에러다. 받을 곳은 말하지 않는다 —
+// `balpyo.json`은 이름만 담으므로 그것을 아는 것은 사람이다.
+func unknownThemeError(fsys fs.FS, name string) error {
+	return fmt.Errorf("알 수 없는 테마 %q — 내장 테마도, 프로젝트 themes/의 테마도, 설치한 테마도 아니다 (쓸 수 있는 테마: %s)",
+		name, strings.Join(ThemeNames(fsys), ", "))
 }
 
 // checkThemeShadowing은 로컬 테마가 내장 이름을 가리지 않는지 본다.
@@ -81,7 +106,7 @@ func CheckThemeName(fsys fs.FS, name string) error {
 // 요청한 테마가 무엇이든 멈추는 이유는 겹친 이름이 **답할 수 없는 질문**을 만든다는 것이다:
 // `extends: "minimal"`이 프로젝트의 minimal인가 내장 minimal인가. 어느 쪽이 이기는지 규칙으로
 // 적을 수는 있지만 그 규칙을 외운 사람만 자기 테마가 어디서 왔는지 안다 — 이름을 바꾸는 쪽이
-// 싸다.
+// 싸다. 설치한 테마의 겹침은 여기서 보지 않는다 (locateTheme — 요청될 때만).
 func checkThemeShadowing(fsys fs.FS) error {
 	for _, name := range localThemeNames(fsys) {
 		if IsBuiltinTheme(name) {
@@ -92,18 +117,57 @@ func checkThemeShadowing(fsys fs.FS) error {
 	return nil
 }
 
-// themeSource는 이름 하나의 파일 자리다 — 내장이면 임베드 FS, 로컬이면 프로젝트 FS다. 두
-// 출처가 **같은 로더**를 지난다 — 로더가 fs.FS 위에서 도는 이유다.
-func themeSource(fsys fs.FS, name string) (fs.FS, string, bool) {
-	if IsBuiltinTheme(name) {
-		return builtinThemes, path.Join(themeDir, name), true
+// themeOrigin은 테마가 어느 자리에서 왔는지다 — 배치 CSS 검사(lint)를 돌릴지가 여기서 갈린다.
+type themeOrigin int
+
+const (
+	originBuiltin themeOrigin = iota
+	originLocal
+	originInstalled
+)
+
+// themeLocation은 이름 하나의 파일 자리다 — 내장이면 임베드 FS, 로컬이면 프로젝트 FS, 설치했으면
+// 홈 FS다. 세 출처가 **같은 로더**를 지난다 — 로더가 fs.FS 위에서 도는 이유다.
+type themeLocation struct {
+	fsys   fs.FS
+	dir    string
+	origin themeOrigin
+}
+
+// locateTheme은 이름을 세 자리에서 찾는다. 없으면 ok가 false다.
+//
+// 설치한 테마가 다른 자리와 겹치는 것은 **이 이름이 요청될 때만** 에러다: 설치한 테마는 기계의
+// 사실이라, 홈에 무엇이 있는지가 그 이름을 쓰지 않는 프로젝트의 빌드를 깨면 에러가 고칠 자리에서
+// 멀어진다. 요청된 순간에는 "어느 쪽인가"가 실제 질문이 되므로 멈추고 고치는 길을 적는다.
+func locateTheme(fsys fs.FS, name string) (themeLocation, bool, error) {
+	builtin := IsBuiltinTheme(name)
+	local := contains(localThemeNames(fsys), name)
+	installed := contains(InstalledThemeNames(fsys), name)
+	switch {
+	case installed && builtin:
+		return themeLocation{}, false, fmt.Errorf(
+			"설치한 테마 %q가 내장 테마와 이름이 같다 — balpyo theme remove %s로 설치를 지운다", name, name)
+	case installed && local:
+		return themeLocation{}, false, fmt.Errorf(
+			"테마 %q가 프로젝트의 %s/%s/에도, 설치한 테마에도 있다 — 로컬 테마의 이름을 바꾸거나 balpyo theme remove %s로 설치를 지운다",
+			name, themeDir, name, name)
+	case builtin:
+		return themeLocation{builtinThemes, path.Join(themeDir, name), originBuiltin}, true, nil
+	case local:
+		return themeLocation{fsys, path.Join(themeDir, name), originLocal}, true, nil
+	case installed:
+		return themeLocation{installedFS(fsys), path.Join(themeDir, name), originInstalled}, true, nil
 	}
-	for _, local := range localThemeNames(fsys) {
-		if local == name {
-			return fsys, path.Join(themeDir, name), true
+	return themeLocation{}, false, nil
+}
+
+func contains(list []string, s string) bool {
+	for _, v := range list {
+		if v == s {
+			return true
 		}
 	}
-	return nil, "", false
+	return false
 }
 
 // loadThemeNamed는 이름 하나를 어휘에서 찾아 로드한다 — `extends` 체인을 원문 층에서 병합한 뒤
@@ -124,7 +188,7 @@ func loadThemeNamed(fsys fs.FS, name string) (themePackage, error) {
 	if err != nil {
 		return pkg, err
 	}
-	pkg.lint = lintThemeChain(chain)
+	pkg.lint = lintThemeChain(chain, originLocal)
 	return pkg, nil
 }
 
@@ -146,24 +210,27 @@ func readThemeChain(fsys fs.FS, name string) ([]rawTheme, error) {
 		}
 		seen = append(seen, name)
 
-		src, dir, ok := themeSource(fsys, name)
+		loc, ok, err := locateTheme(fsys, name)
+		if err != nil {
+			return nil, err
+		}
 		if !ok {
 			if len(chain) == 0 {
-				return nil, fmt.Errorf("알 수 없는 테마 %q (쓸 수 있는 테마: %s)",
-					name, strings.Join(ThemeNames(fsys), ", "))
+				return nil, unknownThemeError(fsys, name)
 			}
 			// 부모가 없는 경우는 **자식을 가리켜** 멈춘다 — 고칠 자리가 그 자식의 theme.json이다.
 			return nil, fmt.Errorf("테마 %q의 extends가 없는 테마 %q를 가리킨다 (쓸 수 있는 테마: %s)",
 				seen[len(seen)-2], name, strings.Join(ThemeNames(fsys), ", "))
 		}
-		raw, err := readRawTheme(src, dir)
+		raw, err := readRawTheme(loc.fsys, loc.dir)
 		if err != nil {
 			return nil, fmt.Errorf("테마 %q: %w", name, err)
 		}
 		if raw.manifest.Name != name {
 			return nil, fmt.Errorf("%s/theme.json의 name이 %q다 — 디렉토리 이름 %q와 같아야 한다",
-				dir, raw.manifest.Name, name)
+				loc.dir, raw.manifest.Name, name)
 		}
+		raw.origin = loc.origin
 		chain = append(chain, raw)
 		if raw.manifest.Extends == "" {
 			break

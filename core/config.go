@@ -87,6 +87,12 @@ func DefaultConfig() Config {
 // balpyo.json은 **선택**이다 — 없으면 기본값을 쓰고 제목을 디렉토리 이름에서 유도한다.
 // `slides/`에 파일 하나만 두고도 빌드가 되어야 첫 결과까지의 거리가 짧다.
 func LoadConfig(projectDir string) (Config, error) {
+	return LoadConfigWithThemes(projectDir, nil)
+}
+
+// LoadConfigWithThemes는 LoadConfig와 같고, 테마 이름을 검사할 때 home(설치한 테마의 홈 —
+// `themes/<이름>/`을 담은 디렉토리)도 어휘에 넣는다. home이 nil이면 LoadConfig다.
+func LoadConfigWithThemes(projectDir string, home fs.FS) (Config, error) {
 	cfg := DefaultConfig()
 	cfg.Title = filepath.Base(projectDir)
 
@@ -107,11 +113,11 @@ func LoadConfig(projectDir string) (Config, error) {
 	if err := cfg.Validate(); err != nil {
 		return Config{}, fmt.Errorf("%s: %w", ConfigFile, err)
 	}
-	// 테마 이름은 **프로젝트의 어휘**와 대조한다: 내장 ∪ `themes/<이름>/`.
+	// 테마 이름은 **프로젝트의 어휘**와 대조한다: 내장 ∪ `themes/<이름>/` ∪ 설치한 테마.
 	// Validate가 아니라 여기인 이유는 어휘가 파일시스템에 달렸다는 것이다 — 설정 구조체만으로는
 	// 로컬 테마를 알 수 없고, 프로젝트를 아는 자리는 이 함수다. 값 층이 같은 판정을 한 번 더
 	// 하는 이유는 설정 없이 Deck을 만드는 길이 있다는 것이다 (Resolve).
-	if err := CheckThemeName(os.DirFS(projectDir), cfg.Theme); err != nil {
+	if err := CheckThemeName(WithInstalledThemes(os.DirFS(projectDir), home), cfg.Theme); err != nil {
 		return Config{}, fmt.Errorf("%s: theme: %w", ConfigFile, err)
 	}
 	return cfg, nil

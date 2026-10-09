@@ -18,7 +18,7 @@ import (
 // 이 파일은 **테마 패키지 포맷**의 로더다. **엔진에는 어떤 외관 값도 없다** — 값의 유일한
 // 출처는 테마 패키지이고, 그 대가로 로더가 완전성을 요구한다 (theme_require.go).
 //
-// 포맷은 **데이터 전용**이다 (JSON + CSS + 에셋, JS 없음): `theme get`으로
+// 포맷은 **데이터 전용**이다 (JSON + CSS + 에셋, JS 없음): `balpyo theme install`로
 // 받은 원격 테마가 임의 코드 실행 경로가 되어서는 안 된다. 로더는 fs.FS 위에서 도므로 내장
 // 테마(go:embed)와 프로젝트 로컬 테마(os.DirFS)가 같은 코드를 지난다.
 //
@@ -453,6 +453,8 @@ type rawTheme struct {
 	slotLayouts map[string]string
 	// assets는 `assets/` 아래 파일이다 (테마 루트 기준 경로 → 원문 · 주인). 파일 단위로 병합된다.
 	assets map[string]rawAsset
+	// origin은 이 선언을 읽은 자리다 (내장 · 로컬 · 설치) — 병합에는 쓰이지 않는다.
+	origin themeOrigin
 }
 
 // loadTheme는 fsys의 dir/ 아래 테마 패키지를 **상속 없이** 읽는다. dir은 fs 경로다 (내장은

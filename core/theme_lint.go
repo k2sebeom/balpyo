@@ -23,8 +23,8 @@ import (
 // `themes/<테마>/layouts/<이름>.css`)로 어느 파일인지만 가리킨다. --strict는
 // soml.Diagnostics.Strict()가 경고를 에러로 승격한다.
 //
-// 린터가 도는 자리는 로컬 테마 로딩 하나다 (lintThemeChain). 내장 테마는 테스트가 전수로 막으므로
-// 빌드마다 다시 보지 않는다.
+// 린터가 도는 자리는 로컬 테마 로딩과 테마 설치(CheckInstalledTheme)다 (lintThemeChain). 내장 테마는
+// 테스트가 전수로 막으므로 빌드마다 다시 보지 않고, 설치한 테마는 설치할 때 한 번 본다.
 
 // lintLayoutCSS는 레이아웃 파일 하나의 CSS 원문을 검사해 진단 목록을 돌려준다. 선언 순서 그대로
 // 진단하므로 결과가 결정적이다. file은 진단의 File(프로젝트 상대 경로)이다.
@@ -80,15 +80,17 @@ func lintLayouts(dir, suffix string, layouts map[string]string) soml.Diagnostics
 // lintThemeChain은 extends 체인(뿌리 → 잎)에서 **병합 결과에 남은** 로컬 테마의 레이아웃 파일을
 // 검사한다. 병합은 파일 단위로 자식이 이기므로, 잎에서 뿌리로 내려가며 이름을
 // 처음 가진 테마가 그 파일의 주인이다 — 자식이 덮어 쓴 부모의 파일은 산출물에 닿지 않으므로
-// 진단하지 않고, 진단은 고칠 파일(그 주인의 경로)을 가리킨다. 주인이 내장 테마인 파일은 건너뛴다.
-func lintThemeChain(chain []rawTheme) soml.Diagnostics {
+// 진단하지 않고, 진단은 고칠 파일(그 주인의 경로)을 가리킨다. 주인의 자리가 upTo보다 뒤인 파일만
+// 검사한다: 빌드는 로컬 테마까지(내장·설치한 테마는 덱 저자가 고칠 수 없는 파일이다), 설치는 설치한
+// 테마까지 본다.
+func lintThemeChain(chain []rawTheme, upTo themeOrigin) soml.Diagnostics {
 	var diags soml.Diagnostics
 	seenLayouts, seenSlots := map[string]bool{}, map[string]bool{}
 	for i := len(chain) - 1; i >= 0; i-- {
 		raw := chain[i]
 		layouts := unseenFiles(raw.layouts, seenLayouts)
 		slots := unseenFiles(raw.slotLayouts, seenSlots)
-		if IsBuiltinTheme(raw.manifest.Name) {
+		if raw.origin == originBuiltin || raw.origin > upTo {
 			continue
 		}
 		dir := path.Join(themeDir, raw.manifest.Name)
