@@ -83,6 +83,7 @@
 | [0074](0074-every-master-owns-its-theme-part.md) | 마스터마다 자기 테마 파트를 갖는다 (노트 마스터는 theme2.xml) | 백로그 | 확정 |
 | [0075](0075-an-installed-theme-is-a-name-the-theme-declares-under-balpyo-home.md) | 설치한 테마는 `~/.balpyo`에 사는 이름이고, 그 이름은 테마가 정한다 | 백로그 | 확정 (0054의 열지 않은 것을 연다) |
 | [0076](0076-an-installed-theme-can-be-copied-from-a-local-directory.md) | 설치한 테마는 로컬 디렉토리에서 복사해 올 수도 있다 | 백로그 | 확정 (0075의 설치 출처를 넓힌다) |
+| [0077](0077-a-slide-can-point-at-a-theme-picture-with-theme-src.md) | 슬라이드는 `src="theme:…"`으로 활성 테마의 그림을 가리킨다 | 백로그 | 확정 (0073의 테마 자산을 슬라이드에 연다) |
 
 0066까지의 ADR에 나오는 `PRD §…` 인용은 커밋 `2121a0b`의 `PRD.md`를 뜻한다. 그 절이 지금 어디에
 있는지는 [0067](0067-prd-is-retired-and-its-standing-decisions-move-here.md)의 대응표가 적는다.
