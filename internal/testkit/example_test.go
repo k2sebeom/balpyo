@@ -20,7 +20,7 @@ var exampleSlideCounts = map[string]int{
 	"quarterly-review":    6,
 }
 
-// TestExamplesBuildClean은 D13의 게이트다: 도그푸딩 덱 셋이 **두 타깃으로 빌드되고 진단이
+// TestExamplesBuildClean은 예제의 게이트다: 예제 덱이 **두 타깃으로 빌드되고 진단이
 // 0건**이어야 한다.
 //
 // 이것이 CI에서 예제를 빌드한다는 요구의 실체다 — 잡의 이름이 아니라 실패의 유무가 그 사실이고,
