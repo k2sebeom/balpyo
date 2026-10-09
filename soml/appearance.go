@@ -323,6 +323,10 @@ type Theme struct {
 	// 모디파이어라(render/web writeStage), 슬롯을 쓰지 않은 덱의 흐름 배치는 이 표 때문에
 	// 달라지지 않는다 (골든 불변). 슬롯 영역이 없는 레이아웃(canvas·content)은 맵에 없다.
 	SlotLayouts map[string]string
+	// Assets는 테마 패키지의 그림 가운데 **선언이 가리키는 것**이다 (배경 · 로고) — 키는
+	// `themes/<그 파일을 가진 테마>/assets/…`다. 덱의 에셋 표(Deck.Assets)와 같은 항목 모양이고, 에셋
+	// 패스가 슬라이드가 실제로 쓴 것만 그 표로 옮긴다 — 렌더러는 덱의 표 하나만 읽는다.
+	Assets Assets
 }
 
 // Color는 이름으로 색 토큰을 찾는다.

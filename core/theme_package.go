@@ -93,6 +93,8 @@ type themeManifest struct {
 	// footer·pageNumber다. 테마가 어떤 kind를 선언하지 않으면 그 크롬은 값 층에서 경고와
 	// 함께 미탑재된다 (슬롯 규칙 그대로) — "테마가 받아야 뜻이 있다".
 	Chrome []chromeDeclFile `json:"chrome"`
+	// Backgrounds는 레이아웃별 슬라이드 배경이다 (theme_assets.go). 비면 모든 슬라이드가 `bg` 색이다.
+	Backgrounds []backgroundFile `json:"backgrounds"`
 }
 
 // chromeDeclFile은 theme.json의 크롬 선언 하나다 (원문 문자열). 값 어휘 검사는 loadChrome이
@@ -103,6 +105,10 @@ type chromeDeclFile struct {
 	Align       string   `json:"align"`
 	Role        string   `json:"role"`
 	SkipLayouts []string `json:"skipLayouts"`
+	// Image · Height · Alt는 그림 크롬(logo)의 자리다 — 글자 크롬에는 쓸 수 없다.
+	Image  string  `json:"image"`
+	Height float64 `json:"height"`
+	Alt    string  `json:"alt"`
 }
 
 // chromeDecl은 검사가 끝난 크롬 선언 하나다.
@@ -113,6 +119,10 @@ type chromeDecl struct {
 	// skip은 이 크롬을 싣지 않을 레이아웃 집합이다 (표지·섹션 구분 등). 값 층이 슬라이드마다
 	// 이 집합을 보고 확정 모델에서 뺀다 — 렌더러는 규칙을 모른다.
 	skip map[soml.SlideLayout]bool
+	// image · height · alt는 그림 크롬의 판정된 값이다 (image는 에셋 키).
+	image  string
+	height float64
+	alt    string
 }
 
 // themePackage는 로드된 테마 하나다 — 토큰 표(soml.Theme)와 매니페스트를 함께 담는다.
@@ -120,7 +130,9 @@ type chromeDecl struct {
 // 필드를 더한다.
 type themePackage struct {
 	manifest themeManifest
-	tokens   soml.Theme
+	// backgrounds는 레이아웃별 슬라이드 배경이다 (theme.json의 backgrounds).
+	backgrounds backgroundDecls
+	tokens      soml.Theme
 	// components는 로드·변환된 컴포넌트 외관 표다 (components.json). tokens와 달리 값 문법을
 	// 캐스케이드 내부 타입으로 이미 눕혀 담는다 — resolveText/Shape/Image가 재변환 없이 읽는다.
 	components components
@@ -439,6 +451,8 @@ type rawTheme struct {
 	// 않고 문자열로 나르는 이유는 병합이 파일을 통째로 갈아 끼우기 때문이다.
 	layouts     map[string]string
 	slotLayouts map[string]string
+	// assets는 `assets/` 아래 파일이다 (테마 루트 기준 경로 → 원문 · 주인). 파일 단위로 병합된다.
+	assets map[string]rawAsset
 }
 
 // loadTheme는 fsys의 dir/ 아래 테마 패키지를 **상속 없이** 읽는다. dir은 fs 경로다 (내장은
@@ -488,6 +502,9 @@ func readRawTheme(fsys fs.FS, dir string) (rawTheme, error) {
 	if raw.layouts, raw.slotLayouts, err = readLayoutCSS(fsys, dir, optional); err != nil {
 		return raw, err
 	}
+	if raw.assets, err = readThemeAssets(fsys, dir, raw.manifest.Name); err != nil {
+		return raw, err
+	}
 	return raw, nil
 }
 
@@ -499,7 +516,8 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 
 	// 크롬 선언은 토큰·컴포넌트보다 **먼저** 검사한다 — 선언만으로 판정할 수 있는 값 어휘이고,
 	// 먼저 멈추면 "테마의 오타"와 "토큰 표의 문제"가 한 메시지에 섞이지 않는다.
-	chrome, err := loadChrome(pkg.manifest)
+	assets := &assetResolver{files: raw.assets}
+	chrome, err := loadChrome(pkg.manifest, assets)
 	if err != nil {
 		return pkg, err
 	}
@@ -537,6 +555,15 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 	}
 	pkg.layouts = raw.layouts
 	pkg.slotLayouts = raw.slotLayouts
+
+	// 배경은 토큰 표 **뒤**다 — 채움이 색 토큰을 가리킨다.
+	backgrounds, err := loadBackgrounds(pkg.manifest, tokens, assets)
+	if err != nil {
+		return pkg, err
+	}
+	pkg.backgrounds = backgrounds
+	// 선언이 가리킨 그림만 싣는다 (가리킨 순서) — `assets/` 안의 쓰지 않는 파일은 산출물에 나가지 않는다.
+	pkg.tokens.Assets = assets.used
 	return pkg, nil
 }
 
@@ -546,7 +573,7 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 // "표지에 번호가 왜 찍히는가"를 자기 슬라이드에서 찾게 되고, 테마는 저자가 고칠 수 없는
 // 자리다. 같은 이유로 skipLayouts의 이름은 **이 테마가 구현하는 레이아웃**이어야 한다 —
 // 오타 하나가 제외 규칙을 조용히 무효로 만든다.
-func loadChrome(manifest themeManifest) ([]chromeDecl, error) {
+func loadChrome(manifest themeManifest, assets *assetResolver) ([]chromeDecl, error) {
 	if len(manifest.Chrome) == 0 {
 		return nil, nil
 	}
@@ -557,7 +584,7 @@ func loadChrome(manifest themeManifest) ([]chromeDecl, error) {
 	seen := map[soml.ChromeKind]bool{}
 	decls := make([]chromeDecl, 0, len(manifest.Chrome))
 	for i, raw := range manifest.Chrome {
-		decl, err := chromeDeclOf(raw, layouts)
+		decl, err := chromeDeclOf(raw, layouts, assets)
 		if err != nil {
 			return nil, fmt.Errorf("theme.json의 chrome[%d]: %w", i, err)
 		}
@@ -573,7 +600,7 @@ func loadChrome(manifest themeManifest) ([]chromeDecl, error) {
 // chromeDeclOf는 선언 하나의 값 어휘를 검사한다. align·role은 **생략할 수 없다** — 테마가
 // 자리와 타이포그래피를 소유하므로 기본값을 엔진에 두면 그 소유가 반으로
 // 쪼개진다.
-func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool) (chromeDecl, error) {
+func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool, assets *assetResolver) (chromeDecl, error) {
 	var decl chromeDecl
 	kinds := make([]string, 0, len(soml.ChromeKinds()))
 	for _, kind := range soml.ChromeKinds() {
@@ -600,6 +627,28 @@ func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool) (chromeDecl, erro
 		return decl, fmt.Errorf("알 수 없는 align %q (쓸 수 있는 align: %s)", raw.Align, strings.Join(aligns, ", "))
 	}
 
+	if decl.kind == soml.ChromeLogo {
+		// 그림 크롬은 역할이 아니라 그림과 높이를 갖는다 — 글자 외관이 없으므로 role은 뜻이 없다.
+		if raw.Role != "" {
+			return decl, fmt.Errorf("logo에는 role을 쓸 수 없다 (%q) — 그림 크롬은 글자 외관이 없다. 크기는 height가 정한다", raw.Role)
+		}
+		if raw.Image == "" {
+			return decl, fmt.Errorf("logo에 image가 없다 — 테마 패키지의 그림을 가리킨다 (예: %s/logo.png)", themeAssetDir)
+		}
+		if raw.Height <= 0 {
+			return decl, fmt.Errorf("logo의 height가 없거나 0 이하다 (%g) — 논리 px 높이를 준다. 폭은 그림의 비율이 정한다", raw.Height)
+		}
+		key, err := assets.resolve("logo의 image", raw.Image)
+		if err != nil {
+			return decl, err
+		}
+		decl.image, decl.height, decl.alt = key, raw.Height, raw.Alt
+		return decl, chromeSkips(&decl, raw, layouts)
+	}
+	if raw.Image != "" || raw.Height != 0 || raw.Alt != "" {
+		return decl, fmt.Errorf("%s에는 image · height · alt를 쓸 수 없다 — 그림 크롬(logo)의 자리다", decl.kind)
+	}
+
 	roles := make([]string, 0, len(soml.TextRoles()))
 	for _, role := range soml.TextRoles() {
 		roles = append(roles, string(role))
@@ -613,18 +662,23 @@ func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool) (chromeDecl, erro
 		}
 		return decl, fmt.Errorf("알 수 없는 role %q (쓸 수 있는 role: %s)", raw.Role, strings.Join(roles, ", "))
 	}
+	return decl, chromeSkips(&decl, raw, layouts)
+}
 
-	if len(raw.SkipLayouts) > 0 {
-		decl.skip = make(map[soml.SlideLayout]bool, len(raw.SkipLayouts))
-		for _, name := range raw.SkipLayouts {
-			if !layouts[name] {
-				return decl, fmt.Errorf("skipLayouts의 %q는 이 테마의 레이아웃이 아니다 (이 테마의 레이아웃: %s)",
-					name, strings.Join(sortedKeys(layouts), ", "))
-			}
-			decl.skip[soml.SlideLayout(name)] = true
-		}
+// chromeSkips는 제외 레이아웃 목록을 검사해 선언에 싣는다 — 이 테마의 레이아웃 이름만 받는다.
+func chromeSkips(decl *chromeDecl, raw chromeDeclFile, layouts map[string]bool) error {
+	if len(raw.SkipLayouts) == 0 {
+		return nil
 	}
-	return decl, nil
+	decl.skip = make(map[soml.SlideLayout]bool, len(raw.SkipLayouts))
+	for _, name := range raw.SkipLayouts {
+		if !layouts[name] {
+			return fmt.Errorf("skipLayouts의 %q는 이 테마의 레이아웃이 아니다 (이 테마의 레이아웃: %s)",
+				name, strings.Join(sortedKeys(layouts), ", "))
+		}
+		decl.skip[soml.SlideLayout(name)] = true
+	}
+	return nil
 }
 
 // sortedKeys는 진단 문구가 실행마다 같도록 이름 집합을 정렬해 돌려준다.

@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"image"
 	// PNG·JPEG 디코더를 **등록만** 한다 (image.DecodeConfig가 포맷을 판정할 수 있게).
 	// 여는 어휘가 2종이라는 결정(soml.ImageFormat)이 이 두 줄로도 강제된다: gif를 등록하지
@@ -11,6 +12,7 @@ import (
 	_ "image/png"
 	"io/fs"
 	"path"
+	"strings"
 
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -48,11 +50,36 @@ func ResolveAssets(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 	pass := assetPass{deck: deck, fsys: fsys, seen: map[string]bool{}}
 	for _, slide := range deck.Slides {
 		pass.file = slide.Source
+		// 슬라이드의 칠 순서대로 모은다 — 배경(맨 아래) · 내용 · 크롬. 표의 순서가 PPTX 미디어 파트 번호이므로
+		// 순서가 결정적이면 어느 순서든 유효하지만, 칠 순서가 패키지를 풀어 본 사람에게 읽히는 순서다.
+		if slide.Background != nil && slide.Background.Image != "" {
+			pass.theme(slide.Background.Image)
+		}
 		for _, node := range slide.Content {
 			pass.node(node)
 		}
+		for _, item := range slide.Chrome {
+			if item.Image != "" {
+				pass.theme(item.Image)
+			}
+		}
 	}
 	return pass.diags
+}
+
+// theme은 테마 자산 하나를 덱의 표로 옮긴다 — 바이트는 테마 로딩이 이미 읽고 판정했다
+// (soml.Theme.Assets). 디스크를 다시 읽지 않는다: 내장 테마의 자산은 프로젝트 파일 시스템에 없다.
+func (p *assetPass) theme(key string) {
+	if p.seen[key] {
+		return
+	}
+	asset, ok := p.deck.Theme.Assets.Get(key)
+	if !ok {
+		p.errorf(soml.Span{}, "테마 자산 %q가 테마의 자산 표에 없다 — 엔진 버그다 (테마 로딩과 에셋 패스가 어긋났다)", key)
+		return
+	}
+	p.seen[key] = true
+	p.deck.Assets = append(p.deck.Assets, asset)
 }
 
 // assetPass는 에셋 수집 상태다. 진단을 소스 순서로 정렬하지 않는 이유는 순회가 이미 문서
@@ -142,37 +169,45 @@ func (p *assetPass) load(key string, span soml.Span) (soml.Asset, bool) {
 		p.errorf(span, "%s를 읽을 수 없다: %v", key, err)
 		return soml.Asset{}, false
 	}
-	if len(data) == 0 {
-		p.errorf(span, "%s가 비어 있다 (0바이트) — 그림 파일이 아니다 (내려받기나 LFS 체크아웃이 끝나지 않았을 수 있다)", key)
+	asset, msg := decodeImageAsset(key, data)
+	if msg != "" {
+		p.errorf(span, "%s", msg)
 		return soml.Asset{}, false
+	}
+	return asset, true
+}
+
+// decodeImageAsset은 그림 파일 하나의 바이트를 에셋으로 판정한다 — 실패하면 진단 문구를 돌려준다.
+//
+// `<image src>`의 파일과 테마 패키지의 그림(배경 · 로고)이 **같은 판정**을 지난다: 확장자는 선언이고
+// 내용이 판정이며, 둘이 어긋나면 PowerPoint가 파일을 열지 못한다. 판정이 두 벌이면 한쪽 자산만
+// 그 실패를 통과시킨다.
+func decodeImageAsset(key string, data []byte) (soml.Asset, string) {
+	if len(data) == 0 {
+		return soml.Asset{}, fmt.Sprintf("%s가 비어 있다 (0바이트) — 그림 파일이 아니다 (내려받기나 LFS 체크아웃이 끝나지 않았을 수 있다)", key)
 	}
 	// 확장자의 어휘는 해석 단계가 이미 확인했다 (imageSrc) — 여기서 확장자는 **선언**이고
 	// 내용이 판정이다.
 	declared, known := soml.ImageFormatForExt(path.Ext(key))
 	if !known {
-		p.errorf(span, "%s의 확장자를 해석할 수 없다 — 엔진 버그다 (값 층과 에셋 패스가 어긋났다)", key)
-		return soml.Asset{}, false
+		return soml.Asset{}, fmt.Sprintf("%s의 확장자는 그림 포맷이 아니다 (쓸 수 있는 것: %s)", key, strings.Join(soml.ImageExts(), ", "))
 	}
 	config, format, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
 		if errors.Is(err, image.ErrFormat) {
 			// 확장자만 바꾼 파일이 여기 걸린다. 조용히 통과시키면 산출물은 만들어지고
 			// PowerPoint만 열지 못한다 — 조용한 실패의 교과서다.
-			p.errorf(span, "%s의 내용이 %s가 아니다 — 확장자만 바꾼 파일은 빌드는 성공하고 PowerPoint가 열지 못한다 (png나 jpeg로 다시 내보낸다)",
+			return soml.Asset{}, fmt.Sprintf("%s의 내용이 %s가 아니다 — 확장자만 바꾼 파일은 빌드는 성공하고 PowerPoint가 열지 못한다 (png나 jpeg로 다시 내보낸다)",
 				key, declared)
-			return soml.Asset{}, false
 		}
-		p.errorf(span, "%s의 이미지 헤더를 읽을 수 없다 (파일이 잘렸다) — 커밋된 바이트를 확인한다", key)
-		return soml.Asset{}, false
+		return soml.Asset{}, fmt.Sprintf("%s의 이미지 헤더를 읽을 수 없다 (파일이 잘렸다) — 커밋된 바이트를 확인한다", key)
 	}
 	if soml.ImageFormat(format) != declared {
-		p.errorf(span, "%s의 확장자는 %s를 말하는데 내용은 %s다 — [Content_Types]가 확장자로 콘텐츠 타입을 정하므로 이대로는 PowerPoint가 파일을 열지 못한다 (확장자를 %q로 바꾼다)",
+		return soml.Asset{}, fmt.Sprintf("%s의 확장자는 %s를 말하는데 내용은 %s다 — [Content_Types]가 확장자로 콘텐츠 타입을 정하므로 이대로는 PowerPoint가 파일을 열지 못한다 (확장자를 %q로 바꾼다)",
 			key, declared, format, soml.ImageFormat(format).Ext())
-		return soml.Asset{}, false
 	}
 	if config.Width <= 0 || config.Height <= 0 {
-		p.errorf(span, "%s의 고유 크기가 %d×%d다 — 그릴 것이 없다", key, config.Width, config.Height)
-		return soml.Asset{}, false
+		return soml.Asset{}, fmt.Sprintf("%s의 고유 크기가 %d×%d다 — 그릴 것이 없다", key, config.Width, config.Height)
 	}
 	return soml.Asset{
 		Key:    key,
@@ -182,5 +217,5 @@ func (p *assetPass) load(key string, span soml.Span) (soml.Asset, bool) {
 		Width:  config.Width,
 		Height: config.Height,
 		Bytes:  data,
-	}, true
+	}, ""
 }

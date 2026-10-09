@@ -187,6 +187,7 @@ func mergeRawTheme(parent, child rawTheme) rawTheme {
 		components:  mergeComponentsFile(parent.components, child.components),
 		layouts:     mergeCSSFiles(parent.layouts, child.layouts),
 		slotLayouts: mergeCSSFiles(parent.slotLayouts, child.slotLayouts),
+		assets:      mergeAssetFiles(parent.assets, child.assets),
 	}
 }
 
@@ -246,6 +247,11 @@ func mergeManifest(parent, child themeManifest) themeManifest {
 		out.Layouts = parent.Layouts
 	}
 	out.Chrome = mergeNamed(parent.Chrome, child.Chrome, func(d chromeDeclFile) string { return d.Kind })
+	// 배경은 **목록 통째로** 갈린다 — 레이아웃 하나의 배경은 선언 하나에서만 오고(겹치면 에러다),
+	// 부모의 기본 배경과 자식의 레이아웃 배경이 섞이면 어느 장이 어느 그림인지 두 파일을 함께 읽어야 안다.
+	if len(child.Backgrounds) == 0 {
+		out.Backgrounds = parent.Backgrounds
+	}
 	return out
 }
 

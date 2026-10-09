@@ -18,10 +18,13 @@ const (
 	// ChromePageNumber는 슬라이드 번호다. PPTX에서 `a:fld type="slidenum"`이 되므로 뷰어에서
 	// 장을 더하면 번호가 따라온다 — 정적 텍스트로 내면 그 약속이 깨진다.
 	ChromePageNumber ChromeKind = "pageNumber"
+	// ChromeLogo는 테마의 로고 그림이다. 다른 둘과 달리 **내용과 켜짐이 테마의 것**이다 — 그림이
+	// 테마 패키지의 자산이고, 선언하면 켜진다 (`balpyo.json`이 정할 것이 없다).
+	ChromeLogo ChromeKind = "logo"
 )
 
 // ChromeKinds는 크롬 종류 어휘다 (진단 문구의 순서이자 선언 검사 순서).
-func ChromeKinds() []ChromeKind { return []ChromeKind{ChromeFooter, ChromePageNumber} }
+func ChromeKinds() []ChromeKind { return []ChromeKind{ChromeFooter, ChromePageNumber, ChromeLogo} }
 
 // ChromeAligns는 크롬이 띠 안에서 붙을 쪽이다 — TextAligns에서 `justify`를 뺀 3종이다.
 // 크롬 박스는 내용 폭이라(띠를 가로지르지 않는다) 양쪽 정렬이 가리킬 여백이 없다.
@@ -55,5 +58,13 @@ type ChromeItem struct {
 	// Align은 바닥 띠에서 붙을 쪽이다 (ChromeAligns).
 	Align TextAlign
 	// Style은 테마 역할에서 확정된 텍스트 외관이다 — 크롬은 자기 크기·색을 갖지 않는다.
+	// 그림 크롬(로고)에는 없다 (영값).
 	Style TextStyle
+	// Image는 그림 크롬의 에셋 키다 (Deck.Assets — 테마 자산은 `themes/<테마>/assets/…`). 글자 크롬에서는
+	// 비어 있다.
+	Image string
+	// Height는 그림 크롬의 높이다 (논리 px) — 폭은 그림의 비율이 정한다.
+	Height float64
+	// Alt는 그림 크롬의 대체 텍스트다 (웹 `alt` · PPTX `cNvPr@descr`).
+	Alt string
 }

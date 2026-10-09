@@ -20,7 +20,7 @@ import (
 // 진단이 슬라이드가 아니라 `balpyo.json`을 가리키는 이유는 고칠 자리가 거기라는 것이다.
 // 경고는 **덱에 한 번** 낸다: 슬라이드마다 내면 12장 덱에서 같은 문장이 12번 나온다.
 func resolveChrome(deck *soml.Deck, pkg themePackage) ([]soml.ChromeItem, soml.Diagnostics) {
-	if deck == nil || deck.Chrome.Empty() {
+	if deck == nil {
 		return nil, nil
 	}
 	var (
@@ -31,6 +31,16 @@ func resolveChrome(deck *soml.Deck, pkg themePackage) ([]soml.ChromeItem, soml.D
 	// 같은 순서로 나와야 하고, 테마가 선언 순서를 바꿨다고 산출물의 도형 순서가 흔들릴 이유가
 	// 없다. 자리는 align이 정하므로 순서는 겹침에 영향을 주지 않는다.
 	for _, kind := range soml.ChromeKinds() {
+		if kind == soml.ChromeLogo {
+			// 로고는 요청이 아니라 테마의 선언이 켠다 — 그림도 자리도 테마의 것이다. 선언하지 않은 테마는
+			// 로고가 없을 뿐이다 (경고할 요청이 없다).
+			if decl, ok := pkg.chromeDeclFor(kind); ok {
+				items = append(items, soml.ChromeItem{
+					Kind: kind, Align: decl.align, Image: decl.image, Height: decl.height, Alt: decl.alt,
+				})
+			}
+			continue
+		}
 		text, on := chromeRequest(deck.Chrome, kind)
 		if !on {
 			continue

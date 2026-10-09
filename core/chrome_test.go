@@ -77,8 +77,38 @@ func TestLoadChromeRejectsBadDecls(t *testing.T) {
 	}{
 		{
 			name: "알 수 없는 kind",
-			src:  `[{"kind":"logo","align":"start","role":"caption"}]`,
-			want: `chrome[0]: 알 수 없는 kind "logo" (쓸 수 있는 kind: footer, pageNumber)`,
+			src:  `[{"kind":"watermark","align":"start","role":"caption"}]`,
+			want: `chrome[0]: 알 수 없는 kind "watermark" (쓸 수 있는 kind: footer, pageNumber, logo)`,
+		},
+		{
+			name: "로고에 그림이 없다",
+			src:  `[{"kind":"logo","align":"end","height":28}]`,
+			want: `chrome[0]: logo에 image가 없다`,
+		},
+		{
+			name: "로고에 높이가 없다",
+			src:  `[{"kind":"logo","align":"end","image":"assets/logo.png"}]`,
+			want: `chrome[0]: logo의 height가 없거나 0 이하다`,
+		},
+		{
+			name: "로고의 그림이 패키지에 없다",
+			src:  `[{"kind":"logo","align":"end","image":"assets/logo.png","height":28}]`,
+			want: `logo의 image가 가리키는 "assets/logo.png"가 테마 패키지에 없다`,
+		},
+		{
+			name: "로고의 그림이 assets 밖이다",
+			src:  `[{"kind":"logo","align":"end","image":"../logo.png","height":28}]`,
+			want: `logo의 image의 "../logo.png"는 테마의 assets/ 아래 경로여야 한다`,
+		},
+		{
+			name: "로고에 역할을 쓴다",
+			src:  `[{"kind":"logo","align":"end","role":"caption","image":"assets/logo.png","height":28}]`,
+			want: `chrome[0]: logo에는 role을 쓸 수 없다`,
+		},
+		{
+			name: "글자 크롬에 그림 자리를 쓴다",
+			src:  `[{"kind":"footer","align":"start","role":"caption","height":20}]`,
+			want: `chrome[0]: footer에는 image · height · alt를 쓸 수 없다`,
 		},
 		{
 			name: "알 수 없는 align",
