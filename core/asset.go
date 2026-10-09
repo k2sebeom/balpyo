@@ -47,7 +47,7 @@ func ResolveAssets(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 		return nil
 	}
 	deck.Assets = nil
-	pass := assetPass{deck: deck, fsys: fsys, seen: map[string]bool{}}
+	pass := assetPass{deck: deck, fsys: fsys, seen: map[string]bool{}, checked: map[string]bool{}}
 	for _, slide := range deck.Slides {
 		pass.file = slide.Source
 		// 슬라이드의 칠 순서대로 모은다 — 배경(맨 아래) · 내용 · 크롬. 표의 순서가 PPTX 미디어 파트 번호이므로
@@ -88,9 +88,13 @@ type assetPass struct {
 	deck *soml.Deck
 	fsys fs.FS
 	// file은 지금 훑는 슬라이드 파일이다 — 진단이 가리킬 곳.
-	file  string
-	seen  map[string]bool
-	diags soml.Diagnostics
+	file string
+	// seen은 표에 실린 키다. checked는 프로젝트 파일 시스템에서 이미 확인한 경로다 — 둘이 갈리는 이유는
+	// 테마 자산 키와 모양이 같은 프로젝트 경로(`themes/<이름>/assets/…`)다: 그 키가 테마 자산으로 먼저
+	// 실렸어도 프로젝트 경로는 프로젝트에서 찾아야 결과가 슬라이드의 순서에 의존하지 않는다.
+	seen    map[string]bool
+	checked map[string]bool
+	diags   soml.Diagnostics
 }
 
 func (p *assetPass) errorf(span soml.Span, format string, args ...any) {
@@ -123,20 +127,28 @@ func (p *assetPass) image(elem *soml.Element) {
 		// 번째 진단을 얹으면 저자가 고칠 곳이 둘로 보인다.
 		return
 	}
-	if p.seen[style.Src] {
-		return
-	}
-	p.seen[style.Src] = true
 	attr, ok := elem.Attr("src")
 	if !ok {
 		// 확정 값에 Src가 있으면 속성이 있다 — 여기 오는 것은 엔진 버그이고, 진단이 가리킬
 		// 자리가 없으므로 조용히 넘긴다 (렌더러의 "그릴 것이 없다" 가드가 마지막 그물이다).
 		return
 	}
-	asset, ok := p.load(style.Src, attr.ValueSpan)
-	if !ok {
+	if srcScheme(attr.Value) == themeSrcScheme {
+		// 테마의 그림은 값 층이 이미 읽고 판정했다 (themeImageSrc) — 배경 · 로고와 같은 길로 옮긴다.
+		p.theme(style.Src)
 		return
 	}
+	if p.checked[style.Src] {
+		return
+	}
+	p.checked[style.Src] = true
+	asset, ok := p.load(style.Src, attr.ValueSpan)
+	if !ok || p.seen[style.Src] {
+		// 표에 이미 있으면 같은 키의 테마 자산이다 (로컬 테마의 파일을 프로젝트 경로로도 가리켰다) — 같은
+		// 파일이므로 한 항목이다.
+		return
+	}
+	p.seen[style.Src] = true
 	p.deck.Assets = append(p.deck.Assets, asset)
 }
 

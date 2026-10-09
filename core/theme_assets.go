@@ -100,26 +100,40 @@ func (a *assetResolver) resolve(where, rel string) (string, error) {
 	if clean != rel || !strings.HasPrefix(rel, themeAssetDir+"/") {
 		return "", fmt.Errorf("%s의 %q는 테마의 %s/ 아래 경로여야 한다 (예: %s/bg.png)", where, rel, themeAssetDir, themeAssetDir)
 	}
-	file, ok := a.files[rel]
-	if !ok {
+	key, found, msg := a.use(rel)
+	if !found {
 		return "", fmt.Errorf("%s가 가리키는 %q가 테마 패키지에 없다", where, rel)
 	}
-	key := themeAssetKey(file.owner, rel)
-	for _, asset := range a.used {
-		if asset.Key == key {
-			return key, nil
-		}
-	}
-	data, err := file.read()
-	if err != nil {
-		return "", fmt.Errorf("%s: %s를 읽을 수 없다: %w", where, key, err)
-	}
-	asset, msg := decodeImageAsset(key, data)
 	if msg != "" {
 		return "", fmt.Errorf("%s: %s", where, msg)
 	}
-	a.used = append(a.used, asset)
 	return key, nil
+}
+
+// use는 색인의 파일 하나(`assets/…`, 정규화된 경로)를 읽고 판정해 표에 싣는다 — 이미 실었으면 그 키를
+// 그대로 돌려준다. found가 false면 색인에 없고, msg는 읽기·판정의 실패다.
+//
+// 테마 선언(배경 · 로고)과 슬라이드의 `theme:` 그림이 이 한 자리를 지난다: 같은 파일이 두 곳에서 쓰여도
+// 키가 하나라 덱의 에셋 표에 한 번, PPTX 미디어 파트로 한 번 들어간다.
+func (a *assetResolver) use(rel string) (key string, found bool, msg string) {
+	file, ok := a.files[rel]
+	if !ok {
+		return "", false, ""
+	}
+	key = themeAssetKey(file.owner, rel)
+	if _, ok := a.used.Get(key); ok {
+		return key, true, ""
+	}
+	data, err := file.read()
+	if err != nil {
+		return "", true, fmt.Sprintf("%s를 읽을 수 없다: %v", key, err)
+	}
+	asset, msg := decodeImageAsset(key, data)
+	if msg != "" {
+		return "", true, msg
+	}
+	a.used = append(a.used, asset)
+	return key, true, ""
 }
 
 // backgroundFile은 theme.json의 배경 선언 하나다 (원문).

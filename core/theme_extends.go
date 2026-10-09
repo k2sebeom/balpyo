@@ -189,6 +189,10 @@ func loadThemeNamed(fsys fs.FS, name string) (themePackage, error) {
 		return pkg, err
 	}
 	pkg.lint = lintThemeChain(chain, originLocal)
+	pkg.chain = nil
+	for i := len(chain) - 1; i >= 0; i-- {
+		pkg.chain = append(pkg.chain, chain[i].manifest.Name)
+	}
 	return pkg, nil
 }
 

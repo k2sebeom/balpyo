@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"path"
 	"strings"
 
@@ -24,6 +25,10 @@ import (
 //
 // 나누는 선을 "디스크를 보는가"에 둔 이유: 문법 오류를 파일 접근 없이 전부 알 수 있어야
 // 에디터(lsp)가 프로젝트를 열지 않고도 같은 진단을 낸다.
+//
+// 예외는 `theme:` 그림 하나다 (themeImageSrc): 테마 `assets/`의 파일은 프로젝트 파일 시스템에 없고
+// 이미 로드된 테마 패키지가 그 색인을 갖고 있으므로, 테마의 배경 · 로고와 같은 자리(assetResolver)에서
+// 존재와 내용까지 판정한다. 에셋 패스는 판정된 그림을 덱의 표로 옮기기만 한다.
 
 // resolveImage는 `<image>`의 외관을 4단 캐스케이드로 확정한다:
 //
@@ -146,7 +151,7 @@ func (r *resolver) imageAttrs(elem *soml.Element, style *soml.ImageStyle) imageP
 }
 
 // imageSrc는 `src`를 해석한다 — 값은 **프로젝트 루트 기준 상대 경로**이고 결과는 에셋 표의
-// 정규화 키다 (실패하면 빈 문자열).
+// 정규화 키다 (실패하면 빈 문자열). `theme:`으로 시작하면 활성 테마의 그림이다 (themeImageSrc).
 //
 // **기준이 프로젝트 루트인 근거**: 하위 디렉토리가 챕터가 되므로 슬라이드 파일 기준
 // 경로를 쓰면 슬라이드를 챕터로 옮길 때 같은 그림의 경로가 파일마다 달라진다 — 그리고 슬라이드
@@ -185,6 +190,9 @@ func (r *resolver) imageSrc(elem *soml.Element) string {
 		return ""
 	}
 	if scheme := srcScheme(raw); scheme != "" {
+		if scheme == themeSrcScheme {
+			return r.themeImageSrc(attr, raw[len(scheme)+1:])
+		}
 		if scheme == "data" {
 			r.errorf(attr.ValueSpan, "src에 data: URL은 쓸 수 없다 — 그림은 파일로 커밋한다 (원문에 바이트를 실으면 슬라이드를 사람이 읽을 수도, 진단이 자리를 가리킬 수도 없다)")
 			return ""
@@ -206,24 +214,98 @@ func (r *resolver) imageSrc(elem *soml.Element) string {
 			raw)
 		return ""
 	}
+	if !r.imageFile(attr, raw, key) {
+		return ""
+	}
+	return key
+}
+
+// imageFile은 정규화된 경로 key가 그림 파일 하나를 가리키는지 본다 — 파일 이름과 확장자의 어휘다.
+// 프로젝트 경로와 `theme:` 경로가 같은 규칙을 지난다 (raw는 진단에 싣는 원문이다).
+func (r *resolver) imageFile(attr soml.Attr, raw, key string) bool {
 	if key == "." || key == "/" {
 		r.errorf(attr.ValueSpan, "src가 파일을 가리키지 않는다 (%q)", raw)
-		return ""
+		return false
 	}
 	ext := path.Ext(key)
 	if ext == "" {
 		r.errorf(attr.ValueSpan, "src에 확장자가 없다 (%q) — 확장자가 PPTX의 콘텐츠 타입을 정한다 (쓸 수 있는 것: %s)",
 			raw, imageExtList())
-		return ""
+		return false
 	}
 	if _, known := soml.ImageFormatForExt(ext); !known {
 		// 진단은 **이유와 대안**을 말한다: 어휘를 2종으로 닫은 것은 양 타깃이 그리는 것만
 		// 연다는 규칙의 결과이고(soml.ImageFormat), 저자에게는 늘 고칠 방법이 있다.
 		r.errorf(attr.ValueSpan, "src의 %q는 v1이 그리지 못한다 (쓸 수 있는 것: %s) — %s",
 			strings.ToLower(ext), imageExtList(), imageExtReason(ext))
+		return false
+	}
+	return true
+}
+
+// themeSrcScheme은 활성 테마의 그림을 가리키는 `src`의 접두사다 (`theme:icons/a.png`).
+const themeSrcScheme = "theme"
+
+// themeImageSrc는 `src="theme:<경로>"`를 해석한다 — 경로는 테마의 `assets/` 기준이고, 결과는 그 파일을
+// 가진 테마의 에셋 키(`themes/<주인>/assets/…`)다 (실패하면 빈 문자열).
+//
+// 찾는 자리는 **활성 테마의 상속 체인**이다 (`assets/`의 파일 단위 병합 — 같은 경로면 자식의 파일). 그래서
+// 슬라이드는 테마의 이름도, 테마가 어디 설치되었는지도 적지 않는다: 같은 덱이 `corp`와 `corp-dark` 사이를
+// `src` 수정 없이 오가고, 자식 테마는 같은 경로에 파일을 두어 아이콘 하나만 바꿀 수 있다.
+//
+// 체인에 파일이 없으면 **에러**다 — 다른 테마로 바꾼 덱이 빈 그림으로 빌드되면 그 사실은 슬라이드를 열어야
+// 드러난다 (빠진 토큰을 폴백하지 않는 것과 같은 태도). 진단은 본 테마들을 나열한다.
+func (r *resolver) themeImageSrc(attr soml.Attr, rel string) string {
+	raw := attr.Value
+	if rel == "" {
+		r.errorf(attr.ValueSpan, "%s: 뒤에 경로가 없다 — 테마의 %s/ 기준 경로를 적는다 (예: %q)",
+			themeSrcScheme, themeAssetDir, themeSrcScheme+":icons/logo.png")
+		return ""
+	}
+	if strings.HasPrefix(rel, "/") {
+		r.errorf(attr.ValueSpan, "%s: 경로는 테마의 %s/ 기준 상대 경로다 (%q는 절대 경로)", themeSrcScheme, themeAssetDir, raw)
+		return ""
+	}
+	clean := path.Clean(rel)
+	if clean == ".." || strings.HasPrefix(clean, "../") {
+		r.errorf(attr.ValueSpan, "src가 테마의 %s/ 밖을 가리킨다 (%q) — %s: 그림은 테마의 %s/ 안의 파일이다",
+			themeAssetDir, raw, themeSrcScheme, themeAssetDir)
+		return ""
+	}
+	if !r.imageFile(attr, raw, clean) {
+		return ""
+	}
+	if r.themeAssets == nil {
+		r.errorf(attr.ValueSpan, "%s: 그림을 찾을 테마가 없다 (%q) — 엔진 버그다 (값 층이 테마 색인 없이 돌았다)", themeSrcScheme, raw)
+		return ""
+	}
+	key, found, msg := r.themeAssets.use(path.Join(themeAssetDir, clean))
+	if !found {
+		r.errorf(attr.ValueSpan, "%s:%s을 테마 %s의 %s/에서 찾을 수 없다", themeSrcScheme, clean, themeChainText(r.themeChain), themeAssetDir)
+		return ""
+	}
+	if msg != "" {
+		r.errorf(attr.ValueSpan, "%s", msg)
 		return ""
 	}
 	return key
+}
+
+// themeChainText는 진단에 싣는 상속 체인이다 — `"corp-dark"(→ "corp" → "minimal")`. 잎이 앞이다: 저자가
+// 고른 테마가 먼저 읽히고, 괄호 안이 그 테마가 물려받아 함께 본 자리다.
+func themeChainText(chain []string) string {
+	if len(chain) == 0 {
+		return `""`
+	}
+	text := fmt.Sprintf("%q", chain[0])
+	if len(chain) > 1 {
+		parents := make([]string, len(chain)-1)
+		for i, name := range chain[1:] {
+			parents[i] = fmt.Sprintf("%q", name)
+		}
+		text += "(→ " + strings.Join(parents, " → ") + ")"
+	}
+	return text
 }
 
 // srcScheme은 값 앞의 URL 스킴이다 (`http`, `https`, `data`). 없으면 빈 문자열이다.

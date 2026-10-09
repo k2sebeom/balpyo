@@ -149,6 +149,12 @@ type themePackage struct {
 	// 선언 순서가 곧 슬라이드에 실리는 순서이므로(웹 DOM · PPTX 도형 순서) 맵이 아니라
 	// 목록이다: 맵으로 두면 두 타깃의 산출물 순서가 실행마다 달라진다.
 	chrome []chromeDecl
+	// assets는 상속 체인 전체를 병합한 `assets/` 색인과, 지금까지 쓴 그림의 표다. 테마 선언(배경 · 로고)이
+	// 로딩에서 먼저 쓰고, 슬라이드의 `theme:` 그림이 값 층에서 이어 쓴다.
+	assets *assetResolver
+	// chain은 상속 체인의 테마 이름이다 — **잎부터** (`corp-dark`, `corp`, `minimal`). `theme:` 그림을
+	// 찾지 못한 진단이 어느 테마들을 보았는지 말한다.
+	chain []string
 	// lint는 로컬 테마의 레이아웃 CSS 진단이다 (theme_lint.go). 로드를 멈추는 에러와 달리 경고가
 	// 섞이므로 error가 아니라 진단 목록으로 나르고, 값 층(Resolve)이 덱 진단의 맨 앞에 싣는다.
 	lint soml.Diagnostics
@@ -566,6 +572,8 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 	pkg.backgrounds = backgrounds
 	// 선언이 가리킨 그림만 싣는다 (가리킨 순서) — `assets/` 안의 쓰지 않는 파일은 산출물에 나가지 않는다.
 	pkg.tokens.Assets = assets.used
+	pkg.assets = assets
+	pkg.chain = []string{pkg.manifest.Name}
 	return pkg, nil
 }
 

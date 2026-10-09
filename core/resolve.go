@@ -71,7 +71,7 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 	chromePlan, chromeDiags := resolveChrome(deck, pkg)
 	diags := append(pkg.lint, chromeDiags...)
 	for _, slide := range deck.Slides {
-		r := resolver{theme: deck.Theme, comps: pkg.components, file: slide.Source}
+		r := resolver{theme: deck.Theme, comps: pkg.components, themeAssets: pkg.assets, themeChain: pkg.chain, file: slide.Source}
 		// 레이아웃 어휘는 슬라이드마다 도는 이 루프 머리에서 확정한다 — 파일 하나로
 		// 판정되므로 Validate(파일을 넘어야 아는 것 — 슬라이드 ID 충돌)가 아니라 여기다.
 		r.slideLayout(slide)
@@ -103,6 +103,9 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 		})
 		diags = append(diags, r.diags...)
 	}
+	// 테마의 그림 표는 슬라이드 **뒤**에 확정된다 — `theme:` 그림이 선언(배경 · 로고) 뒤에 이어 실린다.
+	// 복사하는 이유는 확정 모델이 패키지의 표를 나눠 가리키지 않게 하는 것이다.
+	deck.Theme.Assets = append(soml.Assets(nil), pkg.assets.used...)
 	return diags
 }
 
@@ -112,7 +115,12 @@ type resolver struct {
 	// comps는 로드된 컴포넌트 외관 표다 (components.json) — 캐스케이드의 컴포넌트 기본값·
 	// variant 단이 여기서 나온다 — 폴백은 없다 (엔진에 외관 값이 없다).
 	comps components
-	file  string
+	// themeAssets · themeChain은 활성 테마의 병합된 `assets/` 색인과 상속 체인이다 — `<image
+	// src="theme:…">`가 여기서 풀린다 (resolver.themeImageSrc). 슬라이드마다 resolver가 새로 만들어져도
+	// 색인은 덱에 하나다: 같은 그림을 여러 슬라이드가 써도 표에 한 번 실린다.
+	themeAssets *assetResolver
+	themeChain  []string
+	file        string
 	// layout은 이 슬라이드의 확정 레이아웃이다 (slideLayout이 채운다). 배치 검증이 슬라이드를
 	// 알아야 하는 유일한 자리가 canvas다: `x`/`y`는 <stack>의 자식이거나 canvas 슬라이드의
 	// 직속 자식에서만 쓸 수 있는데, 후자는 부모가 요소가 아니므로(parent == nil) 부모만으로는
