@@ -629,8 +629,8 @@ func writeGeom(w func(depth int, line string), depth int, preset string, adjust 
 	} else {
 		w(depth+1, "<a:avLst>")
 		for _, item := range adjust {
-			// 명시하지 않은 조정값은 프리셋 기본값이 산다 — avLst는 전체 목록이 아니라
-			// 덮어쓰기다 (rightArrow가 adj2만 싣는 근거 — web.ShapeAdjusts).
+			// 명세(web.ShapeAdjusts)는 프리셋 조정값 전부를 담는다 — PowerPoint는 일부만 적힌
+			// avLst를 받지 않고 복구하며 도형을 지운다 (web.AdjustAxisFixed).
 			w(depth+2, fmt.Sprintf(`<a:gd name="%s" fmla="val %d"/>`, item.name, item.val))
 		}
 		w(depth+1, "</a:avLst>")

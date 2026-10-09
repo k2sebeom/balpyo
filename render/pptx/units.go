@@ -162,6 +162,9 @@ func AdjustValue(spec web.ShapeAdjust, rect geom.Rect, radius float64) (int64, e
 		value = rect.H
 	case web.AdjustAxisRadius:
 		value = radius
+	case web.AdjustAxisFixed:
+		// 보정이 없는 조정값이다 — ss와 무관하게 Base 그대로다.
+		return int64(math.Round(spec.Base)), nil
 	default:
 		// 기하 표에 축을 추가하고 평가를 잊으면 조용히 0(각진 모서리·기본 비율)이 되는
 		// 대신 멈춘다 — 렌더 매핑 부재를 에러로 두는 이 패키지의 태도 그대로다.

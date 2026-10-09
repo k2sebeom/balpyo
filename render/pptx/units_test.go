@@ -230,6 +230,7 @@ func TestAdjustValue(t *testing.T) {
 	widthSpec := web.ShapeAdjust{Name: "adj", Base: 50000, Axis: web.AdjustAxisWidth}
 	heightSpec := web.ShapeAdjust{Name: "adj", Base: 25000, Axis: web.AdjustAxisHeight}
 	exceedSpec := web.ShapeAdjust{Name: "adj", Base: 50000, Axis: web.AdjustAxisWidth, Exceed: true}
+	fixedSpec := web.ShapeAdjust{Name: "vf", Base: 115470, Axis: web.AdjustAxisFixed}
 
 	tests := []struct {
 		name   string
@@ -261,6 +262,10 @@ func TestAdjustValue(t *testing.T) {
 		{"넘기기/정확", exceedSpec, geom.Rect{W: 200, H: 100}, 0, 100001},
 		{"넘기기/좁음", exceedSpec, geom.Rect{W: 100, H: 300}, 0, 50001},
 		{"넘기기/소수", exceedSpec, geom.Rect{W: 100, H: 30}, 0, 166668},
+		// 고정값: ss와 무관하게 Base 그대로다 (크기 0 도형에서도).
+		{"고정/정사각형", fixedSpec, geom.Rect{W: 200, H: 200}, 0, 115470},
+		{"고정/납작", fixedSpec, geom.Rect{W: 1000, H: 50}, 0, 115470},
+		{"고정/크기 0", fixedSpec, geom.Rect{}, 0, 115470},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

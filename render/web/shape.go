@@ -198,6 +198,11 @@ const (
 	// AdjustAxisRadius는 확정 모서리 반경이다 (rounded-rect 하나). 축이 아니라 값이지만
 	// 공식의 자리가 같다 — `ss`로 나눈 비율이 조정값이 되는 구조가 셋 다 같다.
 	AdjustAxisRadius ShapeAdjustAxis = "radius"
+	// AdjustAxisFixed는 `ss`와 무관한 고정값이다 — 조정값은 Base 그대로다. 보정이 필요 없는
+	// 조정값도 avLst에 적어야 하는 프리셋이 있어서 쓴다: PowerPoint는 프리셋 조정값 일부만
+	// 적힌 avLst를 받지 않고 파일을 복구하며, 그 복구가 도형을 지운다 (명세로는 덮어쓰기지만
+	// 그렇게 구현하지 않았다). 그래서 하나라도 적는 프리셋은 전부를 적는다.
+	AdjustAxisFixed ShapeAdjustAxis = "fixed"
 )
 
 // ShapeAdjust는 `prstGeom/avLst` 조정값 하나의 명세다 (OOXML `a:gd`).
@@ -367,26 +372,34 @@ func shapeGeometries() []shapeGeometry {
 			// rightArrow: `adj1=50000` → `dy1 = h·adj1/200000` = 25(축 절반, h 기준),
 			// `adj2=50000` → `dx1 = ss·adj2/100000` = 50(머리 길이), `x1 = r - dx1`.
 			// 경로는 (l,y1) → (x1,y1) → (x1,t) → (r,vc) → (x1,b) → (x1,y2) → (l,y2).
-			// Adjust: adj1은 h 기준이라 프리셋 기본값 그대로 두고(avLst에 적지 않으면 기본값이
-			// 산다), adj2 = 50000·w/ss만 싣는다.
+			// Adjust: adj1은 h 기준이라 프리셋 기본값(50000) 그대로이고, adj2 = 50000·w/ss가
+			// 보정이다. adj1을 고정값으로 함께 적는 이유는 AdjustAxisFixed에 있다 (adj2만 적힌
+			// avLst는 PowerPoint가 복구하며 도형을 지운다).
 			Type: "arrow-right", Preset: "rightArrow", Space: spaceNormalized,
 			// 텍스트 영역: 축 띠(`y1`~`y2` = 위아래 25%)이고 오른쪽은 머리가 시작하는 `x1`(= 75%w)이다
 			// — 왼쪽은 변이 곧 박스다 (실측 t/b 100·95px ≈ 25% · r 101px = 25.2%).
-			Paths:    []shapePath{{D: "M0,25 L50,25 L50,0 L100,50 L50,100 L50,75 L0,75 Z"}},
-			Adjust:   []ShapeAdjust{{Name: "adj2", Base: 50000, Axis: AdjustAxisWidth}},
+			Paths: []shapePath{{D: "M0,25 L50,25 L50,0 L100,50 L50,100 L50,75 L0,75 Z"}},
+			Adjust: []ShapeAdjust{
+				{Name: "adj1", Base: 50000, Axis: AdjustAxisFixed},
+				{Name: "adj2", Base: 50000, Axis: AdjustAxisWidth},
+			},
 			TextRect: ShapeInsets{T: 25, R: 25, B: 25},
 		},
 		{
 			// hexagon: `adj=25000` → `x1 = ss·adj/100000` = 25, `x2 = r - x1`.
 			// 세로는 `vf=115470`이 `shd2 = hd2·vf/100000`을, `dy1 = shd2·sin(60°)`이 hd2와
 			// 같아져 `y1 = t`·`y2 = b`가 된다 (기본 육각형은 박스 높이를 꽉 채운다).
-			// Adjust: adj = 25000·w/ss (프리셋의 maxAdj = 50000·w/ss 안이다).
+			// Adjust: adj = 25000·w/ss (프리셋의 maxAdj = 50000·w/ss 안이다). vf는 기본값(115470)
+			// 그대로 함께 적는다 — 이유는 AdjustAxisFixed에 있다.
 			Type: "hexagon", Preset: "hexagon", Space: spaceNormalized,
 			// 텍스트 영역: 왼위 사선을 비율 좌표로 쓰면 `u = ¼(1 − 2v)`이고, 네 변이 같은 비율 d로
 			// 들어오는 점은 `d = ¼ − ½d` → `d = ⅙` = 16.6667%다 (비율 공간의 식이라 종횡비에
 			// 무관하다 — 실측 66~67px = 16.5~16.8%).
-			Paths:    []shapePath{{D: "M0,50 L25,0 L75,0 L100,50 L75,100 L25,100 Z"}},
-			Adjust:   []ShapeAdjust{{Name: "adj", Base: 25000, Axis: AdjustAxisWidth}},
+			Paths: []shapePath{{D: "M0,50 L25,0 L75,0 L100,50 L75,100 L25,100 Z"}},
+			Adjust: []ShapeAdjust{
+				{Name: "adj", Base: 25000, Axis: AdjustAxisWidth},
+				{Name: "vf", Base: 115470, Axis: AdjustAxisFixed},
+			},
 			TextRect: ShapeInsets{L: 16.6667, T: 16.6667, R: 16.6667, B: 16.6667},
 		},
 		{

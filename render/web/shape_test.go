@@ -179,11 +179,17 @@ func TestShapeGeometryTableCoversVocabularyInOrder(t *testing.T) {
 // 그려진다).
 func TestShapeAdjustSpecsMatchStretchedGeometry(t *testing.T) {
 	want := map[string][]ShapeAdjust{
-		"rounded-rect":  {{Name: "adj", Base: 100000, Axis: AdjustAxisRadius, Max: 50000}},
-		"cylinder":      {{Name: "adj", Base: 25000, Axis: AdjustAxisHeight}},
-		"chevron":       {{Name: "adj", Base: 50000, Axis: AdjustAxisWidth, Exceed: true}},
-		"arrow-right":   {{Name: "adj2", Base: 50000, Axis: AdjustAxisWidth}},
-		"hexagon":       {{Name: "adj", Base: 25000, Axis: AdjustAxisWidth}},
+		"rounded-rect": {{Name: "adj", Base: 100000, Axis: AdjustAxisRadius, Max: 50000}},
+		"cylinder":     {{Name: "adj", Base: 25000, Axis: AdjustAxisHeight}},
+		"chevron":      {{Name: "adj", Base: 50000, Axis: AdjustAxisWidth, Exceed: true}},
+		"arrow-right": {
+			{Name: "adj1", Base: 50000, Axis: AdjustAxisFixed},
+			{Name: "adj2", Base: 50000, Axis: AdjustAxisWidth},
+		},
+		"hexagon": {
+			{Name: "adj", Base: 25000, Axis: AdjustAxisWidth},
+			{Name: "vf", Base: 115470, Axis: AdjustAxisFixed},
+		},
 		"parallelogram": {{Name: "adj", Base: 25000, Axis: AdjustAxisWidth}},
 	}
 	for _, geom := range shapeGeometries() {
@@ -216,6 +222,48 @@ func TestShapeAdjustSpecsMatchStretchedGeometry(t *testing.T) {
 		// 빈 목록(조정값 없는 프리셋)과 구별되어야 PPTX가 "어휘에 있는데 표에 없는 프리셋"에서
 		// 멈출 수 있다.
 		t.Error("어휘 밖 type에 조정값 명세가 있다")
+	}
+}
+
+// 조정값을 하나라도 적는 프리셋은 **프리셋의 조정값 전부를** 프리셋 순서대로 적어야 한다.
+// PowerPoint는 일부만 적힌 avLst(rightArrow의 adj2만, hexagon의 adj만)를 받지 않고 파일을
+// 복구하며, 그 복구가 도형과 근처의 그림을 지운다. 그런 XML도 스키마로는 유효해서 골든과
+// 스키마 검증으로는 잡히지 않는다 — 그래서 이름 목록을 직접 단정한다.
+//
+// 기대 목록은 ECMA-376 `presetShapeDefinitions.xml`의 각 프리셋 `avLst`다.
+func TestShapeAdjustsListEveryPresetGuide(t *testing.T) {
+	presetGuides := map[string][]string{
+		"rect":             nil,
+		"roundRect":        {"adj"},
+		"ellipse":          nil,
+		"diamond":          nil,
+		"can":              {"adj"},
+		"chevron":          {"adj"},
+		"rightArrow":       {"adj1", "adj2"},
+		"hexagon":          {"adj", "vf"},
+		"parallelogram":    {"adj"},
+		"wedgeRectCallout": {"adj1", "adj2"},
+		"star5":            {"adj", "hf", "vf"},
+		"cloud":            nil,
+	}
+	for _, geom := range shapeGeometries() {
+		guides, known := presetGuides[geom.Preset]
+		if !known {
+			t.Errorf("%q의 프리셋 %q의 조정값 목록이 이 테스트에 없다", geom.Type, geom.Preset)
+			continue
+		}
+		adjusts, _ := ShapeAdjusts(geom.Type)
+		if len(adjusts) == 0 {
+			continue // 빈 avLst는 프리셋 기본값 전부다.
+		}
+		names := make([]string, 0, len(adjusts))
+		for _, adjust := range adjusts {
+			names = append(names, adjust.Name)
+		}
+		if strings.Join(names, ",") != strings.Join(guides, ",") {
+			t.Errorf("%q(%s)의 avLst 조정값 = %v, want %v (일부만 적으면 PowerPoint가 도형을 지운다)",
+				geom.Type, geom.Preset, names, guides)
+		}
 	}
 }
 

@@ -123,9 +123,16 @@ func TestRenderShapeAdjustments(t *testing.T) {
 		// 노치 = 폭/2가 정확히 100000이라 한 단위 넘긴다 — 텍스트 영역 분기(dx = 0)를 어느
 		// 엔진이든 박스 전체로 읽게 한다.
 		{"chevron", []string{`<a:gd name="adj" fmla="val 100001"/>`}},
-		// rightArrow는 adj2만 싣는다 — adj1은 h 기준이라 프리셋 기본값이 산다.
-		{"arrow-right", []string{`<a:gd name="adj2" fmla="val 100000"/>`}},
-		{"hexagon", []string{`<a:gd name="adj" fmla="val 50000"/>`}},
+		// adj1은 h 기준이라 보정이 없지만 기본값으로 함께 적는다 — adj2만 적힌 avLst는
+		// PowerPoint가 복구하며 도형을 지운다. hexagon의 vf도 같다.
+		{"arrow-right", []string{
+			`<a:gd name="adj1" fmla="val 50000"/>`,
+			`<a:gd name="adj2" fmla="val 100000"/>`,
+		}},
+		{"hexagon", []string{
+			`<a:gd name="adj" fmla="val 50000"/>`,
+			`<a:gd name="vf" fmla="val 115470"/>`,
+		}},
 		{"parallelogram", []string{`<a:gd name="adj" fmla="val 50000"/>`}},
 	}
 	for _, tc := range tests {
