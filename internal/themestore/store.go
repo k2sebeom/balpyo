@@ -43,9 +43,11 @@ const (
 // Record는 설치한 테마 하나의 출처다.
 type Record struct {
 	Name string `json:"name"`
-	// Repo는 `github.com/<owner>/<repo>`다 (비면 출처를 모르는 테마 — 손으로 넣은 디렉토리).
+	// Repo는 `github.com/<owner>/<repo>`다 (Repo도 Local도 비면 출처를 모르는 테마 — 손으로 넣은 디렉토리).
 	Repo string `json:"repo"`
-	// Path는 저장소 안의 테마 디렉토리다 (루트면 ".").
+	// Local은 로컬 디렉토리에서 복사했을 때 그 디렉토리(절대 경로)다. update가 거기서 다시 복사한다.
+	Local string `json:"local,omitempty"`
+	// Path는 저장소(또는 Local) 안의 테마 디렉토리다 (루트면 ".").
 	Path string `json:"path"`
 	// Ref는 설치할 때 준 ref다 (비면 기본 브랜치). update가 같은 ref를 다시 받는다.
 	Ref string `json:"ref,omitempty"`
@@ -53,8 +55,27 @@ type Record struct {
 	Commit string `json:"commit,omitempty"`
 }
 
-// Origin은 사람이 읽는 출처다 (`github.com/o/r/path@ref`).
+// HasOrigin은 출처를 아는 기록인지다 — update가 다시 받을 수 있는 테마다.
+func (r Record) HasOrigin() bool { return r.Repo != "" || r.Local != "" }
+
+// source는 기록한 출처다 (update가 다시 받는 자리).
+func (r Record) source() (Source, error) {
+	if r.Local != "" {
+		return Source{Dir: r.Local}, nil
+	}
+	src, err := ParseSource(r.Repo)
+	if err != nil {
+		return Source{}, err
+	}
+	src.Ref = r.Ref
+	return src, nil
+}
+
+// Origin은 사람이 읽는 출처다 (`github.com/o/r/path@ref`, 로컬이면 테마 디렉토리의 경로).
 func (r Record) Origin() string {
+	if r.Local != "" {
+		return filepath.Join(r.Local, filepath.FromSlash(r.Path))
+	}
 	if r.Repo == "" {
 		return ""
 	}
@@ -171,7 +192,7 @@ type candidate struct {
 
 var themeName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]*$`)
 
-// Install은 src의 저장소를 받아 테마를 설치한다. 전부 되거나 전부 안 된다: 옮긴 뒤 빌드와 같은
+// Install은 src의 저장소를 받아(로컬 디렉토리면 복사해) 테마를 설치한다. 전부 되거나 전부 안 된다: 옮긴 뒤 빌드와 같은
 // 로더로 로드해 보고, 하나라도 실패하면 홈을 원래 상태로 되돌린다.
 func (s *Store) Install(ctx context.Context, src Source, opts InstallOptions) (InstallResult, error) {
 	return s.install(ctx, src, opts.Force, func(cands []candidate) ([]candidate, error) {
@@ -192,7 +213,7 @@ func (s *Store) Update(ctx context.Context, names []string) ([]InstallResult, er
 			return nil, err
 		}
 		for _, r := range installed {
-			if r.Repo != "" {
+			if r.HasOrigin() {
 				names = append(names, r.Name)
 			}
 		}
@@ -208,14 +229,13 @@ func (s *Store) Update(ctx context.Context, names []string) ([]InstallResult, er
 		if _, err := os.Stat(s.themePath(name)); err != nil {
 			return nil, fmt.Errorf("설치한 테마 %q가 없다", name)
 		}
-		if !ok || r.Repo == "" {
+		if !ok || !r.HasOrigin() {
 			return nil, fmt.Errorf("테마 %q는 출처 기록이 없어 다시 받을 수 없다 — balpyo theme install로 설치한다", name)
 		}
-		src, err := ParseSource(r.Repo)
+		src, err := r.source()
 		if err != nil {
 			return nil, err
 		}
-		src.Ref = r.Ref
 		key := src.String()
 		if groups[key] == nil {
 			groups[key] = &group{src: src}
@@ -284,7 +304,12 @@ func (s *Store) install(ctx context.Context, src Source, force bool,
 	defer os.RemoveAll(tmp)
 
 	repoDir := filepath.Join(tmp, "repo")
-	snap, err := s.Client.fetch(ctx, src, repoDir)
+	var snap snapshot
+	if src.IsLocal() {
+		snap, err = copyDir(src, repoDir, s.Dir)
+	} else {
+		snap, err = s.Client.fetch(ctx, src, repoDir)
+	}
 	if err != nil {
 		return res, err
 	}
@@ -340,13 +365,18 @@ func (s *Store) install(ctx context.Context, src Source, force bool,
 		lint, err := core.CheckInstalledTheme(s.ThemesFS(), c.header.Name)
 		if err != nil {
 			rollback()
-			return res, fmt.Errorf("%s/%s의 테마 %q를 로드할 수 없어 설치하지 않았다: %w",
-				src.RepoID(), c.dir, c.header.Name, err)
+			return res, fmt.Errorf("%s의 테마 %q를 로드할 수 없어 설치하지 않았다: %w",
+				src.at(c.dir), c.header.Name, err)
 		}
 		res.Lint = append(res.Lint, lint...)
 	}
 	for _, c := range picked {
-		r := Record{Name: c.header.Name, Repo: src.RepoID(), Path: c.dir, Ref: src.Ref, Commit: snap.commit}
+		r := Record{Name: c.header.Name, Path: c.dir, Ref: src.Ref, Commit: snap.commit}
+		if src.IsLocal() {
+			r.Local = src.Dir
+		} else {
+			r.Repo = src.RepoID()
+		}
 		records[r.Name] = r
 		res.Themes = append(res.Themes, r)
 	}
@@ -361,7 +391,7 @@ func (s *Store) install(ctx context.Context, src Source, force bool,
 // checkInstallable은 받은 테마 하나를 홈에 둘 수 있는지 본다.
 func (s *Store) checkInstallable(src Source, c candidate, links []string, records map[string]Record, force bool) error {
 	name := c.header.Name
-	where := src.RepoID() + "/" + c.dir
+	where := src.at(c.dir)
 	if !themeName.MatchString(name) {
 		return fmt.Errorf("%s의 테마 이름 %q는 디렉토리 이름으로 쓸 수 없다", where, name)
 	}
@@ -378,12 +408,24 @@ func (s *Store) checkInstallable(src Source, c candidate, links []string, record
 	}
 	r, ok := records[name]
 	switch {
-	case !ok || r.Repo == "":
+	case !ok || !r.HasOrigin():
 		return fmt.Errorf("테마 %q가 이미 홈에 있다 (출처 기록 없음) — 갈아 끼우려면 --force", name)
-	case r.Repo != src.RepoID() || r.Path != c.dir:
+	case !sameOrigin(r, src, c.dir):
 		return fmt.Errorf("테마 %q는 이미 %s에서 설치했다 — 갈아 끼우려면 --force", name, r.Origin())
 	}
 	return nil
+}
+
+// sameOrigin은 기록 r이 src의 테마 디렉토리 dir에서 온 것인지다 — 같은 자리에서 다시 설치하는 것은
+// 갈아 끼우기가 아니다.
+func sameOrigin(r Record, src Source, dir string) bool {
+	if r.Path != dir {
+		return false
+	}
+	if src.IsLocal() {
+		return r.Local == src.Dir
+	}
+	return r.Local == "" && r.Repo == src.RepoID()
 }
 
 // insideTheme은 저장소 상대 경로 p가 테마 디렉토리 dir 안인지다. 루트가 테마면 `.`으로 시작하는
@@ -466,7 +508,7 @@ func pickByName(src Source, cands []candidate, names []string) ([]candidate, err
 	if len(names) == 0 {
 		for _, c := range cands {
 			if c.err != nil {
-				return nil, fmt.Errorf("%s/%s: %w", src.RepoID(), c.dir, c.err)
+				return nil, fmt.Errorf("%s: %w", src.at(c.dir), c.err)
 			}
 		}
 		for _, name := range available {
@@ -512,11 +554,11 @@ func pickByRecord(src Source, cands []candidate, records []Record) ([]candidate,
 				continue
 			}
 			if c.err != nil {
-				return nil, fmt.Errorf("%s/%s: %w", src.RepoID(), c.dir, c.err)
+				return nil, fmt.Errorf("%s: %w", src.at(c.dir), c.err)
 			}
 			if c.header.Name != r.Name {
-				return nil, fmt.Errorf("%s/%s의 테마 이름이 %q에서 %q로 바뀌었다 — 새 이름으로 다시 설치한다",
-					src.RepoID(), c.dir, r.Name, c.header.Name)
+				return nil, fmt.Errorf("%s의 테마 이름이 %q에서 %q로 바뀌었다 — 새 이름으로 다시 설치한다",
+					src.at(c.dir), r.Name, c.header.Name)
 			}
 			picked = append(picked, c)
 			found = true

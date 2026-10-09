@@ -7,12 +7,15 @@
 package themestore
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
 
-// Source는 테마를 받을 GitHub 저장소의 한 자리다.
+// Source는 테마를 받을 자리다 — GitHub 저장소의 한 자리이거나, 이 기계의 디렉토리(Dir)다.
 type Source struct {
 	Owner string
 	Repo  string
@@ -20,13 +23,37 @@ type Source struct {
 	Path string
 	// Ref는 브랜치 · 태그 · 커밋이다 (비면 저장소의 기본 브랜치).
 	Ref string
+	// Dir이 있으면 GitHub이 아니라 이 기계의 디렉토리(절대 경로)에서 복사한다. 그때 나머지 필드는 비어 있다.
+	Dir string
 }
 
-// RepoID는 출처 기록에 적는 저장소 이름이다 (`github.com/<owner>/<repo>`).
-func (s Source) RepoID() string { return "github.com/" + s.Owner + "/" + s.Repo }
+// IsLocal은 이 기계의 디렉토리에서 복사하는 출처인지다.
+func (s Source) IsLocal() bool { return s.Dir != "" }
 
-// String은 사람이 다시 칠 수 있는 모양이다 (`github.com/o/r/path@ref`).
+// RepoID는 출처 기록에 적는 저장소 이름이다 (`github.com/<owner>/<repo>`, 로컬이면 디렉토리).
+func (s Source) RepoID() string {
+	if s.IsLocal() {
+		return s.Dir
+	}
+	return "github.com/" + s.Owner + "/" + s.Repo
+}
+
+// at은 출처 안의 테마 디렉토리 dir(슬래시 구분, 루트는 ".")을 사람이 읽는 모양으로 적는다.
+func (s Source) at(dir string) string {
+	if s.IsLocal() {
+		return filepath.Join(s.Dir, filepath.FromSlash(dir))
+	}
+	if dir == "." || dir == "" {
+		return s.RepoID()
+	}
+	return s.RepoID() + "/" + dir
+}
+
+// String은 사람이 다시 칠 수 있는 모양이다 (`github.com/o/r/path@ref`, 로컬이면 디렉토리).
 func (s Source) String() string {
+	if s.IsLocal() {
+		return s.Dir
+	}
 	out := s.RepoID()
 	if s.Path != "" {
 		out += "/" + s.Path
@@ -104,4 +131,76 @@ func ParseSource(raw string) (Source, error) {
 		return Source{}, fmt.Errorf("%q: ref %q에 쓸 수 없는 글자가 있다", raw, src.Ref)
 	}
 	return src, nil
+}
+
+// ResolveSource는 `balpyo theme install`이 받는 인자를 읽는다 — GitHub 주소이거나 이 기계의 디렉토리다.
+//
+//   - `/`·`./`·`../`·`~/`로 시작하거나 `.`·`..`·`~`이면 언제나 경로다.
+//   - 그 밖에는 GitHub 주소로 읽고, 주소가 아니면 있는 디렉토리일 때 경로다 (`my-themes`).
+//
+// 경로가 먼저인 모양을 두는 이유: `github.com/acme/x`라는 디렉토리가 우연히 있어도 주소의 뜻이 바뀌지
+// 않아야 하고, 경로를 뜻하는 사람은 `./`를 붙여 그 뜻을 못박을 수 있어야 한다.
+func ResolveSource(raw string) (Source, error) {
+	s := strings.TrimSpace(raw)
+	if looksLikePath(s) {
+		return LocalSource(s)
+	}
+	src, err := ParseSource(s)
+	if err == nil {
+		return src, nil
+	}
+	if info, serr := os.Stat(s); serr == nil && info.IsDir() {
+		return LocalSource(s)
+	}
+	return Source{}, fmt.Errorf("%w — 로컬 디렉토리라면 ./%s처럼 경로로 적는다", err, s)
+}
+
+func looksLikePath(s string) bool {
+	switch s {
+	case ".", "..", "~":
+		return true
+	}
+	for _, p := range []string{"./", "../", "~/", "/"} {
+		if strings.HasPrefix(s, p) {
+			return true
+		}
+	}
+	if filepath.Separator != '/' {
+		for _, p := range []string{`.\`, `..\`, `~\`} {
+			if strings.HasPrefix(s, p) {
+				return true
+			}
+		}
+	}
+	return filepath.IsAbs(s)
+}
+
+// LocalSource는 이 기계의 디렉토리 dir를 출처로 삼는다. `~`를 펼치고 절대 경로로 바꾸고, 심볼릭 링크를
+// 풀어 둔다 — 기록한 경로로 update가 다시 복사하므로 실행한 자리에 매이지 않아야 한다.
+func LocalSource(dir string) (Source, error) {
+	p := dir
+	if p == "~" || strings.HasPrefix(p, "~/") || strings.HasPrefix(p, `~\`) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return Source{}, fmt.Errorf("%q: 홈 디렉토리를 알 수 없다: %w", dir, err)
+		}
+		p = filepath.Join(home, p[1:])
+	}
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		return Source{}, err
+	}
+	info, err := os.Stat(abs)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		return Source{}, fmt.Errorf("디렉토리 %s가 없다", abs)
+	case err != nil:
+		return Source{}, err
+	case !info.IsDir():
+		return Source{}, fmt.Errorf("%s는 디렉토리가 아니다 — 테마 디렉토리(theme.json이 있는 곳)나 그것을 담은 디렉토리를 가리킨다", abs)
+	}
+	if real, err := filepath.EvalSymlinks(abs); err == nil {
+		abs = real
+	}
+	return Source{Dir: abs}, nil
 }
