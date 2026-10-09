@@ -30,8 +30,8 @@ type Slide struct {
 // 놓는 문서 하나.
 //
 // 테스트가 통과하는 것과 결과가 좋아 보이는 것은 다른 문제다. 컴포넌트와 레이아웃이 같아도
-// 글자가 어색하게 잘릴 수 있고, 그건 사람만 알아본다. 그래서 `make review`와 `balpyo preview`가
-// **같은 코드**로 이 갤러리를 만든다 (ADR 0047).
+// 글자가 어색하게 잘릴 수 있고, 그건 사람만 알아본다. 그래서 `balpyo preview`가 이 갤러리를
+// 만든다 (ADR 0047).
 type Gallery struct {
 	// Title은 문서 제목이다.
 	Title string

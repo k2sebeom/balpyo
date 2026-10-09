@@ -58,7 +58,7 @@ func TestRunRejectsUnknownRenderTarget(t *testing.T) {
 }
 
 // TestRunBuildsGalleryWithBothRenders는 갤러리 한 장에 웹·PPTX가 슬라이드마다 들어가는지
-// 본다 — `make review`가 손으로 만들던 것과 같은 산출물이다.
+// 본다.
 func TestRunBuildsGalleryWithBothRenders(t *testing.T) {
 	testkit.RequireChromium(t)
 	testkit.RequireSoffice(t)
