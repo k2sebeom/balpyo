@@ -147,6 +147,8 @@ type Slide struct {
 	Index int
 	// ID는 딥링크 앵커다. 생략 시 파일명에서 유도한다 (SlideFile.DerivedID).
 	ID string
+	// IDSpan은 ID가 정해진 자리다 (SlideDoc.IDSpan) — ID 충돌 진단의 위치.
+	IDSpan Span
 	// Source는 프로젝트 루트 기준 상대 경로다. 진단이 가리키는 파일.
 	Source string
 	// Chapter는 슬라이드가 속한 하위 디렉토리 경로다. 루트 직속이면 빈 문자열이다.

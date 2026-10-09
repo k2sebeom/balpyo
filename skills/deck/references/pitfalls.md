@@ -63,8 +63,10 @@ counts match the web, and PowerPoint and Keynote may not do it at all. It is als
   diagnostics *do* narrow correctly. Child-position errors (`<ul>` holding a `<p>`) narrow too.
 - **Diagnostics are not sorted by source position.** Across several files they can arrive
   `002:3` · `002:5` · `001:2`. Read the whole list before you start editing.
-- **A slide-ID collision has no `line:col`** — the one diagnostic that does not. It names the
-  other file: `슬라이드 ID "cover"가 slides/001_cover.slide와 충돌한다`. Delete or rename.
+- **A slide-ID collision is reported on the later slide** and names the earlier one by
+  `file:line:col`: `슬라이드 ID "cover"가 slides/001_title.slide:1:12와 충돌한다`. A slide
+  without `id=` takes its ID from the filename, so the position is its `<slide>` tag. Give one
+  of them a different `id`, or delete the one you don't need.
 - **Duplicate content in one slot** surfaces as a geometry overlap warning
   (`<text>가 형제 <text>와 95px×36px 겹친다`), not a vocabulary error. Two elements with the
   same `slot=` is the usual cause.

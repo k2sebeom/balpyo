@@ -256,6 +256,10 @@ type SlideDoc struct {
 	// ID는 `<slide id>`의 값이다. 속성이 없으면 빈 문자열 — 파일명 유도는 호출자 몫이다
 	// (SlideFile.DerivedID).
 	ID string
+	// IDSpan은 ID가 정해진 자리다 — `id` 값이 있으면 그 값, 없으면(파일명 유도) 루트
+	// `<slide>`의 태그 이름이다. 파일을 넘는 ID 충돌 진단이 `line:col`을 가져야 에디터에서
+	// 바로 그 자리로 갈 수 있다.
+	IDSpan Span
 	// Skip은 `<slide skip>`이다. true면 렌더에서 제외된다. 제외 판정은 파서가
 	// 노출하고 덱에서 빼는 것은 파이프라인이 한다 — Index가 남은 슬라이드 기준이어야 하므로.
 	Skip bool
@@ -813,6 +817,7 @@ func (p *parser) fillSlide(doc *SlideDoc) {
 	if root.Name != RootElement {
 		return
 	}
+	doc.IDSpan = root.NameSpan
 	if attr, ok := root.Attr("id"); ok {
 		switch {
 		case !attr.HasValue:
@@ -821,6 +826,7 @@ func (p *parser) fillSlide(doc *SlideDoc) {
 			p.errorf(attr.ValueSpan, "id 속성이 비어 있다 (지우면 파일명에서 유도한다)")
 		default:
 			doc.ID = attr.Value
+			doc.IDSpan = attr.ValueSpan
 		}
 	}
 	if attr, ok := root.Attr("skip"); ok {

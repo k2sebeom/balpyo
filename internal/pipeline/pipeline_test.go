@@ -351,6 +351,23 @@ func TestLoadDeckErrors(t *testing.T) {
 	}
 }
 
+// ID 충돌의 실제 경로: `init` 덱의 표지(`id="cover"`)와 손으로 쓴 장의 파일명 유도 ID가
+// 부딪힌다. 명시한 id는 그 값을, 유도한 id는 `<slide>` 태그를 가리킨다.
+func TestLoadDeckDuplicateIDHasPositions(t *testing.T) {
+	dir := newProject(t, map[string]string{
+		"slides/001_title.slide":    "<slide id=\"cover\" layout=\"title\"></slide>\n",
+		"slides/ch/001_cover.slide": "\n<slide></slide>\n",
+	})
+	_, _, err := LoadDeck(Options{ProjectDir: dir})
+	if err == nil {
+		t.Fatal("ID 충돌을 통과시켰다")
+	}
+	want := `slides/ch/001_cover.slide:2:2: error: 슬라이드 ID "cover"가 slides/001_title.slide:1:12와 충돌한다 (한쪽에 다른 id를 주거나, 필요 없는 슬라이드를 지운다)`
+	if !strings.Contains(err.Error(), want) {
+		t.Errorf("진단\n got: %v\nwant: %s", err, want)
+	}
+}
+
 // 모르는 variant 경고는 기본 빌드를 통과시키고 --strict가 에러로 승격한다.
 // core의 경고가 pipeline의 승격 경로를 실제로 타는지 여기서 잇는다.
 func TestLoadDeckStrictPromotesUnknownVariantWarning(t *testing.T) {

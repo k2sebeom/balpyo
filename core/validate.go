@@ -21,11 +21,21 @@ func Validate(deck *soml.Deck) soml.Diagnostics {
 			continue
 		}
 		if first, dup := seen[slide.ID]; dup {
-			diags = append(diags, soml.Errorf(slide.Source, soml.Span{},
-				"슬라이드 ID %q가 %s와 충돌한다 (id 속성으로 구분한다)", slide.ID, first.Source))
+			diags = append(diags, soml.Errorf(slide.Source, slide.IDSpan,
+				"슬라이드 ID %q가 %s와 충돌한다 (한쪽에 다른 id를 주거나, 필요 없는 슬라이드를 지운다)",
+				slide.ID, sourceAt(first.Source, first.IDSpan)))
 			continue
 		}
 		seen[slide.ID] = slide
 	}
 	return diags
+}
+
+// sourceAt은 `file:line:col`을 만든다 — 진단의 앞머리와 같은 형태라 에디터가 메시지 안의
+// 다른 자리도 클릭할 수 있다. 위치가 없으면 파일만 쓴다.
+func sourceAt(file string, span soml.Span) string {
+	if !span.Start.IsValid() {
+		return file
+	}
+	return file + ":" + span.Start.String()
 }

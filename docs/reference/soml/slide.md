@@ -165,4 +165,4 @@
 | 어휘 밖의 `justify` 값 | `알 수 없는 justify "middle" (쓸 수 있는 값: start, center, end, between, around, evenly)` |
 | CSS 접두형 `justify` 값 | `justify는 접두 없는 이름을 쓴다 — "space-between" 대신 "between"` |
 | 슬롯 모드 슬라이드의 `justify` | `슬롯 모드 슬라이드에는 justify를 쓸 수 없다 (세로 리듬은 테마의 content.slots.css가 소유한다) — 슬롯을 쓰지 않는 슬라이드에서 쓴다` |
-| 두 슬라이드의 ID가 같다 | `슬라이드 ID "…"가 …와 충돌한다 (id 속성으로 구분한다)` |
+| 두 슬라이드의 ID가 같다 | `슬라이드 ID "…"가 …와 충돌한다 (한쪽에 다른 id를 주거나, 필요 없는 슬라이드를 지운다)` — 진단은 뒤 슬라이드의 `id` 값(파일명에서 유도했으면 `<slide>` 태그)에 서고, 메시지는 앞 슬라이드를 `파일:줄:열`로 가리킨다 |

@@ -75,7 +75,7 @@ is no `--force`.
 
 **Then delete the three scaffold slides before writing your own.** They carry ids `cover`,
 `what`, and `end`, and a hand-written slide reusing one collides:
-`슬라이드 ID "cover"가 slides/001_title.slide와 충돌한다`. Read them first if you want to see
+`슬라이드 ID "cover"가 slides/001_title.slide:1:12와 충돌한다`. Read them first if you want to see
 the idioms, then remove them.
 
 Slides live in `slides/*.slide` and are **ordered by filename** (`001_`, `002_`, …). Deck-level
