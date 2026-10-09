@@ -1,5 +1,6 @@
 // Package preview는 산출물을 사람이 볼 수 있는 그림으로 되돌린다 — PPTX를 슬라이드별 PNG로
-// 래스터화하고(`soffice` → PDF → `pdftoppm`), 웹 스크린샷과 나란히 놓은 갤러리 하나를 쓴다.
+// 래스터화하고(OnlyOffice `x2t`, 없으면 `soffice` → PDF → `pdftoppm`), 웹 스크린샷과 나란히 놓은
+// 갤러리 하나를 쓴다.
 //
 // 왜 `internal/testkit`이 아닌가: 같은 코드가 이미 그 안에 있었지만 진입점마다
 // `testing.TB`를 받아 **테스트에 묶여** 있었다. 저자가 PPTX 한 장을 눈으로 보려면 임시

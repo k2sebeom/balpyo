@@ -24,6 +24,7 @@ import (
 func TestRunStopsBeforeBuildingWhenToolsAreMissing(t *testing.T) {
 	project := twoSlideProject(t)
 	t.Setenv(preview.EnvSoffice, filepath.Join(t.TempDir(), "없는-soffice"))
+	t.Setenv(preview.EnvOnlyOffice, filepath.Join(t.TempDir(), "없는-onlyoffice"))
 
 	dir := filepath.Join(project, "preview")
 	_, err := preview.Run(preview.Options{
@@ -34,7 +35,7 @@ func TestRunStopsBeforeBuildingWhenToolsAreMissing(t *testing.T) {
 	if err == nil {
 		t.Fatal("soffice가 없으면 에러여야 한다")
 	}
-	if !strings.Contains(err.Error(), preview.EnvSoffice) {
+	if !strings.Contains(err.Error(), preview.EnvSoffice) || !strings.Contains(err.Error(), preview.EnvOnlyOffice) {
 		t.Errorf("경로를 주는 방법이 메시지에 없다: %v", err)
 	}
 	// 빌드도, 갤러리도 시작하지 않았다.
@@ -114,10 +115,14 @@ func TestRunRejectsUnknownRenderTarget(t *testing.T) {
 
 // TestRunBuildsGalleryWithBothRenders는 갤러리 한 장에 웹·PPTX가 슬라이드마다 들어가는지
 // 본다.
+//
+// 엔진은 NewRasterizer가 고른 것이다 (OnlyOffice가 먼저) — 어느 엔진이든 갤러리의 모양은 같고, 안내
+// 문장이 그 엔진의 이름을 밝힌다.
 func TestRunBuildsGalleryWithBothRenders(t *testing.T) {
 	testkit.RequireChromium(t)
-	testkit.RequireSoffice(t)
-	testkit.RequirePdftoppm(t)
+	if _, err := preview.NewRasterizer(); err != nil {
+		t.Skipf("래스터 엔진이 없어 건너뛴다: %v", err)
+	}
 
 	project := twoSlideProject(t)
 	result, err := preview.Run(preview.Options{
@@ -132,14 +137,14 @@ func TestRunBuildsGalleryWithBothRenders(t *testing.T) {
 		t.Fatalf("슬라이드 %d장, want 2", len(result.Slides))
 	}
 	if result.Noise != "" {
-		t.Errorf("LibreOffice가 경고·복구를 냈다:\n%s", result.Noise)
+		t.Errorf("%s가 경고·복구를 냈다:\n%s", result.Engine, result.Noise)
 	}
 
 	index, err := os.ReadFile(result.Index)
 	if err != nil {
 		t.Fatalf("갤러리를 읽을 수 없다: %v", err)
 	}
-	for _, want := range []string{"web", "pptx", "raster-deck", "title", "body"} {
+	for _, want := range []string{"web", "pptx", "raster-deck", "title", "body", result.Engine + "로 되돌린 PPTX"} {
 		if !strings.Contains(string(index), want) {
 			t.Errorf("갤러리에 %q가 없다", want)
 		}
@@ -172,6 +177,7 @@ func TestRunBuildsGalleryWithBothRenders(t *testing.T) {
 func TestRunDefaultRendersFallBackToWebWithoutTools(t *testing.T) {
 	testkit.RequireChromium(t)
 	t.Setenv(preview.EnvSoffice, filepath.Join(t.TempDir(), "없는-soffice"))
+	t.Setenv(preview.EnvOnlyOffice, filepath.Join(t.TempDir(), "없는-onlyoffice"))
 
 	project := twoSlideProject(t)
 	var log bytes.Buffer

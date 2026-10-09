@@ -66,7 +66,7 @@ func NewGallery(dir string) (*Gallery, error) {
 	}
 	return &Gallery{
 		Title: "balpyo 리뷰 — 웹 vs PPTX",
-		Lede:  "왼쪽이 웹 스크린샷, 오른쪽이 LibreOffice 렌더다.",
+		Lede:  "왼쪽이 웹 스크린샷, 오른쪽이 PPTX 렌더다.",
 		dir:   dir,
 	}, nil
 }

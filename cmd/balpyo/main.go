@@ -107,7 +107,8 @@ preview 옵션:
   --gallery preview     검수 갤러리 디렉토리
   --strict              경고를 에러로 승격한다
 
-  pptx를 검수하려면 LibreOffice(soffice)와 pdftoppm(poppler-utils)이 필요하다.
+  pptx를 검수하려면 OnlyOffice Document Builder가, 없으면 LibreOffice(soffice)와
+  pdftoppm(poppler-utils)이 필요하다.
 `)
 }
 

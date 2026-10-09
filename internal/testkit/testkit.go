@@ -80,6 +80,9 @@ func LookSoffice() (string, error) { return preview.LookSoffice() }
 // LookPdftoppm은 pdftoppm 실행 파일을 찾는다.
 func LookPdftoppm() (string, error) { return preview.LookPdftoppm() }
 
+// LookOnlyOffice는 OnlyOffice Document Builder 설치 디렉토리를 찾는다.
+func LookOnlyOffice() (string, error) { return preview.LookOnlyOffice() }
+
 // RequireChromium은 Chromium이 필요한 테스트의 진입점이다. 없으면 Strict에서 실패,
 // 아니면 건너뛴다.
 func RequireChromium(t testing.TB) string {
@@ -98,6 +101,13 @@ func RequireSoffice(t testing.TB) string {
 func RequirePdftoppm(t testing.TB) string {
 	t.Helper()
 	return optionalTool(t, "pdftoppm(poppler-utils)", EnvPdftoppm, LookPdftoppm)
+}
+
+// RequireOnlyOffice는 OnlyOffice가 필요한 테스트(preview의 PPTX 래스터)의 진입점이다
+// (RequireSoffice와 같은 정책 — 게이트가 아닌 도구다).
+func RequireOnlyOffice(t testing.TB) string {
+	t.Helper()
+	return optionalTool(t, "OnlyOffice Document Builder", preview.EnvOnlyOffice, LookOnlyOffice)
 }
 
 // ChromiumNoSandbox는 --no-sandbox가 필요한 환경인지 알려준다.

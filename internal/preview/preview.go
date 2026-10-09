@@ -2,7 +2,7 @@
 // 놓은 갤러리 문서 하나로 묶는다.
 //
 // 왜 테스트 하네스가 아니라 여기인가: 이 흐름은 개발 내내 사람이 손으로 돌던
-// 것이다 — 임시 테스트 파일을 쓰고, 컨테이너에 들어가고, soffice와 pdftoppm을 돌리고, PNG를
+// 것이다 — 임시 테스트 파일을 쓰고, 컨테이너에 들어가고, 래스터 도구를 돌리고, PNG를
 // 열어 본다. 그 루프가 제품이어야 저자도 같은 것을 볼 수 있다. 반대로 `cmd/balpyo`가
 // internal/testkit을 임포트하면 릴리스 바이너리에 testing이 링크되고, "도구가 없으면
 // 건너뛴다"는 **테스트 정책**이 사용자 행동이 된다.
@@ -41,7 +41,7 @@ const DefaultDirName = "preview"
 // DefaultRenders는 Renders를 주지 않았을 때 갤러리에 나란히 놓는 렌더다.
 //
 // 기본이 둘인 이유: 이 명령의 존재 이유가 **두 타깃을 나란히 눈으로 보는 것**이다. 다만 PPTX
-// 열은 LibreOffice · poppler가 있어야 그릴 수 있다 — 기본 렌더에서 도구가 없으면 웹 열만으로
+// 열은 래스터 엔진(OnlyOffice, 또는 LibreOffice · poppler)이 있어야 그릴 수 있다 — 기본 렌더에서 도구가 없으면 웹 열만으로
 // 갤러리를 만들고 그 사실을 로그와 갤러리 안내에 남긴다. 하나만 보려면 그 타깃을 준다.
 func DefaultRenders() []render.Target { return []render.Target{render.TargetHTML, render.TargetPPTX} }
 
@@ -82,14 +82,16 @@ type Result struct {
 	Slides []SlideReport
 	// Diagnostics는 빌드가 남긴 경고다.
 	Diagnostics soml.Diagnostics
-	// Noise는 LibreOffice가 낸 무해하지 않은 출력이다 (있으면 산출물을 의심할 자리다).
+	// Engine은 PPTX 열을 그린 엔진 이름이다 (PPTX 열이 없으면 빈 문자열).
+	Engine string
+	// Noise는 래스터 엔진이 낸 무해하지 않은 출력이다 (있으면 산출물을 의심할 자리다).
 	Noise string
 }
 
 // Run은 프로젝트를 빌드하고 검수 갤러리를 만든다.
 //
 // 순서가 중요하다: **도구를 먼저 찾는다.** 여섯 장을 빌드하고 브라우저까지 띄운 뒤에
-// "soffice가 없다"를 알려 주는 것은 사람의 시간을 버리는 일이다.
+// "래스터 엔진이 없다"를 알려 주는 것은 사람의 시간을 버리는 일이다.
 func Run(opts Options) (*Result, error) {
 	renders := opts.Renders
 	optional := len(renders) == 0
@@ -112,7 +114,7 @@ func Run(opts Options) (*Result, error) {
 		}
 	}
 
-	var raster *Rasterizer
+	var raster Rasterizer
 	skipped := ""
 	if wantPPTX {
 		found, err := NewRasterizer()
@@ -188,8 +190,8 @@ func Run(opts Options) (*Result, error) {
 		result.Noise = noise
 		if noise != "" {
 			// 경고를 실패로 바꾸지 않는다 — preview는 게이트가 아니다. 다만 **삼키지도** 않는다:
-			// LibreOffice가 복구했다면 사용자도 파일을 열 때마다 그 경고를 본다.
-			fmt.Fprintf(log, "LibreOffice가 경고를 냈다 — PPTX를 직접 열어 확인한다:\n%s\n", noise)
+			// 엔진이 복구했다면 사용자도 파일을 열 때마다 그 경고를 본다.
+			fmt.Fprintf(log, "%s가 경고를 냈다 — PPTX를 직접 열어 확인한다:\n%s\n", raster.Name(), noise)
 		}
 		if len(pages) != len(deck.Slides) {
 			return result, fmt.Errorf("PPTX 페이지 %d장, 덱 슬라이드 %d장 — 산출물이 덱과 맞지 않는다",
@@ -210,7 +212,12 @@ func Run(opts Options) (*Result, error) {
 		return result, err
 	}
 	gallery.Title = galleryTitle(deck)
-	gallery.Lede = galleryLede(wantWeb, wantPPTX, skipped != "")
+	engine := ""
+	if raster != nil {
+		engine = raster.Name()
+		result.Engine = engine
+	}
+	gallery.Lede = galleryLede(wantWeb, wantPPTX, skipped != "", engine)
 	// 묶음 이름은 디렉토리 이름이 되므로 슬러그를 쓴다 — 덱 제목에 `/`나 `:`가 있으면 갤러리가
 	// 엉뚱한 곳에 파일을 쓴다 (산출 PPTX 이름을 정하는 것과 같은 규칙이다 — pptx.FileName).
 	group := soml.Slug(deck.Title)
@@ -323,19 +330,20 @@ func galleryTitle(deck *soml.Deck) string {
 }
 
 // galleryLede는 열이 무엇인지 말하는 한 줄이다. 열이 하나뿐인 갤러리에 "왼쪽이 웹"이라고 쓰면
-// 사람이 보고 있는 것을 잘못 읽는다.
-func galleryLede(hasWeb, hasPPTX, skippedPPTX bool) string {
+// 사람이 보고 있는 것을 잘못 읽는다. PPTX 열은 어느 엔진이 그렸는지 밝힌다 — 엔진마다 제 버릇이
+// 있어 그림을 읽는 사람이 그것을 알아야 한다.
+func galleryLede(hasWeb, hasPPTX, skippedPPTX bool, engine string) string {
 	switch {
 	case hasWeb && hasPPTX:
-		return "왼쪽이 웹 스크린샷, 오른쪽이 LibreOffice로 되돌린 PPTX다. 두 타깃은 컴포넌트와 레이아웃이 " +
+		return "왼쪽이 웹 스크린샷, 오른쪽이 " + engine + "로 되돌린 PPTX다. 두 타깃은 컴포넌트와 레이아웃이 " +
 			"같고 줄바꿈 · 글리프는 각 엔진의 몫이다 — 판정은 `go test`가 하고, 여기는 눈으로 보는 자리다."
 	case skippedPPTX:
-		return "웹 스크린샷이다. LibreOffice(soffice)나 poppler(pdftoppm)가 없어 PPTX 열을 뺐다 — " +
-			"설치하면 나란히 보인다."
+		return "웹 스크린샷이다. PPTX를 그림으로 되돌릴 엔진(OnlyOffice, 또는 LibreOffice와 pdftoppm)이 없어 " +
+			"PPTX 열을 뺐다 — 설치하면 나란히 보인다."
 	case hasPPTX:
-		return "LibreOffice로 되돌린 PPTX다. 웹과 나란히 보려면 --target에 html을 넣는다."
+		return engine + "로 되돌린 PPTX다. 웹과 나란히 보려면 --target에 html을 넣는다."
 	default:
-		return "웹 스크린샷이다. PPTX와 나란히 보려면 --target에 pptx를 넣는다 (LibreOffice가 필요하다)."
+		return "웹 스크린샷이다. PPTX와 나란히 보려면 --target에 pptx를 넣는다 (OnlyOffice나 LibreOffice가 필요하다)."
 	}
 }
 
