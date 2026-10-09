@@ -38,21 +38,28 @@ const firstShapeID = 2
 // slideTemplate의 `{{.Shapes}}` 자리에 그대로 들어간다. 함께 돌려주는 rels는 순회가 배정한
 // 관계 목록이다 — 슬라이드 rels 파트가 같은 배정을 실어야 `hlinkClick@r:id`와
 // `blip@r:embed`가 살아난다 (buildParts).
-func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, *slideRels, error) {
+//
+// 배경(`p:bg`)도 여기서 만든다 — 그림 배경의 관계가 도형들과 **한 카운터**를 나눠 써야 해서다 (slideRels).
+// 칠 순서대로 맨 먼저 배정한다.
+func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, string, *slideRels, error) {
 	var b strings.Builder
 	rels := &slideRels{}
+	background, err := backgroundXML(deck, slide, rels)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("%s: 배경: %w", slide.Source, err)
+	}
 	id := firstShapeID
 	for i, node := range slide.Content {
 		if err := writeShapeNode(&b, deck, slide, node, []int{i}, &id, g, rels); err != nil {
-			return "", nil, err
+			return "", "", nil, err
 		}
 	}
 	// 덱 크롬은 콘텐츠 뒤다 — 확정 모델이 비어 있으면 아무것도 나가지 않으므로
 	// 크롬을 켜지 않은 덱의 바이트가 움직이지 않는다 (chrome.go).
-	if err := writeChromeShapes(&b, deck, slide, &id, g); err != nil {
-		return "", nil, err
+	if err := writeChromeShapes(&b, deck, slide, &id, g, rels); err != nil {
+		return "", "", nil, err
 	}
-	return b.String(), rels, nil
+	return b.String(), background, rels, nil
 }
 
 // slideRels는 슬라이드 하나가 배정한 관계 목록이다 — 외부 하이퍼링크(`hlinkClick`)와
@@ -1544,4 +1551,61 @@ func typefaceValues(role soml.FontRole, theme soml.Theme) (latin, ea string, err
 	}
 	return "", "", fmt.Errorf("폰트 토큰 %q의 fontScheme 슬롯 %q를 모른다 (major/minor/빈 문자열)",
 		string(role), token.Scheme)
+}
+
+// backgroundXML은 테마가 정한 슬라이드 배경을 `p:bg`로 쓴다 (nil이면 빈 문자열 — 마스터의 bg1이 산다).
+//
+// 슬라이드의 배경이고 도형이 아니다: PowerPoint에서 "배경 서식"으로 고치는 자리이고, 끌어 옮길 수 있는 객체가
+// 아니다 — 웹에서 그것이 슬라이드 요소의 배경인 것과 같은 자리다. 채움은 도형 채움과 같은 함수(writeFill)를
+// 지나 토큰이 `schemeClr`로 남는다. 그림은 `blipFill`이고 슬라이드를 덮는다: 비율이 다르면 넘치는 축의
+// 양쪽을 잘라 낸다 (coverCrop — `<image fit="cover">`와 같은 계산이고 웹의 `background-size: cover`와 같은
+// 영역이다). 효과 목록(`a:effectLst`)은 비어 있어도 낸다 — CT_BackgroundProperties가 요구한다.
+func backgroundXML(deck *soml.Deck, slide *soml.Slide, rels *slideRels) (string, error) {
+	bg := slide.Background
+	if bg == nil {
+		return "", nil
+	}
+	if (bg.Fill == nil) == (bg.Image == "") {
+		return "", fmt.Errorf("배경은 채움이거나 그림이다 (둘 다 없거나 둘 다 있다) — core.Resolve를 거치지 않은 덱이다")
+	}
+	var b strings.Builder
+	w := func(depth int, line string) {
+		b.WriteString("\n    " + strings.Repeat("  ", depth) + line)
+	}
+	w(0, "<p:bg>")
+	w(1, "<p:bgPr>")
+	if bg.Fill != nil {
+		if bg.Fill.None {
+			return "", fmt.Errorf("배경 채움에 none은 뜻이 없다")
+		}
+		if err := writeFill(w, 2, *bg.Fill, nil, deck.Theme); err != nil {
+			return "", err
+		}
+	} else {
+		n, asset, ok := mediaOf(deck, bg.Image)
+		if !ok {
+			return "", fmt.Errorf("에셋 표에 %q가 없다 — core.ResolveAssets를 거치지 않은 덱이다", bg.Image)
+		}
+		ext := asset.Format.Ext()
+		if ext == "" {
+			return "", fmt.Errorf("포맷 %q의 확장자를 모른다", string(asset.Format))
+		}
+		crop, err := coverCrop(asset, geom.Rect{W: float64(deck.Stage.Width), H: float64(deck.Stage.Height)})
+		if err != nil {
+			return "", err
+		}
+		w(2, `<a:blipFill dpi="0" rotWithShape="1">`)
+		w(3, fmt.Sprintf(`<a:blip r:embed="%s"/>`, rels.mediaID(mediaTarget(n, ext))))
+		if attrs := crop.attrs(); attrs != "" {
+			w(3, "<a:srcRect"+attrs+"/>")
+		}
+		w(3, "<a:stretch>")
+		w(4, "<a:fillRect/>")
+		w(3, "</a:stretch>")
+		w(2, "</a:blipFill>")
+	}
+	w(2, "<a:effectLst/>")
+	w(1, "</p:bgPr>")
+	w(0, "</p:bg>")
+	return b.String(), nil
 }

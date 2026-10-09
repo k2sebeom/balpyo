@@ -114,8 +114,10 @@ func (a *assetResolver) resolve(where, rel string) (string, error) {
 
 // backgroundFile은 theme.json의 배경 선언 하나다 (원문).
 //
-// `layouts`를 생략한 선언은 **기본 배경**이다 (나머지 모든 레이아웃). 채움과 그림은 함께 쓸 수 있다 —
-// 그림이 채움 위에 놓인다 (투명한 PNG 아래가 채움이다).
+// `layouts`를 생략한 선언은 **기본 배경**이다 (나머지 모든 레이아웃). 배경은 채움 **또는** 그림이다 —
+// 둘을 겹치지 않는다: PPTX의 슬라이드 배경(`p:bgPr`)은 채움 요소 하나만 담으므로, 웹에서 그림 아래 깐
+// 채움이 PPTX에서는 사라져 투명한 자리마다 두 타깃이 갈린다. 그라디언트 위 그림이 필요하면 그 둘을 그림
+// 한 장으로 합친다.
 type backgroundFile struct {
 	Layouts []string `json:"layouts"`
 	Fill    string   `json:"fill"`
@@ -150,7 +152,10 @@ func loadBackgrounds(manifest themeManifest, theme soml.Theme, assets *assetReso
 	for i, raw := range manifest.Backgrounds {
 		where := fmt.Sprintf("theme.json의 backgrounds[%d]", i)
 		if raw.Fill == "" && raw.Image == "" {
-			return decls, fmt.Errorf("%s에 fill도 image도 없다 — 배경은 둘 중 하나는 있어야 한다", where)
+			return decls, fmt.Errorf("%s에 fill도 image도 없다 — 배경은 둘 중 하나다", where)
+		}
+		if raw.Fill != "" && raw.Image != "" {
+			return decls, fmt.Errorf("%s에 fill과 image를 함께 쓸 수 없다 — PPTX 슬라이드 배경은 채움 하나라 그림 아래 채움이 사라진다 (둘을 그림 한 장으로 합친다)", where)
 		}
 		bg := &soml.Background{}
 		if raw.Fill != "" {

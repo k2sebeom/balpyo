@@ -42,6 +42,12 @@ func writeChrome(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", slide.Source, err)
 		}
+		if item.Kind == soml.ChromeLogo {
+			if err := writeChromeLogo(b, deck, item, align); err != nil {
+				return fmt.Errorf("%s: 크롬(%s): %w", slide.Source, item.Kind, err)
+			}
+			continue
+		}
 		decls, err := textStyleCSS(item.Style, deck.Theme)
 		if err != nil {
 			return fmt.Errorf("%s: 크롬(%s): %w", slide.Source, item.Kind, err)
@@ -95,4 +101,26 @@ func chromeCSS(feat features) string {
   .%[1]s-center { left: 50%%; transform: translateX(-50%%); }
   .%[1]s-end { right: %[2]dpx; }
 `, ChromeClass, StagePadding)
+}
+
+// writeChromeLogo는 그림 크롬 하나를 `<img>`로 쓴다 — 크롬 클래스를 **그림 자신**이 가진다.
+//
+// 글자 크롬은 띠 높이의 상자이고 글자가 그 가운데에 놓이지만, 그림은 상자가 곧 그림이어야 한다: 지오메트리
+// 패스가 크롬 요소의 rect를 재고 PPTX가 그 rect에 `p:pic`을 놓으므로, 띠 상자를 재면 그림이 띠 높이로
+// 늘어난다. 그래서 높이는 선언의 값이고, 띠 가운데에 오도록 바닥에서 (띠 − 높이)/2만큼 띄운다.
+func writeChromeLogo(b *strings.Builder, deck *soml.Deck, item soml.ChromeItem, align string) error {
+	if item.Image == "" || item.Height <= 0 {
+		return fmt.Errorf("그림이나 높이가 없는 로고다 — core.Resolve를 거치지 않은 덱이다")
+	}
+	if _, ok := deck.Assets.Get(item.Image); !ok {
+		return fmt.Errorf("에셋 표에 %q가 없다 — core.ResolveAssets를 거치지 않은 덱이다", item.Image)
+	}
+	decls := []string{
+		fmt.Sprintf("height: %spx", formatNumber(item.Height)),
+		"width: auto",
+		fmt.Sprintf("bottom: %spx", formatNumber((float64(StagePadding)-item.Height)/2)),
+	}
+	fmt.Fprintf(b, "<img class=%q %s=%q src=%q alt=%q%s>\n",
+		ChromeClass+" "+align, ChromeKindAttr, string(item.Kind), item.Image, html.EscapeString(item.Alt), styleAttr(decls))
+	return nil
 }

@@ -158,8 +158,12 @@ func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 // `data-slide-*` 속성은 장식이 아니다 — 지오메트리 패스가 이 선택자로 요소를 집어
 // 좌표를 읽고, 웹 런타임이 딥링크를 여기에 맞춘다.
 func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
-	fmt.Fprintf(b, "<section class=%q id=%q %s=\"%d\" data-slide-source=%q>\n",
-		SlideClass, html.EscapeString(slide.ID), SlideIndexAttr, slide.Index, html.EscapeString(slide.Source))
+	bg, err := backgroundCSS(slide.Background, deck)
+	if err != nil {
+		return fmt.Errorf("%s: 배경: %w", slide.Source, err)
+	}
+	fmt.Fprintf(b, "<section class=%q id=%q %s=\"%d\" data-slide-source=%q%s>\n",
+		SlideClass, html.EscapeString(slide.ID), SlideIndexAttr, slide.Index, html.EscapeString(slide.Source), styleAttr(bg))
 	if err := writeStage(b, deck, slide); err != nil {
 		return err
 	}
@@ -223,4 +227,55 @@ func baseCSS(stage soml.Stage, feat features) string {
   }
 %s%s%s%s}
 `, stage.Width, stage.Height, contentCSS(feat), chromeCSS(feat), viewerCSS(), printPageCSS(stage))
+}
+
+// backgroundCSS는 테마가 정한 슬라이드 배경을 슬라이드 요소의 선언으로 만든다 (nil이면 없음 — 테마의
+// `.balpyo-slide { background: var(bg) }`가 그대로 산다).
+//
+// 배경은 채움이거나 그림이다 (soml.Background). 그림은 슬라이드를 덮는다 — 비율을 지키고 넘치는 쪽을 가운데
+// 기준으로 잘라 낸다 (cover, PPTX의 `a:srcRect` 크롭과 같은 규칙). 단색은 `background-color`, 그라디언트는
+// 그림 층이다. 색은 토큰 변수로 남는다 (colorValue).
+func backgroundCSS(bg *soml.Background, deck *soml.Deck) ([]string, error) {
+	if bg == nil {
+		return nil, nil
+	}
+	if (bg.Fill == nil) == (bg.Image == "") {
+		return nil, fmt.Errorf("배경은 채움이거나 그림이다 (둘 다 없거나 둘 다 있다) — core.Resolve를 거치지 않은 덱이다")
+	}
+	var layers, sizes []string
+	var decls []string
+	if bg.Image != "" {
+		if _, ok := deck.Assets.Get(bg.Image); !ok {
+			return nil, fmt.Errorf("에셋 표에 %q가 없다 — core.ResolveAssets를 거치지 않은 덱이다", bg.Image)
+		}
+		layers = append(layers, fmt.Sprintf("url(%q)", bg.Image))
+		sizes = append(sizes, "cover")
+	}
+	if bg.Fill != nil {
+		switch {
+		case bg.Fill.None:
+			return nil, fmt.Errorf("배경 채움에 none은 뜻이 없다")
+		case bg.Fill.Color.IsGradient():
+			grad, err := gradientCSS(*bg.Fill.Color.Gradient, deck.Theme)
+			if err != nil {
+				return nil, err
+			}
+			layers = append(layers, grad)
+			sizes = append(sizes, "auto")
+		default:
+			color, err := colorValue(bg.Fill.Color, deck.Theme)
+			if err != nil {
+				return nil, err
+			}
+			decls = append(decls, "background-color: "+color)
+		}
+	}
+	if len(layers) > 0 {
+		decls = append(decls,
+			"background-image: "+strings.Join(layers, ", "),
+			"background-size: "+strings.Join(sizes, ", "),
+			"background-position: center",
+			"background-repeat: no-repeat")
+	}
+	return decls, nil
 }

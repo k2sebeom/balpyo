@@ -31,7 +31,8 @@ func brandProject(t *testing.T, manifest string) fstest.MapFS {
 
 const brandManifest = `{"name":"brand","extends":"minimal",
   "backgrounds":[
-    {"layouts":["title","section-divider"],"fill":"gradient(accent1 accent6, 135deg)","image":"assets/cover.png"},
+    {"layouts":["title"],"image":"assets/cover.png"},
+    {"layouts":["section-divider"],"fill":"gradient(accent1 accent6, 135deg)"},
     {"fill":"surface"}
   ],
   "chrome":[{"kind":"logo","align":"center","image":"assets/logo.png","height":24,"alt":"브랜드","skipLayouts":["title"]}]}`
@@ -48,7 +49,8 @@ func TestThemeBackgroundsAndLogo(t *testing.T) {
 		logo     bool
 		assetKey []string
 	}{
-		{`<slide layout="title"></slide>`, "gradient", "themes/brand/assets/cover.png", false, []string{"themes/brand/assets/cover.png"}},
+		{`<slide layout="title"></slide>`, "", "themes/brand/assets/cover.png", false, []string{"themes/brand/assets/cover.png"}},
+		{`<slide layout="section-divider"></slide>`, "gradient", "", true, []string{"themes/brand/assets/logo.png"}},
 		{`<slide><p>본문</p></slide>`, "surface", "", true, []string{"themes/brand/assets/logo.png"}},
 	} {
 		deck, diags := themeDeckIn(t, project, "brand", tc.src)
@@ -59,12 +61,15 @@ func TestThemeBackgroundsAndLogo(t *testing.T) {
 			t.Fatalf("에셋 진단: %v", d)
 		}
 		bg := deck.Slides[0].Background
-		if bg == nil || bg.Fill == nil {
+		if bg == nil {
 			t.Fatalf("%s: 배경이 없다", tc.src)
 		}
-		gotFill := bg.Fill.Color.Token
-		if bg.Fill.Color.IsGradient() {
-			gotFill = "gradient"
+		gotFill := ""
+		if bg.Fill != nil {
+			gotFill = bg.Fill.Color.Token
+			if bg.Fill.Color.IsGradient() {
+				gotFill = "gradient"
+			}
 		}
 		if gotFill != tc.fill || bg.Image != tc.image {
 			t.Errorf("%s: 배경 = %s + %q, want %s + %q", tc.src, gotFill, bg.Image, tc.fill, tc.image)
@@ -111,6 +116,7 @@ func TestThemeAssetsFollowTheOwner(t *testing.T) {
 func TestThemeBackgroundsRejectBadDecls(t *testing.T) {
 	for _, tc := range []struct{ name, backgrounds, want string }{
 		{"빈 선언", `[{"layouts":["title"]}]`, "fill도 image도 없다"},
+		{"채움과 그림을 함께", `[{"fill":"bg","image":"assets/cover.png"}]`, "fill과 image를 함께 쓸 수 없다"},
 		{"리터럴 색", `[{"fill":"#FF0000"}]`, `fill "#FF0000"가 이 테마의 색 토큰 참조가 아니다`},
 		{"none", `[{"fill":"none"}]`, "fill에 none은 쓸 수 없다"},
 		{"모르는 레이아웃", `[{"layouts":["cover"],"fill":"bg"}]`, `layouts에 "cover"는 이 테마의 레이아웃이 아니다`},

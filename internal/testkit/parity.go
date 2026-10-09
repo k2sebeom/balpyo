@@ -28,8 +28,12 @@ import (
 
 // LayoutSlide는 슬라이드 하나의 컴포넌트 트리다.
 type LayoutSlide struct {
-	ID    string
-	Nodes []LayoutNode
+	ID string
+	// Background는 테마가 정한 슬라이드 배경의 요약이다 — 채움(`fill=accent1` · `fill=gradient(…)`)이거나
+	// `image`다. 비면 배경을 정하지 않은 슬라이드다 (마스터의 bg1). 그림 바이트가 입력과 같은지는 패키지
+	// 판정(미디어 파트 = 에셋)이 본다.
+	Background string
+	Nodes      []LayoutNode
 }
 
 // LayoutNode는 PPTX 객체 하나(= 웹 요소 하나)다. 문서 순서 = 칠 순서다.
@@ -65,6 +69,9 @@ func FormatLayout(slides []LayoutSlide, withRect bool) string {
 	var b strings.Builder
 	for i, s := range slides {
 		fmt.Fprintf(&b, "# slide %d %s\n", i+1, s.ID)
+		if s.Background != "" {
+			b.WriteString("bg " + s.Background + "\n")
+		}
 		for _, n := range s.Nodes {
 			b.WriteString(n.Kind + " " + strconv.Quote(n.Name))
 			if withRect {
@@ -147,6 +154,13 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 	var slides []LayoutSlide
 	for _, slide := range deck.Slides {
 		s := LayoutSlide{ID: slide.ID}
+		if bg := slide.Background; bg != nil {
+			if bg.Image != "" {
+				s.Background = "image"
+			} else {
+				s.Background = "fill=" + webFill(bg.Fill, deck.Theme)
+			}
+		}
 		var walk func(node soml.Node, p []int) error
 		walk = func(node soml.Node, p []int) error {
 			elem, ok := node.(*soml.Element)
@@ -246,6 +260,10 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 				return nil, fmt.Errorf("%s: 크롬 %s의 잰 박스가 없다", slide.Source, item.Kind)
 			}
 			n := LayoutNode{Kind: "textbox", Name: "chrome " + string(item.Kind)}
+			if item.Kind == soml.ChromeLogo {
+				// 그림 크롬은 그림이다 — 대체 텍스트가 이름표다.
+				n = LayoutNode{Kind: "pic", Name: "chrome " + string(item.Kind), Alt: item.Alt}
+			}
 			n.X, n.Y, n.W, n.H = rectEMU(rect)
 			if item.Text != "" {
 				style := webRunStyle(item.Style, deck.Theme, "")
@@ -438,7 +456,13 @@ func formatRun(text string, s runStyle) string {
 
 type xSlide struct {
 	CSld struct {
-		Name   string `xml:"name,attr"`
+		Name string `xml:"name,attr"`
+		Bg   *struct {
+			BgPr struct {
+				xFills
+				BlipFill *struct{} `xml:"blipFill"`
+			} `xml:"bgPr"`
+		} `xml:"bg"`
 		SpTree struct {
 			Items []xObject `xml:",any"`
 		} `xml:"spTree"`
@@ -582,6 +606,13 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 			}
 		}
 		s := LayoutSlide{ID: x.CSld.Name}
+		if bg := x.CSld.Bg; bg != nil {
+			if bg.BgPr.BlipFill != nil {
+				s.Background = "image"
+			} else {
+				s.Background = "fill=" + pptxFill(bg.BgPr.xFills, theme)
+			}
+		}
 		for _, obj := range x.CSld.SpTree.Items {
 			n, ok := pptxNode(obj, theme, links)
 			if ok {
