@@ -226,7 +226,7 @@ func Render(deck *soml.Deck, opts Options) (map[render.Target]render.Files, *geo
 			return nil, nil, nil, err
 		}
 		geometry = measured
-		// 잰 빌드는 배치를 **항상** 본다: 숫자가 이미 있는데 묻지 않는 것이 D9의 증상이었다.
+		// 잰 빌드는 배치를 **항상** 본다: 숫자가 이미 있는데 묻지 않을 이유가 없다.
 		diags = geom.Diagnose(deck, geometry)
 		if opts.Strict {
 			diags = diags.Strict()
