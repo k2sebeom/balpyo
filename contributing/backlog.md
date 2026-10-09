@@ -6,7 +6,7 @@
 
 항목을 끝내면 이 목록에서 지운다 — 끝난 일의 기록은 커밋 로그와 ADR이 맡는다.
 
-## PPTX — OnlyOffice 검수 (P0–P3)
+## PPTX — OnlyOffice 검수 (P1–P3)
 
 예제 덱 셋과 픽스처 전부(111장)를 OnlyOffice로 PPTX → PNG로 되돌려 웹과 나란히 본 결과다.
 OnlyOffice는 OOXML 명세의 프리셋 공식과 글꼴 메트릭을 따라 그리는 독립 엔진이라, 우리가 쓴
@@ -14,14 +14,11 @@ OnlyOffice는 OOXML 명세의 프리셋 공식과 글꼴 메트릭을 따라 그
 
 | # | 막힌 것 | 무게 |
 |---|---|---|
-| P0 | `balpyo preview`의 PPTX 열이 LibreOffice만 쓴다. OnlyOffice(`x2t`)를 우선 렌더러로 두고 LibreOffice는 물러선다 | 중간 |
 | P1 | **내용 폭 박스가 접힌다.** 한 줄을 꽉 채운 텍스트 박스(제목 슬라이드의 제목 · 키커 · 캡션, 카드의 라벨)는 잰 폭에 여유가 0이라, 커닝을 끈 엔진(우리 PPTX는 `kern`을 쓰지 않는다)에서 한두 px 넓어져 둘째 줄로 접히고 아래 요소와 겹친다. 예제 셋의 표지 · quarterly-review 5·6장 · 06_stack 5장 | 큼 |
 | P2 | `tint(색, p%)`가 두 타깃에서 다른 색이다 — PPTX는 HSL 광도(`lumMod`+`lumOff`, PowerPoint의 "밝게 p%"), 웹은 RGB로 흰색과 섞는다(`color-mix`). 채도 높은 어두운 색에서 크게 갈린다 (12_palette 2장의 accent3) | 중간 |
 | P3 | chevron의 텍스트 영역이 도형 밖으로 나간다 — 조정값이 정확히 노치 = 폭/2라 명세 공식(`?: dx x1 l`, dx = 0이면 `l`)으로는 박스 전체인데, 우리는 폭 0 열로 보고 음수 인셋으로 되돌린다. 명세대로 읽는 엔진에서 글자가 박스 왼쪽 밖으로 밀린다 (04_shape 10장) | 작음 |
 
-OnlyOffice 쪽 한계로 보이는 것(우리 XML이 명세대로다): 그라디언트 선(`a:ln/a:gradFill`)을 첫 스톱
-단색으로, 부드러운 그림자(`outerShdw blurRad`)를 아래 띠로 그린다. 고칠 대상이 아니라 검수
-문서에 적을 일이다.
+OnlyOffice 쪽 한계로 확인된 차이는 [testing.md](internals/testing.md#사람이-하는-확인)가 적는다.
 
 ## 사용성 — 3회차 도그푸딩 (E3–E8)
 

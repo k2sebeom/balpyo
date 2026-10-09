@@ -45,7 +45,8 @@ Chromium이 없으면 빌드가 필요한 테스트는 메시지와 함께 **건
 | `BALPYO_UPDATE_GOLDEN` | 1이면 골든을 비교하지 않고 쓴다 (`make golden`) |
 | `BALPYO_CHROMIUM` | 브라우저 실행 파일 경로 (없으면 `geom.Candidates`의 순서로 찾는다) |
 | `BALPYO_CHROMIUM_NO_SANDBOX` | 1이면 `--no-sandbox` (CI 러너처럼 샌드박스를 못 쓰는 환경) |
-| `BALPYO_SOFFICE` / `BALPYO_PDFTOPPM` | `balpyo preview`의 PPTX 래스터 도구 경로 — 게이트와 무관하다 |
+| `BALPYO_ONLYOFFICE` | `balpyo preview`의 PPTX 래스터 엔진(OnlyOffice Document Builder) 설치 디렉토리 — 게이트와 무관하다 |
+| `BALPYO_SOFFICE` / `BALPYO_PDFTOPPM` | OnlyOffice가 없을 때의 PPTX 래스터 도구 경로 — 게이트와 무관하다 |
 
 ## 픽스처
 
@@ -229,9 +230,42 @@ RGB여도 그렇다.
 
 ## 사람이 하는 확인
 
-픽스처 전체의 시각 리뷰 타깃은 없다 — "두 타깃이 같은 것을 내는가"는 위의 판정이 매 실행 답한다.
-덱 하나를 눈으로 보고 싶으면 [`balpyo preview`](../../docs/reference/cli.md#balpyo-preview)가 웹 렌더와 PPTX
-렌더를 나란히 놓는다 (판정은 없다 — [ADR 0066](../decisions/0066-preview-only-places-renders-side-by-side.md)).
+"두 타깃이 같은 것을 내는가"는 위의 판정이 매 실행 답한다. 다만 그 판정은 **우리가 쓴 XML을 우리가
+읽는 것**이라, OOXML을 같은 방식으로 오해하면 두 쪽이 함께 틀린다. 그 종류의 결함은 같은 XML을
+명세대로 읽는 다른 엔진이 그린 그림에서 보인다 ([ADR 0069](../decisions/0069-onlyoffice-is-the-pptx-review-renderer.md)).
+
+```bash
+make qa   # 예제 덱 · 픽스처마다 웹 | PPTX 갤러리 → preview/qa/<이름>/index.html
+```
+
+[`balpyo preview`](../../docs/reference/cli.md#balpyo-preview)가 웹 스크린샷과 PPTX 렌더를 나란히 놓는다
+(판정은 없다 — [ADR 0066](../decisions/0066-preview-only-places-renders-side-by-side.md)). **렌더러를 고친
+커밋은 `make qa`의 갤러리를 보고 낸다** — 동일성은 그대로 초록인데 다른 엔진에서 갈라지는 변경이
+여기서 드러난다.
+
+PPTX 열의 엔진은 **OnlyOffice가 먼저**다 (Document Builder — `x2t`). OOXML을 1차 형식으로 읽어 프리셋
+공식 · 플레이스홀더 상속 · 색 변형을 명세대로 계산하고, 커닝을 켜지 않은 런을 PowerPoint처럼 커닝
+없이 놓는다. 없으면 LibreOffice + `pdftoppm`으로 물러선다 (ODF로 옮긴 뒤 그리므로 자기 버릇을 더한다
+— 한글↔라틴 간격). 갤러리 안내가 어느 엔진의 그림인지 밝힌다.
+
+```bash
+# Linux x86_64 — 설치 디렉토리 하나가 변환기(x2t) · 글꼴 색인 생성기(docbuilder) · 라이브러리를 담는다
+curl -LO https://github.com/ONLYOFFICE/DocumentBuilder/releases/latest/download/onlyoffice-documentbuilder-linux-x86_64.tar.xz
+sudo mkdir -p /opt/onlyoffice && sudo tar -xJf onlyoffice-documentbuilder-linux-x86_64.tar.xz \
+  --strip-components=2 -C /opt/onlyoffice opt/onlyoffice/documentbuilder
+# 다른 자리에 풀었으면 BALPYO_ONLYOFFICE=<설치 디렉토리>
+```
+
+글꼴 색인(`sdkjs/common/AllFonts.js`)은 변환 전마다 `docbuilder`가 설치된 글꼴과 대조해 갱신한다 —
+색인이 낡으면 `x2t`는 한글만 빠진 그림을 성공으로 낸다. 그래서 설치 디렉토리는 쓸 수 있는 자리가
+좋다 (쓸 수 없으면 있는 색인으로 간다).
+
+**OnlyOffice의 한계로 확인된 차이** — 우리 XML이 명세대로인데 그림이 다른 자리다. 결함으로 읽지 않는다:
+
+| 그림 | 실제 |
+|---|---|
+| 그라디언트 테두리가 첫 스톱 단색이다 | `a:ln/a:gradFill`이 스톱 둘로 나간다 (07_gradient 2장) |
+| 부드러운 그림자가 아래 띠로만 보인다 | `outerShdw`의 `blurRad`가 토큰의 blur와 같다 (quarterly-review 3장) |
 
 **편집 가능성은 파일을 열어 본다.** PPTX를 Keynote나 PowerPoint로 **직접 열어** 편집
 가능성을 확인한다 — 텍스트 박스가 진짜 텍스트 박스인지, 테마 색을 바꾸면 도형 색이 따라오는지.

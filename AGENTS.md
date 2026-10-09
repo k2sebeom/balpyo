@@ -141,13 +141,17 @@ What the suite judges, per fixture (`TestFixtures`) and per example (`TestExampl
 ```bash
 make test        # go test ./... (the gate; same command CI runs)
 make examples    # example decks and themes must build with zero warnings (also part of make test)
+make qa          # web | PPTX (OnlyOffice) galleries for every example deck and fixture → preview/qa/
 make showcase    # re-render examples/showcase/ (README screenshots + committed html/pptx)
 make golden      # regenerate goldens (review the diff; commit with the implementation)
 make docs        # mkdocs build --strict (new pages must be in mkdocs.yml nav)
 ```
 
-- Don't add pixel, ink or line-count assertions. LibreOffice/poppler are only used by
-  `balpyo preview` rasterizing; their tests skip when the tools are absent.
+- Don't add pixel, ink or line-count assertions. OnlyOffice (preferred) and LibreOffice/poppler are
+  only used by `balpyo preview` rasterizing; their tests skip when the tools are absent.
+- **Look before you commit a renderer change**: `make qa` renders every example deck and fixture
+  side by side (web | PPTX via OnlyOffice) into `preview/qa/`. Parity reads our own XML with our own
+  reader; a second engine is how cross-reader defects (wrapping, preset formulas, color spaces) show up.
 - Fixtures live in `testdata/fixtures/NN_name/` (`balpyo.json`, `slides/`, `golden/`).
 - `examples/` is user-facing: `examples/decks/` (balpyo-intro 12, incident-postmortem 10,
   quarterly-review 7 slides) and `examples/themes/` (standalone themes — `extends` empty). They are

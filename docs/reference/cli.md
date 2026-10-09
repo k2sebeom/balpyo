@@ -422,7 +422,7 @@ PPTX는 PowerPoint·Keynote로 직접 열어 확인한다: /path/to/dist
 ```
 
 `preview/index.html`을 브라우저로 열면 슬라이드마다 두 칸이 나란히 있다: 웹 스크린샷과
-LibreOffice로 되돌린 PPTX. 줄바꿈 · 글리프가 두 칸에서 다른 것은 계약 밖의 차이다
+OnlyOffice(없으면 LibreOffice)로 되돌린 PPTX — 갤러리 안내가 어느 엔진의 그림인지 밝힌다. 줄바꿈 · 글리프가 두 칸에서 다른 것은 계약 밖의 차이다
 ([계약 밖의 차이](../guides/known-differences.md)). 산출물(`*.pptx`·`index.html`)도 갤러리 옆에
 복사되므로 PPTX를 그 자리에서 PowerPoint·Keynote로 열 수 있다.
 
@@ -452,11 +452,17 @@ LibreOffice로 되돌린 PPTX. 줄바꿈 · 글리프가 두 칸에서 다른 �
 `검수 갤러리 디렉토리 …가 빌드 출력 디렉토리 …와 겹친다 — 갤러리는 만들 때 디렉토리를 비우므로
 빌드 산출물이 지워진다. --gallery나 --out을 서로 겹치지 않는 곳으로 준다`.
 
-### PPTX 칸은 도구 둘이 필요하다
+### PPTX 칸은 래스터 엔진이 필요하다
 
-PPTX를 그림으로 되돌리려면 **LibreOffice(`soffice`)**와 **`pdftoppm`(poppler-utils)**이 필요하다.
-이 둘은 balpyo가 산출물을 만드는 데 쓰는 도구가 아니라 **만든 산출물을 다시 그림으로 보는** 데만
-쓰는 도구다 — 빌드는 여전히 바이너리 하나로 끝난다.
+PPTX를 그림으로 되돌리는 엔진은 둘 중 하나다. 앞의 것이 있으면 그것을 쓴다:
+
+1. **OnlyOffice Document Builder** — 설치 디렉토리(`x2t`와 `docbuilder`가 있는 곳)를 찾는다:
+   `BALPYO_ONLYOFFICE` → `/opt/onlyoffice/documentbuilder`. OOXML을 직접 읽어 PowerPoint와 같은 기본값으로
+   그리므로 PPTX에서만 생기는 접힘 · 겹침이 더 잘 보인다.
+2. **LibreOffice(`soffice`)**와 **`pdftoppm`(poppler-utils)**.
+
+이 도구들은 balpyo가 산출물을 만드는 데 쓰는 것이 아니라 **만든 산출물을 다시 그림으로 보는** 데만
+쓴다 — 빌드는 여전히 바이너리 하나로 끝난다.
 
 - `--target`을 **주지 않았는데** 도구를 못 찾으면 웹 칸만으로 갤러리를 만든다. 조용히 빼지 않는다 —
   출력에 `PPTX 열을 뺀다 — <이유>`가, 갤러리 안내에 PPTX 열을 뺐다는 문장이 남는다.
@@ -464,8 +470,9 @@ PPTX를 그림으로 되돌리려면 **LibreOffice(`soffice`)**와 **`pdftoppm`(
   보려고 친 명령이 웹만 내면 사람은 두 타깃을 다 봤다고 읽는다.
 
 ```bash
-# 설치한다 (macOS: brew install --cask libreoffice; brew install poppler)
-# 또는 경로를 준다
+# OnlyOffice Document Builder를 다른 자리에 풀었으면 그 디렉토리를 준다
+BALPYO_ONLYOFFICE=/path/to/documentbuilder balpyo preview
+# 또는 LibreOffice를 설치하거나(macOS: brew install --cask libreoffice; brew install poppler) 경로를 준다
 BALPYO_SOFFICE=/path/to/soffice BALPYO_PDFTOPPM=/path/to/pdftoppm balpyo preview
 ```
 
@@ -483,7 +490,7 @@ BALPYO_SOFFICE=/path/to/soffice BALPYO_PDFTOPPM=/path/to/pdftoppm balpyo preview
 `normAutofit`이라 PowerPoint가 넘치는 글자를 줄여 맞춘다), `style`에 쓴 외관은 웹에만 적용된다
 ([외관 속성](appearance.md)) — 그 차이를 숫자로 내면 고칠 자리처럼 읽힌다.
 
-LibreOffice가 파일을 열며 경고나 복구를 냈다면 그 출력도 그대로 보여 준다 — 복구가
+엔진이 파일을 열며 경고나 복구를 냈다면 그 출력도 그대로 보여 준다 — 복구가
 일어났다면 사용자도 파일을 열 때마다 같은 경고를 볼 수 있다.
 
 ### 아직 아닌 것
