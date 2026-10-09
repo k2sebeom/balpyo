@@ -135,7 +135,6 @@ What the suite judges, per fixture (`TestFixtures`) and per example (`TestExampl
 ```bash
 make test        # go test ./... (the gate; same command CI runs)
 make examples    # examples/* must build with zero warnings (also part of make test)
-make review      # balpyo preview per fixture → review/<fixture>/gallery/index.html (human tool)
 make golden      # regenerate goldens (review the diff; commit with the implementation)
 make docs        # mkdocs build --strict (new pages must be in mkdocs.yml nav)
 ```
@@ -159,4 +158,4 @@ make docs        # mkdocs build --strict (new pages must be in mkdocs.yml nav)
 - Diagnostic-wording changes keep the input that produced the message as a fixture.
 - Micro commits with `feat:` / `fix:` / `refactor:` / `test:` / `doc:` prefixes, written in English
   (older history is in Korean — don't rewrite it); no AI/author attribution in commit messages.
-- Don't commit generated output: `dist/`, `review/`, `/preview/`, `site/`, `.make/`, `workspace/`.
+- Don't commit generated output: `dist/`, `/preview/`, `site/`, `workspace/`.

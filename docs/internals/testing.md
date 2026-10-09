@@ -9,7 +9,6 @@ balpyo의 테스트는 두 렌더러가 **같은 컴포넌트를 같은 자리�
 ```
 make test      # go test ./... — CI의 게이트와 같은 명령
 make examples  # 예제 덱 셋을 경고 0으로 빌드하는지만 확인 (make test에도 포함)
-make review    # 픽스처마다 balpyo preview → review/<픽스처>/gallery/index.html
 make golden    # 골든 갱신
 make docs      # mkdocs build --strict
 ```
@@ -223,25 +222,13 @@ RGB여도 그렇다.
 `AssertSameBytes`가 같은 입력을 두 번 빌드해 산출 목록과 **모든 파일의 바이트**가 같은지 본다. zip
 타임스탬프 고정, 맵이 아니라 순서 있는 목록 — 둘 중 하나가 깨지면 여기서 걸린다.
 
-## 시각 리뷰
+## 사람이 하는 확인
 
-`make review`는 테스트 스위트를 다시 돌리지 않고 픽스처마다 [`balpyo preview`](../reference/cli.md)를
-부른다. 갤러리는 웹 렌더와 PPTX 렌더를 **나란히 놓기만 한다** — diff 이미지도, 허용 오차도, 판정도
-없다 ([ADR 0066](../decisions/0066-preview-only-places-renders-side-by-side.md)). 사람이 보는 도구이지
-게이트가 아니다.
+픽스처 전체의 시각 리뷰 타깃은 없다 — "두 타깃이 같은 것을 내는가"는 위의 판정이 매 실행 답한다.
+덱 하나를 눈으로 보고 싶으면 [`balpyo preview`](../reference/cli.md#balpyo-preview)가 웹 렌더와 PPTX
+렌더를 나란히 놓는다 (판정은 없다 — [ADR 0066](../decisions/0066-preview-only-places-renders-side-by-side.md)).
 
-PPTX 열은 LibreOffice(`soffice`)와 poppler(`pdftoppm`)로 래스터한다. 둘이 없으면 PPTX 열을 빼고 웹
-열만 만든다 — 도구가 없다고 리뷰를 못 하게 하지 않는다. `--target pptx`를 직접 준 경우에만 실패한다.
-
-```
-review/<픽스처>/
-├── build/                  # 빌드 산출물 (index.html · <덱>.pptx)
-└── gallery/index.html      # 웹 | PPTX 나란히
-```
-
-`review/`는 커밋하지 않는다 (`.gitignore`).
-
-**사람이 하는 확인은 갤러리에서 끝나지 않는다.** PPTX를 Keynote나 PowerPoint로 **직접 열어** 편집
+**편집 가능성은 파일을 열어 본다.** PPTX를 Keynote나 PowerPoint로 **직접 열어** 편집
 가능성을 확인한다 — 텍스트 박스가 진짜 텍스트 박스인지, 테마 색을 바꾸면 도형 색이 따라오는지.
 "열리는 파일"과 "편집 가능한 파일"의 차이가 이 제품의 핵심이고, 자동 판정은 그 앞(스키마 · 동일성)
 까지다.

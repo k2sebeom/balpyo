@@ -326,11 +326,7 @@ bin/
 *.out
 
 ### balpyo ###
-# 시각 리뷰 산출물 (`make review`) — 커밋하는 스냅샷은 픽스처의 golden/ 뿐이다.
-review/
 # `balpyo preview`의 검수 갤러리 (프로젝트 루트 기준 기본값). 앞의 /는 **저장소 루트만**
 # 뜻한다 — 앵커가 없으면 같은 이름의 소스 디렉토리(internal/preview)도 함께 걸려서, 거기에
 # 새로 만든 파일이 조용히 추적되지 않는다.
 /preview/
-# make가 만드는 바이너리 (`make review`의 balpyo)
-.make/

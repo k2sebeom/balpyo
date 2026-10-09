@@ -8,8 +8,8 @@
 // 건너뛴다"는 테스트 정책이 사용자 명령의 동작이 된다.
 //
 // 그래서 방향을 뒤집었다: 검수 엔진은 이 패키지가 소유하고, `internal/testkit`이 그것을
-// `testing.TB`에 맞춰 감싼다. 구현은 한 벌이므로 `make review`의 갤러리와
-// `balpyo preview`의 갤러리는 같은 코드가 만든다.
+// `testing.TB`에 맞춰 감싼다. 구현은 한 벌이므로 테스트와
+// `balpyo preview`는 같은 코드를 지난다.
 package preview
 
 import (
