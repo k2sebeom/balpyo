@@ -18,6 +18,7 @@ func TestCrossPartsRejectsMutations(t *testing.T) {
 		slideRels  = "ppt/slides/_rels/slide1.xml.rels"
 		master     = "ppt/slideMasters/slideMaster1.xml"
 		notesRels  = "ppt/notesSlides/_rels/notesSlide1.xml.rels"
+		nmRels     = "ppt/notesMasters/_rels/notesMaster1.xml.rels"
 		relPattern = `<Relationship [^>]*/relationships/%s"[^>]*/>`
 	)
 	for _, m := range []struct {
@@ -32,6 +33,7 @@ func TestCrossPartsRejectsMutations(t *testing.T) {
 		{"플레이스홀더", slide, `<p:ph type="title"/>`, `<p:ph type="body" idx="9"/>`, "idx=9(body)"},
 		{"마스터의 레이아웃 목록", master, `<p:sldLayoutId [^>]*/>`, "", "sldLayoutIdLst"},
 		{"마스터 id 공간", master, `(<p:sldLayoutId id=")\d+`, "${1}2147483648", "한 id 공간"},
+		{"마스터끼리 테마 공유", nmRels, `theme2\.xml`, "theme1.xml", "테마 ppt/theme/theme1.xml를 같이 쓴다"},
 		{"노트의 슬라이드", notesRels, strings.Replace(relPattern, "%s", "slide", 1), "", "slide 관계가 0개"},
 	} {
 		t.Run(m.name, func(t *testing.T) {

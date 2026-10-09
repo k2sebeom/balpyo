@@ -40,6 +40,9 @@ func TestRenderNotesParts(t *testing.T) {
 	if _, ok := empty[notesMasterPart]; ok {
 		t.Error("노트 없는 덱에 노트 마스터가 있다")
 	}
+	if _, ok := empty[notesThemePart]; ok {
+		t.Error("노트 없는 덱에 노트 마스터의 테마가 있다")
+	}
 	if strings.Contains(empty[presentationPart], "notesMasterIdLst") {
 		t.Error("노트 없는 덱에 notesMasterIdLst가 있다")
 	}
@@ -64,9 +67,16 @@ func TestRenderNotesMasterRelAppendsAfterTheme(t *testing.T) {
 			t.Errorf("presentation.xml.rels에 %q가 없다\n%s", want, presRels)
 		}
 	}
-	// 노트 마스터 → 테마 관계 (슬라이드 마스터와 같은 theme1.xml).
-	if !strings.Contains(parts[notesMasterRelsPart], `Target="../theme/theme1.xml"`) {
-		t.Error("노트 마스터가 테마를 가리키지 않는다")
+	// 노트 마스터는 자기 테마(theme2.xml)를 가리킨다 — 슬라이드 마스터와 theme1.xml을 같이
+	// 쓰면 PowerPoint가 복구를 묻는다. 내용은 덱 테마와 같다.
+	if !strings.Contains(parts[notesMasterRelsPart], `Target="../theme/theme2.xml"`) {
+		t.Errorf("노트 마스터가 자기 테마를 가리키지 않는다\n%s", parts[notesMasterRelsPart])
+	}
+	if parts[notesThemePart] != parts[themePart] {
+		t.Error("노트 마스터의 테마가 덱 테마와 다르다")
+	}
+	if !strings.Contains(parts[contentTypesPart], `PartName="/ppt/theme/theme2.xml"`) {
+		t.Error("[Content_Types].xml에 theme2.xml이 없다")
 	}
 }
 

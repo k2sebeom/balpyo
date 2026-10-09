@@ -21,6 +21,7 @@ const (
 	layoutPart          = "ppt/slideLayouts/slideLayout1.xml"
 	layoutRelsPart      = "ppt/slideLayouts/_rels/slideLayout1.xml.rels"
 	themePart           = "ppt/theme/theme1.xml"
+	notesThemePart      = "ppt/theme/theme2.xml"
 	notesMasterPart     = "ppt/notesMasters/notesMaster1.xml"
 	notesMasterRelsPart = "ppt/notesMasters/_rels/notesMaster1.xml.rels"
 	corePropsPart       = "docProps/core.xml"
@@ -152,6 +153,7 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 	}
 	if data.NotesMasterRelID != "" {
 		templates = append(templates,
+			struct{ name, text string }{notesThemePart, themeTemplate},
 			struct{ name, text string }{notesMasterPart, notesMasterTemplate},
 			struct{ name, text string }{notesMasterRelsPart, notesMasterRelsXML},
 		)
@@ -331,6 +333,7 @@ const contentTypesTemplate = xmlDecl + `<Types xmlns="http://schemas.openxmlform
 {{- end}}
   <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
 {{- if .NotesMasterRelID}}
+  <Override PartName="/ppt/theme/theme2.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
   <Override PartName="/ppt/notesMasters/notesMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml"/>
 {{- end}}
 {{- range $i, $s := .Deck.Slides}}
@@ -734,10 +737,12 @@ const notesMasterTemplate = xmlDecl + `<p:notesMaster xmlns:a="http://schemas.op
 </p:notesMaster>
 `
 
-// 노트 마스터의 테마는 슬라이드 마스터와 같은 theme1.xml을 가리킨다 — 노트 마스터 전용
-// 테마 파트를 따로 내지 않는다 (한 파트가 여러 관계의 대상이 되는 것은 OPC에서 유효하다).
+// 노트 마스터는 자기 테마 파트(theme2.xml)를 가리킨다. 한 파트가 여러 관계의 대상이 되는
+// 것은 OPC에서 유효하지만, 슬라이드 마스터와 theme1.xml을 같이 쓰면 PowerPoint가 파일을
+// 손상으로 보고 복구를 묻는다 (OnlyOffice · LibreOffice는 그대로 연다). 내용은 덱 테마와
+// 같아서 노트 페이지도 덱의 색 · 글꼴을 따른다.
 const notesMasterRelsXML = xmlDecl + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme2.xml"/>
 </Relationships>
 `
 
