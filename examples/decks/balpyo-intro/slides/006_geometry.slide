@@ -7,33 +7,44 @@
      테두리가 두 번 그려지고 카드 전체의 둥근 모서리를 만들 수 없었다 — 이제 카드 바깥선이
      도형 하나의 것이다.
 
-     `h="220"`은 내용이 들어가는 값이다 (`h="200"`에서 본문이 12px 넘쳐 `-check-layout`이
-     잡았다 — 배경 모드의 자식도 부모 박스 안에 머물러야 한다). -->
+     카드 높이는 숫자로 적지 않는다 — 그리드가 `grow="1"`로 남은 높이를 갖고 카드 셋이 grid의
+     stretch로 그것을 받는다. 카드 안은 헤더 띠 · 본문 · 그 단계가 다루는 이름(아래 끝)이다.
+     배경 모드의 자식도 부모 박스 안에 머물러야 한다 — 넘치면 `--check-layout`이 잡는다.
+-->
 <slide id="geometry">
   <h1>좌표는 브라우저가 계산한다</h1>
-  <grid cols="3" gap="lg">
-    <shape variant="card" type="rounded-rect" fill="surface" border="1 solid muted" w="fill" h="220" pad="md">
-      <col gap="sm" h="fill">
-        <shape variant="card-header" type="rounded-rect" fill="accent1" w="fill" h="48" pad="xs">
-          <text color="bg" align="center">선언</text>
-        </shape>
-        <p size="20">저자는 flex와 grid로 배치를 선언한다. 좌표를 쓰는 자리가 어휘에 없다.</p>
+  <grid cols="3" gap="lg" grow="1">
+    <shape variant="card" type="rounded-rect" fill="surface" border="1 solid muted" w="fill" pad="md">
+      <col gap="md" h="fill" justify="between">
+        <col gap="sm">
+          <shape variant="card-header" type="rounded-rect" fill="accent1" w="fill" h="48" pad="xs">
+            <text color="bg" align="center">선언</text>
+          </shape>
+          <p size="20">저자는 flex와 grid로 배치를 선언한다. 좌표를 쓰는 자리가 어휘에 없다.</p>
+        </col>
+        <text role="code" size="18" color="muted">&lt;row&gt; · &lt;col&gt; · &lt;grid&gt; · &lt;stack&gt;</text>
       </col>
     </shape>
-    <shape variant="card" type="rounded-rect" fill="surface" border="1 solid muted" w="fill" h="220" pad="md">
-      <col gap="sm" h="fill">
-        <shape variant="card-header" type="rounded-rect" fill="accent1" w="fill" h="48" pad="xs">
-          <text color="bg" align="center">측정</text>
-        </shape>
-        <p size="20">헤드리스 Chromium이 요소마다 박스를 재고, 패스는 그 지오메트리만 읽는다.</p>
+    <shape variant="card" type="rounded-rect" fill="surface" border="1 solid muted" w="fill" pad="md">
+      <col gap="md" h="fill" justify="between">
+        <col gap="sm">
+          <shape variant="card-header" type="rounded-rect" fill="accent1" w="fill" h="48" pad="xs">
+            <text color="bg" align="center">측정</text>
+          </shape>
+          <p size="20">헤드리스 Chromium이 요소마다 박스를 재고, 패스는 그 지오메트리만 읽는다.</p>
+        </col>
+        <text role="code" size="18" color="muted">getBoundingClientRect</text>
       </col>
     </shape>
-    <shape variant="card" type="rounded-rect" fill="surface" border="1 solid muted" w="fill" h="220" pad="md">
-      <col gap="sm" h="fill">
-        <shape variant="card-header" type="rounded-rect" fill="accent1" w="fill" h="48" pad="xs">
-          <text color="bg" align="center">굽기</text>
-        </shape>
-        <p size="20">잰 rect가 곧 PPTX 좌표다 — 1px은 9525 EMU이고 환산은 한 곳에만 있다.</p>
+    <shape variant="card" type="rounded-rect" fill="surface" border="1 solid muted" w="fill" pad="md">
+      <col gap="md" h="fill" justify="between">
+        <col gap="sm">
+          <shape variant="card-header" type="rounded-rect" fill="accent1" w="fill" h="48" pad="xs">
+            <text color="bg" align="center">굽기</text>
+          </shape>
+          <p size="20">잰 rect가 곧 PPTX 좌표다 — 1px은 9525 EMU이고 환산은 한 곳에만 있다.</p>
+        </col>
+        <text role="code" size="18" color="muted">a:off · a:ext</text>
       </col>
     </shape>
   </grid>
