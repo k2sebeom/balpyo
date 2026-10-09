@@ -126,6 +126,24 @@ my-deck/
 - **레이아웃 CSS는 파일 단위**다. `layouts/title.slots.css` 하나만 두면 표지 배치만 갈리고 나머지
   열은 부모 것이 그대로 실린다. `layouts` 선언도 물려받으므로 11종을 다시 적지 않는다.
 
+### 혼자 서는 테마 — 처음부터 짠다
+
+물려받지 않고 테마 전체를 직접 갖고 싶으면 `extends`를 비운다. 그때는 파일 넷을 모두 채우고
+레이아웃 11종의 CSS를 전부 둔다 — 부모가 없으므로 빠진 값을 메워 줄 곳이 없다.
+
+견본이 저장소의 [`examples/themes/harbor`](https://github.com/k2sebeom/balpyo/tree/main/examples/themes/harbor)에
+있다. 파일마다 `$comment`와 CSS 주석이 그 값을 고른 이유를 적는다. 그대로 쓰려면 디렉토리를
+복사한다:
+
+```bash
+cp -R examples/themes/harbor my-deck/themes/harbor
+balpyo check --project my-deck --theme harbor --check-layout --strict
+```
+
+harbor는 예제 덱 셋을 모두 경고 없이 빌드한다 — 내장 테마와 같은 토큰 이름 · variant 어휘 ·
+본문 24px · 줄높이 1.5를 지키기 때문이다. 자기 테마를 처음부터 짤 때도 이 셋을 지키면 다른
+테마로 쓴 덱이 그대로 들어온다.
+
 ### 로더가 요구하는 것 (없으면 빌드가 멈춘다)
 
 폴백 테마가 없으므로 빠진 값을 메워 줄 곳이 없다. 그래서 로드 시점에 멈춘다:

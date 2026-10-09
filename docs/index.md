@@ -258,25 +258,30 @@ balpyo version           # 버전 · 커밋 · 플랫폼
 
 ---
 
-## 예제 덱
+## 예제
 
-설명을 읽는 것보다 덱을 보는 것이 빠르다. 저장소의 `examples/` 아래에 **사람이 쓴 덱 셋**이
-있고, 셋 다 두 타깃으로 **경고 0건**에 빌드된다.
+설명을 읽는 것보다 덱을 보는 것이 빠르다. 저장소의 `examples/decks/` 아래에 **사람이 쓴 덱
+셋**이 있고, 셋 다 두 타깃으로 **경고 0건**에 빌드된다.
 
 | 덱 | 장수 | 무엇을 보여 주는가 |
 |---|---|---|
-| [`examples/balpyo-intro`](https://github.com/k2sebeom/balpyo/tree/main/examples/balpyo-intro) | 12 | 이 도구 자체의 소개 덱 — 파이프라인 도형, `<table>`, 인용 레이아웃, 장마다 `<note>` |
-| [`examples/incident-postmortem`](https://github.com/k2sebeom/balpyo/tree/main/examples/incident-postmortem) | 10 | 장애 회고 — 타임라인, 영향 표, `lang="go"` 코드 블록, `layout="canvas"`의 손그림 막대 |
-| [`examples/quarterly-review`](https://github.com/k2sebeom/balpyo/tree/main/examples/quarterly-review) | 6 | 분기 리뷰 — KPI 카드 그리드, `<table>`, `<stack>` 콜아웃 |
+| [`examples/decks/balpyo-intro`](https://github.com/k2sebeom/balpyo/tree/main/examples/decks/balpyo-intro) | 12 | 이 도구 자체의 소개 덱 — 파이프라인 도형, `<table>`, 인용 레이아웃, 장마다 `<note>` |
+| [`examples/decks/incident-postmortem`](https://github.com/k2sebeom/balpyo/tree/main/examples/decks/incident-postmortem) | 10 | 장애 회고 — 타임라인, 영향 표, `lang="go"` 코드 블록, `layout="canvas"`의 손그림 막대 |
+| [`examples/decks/quarterly-review`](https://github.com/k2sebeom/balpyo/tree/main/examples/decks/quarterly-review) | 6 | 분기 리뷰 — KPI 카드 그리드, `<table>`, `<stack>` 콜아웃 |
 
 ```bash
-./balpyo build --project examples/quarterly-review --target html,pptx --strict
-ls examples/quarterly-review/dist/     # index.html + <덱 제목>.pptx
+./balpyo build --project examples/decks/quarterly-review --target html,pptx --strict
+ls examples/decks/quarterly-review/dist/     # index.html + <덱 제목>.pptx
 ```
 
 같은 덱을 다른 테마로 보려면 `--theme editorial`을 더한다 — **슬라이드는 한 줄도 고치지
-않는다.** 예제는 어휘의 마찰점을 일부러 밟기도 하므로 처음 쓰는 출발점으로는 `balpyo init`이
-낫다.
+않는다.**
+
+`examples/themes/`에는 **혼자 서는 테마** 하나가 있다:
+[`harbor`](https://github.com/k2sebeom/balpyo/tree/main/examples/themes/harbor) — 차가운 회색
+바탕에 흰 카드, 굵은 제목, 위 왼쪽에서 시작하는 표지. 아무것도 물려받지 않으므로 테마 하나를
+처음부터 짜는 견본이 된다. 덱의 `themes/harbor/`로 디렉토리를 복사하고 `balpyo.json`에
+`"theme": "harbor"`를 적으면 쓸 수 있다 (자세히는 [테마 고르기·만들기](guides/theming.md)).
 
 ---
 

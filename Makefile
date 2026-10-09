@@ -18,8 +18,8 @@ test: ## 전체 테스트 (CI의 게이트와 같은 명령)
 
 # 예제 게이트는 `make test`에도 들어 있다 (같은 테스트다). 이 타깃은 예제를 고치는 사람이
 # 픽스처 스위트 전체를 기다리지 않게 하는 입구다 — 새 CI 잡은 없다.
-examples: ## 예제 덱을 경고 0으로 빌드하는지 확인 (make test에도 포함)
-	go test ./internal/testkit -run TestExamplesBuildClean -v -count=1
+examples: ## 예제 덱 · 예제 테마를 경고 0으로 빌드하는지 확인 (make test에도 포함)
+	go test ./internal/testkit -run 'TestExamplesBuildClean|TestExampleThemesBuildEveryDeck' -v -count=1
 
 golden: ## 골든 갱신 (변경은 구현 커밋과 함께 검토한다)
 	BALPYO_UPDATE_GOLDEN=1 go test ./... -run 'TestFixtures|TestGolden' -count=1

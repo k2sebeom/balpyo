@@ -71,7 +71,7 @@ go run ./cmd/balpyo build --project testdata/fixtures/00_empty --target html,ppt
 
 ## 예제 게이트 — 도그푸딩 덱은 조용해야 한다
 
-`examples/` 아래 덱 셋(`balpyo-intro` 12장 · `incident-postmortem` 10장 ·
+`examples/decks/` 아래 덱 셋(`balpyo-intro` 12장 · `incident-postmortem` 10장 ·
 `quarterly-review` 6장)은 **사람이 실제로 쓴 덱**이고, 픽스처가 못 하는 일을 한다: 어휘 수십
 개가 한 장에 겹쳐 있어 "이 도구로 덱을 쓸 수 있다"의 실물 증거가 된다. 그래서 게이트도 다르다.
 
@@ -105,11 +105,11 @@ make examples   # 예제만 (몇 초) — make test가 같은 테스트를 이�
 채로 승인된다. 그래서 예제는 "빌드되고 조용하다"만 지키고, **무엇이 어떻게 나오는가는
 픽스처의 골든이** 지킨다. 다만 PPTX 유효성(`AssertValidPPTX`)은 골든이 아니라 규칙이라 예제도 받는다.
 
-산출물은 임시 디렉토리에 쓴다 — 예제 디렉토리는 입력 전용이고 `examples/*/dist`는 커밋하지
+산출물은 임시 디렉토리에 쓴다 — 예제 디렉토리는 입력 전용이고 `examples/decks/*/dist`는 커밋하지
 않는다. 사람이 손으로 보는 길은 그대로다:
 
 ```bash
-go run ./cmd/balpyo build --project examples/balpyo-intro --target html,pptx --strict
+go run ./cmd/balpyo build --project examples/decks/balpyo-intro --target html,pptx --strict
 ```
 
 ## 문서 게이트 — 닫힌 목록은 테스트가 문서에서 읽는다

@@ -178,7 +178,7 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 </row>
 ```
 
-`examples/incident-postmortem/slides/008_detection.slide` — 두 채널을 함께 쓴 실물:
+`examples/decks/incident-postmortem/slides/008_detection.slide` — 두 채널을 함께 쓴 실물:
 
 ```html
 <chart type="bar" unit="분" series="surface" alt="월별 평균 탐지 시간 — 5월 22분에서 이번 장애 12분까지" w="fill" h="440">

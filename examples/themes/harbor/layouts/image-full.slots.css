@@ -1,0 +1,9 @@
+/* image-full 슬롯 영역 — 그림이 가장자리까지 닿고 캡션이 바닥 띠다. 슬롯 영역은 흐름
+   규칙을 물려받지 않으므로 padding: 0을 여기에 다시 적는다 — 빠뜨리면 전면 그림이 스테이지
+   여백만큼의 액자를 얻는다. 캡션에 여백이 필요하면 `<shape pad="md" slot="caption">`으로
+   감싼다. */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: 1fr auto;
+grid-template-areas: "media" "caption";
+padding: 0;

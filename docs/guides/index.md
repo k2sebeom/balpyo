@@ -10,9 +10,9 @@
 | [계약 밖의 차이](known-differences.md) | 엔진마다 다르게 그려도 되는 것 — 줄바꿈 위치 · 문장부호 앞뒤의 틈이 버그가 아닌 이유 |
 
 [시작하기](getting-started.md)의 출발점은 `balpyo init`이다 — 세 장짜리 덱 하나가 경고 없이
-빌드되는 상태로 나온다. 완성된 덱을 읽어 보고 싶다면 저장소의 `examples/`가 있다 — 어휘의
-마찰점을 일부러 밟는 덱들이라 막히는 자리의 답을 찾기 좋다.
+빌드되는 상태로 나온다. 완성된 덱을 읽어 보고 싶다면 저장소의 `examples/decks/`가 있고, 혼자 서는
+테마 하나가 `examples/themes/`에 있다.
 
 ```bash
-balpyo build --project examples/balpyo-intro --target html,pptx
+balpyo build --project examples/decks/balpyo-intro --target html,pptx
 ```

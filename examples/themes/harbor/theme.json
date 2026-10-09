@@ -1,0 +1,24 @@
+{
+  "$comment": "harbor — 혼자 서는(standalone) 예제 테마. extends가 비어 있으므로 아무것도 물려받지 않는다: 레이아웃 11종, 토큰, 컴포넌트 외관을 이 디렉토리가 전부 갖는다. 쓰려면 이 디렉토리를 덱 프로젝트의 themes/harbor/로 복사하고 balpyo.json에 \"theme\": \"harbor\"를 적는다. 디렉토리 이름과 name이 같아야 한다.",
+
+  "name": "harbor",
+  "extends": "",
+  "layouts": [
+    "title", "section-divider", "content", "two-column",
+    "image-full", "image-text", "quote", "code", "stat", "canvas", "end"
+  ],
+  "chrome": [
+    {
+      "kind": "footer",
+      "align": "start",
+      "role": "caption",
+      "skipLayouts": ["title", "section-divider", "end"]
+    },
+    {
+      "kind": "pageNumber",
+      "align": "end",
+      "role": "caption",
+      "skipLayouts": ["title", "section-divider", "end"]
+    }
+  ]
+}
