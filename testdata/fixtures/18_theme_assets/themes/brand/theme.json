@@ -1,0 +1,20 @@
+{
+  "$comment": "brand는 minimal을 물려받아 테마가 소유한 자산 둘을 더한다 — 레이아웃별 배경과 로고 크롬. 그림은 이 패키지의 assets/에 있고, 원고는 그것을 모른다. 표지는 그림 배경, 섹션 구분은 토큰 그라디언트, 나머지는 기본 배경(surface)이다. 로고는 선언하면 켜지고(balpyo.json이 정할 것이 없다) 표지에서는 빠진다.",
+  "name": "brand",
+  "extends": "minimal",
+  "backgrounds": [
+    { "layouts": ["title"], "image": "assets/cover.png" },
+    { "layouts": ["section-divider"], "fill": "gradient(accent1 accent6, 135deg)" },
+    { "fill": "surface" }
+  ],
+  "chrome": [
+    {
+      "kind": "logo",
+      "align": "center",
+      "image": "assets/logo.png",
+      "height": 24,
+      "alt": "Brand 로고",
+      "skipLayouts": ["title"]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+# slide 1 assets-cover
+bg image
+textbox "h1 s0.0" ph=ctrTitle/0
+  ¶ start | "테마가 가진 배경"{heading 42pt b bg}
+textbox "text s0.1" ph=subTitle/1
+  ¶ start | "그림은 테마 패키지의 assets/에 있다"{body 18pt bg}
+# slide 2 assets-section
+bg fill=gradient(accent1,accent6)
+textbox "h1 s1.0" ph=title/0
+  ¶ start | "1부 · 자산"{heading 42pt b bg}
+pic "chrome logo" alt="Brand 로고"
+# slide 3 assets-content
+bg fill=surface
+textbox "h2 s2.0"
+  ¶ start | "기본 배경과 로고"{heading 27pt b fg}
+textbox "p s2.1"
+  ¶ start | "배경과 로고는 슬라이드의 내용이 아니라 테마의 정체다 — 저자는 아무것도 쓰지 않았다."{body 18pt fg}
+textbox "chrome footer"
+  ¶ start | "© 2026 Brand Inc."{body 13.5pt muted}
+textbox "chrome pageNumber"
+  ¶ end | "3"{field body 13.5pt muted}
+pic "chrome logo" alt="Brand 로고"
