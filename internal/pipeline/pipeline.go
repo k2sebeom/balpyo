@@ -8,6 +8,7 @@ package pipeline
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -35,6 +36,10 @@ type Options struct {
 	// 설정을 고쳐 빌드하고 되돌리는 절차는 되돌리기를 잊는 순간 잘못된 테마를 커밋한다.
 	// 어휘 검사는 설정과 같은 목록을 보되 진단이 **플래그를 가리킨다** (LoadDeck).
 	Theme string
+	// ThemeHome은 설치한 테마의 홈 디렉토리다 (`themes/<이름>/`을 담는다 — `balpyo theme install`이
+	// 쓰는 자리). 비면 설치한 테마를 보지 않는다: 테스트가 개발자의 홈에 매이지 않고, 홈을 정하는
+	// 일(`BALPYO_HOME` · `~/.balpyo`)은 CLI의 몫이다.
+	ThemeHome string
 	// Strict는 경고를 에러로 승격한다.
 	Strict bool
 	// CheckLayout은 배치 진단(geom.Diagnose)을 위해 **지오메트리 패스를 강제**한다.
@@ -94,7 +99,8 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 	if projectDir == "" {
 		projectDir = "."
 	}
-	cfg, err := core.LoadConfig(projectDir)
+	home := themeHomeFS(opts.ThemeHome)
+	cfg, err := core.LoadConfigWithThemes(projectDir, home)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -104,8 +110,9 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 	}
 	// 프로젝트 루트를 **한 fs.FS로** 본다: 슬라이드 수집과 에셋 해석의 경로 기준이 하나라는
 	// 사실이 그 한 값으로 보인다 (`<image src>`는 프로젝트 루트 기준이다 — core.ResolveAssets).
-	// 테마 이름의 어휘도 이 기준을 쓴다 (`themes/<이름>/`).
-	fsys := os.DirFS(projectDir)
+	// 테마 이름의 어휘도 이 기준을 쓴다 (`themes/<이름>/`) — 설치한 테마의 홈은 이 값에 붙어서
+	// 이름을 찾는 자리만 늘린다 (파일은 여전히 프로젝트 루트에서 읽는다).
+	fsys := core.WithInstalledThemes(os.DirFS(projectDir), home)
 
 	// 테마 옵션은 설정을 **읽은 뒤** 갈아 끼운다 (OutDir과 같은 자리): 아래 흐름은 cfg 하나만
 	// 보므로 덮어쓰기가 여기서 끝나야 값 층·렌더러가 두 출처를 알 필요가 없다. 어휘 검사를
@@ -132,8 +139,8 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 		Aspect: cfg.Aspect,
 		Stage:  stage,
 		// 테마 요청도 크롬과 같은 태도로 옮긴다 — 이름을 패키지로 바꾸는 것은
-		// core.Resolve다. 설정 로드가 이미 어휘를 검사했으므로 여기 도달한 이름은 내장 테마
-		// 아니면 이 프로젝트의 `themes/<이름>/`이다.
+		// core.Resolve다. 설정 로드가 이미 어휘를 검사했으므로 여기 도달한 이름은 내장 테마,
+		// 이 프로젝트의 `themes/<이름>/`, 설치한 테마 중 하나다.
 		ThemeName: cfg.Theme,
 		// 크롬 요청은 설정에서 그대로 옮긴다 — 테마 선언과 합치는 것은 core.Resolve다.
 		Chrome: soml.DeckChrome{Footer: cfg.Footer, PageNumber: cfg.PageNumber},
@@ -429,7 +436,7 @@ func OutDirPath(opts Options) (string, error) {
 	}
 	outDir := opts.OutDir
 	if outDir == "" {
-		cfg, err := core.LoadConfig(projectDir)
+		cfg, err := core.LoadConfigWithThemes(projectDir, themeHomeFS(opts.ThemeHome))
 		if err != nil {
 			return "", err
 		}
@@ -469,4 +476,12 @@ func writeFile(outDir, name string, data []byte) error {
 		return fmt.Errorf("%s를 쓸 수 없다: %w", dest, err)
 	}
 	return nil
+}
+
+// themeHomeFS는 설치한 테마의 홈을 파일 시스템으로 연다 (비면 nil — 설치한 테마를 보지 않는다).
+func themeHomeFS(dir string) fs.FS {
+	if dir == "" {
+		return nil
+	}
+	return os.DirFS(dir)
 }

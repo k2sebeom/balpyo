@@ -1,7 +1,7 @@
 // Command balpyo는 SOML 슬라이드를 웹과 네이티브 PPTX로 렌더하는 CLI다.
 //
 // 바이너리 하나가 모든 서브커맨드를 담는다는 계약을 유지한다. 지금의 표면은
-// `init`·`build`·`check`·`watch`·`preview`·`version`이며, new/server/format/lsp는 아직이다.
+// `init`·`build`·`check`·`watch`·`preview`·`theme`·`version`이며, new/server/format/lsp는 아직이다.
 package main
 
 import (
@@ -48,6 +48,8 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return runWatch(ctx, args[1:], stdout, stderr)
 	case "preview":
 		return runPreview(args[1:], stdout, stderr)
+	case "theme":
+		return runTheme(args[1:], stdout, stderr)
 	case "version":
 		fmt.Fprintln(stdout, versionString())
 		return nil
@@ -69,6 +71,7 @@ func usage(w io.Writer) {
   balpyo check [옵션]   산출물 없이 진단만 한다
   balpyo watch [옵션]   고치면 다시 빌드하고 브라우저를 새로고침한다
   balpyo preview [옵션] 웹과 PPTX를 나란히 놓은 검수 갤러리를 만든다
+  balpyo theme <명령>   GitHub에서 테마를 설치하고 설치한 테마를 다룬다
   balpyo version        버전을 출력한다
 
 init 옵션:
@@ -83,7 +86,7 @@ build 옵션:
   --target html,pptx    렌더 타깃 (기본 html)
   --out dist            출력 디렉토리 (기본 balpyo.json의 outDir)
   --project .           프로젝트 루트
-  --theme ink           테마 (기본 balpyo.json의 theme — 내장 테마만 받는다)
+  --theme ink           테마 (기본 balpyo.json의 theme — 내장·프로젝트·설치한 테마)
   --strict              경고를 에러로 승격한다
   --check-layout        배치를 검사한다 (넘침·스테이지 이탈·겹침 — 브라우저를 띄운다)
 
@@ -109,6 +112,19 @@ preview 옵션:
 
   pptx를 검수하려면 OnlyOffice Document Builder가, 없으면 LibreOffice(soffice)와
   pdftoppm(poppler-utils)이 필요하다.
+
+theme 명령:
+  balpyo theme install <GitHub URL> [이름...] [--force]
+                        저장소의 테마를 설치한다 (이름을 주지 않으면 전부)
+  balpyo theme list [--project .]
+                        쓸 수 있는 테마를 출처와 함께 나열한다
+  balpyo theme remove <이름...>
+                        설치한 테마를 지운다
+  balpyo theme update [이름...]
+                        설치한 테마를 기록한 출처에서 다시 받는다
+
+  설치한 테마는 ~/.balpyo/themes/<이름>/에 놓인다 (BALPYO_HOME으로 바꾼다).
+  balpyo.json의 theme에는 그 이름을 쓴다.
 `)
 }
 
@@ -121,7 +137,7 @@ func runBuild(args []string, stdout, stderr io.Writer) error {
 	projectDir := fs.String("project", ".", "프로젝트 루트")
 	// 테마 플래그가 설정을 덮는다 — 한 덱을 두 테마로 빌드해 견주는 것이 테마를
 	// 고르는 방법이고, 그때 `balpyo.json`을 고쳐 되돌리는 절차는 되돌리기를 잊게 만든다.
-	theme := fs.String("theme", "", "테마 (기본: balpyo.json의 theme — 내장 테마만 받는다)")
+	theme := fs.String("theme", "", "테마 (기본: balpyo.json의 theme — 내장·프로젝트 themes/·설치한 테마)")
 	strict := fs.Bool("strict", false, "경고를 에러로 승격한다")
 	// pptx 타깃은 이미 재므로 배치 검사를 공짜로 받는다 — 이 플래그가 뜻을 갖는 자리는 html만
 	// 쓰는 저작 루프다. 기본을 끈 이유는 브라우저 기동이 빌드의 가장 큰 고정 비용이라는 것이다.
@@ -137,6 +153,7 @@ func runBuild(args []string, stdout, stderr io.Writer) error {
 		ProjectDir:  *projectDir,
 		OutDir:      *outDir,
 		Theme:       *theme,
+		ThemeHome:   themeHome(),
 		Strict:      *strict,
 		CheckLayout: *checkLayout,
 	}

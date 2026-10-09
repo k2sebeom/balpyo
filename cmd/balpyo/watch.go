@@ -30,7 +30,7 @@ func runWatch(ctx context.Context, args []string, stdout, stderr io.Writer) erro
 	targetList := fs.String("target", "", "렌더 타깃 (html, pptx — 쉼표로 여러 개, html은 필수)")
 	outDir := fs.String("out", "", "출력 디렉토리 (기본: balpyo.json의 outDir)")
 	projectDir := fs.String("project", ".", "프로젝트 루트")
-	theme := fs.String("theme", "", "테마 (기본: balpyo.json의 theme — 내장 테마만 받는다)")
+	theme := fs.String("theme", "", "테마 (기본: balpyo.json의 theme — 내장·프로젝트 themes/·설치한 테마)")
 	strict := fs.Bool("strict", false, "경고를 에러로 승격한다")
 	checkLayout := fs.Bool("check-layout", false, "배치를 검사한다 (넘침·스테이지 이탈·겹침)")
 	addr := fs.String("addr", defaultWatchAddr, "감시 서버 주소")
@@ -45,6 +45,7 @@ func runWatch(ctx context.Context, args []string, stdout, stderr io.Writer) erro
 		ProjectDir:  *projectDir,
 		OutDir:      *outDir,
 		Theme:       *theme,
+		ThemeHome:   themeHome(),
 		Strict:      *strict,
 		CheckLayout: *checkLayout,
 	}
