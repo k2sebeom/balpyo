@@ -15,23 +15,24 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **테마 패키지 포맷**(PRD §8.2)의 로더다 — Iteration 10이 core/theme.go의 하드코딩
-// 표를 데이터로 해체하고, P4.2가 그 파일을 지웠다 (ADR 0052). 순서를 그렇게 잡은 이유는 지워진
-// 그 파일이 남긴 근거다: 하드코딩 표가 두 렌더러의 실제 요구를 드러낸 다음에야 스키마를 파일로
-// 고정한다. **이제 엔진에는 어떤 외관 값도 없다** — 값의 유일한 출처는 테마 패키지이고, 그
+// 이 파일은 **테마 패키지 포맷**(docs/reference/theme.md)의 로더다 — Iteration 10이
+// core/theme.go의 하드코딩 표를 데이터로 해체하고, P4.2가 그 파일을 지웠다 (ADR 0052). 순서를
+// 그렇게 잡은 이유는 지워진 그 파일이 남긴 근거다: 하드코딩 표가 두 렌더러의 실제 요구를 드러낸
+// 다음에야 스키마를 파일로 고정한다. **이제 엔진에는 어떤 외관 값도 없다** — 값의 유일한 출처는 테마 패키지이고, 그
 // 대가로 로더가 완전성을 요구한다 (theme_require.go).
 //
-// 포맷은 **데이터 전용**이다 (JSON + CSS + 에셋, JS 없음 — PRD §8.2·§13-11): `theme get`으로
+// 포맷은 **데이터 전용**이다 (JSON + CSS + 에셋, JS 없음 — ADR 0067 결정 11): `theme get`으로
 // 받은 원격 테마가 임의 코드 실행 경로가 되어서는 안 된다. 로더는 fs.FS 위에서 도므로 내장
 // 테마(go:embed)와 프로젝트 로컬 테마(os.DirFS)가 같은 코드를 지난다.
 //
 // tokens.json·components.json이 객체가 아니라 **순서 있는 배열**을 쓰는 이유는 결정성이다
 // (JSON 객체 키 순서에 기대지 않는다): 모르는 variant 경고가 나열하는 목록과 PPTX clrScheme의
-// 슬롯 순서가 실행마다 같아야 한다 — PRD §8.4의 객체 스케치와 갈라지는 자리이고 ADR이 근거를
-// 남긴다. 값·순서를 파일에 못 박는 앵커는 TestLoadBuiltinMinimal·TestLoadBuiltinComponents다
+// 슬롯 순서가 실행마다 같아야 한다 — 레퍼런스(docs/reference/theme.md "`tokens.json`")가
+// 같은 계약을 적는다. 값·순서를 파일에 못 박는 앵커는
+// TestLoadBuiltinMinimal·TestLoadBuiltinComponents다
 // (기대값이 테스트에 리터럴로 적혀 있어 tokens.json이 실수로 움직이면 골든보다 먼저 잡힌다).
 
-// builtinThemes는 바이너리에 내장된 공식 테마다 (PRD §8.6) — `balpyo init` 직후 네트워크·설치
+// builtinThemes는 바이너리에 내장된 공식 테마다 — `balpyo init` 직후 네트워크·설치
 // 없이 예쁜 결과가 나오는 것이 첫인상을 지배하므로 기본 경로에서 네트워크를 제거한다.
 // 셋 다 같은 계약을 받고(11 레이아웃·모든 슬롯·팔레트 규칙·권장 variant 어휘) 그중 minimal이
 // 기본값이다 — **폴백 기준은 아니다** (ADR 0052: 테마를 섞지 않는다).
@@ -77,10 +78,10 @@ func IsBuiltinTheme(name string) bool {
 	return false
 }
 
-// themeManifest는 theme.json의 파싱 결과다 (PRD §8.2).
+// themeManifest는 theme.json의 파싱 결과다 (docs/reference/theme.md).
 type themeManifest struct {
 	Name string `json:"name"`
-	// Extends는 상속할 테마 이름이다 (PRD §8.5 · ADR 0054) — 내장 테마에서는 비어 있다.
+	// Extends는 상속할 테마 이름이다 (ADR 0054) — 내장 테마에서는 비어 있다.
 	// 이름은 **프로젝트의 어휘**(내장 ∪ `themes/<이름>/`)에서 풀리므로 그 어휘를 모르는 loadTheme은
 	// 비지 않은 값을 진단한다: 상속을 푸는 자리는 loadThemeNamed 하나다.
 	Extends string `json:"extends"`
@@ -90,7 +91,7 @@ type themeManifest struct {
 	// 레이아웃은 **없다**: `<slide layout>`의 어휘는 soml.SlideLayouts() 11종으로 닫혀 있어
 	// (resolver.slideLayout) 목록에 더한 이름은 어떤 슬라이드도 요청할 수 없다 (ADR 0054의 결정 10).
 	Layouts []string `json:"layouts"`
-	// Chrome은 덱 크롬(페이지 번호·푸터) 선언이다 (PRD §8.1·§8.4 · ADR 0045).
+	// Chrome은 덱 크롬(페이지 번호·푸터) 선언이다 (ADR 0045).
 	//
 	// 테마가 소유하는 것은 **자리·정렬·역할·제외 규칙**이고, 내용과 켜짐은 `balpyo.json`의
 	// footer·pageNumber다. 테마가 어떤 kind를 선언하지 않으면 그 크롬은 값 층에서 경고와

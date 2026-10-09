@@ -351,7 +351,7 @@ func TestLoadDeckErrors(t *testing.T) {
 	}
 }
 
-// 모르는 variant 경고는 기본 빌드를 통과시키고 --strict가 에러로 승격한다 (PRD §13-6).
+// 모르는 variant 경고는 기본 빌드를 통과시키고 --strict가 에러로 승격한다 (ADR 0067 결정 6).
 // core의 경고가 pipeline의 승격 경로를 실제로 타는지 여기서 잇는다.
 func TestLoadDeckStrictPromotesUnknownVariantWarning(t *testing.T) {
 	files := map[string]string{

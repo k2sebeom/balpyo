@@ -10,7 +10,8 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **`<image>` → `p:pic` + 미디어 파트 + 관계**다 (PRD §7.5·§7.6, 매핑 표는 §9.4).
+// 이 파일은 **`<image>` → `p:pic` + 미디어 파트 + 관계**다 (docs/reference/soml/image.md, 매핑 표는
+// docs/reference/appearance.md).
 //
 // # 세 자리가 맞아야 그림이 나온다
 //
@@ -197,9 +198,10 @@ func (s srcRect) attrs() string {
 	return attrs
 }
 
-// picSpec은 확정 이미지 외관을 p:pic 명세로 컴파일한다 (PRD §9.4 표의 오른쪽 열).
+// picSpec은 확정 이미지 외관을 p:pic 명세로 컴파일한다 (외관 매핑 표의 PPTX 열 —
+// docs/reference/appearance.md "이미지 외관").
 //
-// **순서는 PRD 표 순서다** (fit → border → radius → shadow → opacity → rotate → flip) —
+// **순서는 매핑 표의 행 순서다** (fit → border → radius → shadow → opacity → rotate → flip) —
 // 웹의 imageInkCSS와 나란히 읽을 수 있어야 "표에 있고 한쪽에만 있는 행"이 눈에 띈다.
 // `radius`는 여기서 **기하**가 된다 (`roundRect` + 조정값): OOXML에서 반경이 사는 자리가
 // 프리셋 지오메트리뿐이고, 웹에서 그것이 `border-radius`인 것과 짝이다. 도형과 달리

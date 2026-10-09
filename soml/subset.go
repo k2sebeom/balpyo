@@ -1,6 +1,6 @@
 package soml
 
-// 이 파일은 텍스트 서브셋(PRD §7.7)의 **요소 종류 카탈로그**다.
+// 이 파일은 텍스트 서브셋(docs/reference/soml/text-subset.md)의 **요소 종류 카탈로그**다.
 //
 // 표를 한 곳에만 두는 이유는 TextElement 상수와 같다: 이 구분은 파서(배치 규칙)만이 아니라
 // 지오메트리 패스(잴 대상), 웹 렌더러(블록 vs 런), PPTX 렌더러(텍스트 박스 vs 런)가 전부
@@ -257,7 +257,7 @@ var (
 // ListItemElement는 리스트 항목 태그 이름이다.
 const ListItemElement = "li"
 
-// RevealAttr는 리스트 항목의 **순차 등장 스텝**이다 (PRD §7.7, ADR 0063) — `<li>`가 여는
+// RevealAttr는 리스트 항목의 **순차 등장 스텝**이다 (ADR 0063) — `<li>`가 여는
 // 유일한 속성이고, 값을 생략하면 그 슬라이드에서 자기 차례를 받는다 (`reveal="2"`는 그
 // 자리를 덮어쓴다). 값 어휘(1 이상 정수)는 값 층의 것이고 파서는 이름만 본다.
 //
@@ -325,10 +325,11 @@ func IsVoidElement(name string) bool {
 		name == ChartPointElement
 }
 
-// TagTextRole은 블록·리스트 항목 태그의 텍스트 역할이다 — PRD §7.7의 등가 표
+// TagTextRole은 블록·리스트 항목 태그의 텍스트 역할이다 — 역할 등가 표
+// (docs/reference/soml/text-subset.md)
 // (`<p>` ≡ `<text role="body">`, `<h2>` ≡ `<text role="heading">`).
 //
-// 이 표가 테마(core/themes/*/components.json)가 아니라 **언어**(soml)에 있는 이유: 등가는 PRD가 명세한
+// 이 표가 테마(core/themes/*/components.json)가 아니라 **언어**(soml)에 있는 이유: 등가는 언어가 정한
 // 계약이지 테마의 선택이 아니다. 테마가 `<p>`를 caption으로 바꿀 수 있으면 같은 문서가
 // 테마마다 다른 역할로 해석되어 "같은 계약의 두 표기"가 성립하지 않는다. 태그별
 // **기본값**(h3의 크기, blockquote의 색)은 외관이므로 테마가 소유한다 — 역할과 기본값의

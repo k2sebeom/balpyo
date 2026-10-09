@@ -61,7 +61,7 @@ func tableCellBorder() *soml.Border {
 	return &soml.Border{Width: 1, Style: soml.BorderSolid, Color: soml.TokenColor("muted")}
 }
 
-// 있는 변형은 이름이 남고(웹 CSS 훅), 없으면 빈 값, 모르는 변형은 경고 + 빈 값이다 (PRD §13-6).
+// 있는 변형은 이름이 남고(웹 CSS 훅), 없으면 빈 값, 모르는 변형은 경고 + 빈 값이다 (ADR 0067 결정 6).
 func TestResolveTableFrameVariant(t *testing.T) {
 	for _, tc := range []struct {
 		attrs, want string

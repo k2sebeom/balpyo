@@ -23,7 +23,7 @@ import (
 )
 
 // binaryName은 아카이브 안에 들어가는 이름이자 설치되는 이름이다 — 바이너리 하나가 모든
-// 서브커맨드를 담는다 (PRD §10).
+// 서브커맨드를 담는다.
 const binaryName = "balpyo"
 
 // ChecksumsName은 체크섬 파일 하나의 이름이다. 형식은 `sha256sum -c`가 읽는 그것이다.

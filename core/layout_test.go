@@ -51,8 +51,8 @@ func show(v any) string {
 	return string(b)
 }
 
-// PRD §7.4 컨테이너 표의 값 문법 전수 — 속성 → 확정 배치 필드. 렌더러는 Attrs를 다시 읽지
-// 않으므로 이 표가 곧 CSS의 입력이다.
+// 컨테이너 속성 표(docs/reference/soml/layout.md)의 값 문법 전수 — 속성 → 확정 배치 필드.
+// 렌더러는 Attrs를 다시 읽지 않으므로 이 표가 곧 CSS의 입력이다.
 func TestResolveContainerLayout(t *testing.T) {
 	cases := []struct {
 		name string
@@ -145,7 +145,8 @@ func TestResolveContainerLayout(t *testing.T) {
 	}
 }
 
-// PRD §7.4 자식 표. span은 grid, at은 stack, x/y는 stack 또는 canvas 직속에서만 뜻이 있다.
+// 자식 속성 표(docs/reference/soml/layout.md). span은 grid, at은 stack, x/y는 stack 또는
+// canvas 직속에서만 뜻이 있다.
 func TestResolvePlacement(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -219,7 +220,7 @@ func TestResolvePlacementOnEveryKind(t *testing.T) {
 	}
 }
 
-// 배치와 텍스트 외관은 서로를 모르는 두 채널이다 (PRD §5.3) — 한쪽이 다른 쪽을 지우면 안 된다.
+// 배치와 텍스트 외관은 서로를 모르는 두 채널이다 — 한쪽이 다른 쪽을 지우면 안 된다.
 func TestResolvePlacementAndTextTogether(t *testing.T) {
 	elem := resolvedElement(t, layoutSlide(`<row><p grow="1" size="30" color="muted">내용</p></row>`), "p")
 	placement := elem.Placement()
@@ -330,7 +331,7 @@ func TestResolveSpaceTokenBoundary(t *testing.T) {
 	}
 }
 
-// 공간 토큰 어휘는 PRD §8.4의 6종이고, 사다리는 단조 증가하는 6px(리듬의 최소 눈금) 배수다.
+// 공간 토큰 어휘는 6종이고(docs/reference/theme.md), 사다리는 단조 증가하는 6px(리듬의 최소 눈금) 배수다.
 func TestThemeSpaceTokens(t *testing.T) {
 	theme := minimalTheme()
 	want := []string{"xs", "sm", "md", "lg", "xl", "2xl"}

@@ -118,7 +118,7 @@ func TestLoadConfigChecksThemeVocabulary(t *testing.T) {
 }
 
 // 공식 테마는 같은 variant 어휘(순서까지)와 본문 리듬(24px/1.5 — ADR 0002)을 공유한다
-// (PRD §13-6 · ADR 0052). 어긋나면 테마를 간 덱이 경고로 깨진다.
+// (ADR 0067 결정 6 · ADR 0052). 어긋나면 테마를 간 덱이 경고로 깨진다.
 func TestBuiltinThemesShareContract(t *testing.T) {
 	names := func(n int, at func(int) string) string {
 		out := make([]string, n)

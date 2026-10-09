@@ -9,12 +9,12 @@ package soml
 // 웹의 CSS와 PPTX의 OOXML이 갈라지고, 그 종류의 버그는 두 산출물을 나란히 볼 때까지
 // 드러나지 않는다.
 
-// ShapeStyle은 확정된 도형 외관이다 (PRD §7.6 표의 shape 행).
+// ShapeStyle은 확정된 도형 외관이다 (docs/reference/soml/shape.md "속성").
 //
-// 필드 순서는 PRD 표 순서다. "정하지 않음"은 포인터의 nil과 닫힌 어휘의 빈 문자열로
-// 나타낸다 — `opacity="1"`은 저자가 정한 1이고 "opacity를 말하지 않음"과 다르다
-// (ContainerLayout·textPatch가 포인터를 쓰는 것과 같은 근거). 인라인 속성이 없는 도형은
-// 값 필드가 비어 남고, 캐스케이드(컴포넌트 기본값·variant)가 그 빈 자리를 채운다.
+// 필드 순서는 속성 목록(shapeOwnAttrs·shapeAppearanceAttrs) 순서다. "정하지 않음"은
+// 포인터의 nil과 닫힌 어휘의 빈 문자열로 나타낸다 — `opacity="1"`은 저자가 정한 1이고
+// "opacity를 말하지 않음"과 다르다 (ContainerLayout·textPatch가 포인터를 쓰는 것과 같은
+// 근거). 인라인 속성이 없는 도형은 값 필드가 비어 남고, 캐스케이드(컴포넌트 기본값·variant)가 그 빈 자리를 채운다.
 type ShapeStyle struct {
 	// Type은 프리셋 이름이다 (ShapeTypes의 12종). 생략할 수 없으므로 포인터가 아니다 —
 	// 도형의 종류는 추측할 수 없고, 없으면 값 층이 에러를 낸다 (core).
@@ -34,7 +34,7 @@ type ShapeStyle struct {
 	Radius *Radius
 	// Shadow는 그림자 토큰이다. 토큰 표의 항목을 **그대로** 담는다 (ShadowToken의 주석).
 	Shadow *ShadowToken
-	// Opacity는 0~1 실수다 (PRD §7.6의 `0.8`). 웹 `opacity`와 OOXML의 알파가 둘 다 이
+	// Opacity는 0~1 실수다 (`0.8`). 웹 `opacity`와 OOXML의 알파가 둘 다 이
 	// 범위를 직접 받는다.
 	Opacity *float64
 	// Rotate는 시계방향 회전 각도다 (도, 음수 허용). 웹 `transform: rotate()`와 OOXML
@@ -70,15 +70,14 @@ func ColorFill(c Color) Fill { return Fill{Color: c} }
 // NoFill은 `fill="none"`이다.
 func NoFill() Fill { return Fill{None: true} }
 
-// Border는 확정된 테두리다 — `<굵기> <스타일> <색>` 축약이 여기까지 풀린다 (PRD §8.3의
-// `"1 solid muted"`).
+// Border는 확정된 테두리다 — `<굵기> <스타일> <색>` 축약이 여기까지 풀린다 (`"1 solid muted"`).
 //
 // 축약을 문자열로 흘려보내지 않는 이유는 Pad와 같다: 렌더러가 축약을 다시 해석하면 규칙이
 // 두 곳에 생기고, 웹의 `border`와 OOXML `a:ln`은 조각을 서로 다른 자리에 싣는다
 // (OOXML은 굵기가 `w` 속성, 스타일이 `prstDash` 자식, 색이 `solidFill` 자식이다).
 type Border struct {
 	None bool
-	// Width는 논리 스테이지 px다 (PRD §13-5). 0·음수는 값 층이 막는다.
+	// Width는 논리 스테이지 px다 (ADR 0067 결정 5). 0·음수는 값 층이 막는다.
 	Width float64
 	Style BorderStyle
 	Color Color

@@ -1,17 +1,17 @@
 package soml
 
-// 이 파일은 레이아웃 태그(PRD §7.4)의 **요소 종류·속성 카탈로그**다.
+// 이 파일은 레이아웃 태그(docs/reference/soml/layout.md)의 **요소 종류·속성 카탈로그**다.
 //
 // 서브셋 카탈로그(subset.go)와 같은 자리에 같은 태도로 둔다: 이 표를 파서(문법·배치 규칙),
 // 지오메트리 패스(잴 대상), 웹 렌더러(flex/grid CSS), PPTX 렌더러(컨테이너는 도형이 되지
 // 않고 자식 좌표만 남긴다)가 전부 소비한다. 네 층이 각자 이름 목록을 들고 있으면 태그
 // 하나를 추가할 때 한 곳을 빼먹는 것이 곧 "파싱은 되는데 그려지지 않는" 조용한 실패다.
 //
-// 레이아웃 태그는 **CSS flex/grid 시맨틱의 이름 바꾸기 층**이다 (PRD §7.4) — 새 배치
-// 모델이 아니다. 그래서 속성 이름과 **순서**를 PRD 표 그대로 둔다: 순서가 곧 진단
+// 레이아웃 태그는 **CSS flex/grid 시맨틱의 이름 바꾸기 층**이다 — 새 배치
+// 모델이 아니다. 그래서 속성 이름과 **순서**를 레퍼런스 표 그대로 둔다: 순서가 곧 진단
 // 메시지의 순서이자 문서의 순서다.
 //
-// `<stack>`은 Iteration 6에 열렸다 — 겹침 시맨틱(PRD §13-3)의 겹침 렌더가 웹(FlowStack의
+// `<stack>`은 Iteration 6에 열렸다 — 겹침 시맨틱(ADR 0067 결정 3)의 겹침 렌더가 웹(FlowStack의
 // CSS)·PPTX(문서 순서 z-축)에 함께 오는 iteration이다. 자식 배치 속성 `at`·`x`·`y`도 같은
 // iteration에 열렸다 (childPlacementAttrs). 값 어휘·부모 한정 검증은 값 층(core)의 몫이다.
 
@@ -22,7 +22,7 @@ const (
 	RowElement  = "row"
 	ColElement  = "col"
 	GridElement = "grid"
-	// StackElement는 **겹침 컨테이너**다 (PRD §7.4·§13-3) — 단일 셀 grid로, 모든 자식이
+	// StackElement는 **겹침 컨테이너**다 (ADR 0067 결정 3) — 단일 셀 grid로, 모든 자식이
 	// 같은 칸에 쌓인다. 배치 흐름은 KindStack이 아니라 FlowStack이다 (placement.go의
 	// 근거): 파서·core·PPTX·지오메트리에서 `<row>`와 산출이 전부 같고 다른 것은 웹의
 	// CSS 한 줄뿐이며, 그 한 줄은 이미 종류가 아니라 흐름으로 갈린다.
@@ -32,7 +32,7 @@ const (
 	SpacerElement = "spacer"
 )
 
-// StyleAttr는 **배치 전용 CSS 탈출구**다 (PRD §7.9). 배치는 어차피 좌표로 구워지므로
+// StyleAttr는 **배치 전용 CSS 탈출구**다 (ADR 0014). 배치는 어차피 좌표로 구워지므로
 // PPTX 충실도를 해치지 않지만, 외관 선언(색·테두리)을 쓰면 웹 전용이 되어 경고가 붙는다 —
 // allowlist 검사와 경고는 값 층(core)의 몫이고 파서는 이름만 본다.
 const StyleAttr = "style"
@@ -42,14 +42,14 @@ const StyleAttr = "style"
 // 뒤에 온다 (진단의 자식 태그 목록이 `…, <grid>, <stack>, <spacer>`가 된다).
 var layoutContainerElements = []string{RowElement, ColElement, GridElement, StackElement}
 
-// 컨테이너 속성 (PRD §7.4 컨테이너 표)과 **박스 속성**. 넷으로 나눈 이유는 소비자가 다르기
+// 컨테이너 속성 (docs/reference/soml/layout.md 컨테이너 표)과 **박스 속성**. 넷으로 나눈 이유는 소비자가 다르기
 // 때문이다 — 트랙 목록은 `<grid>`에만 열리고, 박스 속성은 `<shape>`와 공유한다. 나눠 두어도
-// 이어 붙인 순서(ContainerAttrs)는 PRD 표 순서와 같다.
+// 이어 붙인 순서(ContainerAttrs)는 레퍼런스 표 순서와 같다.
 var (
 	// containerFlowAttrs는 flex·grid가 함께 받는 배치 속성이다.
 	containerFlowAttrs = []string{"gap", "align", "justify", "wrap"}
 	// stackFlowAttrs는 `<stack>`이 받는 흐름 속성이다 — flex 공통 넷에서 `gap`·`wrap`을 뺀
-	// 것이다. 근거는 단일 셀이라는 stack의 정의다 (PRD §13-3): `gap`은 셀 사이의 간격인데
+	// 것이다. 근거는 단일 셀이라는 stack의 정의다 (ADR 0067 결정 3): `gap`은 셀 사이의 간격인데
 	// 자식이 전부 같은 칸에 있어 산출 CSS에 나가도 아무것도 하지 않고, `wrap`은 flex 전용
 	// (`flex-wrap`)이라 grid 흐름인 stack에서 무효다. 받아 놓고 아무것도 하지 않는 속성은
 	// 저자가 "왜 안 되지"를 산출물에서 발견하게 만들고, 그것이 닫힌 어휘로 막으려던
@@ -69,7 +69,7 @@ var (
 	// boxSizeAttrs는 박스 자신의 크기·비율이다 (옛 containerBoxAttrs).
 	//
 	// 이름을 다시 붙인 이유: 크기는 컨테이너의 성질이 아니라 박스의 성질이므로 컨테이너와
-	// 도형이 **같은 목록**을 소비해야 한다. 목록이 두 벌이 되면 PRD 표에 크기 속성이 하나
+	// 도형이 **같은 목록**을 소비해야 한다. 목록이 두 벌이 되면 크기 속성이 하나
 	// 늘 때 어느 태그가 빠졌는지 사람이 세어야 한다 — withChildPlacement를 만든 것과 같은
 	// 근거다.
 	boxSizeAttrs = []string{"w", "h", "min-w", "min-h", "max-w", "max-h", "ratio"}
@@ -139,21 +139,21 @@ func TakesTextSize(name string) bool {
 	return false
 }
 
-// childPlacementAttrs는 **자식 배치 속성**이다 (PRD §7.4 자식 표) — 부모 컨테이너 안에서
-// 자기 자리를 정하는 채널이므로 컨테이너가 아니라 **자식**에 붙는다.
+// childPlacementAttrs는 **자식 배치 속성**이다 (docs/reference/soml/layout.md 자식 표) —
+// 부모 컨테이너 안에서 자기 자리를 정하는 채널이므로 컨테이너가 아니라 **자식**에 붙는다.
 //
-// PRD는 "모든 컴포넌트/레이아웃 태그에 적용 가능"이라 하지만, 여는 곳은 **레이아웃
+// 원안은 "모든 컴포넌트/레이아웃 태그에 적용 가능"이었지만, 여는 곳은 **레이아웃
 // 컨테이너의 자식이 될 수 있는 요소**로 한정한다 (withChildPlacement의 호출자):
 // `<text>`·블록·리스트 컨테이너·레이아웃 컨테이너·`<spacer>`. `<li>`와 인라인 태그는
 // 빠진다 — `<li>`는 리스트 컨테이너의 자식이지 flex 항목이 아니고 (PPTX에서 리스트는
 // 도형 하나다 — render/pptx.writeListShape), 인라인은 박스가 아니라 런이다. 열어 두면
 // `<li grow="1">`이 웹에서만 뜻을 갖고 PPTX에서는 사라지는 선언이 된다.
 //
-// `at`·`x`·`y`는 **겹침 배치 채널**이다 (PRD §7.4 자식 표) — Iteration 6에 열렸다. `at`은
-// stack 셀 안의 9지점 앵커(`place-self`), `x`/`y`는 절대 오프셋이다. `span`이 `<grid>`의
+// `at`·`x`·`y`는 **겹침 배치 채널**이다 (docs/reference/soml/stack.md) — Iteration 6에
+// 열렸다. `at`은 stack 셀 안의 9지점 앵커(`place-self`), `x`/`y`는 절대 오프셋이다. `span`이 `<grid>`의
 // 자식에서만 뜻이 있듯 이들도 부모가 한정한다(`at`은 stack만, `x`/`y`는 stack·canvas만)
 // — 목록은 한 벌이므로 여기서 이름만 열고, 값 어휘와 부모 한정 검증은 값 층(core)이
-// 한다 (span의 선례와 같다). 순서는 PRD 자식 표를 따라 `order` 뒤, `style`(탈출구이므로
+// 한다 (span의 선례와 같다). 순서는 자식 표를 따라 `order` 뒤, `style`(탈출구이므로
 // 항상 끝) 앞이다.
 var childPlacementAttrs = []string{"grow", "shrink", "basis", "span", "self", "order", "at", "x", "y", StyleAttr}
 
@@ -191,7 +191,7 @@ func ChildPlacementAttrs() []string {
 // 속성(`slot`)을 붙인다.
 //
 // 태그마다 속성 표를 손으로 적지 않는 이유: 자식 배치 속성은 한 벌이고, 표를 복제하면
-// PRD 표에 속성이 하나 늘 때 어느 태그가 빠졌는지 사람이 세어야 한다. 고유 속성이
+// 속성이 하나 늘 때 어느 태그가 빠졌는지 사람이 세어야 한다. 고유 속성이
 // 앞에 오는 순서는 진단 메시지가 "이 태그다운 속성"부터 나열하게 한다.
 //
 // `slot`이 여기 붙는 이유(SlotAttr): 이 함수의 수신자 집합(`<text>`·`<shape>`·`<image>`·

@@ -73,8 +73,8 @@ func TestParseImageErrors(t *testing.T) {
 	})
 }
 
-// `fit` 값 어휘는 PRD §7.5의 순서 그대로다 — 목록은 soml에 있고 검사는 core다. 기본값은
-// **언어**의 것이다 (테마를 바꿨을 때 얼굴이 잘리기 시작하면 안 된다).
+// `fit` 값 어휘는 문서(docs/reference/soml/image.md)의 순서 그대로다 — 목록은 soml에
+// 있고 검사는 core다. 기본값은 **언어**의 것이다 (테마를 바꿨을 때 얼굴이 잘리기 시작하면 안 된다).
 func TestImageFits(t *testing.T) {
 	if DefaultImageFit != FitContain {
 		t.Errorf("DefaultImageFit = %q, want %q", DefaultImageFit, FitContain)

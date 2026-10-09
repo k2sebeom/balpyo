@@ -8,7 +8,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **레이아웃 CSS 배치·외관 경계 린터**다 (SPECS.md 10/02, PRD §8.2).
+// 이 파일은 **레이아웃 CSS 배치·외관 경계 린터**다 (SPECS.md 10/02, docs/reference/theme.md).
 //
 // ADR 0014(`style` 탈출구 경계)를 레이아웃 CSS로 확장한다. 계약은 style.go와 같다:
 // 선언을 `프로퍼티: 값`으로 쪼개 프로퍼티 이름만 배치 allowlist(isLayoutStyleProperty)와

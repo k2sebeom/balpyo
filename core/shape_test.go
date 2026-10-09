@@ -47,7 +47,8 @@ func wantShapeStyle(delta soml.ShapeStyle) soml.ShapeStyle {
 	return style
 }
 
-// PRD §7.6 shape 행 전수 — 속성 → 확정 ShapeStyle 필드. want는 컴포넌트 기본값 위의 델타다.
+// 도형 외관 속성 표(docs/reference/soml/shape.md) 전수 — 속성 → 확정 ShapeStyle 필드.
+// want는 컴포넌트 기본값 위의 델타다.
 func TestResolveShapeStyle(t *testing.T) {
 	softShadow := minimalShadows()[0]
 	cases := []struct {
@@ -311,7 +312,7 @@ func TestResolveShapeReportsEveryBadPiece(t *testing.T) {
 	}
 }
 
-// 그라디언트·색 변형 문법이 확정 색 모델로 해석된다 (PRD §7.6·§13-5). 토큰은 이름으로 남는다.
+// 그라디언트·색 변형 문법이 확정 색 모델로 해석된다 (ADR 0067 결정 5). 토큰은 이름으로 남는다.
 // 그라디언트 테두리(`<굵기> gradient(…)`)는 스타일을 실선으로 함께 정한다.
 func TestResolveColorFunctions(t *testing.T) {
 	cases := []struct{ name, fill, want string }{

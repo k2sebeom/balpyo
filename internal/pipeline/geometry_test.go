@@ -46,7 +46,7 @@ func noBrowser(t *testing.T) {
 }
 
 // html 타깃만 빌드할 때는 브라우저를 띄우지 않는다 — 웹 렌더에 좌표가 필요하지 않고,
-// 브라우저 기동은 빌드 시간의 가장 큰 고정 비용이다 (~0.6초, PRD §9.3).
+// 브라우저 기동은 빌드 시간의 가장 큰 고정 비용이다 (~0.6초).
 func TestBuildHTMLOnlySkipsGeometryPass(t *testing.T) {
 	noBrowser(t)
 	dir := project(t, map[string]string{"slides/001_title.slide": textSlide})

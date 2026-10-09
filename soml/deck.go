@@ -7,7 +7,7 @@ package soml
 
 import "fmt"
 
-// Aspect는 슬라이드 종횡비다. v1은 2종만 받는다 (PRD §13-9).
+// Aspect는 슬라이드 종횡비다. v1은 2종만 받는다 (ADR 0067 결정 9).
 type Aspect string
 
 const (
@@ -20,7 +20,7 @@ const (
 // DefaultAspect는 aspect를 지정하지 않은 덱의 비율이다.
 const DefaultAspect = Aspect16x9
 
-// Stage는 논리 스테이지 크기다. 단위는 px 하나뿐이며(PRD §13-5) 저자·웹 렌더러·지오메트리
+// Stage는 논리 스테이지 크기다. 단위는 px 하나뿐이며(ADR 0067 결정 5) 저자·웹 렌더러·지오메트리
 // 패스가 모두 이 좌표계를 쓴다. 타깃 단위(EMU, pt) 변환은 렌더러가 소유한다.
 type Stage struct {
 	Width  int
@@ -43,9 +43,9 @@ func (a Aspect) Stage() (Stage, error) {
 	}
 }
 
-// SlideLayout은 슬라이드의 배치 레이아웃이다 (`<slide layout>`). 어휘는 PRD §7.3의 표준
-// 카탈로그 11종이다 (Iteration 6에 content·canvas 2종으로 시작해 Iteration 10에 나머지 9종이
-// 슬롯·테마 레이아웃과 함께 열렸다).
+// SlideLayout은 슬라이드의 배치 레이아웃이다 (`<slide layout>`). 어휘는 표준 카탈로그
+// 11종이다 (docs/reference/layouts.md — Iteration 6에 content·canvas 2종으로 시작해
+// Iteration 10에 나머지 9종이 슬롯·테마 레이아웃과 함께 열렸다).
 //
 // Aspect와 나란히 여기 있는 이유: 둘 다 슬라이드의 **구조**를 정하는 닫힌 어휘이고 외관이
 // 아니다. 외관 어휘(role·align)가 테마와 함께 자라 appearance.go에 있는 것과 갈라진다 —
@@ -90,7 +90,7 @@ const (
 // 어휘 밖 layout 값의 **폴백 기준**이기도 하다 (core.slideLayout의 진단).
 const DefaultSlideLayout = LayoutContent
 
-// SlideLayouts는 표준 레이아웃 어휘 전체다 (PRD §7.3 카탈로그 순서). 순서가 진단 메시지에
+// SlideLayouts는 표준 레이아웃 어휘 전체다 (docs/reference/layouts.md 카탈로그 순서). 순서가 진단 메시지에
 // 실리는 순서이자 문서 순서다 — 표지(title)에서 마무리(end)로 발표의 흐름을 따른다.
 func SlideLayouts() []SlideLayout {
 	return []SlideLayout{
@@ -101,7 +101,7 @@ func SlideLayouts() []SlideLayout {
 }
 
 // SlotAttr는 슬롯 배정 속성이다 (`slot="title"`) — 레이아웃 슬라이드의 직계 자식이 어느
-// 슬롯에 들어갈지 정한다 (PRD §7.3). 슬롯 없는 직계 자식은 기본 슬롯(DefaultSlot)에 들어간다.
+// 슬롯에 들어갈지 정한다 (ADR 0035). 슬롯 없는 직계 자식은 기본 슬롯(DefaultSlot)에 들어간다.
 //
 // 채널을 넓게 열고 좁게 검증하는 것이 계약이다 (ADR 0031의 x/y와 같은 태도): 속성 allowlist는
 // 태그별이라 위치를 모르므로(같은 `<text>` spec이 슬라이드 직속에도 컨테이너 안에도 쓰인다)
@@ -109,7 +109,7 @@ func SlideLayouts() []SlideLayout {
 // "그 레이아웃에 그 슬롯이 있는가"는 부모와 레이아웃을 아는 값 층(core)이 검증한다.
 const SlotAttr = "slot"
 
-// DefaultSlot은 `slot`을 지정하지 않은 직계 자식이 들어가는 슬롯 이름이다 (PRD §7.3).
+// DefaultSlot은 `slot`을 지정하지 않은 직계 자식이 들어가는 슬롯 이름이다 (ADR 0035).
 const DefaultSlot = "body"
 
 // Deck은 정규화된 덱 모델이다. 렌더러가 보는 유일한 입력이며, 여기 도달한 시점에는
@@ -153,7 +153,7 @@ type Slide struct {
 	Source string
 	// Chapter는 슬라이드가 속한 하위 디렉토리 경로다. 루트 직속이면 빈 문자열이다.
 	Chapter string
-	// Layout은 슬라이드 배치 레이아웃이다 (`<slide layout>`, PRD §7.3). 파이프라인이
+	// Layout은 슬라이드 배치 레이아웃이다 (`<slide layout>`, docs/reference/layouts.md). 파이프라인이
 	// SlideDoc.Layout(원문)을 옮기고 core.Resolve가 2종 어휘를 확정한다 — 어휘 밖 값은
 	// 진단이 되고, 생략된 슬라이드는 DefaultSlideLayout(content)으로 채워진다. 렌더러는
 	// 문자열이 아니라 이 타입을 소비한다 (항목 04) — `"canvas"`가 세 렌더러에 흩어지지

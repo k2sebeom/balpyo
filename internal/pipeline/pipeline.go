@@ -148,7 +148,7 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 		}
 		doc, fileDiags := soml.Parse(source, string(src))
 		diags = append(diags, fileDiags...)
-		// `<slide skip>`은 파일을 남기되 덱에서 뺀다 (PRD §7.1). Index를 남은 슬라이드로
+		// `<slide skip>`은 파일을 남기되 덱에서 뺀다 (docs/reference/soml/slide.md). Index를 남은 슬라이드로
 		// 다시 세기 때문에 이 판단이 렌더러보다 앞에 있어야 한다 — 렌더러가 건너뛰면
 		// 슬라이드 번호에 구멍이 생긴다.
 		if doc.Skip {
@@ -195,7 +195,7 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 
 // Render는 덱을 타깃별 산출 파일로 만든다 — 산출물을 디스크에 쓰지 않는다.
 //
-// 순서는 웹 렌더 → 지오메트리 → 나머지 렌더다 (PRD §9.3). 지오메트리 패스가 재는 것은 웹
+// 순서는 웹 렌더 → 지오메트리 → 나머지 렌더다 (docs/internals/geometry-pass.md). 지오메트리 패스가 재는 것은 웹
 // 타깃의 산출물이므로 웹 렌더가 앞에 와야 하고, PPTX 좌표가 그 측정에서 나오므로 PPTX가
 // 뒤에 온다.
 //

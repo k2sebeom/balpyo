@@ -26,7 +26,7 @@ const shapeIndent = "      "
 const firstShapeID = 2
 
 // shapesXML은 슬라이드 콘텐츠를 도형 목록으로 컴파일한다 — 이 함수가 지오메트리(①)와
-// 해석된 외관(②)이 OOXML에서 만나는 자리다 (PRD §9.3).
+// 해석된 외관(②)이 OOXML에서 만나는 자리다 (docs/internals/geometry-pass.md).
 //
 // 문서 순서가 곧 spTree 순서다: OOXML은 나중 도형이 위에 그려지므로, 저자가 쓴 순서가
 // 겹침 z-순서가 된다 (웹의 문서 순서 스택과 같은 규칙 — Iteration 6의 겹침이 이 위에 선다).
@@ -187,7 +187,7 @@ func shapeWriterFor(kind soml.ElementKind) shapeWriter {
 // 리스트는 하나의 텍스트 흐름이라 도형 하나가 편집 단위이고(항목마다 도형을 내면 편집 단위가
 // 조각난다), 레이아웃은 배치 **수단**이라 좌표로 구워진 뒤 산출물에 남을 것이 없다 —
 // 저자가 좌표를 한 번도 계산하지 않고 만든 그리드가 PowerPoint에서 절대 좌표 도형들로
-// 나오는 것이 제품의 약속이다 (PRD §9.3, TASKS Iteration 3). 같은 단어를 쓰는 두 개념이
+// 나오는 것이 제품의 약속이다 (TASKS Iteration 3). 같은 단어를 쓰는 두 개념이
 // 정반대로 매핑되므로 테스트가 같은 슬라이드에서 이 대비를 단정한다 — 태그를 늘리는 사람이
 // 가장 헷갈릴 자리다.
 //
@@ -198,7 +198,7 @@ func shapeWriterFor(kind soml.ElementKind) shapeWriter {
 // 측정 대상 계약).
 //
 // `<group>` → `grpSp`(Iteration 9)와도 갈라진다: 그룹은 편집 단위로 묶이는 도형이고 레이아웃
-// 컨테이너는 사라지는 배치 수단이다 (PRD §7.5). 배치 태그가 `grpSp`가 되면 `<group>`과
+// 컨테이너는 사라지는 배치 수단이다 (docs/reference/soml/layout.md). 배치 태그가 `grpSp`가 되면 `<group>`과
 // `<row>`의 구분이 산출물에서 사라진다. **도형이 자식을 흡수하는 것도 `grpSp`가 아니다** —
 // 그룹은 여러 도형을 묶는 것이고, 여기서는 텍스트가 도형 하나의 본문이 된다.
 func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node soml.Node, path []int, shapeID *int, g *geom.Geometry, rels *slideRels) error {
@@ -215,7 +215,8 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 	kind := soml.KindOf(elem.Name)
 	if elem.Name == soml.TextElement {
 		// `<text>`는 카탈로그 밖(KindNone)이지만 블록과 **같은** 텍스트 박스가 된다 —
-		// PRD §7.7의 등가 표(`<p>` ≡ `<text role="body">`)가 산출물에서도 등가라는 뜻이다.
+		// 역할 등가 표(`<p>` ≡ `<text role="body">`, docs/reference/soml/text-subset.md)가
+		// 산출물에서도 등가라는 뜻이다.
 		kind = soml.KindBlock
 	}
 	if write := shapeWriterFor(kind); write != nil {
@@ -234,7 +235,7 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 			// 배경 모드: 도형을 낸 **뒤에** 자식으로 내려간다 (ADR 0049). 위에서 낸 `p:sp`가
 			// 배경이고 — shapeBodyXML이 빈 문단만 냈다 — 자식은 자기 잰 좌표를 가진 **형제**
 			// 도형이 된다. `p:grpSp`가 아닌 근거는 좌표 공간이다: 그룹은 `chOff`/`chExt`로
-			// 둘째 좌표계를 만들어 "잰 rect가 곧 xfrm"을 깬다 (PRD §9.3).
+			// 둘째 좌표계를 만들어 "잰 rect가 곧 xfrm"을 깬다.
 			//
 			// 순서가 이 방향인 것이 z-순서다 — 배경이 먼저 나가야 글자 아래에 칠해진다
 			// (웹의 문서 순서 규칙과 같은 결과: 그림이 흐름 뒤에 있다).
@@ -480,9 +481,10 @@ func textBoxSp(id int, name string, rect geom.Rect, body string) spSpec {
 	}
 }
 
-// shapeSp는 확정 도형 외관을 p:sp 명세로 컴파일한다 (PRD §9.4 표의 오른쪽 열).
+// shapeSp는 확정 도형 외관을 p:sp 명세로 컴파일한다 (외관 매핑 표의 PPTX 열 —
+// docs/reference/appearance.md "도형 외관").
 //
-// **순서는 PRD 표 순서다** (fill → border → radius → shadow → opacity → rotate → flip) —
+// **순서는 매핑 표의 행 순서다** (fill → border → radius → shadow → opacity → rotate → flip) —
 // 웹의 shapeInkCSS와 나란히 읽을 수 있어야 "표에 있고 한쪽에만 있는 행"이 눈에 띈다.
 // `radius`는 여기서 **기하**가 된다 (`avLst` 조정값): 그것이 OOXML에서 반경이 사는 유일한
 // 자리이고, 웹에서 그것이 SVG `rx`인 것과 짝이다.
@@ -688,7 +690,7 @@ func writeFill(w func(depth int, line string), depth int, fill soml.Fill, alpha 
 		return nil
 	}
 	if fill.Color.IsGradient() {
-		// 그라디언트 채움은 solidFill이 아니라 gradFill이다 (PRD §9.4). 도형 불투명도는
+		// 그라디언트 채움은 solidFill이 아니라 gradFill이다. 도형 불투명도는
 		// 스톱 색마다 알파로 실린다 (writeGradFill).
 		return writeGradFill(w, depth, *fill.Color.Gradient, alpha, theme)
 	}
@@ -734,8 +736,8 @@ func writeLineElem(w func(depth int, line string), depth int, name string, borde
 	}
 	w(depth, fmt.Sprintf(`<%s w="%d">`, name, EMU(border.Width)))
 	if border.Color.IsGradient() {
-		// 그라디언트 테두리는 `ln` 안의 `gradFill`이다 (PRD §9.4의 `border=… gradient(…)` 행 —
-		// PPTX는 `ln` + `gradFill`). 웹은 SVG stroke가 gradient def를 참조한다 (render/web).
+		// 그라디언트 테두리는 `ln` 안의 `gradFill`이다 (외관 매핑 표의 `border` (그라디언트) 행).
+		// 웹은 SVG stroke가 gradient def를 참조한다 (render/web).
 		if err := writeGradFill(w, depth+1, *border.Color.Gradient, alpha, theme); err != nil {
 			return err
 		}
@@ -822,8 +824,8 @@ func prstDashValue(style soml.BorderStyle) (string, error) {
 	return "", fmt.Errorf("테두리 스타일 %q는 어휘 밖이다", string(style))
 }
 
-// textBodyXML은 해석된 텍스트 외관과 블록의 자식들을 p:txBody로 컴파일한다 (PRD §9.4의
-// `font`/`size`/`weight`/`color`/`align` 행과 "인라인 서식 → 텍스트 런 rPr/hlinkClick" 행).
+// textBodyXML은 해석된 텍스트 외관과 블록의 자식들을 p:txBody로 컴파일한다 (외관 매핑 표의
+// 텍스트 외관 행과 인라인 서식 표 — docs/reference/appearance.md).
 // 문단 서식은 블록의 확정 스타일에서, 런 서식은 잎을 감싼 가장 안쪽 요소의 확정 스타일에서
 // 나온다 — 요소의 Attrs를 다시 읽지 않는다 (render/web.textStyleCSS와 같은 계약).
 func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rels *slideRels) (string, error) {
@@ -1046,7 +1048,7 @@ func checkTextStyle(style soml.TextStyle, theme soml.Theme) error {
 }
 
 // listBodyXML은 리스트 컨테이너의 자식들을 p:txBody로 컴파일한다 — `<li>` 하나가 문단
-// (a:p) 하나다 (PRD §9.4의 "리스트 → buChar/들여쓰기" 행). 문단 서식은 li의 확정
+// (a:p) 하나다 (외관 매핑 표의 리스트 표). 문단 서식은 li의 확정
 // 스타일에서, 들여쓰기·마커는 웹 리스트 CSS 상수(render/web — 항목 05)에서 나온다.
 func listBodyXML(list *soml.Element, theme soml.Theme, rels *slideRels) (string, error) {
 	var b strings.Builder
@@ -1266,7 +1268,7 @@ func writeTextRuns(w func(depth int, line string), text string, style soml.TextS
 		w(3, "<a:r>")
 		w(4, fmt.Sprintf(`<a:rPr %s>`, attrs))
 		// 텍스트 색은 rPr의 채움이다 — 그라디언트는 `gradFill`, 단색·변형은 `solidFill`이다
-		// (PRD §9.4의 텍스트 `color=gradient` 행 — PPTX는 rPr + gradFill). 웹은
+		// (외관 매핑 표의 `color` (그라디언트) 행 — PPTX는 rPr + gradFill). 웹은
 		// background-clip:text로 같은 결과를 낸다 (render/web).
 		if err := writeTextFill(w, 5, style.Color, theme); err != nil {
 			return err
@@ -1329,7 +1331,7 @@ func underlineValue(underline bool) string {
 }
 
 // writeTextFill은 텍스트 색을 rPr의 채움 요소로 쓴다 — 그라디언트는 `gradFill`, 단색·변형은
-// `solidFill`이다 (PRD §9.4의 텍스트 `color=gradient` 행).
+// `solidFill`이다 (외관 매핑 표의 `color` (그라디언트) 행).
 //
 // 토큰은 **schemeClr 참조로 남는다** — 여기서 RGB로 눕히면 내보낸 파일이 PowerPoint의
 // 테마 색 편집을 따라가지 못한다 (soml.Color의 주석, 제품 핵심 계약). 텍스트에는 도형
@@ -1372,7 +1374,7 @@ func colorElem(color soml.Color, theme soml.Theme) (name, attrs string, err erro
 }
 
 // colorTransforms는 색 요소의 변환 자식(lumMod/lumOff/alpha)을 만든다 — **색 변형 함수와
-// 외부 불투명도(opacity)를 한 자리에서 합친다** (PRD §9.4의 색 변형 행).
+// 외부 불투명도(opacity)를 한 자리에서 합친다** (외관 매핑 표의 색 변형 표).
 //
 // 순서는 lumMod → lumOff → alpha로 고정한다 (스키마는 순서를 강제하지 않지만 골든이 한 가지
 // 표기로 남는다). 알파는 하나만 낸다: 색 자신의 `alpha()`(mod)와 도형 불투명도(extraAlpha)가
@@ -1430,8 +1432,8 @@ func writeColor(w func(depth int, line string), depth int, color soml.Color, alp
 	return nil
 }
 
-// writeGradFill은 그라디언트 색을 `a:gradFill`로 쓴다 (PRD §9.4의 `fill=gradient` 행 —
-// PPTX는 `gradFill`).
+// writeGradFill은 그라디언트 색을 `a:gradFill`로 쓴다 (외관 매핑 표의 `fill` (그라디언트)
+// 행).
 //
 // 스톱은 균등 배치다 (soml.Gradient): n개 스톱이 0, 1/(n-1), …, 1(100000분율)에 놓인다.
 // 각 스톱 색은 `schemeClr`/`srgbClr`를 유지하므로(colorElem) 토큰 스톱이 테마 편집을

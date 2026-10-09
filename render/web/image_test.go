@@ -11,7 +11,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **PRD §9.4 표의 이미지 행 회귀 장치**다 — 외관 표, `fit` 매핑, 에셋 산출 파일.
+// 이 파일은 **외관 매핑 표(docs/reference/appearance.md)의 이미지 행 회귀 장치**다 — 외관 표, `fit` 매핑, 에셋 산출 파일.
 
 // imageFixture는 실제 에셋 바이트를 가진 유일한 픽스처다.
 const imageFixture = "05_image"
@@ -63,7 +63,7 @@ type imageCase struct {
 	want string
 }
 
-// imageCases는 PRD §9.4 표의 이미지 외관 행을 그대로 옮긴 것이다 (표 순서).
+// imageCases는 외관 매핑 표의 이미지 외관 행을 그대로 옮긴 것이다 (표 순서).
 func imageCases() []imageCase {
 	return []imageCase{
 		// variant는 CSS 선언을 스스로 만들지 않는다 — 캐스케이드의 한 단이므로 **그 결과**가
@@ -99,7 +99,7 @@ func imageCases() []imageCase {
 	}
 }
 
-// 외관 속성 → CSS 선언 (PRD §9.4 표 그대로).
+// 외관 속성 → CSS 선언 (외관 매핑 표 그대로).
 func TestImageAppearanceCompilesToCSS(t *testing.T) {
 	for _, tc := range imageCases() {
 		t.Run(tc.attr+"/"+tc.name, func(t *testing.T) {

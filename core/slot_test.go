@@ -121,7 +121,7 @@ func TestResolveSlotNested(t *testing.T) {
 // **않는** 쪽을 고르면 판정이 한 번만 일어나고 두 렌더러는 이미 그 하나의 입력을 읽는다.
 //
 // 에러가 아니라 경고인 이유: 슬롯 이름은 어휘에 있고 오타도 아니다 — 부족한 것은 테마이며
-// 테마를 바꾸면 같은 소스가 그대로 뜻을 얻는다 (모르는 variant의 선례, PRD §13-6).
+// 테마를 바꾸면 같은 소스가 그대로 뜻을 얻는다 (모르는 variant의 선례, ADR 0067 결정 6).
 // `--strict`가 승격한다.
 func TestResolveSlotWarnsWhenThemeHasNoArea(t *testing.T) {
 	doc, diags := soml.Parse("slides/001_slots.slide", `<slide layout="content"><p slot="body">x</p></slide>`)

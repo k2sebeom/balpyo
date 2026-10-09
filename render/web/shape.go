@@ -8,7 +8,8 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **`<shape>` → 요소 + SVG 기하 + 외관 CSS**다 (PRD §7.5·§7.6, 매핑 표는 §9.4).
+// 이 파일은 **`<shape>` → 요소 + SVG 기하 + 외관 CSS**다 (docs/reference/soml/shape.md, 매핑 표는
+// docs/reference/appearance.md).
 //
 // # 도형 하나는 박스 하나와 그림 하나다
 //
@@ -24,7 +25,7 @@ import (
 //	    <p class="balpyo-text" …>
 //
 // 박스와 그림을 나눈 이유는 **잰 rect가 도형의 겉 박스여야** 하기 때문이다: 그 rect가 곧
-// PPTX `xfrm`이므로(PRD §9.3) 그림이 레이아웃에 영향을 주면 안 된다 — svg는 절대 배치로
+// PPTX `xfrm`이므로 그림이 레이아웃에 영향을 주면 안 된다 — svg는 절대 배치로
 // 흐름에서 빠지고, 박스 크기는 저자가 준 `w`/`h`와 부모의 배치가 정한다.
 //
 // # 왜 SVG 한 벌인가 (12종 전부)
@@ -37,8 +38,8 @@ import (
 //     테두리는 "도형 종류에 따라 테두리 굵기가 다르다"로만 드러난다.
 //   - 셋만 CSS로 두면 그림자를 `box-shadow`와 SVG 두 벌로 구현하게 되고, 두 벌이 갈라지는
 //     것은 도형 종류에 따라 외관이 다른 것으로만 보인다 — 이 저장소가 가장 비싸게 치는 실패다.
-//   - SVG는 어차피 들어온다: `border=… gradient(…)`가 "엔진 구현(SVG 오버레이)"으로 못
-//     박혀 있다 (PRD §9.4, Iteration 8). 그때 채움·선의 자리가 이미 SVG면 그 항목은
+//   - SVG는 어차피 들어온다: `border=… gradient(…)`는 엔진이 SVG로 그린다 (CSS
+//     `border-image`가 radius와 조합되지 않는다 — Iteration 8). 그때 채움·선의 자리가 이미 SVG면 그 항목은
 //     `linearGradient` 하나를 더하는 일이 된다.
 //
 // 그래서 12종 전부가 `<svg>` 하나이고, 외관 선언은 **그 svg 하나에** 걸린다. 기하만 두 갈래다
@@ -59,7 +60,7 @@ import (
 // `ss` 기반 조정값이 걸린 다섯 프리셋(rounded-rect·cylinder·chevron·arrow-right·hexagon·
 // parallelogram)은 PowerPoint의 기본 모양과 비율이 다르고, **PPTX 쪽이 측정된 박스로 계산한
 // `avLst` 조정값을 내어 같은 그림을 맞춘다** (각 표 행의 Adjust 명세 — ShapeAdjusts). 웹이 기준
-// 타깃이므로(PRD §9.1) 맞추는 쪽은 PPTX이고, 조정값을 실은 프리셋도 PowerPoint에서 여전히
+// 타깃이므로 맞추는 쪽은 PPTX이고, 조정값을 실은 프리셋도 PowerPoint에서 여전히
 // 편집 가능한 진짜 프리셋 도형이다 (`radius` → `prstGeom` 조정값이 이미 같은 수단이다).
 //
 // # 엔진 CSS와 인라인 style의 경계 (ADR 0003의 연장 — layout.go와 같은 기준)
@@ -296,7 +297,8 @@ func ShapeTextCancel(shapeType string) (ShapeInsets, bool) {
 	return geom.TextCancel, true
 }
 
-// shapeGeometries는 12종의 기하 유도표다 (순서 = soml.ShapeTypes의 순서 = PRD §7.5 표 순서).
+// shapeGeometries는 12종의 기하 유도표다 (순서 = soml.ShapeTypes의 순서 =
+// docs/reference/soml/shape.md `type` 표 순서).
 //
 // 각 행의 수치는 ECMA-376 `presetShapeDefinitions.xml`의 해당 프리셋을 **기본 조정값으로,
 // 정사각형(w = h = ss = 100)에서** 평가한 것이다. 주석에 어느 `gd`에서 왔는지 적었다 —
@@ -730,8 +732,8 @@ func shapeBoxCSS(style soml.ShapeStyle, elem *soml.Element, text ShapeInsets) ([
 		if err != nil {
 			return nil, err
 		}
-		// 세로 앵커는 도형이 세로 flex 컨테이너라는 사실 위에서 주축 분배가 된다 (PRD §9.4의
-		// `anchor` 행 — "flex 정렬"). 앵커를 정하지 않은 도형은 선언이 없고, flex의 기본값이
+		// 세로 앵커는 도형이 세로 flex 컨테이너라는 사실 위에서 주축 분배가 된다 (외관 매핑 표의
+		// `anchor` 행 — 부모 도형의 `justify-content`). 앵커를 정하지 않은 도형은 선언이 없고, flex의 기본값이
 		// OOXML `bodyPr` 기본 앵커(위)와 같다.
 		decls = append(decls, "justify-content: "+value)
 	}
@@ -821,9 +823,10 @@ func anchorValue(anchor soml.TextAnchor) (string, error) {
 	return "", fmt.Errorf("anchor %q는 세로 앵커 어휘 밖이다", string(anchor))
 }
 
-// shapeInkCSS는 확정된 도형 외관을 그림의 CSS 선언 목록으로 컴파일한다 (PRD §9.4 표).
+// shapeInkCSS는 확정된 도형 외관을 그림의 CSS 선언 목록으로 컴파일한다 (외관 매핑 표의 도형 외관 —
+// docs/reference/appearance.md).
 //
-// **순서는 PRD 표 순서다** (fill → border → shadow → opacity → flip) — 표와 코드를 나란히
+// **순서는 매핑 표의 행 순서다** (fill → border → shadow → opacity → flip) — 표와 코드를 나란히
 // 읽을 수 있어야 "표에 있고 코드에 없는 행"이 눈에 띈다 (그 대조를 테스트가 어휘 목록
 // 순회로 한 번 더 한다). `radius`는 기하이므로 여기 없고(writeShapeInk), `rotate`는 박스
 // 쪽이다 (shapeBoxCSS).
@@ -836,7 +839,7 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, 
 	// fill: 토큰은 변수 참조, 리터럴은 #RRGGBB, `none`은 SVG의 `none`이다 (투명한 채움을
 	// `transparent`로 내지 않는 이유: SVG에서 `fill: none`은 그리지 않는다는 뜻이라
 	// OOXML `a:noFill`과 정확히 짝이 된다). 그라디언트는 svg `<defs>`의 `linearGradient`를
-	// 만들고 `fill: url(#…)`로 가리킨다 (PRD §9.4 — CSS `border-image`가 radius와 조합되지
+	// 만들고 `fill: url(#…)`로 가리킨다 (CSS `border-image`가 radius와 조합되지
 	// 않아 엔진이 SVG def를 소유한다).
 	if style.Fill == nil {
 		return nil, "", fmt.Errorf("채움이 해석되지 않았다")
@@ -874,7 +877,7 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, 
 			return nil, "", err
 		}
 		// 그라디언트 테두리는 stroke가 gradient def를 가리킨다 (fill과 같은 수단 — SVG
-		// stroke는 `url(#…)`를 받는다). PRD §9.4가 "엔진 구현(SVG 오버레이)"으로 못 박은
+		// stroke는 `url(#…)`를 받는다). 외관 매핑 표가 `stroke: url(#…)`로 적은
 		// 자리이고, 채움 def가 이미 있으니 테두리는 def를 하나 더 만들 뿐이다.
 		var stroke string
 		if style.Border.Color.IsGradient() {
@@ -902,8 +905,8 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, 
 		// 그림자는 **변수 참조**다 (선언은 themeCSS의 shadowVarsCSS — 참조와 선언이 한 표에서
 		// 나온다는 계약). `box-shadow`가 아니라 `filter: drop-shadow`인 이유: box-shadow는
 		// 박스의 사각형을 따르므로 열두 종 중 아홉이 엉뚱한 사각 그림자를 얻는다. drop-shadow는
-		// 실루엣의 알파를 따라가 OOXML `outerShdw`와 같은 그림이 된다 (PRD §9.4 표의
-		// `box-shadow` 칸은 이 결정으로 갱신되어야 한다 — 항목 07).
+		// 실루엣의 알파를 따라가 OOXML `outerShdw`와 같은 그림이 된다 (외관 매핑 표의
+		// `shadow` 행이 `drop-shadow`인 이유다 — 항목 07).
 		if _, ok := theme.Shadow(style.Shadow.Name); !ok {
 			// var()는 정의되지 않은 변수를 조용히 무시한다 — 검사하지 않으면 그림자가
 			// 사라지고 아무 에러도 나지 않는다 (colorValue와 같은 근거).
@@ -1039,7 +1042,7 @@ func flipValue(flip soml.Flip) (string, error) {
 // 향하므로 두 타깃의 변환 공식이 같다.
 //
 // 색은 **토큰 참조를 유지한다**: 투명도를 `color-mix()`로 얹으면 변수 참조가 살아남아 테마
-// 색을 바꿨을 때 그림자도 따라 움직인다 (PRD §9.4의 색 변형 행이 `color-mix()`를 가리킨다).
+// 색을 바꿨을 때 그림자도 따라 움직인다 (외관 매핑 표의 색 변형 표가 `color-mix()`를 가리킨다).
 // rgba로 눕히면 그 요소만 옛 색으로 남는다.
 //
 // 선언 순서는 표 순서다 (soml.Theme가 맵이 아닌 이유) — 골든이 실행마다 같아야 한다.
