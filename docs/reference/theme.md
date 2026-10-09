@@ -71,6 +71,13 @@ minimal/
 이름이어야 한다. 슬롯 영역 파일(`<이름>.slots.css`)만 대조가 **단방향**이다 — 슬롯이 없는
 레이아웃(`canvas`)은 파일이 없어도 되지만, 선언에 없는 레이아웃의 슬롯 파일은 에러다.
 `components.json`의 모르는 키도 에러다 (닫힌 어휘 — `$comment`만 예외).
+
+`components.json`의 색 · 채움 · 테두리 값은 **저자가 인라인으로 쓰는 문법과 같다**. 그래서 테마가
+그라디언트와 색 변형을 소유할 수 있다 — `"fill": "gradient(accent1 accent6, 135deg)"`,
+`"border": "4 gradient(accent6 accent1)"`, `"color": "tint(accent1, 40%)"`. 원고에는 variant 이름만
+남고(`<shape variant="hero">`), 그라디언트의 색은 테마가 바뀌면 함께 바뀐다. 테마가 쓸 수 있는 색은
+**토큰 참조**뿐이다 — 토큰 이름, 변형된 토큰, 스톱이 전부 토큰인 그라디언트. PPTX에서 셋 다
+`schemeClr`로 남아 PowerPoint의 테마 색 편집을 따라간다. 표 셀(`table`)은 단색 토큰만 받는다.
 어긋난 테마는 **덱을 렌더하기 전에** 멈춘다: 테마의 구멍이 산출물에서 "글자가 없다"로
 나타나면 원인을 찾는 자리가 테마에서 멀어지고, 테마는 슬라이드를 쓰는 저자가 고칠 수 없는
 자리다.
@@ -430,7 +437,7 @@ minimal"), 테마를 프로젝트 파일시스템 안에서만 읽으므로 `..`
 | `components.json`의 `text.roles`에 역할 5종 중 하나가 없다 | **에러** | `components.json의 text.roles에 역할 "code"가 없다 (필수: title, heading, body, caption, code)` |
 | 역할의 `size`·`lineHeight`가 0 이하이거나 `align`이 없다 | **에러** | `역할은 캐스케이드의 바닥이라 완전한 값이어야 한다` |
 | 역할의 `font`·`color`가 이 테마의 토큰이 아니다 | **에러** | 이 테마가 가진 이름을 함께 나열한다 |
-| 컴포넌트 기본값·variant·이미지·표의 `color`·`fill`·`border` 색이 이 테마의 색 토큰 이름이 아니다 (그라디언트·`#RRGGBB` 리터럴 포함) | **에러** | 자리와 값을 가리키고 이 테마의 색 토큰을 나열한다 — 그 variant를 쓴 슬라이드가 없어도 로딩에서 멈춘다 |
+| 컴포넌트 기본값·variant·이미지·표의 `color`·`fill`·`border` 색이 이 테마의 색 토큰 참조가 아니다 (`#RRGGBB` 리터럴, 리터럴 스톱이 섞인 그라디언트) | **에러** | 자리와 문제의 조각을 가리키고 이 테마의 색 토큰을 나열한다 — 그 variant를 쓴 슬라이드가 없어도 로딩에서 멈춘다 |
 | `components.json`에 모르는 키가 있다 | **에러** | 미지원 키를 가리킨다 (오타·미구현 키) |
 | `code.tabSize`가 1 미만이다 | **에러** | `tabSize는 1 이상이어야 한다` |
 | `code.tokens`에 모르는 종류가 있다 | **에러** | `알 수 없는 코드 토큰 종류 "kw" (쓸 수 있는 종류: keyword, name, attr, string, number, comment, punct)` |
