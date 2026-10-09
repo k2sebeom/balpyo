@@ -124,6 +124,6 @@ never blanks the tab on a broken save. `reveal` steps survive into the markup, a
 and print views show everything expanded. The `end` layout drops the footer and page number,
 as its theme declares.
 
-The open items above are tracked as **E1–E9** in `${CLAUDE_PLUGIN_ROOT}/TASKS.md`; the
+The open items above are tracked as **E2–E9** in `${CLAUDE_PLUGIN_ROOT}/docs/backlog.md`; the
 viewer-side differences in full are in `${CLAUDE_PLUGIN_ROOT}/docs/guides/known-differences.md`,
 and the warning triage guide is `docs/guides/layout-warnings.md`.

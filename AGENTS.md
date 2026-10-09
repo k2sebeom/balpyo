@@ -1,7 +1,7 @@
 # AGENTS.md — balpyo
 
 A guide for coding agents working in this repository. For the full product definition see
-`PRD.md`; for what to work on next see `TASKS.md`; for the design rationale see
+`PRD.md`; for open work see `docs/backlog.md`; for the design rationale see
 `docs/decisions/` (ADRs). Project docs, ADRs, diagnostics and commit subjects are written in
 **Korean** — keep new ones in Korean too.
 
@@ -150,8 +150,8 @@ make docs        # mkdocs build --strict (new pages must be in mkdocs.yml nav)
 
 ## Workflow conventions
 
-- Follow `TASKS.md` in order; each item is tests → implementation (`soml` → `core` →
-  renderers) → docs. Tick its checkboxes when done.
+- Open work lives in `docs/backlog.md` (unordered). Each item is tests → implementation
+  (`soml` → `core` → renderers) → docs; delete the entry when it lands.
 - Decisions that change a contract get an ADR in `docs/decisions/` (Korean; context → options →
   decision → rationale → consequences). **ADRs are never edited after the fact** — a later ADR supersedes.
 - `docs/reference/` documents implemented behavior only.

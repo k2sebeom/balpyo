@@ -43,6 +43,7 @@ nav:
       - 배치 경고 읽기: guides/layout-warnings.md
       - 테마 고르기·만들기: guides/theming.md
       - 계약 밖의 차이: guides/known-differences.md
+  - 백로그: backlog.md
   - 내부 구조:
       - 아키텍처: internals/architecture.md
       - 지오메트리 패스: internals/geometry-pass.md
