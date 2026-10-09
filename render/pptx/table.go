@@ -9,7 +9,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **표의 PPTX 렌더**다 (ADR 0036) — 프레임 하나가 `p:graphicFrame` + `a:tbl`이 되고,
+// 이 파일은 **표의 PPTX 렌더**다 — 프레임 하나가 `p:graphicFrame` + `a:tbl`이 되고,
 // 행·셀은 그 안의 `a:tr`/`a:tc`로 접힌다 (도형이 되지 않는다 — soml/table.go의 종류 계약).
 //
 // # `p:sp`도 `p:pic`도 아닌 세 번째 요소다
@@ -34,7 +34,7 @@ import (
 // 반올림해 더하면 합이 프레임 폭과 어긋나 마지막 열이 삐져나오거나 표가 좁아진다. 경계를 먼저
 // EMU로 환산하고 차분하면 합이 프레임 크기와 **정확히** 같다.
 //
-// # 명시 tcPr + 스타일 없음 (ADR 0036)
+// # 명시 tcPr + 스타일 없음
 //
 // 셀 채움·테두리·여백·세로 앵커를 셀마다 명시한다. 정하지 않은 채널도 명시한다 — 채움 없음은
 // `a:noFill`, 테두리 없음은 네 변의 `a:lnX > a:noFill`이다: 비워 두면 뷰어의 표 스타일이 그
@@ -44,11 +44,11 @@ import (
 const (
 	// tableGraphicDataURI는 `a:graphicData@uri`다 — 이 프레임에 든 그래픽이 **표**라는 선언이다.
 	// 값은 DrawingML 표의 고정 URI이고, 틀리면 뷰어가 프레임을 빈 자리로 그린다 (차트·다이어그램이
-	// 같은 자리에 다른 URI로 온다 — P2.5의 `<chart>`가 이 상수의 형제를 갖는다).
+	// 같은 자리에 다른 URI로 온다).
 	tableGraphicDataURI = "http://schemas.openxmlformats.org/drawingml/2006/table"
-	// tableNoStyleID는 내장 표 스타일 "No Style, No Grid"의 GUID다 (ADR 0036).
+	// tableNoStyleID는 내장 표 스타일 "No Style, No Grid"의 GUID다.
 	//
-	// **가리키는 것 자체가 "스타일 없음"의 선언이다.** 생략하는 길도 있었지만(ADR이 둘을 다 허용),
+	// **가리키는 것 자체가 "스타일 없음"의 선언이다.** 생략해도 스키마상 유효하지만,
 	// 그러면 뷰어가 `tableStyles.xml`의 기본 스타일(`@def`)을 얹을 여지가 남고 그 순간 우리가
 	// 명시하지 않은 채널이 뷰어의 값으로 채워진다. 이 GUID를 가리키면 얹을 것이 없고, 내장
 	// 스타일이라 `tableStyles.xml` 파트를 만들 필요도 없다.
@@ -76,7 +76,7 @@ func writeGraphicFrameTbl(b *strings.Builder, deck *soml.Deck, slide *soml.Slide
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	// 저자의 `alt`은 프레임의 이름이다 (ADR 0058) — `ph`와 같이 명세 바깥에서 얹는다: 격자를
+	// 저자의 `alt`은 프레임의 이름이다 — `ph`와 같이 명세 바깥에서 얹는다: 격자를
 	// 만드는 계산(tableSpec)에 관여하지 않는 값이다.
 	spec.descr = style.Alt
 	spec.ph = slotPlaceholder(slide, elem)
@@ -91,7 +91,7 @@ func writeGraphicFrameTbl(b *strings.Builder, deck *soml.Deck, slide *soml.Slide
 type tableInfo struct {
 	id   int
 	name string
-	// descr은 `cNvPr@descr` = 저자의 `alt`이고 **표 전체의 이름**이다 (ADR 0058) — 셀은
+	// descr은 `cNvPr@descr` = 저자의 `alt`이고 **표 전체의 이름**이다 — 셀은
 	// `a:tbl` 안에 그대로 남아 항해 가능하다 (웹의 `<table aria-label>`과 같은 자리).
 	descr string
 	// rect는 잰 프레임 박스 그대로다 (열 너비의 합이 프레임 폭이다).
@@ -105,7 +105,7 @@ type tableInfo struct {
 }
 
 // tableRowInfo는 행 하나다 — 높이(잰 `<tr>` 박스)와 격자 칸이다. cells의 길이는 **언제나**
-// 열 수와 같다: 병합에 덮인 칸까지 `a:tc`로 내야 `a:tbl`이 열린다 (ADR 0036).
+// 열 수와 같다: 병합에 덮인 칸까지 `a:tc`로 내야 `a:tbl`이 열린다.
 type tableRowInfo struct {
 	h     int64
 	cells []tableCellInfo
@@ -473,7 +473,7 @@ func writeTbl(w func(depth int, line string), depth int, spec tableInfo, theme s
 	w(depth, "<a:tbl>")
 	// firstRow는 **힌트**다: 스타일이 없으므로 그림을 바꾸지 않고, PowerPoint의 "머리글 행"
 	// 체크와 스크린 리더의 머리 셀 인식이 이 값을 읽는다 (웹에서 `<th>`가 하는 일의 절반).
-	// 줄무늬 힌트(bandRow)는 켜지 않는다 — 줄무늬 색은 셀 채움에 이미 구워져 있고(ADR 0036),
+	// 줄무늬 힌트(bandRow)는 켜지 않는다 — 줄무늬 색은 셀 채움에 이미 구워져 있고,
 	// 힌트까지 켜면 저자가 뷰어에서 표 스타일을 바꾼 순간 줄무늬가 두 벌로 겹친다.
 	attrs := ""
 	if spec.firstRow {
@@ -581,7 +581,7 @@ func writeTcPr(w func(depth int, line string), depth int, style soml.CellStyle, 
 	// 테두리는 네 변에 같은 값을 싣는다 — 어휘가 변별 테두리를 갖지 않기 때문이다
 	// (`border` 하나가 셀 전체다 — soml.CellStyle.Border). 이웃 셀이 같은 격자선을 두 번
 	// 그리지만 겹치는 선은 같은 색·굵기라 한 줄로 보인다 (웹의 `border-collapse: collapse`와
-	// 같은 그림 — D20이 거기서 닫힌다).
+	// 같은 그림이다).
 	border := soml.NoBorder()
 	if style.Border != nil {
 		border = *style.Border

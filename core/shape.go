@@ -7,8 +7,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **도형 외관 속성의 값 해석**이다 (docs/reference/soml/shape.md의 외관
-// 속성 표) — 파서가 이름만 본 외관 속성을 확정된 도형 외관(soml.ShapeStyle)으로 눕힌다.
+// 이 파일은 **도형 외관 속성의 값 해석**이다 — 파서가 이름만 본 외관 속성을 확정된 도형 외관(soml.ShapeStyle)으로 눕힌다.
 //
 // 텍스트 외관 해석(resolveText)·배치 해석(resolveLayout)과 나란한 세 번째 갈래다. 한 요소가
 // 여러 채널을 함께 쓰는 구조는 그대로다 (elemAppearance — 대입이 아니라 필드 채우기):
@@ -49,7 +48,7 @@ func (r *resolver) resolveShape(elem *soml.Element) {
 }
 
 // shapeInsetTextHeight는 **텍스트 영역이 박스보다 좁은 프리셋**(soml.ShapeInsetText)이 내용을
-// 담으면 확정 높이를 요구한다 (ADR 0040).
+// 담으면 확정 높이를 요구한다.
 //
 // 근거는 기준의 순환이다: 그 여덟 프리셋의 텍스트 영역은 자기 박스에 대한 **백분율**이므로
 // (render/web의 TextRect) 영역을 잡으려면 높이가 먼저 정해져 있어야 하는데, 내용이 높이를
@@ -97,7 +96,7 @@ func themeShapePatch(patch shapePatch, shapeType string, backdrop bool) shapePat
 }
 
 // shapeVariant는 `variant`를 테마의 **도형** variant 표에서 찾는다 — 모르는 이름은 에러가
-// 아니라 경고 + 빈 패치(컴포넌트 기본 외관 폴백)다 (ADR 0067 결정 6, 텍스트와 같은 정책이고
+// 아니라 경고 + 빈 패치(컴포넌트 기본 외관 폴백)다 (텍스트와 같은 정책이고
 // 문구도 같은 곳에서 나온다 — warnUnknownVariant).
 func (r *resolver) shapeVariant(elem *soml.Element) shapePatch {
 	attr, ok := r.variantAttr(elem)
@@ -178,7 +177,7 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 				patch.opacity = &opacity
 			}
 		case "rotate":
-			// 배경 모드에서는 값 문법을 보기 전에 막는다 (ADR 0049 결정 6) — 값이 아니라
+			// 배경 모드에서는 값 문법을 보기 전에 막는다 — 값이 아니라
 			// 속성과 내용의 **조합**이 문제이므로 진단은 속성 이름을 가리키고, 실린 각도는
 			// 남기지 않는다 (아래 themeShapePatch가 테마 단의 각도도 버린다).
 			if soml.ShapeHoldsLayout(elem) {
@@ -245,7 +244,7 @@ func (r *resolver) shapeType(elem *soml.Element) string {
 //
 // 범위는 **슬라이드**다 (resolver가 슬라이드 하나의 상태이므로 자리가 곧 범위다). 덱 전역
 // 유일을 요구하는 길을 버린 근거: 참조(`<arrow from="db">`)는 슬라이드를 넘지 않으므로
-// (Iteration 7) 전역 유일은 저자가 슬라이드마다 같은 이름(`db`)을 쓰지 못하게 막을 뿐이다.
+// 전역 유일은 저자가 슬라이드마다 같은 이름(`db`)을 쓰지 못하게 막을 뿐이다.
 //
 // 참조가 붙기 전에 검사하는 이유: 그때 처음 막으면 중복 id로 이미 쓴 덱이 깨진다. 지금은
 // id가 산출물에 아무것도 그리지 않아 고치는 비용이 이름 하나다.
@@ -269,8 +268,8 @@ func (r *resolver) shapeID(attr soml.Attr) (string, bool) {
 //
 // 색 문법은 텍스트 `color`와 **같은 코드**를 지난다 (colorValue): 토큰은 이름으로 남고
 // (soml.Color — RGB로 눕히면 `schemeClr`를 만들 수 없다), 리터럴은 대문자 6자리로
-// 정규화되고, `gradient(…)`는 아직 에러다 (Iteration 8). 색 문법이 속성마다 따로 있으면
-// 같은 값이 자리에 따라 다르게 읽힌다.
+// 정규화되고, 색 함수(`gradient(…)` 등)도 같은 자리에서 갈린다. 색 문법이
+// 속성마다 따로 있으면 같은 값이 자리에 따라 다르게 읽힌다.
 func (r *resolver) fill(attr soml.Attr) (soml.Fill, bool) {
 	if !r.hasValue(attr) {
 		return soml.Fill{}, false
@@ -307,7 +306,7 @@ func (r *resolver) border(attr soml.Attr) (soml.Border, bool) {
 	}
 	parts := splitValues(attr.Value)
 	// `gradient(…)`가 낀 축약은 **스타일과 색을 함께 대신한다** — 조각이 둘이다
-	// (`<굵기> gradient(…)` — docs/reference/appearance.md "그라디언트와 색 변형"). 그래서
+	// (`<굵기> gradient(…)`). 그래서
 	// 그라디언트가 있으면 3조각 규칙 대신 이 갈래로 간다. `shade`/`tint`/`alpha`는 색
 	// 함수지만 **색 자리 하나**를 채우므로 여기 걸리지 않는다 (3조각 그대로, 색 조각이
 	// colorValue를 지난다) — 그라디언트만 축약의 모양을 바꾼다.
@@ -404,7 +403,7 @@ func (r *resolver) borderStyle(part valuePart, attr soml.Attr) (soml.BorderStyle
 // (태그를 바꾸는 것이 고칠 방법이라 이름 층이 막았다)과 `span`이 부모를 보는 것(부모를 봐야
 // 하는 검증은 값 층이 한다). 여기는 **형제 속성**을 보는 자리이므로 값 층이다.
 //
-// **이 제약은 도형의 것이다** (ADR 0019의 적용 범위): `<image radius>`는 프리셋이 아니라 자기
+// **이 제약은 도형의 것이다**: `<image radius>`는 프리셋이 아니라 자기
 // 클립을 갖기 때문에 언제나 유효하고, 그래서 값 문법만 떼어 공유한다 (radiusValue).
 func (r *resolver) radius(attr soml.Attr, shapeType string) (soml.Radius, bool) {
 	if !r.hasValue(attr) {
@@ -484,7 +483,7 @@ func (r *resolver) shadow(attr soml.Attr) (soml.ShadowToken, bool) {
 
 // opacity는 불투명도를 해석한다 — 0~1 실수다 (`0.8`).
 //
-// `%` 표기를 막는 이유: 색 변형 함수 `alpha(색, 0~1)`(Iteration 8)이 같은 범위를 쓰므로,
+// `%` 표기를 막는 이유: 색 변형 함수 `alpha(색, 0~1)`이 같은 범위를 쓰므로,
 // `50%`를 받으면 투명도의 표기가 둘이 된다. 범위 밖도 에러다 — CSS는 조용히 자르고
 // (clamp) OOXML은 알파 값 범위를 벗어난 파일을 뷰어마다 다르게 읽는다.
 func (r *resolver) opacity(attr soml.Attr) (float64, bool) {
@@ -514,7 +513,7 @@ func (r *resolver) opacity(attr soml.Attr) (float64, bool) {
 
 // rotate는 회전 각도를 해석한다 — 도, 시계방향, 음수 허용이다.
 //
-// 접미사 `deg`를 받지 않는 이유: ADR 0067 결정 5가 허용 접미사를 `%` 하나로 못 박았고 레퍼런스의
+// 접미사 `deg`를 받지 않는 이유: 단위 계약이 허용하는 접미사가 `%` 하나뿐이고 레퍼런스의
 // 예시도 `rotate="45"`다 (그라디언트의 `45deg`는 함수 인자 안의 문법이라 다른 자리다).
 // 각도 범위를 제한하지 않는 이유: 400도는 40도와 같은 결과이고 두 타깃이 모두 그렇게 읽는다 —
 // 저자가 애니메이션 없이 400도를 적을 일은 없지만, 막으면 생성기가 만든 SOML이 이유 없이
@@ -555,7 +554,7 @@ func (r *resolver) flip(attr soml.Attr) (soml.Flip, bool) {
 // anchor는 텍스트의 세로 앵커를 해석한다 — 어휘 3종이다 (soml.TextAnchors).
 //
 // 자리가 텍스트인 이유: 앵커는 텍스트 외관이고(`bodyPr@anchor`는 텍스트 본문의 속성이다),
-// 도형은 자식의 앵커를 읽어 쓴다 (렌더 매핑 — 항목 04·05).
+// 도형은 자식의 앵커를 읽어 쓴다.
 func (r *resolver) anchor(attr soml.Attr) (soml.TextAnchor, bool) {
 	if !r.hasValue(attr) {
 		return "", false

@@ -14,20 +14,20 @@
 // `<image>`**다. 인라인·void(`<br>`)에는 붙이지 않는다 — 여러 줄에 걸친 인라인의 rect는 뜻이
 // 없고, PPTX에서 인라인은 박스가 아니라 런이다.
 //
-// 레이아웃 컨테이너와 `<spacer>`를 재는 이유는 `<li>`를 재 둔 것과 같다 (ADR 0009의 후속):
+// 레이아웃 컨테이너와 `<spacer>`를 재는 이유는 `<li>`를 재 둔 것과 같다:
 // PPTX가 그 rect를 소비하지 않아도(컨테이너는 도형이 아니다 — 자식 좌표만 남고 컨테이너는
 // 사라진다) 픽셀 비교가 갈라질 때 "어느 칼럼부터 밀렸는가"를 이 좌표가 말해 준다.
 //
-// **`<shape>`는 재는 것과 도형이 되는 것이 처음 일치하는 종류다** (Iteration 4): 컨테이너는
+// **`<shape>`는 재는 것과 도형이 되는 것이 처음 일치하는 종류다**: 컨테이너는
 // 재고 사라지고 `<li>`는 부모 박스에 담기는데, 도형의 잰 rect는 곧 `xfrm`이다. 그래서 도형 수
 // 등식에 항이 하나 늘어난다 —
 //
 //	도형 수 = 측정 박스 수 − 레이아웃 컨테이너 − spacer − li − 도형 안 텍스트
 //
-// 마지막 항이 이 iteration에서 생겼다: 도형 안 텍스트는 웹에서 중첩된 박스이지만 PPTX에서는
+// 마지막 항의 이유: 도형 안 텍스트는 웹에서 중첩된 박스이지만 PPTX에서는
 // 같은 도형의 `txBody` 문단이므로 그 rect를 아무도 소비하지 않는다 (render/web/shape.go).
 //
-// **`<image>`가 그 두 번째 종류다** (Iteration 5): 잰 rect가 곧 `pic`의 `xfrm`이므로 등식의
+// **`<image>`가 그 두 번째 종류다**: 잰 rect가 곧 `pic`의 `xfrm`이므로 등식의
 // 좌변에 그림이 함께 들어간다 (도형 수 → `pic`+`sp` 수). 다만 재는 요소가 **`<img>`**이고
 // 저자가 준 박스(`.balpyo-image`)는 식별자를 갖지 않는다 — 그 둘은 `fit="contain"`에서
 // 갈라지고, `xfrm`이 되어야 하는 것은 그려진 그림이다 (render/web/image.go의 fit 절).
@@ -90,7 +90,7 @@ func (*Renderer) Target() render.Target { return render.TargetHTML }
 
 // Render는 덱을 index.html과 **에셋 파일들**로 만든다.
 //
-// 산출물이 파일 하나가 아니게 된 것은 Iteration 5다 (`<image>`): 문서는 여전히 자체
+// 산출물은 파일 하나가 아니다 (`<image>`): 문서는 여전히 자체
 // 완결형이지만 그림은 별도 파일로 나가고, 그 이유가 렌더러에 있어야 측정과 배포가 같은
 // 바이트를 본다 (image.go의 에셋 절). 오프라인 발표는 `index.html` + assets를 함께 두는
 // 것이다.
@@ -163,7 +163,7 @@ func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 	if err := writeStage(b, deck, slide); err != nil {
 		return err
 	}
-	// 크롬은 스테이지의 형제다 (ADR 0045) — 스테이지 안에 넣으면 흐름에 끼어 본문 높이를 먹고,
+	// 크롬은 스테이지의 형제다 — 스테이지 안에 넣으면 흐름에 끼어 본문 높이를 먹고,
 	// 지오메트리 패스가 재는 Ref가 되어 저자가 고칠 수 없는 배치 경고가 나온다.
 	if err := writeChrome(b, deck, slide); err != nil {
 		return err
@@ -185,7 +185,7 @@ func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 // 색이므로 덱의 색이 아니고, 토큰으로 두지도 않는다: 색 토큰은 모두 clrScheme 슬롯을
 // 가져야 하는데(soml.ColorToken) 이 색들에는 대응하는 PPTX 개념이 없다.
 //
-// cascade layer로 기본 < 테마 < 저자 우선순위를 보장한다 (docs/internals/architecture.md). 층을 미리 선언해
+// cascade layer로 기본 < 테마 < 저자 우선순위를 보장한다. 층을 미리 선언해
 // 두면 나중에 테마·저자 CSS가 어느 순서로 실려도 우선순위가 뒤집히지 않는다.
 func baseCSS(stage soml.Stage, feat features) string {
 	return fmt.Sprintf(`@layer balpyo.base, balpyo.theme, balpyo.author;

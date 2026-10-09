@@ -17,7 +17,7 @@ const (
 	TokenCommentUnterminated
 
 	// TokenCData는 `<![CDATA[ ... ]]>` 섹션 전체다 (구분자 포함). 트리비아가 **아니다** —
-	// 내용은 문자 데이터이고, 그 안에서는 마크업도 문자 참조도 해석되지 않는다 (ADR 0037).
+	// 내용은 문자 데이터이고, 그 안에서는 마크업도 문자 참조도 해석되지 않는다.
 	TokenCData
 	// TokenCDataUnterminated는 `]]>`로 닫히지 않고 소스가 끝난 CDATA다.
 	TokenCDataUnterminated
@@ -86,8 +86,7 @@ func (k TokenKind) IsTrivia() bool {
 // Token은 원문 조각 하나다.
 //
 // 계약: Tokenize가 낸 토큰의 Text를 순서대로 이어 붙이면 **원본 소스와 바이트 단위로
-// 같다**. 트리비아를 버리지 않는 것이 이 계약의 전부이며, format과 lsp가 여기에 올라탄다
-// (docs/decisions/0001-parser-trivia.md).
+// 같다**. 트리비아를 버리지 않는 것이 이 계약의 전부이며, format과 lsp가 여기에 올라탄다.
 type Token struct {
 	Kind TokenKind
 	// Text는 이 토큰이 덮는 원문 그대로다 (인용 부호·주석 구분자 포함).

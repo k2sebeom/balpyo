@@ -204,7 +204,7 @@ func between(t *testing.T, s, open, shut string) string {
 
 // renderedKinds는 writerFor의 짝이다 — 목록이 거짓말을 하면 카탈로그와의 대조
 // (render 패키지의 TestRenderersCoverCatalog)도 같이 거짓말을 한다. 목록은 바깥에 내보이는
-// 얼굴이고 writerFor가 실제 동작이므로 둘을 여기서 맞춘다 (TASKS P0.2).
+// 얼굴이고 writerFor가 실제 동작이므로 둘을 여기서 맞춘다.
 func TestRenderedKindsMatchDispatch(t *testing.T) {
 	listed := make(map[soml.ElementKind]bool, len(renderedKinds))
 	for _, kind := range RenderedKinds() {

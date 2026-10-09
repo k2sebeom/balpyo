@@ -6,8 +6,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 인라인 태그(strong/em/code/a/span/br)의 런 스타일 해석이다
-// (docs/reference/appearance.md "인라인 서식").
+// 이 파일은 인라인 태그(strong/em/code/a/span/br)의 런 스타일 해석이다.
 //
 // 인라인 태그는 자기 박스를 갖지 않는다 — 감싼 블록의 텍스트 흐름 안에서 런 서식이 된다.
 // 상속은 **확정 스타일의 복사**다: 부모의 확정 TextStyle을 복사해 태그의 델타를 얹는다.
@@ -46,7 +45,7 @@ func (r *resolver) resolveInlines(parent *soml.Element, parentStyle *soml.TextSt
 		case "em":
 			// 중첩 em의 토글(HTML의 시각 관례)은 하지 않는다 — v1은 "강조는 이탤릭"으로
 			// 닫는다. 토글은 "몇 겹인가"를 저자가 세어야 뜻이 정해지는 규칙이라, 컴포넌트
-			// 조합(Iteration 11)으로 강조가 겹칠 때 결과를 예측할 수 없게 된다.
+			// 조합으로 강조가 겹칠 때 결과를 예측할 수 없게 된다.
 			style.Italic = true
 		case "code":
 			// size는 부모를 따른다 — code 역할(20px)을 끌어오면 한 줄 안에서 글자 크기가
@@ -59,9 +58,8 @@ func (r *resolver) resolveInlines(parent *soml.Element, parentStyle *soml.TextSt
 			// clrScheme의 hlink 슬롯 색을 입히는데, 테마 파트가 hlink 자리를 accent1에서
 			// 빌려 채우므로 (render/pptx/theme.go의 clrSchemeSlots fallback) 웹이 같은
 			// 토큰을 쓰면 두 산출물의 링크 색이 같은 표의 같은 값에서 나온다. hlink 전용
-			// 토큰을 버린 이유: 표준 토큰 어휘(docs/reference/theme.md)에 없는 이름이 저자의 color=
-			// 어휘와 진단 목록·CSS 변수 산출에 들어간다 — 테마가 파일로 나가는
-			// Iteration 10에서 다시 본다 (ADR 후보).
+			// 토큰을 버린 이유: 표준 토큰 어휘에 없는 이름이 저자의 color= 어휘와 진단 목록·
+			// CSS 변수 산출에 들어간다.
 			style.Color = soml.TokenColor("accent1")
 			if href, ok := r.href(inline); ok {
 				appearance.Link = href

@@ -62,14 +62,14 @@ func (lx *lexer) takeRune(kind TokenKind) Token {
 	return lx.take(kind, size)
 }
 
-// cdataOpen·cdataClose는 CDATA 섹션의 구분자다 (ADR 0037). 섹션 안의 내용은 마크업이
+// cdataOpen·cdataClose는 CDATA 섹션의 구분자다. 섹션 안의 내용은 마크업이
 // 아니라 문자 그대로이고, 그것이 XML 예제를 원문대로 슬라이드에 띄우는 유일한 길이다.
 const (
 	cdataOpen  = "<![CDATA["
 	cdataClose = "]]>"
 )
 
-// startsMarkup은 `<`로 시작하는 이 자리가 마크업인지 보고한다 (ADR 0037).
+// startsMarkup은 `<`로 시작하는 이 자리가 마크업인지 보고한다.
 //
 // 마크업은 네 가지뿐이다 — 여는 태그(`<` + 글자), 닫는 태그(`</`), 주석(`<!--`),
 // CDATA(`<![CDATA[`). **나머지 `<`는 내용이다**: `a < b`·`x <= y`·`1<2`가 그냥 쓰인다.

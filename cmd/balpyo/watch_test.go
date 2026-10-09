@@ -18,7 +18,7 @@ import (
 	"github.com/k2sebeom/balpyo/render/geom"
 )
 
-// `balpyo watch`의 CLI 계약이다 (ADR 0046).
+// `balpyo watch`의 CLI 계약이다.
 //
 //  1. 주소를 **찍는다** — 저자가 그 줄을 복사해 브라우저에 붙인다. `--addr 127.0.0.1:0`이
 //     커널이 고른 포트로 떠야 하고(테스트가 그 줄로 붙는다), 그 말은 찍는 값이 실제로 잡은

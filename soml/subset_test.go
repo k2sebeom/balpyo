@@ -90,13 +90,13 @@ func TestParseTextSubset(t *testing.T) {
 			want: `text[size=16 w=140 min-w=80 max-w=50% align=center grow=1]("x")`,
 		},
 		{
-			// 리스트 컨테이너는 블록과 같은 외관 4종과 가로 크기를 받는다 (variant는 닫혀 있다 — ADR 0038).
+			// 리스트 컨테이너는 블록과 같은 외관 4종과 가로 크기를 받는다 (variant는 닫혀 있다).
 			name: "리스트 컨테이너의 외관·크기·배치",
 			src:  `<slide><row><ul size="20" color="accent1" align="center" anchor="center" w="480" basis="360"><li>항목</li></ul></row></slide>`,
 			want: `row(ul[size=20 color=accent1 align=center anchor=center w=480 basis=360](li("항목")))`,
 		},
 		{
-			// reveal은 이름만 파서가 본다 — 값 어휘(정수 ≥ 1)는 값 층의 것이다 (ADR 0063).
+			// reveal은 이름만 파서가 본다 — 값 어휘(정수 ≥ 1)는 값 층의 것이다.
 			name: "li의 reveal — 값 없음과 번호",
 			src:  `<slide><ul><li>하나</li><li reveal>둘</li><li reveal="2">셋</li></ul></slide>`,
 			want: `ul(li("하나") li[reveal=]("둘") li[reveal=2]("셋"))`,
@@ -162,13 +162,13 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			want: []string{"1:19 <strong>에는 속성을 쓸 수 없다 (variant)"},
 		},
 		{
-			// 항목은 외관을 상속만 받는다 (ADR 0038) — 열린 것은 순서(reveal)뿐이다.
+			// 항목은 외관을 상속만 받는다 — 열린 것은 순서(reveal)뿐이다.
 			name: "li에는 외관 속성이 없다",
 			src:  `<slide><ul><li size="20">x</li></ul></slide>`,
 			want: []string{"1:16 <li>에 알 수 없는 속성 size (쓸 수 있는 속성: reveal)"},
 		},
 		{
-			// 세로 축·pad·ratio는 텍스트에 닫혀 있다 (ADR 0043).
+			// 세로 축·pad·ratio는 텍스트에 닫혀 있다.
 			name: "text에는 h가 없다",
 			src:  `<slide><text h="56">x</text></slide>`,
 			want: []string{`1:14 <text>에 알 수 없는 속성 h (쓸 수 있는 속성: role, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)`},
@@ -273,7 +273,7 @@ func TestParsePrePreservesWhitespace(t *testing.T) {
 	}
 }
 
-// 태그 → 역할 표는 테마가 아니라 **언어**의 계약이다 (ADR 0007) — 표가 흔들리면
+// 태그 → 역할 표는 테마가 아니라 **언어**의 계약이다 — 표가 흔들리면
 // `<p>` ≡ `<text role="body">` 등가가 문서마다 달라진다. 표 전체를 여기서 못 박는다.
 func TestTagTextRole(t *testing.T) {
 	cases := []struct {

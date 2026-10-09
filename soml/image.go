@@ -1,6 +1,6 @@
 package soml
 
-// 이 파일은 이미지(docs/reference/soml/image.md)의 **요소 종류·속성·값 어휘 카탈로그**다.
+// 이 파일은 이미지의 **요소 종류·속성·값 어휘 카탈로그**다.
 //
 // 서브셋(subset.go)·레이아웃(layout.go)·도형(shape.go) 카탈로그와 같은 자리에 같은 태도로
 // 둔다: 이 표를 파서(문법), 값 층(core의 `src` 해석·`fit` 검사·외관), 지오메트리 패스(잴
@@ -12,7 +12,7 @@ package soml
 // 문법뿐이다 — `src`의 경로 규칙·존재 여부·포맷·고유 크기와 `fit`의 값 검사는 전부 값
 // 층(core)의 몫이고, 파서는 `<shape type>`에서와 같이 문법만 본다 (Element.Attrs의 주석).
 //
-// `<arrow>`·`<line>`·`<group>`은 여기 없다 — Iteration 7·9다. 렌더 매핑 없는 태그를 어휘에
+// `<arrow>`·`<line>`·`<group>`은 여기 없다 — 아직 렌더 매핑이 없다. 렌더 매핑 없는 태그를 어휘에
 // 열면 저자가 쓴 것이 조용히 무시되고, 그것이 닫힌 어휘가 막으려던 실패다.
 
 // ImageElement는 이미지 요소 이름이다. TextElement·ShapeElement와 같은 이유로 상수다 —
@@ -58,30 +58,30 @@ func ImageFits() []ImageFit {
 // 남길 것도 없다.
 const DefaultImageFit = FitContain
 
-// 이미지 속성 (docs/reference/soml/image.md "속성"). 넷으로 나눈 이유는 도형과 같다 — 소비자가
+// 이미지 속성. 넷으로 나눈 이유는 도형과 같다 — 소비자가
 // 다르다: 고유 속성은 파서와 **에셋 해석**이, 외관은 캐스케이드가, 박스 속성은 도형·레이아웃
 // 컨테이너와 **공유**한다 (BoxAttrs). 이어 붙인 순서가 곧 진단 메시지와 문서의 순서다.
 var (
 	// imageOwnAttrs는 이미지만의 속성이다.
 	//
-	// `alt`은 **연다** (ADR 0027). 기준은 이 저장소가 속성을 여는 기준 그 자체다 —
+	// `alt`은 **연다**. 기준은 이 저장소가 속성을 여는 기준 그 자체다 —
 	// 양 타깃에 실을 자리가 있다: 웹은 `<img alt>`, PPTX는 `p:cNvPr@descr`(PowerPoint의
 	// "대체 텍스트" 칸). 자리가 있는데 열지 않으면 산출물이 접근성 없는 그림을 내고 저자가
 	// 그것을 고칠 방법이 아예 없다. 생략했을 때 웹이 `alt=""`(장식 이미지)를 내는 것까지가
 	// 이 결정의 일부다 — `<img>`에서 속성이 없는 것과 빈 문자열은 스크린 리더에 다른 뜻이다.
 	//
-	// `frame`은 **열지 않는다** (ADR 0027). 원안의 어휘 표에만 있었고 뜻은 정의된 적이
+	// `frame`은 **열지 않는다**. 원안의 어휘 표에만 있었고 뜻은 정의된 적이
 	// 없으며(외관 속성 표에 행이 없다), 액자가 뜻하는 것(테두리+반경+그림자의 묶음)은 이미 `variant`가
 	// 소유하는 채널이다 — 같은 것을 두 이름으로 받으면 캐스케이드에 5단이 생기고 `variant`와
 	// `frame`이 충돌할 때 누가 이기는지를 정해야 하는데, 그것은 저자가 외울 이유가 없는
-	// 규칙이다. `<image variant="framed">`가 그 자리다 (테마가 정의하는 번들 — 항목 02).
+	// 규칙이다. `<image variant="framed">`가 그 자리다 (테마가 정의하는 번들).
 	imageOwnAttrs = []string{"src", "fit", "alt"}
-	// imageAppearanceAttrs는 외관 채널이다 (docs/reference/appearance.md 매핑 표의 이미지 외관).
+	// imageAppearanceAttrs는 외관 채널이다.
 	//
 	// **`fill`은 열지 않는다** — 그림 뒤의
 	// 칠이 보이는 자리는 `fit="contain"`의 여백뿐인데 그 여백은 PPTX에서 `pic`의 박스 밖이다.
 	// 색을 받아 놓고 한 타깃에서만 그리는 속성이 된다. 그림 뒤에 칠이 필요하면 그것은
-	// 도형의 일이다 (`<shape fill>` 위에 그림을 겹치는 것은 Iteration 6의 `<stack>`).
+	// 도형의 일이다 (`<shape fill>` 위에 그림을 겹치는 것은 `<stack>`의 일이다).
 	// `stroke`/`cap`/`dash`도 line·arrow의 것이라 같은 이유로 닫혀 있다 (shape.go와 같다).
 	imageAppearanceAttrs = []string{"variant", "border", "radius", "shadow", "opacity", "rotate", "flip"}
 )
@@ -102,7 +102,7 @@ var (
 // (`object-fit`은 콘텐츠 박스에 적용된다), PPTX는 `pic`의 `xfrm`을 여백만큼 줄여서 낸다
 // (`bodyPr`의 인셋은 텍스트의 것이므로 쓰지 않는다). 목록을 도형과 나누지 않은 이유는
 // 목록이 두 벌이 되면 크기 속성이 하나 늘 때 어느 태그가 빠졌는지 사람이 세어야
-// 하기 때문이다. 항목 03·04가 두 타깃의 계산을 실제로 맞추지 못하면 그때 `<image>`용
+// 하기 때문이다. 두 타깃의 `pad` 계산이 맞지 않게 되면 그때 `<image>`용
 // 목록을 따로 이어 `pad`만 뗀다 (그 편이 지금 닫아 두고 뒤에 여는 것보다 값싸다: 여백 없는
 // 그림은 저자가 `<row gap>`으로 흉내 낼 수 있지만, 목록이 갈라지면 다시 합칠 근거를 잃는다).
 func ImageAttrs() []string {

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// 텍스트 요소의 가로 크기가 인라인 style로 나간다 (ADR 0043) — 값 컴파일은 컨테이너·도형과
+// 텍스트 요소의 가로 크기가 인라인 style로 나간다 — 값 컴파일은 컨테이너·도형과
 // 같은 함수(boxSizeCSS)가 하므로 `<row w="140">`과 `<text w="140">`이 같은 선언을 낸다.
 func TestRenderTextBoxSizeDecls(t *testing.T) {
 	cases := []struct {
@@ -50,11 +50,11 @@ func TestRenderTextBoxDeclOrder(t *testing.T) {
 	}
 }
 
-// 슬롯 영역 자식의 폭 리셋이 **슬롯 덱에만** 나간다 (ADR 0043의 세 번째 리셋 문맥).
+// 슬롯 영역 자식의 폭 리셋이 **슬롯 덱에만** 나간다 (세 번째 리셋 문맥).
 //
 // 이 규칙이 없으면 테마가 `*.slots.css`에 쓴 정렬(`justify-items: center`)이 base 층
 // `.balpyo-text { width: 100% }`에 지워진다 — 저자가 슬롯 자식마다 `align="center"`를 손으로
-// 다는 것이 그 증상이었다 (도그푸딩 D4).
+// 다는 것이 그 증상이다.
 func TestSlotModeResetsTextWidth(t *testing.T) {
 	const rule = ".balpyo-stage.balpyo-slots > :is(.balpyo-text, .balpyo-list) { width: auto; }"
 

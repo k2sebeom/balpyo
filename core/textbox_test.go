@@ -8,7 +8,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 텍스트 요소의 **가로 크기**가 확정 박스(soml.Appearance.Box)에 실린다 (ADR 0043).
+// 텍스트 요소의 **가로 크기**가 확정 박스(soml.Appearance.Box)에 실린다.
 //
 // 값 문법은 컨테이너·도형과 **같은 헬퍼**(boxAttr)가 해석하므로 같은 문자열이 같은 값이
 // 된다 — TestResolveContainerLayout의 크기 행들과 대조하면 표가 한 벌인 것이 보인다.
@@ -22,7 +22,7 @@ func TestResolveTextBoxSize(t *testing.T) {
 	}{
 		{"text w 수치", "w", "text", `<text w="140">라벨</text>`, soml.Box{Width: ptr(soml.Px(140))}},
 		{"text w 백분율", "w", "text", `<text w="40%">라벨</text>`, soml.Box{Width: ptr(soml.Percent(40))}},
-		// `fill`은 해당 축의 100%로 눕는다 (ADR 0015) — 컨테이너·도형과 같은 계약이다.
+		// `fill`은 해당 축의 100%로 눕는다 — 컨테이너·도형과 같은 계약이다.
 		{"text w fill", "w", "text", `<text w="fill">라벨</text>`, soml.Box{Width: ptr(soml.Percent(100))}},
 		{"블록 max-w", "max-w", "p", `<p max-w="50%">본문</p>`, soml.Box{MaxWidth: ptr(soml.Percent(50))}},
 		{"리스트 컨테이너 min-w", "min-w", "ul", `<ul min-w="200"><li>항목</li></ul>`,

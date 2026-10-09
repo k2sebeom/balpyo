@@ -74,7 +74,7 @@ func renderWebString(t *testing.T, deck *soml.Deck) string {
 	return string(files[web.IndexFile])
 }
 
-// 텍스트 박스의 골격: 채움·선 없는 rect, 박스 고정 + 넘치면 줄여 맞춤(ADR 0064), 인셋 0.
+// 텍스트 박스의 골격: 채움·선 없는 rect, 박스 고정 + 넘치면 줄여 맞춤, 인셋 0.
 // 줄높이는 절대 줄간격이다 — title 56px × 1.2 × 0.75 = 50.4pt (LineSpacing의 근거). 종류·rect·
 // 런은 패리티가 본다.
 func TestRenderTextBody(t *testing.T) {
@@ -140,7 +140,7 @@ func TestBoldValue(t *testing.T) {
 	}
 }
 
-// 원문의 문자 참조는 해석된 뒤 `a:t`에서 **한 번** 이스케이프된다 (ADR 0037) — 두 번이면
+// 원문의 문자 참조는 해석된 뒤 `a:t`에서 **한 번** 이스케이프된다 — 두 번이면
 // PowerPoint에 `&lt;`가 보이고, 안 하면 파일이 열리지 않는다.
 func TestRenderTextEscapesXMLOnce(t *testing.T) {
 	tests := []struct{ src, want string }{
@@ -207,7 +207,7 @@ func TestRenderRejectsUnresolvedModel(t *testing.T) {
 // renderedKinds는 이 렌더러가 다루는 종류의 얼굴이고(RenderedKinds — render 패키지의 대조가
 // 읽는다) shapeWriterFor는 그중 **도형이 되는** 종류의 실제 동작이다. 둘의 관계는 웹과
 // 다르다: 포함이지 일치가 아니다 — `<li>`와 인라인은 부모 도형에 흡수되고 레이아웃
-// 컨테이너·`<spacer/>`는 사라진다. 그 비대칭이 의도라는 것을 여기서 고정한다 (TASKS P0.2).
+// 컨테이너·`<spacer/>`는 사라진다. 그 비대칭이 의도라는 것을 여기서 고정한다.
 func TestRenderedKindsMatchShapeDispatch(t *testing.T) {
 	listed := make(map[soml.ElementKind]bool, len(renderedKinds))
 	for _, kind := range RenderedKinds() {

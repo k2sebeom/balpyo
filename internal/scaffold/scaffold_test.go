@@ -11,7 +11,7 @@ import (
 	"github.com/k2sebeom/balpyo/render"
 )
 
-// 스캐폴딩의 계약은 "파일이 생긴다"가 아니다 (ADR 0048): **그 덱이 경고 0으로 빌드된다**.
+// 스캐폴딩의 계약은 "파일이 생긴다"가 아니다: **그 덱이 경고 0으로 빌드된다**.
 // 여기서는 브라우저 없이 판정할 수 있는 것까지 보고(수집·파싱·값 층·에셋·검증), 배치까지 잰
 // 판정은 cmd/balpyo/init_test.go가 컨테이너에서 한다.
 func TestScaffoldDeckLoadsWithoutDiagnostics(t *testing.T) {
@@ -177,7 +177,7 @@ func TestScaffoldRefusesToOverwrite(t *testing.T) {
 	})
 }
 
-// 값 층이 읽지 않는 테마 이름을 설정에 써 주지 않는다 (ADR 0048).
+// 값 층이 읽지 않는 테마 이름을 설정에 써 주지 않는다.
 func TestScaffoldRejectsUnknownTheme(t *testing.T) {
 	dir := t.TempDir()
 	_, err := Write(Options{Dir: dir, Theme: "corp"})

@@ -9,7 +9,7 @@ func withPlannedAttrs(list []plannedAttr) func() {
 	return func() { plannedAttrs = saved }
 }
 
-// 계획된 속성은 오타와 **다른 문장으로** 말한다 (ADR 0051) — 없는 것이 이름이 아니라 구현일
+// 계획된 속성은 오타와 **다른 문장으로** 말한다 — 없는 것이 이름이 아니라 구현일
 // 때 저자가 이름을 의심하지 않게. 오늘 예정 목록은 비어 있어 목록을 잠시 세워 관문이 사는지 본다.
 func TestPlannedAttrDiagnostic(t *testing.T) {
 	restore := withPlannedAttrs([]plannedAttr{{Tag: "shape", Name: "lang", Opens: "가상 항목"}})

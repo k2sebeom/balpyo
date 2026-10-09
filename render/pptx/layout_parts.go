@@ -6,7 +6,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// slotLayoutPart는 슬롯 모드 슬라이드가 참조하는 슬라이드 레이아웃 파트 하나의 명세다 (ADR 0035).
+// slotLayoutPart는 슬롯 모드 슬라이드가 참조하는 슬라이드 레이아웃 파트 하나의 명세다.
 //
 // blank 레이아웃(slideLayout1)은 흐름 모드 슬라이드가 그대로 쓰고, 슬롯을 실제로 쓴 슬라이드는
 // 자기 레이아웃의 플레이스홀더 집합을 선언한 이 파트를 가리킨다 — 그래야 슬라이드 도형의
@@ -33,7 +33,7 @@ type slotLayoutPart struct {
 // layoutPlaceholder는 레이아웃 파트의 `<p:sp>` 플레이스홀더 하나다.
 //
 // **xfrm을 내지 않는다** — 좌표는 마스터의 title/body 프로토타입에서 상속받고, 슬라이드는
-// 잰 rect로 덮어쓴다 (ADR 0035 선택지 3: 레이아웃 플레이스홀더의 위치는 슬라이드에 영향을
+// 잰 rect로 덮어쓴다 (레이아웃 플레이스홀더의 위치는 슬라이드에 영향을
 // 주지 않는다, 잰 박스가 좌표를 소유한다). 그래서 여기서 필요한 것은 **연결을 위한 type/idx뿐**이다.
 type layoutPlaceholder struct {
 	// ID는 이 레이아웃 spTree 안의 `cNvPr@id`다 (2부터 — id 1은 spTree 그룹).
@@ -127,7 +127,7 @@ func slideLayoutFile(slide *soml.Slide, slotLayouts []slotLayoutPart) string {
 //
 // 표준 PowerPoint 마스터의 관례를 따른다 (좌우 0.5in 여백, 제목 위·본문 아래). 슬라이드가
 // 잰 rect로 덮어쓰므로 이 좌표는 **레이아웃 썸네일에만** 보이고 산출물 픽셀에는 닿지 않는다
-// (ADR 0035 선택지 3) — 노트 마스터 좌표(notesMasterLayout)와 같은 처지다.
+// — 노트 마스터 좌표(notesMasterLayout)와 같은 처지다.
 type masterPlaceholders struct {
 	TitleX, TitleY, TitleCX, TitleCY int64
 	BodyX, BodyY, BodyCX, BodyCY     int64

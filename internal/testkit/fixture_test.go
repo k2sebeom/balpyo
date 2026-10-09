@@ -34,7 +34,7 @@ func TestFixturesAreDiscovered(t *testing.T) {
 			t.Errorf("픽스처 경로가 저장소 밖이다: %s", f.Dir)
 		}
 	}
-	// 접두 숫자가 실행 순서다 — 정렬이 깨지면 리뷰 갤러리 순서가 iteration 순서와 어긋난다.
+	// 접두 숫자가 실행 순서다 — 정렬이 깨지면 픽스처가 접두 숫자와 다른 순서로 돈다.
 	for i := 1; i < len(fixtures); i++ {
 		if fixtures[i-1].Name > fixtures[i].Name {
 			t.Errorf("픽스처 순서가 정렬되지 않았다: %s > %s", fixtures[i-1].Name, fixtures[i].Name)
@@ -56,7 +56,7 @@ func TestFixtureBuildLeavesFixtureDirClean(t *testing.T) {
 }
 
 // 골든은 두 종뿐이다 — 구조 스냅샷과 (경고가 있을 때) 진단. 산출물 스냅샷이 다시 끼어들면
-// 환경 고정이 다시 필요해진다 (ADR 0064).
+// 환경 고정이 다시 필요해진다.
 func TestFixtureGoldenTreeShape(t *testing.T) {
 	fixture := Fixtures(t)[0]
 	files := fixture.goldenFiles(t, fixture.Build(t))

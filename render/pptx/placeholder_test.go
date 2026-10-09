@@ -10,7 +10,7 @@ import (
 )
 
 // 슬롯을 쓴 덱은 그 레이아웃의 플레이스홀더 파트를 얻고 마스터가 프로토타입·txStyles를 얻는다
-// (ADR 0035 Part B) — 그래야 슬라이드의 `<p:ph>`가 진짜 플레이스홀더가 된다. 슬롯을 쓰지 않은
+// — 그래야 슬라이드의 `<p:ph>`가 진짜 플레이스홀더가 된다. 슬롯을 쓰지 않은
 // 덱은 blank 레이아웃 하나만 갖는다. 슬라이드의 ph 매핑과 파트 간 연결은 패리티·교차 파트 검증이 본다.
 func TestRenderSlotEmitsLayoutPart(t *testing.T) {
 	rects := []geom.Rect{{X: 64, Y: 64, W: 1152, H: 67.2}, {X: 64, Y: 155.2, W: 1152, H: 36}}
@@ -73,7 +73,7 @@ func layoutSlotDeck(t *testing.T, layout soml.SlideLayout, body string) *soml.De
 	return deck
 }
 
-// **슬롯 모드 판정이 두 타깃에서 같은 결론에 이른다** (도그푸딩 D3 · ADR 0044).
+// **슬롯 모드 판정이 두 타깃에서 같은 결론에 이른다**.
 //
 // 한쪽만 슬롯 모드를 켜면 한 소스가 웹에서는 조용히 무효, PPTX에서는 플레이스홀더가 된다.
 // 대조는 두 렌더러의 결론으로 한다 (스테이지의 `balpyo-slots` 모디파이어 ↔ `<p:ph>`).

@@ -1,6 +1,6 @@
 package soml
 
-// 이 파일은 레이아웃 태그(docs/reference/soml/layout.md)의 **요소 종류·속성 카탈로그**다.
+// 이 파일은 레이아웃 태그의 **요소 종류·속성 카탈로그**다.
 //
 // 서브셋 카탈로그(subset.go)와 같은 자리에 같은 태도로 둔다: 이 표를 파서(문법·배치 규칙),
 // 지오메트리 패스(잴 대상), 웹 렌더러(flex/grid CSS), PPTX 렌더러(컨테이너는 도형이 되지
@@ -11,9 +11,9 @@ package soml
 // 모델이 아니다. 그래서 속성 이름과 **순서**를 레퍼런스 표 그대로 둔다: 순서가 곧 진단
 // 메시지의 순서이자 문서의 순서다.
 //
-// `<stack>`은 Iteration 6에 열렸다 — 겹침 시맨틱(ADR 0067 결정 3)의 겹침 렌더가 웹(FlowStack의
-// CSS)·PPTX(문서 순서 z-축)에 함께 오는 iteration이다. 자식 배치 속성 `at`·`x`·`y`도 같은
-// iteration에 열렸다 (childPlacementAttrs). 값 어휘·부모 한정 검증은 값 층(core)의 몫이다.
+// `<stack>`의 겹침은 웹(FlowStack의 CSS)·PPTX(문서 순서 z-축)가 함께 렌더하고, 자식 배치
+// 속성 `at`·`x`·`y`가 그 짝이다 (childPlacementAttrs). 값 어휘·부모 한정 검증은 값
+// 층(core)의 몫이다.
 
 // 레이아웃 태그 이름. 렌더러가 grid와 flex를 가르는 판단(`display:grid` vs
 // `display:flex`)을 문자열 리터럴이 아니라 이 상수로 하도록 내보낸다 — TextElement·
@@ -22,7 +22,7 @@ const (
 	RowElement  = "row"
 	ColElement  = "col"
 	GridElement = "grid"
-	// StackElement는 **겹침 컨테이너**다 (ADR 0067 결정 3) — 단일 셀 grid로, 모든 자식이
+	// StackElement는 **겹침 컨테이너**다 — 단일 셀 grid로, 모든 자식이
 	// 같은 칸에 쌓인다. 배치 흐름은 KindStack이 아니라 FlowStack이다 (placement.go의
 	// 근거): 파서·core·PPTX·지오메트리에서 `<row>`와 산출이 전부 같고 다른 것은 웹의
 	// CSS 한 줄뿐이며, 그 한 줄은 이미 종류가 아니라 흐름으로 갈린다.
@@ -32,7 +32,7 @@ const (
 	SpacerElement = "spacer"
 )
 
-// StyleAttr는 **배치 전용 CSS 탈출구**다 (ADR 0014). 배치는 어차피 좌표로 구워지므로
+// StyleAttr는 **배치 전용 CSS 탈출구**다. 배치는 어차피 좌표로 구워지므로
 // PPTX 충실도를 해치지 않지만, 외관 선언(색·테두리)을 쓰면 웹 전용이 되어 경고가 붙는다 —
 // allowlist 검사와 경고는 값 층(core)의 몫이고 파서는 이름만 본다.
 const StyleAttr = "style"
@@ -42,14 +42,14 @@ const StyleAttr = "style"
 // 뒤에 온다 (진단의 자식 태그 목록이 `…, <grid>, <stack>, <spacer>`가 된다).
 var layoutContainerElements = []string{RowElement, ColElement, GridElement, StackElement}
 
-// 컨테이너 속성 (docs/reference/soml/layout.md 컨테이너 표)과 **박스 속성**. 넷으로 나눈 이유는 소비자가 다르기
+// 컨테이너 속성과 **박스 속성**. 넷으로 나눈 이유는 소비자가 다르기
 // 때문이다 — 트랙 목록은 `<grid>`에만 열리고, 박스 속성은 `<shape>`와 공유한다. 나눠 두어도
 // 이어 붙인 순서(ContainerAttrs)는 레퍼런스 표 순서와 같다.
 var (
 	// containerFlowAttrs는 flex·grid가 함께 받는 배치 속성이다.
 	containerFlowAttrs = []string{"gap", "align", "justify", "wrap"}
 	// stackFlowAttrs는 `<stack>`이 받는 흐름 속성이다 — flex 공통 넷에서 `gap`·`wrap`을 뺀
-	// 것이다. 근거는 단일 셀이라는 stack의 정의다 (ADR 0067 결정 3): `gap`은 셀 사이의 간격인데
+	// 것이다. 근거는 단일 셀이라는 stack의 정의다: `gap`은 셀 사이의 간격인데
 	// 자식이 전부 같은 칸에 있어 산출 CSS에 나가도 아무것도 하지 않고, `wrap`은 flex 전용
 	// (`flex-wrap`)이라 grid 흐름인 stack에서 무효다. 받아 놓고 아무것도 하지 않는 속성은
 	// 저자가 "왜 안 되지"를 산출물에서 발견하게 만들고, 그것이 닫힌 어휘로 막으려던
@@ -73,13 +73,13 @@ var (
 	// 늘 때 어느 태그가 빠졌는지 사람이 세어야 한다 — withChildPlacement를 만든 것과 같은
 	// 근거다.
 	boxSizeAttrs = []string{"w", "h", "min-w", "min-h", "max-w", "max-h", "ratio"}
-	// textSizeAttrs는 텍스트 박스가 받는 크기 속성이다 — **가로 축만** (ADR 0043).
+	// textSizeAttrs는 텍스트 박스가 받는 크기 속성이다 — **가로 축만**.
 	//
 	// boxSizeAttrs의 **부분집합이고 순서도 같다** (TestTextSizeAttrsAreBoxSubset이 지킨다):
 	// 값 문법을 컨테이너·도형과 공유하므로(`core.boxAttr`) 무단위 px·`%`·`fill`이 같은 뜻이고,
 	// 목록이 두 벌이면 같은 표기가 두 뜻을 갖게 된다.
 	//
-	// 세로 축(`h`·`min-h`·`max-h`)과 `pad`·`ratio`를 닫아 두는 이유 (ADR 0043):
+	// 세로 축(`h`·`min-h`·`max-h`)과 `pad`·`ratio`를 닫아 두는 이유:
 	//   - 박스 안 세로 정렬 채널은 `anchor`이고 그 채널은 **도형 안에서만** 뜻을 가지므로
 	//     (웹은 도형 본문의 flex, PPTX는 `bodyPr@anchor`), 높이만 열면 저자가 만든 여백 안에서
 	//     글을 움직일 방법이 없다 — 닿을 수 없는 공간이 생긴다.
@@ -101,7 +101,7 @@ func BoxAttrs() []string {
 	return append(attrs, boxSizeAttrs...)
 }
 
-// TextSizeAttrs는 텍스트 박스의 가로 크기 속성이다 (`w`·`min-w`·`max-w` — ADR 0043).
+// TextSizeAttrs는 텍스트 박스의 가로 크기 속성이다 (`w`·`min-w`·`max-w`).
 // `<text>`·블록·리스트 컨테이너가 받고, 값 층(core)이 BoxAttrs와 **같은 헬퍼**로 해석한다.
 //
 // BoxAttrs와 같은 이유로 내보낸다: 파서가 연 속성과 값 층이 해석하는 속성이 갈라지면
@@ -139,7 +139,7 @@ func TakesTextSize(name string) bool {
 	return false
 }
 
-// childPlacementAttrs는 **자식 배치 속성**이다 (docs/reference/soml/layout.md 자식 표) —
+// childPlacementAttrs는 **자식 배치 속성**이다 —
 // 부모 컨테이너 안에서 자기 자리를 정하는 채널이므로 컨테이너가 아니라 **자식**에 붙는다.
 //
 // 원안은 "모든 컴포넌트/레이아웃 태그에 적용 가능"이었지만, 여는 곳은 **레이아웃
@@ -149,9 +149,9 @@ func TakesTextSize(name string) bool {
 // 도형 하나다 — render/pptx.writeListShape), 인라인은 박스가 아니라 런이다. 열어 두면
 // `<li grow="1">`이 웹에서만 뜻을 갖고 PPTX에서는 사라지는 선언이 된다.
 //
-// `at`·`x`·`y`는 **겹침 배치 채널**이다 (docs/reference/soml/stack.md) — Iteration 6에
-// 열렸다. `at`은 stack 셀 안의 9지점 앵커(`place-self`), `x`/`y`는 절대 오프셋이다. `span`이 `<grid>`의
-// 자식에서만 뜻이 있듯 이들도 부모가 한정한다(`at`은 stack만, `x`/`y`는 stack·canvas만)
+// `at`·`x`·`y`는 **겹침 배치 채널**이다. `at`은 stack 셀 안의 9지점 앵커(`place-self`),
+// `x`/`y`는 절대 오프셋이다. `span`이 `<grid>`의 자식에서만 뜻이 있듯 이들도
+// 부모가 한정한다(`at`은 stack만, `x`/`y`는 stack·canvas만)
 // — 목록은 한 벌이므로 여기서 이름만 열고, 값 어휘와 부모 한정 검증은 값 층(core)이
 // 한다 (span의 선례와 같다). 순서는 자식 표를 따라 `order` 뒤, `style`(탈출구이므로
 // 항상 끝) 앞이다.
@@ -210,9 +210,8 @@ func withChildPlacement(attrs []string) []string {
 // layoutChildren은 레이아웃 컨테이너의 자식 어휘다 (순서 = 진단 순서).
 //
 // 컴포넌트(`<text>`·`<shape>`·`<image>`)가 앞에 오고 텍스트 서브셋·레이아웃이 뒤따른다.
-// `<shape>`가 여기 있는 것이 Iteration 4의 핵심 장면이었다 — `<grid cols="4">` 안의 카드
-// 도형. `<image>`가 더해진 것이 Iteration 5의 핵심 장면이다 — 그림+텍스트 2단(`<row>`)과
-// 그림 그리드(`<grid cols="3">`).
+// `<shape>`가 여기 있어야 `<grid cols="4">` 안의 카드 도형이 되고, `<image>`가 있어야
+// 그림+텍스트 2단(`<row>`)과 그림 그리드(`<grid cols="3">`)가 된다.
 //
 // 레이아웃 컨테이너가 자신도 목록에 있는 것은 의도다 — 중첩 레이아웃(`<row>` 안의
 // `<col>`)이 이 어휘의 핵심 장면이다. `<note>`는 없다: 노트는 콘텐츠가 아니라 슬라이드

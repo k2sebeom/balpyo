@@ -7,7 +7,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// `alt`은 도형과 표 프레임에서 **그림·표의 이름**이다 (ADR 0058) — 안의 글을 대체하지 않는다.
+// `alt`은 도형과 표 프레임에서 **그림·표의 이름**이다 — 안의 글을 대체하지 않는다.
 // 값 층이 하는 일은 한 가지뿐이다: 빈 값의 뜻을 정하는 것.
 func TestShapeAndTableAltResolve(t *testing.T) {
 	deck, diags := resolveSlide(t, `<slide id="a11y">
@@ -54,8 +54,8 @@ func TestAltRejectsEmptyAndValuelessOnShapeAndTable(t *testing.T) {
 	}
 }
 
-// 그림의 `alt=""`는 **남는다** — 그 표기의 뜻이 HTML `<img>`에 있고 우리가 정한 것이 아니다
-// (ADR 0027 · 0058). 비대칭의 근거가 우리 밖에 있다는 것을 이 테스트가 못 박는다.
+// 그림의 `alt=""`는 **남는다** — 그 표기의 뜻이 HTML `<img>`에 있고 우리가 정한 것이 아니다.
+// 비대칭의 근거가 우리 밖에 있다는 것을 이 테스트가 못 박는다.
 func TestImageAltStillAcceptsTheEmptyString(t *testing.T) {
 	if got := resolvedImage(t, `src="assets/a.png" alt=""`).Alt; got != "" {
 		t.Errorf("그림의 alt = %q, want 빈 문자열 (장식 그림)", got)

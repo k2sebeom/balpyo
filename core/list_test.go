@@ -36,7 +36,7 @@ func listItemStyles(t *testing.T, deck *soml.Deck) []*soml.TextStyle {
 	return styles
 }
 
-// 컨테이너의 외관 속성은 **항목들이 함께 받는 패치**다 (ADR 0038): 목록 하나의
+// 컨테이너의 외관 속성은 **항목들이 함께 받는 패치**다: 목록 하나의
 // 타이포그래피는 목록 단위의 성질이므로, 저자가 컨테이너에 한 번 쓰면 모든 항목이 같은
 // 값에 도달해야 한다 — 항목마다 값이 갈리면 그것은 목록이 아니라 문단 여럿이다.
 func TestResolveListAppearanceFlowsToItems(t *testing.T) {
@@ -67,7 +67,7 @@ func TestResolveListAppearanceFlowsToItems(t *testing.T) {
 	}
 }
 
-// 컨테이너 자신은 **확정 텍스트 외관을 갖지 않는다** (ADR 0038). 컨테이너는 텍스트를 담지
+// 컨테이너 자신은 **확정 텍스트 외관을 갖지 않는다**. 컨테이너는 텍스트를 담지
 // 않으므로(자식은 `<li>`뿐) 소비자가 없고, 채워 두면 두 렌더러가 "컨테이너의 값"과 "항목의
 // 값" 중 어느 쪽이 진실인지 각자 고르게 된다. 배치 채널은 그대로 붙는다.
 func TestResolveListContainerHasNoTextStyle(t *testing.T) {

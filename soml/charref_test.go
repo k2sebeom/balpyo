@@ -9,7 +9,7 @@ func textOf(t *testing.T, src string) string {
 	return elementAt(t, doc.Content, 0).TextContent()
 }
 
-// 이름 있는 참조 5종과 수치 참조가 풀리고 참조·마크업 모양이 아닌 `&`·`<`는 리터럴이다 — 모델에는 **해석된 문자**가 담긴다 (ADR 0037).
+// 이름 있는 참조 5종과 수치 참조가 풀리고 참조·마크업 모양이 아닌 `&`·`<`는 리터럴이다 — 모델에는 **해석된 문자**가 담긴다.
 func TestParseResolvesCharRefs(t *testing.T) {
 	tests := []struct {
 		name string

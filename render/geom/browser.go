@@ -43,7 +43,7 @@ const (
 
 // Candidates는 브라우저 실행 파일 후보다 (탐색 순서).
 //
-// 브라우저를 내려받지 않고 시스템에 있는 것을 쓴다 (docs/internals/geometry-pass.md) — macOS 경로를 함께 두는 이유는
+// 브라우저를 내려받지 않고 시스템에 있는 것을 쓴다 — macOS 경로를 함께 두는 이유는
 // 로컬에서도 컨테이너 없이 빌드가 돌아야 하기 때문이다.
 func Candidates() []string {
 	return []string{
@@ -258,7 +258,7 @@ func (s *Session) Eval(expr string, out any) error {
 // Print는 지금 열려 있는 문서를 PDF로 인쇄한다 (사람이 Cmd+P를 누르는 것과 같은 경로).
 //
 // 종이 크기는 **문서가 정한다**: PreferCSSPageSize가 CSS의 `@page { size }`를 따르게 하므로
-// 한 장이 한 페이지를 꽉 채운다 (web.printPageCSS, ADR 0062). Go에서 크기를 넘기면 인쇄 CSS가
+// 한 장이 한 페이지를 꽉 채운다 (web.printPageCSS). Go에서 크기를 넘기면 인쇄 CSS가
 // 틀렸을 때도 종이는 맞게 나와 게이트가 아무것도 판정하지 못한다.
 //
 // 배경은 함께 찍는다 — 슬라이드의 바탕색·배경 이미지는 장식이 아니라 내용이고, 브라우저
@@ -279,7 +279,7 @@ func (s *Session) Print() ([]byte, error) {
 
 // rectScript는 요소 사각형을 **문서 좌표**로 읽는 스니펫이다.
 //
-// **문자열 하나로 두는 이유**: 요소 스크린샷의 잘라낼 영역(Session.Clip)과 Iteration 7의 앵커
+// **문자열 하나로 두는 이유**: 요소 스크린샷의 잘라낼 영역(Session.Clip)과 화살표 앵커
 // 계산이 같은 코드를 평가해야 한다. 좌표 로직이 Go와 JS에 이중 구현되는 순간 웹과 PPTX의
 // 배치가 갈린다.
 const rectScript = `(() => {
@@ -306,8 +306,8 @@ func (s *Session) Rects(selector string) ([]Rect, error) {
 //
 // 뷰포트로 스크롤한 뒤 잘라내는 방식(chromedp의 요소 스크린샷 헬퍼)을 쓰지 않는다: 슬라이드는
 // 뷰포트보다 크므로 잘라낸 영역이 요소 박스와 스크롤량만큼 어긋나고 뷰포트 밖은 페이지 배경으로
-// 채워진다. 그러면 픽셀 비교가 렌더 차이가 아니라 스크린샷 버그를 보고한다 (Iteration 0의
-// 리뷰에서 빈 슬라이드가 22% 다르다고 나온 원인).
+// 채워진다. 그러면 픽셀 비교가 렌더 차이가 아니라 스크린샷 버그를 보고한다 (빈
+// 슬라이드조차 22% 다르다고 나온다).
 func (s *Session) Clip(r Rect) ([]byte, error) {
 	if r.W <= 0 || r.H <= 0 {
 		return nil, fmt.Errorf("크기가 0인 영역은 찍을 수 없다: %s", r)

@@ -9,7 +9,7 @@ package soml
 // 웹의 CSS와 PPTX의 OOXML이 갈라지고, 그 종류의 버그는 두 산출물을 나란히 볼 때까지
 // 드러나지 않는다.
 
-// ShapeStyle은 확정된 도형 외관이다 (docs/reference/soml/shape.md "속성").
+// ShapeStyle은 확정된 도형 외관이다.
 //
 // 필드 순서는 속성 목록(shapeOwnAttrs·shapeAppearanceAttrs) 순서다. "정하지 않음"은
 // 포인터의 nil과 닫힌 어휘의 빈 문자열로 나타낸다 — `opacity="1"`은 저자가 정한 1이고
@@ -19,7 +19,7 @@ type ShapeStyle struct {
 	// Type은 프리셋 이름이다 (ShapeTypes의 12종). 생략할 수 없으므로 포인터가 아니다 —
 	// 도형의 종류는 추측할 수 없고, 없으면 값 층이 에러를 낸다 (core).
 	Type string
-	// ID는 저자가 붙인 도형 이름이다 (`<arrow from="db">`의 참조 대상 — Iteration 7).
+	// ID는 저자가 붙인 도형 이름이다 (`<arrow from="db">`의 참조 대상).
 	//
 	// 식별자는 외관이 아니다 (Appearance.Link가 목적지를 TextStyle 밖에 둔 것과 같은
 	// 구별). 그래도 여기 담는 이유는 "렌더러가 Attrs를 다시 읽지 않는다"는 계약이다:
@@ -44,7 +44,7 @@ type ShapeStyle struct {
 	Flip Flip
 	// Alt은 도형 **그림**의 대체 텍스트다 (웹은 잉크 `<svg>`의 `role="img" aria-label`,
 	// PPTX는 `p:cNvPr@descr`). 빈 값은 "이름 없음"이고 그때 산출물은 이 속성이 없던 때와
-	// 한 바이트도 다르지 않다 — 그림의 기본은 장식이다 (ADR 0058).
+	// 한 바이트도 다르지 않다 — 그림의 기본은 장식이다.
 	//
 	// 외관이 아니라 저자의 내용이므로 캐스케이드를 타지 않는다 (ImageStyle.Alt와 같은 자리).
 	Alt string
@@ -77,7 +77,7 @@ func NoFill() Fill { return Fill{None: true} }
 // (OOXML은 굵기가 `w` 속성, 스타일이 `prstDash` 자식, 색이 `solidFill` 자식이다).
 type Border struct {
 	None bool
-	// Width는 논리 스테이지 px다 (ADR 0067 결정 5). 0·음수는 값 층이 막는다.
+	// Width는 논리 스테이지 px다. 0·음수는 값 층이 막는다.
 	Width float64
 	Style BorderStyle
 	Color Color

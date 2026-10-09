@@ -6,7 +6,7 @@ import "github.com/k2sebeom/balpyo/soml"
 //
 // 파서가 파일 하나 안에서 볼 수 있는 것(닫힌 어휘, 문법)은 파서가 진단한다. 여기서는
 // **파일을 넘어야 알 수 있는 것**만 본다 — 지금은 슬라이드 ID 충돌이 그것이다.
-// `<arrow from>`의 id 참조(Iteration 7)나 슬롯 이름(Iteration 10)도 이 층에 붙는다.
+// 다른 요소의 id를 가리키는 참조처럼 파일을 넘는 검사가 생기면 이 층에 붙는다.
 //
 // check·build·lsp가 이 함수를 공유하므로 에디터에서 본 진단과 CI가 막는 진단이 같다.
 func Validate(deck *soml.Deck) soml.Diagnostics {

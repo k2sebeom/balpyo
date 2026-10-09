@@ -29,7 +29,7 @@ const (
 //
 // spaces는 덱이 공간 토큰을 참조하는지다 (레이아웃 태그가 있는 덱 — web.features). 참조가
 // 없을 때 선언을 내지 않는 이유는 골든이다: 레이아웃을 쓰지 않은 덱의 산출물이 이
-// iteration 때문에 달라지면 diff가 무엇이 변했는지 말해 주지 못한다. 그림자 토큰도 같은
+// 기능 때문에 달라지면 diff가 무엇이 변했는지 말해 주지 못한다. 그림자 토큰도 같은
 // 이유로 **참조하는 어휘**(도형·그림)가 있는 덱에만 나간다 (feat.shadowTokens).
 //
 // 테마 층(`@layer balpyo.theme`)에 넣는 이유: 저자 CSS가 같은 변수를 덮어쓸 수 있어야 하고
@@ -54,7 +54,7 @@ func themeCSS(theme soml.Theme, feat features) string {
 	}
 	if feat.spaceTokens() {
 		// 참조(gap/pad의 var())와 선언이 **한 표**에서 나온다 — 배치조차 테마의 리듬을
-		// 따라간다는 계약(docs/reference/theme.md)의 웹 쪽 절반이다.
+		// 따라간다는 계약의 웹 쪽 절반이다.
 		b.WriteString(spaceVarsCSS(theme))
 	}
 	if feat.shadowTokens() {
@@ -74,15 +74,15 @@ func themeCSS(theme soml.Theme, feat features) string {
 	return b.String()
 }
 
-// layoutStagesCSS는 덱이 쓴 레이아웃의 배치 규칙을 테마 층에 낸다 (M1.1). 스테이지에 얹으므로
+// layoutStagesCSS는 덱이 쓴 레이아웃의 배치 규칙을 테마 층에 낸다. 스테이지에 얹으므로
 // 기본 스택 규칙(`.balpyo-stage`, base 층)을 이긴다 — 테마 층이 base 층 뒤라 특정도와 무관하게
-// 이긴다 (cascade layer — docs/internals/architecture.md). 배치 원문은 core가 이미
+// 이긴다 (cascade layer). 배치 원문은 core가 이미
 // 정규화·검증했다 (soml.Theme.Layouts).
 //
 // feat.layouts/slotLayouts만 도는 이유는 골든 불변이다 — 쓰지 않은 레이아웃의 규칙이 산출물에
 // 들어가면 diff가 무엇이 변했는지 말해 주지 못한다 (themeCSS의 다른 조건과 같은 근거).
 //
-// # 흐름 규칙과 슬롯 규칙은 서로 배타적이다 (ADR 0035)
+// # 흐름 규칙과 슬롯 규칙은 서로 배타적이다
 //
 // 한 레이아웃은 슬라이드마다 흐름 모드이거나 슬롯 모드다 (writeStage). 그래서 흐름 규칙은
 // `:not(.balpyo-slots)`로, 슬롯 영역 규칙은 `.balpyo-slots`로 겨눠 **한 레이아웃을 두 슬라이드가
@@ -97,10 +97,10 @@ func layoutStagesCSS(theme soml.Theme, feat features) string {
 	b.WriteString("\n")
 	if len(feat.slotLayouts) > 0 {
 		// 슬롯 영역 자식의 텍스트·리스트는 확정 폭(width:100%, contentCSS)에서 벗어나 auto로
-		// 돌아간다 — **세 번째 리셋 문맥이다** (ADR 0043). 앞의 둘은 레이아웃 컨테이너의
+		// 돌아간다 — **세 번째 리셋 문맥이다**. 앞의 둘은 레이아웃 컨테이너의
 		// 자식(layoutCSS)과 stack·캔버스의 자식(stackCSS)이고, 근거 문장이 셋 다 같다: 폭이
 		// 칸을 다 먹으면 테마가 쓴 정렬(`justify-items`·`place-self`)이 자식을 움직일 여지가
-		// 없다. ADR 0035가 "배치의 실체는 테마가 소유한다"고 정했는데, 이 리셋이 없으면
+		// 없다. 배치의 실체는 테마가 소유하는데, 이 리셋이 없으면
 		// 테마가 쓴 선언이 엔진 base 층에 조용히 지워진다 (`title.slots.css`의
 		// `justify-items: center`가 그랬다).
 		//
@@ -115,13 +115,13 @@ func layoutStagesCSS(theme soml.Theme, feat features) string {
 	}
 	for _, name := range feat.slotLayouts {
 		// 조회는 언제나 성공한다 — 테마에 슬롯 영역이 없으면 core가 슬롯을 싣지 않으므로
-		// (ADR 0044) 그 레이아웃은 슬롯 모드가 될 수 없고 feat.slotLayouts에 들어오지 못한다.
+		// 그 레이아웃은 슬롯 모드가 될 수 없고 feat.slotLayouts에 들어오지 못한다.
 		fmt.Fprintf(&b, "  .balpyo-stage.balpyo-layout-%s.balpyo-slots { %s; }\n", name, theme.SlotLayouts[name])
 	}
 	return b.String()
 }
 
-// bgToken은 슬라이드 바탕 색 토큰의 이름이다 (docs/reference/theme.md의 표준 토큰 어휘).
+// bgToken은 슬라이드 바탕 색 토큰의 이름이다 (표준 토큰 어휘).
 const bgToken = "bg"
 
 // fontStack은 폰트 토큰의 CSS font-family 값이다.
@@ -161,7 +161,7 @@ func quoteFamily(name string) string {
 }
 
 // textStyleCSS는 **해석이 끝난** 텍스트 외관을 CSS 선언 목록으로 컴파일한다 (외관 매핑 표의
-// 텍스트 외관 행 — docs/reference/appearance.md).
+// 텍스트 외관 행).
 //
 // 입력은 soml.TextStyle 하나뿐이다 — 요소의 Attrs를 다시 읽지 않는다. 캐스케이드는 core가
 // 이미 한 번 적용했고, 렌더러가 다시 해석하면 웹과 PPTX가 서로 다른 규칙으로 같은 속성을
@@ -211,13 +211,13 @@ func textStyleCSS(style soml.TextStyle, theme soml.Theme) (string, error) {
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "font-family: %s; ", font)
-	// 크기는 논리 스테이지 px 그대로다 (ADR 0067 결정 5). 저자·웹·지오메트리 패스가 한 좌표계를
+	// 크기는 논리 스테이지 px 그대로다. 저자·웹·지오메트리 패스가 한 좌표계를
 	// 쓰므로 환산이 없고, pt 환산은 PPTX 렌더러의 경계에서만 일어난다.
 	fmt.Fprintf(&b, "font-size: %spx; ", formatNumber(style.Size))
 	fmt.Fprintf(&b, "font-weight: %d; ", style.Weight)
 	// 줄높이는 무단위 배수다 — CSS line-height는 배수를 그대로 받고, PPTX는 절대 줄간격
 	// (lnSpc@spcPts)으로 환산해 낸다 (render/pptx.LineSpacing). spcPct(배수)는 엔진마다
-	// 기준이 달라 같은 150%가 글줄을 밀었다 — docs/decisions/0005-line-spacing-and-slack.md.
+	// 기준(폰트 크기 대 폰트 고유 줄 높이)이 달라 같은 150%가 글줄을 민다.
 	fmt.Fprintf(&b, "line-height: %s; ", formatNumber(style.LineHeight))
 	fmt.Fprintf(&b, "%s; ", colorDecl)
 	fmt.Fprintf(&b, "text-align: %s", align)
@@ -235,7 +235,7 @@ func textStyleCSS(style soml.TextStyle, theme soml.Theme) (string, error) {
 //
 // 블록(textStyleCSS)이 이 두 선언을 내지 않는 이유: 서브셋 블록 태그(div/h1~h3/p/
 // blockquote/pre/li)에는 이탤릭·밑줄 UA 규칙이 없어 메트릭이 움직일 경로가 없고, 지금의
-// 어휘에서 블록 스타일은 Italic/Underline을 가질 수 없다 — 선언을 더하면 Iteration 1
+// 어휘에서 블록 스타일은 Italic/Underline을 가질 수 없다 — 선언을 더하면
 // 골든만 이유 없이 움직인다. 블록이 Italic을 가질 수 있게 되는 날(variant가 필드를 얻는
 // 날) textStyleCSS가 이 두 선언을 함께 얻어야 한다.
 func runStyleCSS(style soml.TextStyle, theme soml.Theme) (string, error) {

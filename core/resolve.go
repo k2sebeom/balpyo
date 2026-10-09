@@ -20,7 +20,7 @@ import (
 // (cascade.go) 한 곳에서만 일어난다. 도형 외관도 **같은 기계의 복제**를 쓴다 (mergeShape) —
 // 도형에는 역할이 없어 컴포넌트 기본값이 가장 아래 단이라는 점만 갈라진다 (resolveShape).
 // 역할 기본값·컴포넌트 기본값·variant 표는 전부 **활성 테마의 components.json**에서 온다
-// (theme_package.go) — 엔진에는 어떤 외관 값도 하드코딩되어 있지 않다 (ADR 0052).
+// (theme_package.go) — 엔진에는 어떤 외관 값도 하드코딩되어 있지 않다.
 //
 // 이 순서를 렌더러가 아니라 여기서 한 번만 적용하기 때문에 웹과 PPTX가 같은 외관을 본다.
 // computed-style 역추론은 없다 — 외관은 스키마에서 양 타깃으로 순방향 컴파일된다.
@@ -29,14 +29,14 @@ import (
 // (soml/node.go), 역할 5종·정렬 4종·색 토큰 같은 **값 층의 닫힌 어휘**를 여기서 검사한다.
 // 진단은 Attr.ValueSpan을 근거로 파서와 같은 정밀도의 line:col을 갖는다.
 //
-// fsys는 **프로젝트 루트**다 (`ResolveAssets`와 같은 인자, 같은 기준 — ADR 0054). 테마 이름을
+// fsys는 **프로젝트 루트**다 (`ResolveAssets`와 같은 인자, 같은 기준). 테마 이름을
 // 찾는 자리가 둘이기 때문에 받는다: 내장 테마와 `themes/<이름>/`. nil이면 내장 테마만 보인다 —
 // 설정 없이 `Deck`을 만드는 길이 그대로 남는다 (테스트·프리뷰·미래의 API).
 func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 	if deck == nil {
 		return nil
 	}
-	// 테마 선택은 **덱의 요청**이다 (ADR 0052): `balpyo.json`의 theme(또는 CLI의 -theme)가
+	// 테마 선택은 **덱의 요청**이다: `balpyo.json`의 theme(또는 CLI의 -theme)가
 	// deck.ThemeName으로 실려 오고, 이 줄이 그 이름으로 패키지를 로드한다. 빈 이름은 기본
 	// 테마다 — 설정 없이 Deck을 만드는 길이 있다.
 	//
@@ -44,14 +44,14 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 	// 테마로 나가고, 그 사실은 슬라이드를 열어야 드러난다. 진단이 `balpyo.json`을 가리키는
 	// 이유는 고칠 자리가 거기라는 것이다 (테마를 선언하지 않은 크롬 경고와 같은 태도).
 	//
-	// 이름을 찾는 자리는 둘이다 — 내장 테마와 `themes/<이름>/` (ADR 0054). fsys가 그래서 여기
+	// 이름을 찾는 자리는 둘이다 — 내장 테마와 `themes/<이름>/`. fsys가 그래서 여기
 	// 있고, nil이면 내장 테마만 보인다.
 	name := deck.ThemeName
 	if name == "" {
 		name = DefaultTheme
 	}
 	// 토큰과 컴포넌트 외관 표를 한 번에 로드해 slide 루프에 나른다. 어휘 밖 이름·이름 충돌·
-	// 순환 `extends`·불완전한 로컬 테마가 모두 이 한 에러로 온다 (ADR 0054) — 로컬 테마는
+	// 순환 `extends`·불완전한 로컬 테마가 모두 이 한 에러로 온다 — 로컬 테마는
 	// 저자가 방금 쓴 파일이므로 내장 테마처럼 panic할 수 없다.
 	pkg, err := loadThemeNamed(fsys, name)
 	if err != nil {
@@ -61,12 +61,12 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 	// 레이아웃 배치 CSS도 토큰 표에 싣는다 — 웹 스테이지 CSS와 지오메트리 패스가 재는 박스가
 	// 같은 한 표에서 나와야 두 타깃의 배치가 갈라지지 않는다 (soml.Theme.Layouts).
 	deck.Theme.Layouts = pkg.layoutStyles()
-	// 슬롯 영역 배치도 같은 표에 싣는다 (ADR 0035) — 슬롯을 쓴 슬라이드의 스테이지가
+	// 슬롯 영역 배치도 같은 표에 싣는다 — 슬롯을 쓴 슬라이드의 스테이지가
 	// `.balpyo-slots` 모디파이어로 이 영역 규칙을 받는다 (render/web). 흐름 배치(Layouts)와
 	// 겨누는 선택자만 다르고 계약은 같다: 한 표에서 웹 CSS와 지오메트리 패스가 나온다.
 	deck.Theme.SlotLayouts = pkg.slotLayoutStyles()
 
-	// 덱 크롬 계획은 슬라이드 루프 **앞**이다 (ADR 0045): 설정과 테마 선언만 보므로 덱에 한
+	// 덱 크롬 계획은 슬라이드 루프 **앞**이다: 설정과 테마 선언만 보므로 덱에 한
 	// 번 결정되고, 테마가 침묵했을 때의 경고도 그래서 덱에 한 번 나간다.
 	chromePlan, chromeDiags := resolveChrome(deck, pkg)
 	diags := append(pkg.lint, chromeDiags...)
@@ -88,7 +88,7 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 		}
 		// 슬라이드 수준 justify는 콘텐츠 **다음**이다 — 슬롯 모드인지는 자식의 확정 슬롯이
 		// 정하고(slideUsesSlots), 테마가 못 받는 슬롯은 실리지 않으므로(resolveSlot) 그
-		// 슬라이드는 흐름 모드로 판정되어 justify가 유효해진다 (ADR 0044).
+		// 슬라이드는 흐름 모드로 판정되어 justify가 유효해진다.
 		r.slideJustify(slide)
 		// 진단은 파일 안에서 소스 순서로 낸다 — 저자가 위에서 아래로 고칠 수 있게. 역할을
 		// 먼저 해석하고 나머지 속성을 훑기 때문에 발견 순서가 소스 순서와 어긋난다.
@@ -104,7 +104,7 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 type resolver struct {
 	theme soml.Theme
 	// comps는 로드된 컴포넌트 외관 표다 (components.json) — 캐스케이드의 컴포넌트 기본값·
-	// variant 단이 여기서 나온다 — 폴백은 없다 (ADR 0052: 엔진에 외관 값이 없다).
+	// variant 단이 여기서 나온다 — 폴백은 없다 (엔진에 외관 값이 없다).
 	comps components
 	file  string
 	// layout은 이 슬라이드의 확정 레이아웃이다 (slideLayout이 채운다). 배치 검증이 슬라이드를
@@ -132,16 +132,15 @@ func (r *resolver) warnf(span soml.Span, format string, args ...any) {
 }
 
 // slideLayout은 슬라이드 레이아웃 어휘(2종)를 확정한다. 파서는 layout 값을 원문으로 남기고
-// (레이아웃 어휘는 테마와 함께 자란다 — Iteration 10) 문법만 보므로, 어휘 검사는 값 층인
+// (레이아웃 어휘는 테마와 함께 자란다) 문법만 보므로, 어휘 검사는 값 층인
 // 여기다. 어휘 밖 값은 **line:col을 가진** 진단이다 — Slide.LayoutSpan이 값 구간을 가리켜
 // 진단이 부호가 아니라 값에 밑줄을 긋는다.
 //
 // 생략된 슬라이드(빈 문자열)는 DefaultSlideLayout(content)으로 채운다 — 렌더러가 빈 값을
 // 보지 않고, 속성을 명시한 슬라이드와 생략한 슬라이드가 같은 값을 갖는다. 어휘 밖 값도
 // 폴백하지 않고 진단으로 막는 것이 계약이다 (`layout="titel"` 오타가 조용히 기본 레이아웃으로
-// 렌더되면 닫힌 어휘가 막으려던 실패가 된다 — Iteration 10의 "미구현 테마 레이아웃 → 폴백"과
-// 다른 규칙이다). 진단 뒤 기본값을 넣는 것은 회복용일 뿐이다: 진단이 있으면 빌드는 렌더에
-// 닿지 않는다.
+// 렌더되면 닫힌 어휘가 막으려던 실패가 된다). 진단 뒤 기본값을 넣는 것은 회복용일 뿐이다:
+// 진단이 있으면 빌드는 렌더에 닿지 않는다.
 func (r *resolver) slideLayout(slide *soml.Slide) {
 	if slide.Layout == "" {
 		slide.Layout = soml.DefaultSlideLayout
@@ -156,7 +155,7 @@ func (r *resolver) slideLayout(slide *soml.Slide) {
 	slide.Layout = soml.DefaultSlideLayout
 }
 
-// slideJustify는 슬라이드 스테이지의 세로 분배를 확정한다 (`<slide justify>`, ADR 0044 D17).
+// slideJustify는 슬라이드 스테이지의 세로 분배를 확정한다 (`<slide justify>`).
 //
 // 어휘는 컨테이너의 `justify`와 **같은 6종**이고 진단도 같은 함수(boxJustify)에서 나온다 —
 // 같은 뜻에 두 이름·두 메시지를 두지 않는다. 그래서 값 하나를 Attr로 감싸 넘긴다: 슬라이드
@@ -193,7 +192,7 @@ func (r *resolver) slideJustify(slide *soml.Slide) {
 }
 
 // slideUsesSlots는 이 슬라이드의 직계 자식 중 슬롯이 **확정된** 요소가 있는지다 — 슬롯 모드의
-// 정의이고, render/web의 같은 이름 함수와 같은 한 줄을 본다 (ADR 0044: 판정 입력은 하나다).
+// 정의이고, render/web의 같은 이름 함수와 같은 한 줄을 본다 (판정 입력은 하나다).
 func slideUsesSlots(slide *soml.Slide) bool {
 	for _, node := range slide.Content {
 		if elem, ok := node.(*soml.Element); ok && elem.Appearance != nil && elem.Appearance.Slot != "" {
@@ -209,7 +208,7 @@ func slideUsesSlots(slide *soml.Slide) bool {
 //
 // 리스트 컨테이너(<ul>/<ol>)의 Appearance는 **텍스트 외관을 채우지 않는다**: 컨테이너는
 // 항목을 담을 뿐이고 타이포그래피는 <li>(body 역할)에 붙는다. 컨테이너가 받는 외관 속성은
-// 확정 값이 아니라 **항목들이 함께 받는 패치**다 (resolveList, ADR 0038). 반면 배치는
+// 확정 값이 아니라 **항목들이 함께 받는 패치**다 (resolveList). 반면 배치는
 // 컨테이너에도 붙는다 (`<row><ul basis="360">`은 두 열에 리스트를 놓는 흔한 배치다).
 func (r *resolver) node(node soml.Node, parent *soml.Element) {
 	elem, ok := node.(*soml.Element)
@@ -219,7 +218,7 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 	r.resolveLayout(elem, parent)
 	r.resolveSlot(elem, parent)
 	if elem.Name == soml.ChartElement {
-		// 여덟 번째 갈래이고 **유일하게 트리를 바꾸는** 갈래다 (ADR 0059): `<chart>`는 확정
+		// 여덟 번째 갈래이고 **유일하게 트리를 바꾸는** 갈래다: `<chart>`는 확정
 		// 값을 얻는 대신 도형·텍스트의 하위 트리로 **펼쳐진다**. 끝나면 elem은 `<shape>`이므로
 		// 바로 아래 도형 갈래가 뿌리를 평범한 배경 도형으로 해석하고, 합성된 자식은 이 함수의
 		// 끝에 있는 순회가 저자가 쓴 것과 같은 경로로 데려간다.
@@ -260,7 +259,7 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 	if role, ok := r.textRole(elem); ok {
 		r.resolveText(elem, role, textPatch{})
 		if elem.Name == soml.PreElement {
-			// 일곱 번째 갈래다 (ADR 0051). `<pre>`의 문자 데이터는 탭이 펴지고, `lang`이 있으면
+			// 일곱 번째 갈래다. `<pre>`의 문자 데이터는 탭이 펴지고, `lang`이 있으면
 			// **합성 인라인 런**이 된다 — 확정 스타일이 채워진 뒤이므로 합성 런은 그것을 부모로
 			// 상속하고(아래 resolveInlines), 색만 다른 조각이 된다. 렌더러는 손대지 않는다.
 			r.resolveCode(elem)
@@ -275,7 +274,7 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 	}
 }
 
-// resolveSlot은 요소의 슬롯 배정을 검증하고 확정한다 (ADR 0035).
+// resolveSlot은 요소의 슬롯 배정을 검증하고 확정한다.
 //
 // 슬롯은 **슬라이드 직계 자식에만** 유효하다 (parent == nil). 파서는 slot 속성을 슬라이드
 // 직계 자식이 될 수 있는 요소 전부에 열어 두지만(SlotAttr — 태그별 allowlist는 요소가 어디에
@@ -283,15 +282,15 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 // 레이아웃을 아는 이 값 층이 판정한다. 중첩 요소의 slot은 뜻이 없으므로 진단이다 — 조용히
 // 무시하면 저자는 콘텐츠가 왜 그 영역에 안 놓이는지 알 수 없다.
 //
-// 어휘 밖 슬롯 이름은 **line:col을 가진** 빌드 에러다 (layout과 같은 태도 — slideLayout,
-// ADR 0032). 폴백하지 않는 것이 계약이다: `slot="titel"` 오타가 조용히 기본 슬롯으로 떨어지면
+// 어휘 밖 슬롯 이름은 **line:col을 가진** 빌드 에러다 (layout과 같은 태도 —
+// slideLayout). 폴백하지 않는 것이 계약이다: `slot="titel"` 오타가 조용히 기본 슬롯으로 떨어지면
 // 콘텐츠가 엉뚱한 자리에 놓이고 그 실패는 렌더를 볼 때까지 안 보인다. 슬롯이 없는 레이아웃
 // (canvas)의 slot도 같은 경로로 잡힌다 (LayoutSlot이 false).
 //
 // slot을 쓰지 않은 직계 자식은 손대지 않는다 — 빈 Slot이 곧 "슬롯 배치 없음"이라(기본 슬롯은
 // 렌더 매핑의 몫), 슬롯을 쓰지 않은 덱의 산출물이 이 검증 때문에 달라지지 않는다.
 //
-// # 테마가 못 받는 슬롯은 경고 + 미탑재다 (ADR 0044)
+// # 테마가 못 받는 슬롯은 경고 + 미탑재다
 //
 // 어휘에 있는 슬롯 이름이라도 **테마에 그 레이아웃의 슬롯 영역이 없으면**(`*.slots.css`) 놓일
 // 자리가 없다. 그 판정을 여기서 한 번만 하고 슬롯을 **싣지 않는** 것이 계약이다: 렌더러 두
@@ -300,7 +299,7 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 // `Appearance.Slot` 하나로 합쳐진다.
 //
 // 에러가 아니라 경고인 이유: 슬롯 이름은 어휘에 있고 오타도 아니다 — 부족한 것은 테마이고,
-// 테마를 바꾸면 같은 소스가 그대로 뜻을 얻는다 (모르는 variant의 선례 — ADR 0067 결정 6).
+// 테마를 바꾸면 같은 소스가 그대로 뜻을 얻는다 (모르는 variant와 같은 규칙).
 // `--strict`가 승격한다.
 func (r *resolver) resolveSlot(elem *soml.Element, parent *soml.Element) {
 	attr, ok := elem.Attr(soml.SlotAttr)
@@ -346,7 +345,7 @@ func (r *resolver) textRole(elem *soml.Element) (soml.TextRole, bool) {
 //
 // inherited는 **부모가 물려준 패치**다 (리스트 항목만 쓴다 — resolveList). 자기 인라인
 // 속성보다 **먼저** 얹는 이유는 우선순위의 방향이다: 가까운 선언이 이긴다. `<li>`는 지금
-// 외관 속성을 받지 않으므로(ADR 0038 — 여는 속성은 순서인 `reveal` 하나다) 두 단이 겹치는
+// 외관 속성을 받지 않으므로(여는 속성은 순서인 `reveal` 하나다) 두 단이 겹치는
 // 경우가 아직 없지만, 순서를 여기서 못 박아 두면 `<li>`에 외관 속성을 여는 날 우선순위를
 // 다시 논의할 필요가 없다.
 func (r *resolver) resolveText(elem *soml.Element, role soml.TextRole, inherited textPatch) {
@@ -358,7 +357,7 @@ func (r *resolver) resolveText(elem *soml.Element, role soml.TextRole, inherited
 	elemAppearance(elem).Text = &style
 }
 
-// resolveList는 리스트 컨테이너와 그 항목을 해석한다 (ADR 0038).
+// resolveList는 리스트 컨테이너와 그 항목을 해석한다.
 //
 // 컨테이너의 외관 속성(size/color/align/anchor)은 컨테이너의 확정 값이 되지 않고 **모든
 // 항목이 함께 받는 패치**가 된다. 근거는 외관이 목록 단위의 성질이라는 것이다: 목록 하나의
@@ -386,7 +385,7 @@ func (r *resolver) resolveList(list *soml.Element) {
 		}
 		r.resolveText(item, role, patch)
 		r.resolveInlines(item, item.Appearance.Text)
-		// 순서는 외관 뒤에 본다 — 항목의 유일한 자기 속성이고(ADR 0063 결정 1) 외관 패치와
+		// 순서는 외관 뒤에 본다 — 항목의 유일한 자기 속성이고 외관 패치와
 		// 겹치지 않는다.
 		r.resolveReveal(item)
 	}
@@ -406,7 +405,7 @@ func elemAppearance(elem *soml.Element) *soml.Appearance {
 
 // variantPatch는 `variant` 속성을 테마의 **텍스트** variant 표에서 찾는다.
 //
-// 모르는 variant는 에러가 아니라 **경고 + 빈 패치(컴포넌트 기본 외관 폴백)**다 (ADR 0067 결정 6):
+// 모르는 variant는 에러가 아니라 **경고 + 빈 패치(컴포넌트 기본 외관 폴백)**다:
 // variant 어휘는 테마의 사유물이라, 다른 테마로 만든 콘텐츠가 이 테마에서 빌드되지 않으면
 // 콘텐츠의 테마 간 이식성이 깨진다. 엄격함이 필요한 곳은 --strict가 에러로 승격한다.
 func (r *resolver) variantPatch(elem *soml.Element) textPatch {
@@ -435,7 +434,7 @@ func (r *resolver) variantAttr(elem *soml.Element) (soml.Attr, bool) {
 
 // warnUnknownVariant는 모르는 variant 경고다 — **요소 종류에 맞는 어휘를 나열한다.**
 //
-// variant 어휘가 텍스트용·도형용 두 벌이 된 순간(Iteration 4) 생긴 요구다:
+// variant 어휘가 텍스트용·도형용 두 벌이라 생기는 요구다:
 // `<shape variant="kicker">`에 텍스트 목록을 나열하면 저자를 그 테마에 없는 방향으로 보낸다.
 // 두 표가 같은 이름을 가져도 무관하고(요소 종류가 어느 표를 볼지 정한다), 그래서 목록은
 // 호출자가 준다.
@@ -450,7 +449,7 @@ func (r *resolver) warnUnknownVariant(attr soml.Attr, names []string) {
 
 // 아래 넷은 텍스트 캐스케이드의 컴포넌트 기본값·variant 단을 **로드된 표**(r.comps)에서 읽는다.
 //
-// 폴백이 없다 (ADR 0052): 역할 5종은 로더가 요구하므로(theme_require.go) 표에 없을 수 없고,
+// 폴백이 없다: 역할 5종은 로더가 요구하므로(theme_require.go) 표에 없을 수 없고,
 // 하드코딩 표를 폴백으로 남겨 두면 그것이 곧 엔진이 외관 값을 아는 자리가 된다 — 테마의 누락이
 // 조용히 minimal의 값으로 메워지고, 저자는 자기 테마가 반만 먹는 것을 슬라이드에서 본다.
 func (r *resolver) textRoleDefaults(role soml.TextRole) soml.TextStyle {
@@ -528,17 +527,17 @@ func (r *resolver) role(elem *soml.Element) soml.TextRole {
 	return soml.DefaultTextRole
 }
 
-// size는 폰트 크기를 해석한다. 값은 **무단위 수치 = 논리 스테이지 px**다 (ADR 0067 결정 5).
+// size는 폰트 크기를 해석한다. 값은 **무단위 수치 = 논리 스테이지 px**다.
 func (r *resolver) size(attr soml.Attr) (float64, bool) {
 	if !r.hasValue(attr) {
 		return 0, false
 	}
 	raw := attr.Value
 	if strings.HasSuffix(raw, "%") {
-		// %를 이번 iteration에서 막는 이유: 상대 폰트 크기를 PPTX로 번역할 곳이 없다. OOXML
+		// %를 막는 이유: 상대 폰트 크기를 PPTX로 번역할 곳이 없다. OOXML
 		// `rPr@sz`는 절대값(1/100 pt)이고 "부모 텍스트 크기"라는 상속 기준도 없어서, 웹에서만
 		// 동작하고 PPTX에서는 조용히 다른 크기가 되는 속성이 된다. 상대적 위계는 역할과
-		// variant(Iteration 2)로 표현한다 — 그 둘은 양 타깃에 모두 대응이 있다.
+		// variant로 표현한다 — 그 둘은 양 타깃에 모두 대응이 있다.
 		r.errorf(attr.ValueSpan, "size에 %%는 쓸 수 없다 (%q) — PPTX 폰트 크기는 절대값이라 상대 크기를 번역할 곳이 없다. 논리 px 수치나 role을 쓴다", raw)
 		return 0, false
 	}
@@ -579,7 +578,7 @@ func (r *resolver) color(attr soml.Attr) (soml.Color, bool) {
 // 볼 때까지 보이지 않는다.
 func (r *resolver) colorValue(name, raw string, span soml.Span) (soml.Color, bool) {
 	if strings.IndexByte(raw, '(') >= 0 {
-		// 색 함수(gradient·shade·tint·alpha — Iteration 8)는 여기서 갈린다.
+		// 색 함수(gradient·shade·tint·alpha)는 여기서 갈린다.
 		// 단색과 코드가 갈라져도 진단은 같은 함수(colorValue)를 지난다 — 그래야 `fill`·
 		// `border` 색·텍스트 `color`가 같은 함수 어휘를 쓴다.
 		return r.colorFunc(name, raw, span)
@@ -590,7 +589,7 @@ func (r *resolver) colorValue(name, raw string, span soml.Span) (soml.Color, boo
 // simpleColor는 단색 하나를 해석한다 — 토큰명 또는 #리터럴이다 (함수·그라디언트 아님).
 //
 // colorValue와 나눈 이유: 그라디언트 스톱과 변형 함수의 밑색은 **단색만** 받는다 (중첩
-// 불허, ADR 0067 결정 5). 그 자리에서 다시 함수를 허용하면 `gradient(shade(a,10%) b)` 같은
+// 불허). 그 자리에서 다시 함수를 허용하면 `gradient(shade(a,10%) b)` 같은
 // 표기가 문법으로 새어 들어오고, 그 표기의 타깃 매핑은 v1에 없다.
 func (r *resolver) simpleColor(name, raw string, span soml.Span) (soml.Color, bool) {
 	if strings.HasPrefix(raw, "#") {
@@ -623,7 +622,7 @@ func (r *resolver) colorFunc(name, raw string, span soml.Span) (soml.Color, bool
 	}
 	inner := strings.TrimSpace(raw[open+1 : len(raw)-1])
 	if strings.IndexByte(inner, '(') >= 0 {
-		// 중첩은 v1에서 불허한다 (ADR 0067 결정 5) — `shade(gradient(…),…)`·
+		// 중첩은 v1에서 불허한다 — `shade(gradient(…),…)`·
 		// `gradient(shade(…) …)` 둘 다 여기서 걸린다. 매핑을 1:1로 유지하려는 결정의 관문이다.
 		r.errorf(span, "색 함수는 중첩할 수 없다 (%q) — 인자는 토큰명이나 #리터럴 단색이다 (v1)", raw)
 		return soml.Color{}, false
@@ -641,7 +640,7 @@ func (r *resolver) colorFunc(name, raw string, span soml.Span) (soml.Color, bool
 }
 
 // gradientFunc는 `gradient(색… [, 각도deg])`를 해석한다 — 색은 공백 구분·균등 스톱이고
-// 각도는 생략 시 180(위→아래)이다 (ADR 0067 결정 5).
+// 각도는 생략 시 180(위→아래)이다.
 func (r *resolver) gradientFunc(name, inner string, span soml.Span, raw string) (soml.Color, bool) {
 	colorPart := inner
 	anglePart := ""
@@ -804,12 +803,12 @@ func attrExample(name string) string {
 		return "center"
 	case soml.AnchorAttr:
 		return "center"
-	// `<pre>` 고유 속성 (ADR 0051). 예시가 어휘의 첫 이름인 이유: 값 없음 진단은 "쓸 수 있는
+	// `<pre>` 고유 속성. 예시가 어휘의 첫 이름인 이유: 값 없음 진단은 "쓸 수 있는
 	// 값"을 나열하지 않으므로(그 목록은 어휘 밖 이름을 받은 자리의 것이다) 예시가 저자가 적을
 	// 것을 보여 주는 유일한 자리다.
 	case soml.LangAttr:
 		return "go"
-	// 도형 외관 속성 (docs/reference/soml/shape.md 속성 표 순서).
+	// 도형 외관 속성.
 	case "type":
 		return "rect"
 	case "id":
@@ -828,7 +827,7 @@ func attrExample(name string) string {
 		return "45"
 	case "flip":
 		return "h"
-	// 이미지 속성 (docs/reference/soml/image.md 고유 속성 표 순서).
+	// 이미지 속성.
 	case "src":
 		return "assets/photo.png"
 	case "fit":
@@ -839,7 +838,7 @@ func attrExample(name string) string {
 		return "bold"
 	case "href":
 		return "https://example.com"
-	// 배치 속성 (docs/reference/soml/layout.md 표 순서). `wrap`은 값 없이도 뜻이 되므로 여기 없다 —
+	// 배치 속성. `wrap`은 값 없이도 뜻이 되므로 여기 없다 —
 	// 그 판정은 resolver.wrap이 소유한다.
 	case "gap":
 		return "md"
@@ -873,7 +872,7 @@ func attrExample(name string) string {
 		return "40"
 	case soml.StyleAttr:
 		return "align-content: space-evenly"
-	// 차트 속성 (ADR 0059). `type`은 도형 행과 이름을 공유하지만 예시가 갈라질 일이 없다 —
+	// 차트 속성. `type`은 도형 행과 이름을 공유하지만 예시가 갈라질 일이 없다 —
 	// 차트의 `type`은 값 없음도 자기 문구로 말한다 (chartType).
 	case "unit":
 		return "%"
@@ -892,7 +891,7 @@ func attrExample(name string) string {
 // numberSuffix는 수치 뒤에 붙은 꼬리(단위 접미사)다. 수치가 아예 없으면 빈 문자열이다 —
 // `size="큼"`·`w="어디"`는 "단위를 떼라"가 아니라 "수치가 아니다"로 진단해야 저자가 무엇을
 // 고칠지 안다. 외관(size)과 배치(길이)가 같은 판정을 공유하는 이유는 단위 계약이 하나이기
-// 때문이다 (ADR 0067 결정 5) — 두 벌이 되면 한쪽만 새 단위를 막게 된다.
+// 때문이다 — 두 벌이 되면 한쪽만 새 단위를 막게 된다.
 func numberSuffix(raw string) string {
 	end := 0
 	for end < len(raw) {

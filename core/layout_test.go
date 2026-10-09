@@ -51,7 +51,7 @@ func show(v any) string {
 	return string(b)
 }
 
-// 컨테이너 속성 표(docs/reference/soml/layout.md)의 값 문법 전수 — 속성 → 확정 배치 필드.
+// 컨테이너 속성 표의 값 문법 전수 — 속성 → 확정 배치 필드.
 // 렌더러는 Attrs를 다시 읽지 않으므로 이 표가 곧 CSS의 입력이다.
 func TestResolveContainerLayout(t *testing.T) {
 	cases := []struct {
@@ -145,7 +145,7 @@ func TestResolveContainerLayout(t *testing.T) {
 	}
 }
 
-// 자식 속성 표(docs/reference/soml/layout.md). span은 grid, at은 stack, x/y는 stack 또는
+// 자식 속성 표. span은 grid, at은 stack, x/y는 stack 또는
 // canvas 직속에서만 뜻이 있다.
 func TestResolvePlacement(t *testing.T) {
 	cases := []struct {
@@ -331,7 +331,7 @@ func TestResolveSpaceTokenBoundary(t *testing.T) {
 	}
 }
 
-// 공간 토큰 어휘는 6종이고(docs/reference/theme.md), 사다리는 단조 증가하는 6px(리듬의 최소 눈금) 배수다.
+// 공간 토큰 어휘는 6종이고, 사다리는 단조 증가하는 6px(리듬의 최소 눈금) 배수다.
 func TestThemeSpaceTokens(t *testing.T) {
 	theme := minimalTheme()
 	want := []string{"xs", "sm", "md", "lg", "xl", "2xl"}

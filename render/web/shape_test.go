@@ -10,7 +10,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **외관 매핑 표(docs/reference/appearance.md)의 도형 행 회귀 장치**다 (layout_test.go의
+// 이 파일은 **외관 매핑 표의 도형 행 회귀 장치**다 (layout_test.go의
 // 레이아웃 표와 같은 자리).
 
 // shapeCase는 외관 속성 하나가 CSS 선언 하나로 컴파일되는 것을 확인하는 행이다.
@@ -125,7 +125,7 @@ func TestShapeTypesAllHaveDistinctGeometry(t *testing.T) {
 }
 
 // 기하 유도표는 **어휘와 같은 순서로 전수**여야 한다 — 프리셋 이름(prstGeom)이 이 표에서
-// 나오므로(ShapePreset) 빠진 행은 항목 05에서 "PPTX에만 없는 도형"이 된다.
+// 나오므로(ShapePreset) 빠진 행은 PPTX 렌더러에서 "PPTX에만 없는 도형"이 된다.
 func TestShapeGeometryTableCoversVocabularyInOrder(t *testing.T) {
 	geometries := shapeGeometries()
 	types := soml.ShapeTypes()
@@ -219,7 +219,7 @@ func TestShapeAdjustSpecsMatchStretchedGeometry(t *testing.T) {
 	}
 }
 
-// 텍스트 영역 표는 **프리셋 정의의 `<rect>`**이고 웹만 읽는다 (ADR 0040). 인셋이 틀려도 파일은
+// 텍스트 영역 표는 **프리셋 정의의 `<rect>`**이고 웹만 읽는다. 인셋이 틀려도 파일은
 // 열리고 도형도 그려지므로 값을 두 벌로 적어 대조한다.
 func TestShapeTextRectsMatchPresetDefinitions(t *testing.T) {
 	roundRect := 1 - math.Sqrt2/2
@@ -262,7 +262,7 @@ func TestShapeTextRectsMatchPresetDefinitions(t *testing.T) {
 	}
 }
 
-// 되돌림 열(TextCancel)은 **chevron 하나**다 (ADR 0041) — 그 프리셋의 rect가 우리가 내는
+// 되돌림 열(TextCancel)은 **chevron 하나**다 — 그 프리셋의 rect가 우리가 내는
 // 조정값에서 폭 0 열로 붕괴하기 때문이다. 값은 `x1 = w/2`·`x2 = r − x1`에서 오는 좌우 50%다.
 //
 // 두 열이 **동시에** 차 있을 수 없다는 것이 이 표의 계약이다: 프리셋의 rect를 쓰기로 했으면
@@ -357,7 +357,7 @@ func TestShapeStretchedSpaceKeepsStrokeUniform(t *testing.T) {
 // 리터럴 수치가 요소 쪽에 남으면 테마를 바꿨을 때 그 도형만 옛 그림자로 남는다.
 func TestShapeTokensStayReferences(t *testing.T) {
 	// 글자를 담은 도형이다 — 텍스트 영역의 px 인셋은 담을 것이 있을 때만 여백에 더해지므로
-	// (ADR 0040) 빈 도형으로는 `calc()` 안의 참조를 볼 수 없다.
+	// 빈 도형으로는 `calc()` 안의 참조를 볼 수 없다.
 	deck := subsetDeck(t, `<shape type="rounded-rect" fill="surface" border="1 solid muted" radius="md" shadow="soft" pad="md"><p>카드</p></shape>`)
 	out := renderString(t, deck)
 	box, ink := openTagOf(t, out, "s0.0"), inkOf(t, out, "s0.0")
@@ -370,7 +370,7 @@ func TestShapeTokensStayReferences(t *testing.T) {
 			t.Errorf("그림에 %q가 없다: %s", want, ink)
 		}
 	}
-	// rounded-rect는 프리셋 텍스트 영역의 px 인셋이 여백에 더해지므로 `calc()`다 (ADR 0040) —
+	// rounded-rect는 프리셋 텍스트 영역의 px 인셋이 여백에 더해지므로 `calc()`다 —
 	// 토큰은 그 안에서도 **참조로** 남아야 한다. 더해지는 수치는 TestShapeTextRects…가 본다.
 	if !strings.Contains(box, "padding: calc(var(--balpyo-space-md) + ") {
 		t.Errorf("박스에 공간 토큰 참조가 없다: %s", box)
@@ -510,7 +510,7 @@ func TestShapeBoxCSSMatchesContainer(t *testing.T) {
 	}
 }
 
-// 배치를 담은 도형은 **배경**이다 (ADR 0049): 컨테이너가 도형 박스 안, 그림 svg 뒤에 오고
+// 배치를 담은 도형은 **배경**이다: 컨테이너가 도형 박스 안, 그림 svg 뒤에 오고
 // (문서 순서 = 칠 순서), 도형의 흐름 자식은 position: relative로 절대 배치된 그림 위에 올라온다.
 // 그 규칙이 `.balpyo-text`에만 걸리면 카드 내용 전부가 그림 아래로 조용히 사라진다.
 func TestShapeHoldingLayoutLiftsItsChildrenAboveTheInk(t *testing.T) {

@@ -26,10 +26,10 @@ const shapeIndent = "      "
 const firstShapeID = 2
 
 // shapesXML은 슬라이드 콘텐츠를 도형 목록으로 컴파일한다 — 이 함수가 지오메트리(①)와
-// 해석된 외관(②)이 OOXML에서 만나는 자리다 (docs/internals/geometry-pass.md).
+// 해석된 외관(②)이 OOXML에서 만나는 자리다.
 //
 // 문서 순서가 곧 spTree 순서다: OOXML은 나중 도형이 위에 그려지므로, 저자가 쓴 순서가
-// 겹침 z-순서가 된다 (웹의 문서 순서 스택과 같은 규칙 — Iteration 6의 겹침이 이 위에 선다).
+// 겹침 z-순서가 된다 (웹의 문서 순서 스택과 같은 규칙).
 //
 // 순회는 **재귀**다: 레이아웃 컨테이너는 도형이 되지 않고 자식으로 이어지므로 (writeShapeNode)
 // 도형 수는 측정 박스 수와 같지 않다 — 깊이 우선 순회가 중첩에서도 문서 순서를 유지한다.
@@ -47,7 +47,7 @@ func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, *s
 			return "", nil, err
 		}
 	}
-	// 덱 크롬은 콘텐츠 뒤다 (ADR 0045) — 확정 모델이 비어 있으면 아무것도 나가지 않으므로
+	// 덱 크롬은 콘텐츠 뒤다 — 확정 모델이 비어 있으면 아무것도 나가지 않으므로
 	// 크롬을 켜지 않은 덱의 바이트가 움직이지 않는다 (chrome.go).
 	if err := writeChromeShapes(&b, deck, slide, &id, g); err != nil {
 		return "", nil, err
@@ -119,8 +119,8 @@ func (r *slideRels) mediaID(target string) string {
 type shapeWriter func(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, rels *slideRels) error
 
 // renderedKinds는 이 렌더러가 다루는 요소 종류의 **명시 목록**이다 (soml 카탈로그와 대조하는
-// 짝은 render 패키지의 테스트다 — TASKS P0.2: `<table>`이 파싱·검증을 통과한 뒤 렌더에서
-// 빌드를 죽인 사고).
+// 짝은 render 패키지의 테스트다 — 파싱·검증을 통과한 종류가 렌더에서 빌드를 죽이지
+// 않게 한다).
 //
 // 목록에 **어디서 다루는지**를 함께 적는 이유: 이 렌더러의 디스패치는 세 자리로 갈라져 있다.
 // 도형이 되는 종류는 shapeWriterFor가, 부모 도형에 흡수되는 종류는 그 부모가 쓴다 — "다룬다"의
@@ -187,7 +187,7 @@ func shapeWriterFor(kind soml.ElementKind) shapeWriter {
 // 리스트는 하나의 텍스트 흐름이라 도형 하나가 편집 단위이고(항목마다 도형을 내면 편집 단위가
 // 조각난다), 레이아웃은 배치 **수단**이라 좌표로 구워진 뒤 산출물에 남을 것이 없다 —
 // 저자가 좌표를 한 번도 계산하지 않고 만든 그리드가 PowerPoint에서 절대 좌표 도형들로
-// 나오는 것이 제품의 약속이다 (TASKS Iteration 3). 같은 단어를 쓰는 두 개념이
+// 나오는 것이 제품의 약속이다. 같은 단어를 쓰는 두 개념이
 // 정반대로 매핑되므로 테스트가 같은 슬라이드에서 이 대비를 단정한다 — 태그를 늘리는 사람이
 // 가장 헷갈릴 자리다.
 //
@@ -197,8 +197,8 @@ func shapeWriterFor(kind soml.ElementKind) shapeWriter {
 // 않는다 — `<li>`와 같은 처지다 (재지만 도형 좌표가 아니다 — render/web 패키지 주석의
 // 측정 대상 계약).
 //
-// `<group>` → `grpSp`(Iteration 9)와도 갈라진다: 그룹은 편집 단위로 묶이는 도형이고 레이아웃
-// 컨테이너는 사라지는 배치 수단이다 (docs/reference/soml/layout.md). 배치 태그가 `grpSp`가 되면 `<group>`과
+// `<group>` → `grpSp`와도 갈라진다: 그룹은 편집 단위로 묶이는 도형이고 레이아웃
+// 컨테이너는 사라지는 배치 수단이다. 배치 태그가 `grpSp`가 되면 `<group>`과
 // `<row>`의 구분이 산출물에서 사라진다. **도형이 자식을 흡수하는 것도 `grpSp`가 아니다** —
 // 그룹은 여러 도형을 묶는 것이고, 여기서는 텍스트가 도형 하나의 본문이 된다.
 func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node soml.Node, path []int, shapeID *int, g *geom.Geometry, rels *slideRels) error {
@@ -215,7 +215,7 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 	kind := soml.KindOf(elem.Name)
 	if elem.Name == soml.TextElement {
 		// `<text>`는 카탈로그 밖(KindNone)이지만 블록과 **같은** 텍스트 박스가 된다 —
-		// 역할 등가 표(`<p>` ≡ `<text role="body">`, docs/reference/soml/text-subset.md)가
+		// 역할 등가 표(`<p>` ≡ `<text role="body">`)가
 		// 산출물에서도 등가라는 뜻이다.
 		kind = soml.KindBlock
 	}
@@ -232,7 +232,7 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 		// 없어도 rId2를 예약한 것과 같은 태도다 (slideRelBase).
 		*shapeID++
 		if soml.ShapeHoldsLayout(elem) {
-			// 배경 모드: 도형을 낸 **뒤에** 자식으로 내려간다 (ADR 0049). 위에서 낸 `p:sp`가
+			// 배경 모드: 도형을 낸 **뒤에** 자식으로 내려간다. 위에서 낸 `p:sp`가
 			// 배경이고 — shapeBodyXML이 빈 문단만 냈다 — 자식은 자기 잰 좌표를 가진 **형제**
 			// 도형이 된다. `p:grpSp`가 아닌 근거는 좌표 공간이다: 그룹은 `chOff`/`chExt`로
 			// 둘째 좌표계를 만들어 "잰 rect가 곧 xfrm"을 깬다.
@@ -266,11 +266,11 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 }
 
 // writeChildShapes는 자식들을 차례로 도형으로 쓴다 — **자식이 형제 도형이 되는 두 자리**가
-// 공유한다: 사라지는 레이아웃 컨테이너와, 남아서 배경이 되는 도형(ADR 0049).
+// 공유한다: 사라지는 레이아웃 컨테이너와, 남아서 배경이 되는 도형.
 //
 // 깊이 우선 순회이므로 **문서 순서 = spTree 순서 = z-순서**가 중첩에서도 이어진다
-// (shapesXML의 계약, 웹의 문서 순서 스택과 같은 규칙 — Iteration 6의 겹침이 이 순서 위에
-// 선다). 좌표를 더하는 코드가 여기 없는 것이 "좌표 계산 0회"의 절반이다: 부모가 컨테이너든
+// (shapesXML의 계약, 웹의 문서 순서 스택과 같은 규칙). 좌표를 더하는 코드가 여기 없는 것이
+// "좌표 계산 0회"의 절반이다: 부모가 컨테이너든
 // 배경 도형이든 자식의 잰 rect는 이미 슬라이드 상대다.
 //
 // 빈 부모는 도형 0개다 (`<row></row>`·`<shape><col/></shape>`) — 배경 도형은 자기 `p:sp`를
@@ -316,7 +316,7 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 // `<li>` 하나가 문단(a:p) 하나다. 항목마다 도형을 내면 PowerPoint에서 리스트가 낱개 텍스트
 // 박스로 조각나 편집 단위가 깨진다 — 리스트는 하나의 텍스트 흐름이다.
 //
-// 좌표는 컨테이너의 잰 rect다 (항목 05가 ul/ol에 식별자를 붙였다 — li rect는 측정되지만
+// 좌표는 컨테이너의 잰 rect다 (ul/ol도 식별자를 갖는다 — li rect는 측정되지만
 // 도형 좌표로 쓰지 않는다).
 func writeListShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, rels *slideRels) error {
 	box, ok := g.Box(id)
@@ -335,7 +335,7 @@ func writeListShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 // writeShapeSp는 `<shape>` 하나를 p:sp(프리셋 도형)로 쓴다 — **자식 텍스트를 자기 txBody로
 // 흡수한다** (writeShapeNode의 네 분기).
 //
-// 좌표는 도형의 잰 rect **그대로**다 — 모든 객체가 그렇다 (잰 rect == `xfrm`, ADR 0064).
+// 좌표는 도형의 잰 rect **그대로**다 — 모든 객체가 그렇다 (잰 rect == `xfrm`).
 func writeShapeSp(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, rels *slideRels) error {
 	box, ok := g.Box(id)
 	if !ok {
@@ -375,7 +375,7 @@ type spSpec struct {
 	id   int
 	name string
 	// descr은 `cNvPr@descr` = 저자의 `alt`이다 (picInfo.descr과 같은 자리 — cNvPrXML).
-	// 도형 본문을 **지우지 않는다**: 이름은 그림에 더해지고 글은 글로 남는다 (ADR 0058).
+	// 도형 본문을 **지우지 않는다**: 이름은 그림에 더해지고 글은 글로 남는다.
 	descr string
 	// rect는 도형 좌표다 — 잰 rect 그대로다.
 	rect geom.Rect
@@ -414,12 +414,12 @@ type spAdjust struct {
 	val  int64
 }
 
-// placeholder는 이 도형이 채우는 슬롯 플레이스홀더다 (`<p:nvPr>`의 `<p:ph>`, ADR 0035).
+// placeholder는 이 도형이 채우는 슬롯 플레이스홀더다 (`<p:nvPr>`의 `<p:ph>`).
 //
 // 슬롯을 쓴 슬라이드 직계 자식만 갖는다 (soml.Appearance.Slot이 거기에만 실린다 — core.resolveSlot).
-// **명시 xfrm/rPr은 그대로 둔다** (ADR 0035 선택지 3): `<p:ph>`는 PowerPoint가 이 도형을 진짜
+// **명시 xfrm/rPr은 그대로 둔다**: `<p:ph>`는 PowerPoint가 이 도형을 진짜
 // 플레이스홀더로 잡아 개요 보기·서식 초기화·"클릭해 입력"에서 특별 취급하게 하는 표식일 뿐이고,
-// 좌표·서식은 잰 박스와 확정 rPr이 소유한다 (웹·PPTX 픽셀 일치 계약). 그래서 슬라이드 도형은
+// 좌표·서식은 잰 박스와 확정 rPr이 소유한다 (두 타깃이 같은 자리 · 같은 외관을 낸다). 그래서 슬라이드 도형은
 // 플레이스홀더이면서도 자기 xfrm을 갖는다 — 레이아웃 플레이스홀더의 위치를 상속만 받으면 잰
 // 박스와 갈라진다.
 type placeholder struct {
@@ -481,8 +481,7 @@ func textBoxSp(id int, name string, rect geom.Rect, body string) spSpec {
 	}
 }
 
-// shapeSp는 확정 도형 외관을 p:sp 명세로 컴파일한다 (외관 매핑 표의 PPTX 열 —
-// docs/reference/appearance.md "도형 외관").
+// shapeSp는 확정 도형 외관을 p:sp 명세로 컴파일한다 (외관 매핑 표의 PPTX 열).
 //
 // **순서는 매핑 표의 행 순서다** (fill → border → radius → shadow → opacity → rotate → flip) —
 // 웹의 shapeInkCSS와 나란히 읽을 수 있어야 "표에 있고 한쪽에만 있는 행"이 눈에 띈다.
@@ -580,7 +579,7 @@ func writeSp(b *strings.Builder, spec spSpec, theme soml.Theme) error {
 	w(1, "<p:nvSpPr>")
 	// 이름은 지오메트리 식별자이고 `descr`은 저자의 `alt`이다 (cNvPrXML — 그림·표 프레임과
 	// 같은 함수를 지난다). 저자의 `id`(soml.ShapeStyle.ID)는 아직 산출물에 나가지 않는다:
-	// 그것은 `<arrow from="db">`의 참조 대상 이름이고(Iteration 7), 웹도 쓰지 않는다.
+	// 그것은 `<arrow from="db">`의 참조 대상 이름이고, 웹도 쓰지 않는다.
 	w(2, cNvPrXML(spec.id, spec.name, spec.descr))
 	if spec.textBox {
 		w(2, `<p:cNvSpPr txBox="1"/>`)
@@ -825,7 +824,7 @@ func prstDashValue(style soml.BorderStyle) (string, error) {
 }
 
 // textBodyXML은 해석된 텍스트 외관과 블록의 자식들을 p:txBody로 컴파일한다 (외관 매핑 표의
-// 텍스트 외관 행과 인라인 서식 표 — docs/reference/appearance.md).
+// 텍스트 외관 행과 인라인 서식 표).
 // 문단 서식은 블록의 확정 스타일에서, 런 서식은 잎을 감싼 가장 안쪽 요소의 확정 스타일에서
 // 나온다 — 요소의 Attrs를 다시 읽지 않는다 (render/web.textStyleCSS와 같은 계약).
 func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rels *slideRels) (string, error) {
@@ -836,7 +835,7 @@ func textBodyXML(elem *soml.Element, style soml.TextStyle, theme soml.Theme, rel
 	// 인셋 0: 웹이 잰 rect는 border box이고 `.balpyo-text`는 padding·border가 0이므로
 	// 곧 콘텐츠 박스다 (render/web.contentCSS). OOXML 기본 인셋(좌우 91440, 상하 45720)을
 	// 그대로 두면 좌표는 맞는데 글자만 몇 px 밀린다. wrap="square"는 박스 폭 안에서 줄을 바꾸는 웹과 같은 결정이고, normAutofit은
-	// 박스 고정 + 넘치면 PowerPoint가 줄여 맞춤이다 (ADR 0064): 줄이 어디서 접히는지는 엔진의
+	// 박스 고정 + 넘치면 PowerPoint가 줄여 맞춤이다: 줄이 어디서 접히는지는 엔진의
 	// 몫이라 PowerPoint가 한 줄 더 접어도 글자는 잰 박스 안에 머물고, 저자가 PowerPoint에서
 	// 글을 고친 뒤에도 그렇다. pre만 wrap="none" + noAutofit이다: 웹이 줄바꿈하지 않기로
 	// 했으므로(render/web.writeBlock의 white-space: pre) 줄 수가 원문의 줄 수로 정해져 있고,
@@ -935,7 +934,7 @@ func shapeBodyXML(elem *soml.Element, style soml.ShapeStyle, rect geom.Rect, the
 		// 본문을 아예 내지 않는 길도 있었지만(txBody는 sp의 선택 자식이다) 그러면 저자가
 		// PowerPoint에서 그 도형에 글자를 넣을 때 서식이 뷰어 기본값에서 온다.
 		//
-		// **배경 모드가 같은 길을 지난다** (ADR 0049 결정 5): 자식이 형제 도형을 가졌으므로
+		// **배경 모드가 같은 길을 지난다**: 자식이 형제 도형을 가졌으므로
 		// 이 본문에 실을 글자가 없고, 남은 것은 자식 없는 도형과 정확히 같은 상황이다 —
 		// 빈 문단 + `pad` 인셋 + 앵커. 인셋을 함께 남기는 것이 뜻이 있다: 저자가 PowerPoint에서
 		// 배경 도형에 글자를 더하면 카드의 패딩 안쪽에서 시작한다.
@@ -994,8 +993,8 @@ func bodyAnchorValue(anchor soml.TextAnchor) (string, error) {
 // 근사해서 내면 도형 안 글자 위치가 조용히 어긋나므로 — 두 타깃이 다른 값을 쓰는 것을
 // 렌더러가 아는 순간 멈추는 편이 낫다 (해석되지 않은 값을 에러로 두는 것과 같은 태도).
 //
-// 프리셋이 들고 있는 rect가 우리가 쓰는 텍스트 영역과 다르면 그 몫을 **뺀다** (ADR 0041,
-// web.ShapeTextCancel — chevron 하나다): 인셋은 뷰어가 프리셋의 rect **안쪽으로** 더 들어가는
+// 프리셋이 들고 있는 rect가 우리가 쓰는 텍스트 영역과 다르면 그 몫을 **뺀다**
+// (web.ShapeTextCancel — chevron 하나다): 인셋은 뷰어가 프리셋의 rect **안쪽으로** 더 들어가는
 // 값이므로, 음수 인셋이 그 rect를 우리 영역까지 되돌린다. 값이 잰 박스에 달렸기 때문에
 // (백분율) 이 함수가 rect를 받는다 — 조정값 보정(AdjustValue)과 같은 구조다.
 func bodyInsets(pad *soml.Pad, shapeType string, rect geom.Rect) (string, error) {
@@ -1049,7 +1048,7 @@ func checkTextStyle(style soml.TextStyle, theme soml.Theme) error {
 
 // listBodyXML은 리스트 컨테이너의 자식들을 p:txBody로 컴파일한다 — `<li>` 하나가 문단
 // (a:p) 하나다 (외관 매핑 표의 리스트 표). 문단 서식은 li의 확정
-// 스타일에서, 들여쓰기·마커는 웹 리스트 CSS 상수(render/web — 항목 05)에서 나온다.
+// 스타일에서, 들여쓰기·마커는 웹 리스트 CSS 상수(render/web)에서 나온다.
 func listBodyXML(list *soml.Element, theme soml.Theme, rels *slideRels) (string, error) {
 	var b strings.Builder
 	w := func(depth int, line string) {
@@ -1135,7 +1134,7 @@ func writeListItem(w func(depth int, line string), list, li *soml.Element, theme
 	w(4, buFont)
 	w(4, bullet)
 	w(3, "</a:pPr>")
-	// li 안의 인라인은 블록과 같은 런 분할기를 지난다 (항목 06) — <br/>은 같은 문단 안의
+	// li 안의 인라인은 블록과 같은 런 분할기를 지난다 — <br/>은 같은 문단 안의
 	// a:br(마커 없는 이어짐 줄)이고, 빈 li는 런 없는 문단으로 남는다 (자리와 순서 보존).
 	if err := writeRuns(w, li, *style, theme, rels, runContext{}); err != nil {
 		return err
@@ -1174,7 +1173,7 @@ type runContext struct {
 	// inline은 이 잎이 인라인 요소 안에 있는지다. 인라인 런만 i/u를 항상 명시한다 —
 	// 웹의 textStyleCSS(블록 6선언)/runStyleCSS(런 8선언) 분리와 같은 결정이다: 지금
 	// 어휘에서 블록 스타일은 Italic/Underline을 가질 수 없으므로, 블록 직속 런에 i="0"
-	// u="none"을 더하면 Iteration 1 골든만 이유 없이 움직인다. 블록이 Italic을 가질 수
+	// u="none"을 더하면 골든만 이유 없이 움직인다. 블록이 Italic을 가질 수
 	// 있게 되는 날 이 구분이 함께 사라져야 한다 (runStyleCSS 주석과 같은 이월).
 	inline bool
 	// link는 가장 가까운 <a> 조상의 목적지다 (없으면 빈 문자열). Appearance.Link는 <a>

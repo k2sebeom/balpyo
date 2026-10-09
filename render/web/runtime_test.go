@@ -112,7 +112,7 @@ func TestViewExprsShareAttr(t *testing.T) {
 	}
 	// 뷰 값은 서로 달라야 한다 — 측정 뷰가 발표자 뷰와 같은 값이면 측정이 겹쳐진 슬라이드를
 	// 재고, 문서 뷰(값 없음)와 같으면 회전이 꺼지지 않는다. 오버뷰도 같은 속성에 살므로
-	// (ADR 0062) 같은 자리에서 판정한다.
+	// 같은 자리에서 판정한다.
 	seen := map[string]string{}
 	for name, value := range map[string]string{
 		"PresenterView": PresenterView, "MeasureView": MeasureView, "OverviewView": OverviewView,
@@ -150,7 +150,7 @@ func TestRuntimeIsStatic(t *testing.T) {
 
 // 뷰어 자산은 파일(go:embed)이 되었지만 전달은 그대로 인라인이다 — 문서를 그 자리에서
 // 끝내는 문자열이 자산에 들어가면 산출물이 깨진다. 자산이 Go 문자열에서 파일로 나가면서
-// 사람의 눈 밖으로 나가는 유일한 위험이므로 게이트에 둔다 (ADR 0062 결정 2).
+// 사람의 눈 밖으로 나가는 유일한 위험이므로 게이트에 둔다.
 func TestViewerAssetsAreInlineSafe(t *testing.T) {
 	assets := map[string]string{"runtime.js": runtimeJS, "viewer.css": viewerCSS()}
 	for name, asset := range assets {
@@ -165,7 +165,7 @@ func TestViewerAssetsAreInlineSafe(t *testing.T) {
 	}
 }
 
-// 오버뷰는 네 번째 뷰 값이다 (ADR 0062 결정 3) — 새 페이지도 아니고 발표자 뷰 안의
+// 오버뷰는 네 번째 뷰 값이다 — 새 페이지도 아니고 발표자 뷰 안의
 // 클래스도 아니다. 뷰 전환의 구현이 하나면 측정·발표·오버뷰가 같은 파일을 본다.
 func TestOverviewIsAViewValue(t *testing.T) {
 	gate := fmt.Sprintf("html[%s=%q]", ViewAttr, OverviewView)
@@ -182,7 +182,7 @@ func TestOverviewIsAViewValue(t *testing.T) {
 	}
 }
 
-// 오버뷰는 zoom으로 줄이고 감싸는 요소를 만들지 않는다 (ADR 0062 결정 4) — 격자를
+// 오버뷰는 zoom으로 줄이고 감싸는 요소를 만들지 않는다 — 격자를
 // transform으로 만들려면 타일마다 래퍼가 필요하고, 그 요소는 지오메트리 패스가 읽는 부모
 // 사슬을 바꾼다. zoom·격자 선언이 게이트 밖으로 새면 문서 뷰의 배치가 줄어든다.
 func TestOverviewCSSIsGated(t *testing.T) {
@@ -207,7 +207,7 @@ func TestOverviewCSSIsGated(t *testing.T) {
 	}
 }
 
-// 인쇄는 문서 뷰의 그림이고, 어느 뷰에서 눌러도 그렇다 (ADR 0062 결정 6).
+// 인쇄는 문서 뷰의 그림이고, 어느 뷰에서 눌러도 그렇다.
 //
 // 사람이 Cmd+P를 누르는 시점은 발표자 뷰다. 그래서 인쇄 규칙은 base 층의 **마지막**에
 // 오고, 뷰 게이트와 **같은 명시도**의 선택자로 되돌린다 — `!important`는 그것으로 부족한

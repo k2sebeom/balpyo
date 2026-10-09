@@ -12,7 +12,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 어휘 카탈로그와 렌더러 디스패치를 대조한다 (TASKS P0.2).
+// 어휘 카탈로그와 렌더러 디스패치를 대조한다.
 //
 // 이 테스트가 존재하는 이유는 사고 하나다: `<table>`이 파서·값 층까지 열린 채 렌더러가 없어
 // 저자가 슬라이드를 다 쓴 뒤 빌드에서 죽었다. 닫힌 어휘의 값은 "쓸 수 있는 것은 그려진다"에
@@ -23,7 +23,7 @@ import (
 //	KindRendered(k) 참  ⇒ 두 렌더러 **모두** k를 다룬다      (빠뜨림: 렌더에서 죽는다)
 //	KindRendered(k) 거짓 ⇒ 두 렌더러 **모두** k를 다루지 않는다 (구현했는데 파서가 막는다)
 //
-// 여기에 **셋째 갈래**가 있다 (ADR 0059): 값 층이 펼치는 종류(`<chart>`·`<point>`)는 카탈로그에
+// 여기에 **셋째 갈래**가 있다: 값 층이 펼치는 종류(`<chart>`·`<point>`)는 카탈로그에
 // 있고 파서가 통과시키지만 렌더러에는 닿지 않는다 — 확정 트리에 남는 것이 도형과 텍스트뿐이기
 // 때문이다. 그래서 그 종류는 렌더러가 다루면 **실패**다: 다룰 수 있다는 것은 펼침을 지나치는
 // 길이 열려 있다는 뜻이고, 그러면 같은 데이터에서 두 그림이 나올 수 있다.
@@ -44,7 +44,7 @@ func TestRenderersCoverCatalog(t *testing.T) {
 					target, kind, soml.ElementNamesOf(kind))
 			case !want && handled[kind] && soml.KindDesugared(kind):
 				t.Errorf("%s 렌더러가 %v를 다룬다 (%v) — 이 종류는 값 층이 도형·텍스트로 펼치므로 "+
-					"렌더러에 닿지 않는다 (ADR 0059). 렌더러 표에서 그 줄을 지워라",
+					"렌더러에 닿지 않는다. 렌더러 표에서 그 줄을 지워라",
 					target, kind, soml.ElementNamesOf(kind))
 			case !want && handled[kind]:
 				t.Errorf("%s 렌더러가 %v를 다루는데 soml.unrenderedKinds에 남아 있다 (%v) — "+

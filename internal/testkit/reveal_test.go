@@ -10,13 +10,13 @@ import (
 	"github.com/k2sebeom/balpyo/render/web"
 )
 
-// `reveal`의 브라우저 검증 — 발표자 뷰에서 항목이 한 스텝씩 나타난다 (ADR 0063).
+// `reveal`의 브라우저 검증 — 발표자 뷰에서 항목이 한 스텝씩 나타난다.
 //
 // 여기서 보는 것 다섯: (1) 슬라이드에 들어가면 스텝 0이다 — reveal을 쓴 항목은 숨어 있고
 // 나머지는 보인다, (2) 다음 키가 스텝을 먼저 먹고 슬라이드는 그대로다, (3) 항목이 나타날 때
-// **나머지 항목이 움직이지 않는다**(visibility로 숨기는 근거 — 결정 4), (4) 스텝이 끝나면
+// **나머지 항목이 움직이지 않는다**(visibility로 숨기는 근거), (4) 스텝이 끝나면
 // 다음 키가 다음 슬라이드로 가고, 뒤로 들어온 슬라이드는 **전부 전개된** 상태다,
-// (5) 문서 뷰와 오버뷰는 언제나 전부 보인다 (결정 3).
+// (5) 문서 뷰와 오버뷰는 언제나 전부 보인다.
 func TestRevealSteps(t *testing.T) {
 	fixture := fixtureByName(t, "02_text_subset")
 	result, err := pipeline.Build(pipeline.Options{
@@ -48,7 +48,7 @@ func TestRevealSteps(t *testing.T) {
 	}
 
 	// 사용자가 파일을 열었을 때의 상태로 되돌리고 그 슬라이드로 곧장 들어간다 — 딥링크로
-	// 들어간 장은 아직 말하지 않은 장이므로 스텝 0이다 (결정 6).
+	// 들어간 장은 아직 말하지 않은 장이므로 스텝 0이다.
 	browser.Eval(t, web.PresenterViewExpr(), nil)
 	browser.Eval(t, fmt.Sprintf("location.hash = %q", "#/"+deck.Slides[slide].ID), nil)
 	waitCounter(t, browser, fmt.Sprintf("%d / %d", slide+1, n))
@@ -81,7 +81,7 @@ func TestRevealSteps(t *testing.T) {
 	waitCounter(t, browser, fmt.Sprintf("%d / %d", slide+2, n))
 
 	// 뒤로 들어온 슬라이드는 전부 전개된 상태다 — 이미 지나온 장을 다시 한 단계씩 누르게
-	// 만들지 않는다 (결정 6).
+	// 만들지 않는다.
 	pressKey(t, browser, "ArrowLeft")
 	waitCounter(t, browser, fmt.Sprintf("%d / %d", slide+1, n))
 	if got := hiddenReveals(t, browser, slide); len(got) != 0 {
@@ -96,7 +96,7 @@ func TestRevealSteps(t *testing.T) {
 		t.Fatalf("한 번 되감은 뒤 숨은 항목 = %v, want %v", got, []int{last})
 	}
 
-	// 오버뷰는 덱을 **읽는** 화면이므로 전부 전개된 상태다 (결정 3).
+	// 오버뷰는 덱을 **읽는** 화면이므로 전부 전개된 상태다.
 	pressKey(t, browser, "o")
 	waitView(t, browser, web.OverviewView)
 	if got := hiddenReveals(t, browser, slide); len(got) != 0 {

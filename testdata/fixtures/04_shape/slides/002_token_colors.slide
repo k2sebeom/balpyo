@@ -1,8 +1,8 @@
-<!-- **토큰 색 도형** — 제품 핵심 계약의 시험대다 (TASKS Iteration 4): 토큰명으로 선언한
+<!-- **토큰 색 도형** — 제품 핵심 계약의 시험대다: 토큰명으로 선언한
      색은 PPTX에서 `schemeClr` 참조로 보존되어 내보낸 파일이 PowerPoint 안에서도 테마 색
-     편집을 따라간다 (docs/reference/appearance.md). 그래서 이 슬라이드의 fill·border·color는 **전부 토큰명**이고
+     편집을 따라간다. 그래서 이 슬라이드의 fill·border·color는 **전부 토큰명**이고
      리터럴은 003으로 분리했다. `border="1 solid muted"`는 외관 속성의 축약 표기
-     (`<굵기> <스타일> <색>`) — 값 문법 해석은 항목 02가 소유한다. -->
+     (`<굵기> <스타일> <색>`) — 값 문법 해석은 값 층이 소유한다. -->
 <slide id="shape-token-colors">
   <h2>토큰 색은 테마 참조로 보존된다</h2>
   <row gap="lg" align="stretch">

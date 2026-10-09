@@ -9,10 +9,10 @@ package soml
 // 같은 일을 하는 코드가 두 벌이 되면 웹의 CSS와 PPTX의 OOXML이 갈라지고, 그 종류의 버그는
 // 두 산출물을 나란히 볼 때까지 드러나지 않는다.
 
-// ImageStyle은 확정된 이미지 외관이다 (docs/reference/soml/image.md).
+// ImageStyle은 확정된 이미지 외관이다.
 //
 // **ShapeStyle과 공용 구조체를 뽑지 않는다**: 소비자가 둘일 때는 함수를 공유하고, 구조를
-// 뽑는 것은 세 번째(`<group>` — Iteration 9)에서 한다. 지금 뽑으면 도형에만 있는 것
+// 뽑는 것은 세 번째 소비자(`<group>`)가 생길 때 한다. 지금 뽑으면 도형에만 있는 것
 // (`Type`·`Fill`·`ID`)과 이미지에만 있는 것(`Src`·`Fit`·`Alt`)의 경계를 두 번 정하게 된다.
 //
 // "정하지 않음"의 표현은 ShapeStyle과 같다 — 포인터의 nil과 닫힌 어휘의 빈 문자열
@@ -36,10 +36,10 @@ type ImageStyle struct {
 	Alt string
 	// 아래 외관 여섯은 도형과 **같은 값 문법**을 지난다 (core의 같은 함수).
 	Border *Border
-	// Radius는 모서리 반경이다 — **이미지에서는 항상 유효하다.** ADR 0019(`radius`는
-	// `rounded-rect` 전용)의 근거는 프리셋 기하에 반경 조정값 자리가 없다는 것이었고,
+	// Radius는 모서리 반경이다 — **이미지에서는 항상 유효하다.** 도형에서 `radius`가
+	// `rounded-rect` 전용인 근거는 프리셋 기하에 반경 조정값 자리가 없다는 것이었고,
 	// 그림은 프리셋이 아니라 자기 클립을 갖는다 (웹 `border-radius`, PPTX는
-	// `pic/spPr/prstGeom prst="roundRect"`) — 그 ADR의 적용 범위가 도형에 한정된다.
+	// `pic/spPr/prstGeom prst="roundRect"`) — 그 제한의 적용 범위가 도형에 한정된다.
 	Radius  *Radius
 	Shadow  *ShadowToken
 	Opacity *float64

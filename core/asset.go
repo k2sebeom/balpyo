@@ -177,7 +177,7 @@ func (p *assetPass) load(key string, span soml.Span) (soml.Asset, bool) {
 	return soml.Asset{
 		Key:    key,
 		Format: declared,
-		// 픽셀이 그대로 논리 스테이지 px다 (ADR 0067 결정 5의 단위 하나) — 배율을 정하는 표기는
+		// 픽셀이 그대로 논리 스테이지 px다 (수치의 단위는 그것 하나다) — 배율을 정하는 표기는
 		// `w`/`h`/`ratio`이고, 엔진이 DPR을 추측하지 않는다 (soml.Asset의 근거).
 		Width:  config.Width,
 		Height: config.Height,

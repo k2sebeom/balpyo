@@ -194,7 +194,7 @@ func TestKindRendered(t *testing.T) {
 	}
 }
 
-// **셋째 범주**다 (ADR 0059): 카탈로그에 있고 파서가 통과시키지만 값 층이 도형·텍스트로
+// **셋째 범주**다: 카탈로그에 있고 파서가 통과시키지만 값 층이 도형·텍스트로
 // 펼치므로 렌더러가 **영원히** 보지 않는다. unrenderedKinds(갚을 빚)와 한 목록으로 묶지 않는다.
 func TestChartKindsAreDesugared(t *testing.T) {
 	desugared := map[ElementKind]bool{KindChart: true, KindChartPoint: true}

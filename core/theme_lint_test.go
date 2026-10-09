@@ -7,7 +7,7 @@ import (
 )
 
 // TestLayoutCSSAppearanceWarning은 외관 프로퍼티가 배치가 아니라 경고임을, 배치 프로퍼티는
-// 조용함을, --strict가 경고를 에러로 승격함을 못 박는다 (ADR 0014를 레이아웃 CSS로 확장).
+// 조용함을, --strict가 경고를 에러로 승격함을 못 박는다 (`style` 탈출구 경계를 레이아웃 CSS로 확장).
 func TestLayoutCSSAppearanceWarning(t *testing.T) {
 	appearance := []string{"color", "background", "border", "box-shadow", "font-size"}
 	for _, prop := range appearance {

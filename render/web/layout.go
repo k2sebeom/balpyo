@@ -8,7 +8,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **레이아웃 태그 → flex/grid CSS**다 (docs/reference/soml/layout.md).
+// 이 파일은 **레이아웃 태그 → flex/grid CSS**다.
 //
 // 계약이 하나다: 레이아웃 태그는 **CSS flex/grid 시맨틱의 이름 바꾸기 층**이지 새 배치
 // 모델이 아니다. 그래서 이 파일에 배치 계산이 없다 — 태그와 속성이 레퍼런스 표의 CSS로 1:1
@@ -17,8 +17,8 @@ import (
 //
 // # 엔진 CSS와 인라인 style의 경계
 //
-// 두 자리로 나눈 기준은 **태그의 성질인가, 요소마다 다른 값인가**다 (ADR 0003의 연장 —
-// 배치는 엔진 CSS, 요소별 확정 값은 인라인 style):
+// 두 자리로 나눈 기준은 **태그의 성질인가, 요소마다 다른 값인가**다 (배치는 엔진
+// CSS, 요소별 확정 값은 인라인 style):
 //
 //	엔진 CSS (layoutCSS, 태그마다 고정):
 //	  display, flex-direction            — <row>/<col>/<grid>의 정의 그 자체
@@ -64,7 +64,7 @@ const spaceVarPrefix = "--balpyo-space-"
 // containerClass는 배치 흐름의 엔진 CSS 클래스다.
 //
 // 모르는 흐름을 에러로 두는 이유: 흐름 값이 늘어나는 것은 태그가 늘어나는 것이므로
-// (`<stack>` — Iteration 6), 매핑을 잊으면 "파싱은 되는데 배치가 없는" 컨테이너가 된다.
+// (`<stack>`처럼), 매핑을 잊으면 "파싱은 되는데 배치가 없는" 컨테이너가 된다.
 func containerClass(flow soml.ContainerFlow) (string, error) {
 	switch flow {
 	case soml.FlowRow:
@@ -131,15 +131,14 @@ func writeSpacer(b *strings.Builder, slide *soml.Slide, elem *soml.Element, path
 	return nil
 }
 
-// containerCSS는 확정된 컨테이너 배치를 CSS 선언 목록으로 컴파일한다 (docs/reference/soml/layout.md의
-// 컨테이너 속성 표).
+// containerCSS는 확정된 컨테이너 배치를 CSS 선언 목록으로 컴파일한다 (컨테이너 속성 표).
 //
 // **순서는 그 표의 행 순서다** — 표와 코드를 나란히 읽을 수 있어야 "표에 있고 코드에 없는 행"이
 // 눈에 띈다 (그 대조를 테스트가 어휘 목록 순회로 한 번 더 한다).
 //
 // 정하지 않은 속성은 선언을 **하나도** 내지 않는다: 기본값을 명시하면 저자 CSS와 브라우저
 // 기본값이 이길 자리가 사라지고("브라우저 기본값 그대로"라는 계약이 깨진다), 배치
-// 속성이 없는 요소의 산출물이 이 iteration 때문에 달라진다.
+// 속성이 없는 요소의 산출물이 무관한 변경 때문에 달라진다.
 func containerCSS(container soml.ContainerLayout) ([]string, error) {
 	var decls []string
 	if container.Gap != nil {
@@ -163,7 +162,7 @@ func containerCSS(container soml.ContainerLayout) ([]string, error) {
 		// grid 컨테이너에서 `flex-wrap`은 CSS가 무시하는 선언이다. 그래도 흐름별로 빼지 않는
 		// 이유: 속성이 어느 태그에 붙을 수 있는가는 **이름 층**(soml의 카탈로그)의 결정이고,
 		// 렌더러가 그 판단을 한 번 더 하면 적용 가능성이 두 곳에서 정해진다 — 파서가
-		// `<row cols>`를 막은 것과 같은 자리에서 `<grid wrap>`도 막아야 한다 (NOTES의 열린 질문).
+		// `<row cols>`를 막은 것과 같은 자리에서 `<grid wrap>`도 막아야 한다.
 		decls = append(decls, "flex-wrap: wrap")
 	}
 	if container.Pad != nil {
@@ -186,8 +185,8 @@ func containerCSS(container soml.ContainerLayout) ([]string, error) {
 // 쓴다** (soml.Box를 두 요소가 임베드로 공유하므로 매핑도 하나여야 한다: 표기가 같은데
 // 컴파일이 두 벌이면 크기 하나가 한쪽 요소에서만 먹는 일이 생긴다).
 //
-// 선언 순서는 컨테이너 속성 표(docs/reference/soml/layout.md)의 행 순서다. `pad`가 이 함수에 없는 이유는 컨테이너에서 트랙 속성보다
-// **앞**에 나오기 때문이다 — 순서를 여기로 모으면 기존 골든의 선언 순서가 이 항목과 무관한
+// 선언 순서는 컨테이너 속성 표의 행 순서다. `pad`가 이 함수에 없는 이유는 컨테이너에서 트랙 속성보다
+// **앞**에 나오기 때문이다 — 순서를 여기로 모으면 기존 골든의 선언 순서가 이 함수와 무관한
 // 이유로 움직인다 (호출자가 자기 자리에서 padValue를 부른다).
 func boxSizeCSS(box soml.Box) ([]string, error) {
 	var decls []string
@@ -219,8 +218,8 @@ func boxSizeCSS(box soml.Box) ([]string, error) {
 	return decls, nil
 }
 
-// appendTextBox는 텍스트 요소 자신의 가로 크기 선언을 이어 붙인다 (`w`·`min-w`·`max-w` —
-// ADR 0043). 컨테이너·도형과 **같은 함수**(boxSizeCSS)가 값을 컴파일하므로 `<row w="140">`과
+// appendTextBox는 텍스트 요소 자신의 가로 크기 선언을 이어 붙인다 (`w`·`min-w`·`max-w`).
+// 컨테이너·도형과 **같은 함수**(boxSizeCSS)가 값을 컴파일하므로 `<row w="140">`과
 // `<text w="140">`이 같은 선언을 낸다.
 //
 // 자리는 **외관 뒤, 슬롯·배치 앞**이다 — 속성 표의 순서(외관 → 박스 → 자식 배치 → 슬롯)를
@@ -239,18 +238,18 @@ func appendTextBox(decls []string, box *soml.Box) ([]string, error) {
 	return append(decls, sizes...), nil
 }
 
-// appendPlacement는 자식 배치 선언을 이어 붙인다 (docs/reference/soml/layout.md의 자식 속성 표).
+// appendPlacement는 자식 배치 선언을 이어 붙인다 (자식 속성 표).
 //
 // **배치 선언을 만드는 코드는 이 함수 하나다.** `<text>`·블록·리스트·컨테이너·`<spacer>`가
 // 모두 컨테이너의 자식이 될 수 있으므로(soml.Placement의 계약) 요소 종류마다 따로 쓰면
 // 태그를 늘릴 때 한 곳을 빼먹고, 그 결과는 "웹에서만 배치가 사라지는 요소"다.
 //
 // 저자의 `style` 탈출구는 **맨 끝**이다 — 같은 프로퍼티면 뒤가 이기므로 탈출구가 엔진
-// 선언을 덮는다. 그것이 탈출구의 뜻이다 (ADR 0014).
+// 선언을 덮는다. 그것이 탈출구의 뜻이다.
 func appendPlacement(decls []string, placement *soml.Placement) ([]string, error) {
 	if placement == nil {
-		// 배치 속성이 없는 요소는 선언을 하나도 더하지 않는다 — Iteration 1·2 골든이 이
-		// nil에 달려 있다 (core가 제로값을 nil로 남기는 계약의 렌더러 쪽 절반).
+		// 배치 속성이 없는 요소는 선언을 하나도 더하지 않는다 — 배치 속성을 쓰지 않은 덱의
+		// 골든이 이 nil에 달려 있다 (core가 제로값을 nil로 남기는 계약의 렌더러 쪽 절반).
 		return decls, nil
 	}
 	if placement.Grow != nil {
@@ -282,10 +281,10 @@ func appendPlacement(decls []string, placement *soml.Placement) ([]string, error
 		}
 		decls = append(decls, "place-self: "+self)
 	}
-	// x/y는 그 자식만 absolute로 전환하고 부모 상대 좌표를 left/top으로 낸다 (ADR 0067 결정 3).
+	// x/y는 그 자식만 absolute로 전환하고 부모 상대 좌표를 left/top으로 낸다.
 	//
-	// **transform: translate()를 쓰지 않는다.** 측정 뷰가 변형을 끄기 때문이다 (ADR 0021,
-	// render/web/shape.go·image.go의 측정 뷰). 변형으로 위치를 내면 지오메트리 패스가 잰
+	// **transform: translate()를 쓰지 않는다.** 측정 뷰가 변형을 끄기 때문이다
+	// (render/web/shape.go·image.go의 측정 뷰). 변형으로 위치를 내면 지오메트리 패스가 잰
 	// rect에 위치가 남지 않고, PPTX는 겹치지 않은 좌표를 받아 웹과 갈라진다 — translate가 더
 	// 짧다고 바꾸는 것을 막는 근거가 이 주석이다. 지정하지 않은 축은 선언을 내지 않는다
 	// (`top: auto` = 정적 위치) — containerCSS의 "정하지 않은 것에 기본값을 내지 않는다"와 같다.
@@ -307,7 +306,7 @@ func appendPlacement(decls []string, placement *soml.Placement) ([]string, error
 	return decls, nil
 }
 
-// appendSlot은 슬롯 배정을 `grid-area: <슬롯>` 선언으로 잇는다 (docs/reference/layouts.md·ADR 0035).
+// appendSlot은 슬롯 배정을 `grid-area: <슬롯>` 선언으로 잇는다.
 //
 // 슬롯은 core가 **슬라이드 직계 자식에만** 싣는다 (resolveSlot) — 그래서 이 선언도 그때만
 // 나가고, 슬롯을 쓰지 않은 흐름 배치 요소의 산출물은 달라지지 않는다 (골든 불변). 뜻이 서는
@@ -346,7 +345,7 @@ func lengthValue(length soml.Length) string {
 	case length.Percent:
 		return formatNumber(length.Value) + "%"
 	default:
-		// 무단위 수치는 논리 스테이지 px다 (ADR 0067 결정 5). 스테이지가 CSS px와 1:1이므로
+		// 무단위 수치는 논리 스테이지 px다. 스테이지가 CSS px와 1:1이므로
 		// 환산이 없다 — 지오메트리 패스가 읽은 값이 그대로 PPTX 좌표가 되는 이유다.
 		return formatNumber(length.Value) + "px"
 	}
@@ -452,7 +451,7 @@ func anchorAxes(anchor soml.StackAnchor) (block, inline string, ok bool) {
 
 // boxJustifyValue는 주축 분배를 CSS 값으로 만든다 — `space-*` 접두를 다시 붙이는 자리다.
 //
-// 접두를 뗀 이름이 어휘이고(저자가 `between`으로 적는다 — docs/reference/soml/layout.md),
+// 접두를 뗀 이름이 어휘이고(저자가 `between`으로 적는다),
 // 번역은 렌더러의 몫이다 (soml.BoxJustify의 주석).
 func boxJustifyValue(justify soml.BoxJustify) (string, error) {
 	switch justify {
@@ -472,7 +471,7 @@ func boxJustifyValue(justify soml.BoxJustify) (string, error) {
 // 레이아웃 렌더가 붙었다는 이유로 달라지면 골든 diff가 무엇이 움직였는지 말해 주지 못한다.
 func layoutCSS() string {
 	return `
-  /* 레이아웃 태그 = CSS flex/grid의 이름 바꾸기 층 (docs/reference/soml/layout.md). 여기 있는 것은 태그의
+  /* 레이아웃 태그 = CSS flex/grid의 이름 바꾸기 층. 여기 있는 것은 태그의
      정의 그 자체이고, 요소마다 다른 값(gap·align·pad·cols…)은 인라인 style로 나간다. */
   .balpyo-row { display: flex; flex-direction: row; }
   .balpyo-col { display: flex; flex-direction: column; }
@@ -501,42 +500,42 @@ func layoutCSS() string {
 //
 // 별도 절인 이유는 골든 불변이다: layoutCSS()는 feat.layout이 켜진 모든 덱에 나가므로
 // (03_layout·04_shape·05_image), 그 문자열에 stack 규칙을 끼워 넣으면 stack을 쓰지 않은
-// 골든이 이 iteration 때문에 움직인다. 저장소의 원칙은 **새 어휘를 쓴 덱에서만 CSS가
+// 골든이 무관한 이유로 움직인다. 저장소의 원칙은 **새 어휘를 쓴 덱에서만 CSS가
 // 달라지는 것**이라, 이 절은 stack이나 canvas를 실제로 쓴 덱에만 나간다 (contentCSS의 조건).
 //
 // # 겹침은 한 벌이다 — stack과 캔버스 스테이지가 같은 규칙을 쓴다
 //
-// 캔버스 스테이지가 stack과 같은 배치를 갖는 것이 항목 04의 결정이다 (ADR 0067 결정 3): 캔버스를
+// 캔버스 스테이지는 stack과 같은 배치를 갖는다: 캔버스를
 // display:block으로 따로 만들면 겹침·앵커·칠 순서 규칙이 두 곳에 생기고, 갈라져도 픽셀
 // 비교에서만 드러난다. 그래서 `:is(.balpyo-stack, .balpyo-stage-canvas)` 한 선택자가 둘을
 // 함께 겨눈다.
 //
 //   - 단일 셀 grid + `grid-area: 1/1`: 모든 자식이 같은 칸에 겹치되 in-flow로 남으므로
 //     stack의 크기가 **가장 큰 자식**에 맞춰 자동 결정된다 (absolute 전면 방식은 컨테이너
-//     크기가 소실되어 배제 — ADR 0067 결정 3). `grid-template-*`을 내지 않는다: 암시 트랙 하나가
-//     정확히 필요한 것이고, 명시하면 `cols`를 닫아 둔 항목 01의 결정과 두 벌이 된다.
+//     크기가 소실되어 배제). `grid-template-*`을 내지 않는다: 암시 트랙 하나가
+//     정확히 필요한 것이고, 명시하면 `cols`를 닫아 둔 것과 두 벌이 된다.
 //   - `position: relative`(stack 자신): 절대 배치(x/y) 자식의 포함 블록을 stack의 패딩
 //     박스로 만든다. 이것이 없으면 grid 컨테이너가 위치 지정 조상이 아니어서 x/y 자식이
 //     가장 가까운 위치 지정 조상(스테이지)까지 올라가 배치된다 — `<stack pad>`의 자식이
-//     여백 안쪽부터 세려면(항목 04의 2번 결정) stack이 포함 블록이어야 한다. 오프셋이 없는
+//     여백 안쪽부터 세려면 stack이 포함 블록이어야 한다. 오프셋이 없는
 //     relative는 박스를 움직이지 않으므로 잰 rect는 그대로다. (캔버스 스테이지는 이미
 //     position: relative다 — contentCSS의 .balpyo-stage. 그래서 새로 만들 것이 없다.)
-//   - `> * { position: relative }`(자식): **칠 순서를 문서 순서로 되돌린다** (항목 04의 4번
-//     결정 — 이 절에서 가장 중요한 한 줄). CSS는 같은 쌓임 문맥에서 위치 지정되지 않은
+//   - `> * { position: relative }`(자식): **칠 순서를 문서 순서로 되돌린다** (이 절에서
+//     가장 중요한 한 줄). CSS는 같은 쌓임 문맥에서 위치 지정되지 않은
 //     자손을 먼저, 위치 지정된 자손을 나중에 칠한다. 그래서 x/y 자식(absolute)과 정적 자식이
 //     섞이면 문서상 앞인 x/y 자식이 뒤에 칠해져 겹침 순서가 PPTX(문서 순서 = 뒤가 위)와
 //     반대가 된다. 모든 자식을 위치 지정 요소로 만들면 형제끼리 z-index:auto일 때 문서
 //     순서로 칠해지므로(x/y 자식의 position:absolute가 이 선언을 덮어도 같은 단계에 남는다)
 //     한 줄로 계약이 복원된다. 엔진이 자식마다 z-index:N을 내는 길과 저울질했고 버렸다:
-//     골든에 문서 순서와 중복된 수치가 들어가고, z-index는 저자에게 닫아 둔 채널(ADR 0067 결정 3)
-//     이라 엔진이 쓰면 저자 CSS가 이길 수 없는 값이 하나 는다 (ADR — 항목 07).
+//     골든에 문서 순서와 중복된 수치가 들어가고, z-index는 저자에게 닫아 둔 채널이라
+//     엔진이 쓰면 저자 CSS가 이길 수 없는 값이 하나 는다.
 //   - 자식 폭 초기화: 텍스트·리스트의 확정 폭(width:100%, contentCSS)을 auto로 되돌린다.
 //     폭이 칸을 다 먹으면 `at`의 justify-self가 자식을 움직일 여지가 없다. **기존 컨테이너
 //     자식 초기화 선택자(layoutCSS)에 stack을 끼워 넣지 않고 여기 따로 낸다** — 그 선택자는
 //     골든이 움직이는 자리이기 때문이다.
 func stackCSS() string {
 	return `
-  /* <stack>·캔버스 스테이지 = 단일 셀 grid 겹침 (ADR 0067 결정 3). 자식이 grid-area 1/1에
+  /* <stack>·캔버스 스테이지 = 단일 셀 grid 겹침. 자식이 grid-area 1/1에
      겹치되 in-flow로 남아 stack 크기가 가장 큰 자식에 맞춰 자동 결정된다. position:relative는
      x/y 자식의 포함 블록을 만들고(패딩 박스 기준), 자식의 position:relative는 칠 순서를
      문서 순서로 되돌린다 (위치 지정 형제는 문서 순서로 칠해진다 — 별도 z-index 없음). */
