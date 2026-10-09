@@ -178,6 +178,10 @@ Things worth knowing about this file:
   variants (`"fill": "gradient(accent1 accent6, 135deg)"`, `"border": "4 gradient(accent6 accent1)"`,
   `"color": "tint(accent1, 40%)"`) so the deck only says `variant="hero"`. Every color must stay a
   token reference — no `#RRGGBB`, no literal gradient stops. Table cells take single tokens only.
+- **Themes own pictures.** Put PNG/JPEG files under `assets/` and point at them from `theme.json`:
+  `backgrounds` (per layout, `fill` *or* `image` — never both; an entry without `layouts` is the
+  default) and a `logo` chrome entry (`image`, `height`, `alt`; it is on whenever declared).
+  The deck never mentions them, so switching themes switches the backgrounds and the logo.
 - **A component default belongs to a tag or to a layout slot**, never both. A slot default sits
   above the tag default and below variants: `<blockquote slot="quote">` gets quote size, a
   `<blockquote>` in a flow slide stays body size. The built-in themes keep three slot contracts:
