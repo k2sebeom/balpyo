@@ -29,9 +29,18 @@ Layouts
 
 Chrome
 
-- [ ] Every declaration has `kind`, `align`, and `role` — `align` and `role` cannot be omitted.
+- [ ] Every declaration has `kind` and `align`; `footer`/`pageNumber` also need `role`.
+- [ ] A `logo` has `image` and `height` (and should have `alt`); text kinds carry none of the
+      three.
 - [ ] No `kind` declared twice.
 - [ ] Every `skipLayouts` name is a layout of *this* theme.
+
+Backgrounds and assets
+
+- [ ] Each `backgrounds` entry has `fill` **or** `image`, not both and not neither.
+- [ ] No layout in two entries, at most one default (an entry without `layouts`), and every
+      listed name is a layout of this theme.
+- [ ] Every background and logo picture is a real PNG/JPEG under the theme's `assets/`.
 
 Tokens
 
@@ -47,6 +56,10 @@ Components
 - [ ] All five text roles present: `title` `heading` `body` `caption` `code`.
 - [ ] Each role has `size` > 0, `lineHeight` > 0, and an `align`.
 - [ ] Every `font` and `color` on a role names a token **this theme has**; no literal colours.
+- [ ] Every colour in defaults, variants, images, and tables is a token reference (a name,
+      `tint`/`shade`/`alpha` of one, or a gradient of tokens) — table cells single tokens only.
+      This is checked even for variants no slide uses.
+- [ ] A component default names a `tag` **or** a `layout` + `slot`, never both.
 - [ ] No unknown keys anywhere in `components.json` (`$comment` is the only exception).
 - [ ] `code.tabSize` ≥ 1; every `code.tokens` class is one of `keyword` `name` `attr` `string`
       `number` `comment` `punct`, none repeated, each colour a token name.
@@ -55,6 +68,9 @@ Warnings (which `--strict` promotes to errors)
 
 - [ ] No non-placement property in `layouts/*.css` — colour and font there never reach the PPTX.
 - [ ] Chrome the config turns on is declared by the theme, or accept the warning knowingly.
+- [ ] Two chrome kinds (e.g. `logo` and `pageNumber`) do not share an `align` — they overlap.
+- [ ] Every font family the tokens name is installed on the machine that builds (and on CI).
+      Not a loader check: each measuring build warns per missing family, and `--strict` fails.
 
 ## Tier 2 — only tested for built-ins, so check these yourself
 
@@ -69,6 +85,9 @@ Warnings (which `--strict` promotes to errors)
       image `framed`; table `striped`. Add on top; never rename, or a deck that moves between
       themes starts emitting warnings.
 - [ ] **`body` is 24px / line-height 1.5.** The 720px stage is exactly 20 body lines.
+- [ ] **The three slot contracts hold**: `quote`/`quote` ≥ 32px, `stat`/`value` larger than
+      the title, `stat`/`label` ≥ body. A standalone theme must write these slot defaults
+      itself, or the quote renders at body size and the stat label undercuts the body.
 
 ## Tier 3 — nothing checks these; they surface in the output
 
@@ -77,7 +96,7 @@ Warnings (which `--strict` promotes to errors)
       PowerPoint.
 - [ ] `latin` and `ea` of every font token point at the same family.
 - [ ] **No `justify-items: start`** in any slot CSS. It changes nothing visually and zeroes the
-      text box slack, which wraps CJK lines in LibreOffice.
+      text box slack, so PowerPoint re-breaks the line and `normAutofit` shrinks it.
 - [ ] `justify-items: center` only where centring *is* the meaning (cover, a single `stat`
       number, the closing slide) — and tell the user that one-line text in those slots must stay
       short.
@@ -92,9 +111,10 @@ Warnings (which `--strict` promotes to errors)
 
 - [ ] `balpyo check --theme <name> --check-layout --strict` exits 0 on a real deck. Values move
       geometry: a bigger title adds a line and the line overflows.
-- [ ] `balpyo preview --theme <name> --gallery preview-<name>` (gallery ≠ `--out`), and the same
-      deck under the parent theme in a second gallery. What is identical is what you did not
-      claim.
+- [ ] `balpyo preview --theme <name> --gallery preview-<name>` (the gallery may not overlap
+      `--out`), and the same deck under the parent theme in a second gallery. What is identical
+      is what you did not claim. The PPTX column needs OnlyOffice or LibreOffice + `pdftoppm`.
+- [ ] Backgrounds and the logo show on the layouts you meant, and nowhere in `skipLayouts`.
 - [ ] Open the PPTX in PowerPoint or Keynote and check the theme colour editor shows your
       palette in sane places.
 - [ ] Only then write the name into `balpyo.json`.

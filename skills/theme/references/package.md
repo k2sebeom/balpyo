@@ -6,10 +6,11 @@ Four file groups whose jobs do not overlap. The complete Korean original is
 
 | File | Owns |
 |---|---|
-| `theme.json` | identity — name, parent, the layouts implemented, deck chrome |
+| `theme.json` | identity — name, parent, the layouts implemented, deck chrome, slide backgrounds |
 | `tokens.json` | **the names of values** — what `accent1`, `md`, `heading` are |
 | `components.json` | **appearance of roles and variants** — how big `role="body"` is, what colour a code keyword gets |
 | `layouts/*.css` | **placement** — where a layout puts its children |
+| `assets/` | optional pictures the theme owns — background images and the logo (PNG/JPEG) |
 
 ## `theme.json`
 
@@ -29,6 +30,7 @@ Four file groups whose jobs do not overlap. The complete Korean original is
 | `extends` | a theme name or `""` | resolved in the same vocabulary as `theme` (built-in ∪ project-local). Chains are allowed (`corp-dark` → `corp` → `minimal`); cycles are errors |
 | `layouts` | list of layout names | must contain **all eleven** standard names. Inherited — omit it when extending. Names outside the catalogue are meaningless, since no slide can request them |
 | `chrome` | array of declarations | below |
+| `backgrounds` | array of background declarations (optional) | below; inherited as a list — if the child writes it, the child's list wins |
 
 A standalone theme lists all eleven:
 
@@ -39,22 +41,58 @@ A standalone theme lists all eleven:
 
 ### Chrome declarations
 
-Chrome is the footer and the page number. The vocabulary is **split between two files**: the
-deck owns the content and the on/off (`balpyo.json`'s `footer` string and `pageNumber` bool),
-the theme owns placement, alignment, role, and exclusions. Both are needed for anything to
-render; config-only produces a warning and no chrome.
+Chrome is the footer, the page number, and the logo. For the two text kinds the vocabulary is
+**split between two files**: the deck owns the content and the on/off (`balpyo.json`'s `footer`
+string and `pageNumber` bool), the theme owns placement, alignment, role, and exclusions. Both
+are needed for anything to render; config-only produces a warning and no chrome. **The logo is
+the theme's alone** — declaring it turns it on for every slide outside `skipLayouts`.
 
 | Key | Values | Notes |
 |---|---|---|
-| `kind` | `footer` · `pageNumber` | declaring the same `kind` twice is an error |
-| `align` | `start` · `center` · `end` | **mandatory** — position inside the band |
-| `role` | one of the five text roles | **mandatory** — chrome has no size or colour of its own; reuse `caption` |
+| `kind` | `footer` · `pageNumber` · `logo` | declaring the same `kind` twice is an error |
+| `align` | `start` · `center` · `end` | **mandatory** — position inside the band. Two chrome kinds on the same `align` overlap and warn |
+| `role` | one of the five text roles | **mandatory** for `footer`/`pageNumber`, not used by `logo` — chrome has no size or colour of its own; reuse `caption` |
 | `skipLayouts` | layout names of **this** theme (optional) | a name that is not a layout here is an error |
+| `image` · `height` · `alt` | `logo` only — a picture under `assets/`, logical px height, alt text | `image` and `height` are required; width follows the picture's ratio. On a text kind these keys are an error |
+
+```json
+{ "kind": "logo", "align": "center", "image": "assets/logo.png", "height": 24,
+  "alt": "Brand logo", "skipLayouts": ["title"] }
+```
 
 Chrome lives in the 64px band below the content box, so it never overlaps the body. Page
 numbers count from 1 and **count excluded slides too** (the PPTX emits
 `<a:fld type="slidenum">`, and no viewer can count a cover out). `<slide skip>` is different:
 that slide leaves the deck entirely and the following numbers shift up.
+
+### Backgrounds
+
+```json
+"backgrounds": [
+  { "layouts": ["title"], "image": "assets/cover.png" },
+  { "layouts": ["section-divider"], "fill": "gradient(accent1 accent6, 135deg)" },
+  { "fill": "surface" }
+]
+```
+
+| Key | Values | Notes |
+|---|---|---|
+| `layouts` | layout names of this theme (optional) | **omitted = the default background** for every other layout |
+| `fill` | a token, a token variant, or a token gradient | the slide's base fill |
+| `image` | a picture under `assets/` | covers the slide (aspect kept, centre-cropped — like `fit="cover"`) |
+
+- One declaration is `fill` **or** `image`, never both — a PPTX slide background holds one
+  fill, so a fill under a picture would vanish there.
+- A layout appears in **one** declaration only, and there is one default. Overlaps are errors —
+  there is no precedence rule to remember.
+- A layout with no background stays the `bg` colour.
+- On the web it is the slide's CSS background; in the PPTX it is the slide's `p:bg` ("Format
+  Background" in PowerPoint), not a movable shape. Colours stay `schemeClr`.
+
+Pictures (backgrounds and the logo) must live under the theme's `assets/`, be real PNG/JPEG
+files whose extension matches the content, and are judged like `<image src>`. Only referenced
+pictures are shipped. An inherited declaration's picture belongs to the theme that has it; a
+child file at the same path wins.
 
 ## `tokens.json`
 
@@ -107,8 +145,9 @@ missing; LibreOffice and PowerPoint use the name in `a:ea` literally. This bites
 
 Unknown keys are errors (`$comment` excepted). All five text roles must be present and
 complete; `size` and `lineHeight` must be > 0, `align` must be there, and `font`/`color` must
-name tokens **this** theme has — a literal colour is rejected because it cuts the PPTX theme
-reference.
+name tokens **this** theme has. Every other colour in the file — defaults, variants, images,
+tables — is checked at load too: a literal `#RRGGBB` (or a gradient with a literal stop) is an
+error even when no slide uses that variant, because it cuts the PPTX theme reference.
 
 ```json
 {
@@ -245,8 +284,8 @@ the list in an unknown-`variant` warning).
 |---|---|---|
 | **name** | colour/font/space/radius/shadow tokens, text roles, tag defaults, variants, code tokens (`class`), chrome declarations (`kind`) | that **whole entry** is the child's — none of the parent's other fields survive |
 | **field** | the unnamed sections — `shape.default`, `image.default`, table `cell`/`header`/`stripe`, `code.tabSize` | only the written fields change; the rest is inherited (`""` and `0` mean "unset") |
-| **file** | `layouts/<name>.css`, `layouts/<name>.slots.css` | that **one file** is the child's; files not present stay the parent's |
-| **list** | `theme.json`'s `layouts` | if written it wins (and must again be all eleven); if omitted the parent's eleven are inherited |
+| **file** | `layouts/<name>.css`, `layouts/<name>.slots.css`, `assets/<path>` | that **one file** is the child's; files not present stay the parent's |
+| **list** | `theme.json`'s `layouts` and `backgrounds` | if written it wins (`layouts` must again be all eleven); if omitted the parent's list is inherited |
 
 So re-declaring role `title` means you own every field of it — the parent's 56px and `fg` do
 not remain. **There is no delete syntax**: a name the parent gave cannot be removed, only

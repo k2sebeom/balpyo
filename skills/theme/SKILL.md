@@ -33,7 +33,8 @@ my-deck/
         ├── theme.json         # { "name": "corp", "extends": "minimal", … }
         ├── tokens.json        # partial, when inheriting
         ├── components.json    # partial
-        └── layouts/           # only the files being replaced
+        ├── layouts/           # only the files being replaced
+        └── assets/            # optional — background and logo pictures (PNG/JPEG)
 ```
 
 Pick the closest built-in as the parent and override only what differs:
@@ -84,15 +85,22 @@ of them with one meaning each.
 Formats, required names, and worked examples: `references/package.md`. Shortest useful version:
 
 - **`theme.json`** — `name`, `extends`, optional `layouts` (inherited, so don't re-list the
-  eleven), and `chrome` (footer and page-number placement; `align` and `role` are mandatory).
+  eleven), `chrome` (footer and page-number placement — `align` and `role` are mandatory — and
+  an optional `logo`), and optional `backgrounds` (per-layout slide backgrounds: a colour,
+  token gradient, or picture from `assets/`). Backgrounds and the logo are the theme's own: the
+  deck never mentions them, so a theme swap swaps them too.
 - **`tokens.json`** — the **names** authors may write. Each colour needs all four fields
   (`name`, `rgb`, `slot`, `ref`). Colour work in a child theme is **recolouring by name**: the
   `clrScheme` has 12 slots, built-ins use 10, so adding a new colour *name* requires a free
   slot. Space, radius, shadow, and font have no such ceiling — add freely.
 - **`components.json`** — all five text roles complete (`size`, `lineHeight`, `align`, plus
-  `font`/`color` naming tokens **that exist in this theme**; literal colours are rejected),
-  tag defaults, variants, table cell appearance, and code-token colours. Unknown keys are
-  errors (`$comment` excepted).
+  `font`/`color` naming tokens **that exist in this theme**), defaults per tag *or* per layout
+  slot (`quote`/`quote`, `stat`/`value`, `stat`/`label`), variants, table cell appearance, and
+  code-token colours. Every colour in the file must reference this theme's tokens. Defaults and
+  variants may use the authoring grammar — `gradient(accent1 accent6, 135deg)`,
+  `tint(accent1, 40%)` — so a deck says `variant="hero"` and the theme owns the gradient; roles,
+  table cells, and code tokens take a single token name. A `#RRGGBB` is a load error even if no
+  slide uses that variant. Unknown keys are errors (`$comment` excepted).
 - **`layouts/<name>.css`** — a **selector-less declaration list** for flow mode, and
   `<name>.slots.css` for slot mode. **Placement only**: colour and font declarations here are
   warnings and never reach the PPTX master. Each slot file must carry its own `display: grid`
@@ -103,10 +111,16 @@ Four rules nothing in the toolchain will catch for you:
 - **Centre costs slack; left is free.** In slot CSS use `justify-items: center` only where
   centring *is* the meaning (cover, a single `stat` number, the closing slide). Never write
   `justify-items: start` — left is already the default, and it shrinks the box to content
-  width, which zeroes the PPTX slack and makes CJK lines wrap in LibreOffice.
+  width, so the PPTX box has zero slack and a line the viewer sets slightly wider gets
+  re-broken and shrunk by `normAutofit`.
 - **The `mono` token's `ea` must be a monospace CJK face** (`Noto Sans Mono CJK KR`). Pair a
   monospace Latin with a proportional CJK face and one Korean comment line is drawn 7.9%
   narrower in the browser than in PowerPoint.
+- **Every font you name must be installed where the deck is built.** The loader does not check
+  this, but every measuring build warns per missing family (`테마 "corp"의 글꼴 "Malgun
+  Gothic"(heading.ea, body.ea)가 측정 브라우저에 없다`) and `--strict` fails on it — the boxes
+  were measured with a substitute that PowerPoint will not use. Pick fonts the user actually has
+  (and their CI), or tell them what to install.
 - **`clrScheme` slots are a convention, not a brightness.** A dark theme still puts `fg` in
   `dk1` and `bg` in `lt1`, or PowerPoint's theme-colour editor comes out inverted.
 - **On a dark background use `surface`, not `muted`, for fills and lines** (that is what
@@ -133,7 +147,8 @@ what only the built-in test suite requires (so your local theme must self-police
 hand-checked rules above.
 
 Then look at it, because values change geometry — a bigger title adds a line and the line
-overflows:
+overflows. The PPTX column needs OnlyOffice Document Builder or LibreOffice + `pdftoppm` (see
+the `deck` skill); without them the gallery is web-only and says so:
 
 ```bash
 balpyo preview --project my-deck --theme corp --gallery preview-corp
@@ -141,7 +156,8 @@ balpyo preview --project my-deck --theme corp --gallery preview-corp
 
 Build the same deck under the parent theme into a second gallery (`--gallery preview-minimal`)
 and compare: what stayed identical is what you did *not* claim, and that sameness is the
-evidence inheritance worked. Remember `--gallery` must never equal `--out`.
+evidence inheritance worked. `--gallery` may not overlap `--out` — `preview` refuses before
+building.
 
 When the user is happy, write the name into `balpyo.json` (`{ "theme": "corp" }`) — until then
 keep it on the flag so reverting is free.
@@ -158,4 +174,7 @@ Korean originals shipped with this plugin: `${CLAUDE_PLUGIN_ROOT}/docs/reference
 `docs/guides/theming.md` (choosing and building), `docs/guides/known-differences.md` (what the
 viewer does to your typography). Working themes to read:
 `${CLAUDE_PLUGIN_ROOT}/core/themes/{minimal,editorial,ink}/`; a complete inheriting theme:
-`${CLAUDE_PLUGIN_ROOT}/testdata/fixtures/15_local_theme/themes/corp/`.
+`${CLAUDE_PLUGIN_ROOT}/testdata/fixtures/15_local_theme/themes/corp/`; an inheriting theme with
+backgrounds and a logo: `${CLAUDE_PLUGIN_ROOT}/testdata/fixtures/18_theme_assets/themes/brand/`;
+a standalone theme (`"extends": ""`, all eleven layouts) meant to be copied into a project:
+`${CLAUDE_PLUGIN_ROOT}/examples/themes/harbor/`.
