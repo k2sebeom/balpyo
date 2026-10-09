@@ -9,7 +9,7 @@ package soml
 // 같은 일을 하는 코드가 두 벌이 되면 웹의 CSS와 PPTX의 OOXML이 갈라지고, 그 종류의 버그는
 // 두 산출물을 나란히 볼 때까지 드러나지 않는다.
 
-// ImageStyle은 확정된 이미지 외관이다 (PRD §7.5·§7.6 표의 image 행).
+// ImageStyle은 확정된 이미지 외관이다 (docs/reference/soml/image.md).
 //
 // **ShapeStyle과 공용 구조체를 뽑지 않는다**: 소비자가 둘일 때는 함수를 공유하고, 구조를
 // 뽑는 것은 세 번째(`<group>` — Iteration 9)에서 한다. 지금 뽑으면 도형에만 있는 것

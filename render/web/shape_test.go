@@ -10,7 +10,8 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **PRD §9.4 표의 도형 행 회귀 장치**다 (layout_test.go의 §7.4 표와 같은 자리).
+// 이 파일은 **외관 매핑 표(docs/reference/appearance.md)의 도형 행 회귀 장치**다 (layout_test.go의
+// 레이아웃 표와 같은 자리).
 
 // shapeCase는 외관 속성 하나가 CSS 선언 하나로 컴파일되는 것을 확인하는 행이다.
 type shapeCase struct {
@@ -25,7 +26,7 @@ type shapeCase struct {
 	box bool
 }
 
-// shapeCases는 PRD §9.4 표의 도형 외관 행을 그대로 옮긴 것이다 (표 순서).
+// shapeCases는 외관 매핑 표의 도형 외관 행을 그대로 옮긴 것이다 (표 순서).
 func shapeCases() []shapeCase {
 	return []shapeCase{
 		// variant는 CSS 선언을 스스로 만들지 않는다 — 캐스케이드의 한 단이므로 **그 결과**가
@@ -68,7 +69,7 @@ func shapeCases() []shapeCase {
 	}
 }
 
-// 외관 속성 → CSS 선언 (PRD §9.4 표 그대로).
+// 외관 속성 → CSS 선언 (외관 매핑 표 그대로).
 func TestShapeAppearanceCompilesToCSS(t *testing.T) {
 	for _, tc := range shapeCases() {
 		t.Run(tc.attr+"/"+tc.name, func(t *testing.T) {
@@ -455,7 +456,7 @@ func TestShapeOpacityAndFlipDoNotTouchText(t *testing.T) {
 	}
 }
 
-// 세로 앵커는 도형이 세로 flex 컨테이너라는 사실 위에서 주축 분배가 된다 (PRD §9.4의
+// 세로 앵커는 도형이 세로 flex 컨테이너라는 사실 위에서 주축 분배가 된다 (외관 매핑 표의
 // `anchor` 행). 값은 **첫 자식**이 정하고, 정한 자식이 없으면 선언이 없다.
 func TestShapeAnchorComesFromFirstChild(t *testing.T) {
 	for _, tc := range []struct {

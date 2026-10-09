@@ -1,6 +1,6 @@
 // Package pptx는 덱 모델을 편집 가능한 네이티브 PPTX로 조립한다.
 //
-// 전략은 두 갈래다 (PRD §9.3):
+// 전략은 두 갈래다 (docs/internals/geometry-pass.md):
 //
 //	① 지오메트리 패스 — 웹 렌더러와 같은 HTML/CSS를 헤드리스 브라우저에 올려 요소별
 //	   rect만 읽고 EMU로 바꾼다. 읽는 것은 좌표뿐이다.

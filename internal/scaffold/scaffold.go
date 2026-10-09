@@ -6,7 +6,7 @@
 // (scaffold_test.go · cmd/balpyo/init_test.go).
 //
 // 템플릿은 `//go:embed`로 바이너리에 들어간다 — `balpyo init`은 네트워크도 저장소 체크아웃도
-// 요구하지 않는다 (PRD §10의 "바이너리 하나"가 스캐폴딩에도 적용된다).
+// 요구하지 않는다 (CLI의 "바이너리 하나" 계약이 스캐폴딩에도 적용된다).
 package scaffold
 
 import (

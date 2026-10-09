@@ -8,19 +8,19 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **배치 속성의 값 해석**이다 (PRD §7.4의 컨테이너·자식 표) — 파서가 이름만 본
-// 배치 속성을 확정된 배치 값(soml.ContainerLayout·soml.Placement)으로 눕힌다.
+// 이 파일은 **배치 속성의 값 해석**이다 (docs/reference/soml/layout.md의 컨테이너·자식
+// 속성 표) — 파서가 이름만 본 배치 속성을 확정된 배치 값(soml.ContainerLayout·soml.Placement)으로 눕힌다.
 //
 // 텍스트 외관 해석(resolveText)과 나란한 자리에 있다. 두 해석이 한 요소에 함께 얹히는 것은
 // 정상이다 — `<p grow="1" size="30">`은 외관 채널과 배치 채널을 동시에 쓴 것이고, 두 채널이
-// 서로를 모르는 것이 이 언어의 경계다 (PRD §5.3).
+// 서로를 모르는 것이 이 언어의 경계다 (docs/reference/appearance.md "배치는 외관이 아니다").
 //
 // 속성이 19개여도 값 문법은 몇 개의 표다: 길이(수치·`%`·`fill`·공간 토큰), 닫힌 어휘
 // (align/justify/self), 불리언(wrap), 목록(cols/rows/pad), 비율(ratio), 정수
 // (grow/shrink/span/order), 그리고 탈출구(style — style.go). 헬퍼가 문법을 소유하고
 // 속성 표는 헬퍼를 고르기만 한다.
 //
-// 단위 계약은 PRD §13-5가 지배한다: **무단위 수치는 논리 스테이지 px**이고 `%`만 예외다.
+// 단위 계약은 ADR 0067 결정 5가 지배한다: **무단위 수치는 논리 스테이지 px**이고 `%`만 예외다.
 // 그 외 단위(px/pt/em/rem 접미)는 파스 에러다 — `size`가 이미 같은 태도이므로 진단 문구의
 // 결을 맞춘다 (numberSuffix를 공유한다).
 
@@ -85,7 +85,7 @@ func (r *resolver) resolveLayout(elem, parent *soml.Element) {
 	}
 }
 
-// containerAttr은 컨테이너 속성 하나를 해석한다 (표 순서 = PRD §7.4 표 순서).
+// containerAttr은 컨테이너 속성 하나를 해석한다 (표 순서 = docs/reference/soml/layout.md 표 순서).
 //
 // 박스 속성(`pad`·크기·`ratio`)은 이 switch에 없다 — **도형과 공유하는 헬퍼**(boxAttr)가
 // 소유한다. 이어 붙인 카탈로그가 한 벌인 것(soml.BoxAttrs)의 값 층 쪽 절반이고, 여기에 표를
@@ -128,7 +128,7 @@ func (r *resolver) containerAttr(elem *soml.Element, container *soml.ContainerLa
 }
 
 // boxAttr은 박스 속성 하나를 해석한다 — 안쪽 여백·크기·비율 (soml.BoxAttrs, 표 순서 =
-// PRD §7.4 순서). 목록에 없는 속성이면 거짓을 돌려주고 호출자가 판단한다.
+// docs/reference/soml/layout.md 순서). 목록에 없는 속성이면 거짓을 돌려주고 호출자가 판단한다.
 //
 // **레이아웃 컨테이너와 `<shape>`가 이 함수를 공유한다.** 크기와 안쪽 여백은 컨테이너의
 // 성질이 아니라 박스의 성질이고(soml.Box), 두 요소가 같은 표기를 같은 뜻으로 받는다. 값
@@ -175,7 +175,7 @@ func (r *resolver) boxAttr(box *soml.Box, attr soml.Attr) bool {
 	return true
 }
 
-// placementAttr은 자식 배치 속성 하나를 해석한다 (표 순서 = PRD §7.4 자식 표 순서).
+// placementAttr은 자식 배치 속성 하나를 해석한다 (표 순서 = docs/reference/soml/layout.md 자식 표).
 //
 // anchorConflict는 at과 x/y를 함께 썼는지다 (resolveLayout이 한 번 판정한다). 참이면 두
 // 채널(at·x·y)을 확정 배치에 싣지 않는다 — 진단은 이미 한 번 났고, 충돌한 값을 실으면
@@ -191,7 +191,7 @@ func (r *resolver) placementAttr(elem *soml.Element, placement *soml.Placement, 
 			placement.Shrink = &n
 		}
 	case "basis":
-		// basis에 `fill`을 열지 않았다: PRD 표에서 `fill`은 크기 속성(w/h/min-*/max-*)의
+		// basis에 `fill`을 열지 않았다: `fill`은 크기 속성(w/h/min-*/max-*)의
 		// 값이고, `flex-basis: 100%`를 뜻하는 `fill`은 주축에서만 크기가 되어 교차축에서
 		// 저자의 기대와 갈라진다. 백분율이 필요하면 `basis="100%"`로 적는다.
 		if length, ok := r.length(attr, lengthSyntax{}); ok {
@@ -270,8 +270,9 @@ func (r *resolver) catalogGap(elem *soml.Element, attr soml.Attr) {
 	r.errorf(attr.NameSpan, "%s 속성의 값 해석이 없다 — 카탈로그(soml)와 값 층(core)이 어긋났다 (엔진 버그)", attr.Name)
 }
 
-// lengthSyntax는 길이 값이 어떤 형태를 받는지다. 속성마다 다른 이유는 PRD §7.4 표가 다르게
-// 적기 때문이다 — 공간 토큰은 `gap`/`pad`의 값이고 `fill`은 크기 속성의 값이다.
+// lengthSyntax는 길이 값이 어떤 형태를 받는지다. 속성마다 다른 이유는 속성 표
+// (docs/reference/soml/layout.md)가 다르게 적기 때문이다 — 공간 토큰은 `gap`/`pad`의 값이고
+// `fill`은 크기 속성의 값이다.
 type lengthSyntax struct {
 	// tokens는 공간 토큰 이름을 먼저 보는지다 (`gap="xl"`).
 	tokens bool
@@ -304,7 +305,7 @@ func (r *resolver) lengthValue(name, raw string, span soml.Span, syntax lengthSy
 		return soml.Percent(100), true
 	}
 	// 토큰 표를 **수치 판정보다 먼저** 본다. `startsNumeric`으로 먼저 갈라 놓으면 이름이
-	// 숫자로 시작하는 토큰(`2xl` — PRD §8.4 어휘의 유일한 그런 이름)이 영원히 수치 경로로
+	// 숫자로 시작하는 토큰(`2xl` — 공간 토큰 어휘의 유일한 그런 이름)이 영원히 수치 경로로
 	// 가서 "단위를 떼라"는 엉뚱한 진단을 받는다. 표에 있는 이름은 토큰이고, 없으면 수치
 	// 문법이 판정한다 — 그래야 진단의 정확도(`gap="16px"`은 단위, `gap="huge"`는 모르는
 	// 토큰)가 어휘의 표기와 무관하게 유지된다.
@@ -418,10 +419,10 @@ func (r *resolver) tracks(attr soml.Attr) (soml.Tracks, bool) {
 		return soml.Tracks{}, false
 	}
 	if len(parts) == 1 && isDigits(parts[0].text) {
-		// **무단위 정수 하나는 트랙 개수다** (`cols="4"` → `repeat(4, 1fr)`, PRD §7.4).
-		// 200px 트랙 하나로 읽는 길과 저울질했고 개수를 골랐다: PRD 표의 "수치"가 개수이고,
-		// 격자를 균등 분할하는 것이 이 속성의 압도적인 용례다. 트랙 하나를 크기로 적으려는
-		// 저자는 `1fr`·`100%`·`auto`처럼 형태를 붙인다 — 그 애매함은 문서가 말한다 (항목 06).
+		// **무단위 정수 하나는 트랙 개수다** (`cols="4"` → `repeat(4, 1fr)`).
+		// 200px 트랙 하나로 읽는 길과 저울질했고 개수를 골랐다: 격자를 균등 분할하는 것이
+		// 이 속성의 압도적인 용례다. 트랙 하나를 크기로 적으려는 저자는 `1fr`·`100%`·`auto`처럼
+		// 형태를 붙인다 — 그 애매함은 문서가 말한다 (항목 06).
 		n, err := strconv.Atoi(parts[0].text)
 		if err != nil || n < 1 {
 			r.errorf(parts[0].span(attr), "%s의 트랙 개수는 1 이상 정수다 (%q)", attr.Name, attr.Value)
@@ -518,7 +519,7 @@ func (r *resolver) boxAlign(attr soml.Attr) (soml.BoxAlign, bool) {
 	return "", false
 }
 
-// boxJustify는 주축 분배를 해석한다. 어휘는 CSS의 `space-*` 접두를 뗀 이름이다 (PRD §7.4).
+// boxJustify는 주축 분배를 해석한다. 어휘는 CSS의 `space-*` 접두를 뗀 이름이다.
 func (r *resolver) boxJustify(attr soml.Attr) (soml.BoxJustify, bool) {
 	if !r.hasValue(attr) {
 		return "", false
@@ -546,8 +547,8 @@ func (r *resolver) boxJustify(attr soml.Attr) (soml.BoxJustify, bool) {
 // wrap은 줄바꿈 허용을 해석한다.
 //
 // 두 표기를 받는다: 값 없는 속성(`<row wrap>`)과 `wrap="true"`. 전자는 `<slide skip>`의
-// 선례이고(soml.Attr.HasValue) 후자는 PRD §7.4 표가 적은 값이다 — 한쪽만 받으면 문서와
-// 언어가 어긋난다.
+// 선례이고(soml.Attr.HasValue) 후자는 레퍼런스 표(docs/reference/soml/layout.md)가 적은 값이다 —
+// 한쪽만 받으면 문서와 언어가 어긋난다.
 func (r *resolver) wrap(attr soml.Attr) (bool, bool) {
 	if !attr.HasValue {
 		return true, true
@@ -595,7 +596,7 @@ func (r *resolver) nonNegativeInt(attr soml.Attr) (int, bool) {
 
 // span은 `grid-column: span N`을 해석한다.
 //
-// **`<grid>`의 자식에서만 뜻이 있다** (PRD §7.4). 부모를 아는 자리가 이 순회뿐이라 검증도
+// **`<grid>`의 자식에서만 뜻이 있다**. 부모를 아는 자리가 이 순회뿐이라 검증도
 // 여기 있다 — 파서는 부모를 모르는 자리에서 속성 표를 만들기 때문에 이름 층에서 막을 수
 // 없었다. 검증하지 않고 넘기는 길과 저울질했고 막는 쪽을 골랐다: flex 컨테이너와 슬라이드
 // 직속에서 `grid-column`은 CSS가 조용히 버리는 선언이고, 그 침묵이 닫힌 어휘가 막으려던
@@ -627,7 +628,7 @@ func parentDesc(parent *soml.Element) string {
 
 // stackAnchor는 `at`의 9지점 앵커를 해석한다.
 //
-// **`<stack>`의 자식에서만 뜻이 있다** (PRD §7.4). span과 같은 자리의 부모를 아는 검증이다 —
+// **`<stack>`의 자식에서만 뜻이 있다**. span과 같은 자리의 부모를 아는 검증이다 —
 // 파서는 부모를 모르는 자리에서 속성 표를 만들기 때문에 이름 층에서 막을 수 없었다. flex/grid
 // 컨테이너나 슬라이드 직속에서 `place-self`의 9지점은 뜻이 없어(단일 셀 grid가 아니다) 조용히
 // 버려지고, 그 침묵이 닫힌 어휘가 막으려던 실패다.
@@ -764,7 +765,7 @@ func (p valuePart) span(attr soml.Attr) soml.Span {
 // 이유는 오프셋이 필요하기 때문이다.
 //
 // **괄호 안의 공백은 조각 경계가 아니다.** 색 함수의 인자가 공백 구분이기 때문이다
-// (`gradient(accent1 accent4 accent5)` — PRD §7.6). 괄호를 세지 않으면 그 표기가
+// (`gradient(accent1 accent4 accent5)`). 괄호를 세지 않으면 그 표기가
 // `border`에서 조각 수 에러로 끝나 "색 함수는 Iteration 8"이라는 정직한 진단에 도달하지
 // 못한다 (문법은 맞고 아직 없는 것이므로 조각 수를 세는 진단은 저자를 엉뚱한 곳으로 보낸다).
 // 열린 괄호가 닫히지 않으면 값 끝까지 한 조각으로 본다 — 그 조각을 받는 해석기가 함수

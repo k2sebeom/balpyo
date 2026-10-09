@@ -10,8 +10,9 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **PRD §7.4 표의 회귀 장치**다 — 레이아웃 태그는 CSS flex/grid의 이름 바꾸기 층이다.
-// 두 표(containerCases·placementCases)는 속성 이름을 들고 다녀 어휘 목록과 대조된다.
+// 이 파일은 **레이아웃 레퍼런스(docs/reference/soml/layout.md) 표의 회귀 장치**다 — 레이아웃
+// 태그는 CSS flex/grid의 이름 바꾸기 층이다. 두 표(containerCases·placementCases)는 속성
+// 이름을 들고 다녀 어휘 목록과 대조된다.
 
 // layoutCase는 속성 하나가 CSS 선언 하나로 컴파일되는 것을 확인하는 행이다.
 type layoutCase struct {
@@ -26,7 +27,7 @@ type layoutCase struct {
 	want string
 }
 
-// containerCases는 PRD §7.4 **컨테이너 표**를 그대로 옮긴 것이다 (표 순서).
+// containerCases는 레퍼런스의 **컨테이너 속성 표**를 그대로 옮긴 것이다 (표 순서).
 func containerCases() []layoutCase {
 	return []layoutCase{
 		// gap — 공간 토큰은 변수 참조로, 수치는 논리 px로, `%`는 백분율로 나간다.
@@ -79,7 +80,7 @@ func containerCases() []layoutCase {
 	}
 }
 
-// placementCases는 PRD §7.4 **자식 표**를 그대로 옮긴 것이다 (표 순서).
+// placementCases는 레퍼런스의 **자식 속성 표**를 그대로 옮긴 것이다 (표 순서).
 //
 // tag는 자식을 담는 부모 컨테이너다 — `span`은 `<grid>`의 자식에서만 뜻이 있다 (core가
 // 부모를 보고 검증한다).
@@ -116,7 +117,7 @@ func placementCases() []layoutCase {
 	}
 }
 
-// 태그 → display/flex-direction (PRD §7.4의 컴파일 표). 고정 선언은 엔진 CSS 클래스에
+// 태그 → display/flex-direction (레퍼런스의 태그 표). 고정 선언은 엔진 CSS 클래스에
 // 있고 요소는 클래스만 들고 나온다 (layout.go).
 func TestLayoutTagsCompileToFlexGridCSS(t *testing.T) {
 	out := renderString(t, subsetDeck(t, `
@@ -178,7 +179,7 @@ func TestLayoutResetsStageWidthRuleInsideContainers(t *testing.T) {
 	}
 }
 
-// 컨테이너 속성 → CSS 선언 (PRD §7.4 컨테이너 표 그대로).
+// 컨테이너 속성 → CSS 선언 (레퍼런스의 컨테이너 속성 표 그대로).
 func TestContainerAttributesCompileToCSS(t *testing.T) {
 	for _, tc := range containerCases() {
 		t.Run(tc.attr+"/"+tc.name, func(t *testing.T) {
@@ -191,7 +192,7 @@ func TestContainerAttributesCompileToCSS(t *testing.T) {
 	}
 }
 
-// 자식 배치 속성 → CSS 선언 (PRD §7.4 자식 표 그대로). 컨테이너의 자식에 붙는다.
+// 자식 배치 속성 → CSS 선언 (레퍼런스의 자식 속성 표 그대로). 컨테이너의 자식에 붙는다.
 func TestChildPlacementAttributesCompileToCSS(t *testing.T) {
 	for _, tc := range placementCases() {
 		t.Run(tc.attr+"/"+tc.name, func(t *testing.T) {
@@ -279,7 +280,7 @@ func TestSpaceTokenReferenceAndDeclarationComeFromOneTable(t *testing.T) {
 }
 
 // `style` 탈출구는 인라인 style **맨 끝**에 붙는다 — 같은 프로퍼티면 뒤가 이기므로 저자의
-// 탈출구가 엔진 선언을 덮는다. 그것이 탈출구의 뜻이다 (PRD §7.9).
+// 탈출구가 엔진 선언을 덮는다. 그것이 탈출구의 뜻이다 (ADR 0014).
 func TestStyleEscapeHatchComesLast(t *testing.T) {
 	out := renderString(t, subsetDeck(t, `
   <row gap="md" style="gap: 40px">
@@ -364,7 +365,7 @@ func TestRenderRejectsUnknownBoxVocabulary(t *testing.T) {
 }
 
 // `<stack>`과 캔버스 스테이지는 같은 단일 셀 grid다 — 모든 자식이 `grid-area: 1/1`에 겹치고
-// 크기는 가장 큰 자식이 정한다 (PRD §13-3). absolute 전면 방식은 컨테이너 크기를 잃고,
+// 크기는 가장 큰 자식이 정한다 (ADR 0067 결정 3). absolute 전면 방식은 컨테이너 크기를 잃고,
 // `grid-template-*`을 내면 암시 트랙 하나라는 계약이 깨진다. 자식의 `position: relative`는
 // 칠 순서를 문서 순서(= PPTX 순서)로 되돌린다.
 func TestStackCompilesToSingleCellGridOverlap(t *testing.T) {
@@ -546,7 +547,7 @@ func assertCoversCatalog(t *testing.T, what string, covered, catalog []string) {
 	t.Helper()
 	for _, attr := range catalog {
 		if !slices.Contains(covered, attr) {
-			t.Errorf("%s %q의 CSS 매핑 검증이 없다 (PRD 표의 행이 빠졌다)", what, attr)
+			t.Errorf("%s %q의 CSS 매핑 검증이 없다 (레퍼런스 표의 행이 빠졌다)", what, attr)
 		}
 	}
 	for _, attr := range covered {

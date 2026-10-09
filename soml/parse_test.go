@@ -201,7 +201,7 @@ func TestParseSlideAttributes(t *testing.T) {
 	}
 }
 
-// 표준 레이아웃 카탈로그는 PRD §7.3의 11종이고 순서가 문서·진단 순서다.
+// 표준 레이아웃 카탈로그는 11종이고 (docs/reference/layouts.md) 순서가 문서·진단 순서다.
 func TestSlideLayoutsCatalog(t *testing.T) {
 	got := make([]string, len(SlideLayouts()))
 	for i, l := range SlideLayouts() {

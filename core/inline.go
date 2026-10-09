@@ -6,7 +6,8 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 인라인 태그(strong/em/code/a/span/br)의 런 스타일 해석이다 (PRD §7.7, §9.4).
+// 이 파일은 인라인 태그(strong/em/code/a/span/br)의 런 스타일 해석이다
+// (docs/reference/appearance.md "인라인 서식").
 //
 // 인라인 태그는 자기 박스를 갖지 않는다 — 감싼 블록의 텍스트 흐름 안에서 런 서식이 된다.
 // 상속은 **확정 스타일의 복사**다: 부모의 확정 TextStyle을 복사해 태그의 델타를 얹는다.
@@ -58,7 +59,7 @@ func (r *resolver) resolveInlines(parent *soml.Element, parentStyle *soml.TextSt
 			// clrScheme의 hlink 슬롯 색을 입히는데, 테마 파트가 hlink 자리를 accent1에서
 			// 빌려 채우므로 (render/pptx/theme.go의 clrSchemeSlots fallback) 웹이 같은
 			// 토큰을 쓰면 두 산출물의 링크 색이 같은 표의 같은 값에서 나온다. hlink 전용
-			// 토큰을 버린 이유: 표준 토큰 어휘(PRD §8.4)에 없는 이름이 저자의 color=
+			// 토큰을 버린 이유: 표준 토큰 어휘(docs/reference/theme.md)에 없는 이름이 저자의 color=
 			// 어휘와 진단 목록·CSS 변수 산출에 들어간다 — 테마가 파일로 나가는
 			// Iteration 10에서 다시 본다 (ADR 후보).
 			style.Color = soml.TokenColor("accent1")

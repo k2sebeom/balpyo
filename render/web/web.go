@@ -93,7 +93,7 @@ func (*Renderer) Target() render.Target { return render.TargetHTML }
 // 산출물이 파일 하나가 아니게 된 것은 Iteration 5다 (`<image>`): 문서는 여전히 자체
 // 완결형이지만 그림은 별도 파일로 나가고, 그 이유가 렌더러에 있어야 측정과 배포가 같은
 // 바이트를 본다 (image.go의 에셋 절). 오프라인 발표는 `index.html` + assets를 함께 두는
-// 것이다 (PRD §9.1).
+// 것이다.
 func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 	if deck == nil {
 		return nil, fmt.Errorf("덱이 nil이다")
@@ -185,7 +185,7 @@ func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 // 색이므로 덱의 색이 아니고, 토큰으로 두지도 않는다: 색 토큰은 모두 clrScheme 슬롯을
 // 가져야 하는데(soml.ColorToken) 이 색들에는 대응하는 PPTX 개념이 없다.
 //
-// cascade layer로 기본 < 테마 < 저자 우선순위를 보장한다 (PRD §12.2). 층을 미리 선언해
+// cascade layer로 기본 < 테마 < 저자 우선순위를 보장한다 (docs/internals/architecture.md). 층을 미리 선언해
 // 두면 나중에 테마·저자 CSS가 어느 순서로 실려도 우선순위가 뒤집히지 않는다.
 func baseCSS(stage soml.Stage, feat features) string {
 	return fmt.Sprintf(`@layer balpyo.base, balpyo.theme, balpyo.author;

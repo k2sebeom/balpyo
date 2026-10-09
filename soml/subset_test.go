@@ -151,7 +151,7 @@ func TestParseTextSubsetErrors(t *testing.T) {
 		},
 		{
 			// 블록은 역할을 표에서만 얻는다 — role 속성을 열면 <p role="title">이 두 표기의
-			// 등가(PRD §7.7)를 깬다.
+			// 등가를 깬다.
 			name: "블록에는 role이 없다",
 			src:  `<slide><h1 role="body">제목</h1></slide>`,
 			want: []string{"1:12 <h1>에 알 수 없는 속성 role (쓸 수 있는 속성: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
@@ -273,7 +273,7 @@ func TestParsePrePreservesWhitespace(t *testing.T) {
 	}
 }
 
-// 태그 → 역할 표는 테마가 아니라 **언어**의 계약이다 (PRD §7.7) — 표가 흔들리면
+// 태그 → 역할 표는 테마가 아니라 **언어**의 계약이다 (ADR 0007) — 표가 흔들리면
 // `<p>` ≡ `<text role="body">` 등가가 문서마다 달라진다. 표 전체를 여기서 못 박는다.
 func TestTagTextRole(t *testing.T) {
 	cases := []struct {

@@ -9,7 +9,8 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **`<image>` → 박스 + `<img>` + 에셋 파일**이다 (PRD §7.5·§7.6, 매핑 표는 §9.4).
+// 이 파일은 **`<image>` → 박스 + `<img>` + 에셋 파일**이다 (docs/reference/soml/image.md, 매핑 표는
+// docs/reference/appearance.md).
 //
 // # 그림 하나는 박스 하나와 `<img>` 하나다
 //
@@ -38,7 +39,7 @@ import (
 // `object-fit`은 요소 박스를 그대로 두고 그 안에 그림을 앉히므로 박스와 그림이 갈라지고,
 // 그러면 셋이 따라온다: (a) 잰 rect가 그림이 아니라 **여백을 포함한 박스**여서 PPTX가
 // letterbox를 다시 계산해야 한다 (좌표 계산은 브라우저가 한 번만 한다는 이 엔진의 전제와
-// 어긋난다 — PRD §9.3), (b) 웹의 `border`·`radius`·`shadow`는 그 박스에 붙고 PPTX `pic`의
+// 어긋난다), (b) 웹의 `border`·`radius`·`shadow`는 그 박스에 붙고 PPTX `pic`의
 // 선·그림자는 그림에 붙어 **두 타깃의 외관이 갈라진다**, (c) 갈라짐이 픽셀 비교에서만 보이고
 // 원인은 보이지 않는다. `max-*`로 내면 요소 박스가 곧 맞춰진 그림이 되어 셋이 함께 사라지고,
 // PPTX는 잰 rect를 `xfrm`으로 그대로 쓴다 (항목 04).
@@ -185,7 +186,7 @@ func imageBoxCSS(style soml.ImageStyle, elem *soml.Element) ([]string, error) {
 
 // imageInkCSS는 `<img>`의 CSS 선언이다 — `fit` 다음에 외관이 온다.
 //
-// **순서는 PRD §9.4 표 순서다** (border → radius → shadow → opacity → rotate → flip) —
+// **순서는 외관 매핑 표의 행 순서다** (border → radius → shadow → opacity → rotate → flip) —
 // 표와 코드를 나란히 읽을 수 있어야 "표에 있고 코드에 없는 행"이 눈에 띈다. 정하지 않은
 // 속성은 선언을 **하나도** 내지 않는다 (soml.ImageStyle의 nil 계약): 그림은 자기 픽셀을
 // 가지므로 두 타깃의 암묵 기본값이 갈라지지 않는다 — 그래서 테마의 이미지 컴포넌트 기본값도

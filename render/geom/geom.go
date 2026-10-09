@@ -1,13 +1,13 @@
 // Package geom은 지오메트리 패스다 — 웹 렌더러가 만든 HTML을 헤드리스 브라우저에 올려
 // 요소별 좌표를 읽어 온다.
 //
-// 이 패스가 존재하는 이유는 저자가 좌표를 만지지 않게 하려는 것이다 (PRD §9.3). flex/grid로
+// 이 패스가 존재하는 이유는 저자가 좌표를 만지지 않게 하려는 것이다 (docs/internals/geometry-pass.md). flex/grid로
 // 선언한 배치를 브라우저가 계산하고, 우리는 그 결과 **좌표만** 읽는다. computed-style 역추론은
 // 없다 — 외관은 core가 해석한 스키마에서 양 타깃으로 순방향 컴파일된다.
 //
 // # 단위
 //
-// 오가는 수치는 전부 **논리 스테이지 px**이다 (PRD §13-5). 스테이지는 CSS px와 1:1이므로
+// 오가는 수치는 전부 **논리 스테이지 px**이다 (ADR 0067 결정 5). 스테이지는 CSS px와 1:1이므로
 // 브라우저가 준 값을 스케일하지 않는다 — 다만 그것은 **확인하는 사실**이지 가정이 아니다
 // (measure.go의 검증: 슬라이드 rect가 논리 스테이지와 다르면 실패한다). EMU·pt 환산은
 // render/pptx의 경계에서만 일어나고, 이 패키지는 그 단위를 알지 못한다.
@@ -110,7 +110,7 @@ func Refs(deck *soml.Deck) []Ref {
 	}
 	var refs []Ref
 	for _, slide := range deck.Slides {
-		// canvas 슬라이드의 스테이지는 단일 셀이다 (PRD §13-3) — 직계 자식이 좌표로 자기
+		// canvas 슬라이드의 스테이지는 단일 셀이다 (ADR 0067 결정 3) — 직계 자식이 좌표로 자기
 		// 자리를 정하고 서로 겹칠 수 있다. 그 사실은 슬라이드에서 시작하는 문맥이다.
 		canvas := slide.Layout == soml.LayoutCanvas
 		ctx := placeContext{free: canvas, overlap: canvas}

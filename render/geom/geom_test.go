@@ -164,7 +164,7 @@ func TestRefsCarryPlacementFacts(t *testing.T) {
 		"s0.0.1": {parent: "s0.0", free: true, overlap: true},
 		// 그 **자손**은 부모 변을 넘어서는 선택을 물려받는다 (Free) — 겹침은 아니다.
 		"s0.0.1.0": {parent: "s0.0.1", free: true, overlap: false},
-		// canvas 슬라이드의 직계는 좌표를 쓰지 않아도 둘 다 참이다 (PRD §13-3).
+		// canvas 슬라이드의 직계는 좌표를 쓰지 않아도 둘 다 참이다 (ADR 0067 결정 3).
 		"s1.0": {parent: "", free: true, overlap: true},
 	}
 	refs := Refs(deck)

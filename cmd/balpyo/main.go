@@ -1,6 +1,6 @@
 // Command balpyo는 SOML 슬라이드를 웹과 네이티브 PPTX로 렌더하는 CLI다.
 //
-// 바이너리 하나가 모든 서브커맨드를 담는다는 계약을 유지한다 (PRD §10). 지금의 표면은
+// 바이너리 하나가 모든 서브커맨드를 담는다는 계약을 유지한다 (docs/reference/cli.md). 지금의 표면은
 // `init`·`build`·`check`·`watch`·`preview`·`version`이며, new/server/format/lsp는 아직이다.
 package main
 

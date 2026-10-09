@@ -43,7 +43,7 @@ const (
 
 // Candidates는 브라우저 실행 파일 후보다 (탐색 순서).
 //
-// 브라우저를 내려받지 않고 시스템에 있는 것을 쓴다 (PRD §9.3) — macOS 경로를 함께 두는 이유는
+// 브라우저를 내려받지 않고 시스템에 있는 것을 쓴다 (docs/internals/geometry-pass.md) — macOS 경로를 함께 두는 이유는
 // 로컬에서도 컨테이너 없이 빌드가 돌아야 하기 때문이다.
 func Candidates() []string {
 	return []string{
@@ -281,7 +281,7 @@ func (s *Session) Print() ([]byte, error) {
 //
 // **문자열 하나로 두는 이유**: 요소 스크린샷의 잘라낼 영역(Session.Clip)과 Iteration 7의 앵커
 // 계산이 같은 코드를 평가해야 한다. 좌표 로직이 Go와 JS에 이중 구현되는 순간 웹과 PPTX의
-// 배치가 갈린다 (PRD §9.3).
+// 배치가 갈린다.
 const rectScript = `(() => {
   const els = Array.from(document.querySelectorAll(%q));
   return els.map(el => {

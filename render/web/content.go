@@ -121,12 +121,12 @@ const ListBulletChar = "\u2022" // •
 //   - 저자가 쓴 순서와 화면 순서가 같아야 SOML만 읽고 결과를 예측할 수 있다.
 //   - 자식마다 **확정된 폭**(스테이지 콘텐츠 폭)을 주면 브라우저의 줄바꿈이 결정적이다.
 //     지오메트리 패스가 잰 rect가 그대로 PPTX 텍스트 박스가 되고 autofit은 꺼지므로
-//     (PRD §9.3), 폭이 내용에 따라 변하는 배치는 PowerPoint에서 줄바꿈이 달라질 여지를
+//     폭이 내용에 따라 변하는 배치는 PowerPoint에서 줄바꿈이 달라질 여지를
 //     만든다. 폭을 고정하면 두 타깃이 같은 폭 안에서 줄을 나눈다.
 //   - 세로 정렬(가운데·아래)은 레이아웃의 선택이지 텍스트의 성질이 아니다 — 표지의 가운데
 //     정렬은 Iteration 10의 `layout="title"`이 소유한다. 그때까지 위에서 아래로 쌓는다.
 func writeStage(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
-	// 캔버스 스테이지는 stack이다 (PRD §13-3) — 스테이지가 단일 셀 grid가 되어 자식이
+	// 캔버스 스테이지는 stack이다 (ADR 0067 결정 3) — 스테이지가 단일 셀 grid가 되어 자식이
 	// `x`/`y`·`at`으로 자기 자리를 정한다. 세로 스택(기본)과 갈라지는 자리는 이 클래스
 	// 하나뿐이고, 겹침 CSS는 stack과 한 벌을 공유한다 (stackCSS). 스테이지를 `<col>`로
 	// 재정의하는 통합은 Iteration 10(`layout=`/`slot=`)의 몫이다 — 여기서는 canvas 분기만
@@ -336,7 +336,7 @@ func writeBlock(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	if elem.Name == "pre" {
 		// 접히지 않은 원문(soml.Parse의 pre 보존)이 그대로 흐른다. wrap을 켜면 PPTX와
 		// 줄 수가 갈라지므로 줄바꿈 없음 — 긴 줄은 오버플로 허용이다 (박스 고정 정책,
-		// PRD §13-1과 같은 태도. PPTX 쪽 짝 bodyPr@wrap은 항목 06이 맞춘다).
+		// ADR 0067 결정 1과 같은 태도. PPTX 쪽 짝 bodyPr@wrap은 항목 06이 맞춘다).
 		decls = append(decls, "white-space: pre")
 	}
 	// 가로 크기는 외관 뒤, 슬롯·배치 앞이다 (appendTextBox — 속성 표의 순서와 같다).
@@ -536,8 +536,8 @@ func ChildPath(path []int, i int) []int {
 // margin도 지운다 — writeBlock의 "브라우저 기본 스타일에 기대는 값이 없어야 한다" 조건의
 // 배치 절반이다 (메트릭 절반은 인라인 style이 명시한다).
 //
-// 여백(64px)과 간격(24px)은 지금 엔진 상수다. 테마의 space 토큰(`slidePadding`/`gap`,
-// PRD §8.4)이 Iteration 10에서 이 값을 대체한다 — 지금 스테이지 여백을 변수 참조로 바꾸면
+// 여백(64px)과 간격(24px)은 지금 엔진 상수다. 테마의 space 토큰(`slidePadding`/`gap`)이
+// Iteration 10에서 이 값을 대체한다 — 지금 스테이지 여백을 변수 참조로 바꾸면
 // 골든 세 개가 이 iteration과 무관한 이유로 움직인다 (core/themes/minimal/tokens.json의 공간 토큰 주석에
 // 같은 판단이 있다).
 func contentCSS(feat features) string {
@@ -566,7 +566,7 @@ func contentCSS(feat features) string {
 
   /* 텍스트 블록은 콘텐츠 폭 전체를 갖는다 — 줄바꿈 폭이 확정되어야 브라우저가 잰 박스가
      PPTX 텍스트 박스로 그대로 간다. flex: 0 0 auto는 스택이 스테이지보다 길 때 박스가
-     눌리는 것을 막는다 (기본 정책은 박스 고정 + 오버플로 허용 — PRD §13-1). */
+     눌리는 것을 막는다 (기본 정책은 박스 고정 + 오버플로 허용 — ADR 0067 결정 1). */
   .balpyo-text {
     margin: 0;
     width: 100%%;
@@ -753,7 +753,7 @@ func contentFeatures(deck *soml.Deck) features {
 	seenSlot := map[string]bool{}
 	for _, slide := range deck.Slides {
 		if slide.Layout == soml.LayoutCanvas {
-			// 캔버스 스테이지는 stack이다 (PRD §13-3) — 스테이지 CSS(stackCSS)가 이때만
+			// 캔버스 스테이지는 stack이다 (ADR 0067 결정 3) — 스테이지 CSS(stackCSS)가 이때만
 			// 나간다. 슬라이드 수준 어휘라 콘텐츠 순회가 아니라 여기서 켠다.
 			feat.canvas = true
 		}

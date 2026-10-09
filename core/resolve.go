@@ -12,7 +12,7 @@ import (
 // Resolve는 덱 모델의 외관을 해석한다 — 렌더러가 보기 전에 모든 외관 값이 확정되어야
 // 한다는 계약을 이 함수가 진다. 결과는 요소의 Appearance와 덱의 Theme(토큰 표)에 담긴다.
 //
-// 해석 순서는 4단 캐스케이드다 (PRD §8.3):
+// 해석 순서는 4단 캐스케이드다:
 //
 //	인라인 속성 > variant > 컴포넌트 기본값 > 역할/토큰
 //
@@ -275,7 +275,7 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 	}
 }
 
-// resolveSlot은 요소의 슬롯 배정을 검증하고 확정한다 (PRD §7.3·ADR 0035).
+// resolveSlot은 요소의 슬롯 배정을 검증하고 확정한다 (ADR 0035).
 //
 // 슬롯은 **슬라이드 직계 자식에만** 유효하다 (parent == nil). 파서는 slot 속성을 슬라이드
 // 직계 자식이 될 수 있는 요소 전부에 열어 두지만(SlotAttr — 태그별 allowlist는 요소가 어디에
@@ -300,7 +300,7 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 // `Appearance.Slot` 하나로 합쳐진다.
 //
 // 에러가 아니라 경고인 이유: 슬롯 이름은 어휘에 있고 오타도 아니다 — 부족한 것은 테마이고,
-// 테마를 바꾸면 같은 소스가 그대로 뜻을 얻는다 (모르는 variant의 선례 — PRD §13-6).
+// 테마를 바꾸면 같은 소스가 그대로 뜻을 얻는다 (모르는 variant의 선례 — ADR 0067 결정 6).
 // `--strict`가 승격한다.
 func (r *resolver) resolveSlot(elem *soml.Element, parent *soml.Element) {
 	attr, ok := elem.Attr(soml.SlotAttr)
@@ -335,8 +335,7 @@ func (r *resolver) textRole(elem *soml.Element) (soml.TextRole, bool) {
 	return soml.TagTextRole(elem.Name)
 }
 
-// resolveText는 텍스트 요소(`<text>`·블록·<li>)의 외관을 4단 캐스케이드로 확정한다
-// (PRD §8.3):
+// resolveText는 텍스트 요소(`<text>`·블록·<li>)의 외관을 4단 캐스케이드로 확정한다:
 //
 //	인라인 속성 > variant > 컴포넌트 기본값 > 역할/토큰
 //
@@ -407,7 +406,7 @@ func elemAppearance(elem *soml.Element) *soml.Appearance {
 
 // variantPatch는 `variant` 속성을 테마의 **텍스트** variant 표에서 찾는다.
 //
-// 모르는 variant는 에러가 아니라 **경고 + 빈 패치(컴포넌트 기본 외관 폴백)**다 (PRD §13-6):
+// 모르는 variant는 에러가 아니라 **경고 + 빈 패치(컴포넌트 기본 외관 폴백)**다 (ADR 0067 결정 6):
 // variant 어휘는 테마의 사유물이라, 다른 테마로 만든 콘텐츠가 이 테마에서 빌드되지 않으면
 // 콘텐츠의 테마 간 이식성이 깨진다. 엄격함이 필요한 곳은 --strict가 에러로 승격한다.
 func (r *resolver) variantPatch(elem *soml.Element) textPatch {
@@ -529,7 +528,7 @@ func (r *resolver) role(elem *soml.Element) soml.TextRole {
 	return soml.DefaultTextRole
 }
 
-// size는 폰트 크기를 해석한다. 값은 **무단위 수치 = 논리 스테이지 px**다 (PRD §13-5).
+// size는 폰트 크기를 해석한다. 값은 **무단위 수치 = 논리 스테이지 px**다 (ADR 0067 결정 5).
 func (r *resolver) size(attr soml.Attr) (float64, bool) {
 	if !r.hasValue(attr) {
 		return 0, false
@@ -580,7 +579,7 @@ func (r *resolver) color(attr soml.Attr) (soml.Color, bool) {
 // 볼 때까지 보이지 않는다.
 func (r *resolver) colorValue(name, raw string, span soml.Span) (soml.Color, bool) {
 	if strings.IndexByte(raw, '(') >= 0 {
-		// 색 함수(gradient·shade·tint·alpha — PRD §7.6, Iteration 8)는 여기서 갈린다.
+		// 색 함수(gradient·shade·tint·alpha — Iteration 8)는 여기서 갈린다.
 		// 단색과 코드가 갈라져도 진단은 같은 함수(colorValue)를 지난다 — 그래야 `fill`·
 		// `border` 색·텍스트 `color`가 같은 함수 어휘를 쓴다.
 		return r.colorFunc(name, raw, span)
@@ -591,7 +590,7 @@ func (r *resolver) colorValue(name, raw string, span soml.Span) (soml.Color, boo
 // simpleColor는 단색 하나를 해석한다 — 토큰명 또는 #리터럴이다 (함수·그라디언트 아님).
 //
 // colorValue와 나눈 이유: 그라디언트 스톱과 변형 함수의 밑색은 **단색만** 받는다 (중첩
-// 불허, PRD §13-5). 그 자리에서 다시 함수를 허용하면 `gradient(shade(a,10%) b)` 같은
+// 불허, ADR 0067 결정 5). 그 자리에서 다시 함수를 허용하면 `gradient(shade(a,10%) b)` 같은
 // 표기가 문법으로 새어 들어오고, 그 표기의 타깃 매핑은 v1에 없다.
 func (r *resolver) simpleColor(name, raw string, span soml.Span) (soml.Color, bool) {
 	if strings.HasPrefix(raw, "#") {
@@ -624,8 +623,8 @@ func (r *resolver) colorFunc(name, raw string, span soml.Span) (soml.Color, bool
 	}
 	inner := strings.TrimSpace(raw[open+1 : len(raw)-1])
 	if strings.IndexByte(inner, '(') >= 0 {
-		// 중첩은 v1에서 불허한다 (PRD §13-5) — `shade(gradient(…),…)`·`gradient(shade(…) …)`
-		// 둘 다 여기서 걸린다. 매핑을 1:1로 유지하려는 결정의 관문이다.
+		// 중첩은 v1에서 불허한다 (ADR 0067 결정 5) — `shade(gradient(…),…)`·
+		// `gradient(shade(…) …)` 둘 다 여기서 걸린다. 매핑을 1:1로 유지하려는 결정의 관문이다.
 		r.errorf(span, "색 함수는 중첩할 수 없다 (%q) — 인자는 토큰명이나 #리터럴 단색이다 (v1)", raw)
 		return soml.Color{}, false
 	}
@@ -642,7 +641,7 @@ func (r *resolver) colorFunc(name, raw string, span soml.Span) (soml.Color, bool
 }
 
 // gradientFunc는 `gradient(색… [, 각도deg])`를 해석한다 — 색은 공백 구분·균등 스톱이고
-// 각도는 생략 시 180(위→아래)이다 (PRD §13-5).
+// 각도는 생략 시 180(위→아래)이다 (ADR 0067 결정 5).
 func (r *resolver) gradientFunc(name, inner string, span soml.Span, raw string) (soml.Color, bool) {
 	colorPart := inner
 	anglePart := ""
@@ -810,7 +809,7 @@ func attrExample(name string) string {
 	// 것을 보여 주는 유일한 자리다.
 	case soml.LangAttr:
 		return "go"
-	// 도형 외관 속성 (PRD §7.6 표의 shape 행 순서).
+	// 도형 외관 속성 (docs/reference/soml/shape.md 속성 표 순서).
 	case "type":
 		return "rect"
 	case "id":
@@ -829,7 +828,7 @@ func attrExample(name string) string {
 		return "45"
 	case "flip":
 		return "h"
-	// 이미지 속성 (PRD §7.5 표의 image 행 순서).
+	// 이미지 속성 (docs/reference/soml/image.md 고유 속성 표 순서).
 	case "src":
 		return "assets/photo.png"
 	case "fit":
@@ -840,7 +839,7 @@ func attrExample(name string) string {
 		return "bold"
 	case "href":
 		return "https://example.com"
-	// 배치 속성 (PRD §7.4 표 순서). `wrap`은 값 없이도 뜻이 되므로 여기 없다 —
+	// 배치 속성 (docs/reference/soml/layout.md 표 순서). `wrap`은 값 없이도 뜻이 되므로 여기 없다 —
 	// 그 판정은 resolver.wrap이 소유한다.
 	case "gap":
 		return "md"
@@ -893,7 +892,7 @@ func attrExample(name string) string {
 // numberSuffix는 수치 뒤에 붙은 꼬리(단위 접미사)다. 수치가 아예 없으면 빈 문자열이다 —
 // `size="큼"`·`w="어디"`는 "단위를 떼라"가 아니라 "수치가 아니다"로 진단해야 저자가 무엇을
 // 고칠지 안다. 외관(size)과 배치(길이)가 같은 판정을 공유하는 이유는 단위 계약이 하나이기
-// 때문이다 (PRD §13-5) — 두 벌이 되면 한쪽만 새 단위를 막게 된다.
+// 때문이다 (ADR 0067 결정 5) — 두 벌이 되면 한쪽만 새 단위를 막게 된다.
 func numberSuffix(raw string) string {
 	end := 0
 	for end < len(raw) {

@@ -98,8 +98,8 @@ func TestResolveSlideLayoutUnknown(t *testing.T) {
 	}
 }
 
-// SlideLayouts 어휘는 PRD §7.3 카탈로그 11종이고 기본값은 content다. 순서가 진단 목록의
-// 순서다.
+// SlideLayouts 어휘는 레이아웃 카탈로그(docs/reference/layouts.md) 11종이고 기본값은
+// content다. 순서가 진단 목록의 순서다.
 func TestSlideLayoutVocabulary(t *testing.T) {
 	got := soml.SlideLayouts()
 	want := []soml.SlideLayout{

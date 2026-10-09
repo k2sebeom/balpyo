@@ -812,7 +812,7 @@ const notesSlideRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.o
 // CSS 변수와 같은 한 표다. 값이 두 곳에 있으면 `color="accent1"` 텍스트가 웹과 PPTX에서
 // 다른 색으로 나오고, 토큰 보존 계약이 겉으로만 지켜진다. fmtScheme만 하드코딩으로 남는다
 // (도형 기본 스타일 — 테마 패키지 포맷이 Iteration 10에서 해체한다).
-// 폰트는 테마 표가 Noto를 가리킨다 — v1은 폰트를 임베드하지 않는다 (PRD §13-10).
+// 폰트는 테마 표가 Noto를 가리킨다 — v1은 폰트를 임베드하지 않는다 (ADR 0067 결정 10).
 const themeTemplate = xmlDecl + `<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="{{xml .Deck.Theme.Name}}">
   <a:themeElements>
 {{.ClrScheme}}

@@ -7,8 +7,9 @@ import (
 	"github.com/k2sebeom/balpyo/render/geom"
 )
 
-// 그라디언트·색 변형 → OOXML (PRD §9.4). 채움은 `a:gradFill`, 테두리는 `a:ln` > `gradFill`, 텍스트
-// 색은 rPr > `gradFill`, 변형은 `lumMod`/`lumOff`/`alpha`다. 토큰 스톱은 schemeClr로 남는다.
+// 그라디언트·색 변형 → OOXML (docs/reference/appearance.md). 채움은 `a:gradFill`, 테두리는
+// `a:ln` > `gradFill`, 텍스트 색은 rPr > `gradFill`, 변형은 `lumMod`/`lumOff`/`alpha`다. 토큰
+// 스톱은 schemeClr로 남는다.
 func TestRenderGradientsAndColorVariants(t *testing.T) {
 	tests := []struct {
 		name, body string

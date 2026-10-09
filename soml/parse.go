@@ -6,14 +6,14 @@ import (
 )
 
 // RootElement는 `slides/` 아래 파일의 루트 요소 이름이다. 파일의 역할은 확장자가 아니라
-// 루트 요소가 정한다 (PRD §13-2) — `components/`의 `<define>`은 Iteration 11에서 열린다.
+// 루트 요소가 정한다 (ADR 0067 결정 2) — `components/`의 `<define>`은 Iteration 11에서 열린다.
 const RootElement = "slide"
 
 // noteElement는 발표자 노트 태그다. 콘텐츠가 아니라 슬라이드 메타데이터이므로 콘텐츠
 // 트리에서 빠지고 SlideDoc.Notes로 간다.
 const noteElement = "note"
 
-// elementSpecs는 **닫힌 어휘**다 (PRD §7.2). 여기 없는 태그 이름은 무시되지 않고 에러가 된다.
+// elementSpecs는 **닫힌 어휘**다. 여기 없는 태그 이름은 무시되지 않고 에러가 된다.
 //
 // 어휘는 iteration을 따라 열린다 — 텍스트 서브셋(subset.go의 카탈로그)은 Iteration 2,
 // 레이아웃 태그(layout.go의 카탈로그)는 Iteration 3, `<shape>`(shape.go의 카탈로그)는
@@ -29,7 +29,8 @@ var elementSpecs = buildElementSpecs()
 func buildElementSpecs() map[string]elementSpec {
 	specs := map[string]elementSpec{
 		RootElement: {
-			// 순서는 PRD §7.1 표 순서다 — `layout` `id` `skip`(진단이 이 순서를 싣는다).
+			// 순서는 속성 표(docs/reference/soml/slide.md) 순서다 — `layout` `id` `skip`
+			// (진단이 이 순서를 싣는다).
 			// `layout`은 슬라이드 수준 속성 중 **렌더러의 배치를 바꾸는 첫 속성**이다
 			// (id는 딥링크, skip은 덱에서 빠진다). 값 어휘(content·canvas)는 core가 본다 —
 			// fillSlide가 문법만 보는 이유와 같다.
@@ -38,7 +39,7 @@ func buildElementSpecs() map[string]elementSpec {
 			// 대신하고 있었다. 값 어휘는 컨테이너와 같은 6종이고 검사는 core다.
 			attrs: []string{"layout", "id", "skip", "justify"},
 			model: modelElements,
-			// PRD §7.7의 `reveal` 속성은 열지 않는다 — 웹 런타임의 reveal은 Phase 2이고,
+			// `<slide>`에는 `reveal` 속성을 열지 않는다 — 웹 런타임의 reveal은 Phase 2이고,
 			// 렌더가 없는 속성을 어휘에 열면 닫힌 어휘가 막으려던 조용한 무시가 된다.
 			// 자식 배치 속성도 없다: `<slide>`는 컨테이너의 자식이 될 수 없고(루트다),
 			// 슬라이드 자신의 배치는 레이아웃(Iteration 10)과 테마가 소유한다.
@@ -202,7 +203,7 @@ func buildElementSpecs() map[string]elementSpec {
 //
 // 컴포넌트(`<text>`·`<shape>`·`<image>`)가 앞에 오고 `<note>`·텍스트 서브셋·레이아웃이
 // 뒤따른다. 슬라이드 직속 도형은 세로 스택의 한 칸이다 — 표제 아래 구분면·배지가 그
-// 자리다. 슬라이드 직속 이미지도 같은 자리이고 그것이 전면 그림(PRD §7.3의 `image-full`)의
+// 자리다. 슬라이드 직속 이미지도 같은 자리이고 그것이 전면 그림(`image-full` 레이아웃)의
 // 표기다.
 //
 // 레이아웃 컨테이너와 `<spacer>`가 들어 있다: 슬라이드 직속 `<spacer>`는 세로 스택에서
@@ -256,7 +257,7 @@ type SlideDoc struct {
 	// ID는 `<slide id>`의 값이다. 속성이 없으면 빈 문자열 — 파일명 유도는 호출자 몫이다
 	// (SlideFile.DerivedID).
 	ID string
-	// Skip은 `<slide skip>`이다. true면 렌더에서 제외된다 (PRD §7.1). 제외 판정은 파서가
+	// Skip은 `<slide skip>`이다. true면 렌더에서 제외된다. 제외 판정은 파서가
 	// 노출하고 덱에서 빼는 것은 파이프라인이 한다 — Index가 남은 슬라이드 기준이어야 하므로.
 	Skip bool
 	// Layout은 `<slide layout>`의 값이다 (원문 그대로). 속성이 없으면 빈 문자열이다 —

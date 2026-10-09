@@ -1,9 +1,9 @@
 package soml
 
-// 슬롯 카탈로그 — 레이아웃별 슬롯 어휘와 각 슬롯의 PPTX 플레이스홀더 매핑 (PRD §7.3, ADR 0035).
+// 슬롯 카탈로그 — 레이아웃별 슬롯 어휘와 각 슬롯의 PPTX 플레이스홀더 매핑 (ADR 0035).
 //
 // SlideLayout이 슬라이드의 **구조 어휘**이듯(deck.go) 슬롯도 닫힌 구조 어휘다: 레이아웃마다
-// 어떤 슬롯 이름이 유효한지는 PRD §7.3의 고정 카탈로그이고, 어휘 밖 이름(`slot="titel"`)은
+// 어떤 슬롯 이름이 유효한지는 고정 카탈로그(docs/reference/layouts.md)이고, 어휘 밖 이름(`slot="titel"`)은
 // core가 잡는 **빌드 에러**다 (ADR 0032의 layout과 같은 태도 — 오타가 조용히 기본 슬롯으로
 // 떨어지면 콘텐츠가 엉뚱한 자리에 놓이고 그 실패는 렌더를 볼 때까지 안 보인다). 슬롯→
 // 플레이스홀더 타입/idx 매핑도 표준이라(테마가 아니라 언어가 정한다) 여기 있다 — 슬롯의
@@ -32,7 +32,7 @@ const (
 
 // Slot은 레이아웃 슬롯 하나다 — 이름(저자가 쓰는 것)과 PPTX 플레이스홀더 매핑(phType·idx).
 type Slot struct {
-	// Name은 PRD §7.3의 슬롯 이름이다 (`slot="title"`의 값).
+	// Name은 슬롯 이름이다 (`slot="title"`의 값).
 	Name string
 	// PhType은 이 슬롯이 되는 OOXML 플레이스홀더 타입이다 (`p:ph@type`).
 	PhType string
@@ -42,8 +42,8 @@ type Slot struct {
 	PhIndex int
 }
 
-// layoutSlots는 레이아웃별 슬롯 카탈로그다 (PRD §7.3 표). 목록 순서 = 진단이 허용 슬롯을
-// 나열하는 순서 = PRD 표 순서. canvas는 슬롯이 없다 (자유 배치 — 저자가 배치를 소유한다).
+// layoutSlots는 레이아웃별 슬롯 카탈로그다. 목록 순서 = 진단이 허용 슬롯을 나열하는
+// 순서 = 문서(docs/reference/layouts.md) 표 순서. canvas는 슬롯이 없다 (자유 배치 — 저자가 배치를 소유한다).
 //
 // idx 배정: 제목류(ctrTitle/title)는 0(속성 생략), subTitle은 1, 본문·그림류는 2부터
 // 목록 순서로 유일하게 준다. 관례를 따르되 유일성만 지키면 되므로 값 자체는 결정적이면 된다.
@@ -99,7 +99,7 @@ var layoutSlots = map[SlideLayout][]Slot{
 	},
 }
 
-// LayoutSlots는 레이아웃이 가진 슬롯 목록이다 (PRD §7.3 순서). 슬롯이 없는 레이아웃(canvas)은
+// LayoutSlots는 레이아웃이 가진 슬롯 목록이다 (카탈로그 순서). 슬롯이 없는 레이아웃(canvas)은
 // 빈 슬라이스다.
 func LayoutSlots(layout SlideLayout) []Slot {
 	return layoutSlots[layout]

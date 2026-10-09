@@ -19,7 +19,7 @@ func TestRenderTextBoxSizeDecls(t *testing.T) {
 		{"백분율 max-w", `<text max-w="50%">라벨</text>`, "max-width: 50%"},
 		{"블록", `<p min-w="200">본문</p>`, "min-width: 200px"},
 		{"리스트 컨테이너", `<ul w="480"><li>항목</li></ul>`, "width: 480px"},
-		{"셋을 함께 — 순서는 PRD 표 순서다", `<text w="140" max-w="240" min-w="80">라벨</text>`,
+		{"셋을 함께 — 순서는 w → min-w → max-w다", `<text w="140" max-w="240" min-w="80">라벨</text>`,
 			"width: 140px; min-width: 80px; max-width: 240px"},
 	}
 	for _, tc := range cases {

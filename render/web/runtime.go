@@ -33,7 +33,7 @@ import (
 //
 // JS와 CSS는 assets/ 아래의 파일이고 go:embed로 실린다 (ADR 0062). **전달 방식은 바뀌지
 // 않는다**: 둘 다 index.html 안에 그대로 들어가고 외부 참조는 없다 (파일로 열어도 도는
-// 계약, PRD §9.1). 파일로 뺀 근거는 크기가 아니라 도구다 — Go의 raw string 안에서는 백틱을
+// 계약). 파일로 뺀 근거는 크기가 아니라 도구다 — Go의 raw string 안에서는 백틱을
 // 한 글자도 쓸 수 없어 JS 템플릿 리터럴이 막히고, 에디터·문법 검사는 그 문자열 안을
 // 들여다보지 않는다. 번들러는 들이지 않는다 (환경은 하나다): 자산은 손으로 쓴 vanilla
 // JS/CSS 그대로다. 인라인을 끝내는 문자열(`</script>`·`</style>`)이 자산에 들어가면 문서가
@@ -160,7 +160,7 @@ var runtimeJSAsset string
 // 것과 같은 관계다).
 //
 // 조작: 컨트롤 바(이전/다음/카운터/노트 토글), 키보드(화살표·Space·PageUp/Down·Home/End,
-// n=노트), URL 해시 딥링크(`#/<슬라이드 id>` 또는 `#/<1-based 번호>`, PRD §9.1).
+// n=노트), URL 해시 딥링크(`#/<슬라이드 id>` 또는 `#/<1-based 번호>`, docs/reference/cli.md).
 //
 // 파일 끝의 줄바꿈은 뗀다 — Render가 </script> 앞에 하나 넣는다.
 var runtimeJS = strings.TrimRight(runtimeJSAsset, "\n")
