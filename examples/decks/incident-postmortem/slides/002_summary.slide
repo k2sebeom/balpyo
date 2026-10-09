@@ -1,30 +1,48 @@
 <!-- 한 장 요약: 숫자 셋을 나란히. stat 레이아웃은 value 슬롯이 하나라 흐름 모드로 짠다.
 
-     세로 리듬은 슬라이드가 소유한다 — `<slide justify="between">` 한 선언이 제목을 위,
-     본문을 아래 끝으로 보낸다. 전에는 같은 것을 `<col h="fill"
-     justify="between">` 랩퍼로 만들었고, 그 랩퍼 안의 자식은 슬라이드 직계 자식이
-     아니어서 `slot=`을 쓸 수 없었다 — 정렬을 쓰려고 슬롯을 포기하는 거래였다.
+     카드 높이를 숫자로 적지 않는다 — 숫자 그리드가 `grow="1"`로 제목과 아래 띠 사이를 다
+     갖고, 카드 셋은 grid의 stretch로 그 높이를 받는다. 아래 띠는 "무슨 일"과 "어떻게
+     멈췄나" 두 칸이라, 숫자를 본 사람이 같은 장에서 이유를 읽는다.
 
      숫자 셋의 색은 덱의 색 규칙을 따른다 (001_cover): 47분·8.4%는 장애가 낸 값이라
      `accent5`, 12분은 우리가 늦은 곳이라 `accent4`다. 셋이 같은 색이던 동안 이 슬라이드는
      "큰 숫자 셋"이었고, 지금은 "피해 둘과 우리 문제 하나"다. -->
-<slide id="summary" justify="between">
+<slide id="summary">
   <h2>한 장 요약</h2>
-  <grid cols="3" gap="md">
-    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" h="150" pad="lg">
-      <text role="title" size="44" color="accent5">47분</text>
-      <text role="caption" color="muted">결제 API 5xx 지속</text>
+  <grid cols="3" gap="md" grow="1">
+    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
+      <col gap="xs" h="fill" justify="center">
+        <text role="title" size="72" color="accent5">47분</text>
+        <text role="body">결제 API 5xx 지속</text>
+        <text role="caption">14:02 – 14:49 KST</text>
+      </col>
     </shape>
-    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" h="150" pad="lg">
-      <text role="title" size="44" color="accent5">8.4%</text>
-      <text role="caption" color="muted">최대 오류율 (평시 0.02%)</text>
+    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
+      <col gap="xs" h="fill" justify="center">
+        <text role="title" size="72" color="accent5">8.4%</text>
+        <text role="body">최대 오류율</text>
+        <text role="caption">평시 0.02%</text>
+      </col>
     </shape>
-    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" h="150" pad="lg">
-      <text role="title" size="44" color="accent4">12분</text>
-      <text role="caption" color="muted">탐지까지 걸린 시간</text>
+    <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
+      <col gap="xs" h="fill" justify="center">
+        <text role="title" size="72" color="accent4">12분</text>
+        <text role="body">탐지까지 걸린 시간</text>
+        <text role="caption">경보가 5분 평균이었다</text>
+      </col>
     </shape>
   </grid>
-  <p>결제 캐시 키 하나가 동시에 만료되면서 DB로 요청이 쏟아졌다. 읽기 풀이 고갈되고
-  결제 API가 5xx를 반환했다. 롤백이 아니라 <strong>부하 차단</strong>으로 멈췄다.</p>
+  <grid cols="2" gap="lg">
+    <col gap="xs">
+      <text role="heading" size="24">무슨 일</text>
+      <p size="20">결제 캐시 키 12만 개가 같은 초에 만료되면서 DB로 요청이 쏟아졌다.
+      읽기 풀이 고갈되고 결제 API가 5xx를 반환했다.</p>
+    </col>
+    <col gap="xs">
+      <text role="heading" size="24" color="accent3">어떻게 멈췄나</text>
+      <p size="20">롤백이 아니라 <strong>부하 차단</strong>으로 멈췄다. 캐시가 다시 차자
+      14:49에 오류율이 평시로 돌아왔다.</p>
+    </col>
+  </grid>
   <note>숫자 셋만 읽고 다음으로. 자세한 것은 뒤에 있다.</note>
 </slide>

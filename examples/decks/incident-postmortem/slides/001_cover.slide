@@ -14,9 +14,9 @@
      제한한 것도 같은 이유다: 뜻이 넷이 되면 듣는 사람이 색표를 외워야 한다. -->
 <slide id="cover" layout="title">
   <text slot="kicker" role="caption" color="muted">INCIDENT REVIEW · INC-2431</text>
-  <text slot="title" role="title">결제 API 5xx, 47분</text>
-  <text slot="subtitle" role="body" color="muted">캐시 스탬피드 — 무슨 일이 있었고 무엇을 바꾸는가</text>
-  <text slot="author" role="caption">Platform Team</text>
+  <text slot="title" role="title" size="80">결제 API 5xx, 47분</text>
+  <text slot="subtitle" role="heading" size="30" color="muted">캐시 스탬피드 — 무슨 일이 있었고 무엇을 바꾸는가</text>
+  <text slot="author" role="body">Platform Team</text>
   <text slot="date" role="caption" color="muted">2026-09-18</text>
   <note>회고의 규칙 먼저: 사람이 아니라 시스템을 본다. 30초.</note>
 </slide>
