@@ -197,7 +197,9 @@ balpyo theme list
 `balpyo.json`은 그대로 이름만 적는다 (`"theme": "acme"`). 설치한 테마는 `~/.balpyo/themes/<이름>/`에
 놓이고, 이름은 테마의 `theme.json`이 정한다. 한 저장소에 테마를 여럿 두어도 된다 — `acme`와 그것을
 상속한 `acme-dark`를 함께 두면 `balpyo theme install … acme-dark`가 둘을 함께 설치한다. 고친 테마는
-`balpyo theme update`로 다시 받는다. 처음 보는 기계나 CI에서는 같은 `install`을 먼저 친다 — 빌드는
+`balpyo theme update`로 다시 받는다. 저장소가 비공개이거나 GitHub 밖에 있으면 체크아웃한 디렉토리를
+경로로 설치한다 (`balpyo theme install ./slide-themes`) — 파일을 홈으로 복사하고, `update`가 같은
+디렉토리에서 다시 복사한다. 처음 보는 기계나 CI에서는 같은 `install`을 먼저 친다 — 빌드는
 받을 곳을 모르고, 없는 이름은 `알 수 없는 테마`로 멈춘다. 규칙 전체는
 [설치한 테마](../reference/theme.md#설치한-테마-github에서-받는다)에 있다.
 
@@ -207,7 +209,7 @@ balpyo theme list
 ## 아직 아닌 것
 
 테마를 가리키는 **경로**나 URL 문법(`balpyo.json`은 이름만 받는다), 비공개 저장소와 GitHub 밖의
-호스트에서 설치하기, 슬라이드마다 다른 테마, 시스템 다크 모드 자동 전환, 테마가 폰트 파일을
+호스트에서 직접 받기(체크아웃한 디렉토리를 경로로 설치하는 길은 있다), 슬라이드마다 다른 테마, 시스템 다크 모드 자동 전환, 테마가 폰트 파일을
 번들하는 것은 열지 않았다. 포맷이 데이터 전용(JSON + CSS)이라 받은 테마가 코드를 실행하는 길은
 없다. 스테이지 여백 64px과 기본 간격 24px은 테마가 아니라 **엔진**의
 값이다.

@@ -509,13 +509,13 @@ BALPYO_SOFFICE=/path/to/soffice BALPYO_PDFTOPPM=/path/to/pdftoppm balpyo preview
 
 ## `balpyo theme`
 
-GitHub 저장소에서 테마를 설치하고, 설치한 테마를 다룬다. 설치한 테마는
+GitHub 저장소나 이 기계의 디렉토리에서 테마를 설치하고, 설치한 테마를 다룬다. 설치한 테마는
 `~/.balpyo/themes/<이름>/`에 놓이고(`BALPYO_HOME`이 있으면 그 디렉토리 아래), `balpyo.json`의
 `theme`와 `--theme`가 그 **이름**을 받는다. 이름은 테마의 `theme.json`이 정한다. 규칙 전체는
 [설치한 테마](theme.md#설치한-테마-github에서-받는다)에 있다.
 
 ```bash
-balpyo theme install <GitHub 주소> [이름...] [--force]
+balpyo theme install <GitHub 주소 | 경로> [이름...] [--force]
 balpyo theme list [--project .]
 balpyo theme remove <이름...>
 balpyo theme update [이름...]
@@ -523,10 +523,10 @@ balpyo theme update [이름...]
 
 | 명령 | 하는 일 |
 |---|---|
-| `install` | 저장소를 받아 테마를 설치한다. 이름을 주지 않으면 찾은 테마 전부, 주면 그 테마와 같은 저장소 안의 `extends` 부모. `--force`는 다른 출처에서 설치한 같은 이름을 갈아 끼운다 |
+| `install` | 저장소를 받아(경로면 그 디렉토리를 복사해) 테마를 설치한다. 이름을 주지 않으면 찾은 테마 전부, 주면 그 테마와 같은 저장소 안의 `extends` 부모. `--force`는 다른 출처에서 설치한 같은 이름을 갈아 끼운다 |
 | `list` | 쓸 수 있는 테마를 자리별로 나열한다 — 내장, 설치한 테마(출처·커밋), `--project`의 `themes/`. 겹치는 이름을 표시한다 |
 | `remove` | 설치한 테마를 지운다. 남는 설치한 테마가 상속하는 테마는 지우지 않는다 |
-| `update` | 설치한 테마를 기록한 출처·ref에서 다시 받는다 (이름을 주지 않으면 출처를 아는 테마 전부). 같은 저장소의 테마는 한 번에 받는다 |
+| `update` | 설치한 테마를 기록한 출처·ref에서 다시 받는다 (경로에서 설치한 테마는 그 디렉토리에서 다시 복사한다) (이름을 주지 않으면 출처를 아는 테마 전부). 같은 저장소의 테마는 한 번에 받는다 |
 
 받는 주소 모양:
 
@@ -541,11 +541,30 @@ balpyo theme update [이름...]
 `git`은 필요 없다 — 저장소를 GitHub의 tarball 하나로 받는다. 공개 저장소만 받는다. 설치한 뒤
 빌드는 네트워크를 쓰지 않는다.
 
+받는 경로 모양 — 이 기계의 디렉토리에서 파일을 **복사**해 설치한다 (원본을 가리키는 링크가 아니다):
+
+| 경로 | 뜻 |
+|---|---|
+| `./brand` · `../themes` · `/srv/themes` · `~/themes` | 언제나 경로다 |
+| `my-themes` | GitHub 주소가 아니고 그런 디렉토리가 있으면 경로다 |
+| `./github.com/acme/themes` | 주소처럼 생긴 경로는 `./`를 붙인다 (`github.com/…`는 언제나 주소로 읽는다) |
+
+경로는 테마 디렉토리 하나(`theme.json`이 있는 곳)를 가리켜도, 테마 여럿을 담은 디렉토리를 가리켜도 된다 —
+찾는 규칙은 저장소와 같다. 비공개 저장소나 GitHub 밖의 호스트에 있는 테마는 체크아웃한 디렉토리를
+경로로 설치한다.
+
 ```
 $ balpyo theme install github.com/acme/slide-themes@v1.2.0
 github.com/acme/slide-themes@v1.2.0 (3f2a91c)에서 테마 2개를 설치했다 → /home/me/.balpyo/themes
   acme       themes/light
   acme-dark  themes/dark
+balpyo.json에 "theme": "acme"처럼 이름을 쓴다.
+```
+
+```
+$ balpyo theme install ./brand
+/home/me/work/brand에서 테마 1개를 복사해 설치했다 → /home/me/.balpyo/themes
+  acme  .
 balpyo.json에 "theme": "acme"처럼 이름을 쓴다.
 ```
 
