@@ -10,7 +10,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **레이아웃 레퍼런스(docs/reference/soml/layout.md) 표의 회귀 장치**다 — 레이아웃
+// 이 파일은 **레이아웃 속성 표의 회귀 장치**다 — 레이아웃
 // 태그는 CSS flex/grid의 이름 바꾸기 층이다. 두 표(containerCases·placementCases)는 속성
 // 이름을 들고 다녀 어휘 목록과 대조된다.
 
@@ -280,7 +280,7 @@ func TestSpaceTokenReferenceAndDeclarationComeFromOneTable(t *testing.T) {
 }
 
 // `style` 탈출구는 인라인 style **맨 끝**에 붙는다 — 같은 프로퍼티면 뒤가 이기므로 저자의
-// 탈출구가 엔진 선언을 덮는다. 그것이 탈출구의 뜻이다 (ADR 0014).
+// 탈출구가 엔진 선언을 덮는다. 그것이 탈출구의 뜻이다.
 func TestStyleEscapeHatchComesLast(t *testing.T) {
 	out := renderString(t, subsetDeck(t, `
   <row gap="md" style="gap: 40px">
@@ -365,7 +365,7 @@ func TestRenderRejectsUnknownBoxVocabulary(t *testing.T) {
 }
 
 // `<stack>`과 캔버스 스테이지는 같은 단일 셀 grid다 — 모든 자식이 `grid-area: 1/1`에 겹치고
-// 크기는 가장 큰 자식이 정한다 (ADR 0067 결정 3). absolute 전면 방식은 컨테이너 크기를 잃고,
+// 크기는 가장 큰 자식이 정한다. absolute 전면 방식은 컨테이너 크기를 잃고,
 // `grid-template-*`을 내면 암시 트랙 하나라는 계약이 깨진다. 자식의 `position: relative`는
 // 칠 순서를 문서 순서(= PPTX 순서)로 되돌린다.
 func TestStackCompilesToSingleCellGridOverlap(t *testing.T) {
@@ -390,7 +390,7 @@ func TestStackCompilesToSingleCellGridOverlap(t *testing.T) {
 }
 
 // `x`/`y`는 그 자식만 absolute로 전환하고 좌표를 left/top으로 낸다. transform:translate은 쓰지
-// 않는다 — 측정 뷰가 변형을 끄므로(ADR 0021) 잰 rect에서 위치가 사라진다. 지정하지 않은 축은
+// 않는다 — 측정 뷰가 변형을 끄므로 잰 rect에서 위치가 사라진다. 지정하지 않은 축은
 // 선언을 내지 않는다 (정적 위치).
 func TestAbsolutePlacementUsesLeftTop(t *testing.T) {
 	for _, tc := range []struct {
@@ -432,7 +432,7 @@ func TestAbsolutePlacementUsesLeftTop(t *testing.T) {
 }
 
 // 스테이지의 여는 태그가 슬라이드 수준 결정을 싣는다: 배치 CSS가 있는 레이아웃은 클래스를,
-// 슬롯을 쓴 슬라이드는 `balpyo-slots`(ADR 0035)를, `justify`는 인라인 분배를(ADR 0044) 얻는다.
+// 슬롯을 쓴 슬라이드는 `balpyo-slots`를, `justify`는 인라인 분배를 얻는다.
 // 흐름 규칙은 `:not(.balpyo-slots)`로 슬롯 규칙과 배타적으로 겨눈다.
 func TestStageCarriesSlideLayout(t *testing.T) {
 	for _, tc := range []struct {

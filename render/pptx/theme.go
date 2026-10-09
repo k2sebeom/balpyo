@@ -19,7 +19,7 @@ import (
 // (soml.ColorToken), 빌린 자리를 **참조하는** 도형은 생기지 않는다 — 이 채움은 편집 UI를
 // 위한 것이다.
 //
-// 내장 minimal 테마는 P4.1부터 강조색 여섯을 모두 갖는다 (ADR 0050) — 그래서 기본 테마에서
+// 내장 minimal 테마는 강조색 여섯을 모두 갖는다 — 그래서 기본 테마에서
 // 빌리는 자리는 hlink/folHlink 둘뿐이다 (어휘에 링크 색이 없다). 폴백을 남겨 두는 이유는
 // 다른 테마가 강조색을 하나만 정해도 열리는 파일을 내야 하기 때문이다.
 var clrSchemeFallbacks = map[string]string{

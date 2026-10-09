@@ -8,7 +8,7 @@ package soml
 // 병합 span은 core가 한 번만 확정한다. 표 외관이 값 층을 두 번 지나면 웹의 `<table>`과 PPTX의
 // `a:tbl`이 갈라지고, 그 종류의 버그는 두 산출물을 나란히 볼 때까지 드러나지 않는다.
 
-// TableStyle은 확정된 표 **프레임** 외관이다 (ADR 0036).
+// TableStyle은 확정된 표 **프레임** 외관이다.
 //
 // 프레임 자체에 실을 외관은 거의 없다 — 좌표는 잰 프레임 박스가, 셀 채움·테두리·텍스트는
 // CellStyle이 소유한다 (줄무늬조차 셀 채움으로 명시로 굽는다 — "스타일 없음 + 명시 tcPr").
@@ -21,7 +21,7 @@ type TableStyle struct {
 	// 셀 채움이 이미 줄무늬를 담고 있다.
 	Variant string
 	// Alt은 표 전체의 대체 텍스트다 (웹 `<table aria-label>`, PPTX `p:cNvPr@descr`). 셀의
-	// 글은 두 타깃 모두 그대로 읽히므로 이 이름은 내용을 대체하지 않는다 (ADR 0058).
+	// 글은 두 타깃 모두 그대로 읽히므로 이 이름은 내용을 대체하지 않는다.
 	Alt string
 }
 
@@ -37,14 +37,14 @@ type CellStyle struct {
 	// 가른다 — 외관 자체는 이미 Fill·Border·Text에 확정되어 있으므로 이 불리언은 태그 선택용이다.
 	Header bool
 	// Fill은 셀 배경이다 — 색(토큰·리터럴) 또는 `none`, 정하지 않으면 nil. 헤더 채움·줄무늬
-	// 채움·인라인 `fill`이 모두 이 자리에 확정된다 (줄무늬를 명시로 굽는 자리다 — ADR 0036).
+	// 채움·인라인 `fill`이 모두 이 자리에 확정된다 (줄무늬를 명시로 굽는 자리다).
 	Fill *Fill
 	// Border는 셀 테두리다 — 축약 3조각 또는 `none`, 정하지 않으면 nil. 도형 테두리와 같은
 	// 구조를 공유한다 (같은 값 문법이 자리마다 다르게 읽히지 않게).
 	Border *Border
 	// Text는 셀 텍스트 런의 확정 외관이다 — body 역할 기본값 위에 헤더 굵기·색·인라인
 	// `color`/`align`/`anchor`가 얹힌 것이다. 셀 안 인라인 태그(strong/em/…)의 런은 이 스타일을
-	// 상속한다 (resolveInlines). 텍스트 전용 콘텐츠 모델이라(ADR 0036) 셀은 언제나 이 하나를 갖는다.
+	// 상속한다 (resolveInlines). 텍스트 전용 콘텐츠 모델이라 셀은 언제나 이 하나를 갖는다.
 	Text *TextStyle
 	// ColSpan·RowSpan은 병합 칸 수다 (`colspan`/`rowspan`, 없으면 1). 구조 정보지만 여기 담는
 	// 이유는 "렌더러가 Attrs를 다시 읽지 않는다"는 계약이다: 웹은 `<td colspan>` 속성으로,

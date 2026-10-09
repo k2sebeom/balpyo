@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// 이 파일은 **외관 매핑 표(docs/reference/appearance.md)의 그라디언트·색 변형 행 회귀
+// 이 파일은 **외관 매핑 표의 그라디언트·색 변형 행 회귀
 // 장치**다. 도형 채움·테두리 그라디언트는 svg `<defs>`의 `linearGradient`를 만들고 `url(#…)`로 가리키며, 텍스트
 // 색 그라디언트는 `background-clip: text`, 색 변형은 `color-mix()`다.
 

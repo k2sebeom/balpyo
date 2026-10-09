@@ -7,7 +7,7 @@ import (
 	"github.com/k2sebeom/balpyo/render/geom"
 )
 
-// 접근성 계약 (ADR 0058) 중 패리티가 보지 않는 것: `descr` 이스케이프와, `order`가 읽기 순서를
+// 접근성 계약 중 패리티가 보지 않는 것: `descr` 이스케이프와, `order`가 읽기 순서를
 // 바꾸지 않는다는 것. `descr`의 유무·값은 패리티(16_a11y)가 본다.
 
 // XML 특수문자가 든 이름은 이스케이프된다 — 속성 안에서 인용부호가 깨지면 파일이 열리지 않는다
@@ -28,7 +28,7 @@ func TestShapeAndTableDescrAreEscaped(t *testing.T) {
 	}
 }
 
-// **읽기 순서는 문서 순서다** (ADR 0058) — 두 타깃이 그 순서를 공유한다.
+// **읽기 순서는 문서 순서다** — 두 타깃이 그 순서를 공유한다.
 //
 // `order`는 **시각** 순서를 바꾸는 채널이고(웹은 flex `order`, PPTX는 잰 좌표), 읽기 순서를
 // 바꾸지 않는다: PPTX의 읽기 순서는 `spTree`의 도형 순서이고 그것은 조립기의 순회가 만든다.

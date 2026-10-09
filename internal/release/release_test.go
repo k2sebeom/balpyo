@@ -15,7 +15,7 @@ import (
 	"testing"
 )
 
-// 이 파일은 **릴리스 절차 자체**를 판정한다 (ADR 0061 결정 2): 플랫폼 표·아카이브 이름·
+// 이 파일은 **릴리스 절차 자체**를 판정한다: 플랫폼 표·아카이브 이름·
 // 체크섬 파일·Homebrew 포뮬러·주입 플래그가 쉘 스크립트가 아니라 이 패키지에 있으므로,
 // 타깃 하나를 지우거나 이름 규칙을 바꾸는 커밋을 테스트가 본다.
 
@@ -32,7 +32,7 @@ func TestTargetsAreTheFourMeasuredPlatforms(t *testing.T) {
 	}
 	for _, target := range Targets() {
 		if target.OS == "windows" {
-			t.Errorf("표에 windows가 있다 — 측정하지 않은 플랫폼의 아카이브는 놓지 않는다 (ADR 0061 결정 3)")
+			t.Errorf("표에 windows가 있다 — 측정하지 않은 플랫폼의 아카이브는 놓지 않는다")
 		}
 	}
 }
@@ -55,7 +55,7 @@ func TestArchiveNameCarriesVersionAndPlatform(t *testing.T) {
 	}
 }
 
-// 주입은 **태그 하나**다 (ADR 0061 결정 4). 커밋·시각을 여기에 넣으면 같은 사실의 두 번째
+// 주입은 **태그 하나**다. 커밋·시각을 여기에 넣으면 같은 사실의 두 번째
 // 출처가 생기므로, `-X`가 하나인 것 자체를 판정한다.
 func TestLDFlagsInjectOnlyTheVersion(t *testing.T) {
 	flags := LDFlags("v0.3.0")
@@ -195,7 +195,7 @@ func TestBuildProducesARunnableArchive(t *testing.T) {
 		t.Errorf("%s가 디스크에 있다 (반쪽 포뮬러) — err=%v", FormulaName, err)
 	}
 
-	// 아카이브에는 바이너리 **하나**만 있다 (ADR 0061 결정 6).
+	// 아카이브에는 바이너리 **하나**만 있다.
 	names, binary := extractTarGz(t, filepath.Join(dir, artifact.Name))
 	if len(names) != 1 || names[0] != "balpyo" {
 		t.Fatalf("아카이브 내용 = %v, want [balpyo]", names)
@@ -214,7 +214,7 @@ func TestBuildProducesARunnableArchive(t *testing.T) {
 	if want := "balpyo v9.9.9-test"; lines[0] != want {
 		t.Errorf("첫 줄 = %q, want %q", lines[0], want)
 	}
-	// 릴리스 바이너리는 커밋을 안다 — 툴체인이 박고 -trimpath가 지우지 않는다 (ADR 0061 실측).
+	// 릴리스 바이너리는 커밋을 안다 — 툴체인이 박고 -trimpath가 지우지 않는다.
 	if len(lines) != 3 || !strings.HasPrefix(lines[1], "커밋 ") {
 		t.Errorf("릴리스 바이너리의 버전 출력이 세 줄(커밋 포함)이 아니다:\n%s", out)
 	}
@@ -223,7 +223,7 @@ func TestBuildProducesARunnableArchive(t *testing.T) {
 	}
 }
 
-// 재현성은 계약이다 (ADR 0061 결정 9): 같은 버전으로 두 번 만든 아카이브는 **바이트까지 같다**.
+// 재현성은 계약이다: 같은 버전으로 두 번 만든 아카이브는 **바이트까지 같다**.
 // tar 헤더의 시각·소유자까지 고정해야 통과한다.
 func TestBuildIsReproducible(t *testing.T) {
 	if testing.Short() {

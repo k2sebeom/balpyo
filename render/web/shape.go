@@ -8,8 +8,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **`<shape>` → 요소 + SVG 기하 + 외관 CSS**다 (docs/reference/soml/shape.md, 매핑 표는
-// docs/reference/appearance.md).
+// 이 파일은 **`<shape>` → 요소 + SVG 기하 + 외관 CSS**다.
 //
 // # 도형 하나는 박스 하나와 그림 하나다
 //
@@ -17,7 +16,7 @@ import (
 //	  <svg class="balpyo-shape-ink">  ← 그림. 채움·테두리·그림자·불투명도·대칭이 여기 걸린다.
 //	  <p class="balpyo-text" …>       ← 도형 안 텍스트 (문서 순서대로 쌓인다).
 //
-// 프리셋의 **텍스트 영역**이 박스보다 작은 여덟 종은 텍스트가 래퍼 하나를 더 쓴다 (ADR 0040):
+// 프리셋의 **텍스트 영역**이 박스보다 작은 여덟 종은 텍스트가 래퍼 하나를 더 쓴다:
 //
 //	<div class="balpyo-shape" …>
 //	  <svg class="balpyo-shape-ink">
@@ -39,7 +38,7 @@ import (
 //   - 셋만 CSS로 두면 그림자를 `box-shadow`와 SVG 두 벌로 구현하게 되고, 두 벌이 갈라지는
 //     것은 도형 종류에 따라 외관이 다른 것으로만 보인다 — 이 저장소가 가장 비싸게 치는 실패다.
 //   - SVG는 어차피 들어온다: `border=… gradient(…)`는 엔진이 SVG로 그린다 (CSS
-//     `border-image`가 radius와 조합되지 않는다 — Iteration 8). 그때 채움·선의 자리가 이미 SVG면 그 항목은
+//     `border-image`가 radius와 조합되지 않는다). 그때 채움·선의 자리가 이미 SVG면 그 항목은
 //     `linearGradient` 하나를 더하는 일이 된다.
 //
 // 그래서 12종 전부가 `<svg>` 하나이고, 외관 선언은 **그 svg 하나에** 걸린다. 기하만 두 갈래다
@@ -63,7 +62,7 @@ import (
 // 타깃이므로 맞추는 쪽은 PPTX이고, 조정값을 실은 프리셋도 PowerPoint에서 여전히
 // 편집 가능한 진짜 프리셋 도형이다 (`radius` → `prstGeom` 조정값이 이미 같은 수단이다).
 //
-// # 엔진 CSS와 인라인 style의 경계 (ADR 0003의 연장 — layout.go와 같은 기준)
+// # 엔진 CSS와 인라인 style의 경계 (layout.go와 같은 기준)
 //
 //	엔진 CSS (shapeCSS, 태그마다 고정):
 //	  .balpyo-shape:     position, display, flex-direction   — "박스 + 세로로 쌓이는 텍스트"의 정의
@@ -81,7 +80,7 @@ import (
 //	  자식 배치 선언과 저자의 `style` 탈출구 (맨 끝)
 //
 // `box-sizing: border-box`는 baseCSS의 `*` 규칙이 이미 준다 — 그래서 `pad`는 잰 박스를
-// 키우지 않고 **안쪽으로** 들어간다 (PPTX `bodyPr` 인셋과 같은 뜻 — 항목 05).
+// 키우지 않고 **안쪽으로** 들어간다 (PPTX `bodyPr` 인셋과 같은 뜻).
 //
 // # 테두리와 잰 박스
 //
@@ -96,7 +95,7 @@ import (
 // 돌려준다 (45도에서 1.41배). 반면 OOXML `xfrm@rot`은 회전 **전** `ext`를 중심 회전한 것이라,
 // 그대로 재면 좌표 대조는 통과하면서(측정값과 산출물이 같으므로) 산출물만 틀린다. 그래서
 // 측정 패스는 문서에 측정 뷰를 켜고(web.MeasureView) 그 뷰에서 회전 선언을 무효화한다 —
-// 발표자 뷰를 `<html>` 속성 하나로 켜는 것과 같은 수단이다 (ADR 0006).
+// 발표자 뷰를 `<html>` 속성 하나로 켜는 것과 같은 수단이다.
 //
 // 그 무효화가 성립하려면 회전 **선언**이 엔진 CSS에 있어야 한다: 인라인 style은 층 밖에서
 // 이기므로 스타일시트가 `transform: none`으로 덮을 수 없다 (`!important`를 쓰지 않는 이유다).
@@ -105,7 +104,7 @@ import (
 // # 도형 안 텍스트 — 웹과 PPTX의 구조가 갈라지는 첫 자리
 //
 // 웹은 도형 박스 안에 **별도 텍스트 박스**가 중첩되고(자식마다 자기 rect를 갖는다), PPTX는
-// 같은 도형의 `txBody` 문단이다 (항목 05). 그래서 도형 안 텍스트의 잰 rect는 **PPTX가
+// 같은 도형의 `txBody` 문단이다. 그래서 도형 안 텍스트의 잰 rect는 **PPTX가
 // 소비하지 않는다** — `<li>`와 같은 처지다 (재지만 도형 좌표가 아니다).
 
 // shapeSpace는 기하가 사는 좌표 공간이다 (파일 머리 주석의 기하 절).
@@ -131,7 +130,7 @@ const (
 	// 도형에 `transform: rotate(0deg)`를 걸면 회전 없는 도형까지 스택 문맥과 래스터화 경로가
 	// 바뀐다 (그 변화는 픽셀 비교에서만 드러난다).
 	shapeRotateClass = "balpyo-shape-rotate"
-	// shapeBodyClass는 프리셋의 텍스트 영역을 차지하는 래퍼다 (ADR 0040) — 백분율 인셋이
+	// shapeBodyClass는 프리셋의 텍스트 영역을 차지하는 래퍼다 — 백분율 인셋이
 	// 있는 프리셋에만 나온다. 0인 프리셋(rect·rounded-rect·chevron·callout)에서 구조를 그대로
 	// 두는 이유는 골든의 뜻이다: 결과가 같은데 래퍼를 넣으면 가장 많이 쓰이는 프리셋의 픽셀이
 	// 서브픽셀 반올림으로 흔들리고, 그 변화는 텍스트 영역과 무관하다.
@@ -159,7 +158,7 @@ type shapePath struct {
 	D string
 	// Overlay면 채움 없이 선만 그린다 — OOXML 프리셋의 `fill="none"` 경로에 대응한다
 	// (cylinder의 뚜껑선, cloud의 안쪽 선). 테두리가 `none`인 도형에서는 아무것도 그리지
-	// 않으므로 그 프리셋의 세부는 사라진다 (알려진 갈라짐 — NOTES).
+	// 않으므로 그 프리셋의 세부는 사라진다 (알려진 갈라짐).
 	Overlay bool
 }
 
@@ -168,7 +167,7 @@ type shapeGeometry struct {
 	// Type은 SOML의 `type` 값이다 (soml.ShapeTypes의 이름).
 	Type string
 	// Preset은 OOXML `prstGeom@prst` 이름이다 — 이 행의 수치가 어느 프리셋에서 왔는지의
-	// 출처이자 항목 05의 매핑 열쇠다 (ShapePreset).
+	// 출처이자 PPTX 매핑의 열쇠다 (ShapePreset).
 	Preset string
 	// Space는 이 기하가 사는 좌표 공간이다.
 	Space shapeSpace
@@ -184,9 +183,9 @@ type shapeGeometry struct {
 	// 보정이 한곳에 있어야 나중에 한쪽만 바뀌지 않기 때문이다 — 평가는 PPTX 렌더러가 잰
 	// 박스로 한다 (ShapeAdjusts → render/pptx.AdjustValue).
 	Adjust []ShapeAdjust
-	// TextRect는 프리셋의 **텍스트 영역**이다 (ADR 0040) — 비어 있으면 박스 전체다.
+	// TextRect는 프리셋의 **텍스트 영역**이다 — 비어 있으면 박스 전체다.
 	TextRect ShapeInsets
-	// TextCancel은 뷰어가 들고 있는 rect 중 **우리가 쓰지 않는 몫**이다 (ADR 0041) — 비어
+	// TextCancel은 뷰어가 들고 있는 rect 중 **우리가 쓰지 않는 몫**이다 — 비어
 	// 있으면 프리셋의 rect가 위 TextRect와 같아서 되돌릴 것이 없다 (11종).
 	//
 	// Adjust와 같은 자리에 같은 이유로 둔다: 웹이 정한 것을 PPTX가 보정하고, 그 보정의
@@ -234,7 +233,7 @@ type ShapeAdjust struct {
 }
 
 // ShapeInsets는 프리셋의 텍스트 영역이다 — 도형 박스에서 **글자가 쓸 수 있는 사각형**
-// (OOXML 프리셋 정의의 `<rect>`, ADR 0040).
+// (OOXML 프리셋 정의의 `<rect>`).
 //
 // 왜 필요한가: PowerPoint·LibreOffice는 프리셋마다 이 사각형을 갖고 있고 우리가 끄거나 바꿀
 // 수단이 없다. 웹이 박스 전체에 글을 흘리면 같은 SOML에서 줄바꿈 위치와 줄 수가 갈라진다
@@ -249,7 +248,7 @@ type ShapeInsets struct {
 	L, T, R, B float64
 	// Radius는 `radius` px에 곱해 네 변에 더하는 비율이다 (rounded-rect 하나).
 	//
-	// 백분율과 갈라지는 이유는 `radius`가 px이기 때문이고(ADR 0019·0017 — 반경은 늘림 없는 px
+	// 백분율과 갈라지는 이유는 `radius`가 px이기 때문이고(반경은 늘림 없는 px
 	// 공간에 산다), 그 덕분에 rounded-rect는 인셋을 **패딩**으로 받을 수 있다: 내용이 높이를
 	// 정하는 카드가 그대로 산다. 백분율 인셋은 자기 박스 높이를 참조해야 하므로 그럴 수 없다.
 	Radius float64
@@ -283,7 +282,7 @@ func ShapeTextRect(shapeType string) (ShapeInsets, bool) {
 	return geom.TextRect, true
 }
 
-// ShapeTextCancel은 PPTX가 `bodyPr` 인셋에서 빼야 할 백분율이다 (ADR 0041) — ok=false는
+// ShapeTextCancel은 PPTX가 `bodyPr` 인셋에서 빼야 할 백분율이다 — ok=false는
 // 모르는 `type`이다 (ShapeTextRect와 같은 계약).
 //
 // 왜 웹 쪽 표에 있는가: 되돌릴 양은 **우리가 어느 영역에 글을 흘리기로 했는가**와 프리셋이
@@ -297,8 +296,7 @@ func ShapeTextCancel(shapeType string) (ShapeInsets, bool) {
 	return geom.TextCancel, true
 }
 
-// shapeGeometries는 12종의 기하 유도표다 (순서 = soml.ShapeTypes의 순서 =
-// docs/reference/soml/shape.md `type` 표 순서).
+// shapeGeometries는 12종의 기하 유도표다 (순서 = soml.ShapeTypes의 순서).
 //
 // 각 행의 수치는 ECMA-376 `presetShapeDefinitions.xml`의 해당 프리셋을 **기본 조정값으로,
 // 정사각형(w = h = ss = 100)에서** 평가한 것이다. 주석에 어느 `gd`에서 왔는지 적었다 —
@@ -308,7 +306,7 @@ func ShapeTextCancel(shapeType string) (ShapeInsets, bool) {
 // LibreOffice 렌더의 글자 위치에서 잰 값이다 (같은 도형 둘을 나란히 두고 한쪽은 왼·위,
 // 다른 쪽은 오른·아래로 글자 하나를 밀어 네 변을 각각 잰다 — 400×400 도형에서 px).
 // 유도와 실측을 함께 적는 이유는 이 열이 **우리가 그린 실루엣**과 프리셋 정의 양쪽에 맞아야
-// 하기 때문이다: 한쪽만 맞으면 두 타깃의 글자가 갈라진다 (ADR 0040).
+// 하기 때문이다: 한쪽만 맞으면 두 타깃의 글자가 갈라진다.
 func shapeGeometries() []shapeGeometry {
 	return []shapeGeometry{
 		{
@@ -352,8 +350,8 @@ func shapeGeometries() []shapeGeometry {
 			// can: `adj=25000` → `y1 = ss·adj/200000` = 12.5가 뚜껑 타원의 세로 반지름이고
 			// `y3 = b - y1`이다. 첫 경로는 실루엣(위 반타원 → 오른쪽 변 → 아래 반타원),
 			// 둘째는 뚜껑 타원의 선이다 (프리셋의 `fill="none"` 경로).
-			// 프리셋의 뚜껑에는 `fill="lighten"`이 걸려 있는데 CSS에 대응이 없다 (색 변형은
-			// Iteration 8) — 웹의 뚜껑은 같은 채움에 선만 얹힌다.
+			// 프리셋의 뚜껑에는 `fill="lighten"`이 걸려 있는데 CSS에 대응이 없다 —
+			// 웹의 뚜껑은 같은 채움에 선만 얹힌다.
 			// Adjust: 웹이 h 기준으로 늘렸으므로 PPTX는 adj = 25000·h/ss (프리셋의
 			// maxAdj = 50000·h/ss라 이 값은 언제나 그 절반이다 — 상한이 없다).
 			Type: "cylinder", Preset: "can", Space: spaceNormalized,
@@ -376,7 +374,7 @@ func shapeGeometries() []shapeGeometry {
 			// (adj = 50000·w/ss)에서 `x1 = ss·adj/100000 = w/2`이고 `x2 = r − x1 = w/2`라, 그
 			// rect는 **어느 박스에서도 박스 가운데의 폭 0 열**이다. 뷰어는 그것을 박스로
 			// 되돌리지 않는다 (LibreOffice는 한 글자씩 세로로 쌓는다) — 그래서 PPTX가 `bodyPr`
-			// 인셋으로 폭 0을 되돌리고(TextCancel), 웹은 박스 전체에 글을 흘린다 (ADR 0041).
+			// 인셋으로 폭 0을 되돌리고(TextCancel), 웹은 박스 전체에 글을 흘린다.
 			Paths:      []shapePath{{D: "M0,0 L50,0 L100,50 L50,100 L0,100 L50,50 Z"}},
 			Adjust:     []ShapeAdjust{{Name: "adj", Base: 50000, Axis: AdjustAxisWidth}},
 			TextCancel: ShapeInsets{L: 50, R: 50},
@@ -544,8 +542,8 @@ func RoundRectAdjust() ShapeAdjust {
 // 왜 하나를 고르는가: 확정 값(TextStyle.Anchor)은 자식마다 있지만 앵커는 **박스의 성질**이다
 // (웹은 flex 컨테이너의 `justify-content`, PPTX는 `bodyPr@anchor` — 도형에 하나뿐이다).
 // 첫 자식을 고른 이유는 규칙이 문서 순서로 읽히기 때문이고, 뒤 자식이 다른 앵커를 적으면
-// 그 값은 **조용히 버려진다** (경고는 값 층의 몫이고 렌더러에는 진단 통로가 없다 — NOTES의
-// 열린 질문). 내보내는 이유는 ShapePreset과 같다: 항목 05가 같은 규칙으로 `bodyPr@anchor`를
+// 그 값은 **조용히 버려진다** (경고는 값 층의 몫이고 렌더러에는 진단 통로가 없다).
+// 내보내는 이유는 ShapePreset과 같다: PPTX 렌더러가 같은 규칙으로 `bodyPr@anchor`를
 // 골라야 두 타깃의 앵커가 갈라지지 않는다.
 func ShapeAnchor(elem *soml.Element) soml.TextAnchor {
 	if elem == nil {
@@ -595,7 +593,7 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	// 텍스트 영역은 **담을 것이 있을 때만** 모양을 바꾼다 (ADR 0040) — 빈 도형은 놓을 글자가
+	// 텍스트 영역은 **담을 것이 있을 때만** 모양을 바꾼다 — 빈 도형은 놓을 글자가
 	// 없으므로 인셋이 아무것도 하지 않고, 그래도 내면 골든 열두 장에 빈 래퍼와 쓰이지 않는
 	// 패딩이 남아 정작 텍스트가 어디 놓였는지가 묻힌다 (`anchor`가 첫 자식에서 오는 것과 같은
 	// 자리: 박스 CSS의 일부는 내용이 있을 때만 뜻이 있다).
@@ -621,7 +619,7 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	if err := writeShapeInk(b, geom, *style, deck.Theme, ElementID(slide.Index, path)); err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	// 백분율 인셋 프리셋은 텍스트를 그 사각형에 담는 래퍼를 하나 더 갖는다 (ADR 0040) —
+	// 백분율 인셋 프리셋은 텍스트를 그 사각형에 담는 래퍼를 하나 더 갖는다 —
 	// 인셋이 px인 rounded-rect는 패딩으로 받았으므로 구조가 오늘과 같다.
 	body := text.HasPercent()
 	if body {
@@ -704,7 +702,7 @@ func writeShapeInk(b *strings.Builder, geom shapeGeometry, style soml.ShapeStyle
 // 선언이 온다.
 //
 // text(프리셋의 텍스트 영역)에 백분율이 있으면 **여백과 앵커는 여기서 빠진다** — 그 둘은
-// 텍스트가 사는 사각형의 성질이고, 텍스트가 래퍼로 옮겨 가면 래퍼가 받아야 한다 (ADR 0040).
+// 텍스트가 사는 사각형의 성질이고, 텍스트가 래퍼로 옮겨 가면 래퍼가 받아야 한다.
 func shapeBoxCSS(style soml.ShapeStyle, elem *soml.Element, text ShapeInsets) ([]string, error) {
 	var decls []string
 	if !text.HasPercent() {
@@ -740,7 +738,7 @@ func shapeBoxCSS(style soml.ShapeStyle, elem *soml.Element, text ShapeInsets) ([
 	return decls, nil
 }
 
-// shapeBodyCSS는 프리셋의 텍스트 영역을 차지하는 래퍼의 CSS 선언이다 (ADR 0040).
+// shapeBodyCSS는 프리셋의 텍스트 영역을 차지하는 래퍼의 CSS 선언이다.
 //
 // 네 변을 백분율 `left`/`top`/`right`/`bottom`으로 내는 이유: 인셋의 기준은 도형 박스이고
 // 절대 배치의 백분율은 **각 축의** 포함 블록 크기를 쓴다 (padding/margin 백분율은 네 변 모두
@@ -748,7 +746,7 @@ func shapeBoxCSS(style soml.ShapeStyle, elem *soml.Element, text ShapeInsets) ([
 // 대가는 도형에 확정 높이가 필요한 것이고, 값 층이 그 조합을 먼저 막는다 (core/shape.go).
 //
 // 여백과 앵커가 여기 오는 이유는 두 타깃의 뜻이 같아야 하기 때문이다: PPTX에서 `pad`는
-// `bodyPr` 인셋이고 그것은 프리셋 텍스트 영역 **안쪽에** 들어간다 (실측 — ADR 0040).
+// `bodyPr` 인셋이고 그것은 프리셋 텍스트 영역 **안쪽에** 들어간다 (실측).
 func shapeBodyCSS(style soml.ShapeStyle, elem *soml.Element, text ShapeInsets) ([]string, error) {
 	decls := []string{
 		"left: " + percentValue(text.L),
@@ -823,8 +821,7 @@ func anchorValue(anchor soml.TextAnchor) (string, error) {
 	return "", fmt.Errorf("anchor %q는 세로 앵커 어휘 밖이다", string(anchor))
 }
 
-// shapeInkCSS는 확정된 도형 외관을 그림의 CSS 선언 목록으로 컴파일한다 (외관 매핑 표의 도형 외관 —
-// docs/reference/appearance.md).
+// shapeInkCSS는 확정된 도형 외관을 그림의 CSS 선언 목록으로 컴파일한다 (외관 매핑 표의 도형 외관).
 //
 // **순서는 매핑 표의 행 순서다** (fill → border → shadow → opacity → flip) — 표와 코드를 나란히
 // 읽을 수 있어야 "표에 있고 코드에 없는 행"이 눈에 띈다 (그 대조를 테스트가 어휘 목록
@@ -906,7 +903,7 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, 
 		// 나온다는 계약). `box-shadow`가 아니라 `filter: drop-shadow`인 이유: box-shadow는
 		// 박스의 사각형을 따르므로 열두 종 중 아홉이 엉뚱한 사각 그림자를 얻는다. drop-shadow는
 		// 실루엣의 알파를 따라가 OOXML `outerShdw`와 같은 그림이 된다 (외관 매핑 표의
-		// `shadow` 행이 `drop-shadow`인 이유다 — 항목 07).
+		// `shadow` 행이 `drop-shadow`인 이유다).
 		if _, ok := theme.Shadow(style.Shadow.Name); !ok {
 			// var()는 정의되지 않은 변수를 조용히 무시한다 — 검사하지 않으면 그림자가
 			// 사라지고 아무 에러도 나지 않는다 (colorValue와 같은 근거).
@@ -917,8 +914,7 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, 
 	if style.Opacity != nil {
 		// **채움·테두리에만** 걸린다 (그림 svg의 선언이므로 자식 텍스트는 흐려지지 않는다).
 		// OOXML이 알파를 `solidFill`·`ln` 안에 싣는 것과 짝이다 — 도형 전체 투명도는
-		// `a:alphaModFix` 효과이고 두 타깃이 그 지점에서 갈라지면 같은 덱이 다르게 보인다
-		// (NOTES 04/02의 열린 질문 (b)를 여기서 닫는다).
+		// `a:alphaModFix` 효과이고 두 타깃이 그 지점에서 갈라지면 같은 덱이 다르게 보인다.
 		if *style.Opacity < 0 || *style.Opacity > 1 {
 			return nil, "", fmt.Errorf("불투명도 %s가 0~1 밖이다", formatNumber(*style.Opacity))
 		}
@@ -938,7 +934,7 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, 
 }
 
 // defsBlock은 그라디언트 정의들을 svg `<defs>` 블록 하나로 감싼다 (없으면 빈 문자열 —
-// def가 없는 도형의 산출물은 이 iteration 전과 바이트가 같다).
+// def가 없는 도형의 산출물에는 `<defs>`가 생기지 않는다).
 func defsBlock(defs []string) string {
 	if len(defs) == 0 {
 		return ""
@@ -1104,10 +1100,10 @@ func shapeCSS() string {
      글자가 그림 위에 오게 한다. z-index로 그림을 내리는 길은 스택 문맥에 따라 슬라이드
      바탕 아래로 사라질 수 있어 쓰지 않는다.
 
-     목록이 다섯 줄인 이유는 **배경 모드**다 (ADR 0049): 도형이 컨테이너를 담으면 올릴 것이
+     목록이 다섯 줄인 이유는 **배경 모드**다: 도형이 컨테이너를 담으면 올릴 것이
      글자가 아니라 컨테이너다. 자식 전부를 한 줄로 집는 길(> :not(.balpyo-shape-ink))은 쓰지
      않는다 — 특정도 (0,2,0)이 아래 .balpyo-shape-body (0,1,0)를 이겨 프리셋 텍스트 영역의
-     절대 배치가 풀린다 (ADR 0040이 만든 래퍼가 흐름으로 돌아간다). */
+     절대 배치가 풀린다 (텍스트 영역 래퍼가 흐름으로 돌아간다). */
   .balpyo-shape > .balpyo-text,
   .balpyo-shape > .balpyo-row,
   .balpyo-shape > .balpyo-col,
@@ -1116,7 +1112,7 @@ func shapeCSS() string {
     position: relative;
   }
 
-  /* 프리셋의 텍스트 영역 (ADR 0040). 네 변의 인셋은 인라인 백분율이고, 이 규칙은 "그
+  /* 프리셋의 텍스트 영역. 네 변의 인셋은 인라인 백분율이고, 이 규칙은 "그
      사각형이 박스 안의 절대 배치 상자이며 텍스트가 세로로 쌓인다"는 정의만 갖는다.
      그림보다 문서 순서에서 뒤에 오므로 글자가 그림 위에 칠해진다 (위 규칙과 같은 이유로
      z-index를 쓰지 않는다). */

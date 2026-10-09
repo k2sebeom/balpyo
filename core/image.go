@@ -7,8 +7,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **이미지 속성의 값 해석**이다 (docs/reference/soml/image.md의 속성
-// 표) — 파서가 이름만 본 속성을 확정된 이미지 외관(soml.ImageStyle)으로 눕힌다.
+// 이 파일은 **이미지 속성의 값 해석**이다 — 파서가 이름만 본 속성을 확정된 이미지 외관(soml.ImageStyle)으로 눕힌다.
 //
 // 텍스트(resolveText)·배치(resolveLayout)·도형(resolveShape)에 이어 **네 번째 갈래**이고,
 // 구조는 도형의 것을 그대로 쓴다: 인라인 패치를 만들어 테마의 두 단(컴포넌트 기본값·variant)
@@ -46,8 +45,8 @@ func (r *resolver) resolveImage(elem *soml.Element) {
 }
 
 // imageVariant는 `variant`를 테마의 **이미지** variant 표에서 찾는다 — 모르는 이름은 에러가
-// 아니라 경고 + 빈 패치다 (ADR 0067 결정 6, 텍스트·도형과 같은 정책이고 문구도 같은 곳에서 나온다 —
-// warnUnknownVariant). 나열하는 어휘가 이미지의 것이어야 저자가 이 테마에 있는 이름으로 간다.
+// 아니라 경고 + 빈 패치다 (variant 이름은 테마의 것이다 — 텍스트·도형과 같은 정책이고 문구도 같은
+// 곳에서 나온다: warnUnknownVariant). 나열하는 어휘가 이미지의 것이어야 저자가 이 테마에 있는 이름으로 간다.
 func (r *resolver) imageVariant(elem *soml.Element) imagePatch {
 	attr, ok := r.variantAttr(elem)
 	if !ok {
@@ -105,7 +104,7 @@ func (r *resolver) imageAttrs(elem *soml.Element, style *soml.ImageStyle) imageP
 				patch.border = &border
 			}
 		case "radius":
-			// **프리셋 제약이 없다**: ADR 0019(`radius`는 `rounded-rect` 전용)의 근거는 프리셋
+			// **프리셋 제약이 없다**: 도형에서 `radius`가 `rounded-rect` 전용인 근거는 프리셋
 			// 기하에 반경 조정값 자리가 없다는 것이었고, 그림은 프리셋이 아니라 자기 클립을
 			// 갖는다 (웹 `border-radius`, PPTX `pic/spPr/prstGeom prst="roundRect"`). 값 문법은
 			// 도형과 같은 함수다 (radiusValue) — 갈라지면 같은 표기가 자리에 따라 다르게 읽힌다.
@@ -154,7 +153,7 @@ func (r *resolver) imageAttrs(elem *soml.Element, style *soml.ImageStyle) imageP
 // 이동은 이 제품이 값싸다고 약속한 조작이다. 대가는 하나뿐이다: 챕터 안 슬라이드가 `assets/`를
 // 가리킬 때 경로가 길어지지 않는다 (오히려 짧아진다).
 //
-// `assets/` 아래일 것은 **강제하지 않는다** — 프로젝트 구조(docs/index.md)는 관례이고 프로젝트 루트
+// `assets/` 아래일 것은 **강제하지 않는다** — 프로젝트 구조는 관례이고 프로젝트 루트
 // 안이면 충분하다. 강제하면 테마 에셋·챕터별 그림의 자리를 지금 정해야 한다.
 //
 // **속성이 없으면 에러다** (`type`과 같은 결): 그림의 경로는 추측할 수 없고, 빈 그림을 그리는
@@ -260,7 +259,7 @@ func srcScheme(raw string) string {
 func imageExtReason(ext string) string {
 	switch strings.ToLower(ext) {
 	case ".svg":
-		return "PPTX는 벡터를 확장 요소(svgBlip)와 래스터 폴백으로 실어 소비자마다 다르게 열린다 — png나 jpeg로 내보낸다 (벡터 그래픽은 <icon>의 자리다)"
+		return "PPTX는 벡터를 확장 요소(svgBlip)와 래스터 폴백으로 실어 소비자마다 다르게 열린다 — png나 jpeg로 내보낸다"
 	case ".gif", ".apng":
 		return "애니메이션에는 양 타깃의 대응이 없다 — png나 jpeg로 내보낸다"
 	case ".webp", ".avif", ".heic":
@@ -302,7 +301,7 @@ var cssOnlyFits = map[string]bool{"fill": true, "none": true, "scale-down": true
 //
 // `alt=""`를 막지 않는다: `<img>`에서 속성 없음과 빈 문자열은 스크린 리더에 다른 뜻이고, 빈
 // 문자열이 "장식 이미지"의 표기다. 생략과 `alt=""`가 같은 확정 값이 되는 것까지가 이 결정의
-// 일부다 — 생략한 그림도 웹에서 `alt=""`로 나가므로(항목 01의 결정) 두 표기가 같은 산출물을
+// 일부다 — 생략한 그림도 웹에서 `alt=""`로 나가므로 두 표기가 같은 산출물을
 // 낸다. 값 **없는** `alt`은 여전히 에러다: 뜻을 정할 수 없는 형태다.
 func (r *resolver) imageAlt(attr soml.Attr) (string, bool) {
 	if !attr.HasValue {

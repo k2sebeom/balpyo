@@ -58,7 +58,7 @@ func TestBuildCommandOutFlagOverridesConfig(t *testing.T) {
 	}
 }
 
-// `--check-layout`은 좌표를 쓰는 타깃이 없어도 배치를 검사한다 (ADR 0039) — 저작 루프가
+// `--check-layout`은 좌표를 쓰는 타깃이 없어도 배치를 검사한다 — 저작 루프가
 // 넘침을 빌드 로그에서 보는 길이다. 경고이므로 종료 코드는 0이고, `--strict`가 그것을 막는다.
 func TestBuildCheckLayoutPrintsWarnings(t *testing.T) {
 	testkit.RequireChromium(t)

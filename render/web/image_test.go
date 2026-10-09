@@ -11,7 +11,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **외관 매핑 표(docs/reference/appearance.md)의 이미지 행 회귀 장치**다 — 외관 표, `fit` 매핑, 에셋 산출 파일.
+// 이 파일은 **외관 매핑 표의 이미지 행 회귀 장치**다 — 외관 표, `fit` 매핑, 에셋 산출 파일.
 
 // imageFixture는 실제 에셋 바이트를 가진 유일한 픽스처다.
 const imageFixture = "05_image"

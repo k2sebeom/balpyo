@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// 동일성 판정과 구조 골든은 환경과 무관하다 (TASKS R4 · ADR 0064) — 폰트가 다른 호스트에서도 초록이어야
+// 동일성 판정과 구조 골든은 환경과 무관하다 — 폰트가 다른 호스트에서도 초록이어야
 // 한다. 다른 호스트를 띄우는 대신 폰트를 바꾼다: 테마의 글꼴 토큰을 metric이 전혀 다른 고정폭으로 갈아
 // 끼우면 측정 rect는 움직이지만, 두 트리는 여전히 같고 layout.txt는 한 바이트도 움직이지 않아야 한다.
 func TestParityHoldsUnderDifferentFonts(t *testing.T) {

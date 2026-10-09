@@ -8,7 +8,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 코드 하이라이팅의 값 층 (ADR 0051): `<pre>`의 문자 데이터가 합성 인라인 런이 되고, 색은 테마의
+// 코드 하이라이팅의 값 층: `<pre>`의 문자 데이터가 합성 인라인 런이 되고, 색은 테마의
 // `code.tokens`에서 오며, 탭은 칼럼을 세어 펴진다. 렌더러는 이 모양을 그대로 입력으로 받는다.
 
 // codeRuns는 `<pre>`의 자식을 `"<색 토큰 또는 plain>|<글자>"` 목록으로 눕힌다. 색은 토큰 이름이어야
@@ -83,7 +83,7 @@ func TestHighlightCoalescesAdjacentClasses(t *testing.T) {
 }
 
 // 종류 → 색은 **테마**가 정한다 (components.json의 code.tokens). minimal의 표 전체를 여기서
-// 못 박는다 — 번호는 위계가 아니므로(ADR 0050) 이 대응은 눈으로 고른 것이고, 바꾸려면
+// 못 박는다 — 강조색 번호는 위계가 아니므로 이 대응은 눈으로 고른 것이고, 바꾸려면
 // 테스트를 함께 읽어야 한다.
 func TestHighlightUsesThemeTokenTable(t *testing.T) {
 	pre := preOf(t, `<slide><pre lang="xml"><![CDATA[<slide layout="content">
@@ -122,7 +122,7 @@ func main() {}</pre></slide>`)
 	}
 }
 
-// 탭은 **칼럼을 세어** 펴진다 (D15). gofmt 출력을 그대로 붙여 넣을 수 있어야 하고, 폭은
+// 탭은 **칼럼을 세어** 펴진다. gofmt 출력을 그대로 붙여 넣을 수 있어야 하고, 폭은
 // 테마가 정한다 (minimal은 2). 정지점은 "다음 배수까지"지 "N칸"이 아니다 — 글자 하나 뒤의
 // 탭은 한 칸만 먹는다.
 func TestHighlightExpandsTabsByColumn(t *testing.T) {
@@ -154,7 +154,7 @@ func TestHighlightExpandsTabsBeforeTokenising(t *testing.T) {
 	}
 }
 
-// lang 어휘는 **엔진**이 닫는다 (ADR 0051) — 목록 밖은 에러이고 진단이 쓸 수 있는 이름을
+// lang 어휘는 **엔진**이 닫는다 — 목록 밖은 에러이고 진단이 쓸 수 있는 이름을
 // 나열한다. variant처럼 폴백하지 않는 이유: variant 어휘는 테마의 사유물이라 다른 테마의
 // 덱도 열려야 하지만, lang은 엔진 어휘이므로 목록 밖 이름은 오타이거나 미지원이다.
 func TestHighlightLangVocabulary(t *testing.T) {
@@ -255,7 +255,7 @@ func TestCodeComponentsAreValidated(t *testing.T) {
 
 // themeFSWithCode는 `code` 절만 다른 테마 패키지다 (themeFSWithChrome의 code 판). 토큰·역할은
 // 완전한 표를 쓴다 (theme_select_test의 fullTokens·componentsWithCode) — 로더가 완전성을
-// 요구하므로(ADR 0052) 빈 역할 표로는 code 절까지 도달하지 못한다. "테마에 없는 색 토큰"을
+// 요구하므로 빈 역할 표로는 code 절까지 도달하지 못한다. "테마에 없는 색 토큰"을
 // 판정하는 이름(`brand`)은 그 완전한 팔레트에도 없으므로 이 표에서도 갈린다.
 func themeFSWithCode(code string) fstest.MapFS {
 	return memTheme(fullTokens, componentsWithCode(code))

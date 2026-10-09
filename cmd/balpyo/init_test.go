@@ -10,7 +10,7 @@ import (
 	"github.com/k2sebeom/balpyo/internal/testkit"
 )
 
-// `balpyo init`의 계약은 파일 목록이 아니라 **그 다음 명령이 성공하는 것**이다 (ADR 0048).
+// `balpyo init`의 계약은 파일 목록이 아니라 **그 다음 명령이 성공하는 것**이다.
 // 그래서 이 테스트는 init → build를 이어서 돌린다.
 
 func TestInitScaffoldBuildsCleanly(t *testing.T) {

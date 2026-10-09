@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// `reveal`의 값 어휘는 값 층의 것이다 (ADR 0063 결정 2): 값이 없으면 **자기 차례**이고,
+// `reveal`의 값 어휘는 값 층의 것이다: 값이 없으면 **자기 차례**이고,
 // 값이 있으면 1 이상의 정수다. 파서는 이름만 보므로(soml) 0·음수·소수·낱말은 여기서 잡는다.
 func TestRevealValueIsOptionalOrPositiveInteger(t *testing.T) {
 	for _, src := range []string{
@@ -21,7 +21,7 @@ func TestRevealValueIsOptionalOrPositiveInteger(t *testing.T) {
 }
 
 // 틀린 값은 진단이고, **그 항목만** 순서를 잃는다 — 틀린 값 하나가 나머지 항목의 진단을
-// 삼키지 않도록 값 해석이 항목마다 끝난다 (ADR 0063 결정 2).
+// 삼키지 않도록 값 해석이 항목마다 끝난다.
 func TestRevealValueErrors(t *testing.T) {
 	tests := []struct {
 		name string

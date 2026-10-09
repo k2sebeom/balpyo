@@ -1,4 +1,4 @@
-/* quote 슬롯 영역 (ADR 0035·0044) — 인용문을 세로 가운데에 두고 출처를 그 아래에 붙인다
+/* quote 슬롯 영역 — 인용문을 세로 가운데에 두고 출처를 그 아래에 붙인다
    (흐름 quote와 같은 뜻). 가로 정렬은 저자의 몫이다 — 출처를 오른쪽으로 보내는 관용
    (`<p slot="attribution" align="end">`)이 뜻을 가져야 하므로 justify-items를 쓰지 않는다. */
 display: grid;

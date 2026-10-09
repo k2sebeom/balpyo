@@ -242,8 +242,8 @@ func TestResolveShapeVariantStage(t *testing.T) {
 	}
 }
 
-// 모르는 variant는 경고 + 컴포넌트 기본 외관 폴백이다 (ADR 0067 결정 6 — 다른 테마로 만든
-// 콘텐츠도 빌드되어야 한다). --strict는 에러로 승격하고, 인라인 속성은 계속 해석한다.
+// 모르는 variant는 경고 + 컴포넌트 기본 외관 폴백이다 (다른 테마로 만든 콘텐츠도
+// 빌드되어야 한다). --strict는 에러로 승격하고, 인라인 속성은 계속 해석한다.
 func TestResolveShapeUnknownVariantWarnsAndFallsBack(t *testing.T) {
 	attrs := `type="rect" variant="card-heder"`
 	deck, diags := resolveSlide(t, shapeSlide(attrs))

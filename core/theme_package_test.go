@@ -12,7 +12,7 @@ import (
 )
 
 // 내장 minimal의 매니페스트와 토큰 표를 값·순서까지 리터럴로 못 박는다 — tokens.json이 실수로
-// 바뀌면 골든보다 여기가 먼저 잡는다 (ADR 0052).
+// 바뀌면 골든보다 여기가 먼저 잡는다.
 func TestLoadBuiltinMinimal(t *testing.T) {
 	pkg := loadBuiltinTheme("minimal")
 	if pkg.manifest.Name != "minimal" {
@@ -144,7 +144,7 @@ func TestLoadBuiltinComponents(t *testing.T) {
 	}
 }
 
-// 닫힌 어휘: 모르는 키는 에러다. `extends`는 theme.json에서만 선언한다 (ADR 0054).
+// 닫힌 어휘: 모르는 키는 에러다. `extends`는 theme.json에서만 선언한다.
 func TestLoadComponentsRejectsUnknownField(t *testing.T) {
 	fsys := fstest.MapFS{
 		"t/components.json": {Data: []byte(`{"extends":"base","text":{"roles":[]}}`)},
@@ -227,7 +227,7 @@ func TestMinimalLayoutStyles(t *testing.T) {
 	}
 }
 
-// 슬롯 카탈로그(soml)와 테마 영역 CSS의 대조 (ADR 0044 D3). `grid-template-areas`에 이름이
+// 슬롯 카탈로그(soml)와 테마 영역 CSS의 대조. `grid-template-areas`에 이름이
 // 빠지면 그 슬롯은 자동 배치로 조용히 떨어진다.
 func TestBuiltinThemesCoverEverySlotArea(t *testing.T) {
 	for _, name := range BuiltinThemes() {
@@ -268,7 +268,7 @@ func checkSlotAreas(t *testing.T, pkg themePackage) {
 	}
 }
 
-// 내장 테마는 표준 레이아웃 전부를 구현하고(폴백 없음 — ADR 0052 결정 7), 레이아웃 CSS는
+// 내장 테마는 표준 레이아웃 전부를 구현하고(폴백 없음 — 테마를 섞지 않는다), 레이아웃 CSS는
 // 배치 전용이다 (외관은 PPTX 마스터에 도달하지 못한다).
 func TestBuiltinThemesImplementEveryStandardLayout(t *testing.T) {
 	for _, name := range BuiltinThemes() {

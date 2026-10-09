@@ -13,8 +13,7 @@ import (
 //
 // 왜 숫자를 손으로 적는가: 이 게이트가 놓칠 수 있는 가장 조용한 사고가 "덱에서 장이 사라졌는데
 // 남은 장이 깨끗하게 빌드되는 것"이다. 경로가 둘 있다 — 파일 이름을 `_`로 시작하게 고치는 것
-// (작업 중 관례라 수집에서 빠진다)과 파일을 지우는 것. 숫자 하나가 그 둘을 빨간불로 만든다
-// (ADR 0056).
+// (작업 중 관례라 수집에서 빠진다)과 파일을 지우는 것. 숫자 하나가 그 둘을 빨간불로 만든다.
 var exampleSlideCounts = map[string]int{
 	"balpyo-intro":        12,
 	"incident-postmortem": 10,
@@ -25,7 +24,7 @@ var exampleSlideCounts = map[string]int{
 // 0건**이어야 한다.
 //
 // 이것이 CI에서 예제를 빌드한다는 요구의 실체다 — 잡의 이름이 아니라 실패의 유무가 그 사실이고,
-// 이 테스트는 `go test ./...`에 있으므로 `make test`가 곧 게이트다 (ADR 0056).
+// 이 테스트는 `go test ./...`에 있으므로 `make test`가 곧 게이트다.
 func TestExamplesBuildClean(t *testing.T) {
 	examples := testkit.Examples(t)
 	if len(examples) != len(exampleSlideCounts) {
@@ -53,7 +52,7 @@ func TestExamplesBuildClean(t *testing.T) {
 			if len(result.Written) < 2 {
 				t.Errorf("예제 %s의 산출물이 %v다 — 웹과 PPTX 둘 다 나와야 한다", example.Name, result.Written)
 			}
-			// PPTX는 패키지 규칙과 ECMA-376 스키마를 지나야 한다 (ADR 0065) — 어휘가 겹친 실제 덱이
+			// PPTX는 패키지 규칙과 ECMA-376 스키마를 지나야 한다 — 어휘가 겹친 실제 덱이
 			// 픽스처 하나하나가 닿지 않는 조합을 밟는다.
 			for _, name := range result.Written {
 				if !strings.HasSuffix(name, ".pptx") {

@@ -50,7 +50,7 @@ var shared struct {
 //
 // 공유하는 이유는 스위트 시간이다: 기동이 빌드 한 번보다 비싸서, 빌드마다 브라우저를 띄우면
 // `go test ./...`의 대부분이 기동 시간이었다. 세션은 페이지를 열 때마다 새 문서를 그리므로
-// (`balpyo watch`의 웜 세션과 같은 근거 — ADR 0046) 앞 테스트의 상태가 다음 측정에 남지 않는다.
+// (`balpyo watch`의 웜 세션과 같은 근거) 앞 테스트의 상태가 다음 측정에 남지 않는다.
 // 테스트를 병렬로 돌리지 않는다는 전제다 — 세션 하나는 한 번에 한 페이지를 연다.
 //
 // 정리는 그 패키지의 TestMain이 CloseSharedSession으로 한다.
@@ -85,9 +85,9 @@ func (b *Browser) Load(t testing.TB, htmlPath string) {
 //
 // 잘라내기는 geom.Session.Clip이 한다 — 문서 좌표 rect를 읽어 CaptureBeyondViewport로 그
 // 사각형만 잘라낸다. 요소를 뷰포트로 스크롤한 뒤 잘라내는 방식(chromedp의 요소 스크린샷
-// 헬퍼)을 쓰지 않는 이유는 그 함수의 주석에 있다 (Iteration 0에서 덱 여백이 그대로 diff에
-// 잡혔다). 좌표를 지오메트리 패스와 **같은 스니펫**에서 얻으므로 스크린샷과 PPTX 좌표가
-// 갈라지지 않는다.
+// 헬퍼)을 쓰지 않는 이유는 그 함수의 주석에 있다 (덱 여백이 그대로 잘라낸
+// 그림에 들어간다). 좌표를 지오메트리 패스와 **같은 스니펫**에서 얻으므로 스크린샷과 PPTX
+// 좌표가 갈라지지 않는다.
 func (b *Browser) ScreenshotElement(t testing.TB, selector string) image.Image {
 	t.Helper()
 	rects := b.Rects(t, selector)

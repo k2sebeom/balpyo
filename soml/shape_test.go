@@ -25,7 +25,7 @@ func TestParseShape(t *testing.T) {
 			want: `shape[type=rect](text[anchor=end]("배지") h3[anchor=center]("제목") p("배포 " strong("자동화")))`,
 		},
 		{
-			// 컨테이너가 있으면 도형은 배경이 된다 (ADR 0049) — 컨테이너 넷이 열리고, 그림·리스트·
+			// 컨테이너가 있으면 도형은 배경이 된다 — 컨테이너 넷이 열리고, 그림·리스트·
 			// 중첩 도형은 컨테이너를 거쳐 들어온다.
 			name: "도형 안 컨테이너 넷과 그 안의 리스트·도형",
 			src: `<slide><shape type="rect"><text>헤더</text><row><text>a</text></row><col><ul><li>항목</li></ul><shape type="ellipse"/></col>` +
@@ -40,7 +40,7 @@ func TestParseShape(t *testing.T) {
 	})
 }
 
-// 도형의 배치 위반과 닫힌 속성 — 직속 자식은 텍스트와 컨테이너뿐이다 (ADR 0049 결정 4).
+// 도형의 배치 위반과 닫힌 속성 — 직속 자식은 텍스트와 컨테이너뿐이다.
 func TestParseShapeErrors(t *testing.T) {
 	runDiagCases(t, []diagCase{
 		{
@@ -68,7 +68,7 @@ func TestParseShapeErrors(t *testing.T) {
 	})
 }
 
-// 모드 판정은 **어휘 층의 술어 하나**다 (ADR 0049 결정 3) — 값 층·웹·PPTX가 같은 함수를 읽어야
+// 모드 판정은 **어휘 층의 술어 하나**다 — 값 층·웹·PPTX가 같은 함수를 읽어야
 // 세 층이 갈라질 방법이 없다. 모드는 **직계 자식**이 정한다.
 func TestShapeHoldsLayout(t *testing.T) {
 	tests := []struct {

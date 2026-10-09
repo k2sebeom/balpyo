@@ -164,13 +164,13 @@ func TestRenderTableFirstRowHint(t *testing.T) {
 	if !strings.Contains(out, "<a:tblPr>") {
 		t.Errorf("힌트 없는 tblPr이 빈 속성으로 나오지 않았다:\n%s", out)
 	}
-	// 줄무늬 힌트는 어느 표에도 켜지 않는다 — 줄무늬 색은 셀 채움에 이미 구워져 있다 (ADR 0036).
+	// 줄무늬 힌트는 어느 표에도 켜지 않는다 — 줄무늬 색은 셀 채움에 이미 구워져 있다.
 	if strings.Contains(out, "bandRow") {
 		t.Errorf("줄무늬 힌트가 나갔다:\n%s", out)
 	}
 }
 
-// 줄무늬 채움이 **셀 채움으로 구워져** 나오는지 못 박는다 (ADR 0036의 "스타일 없음 + 명시
+// 줄무늬 채움이 **셀 채움으로 구워져** 나오는지 못 박는다 ("스타일 없음 + 명시
 // tcPr") — 표 스타일 상속에 기대면 뷰어마다 다른 색이 나온다. 홀수 본문 행(둘째 행)만 받는다.
 func TestRenderTableStripedFillsAreBaked(t *testing.T) {
 	deck := tableDeck(t, `  <table variant="striped">

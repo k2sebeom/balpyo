@@ -58,7 +58,7 @@ func New(opts Options) (*Runner, error) {
 	}
 	if !hasHTML(targets) {
 		// html이 없으면 볼 페이지가 없다. pptx만 감시하는 것은 "저장하면 파일이 갱신된다"일 뿐
-		// 이고, 그것은 `balpyo build`를 다시 돌리는 일이다 (ADR 0046에서 열지 않은 항목이다).
+		// 이고, 그것은 `balpyo build`를 다시 돌리는 일이다.
 		return nil, fmt.Errorf("watch는 html 타깃이 필요하다: --target에 html을 넣어라")
 	}
 	opts.Build.Targets = targets
@@ -203,7 +203,7 @@ func hasHTML(targets []render.Target) bool {
 	return false
 }
 
-// warmSession은 루프가 재사용하는 브라우저다 (ADR 0046).
+// warmSession은 루프가 재사용하는 브라우저다.
 //
 // 지오메트리 패스 하나의 비용은 대부분 **기동**이다(~0.6초). 저작 루프가 루프마다 그 값을 내면
 // `--check-layout`이나 pptx를 켠 감시는 쓸 수 없이 느려진다. 그래서 세션 하나를 들고 있는다.

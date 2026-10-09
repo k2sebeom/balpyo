@@ -26,7 +26,7 @@ func renderTable(t *testing.T, deck *soml.Deck) string {
 }
 
 // TestRenderTableIsARealTable은 표가 진짜 `<table>`/`<tr>`/`<th>`/`<td>`로 나오고 프레임·행·
-// 셀이 **모두** 식별자를 갖는지 못 박는다 (ADR 0036: 열 너비·행 높이는 잰 셀 박스에서 온다 —
+// 셀이 **모두** 식별자를 갖는지 못 박는다 (열 너비·행 높이는 잰 셀 박스에서 온다 —
 // 셀에 식별자가 없으면 PPTX 격자를 잴 수 없다).
 func TestRenderTableIsARealTable(t *testing.T) {
 	out := renderTable(t, subsetDeck(t, `  <table>
@@ -52,7 +52,7 @@ func TestRenderTableIsARealTable(t *testing.T) {
 
 // TestRenderTableCellAppearance는 셀의 확정 외관이 **인라인 style로 전부 명시**되는지 못
 // 박는다 — 브라우저 기본 스타일(`th { font-weight: bold; text-align: center }`)이나 테마 표
-// 스타일 상속이 셀 모양을 정할 자리를 남기지 않는다 (ADR 0036의 "명시 tcPr"의 웹 절반).
+// 스타일 상속이 셀 모양을 정할 자리를 남기지 않는다 (PPTX "명시 tcPr"의 웹 절반).
 func TestRenderTableCellAppearance(t *testing.T) {
 	out := renderTable(t, subsetDeck(t, `  <table>
     <tr><th>머리</th></tr>

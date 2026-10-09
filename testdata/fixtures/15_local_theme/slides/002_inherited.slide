@@ -3,14 +3,13 @@
      온다 — corp는 `title` 하나만 다시 적었기 때문이다.
 
      `tagline`은 반대쪽 증인이다: 부모에 없던 이름이라 부모 순서 뒤에 붙었고(kicker · lead ·
-     tagline) 그래서 저자가 쓸 수 있는 variant가 되었다 — variant 어휘는 테마의 사유물이다
-     (ADR 0044).
+     tagline) 그래서 저자가 쓸 수 있는 variant가 되었다 — variant 어휘는 테마의 사유물이다.
 
      도형 하나가 **필드 단위 병합**을 보인다: corp의 components.json에는 `shape.default`의
      fill(연보라 surface)과 반경(corp가 더한 `xl` = 36px)만 있고, 테두리는 적히지 않아 minimal의
      `1 solid muted`가 남았다. 이름 붙은 표가 통째로 갈리는 것과 이름 없는 절이 필드로 갈리는
-     것의 차이가 한 도형에 보인다 (ADR 0054의 결정 8). 반경이 새 토큰인 것도 증인이다 —
-     색과 달리 반경·공간·그림자는 PPTX 슬롯에 묶이지 않아 자유롭게 더할 수 있다 (ADR 0055). -->
+     것의 차이가 한 도형에 보인다. 반경이 새 토큰인 것도 증인이다 —
+     색과 달리 반경·공간·그림자는 PPTX 슬롯에 묶이지 않아 자유롭게 더할 수 있다. -->
 <slide id="local-theme-inherited" layout="content">
   <text slot="title" role="heading">물려받은 값과 더한 값</text>
   <col slot="body" gap="md">

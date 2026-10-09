@@ -15,41 +15,37 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **테마 패키지 포맷**(docs/reference/theme.md)의 로더다 — Iteration 10이
-// core/theme.go의 하드코딩 표를 데이터로 해체하고, P4.2가 그 파일을 지웠다 (ADR 0052). 순서를
-// 그렇게 잡은 이유는 지워진 그 파일이 남긴 근거다: 하드코딩 표가 두 렌더러의 실제 요구를 드러낸
-// 다음에야 스키마를 파일로 고정한다. **이제 엔진에는 어떤 외관 값도 없다** — 값의 유일한 출처는 테마 패키지이고, 그
-// 대가로 로더가 완전성을 요구한다 (theme_require.go).
+// 이 파일은 **테마 패키지 포맷**의 로더다. **엔진에는 어떤 외관 값도 없다** — 값의 유일한
+// 출처는 테마 패키지이고, 그 대가로 로더가 완전성을 요구한다 (theme_require.go).
 //
-// 포맷은 **데이터 전용**이다 (JSON + CSS + 에셋, JS 없음 — ADR 0067 결정 11): `theme get`으로
+// 포맷은 **데이터 전용**이다 (JSON + CSS + 에셋, JS 없음): `theme get`으로
 // 받은 원격 테마가 임의 코드 실행 경로가 되어서는 안 된다. 로더는 fs.FS 위에서 도므로 내장
 // 테마(go:embed)와 프로젝트 로컬 테마(os.DirFS)가 같은 코드를 지난다.
 //
 // tokens.json·components.json이 객체가 아니라 **순서 있는 배열**을 쓰는 이유는 결정성이다
 // (JSON 객체 키 순서에 기대지 않는다): 모르는 variant 경고가 나열하는 목록과 PPTX clrScheme의
-// 슬롯 순서가 실행마다 같아야 한다 — 레퍼런스(docs/reference/theme.md "`tokens.json`")가
-// 같은 계약을 적는다. 값·순서를 파일에 못 박는 앵커는
+// 슬롯 순서가 실행마다 같아야 한다. 값·순서를 파일에 못 박는 앵커는
 // TestLoadBuiltinMinimal·TestLoadBuiltinComponents다
 // (기대값이 테스트에 리터럴로 적혀 있어 tokens.json이 실수로 움직이면 골든보다 먼저 잡힌다).
 
 // builtinThemes는 바이너리에 내장된 공식 테마다 — `balpyo init` 직후 네트워크·설치
 // 없이 예쁜 결과가 나오는 것이 첫인상을 지배하므로 기본 경로에서 네트워크를 제거한다.
 // 셋 다 같은 계약을 받고(11 레이아웃·모든 슬롯·팔레트 규칙·권장 variant 어휘) 그중 minimal이
-// 기본값이다 — **폴백 기준은 아니다** (ADR 0052: 테마를 섞지 않는다).
+// 기본값이다 — **폴백 기준은 아니다** (테마를 섞지 않는다).
 //
 //go:embed themes
 var builtinThemes embed.FS
 
-// themeDir는 테마 패키지들이 사는 디렉토리 이름이다 — 임베드 FS와 **프로젝트 루트에서 같다**
-// (ADR 0054): 구조가 같아야 외부 테마의 설명이 "이 디렉토리를 프로젝트로 옮긴다"로 끝나고,
+// themeDir는 테마 패키지들이 사는 디렉토리 이름이다 — 임베드 FS와 **프로젝트 루트에서 같다**:
+// 구조가 같아야 외부 테마의 설명이 "이 디렉토리를 프로젝트로 옮긴다"로 끝나고,
 // 로더가 두 출처에서 같은 코드를 지난다. (`//go:embed`는 리터럴만 받으므로 위 지시문은 이
 // 상수를 쓸 수 없다 — 둘이 갈리면 BuiltinThemes가 즉시 panic한다.)
 const themeDir = "themes"
 
 // BuiltinThemes는 내장 테마 이름 목록이다 (알파벳 정렬: editorial·ink·minimal).
 //
-// 공개하는 이유는 **어휘의 단일 출처**다 (ADR 0048): `balpyo init --theme`이 받을 수 있는
-// 이름이 곧 이 목록이어야 하고, 목록을 CLI에 적어 두면 내장 테마를 늘릴 때(P4.2) 두 곳이
+// 공개하는 이유는 **어휘의 단일 출처**다: `balpyo init --theme`이 받을 수 있는
+// 이름이 곧 이 목록이어야 하고, 목록을 CLI에 적어 두면 내장 테마를 늘릴 때 두 곳이
 // 갈라져 사용자가 값 층이 읽지 않는 이름을 `balpyo.json`에 갖게 된다.
 func BuiltinThemes() []string {
 	entries, err := fs.ReadDir(builtinThemes, themeDir)
@@ -78,24 +74,24 @@ func IsBuiltinTheme(name string) bool {
 	return false
 }
 
-// themeManifest는 theme.json의 파싱 결과다 (docs/reference/theme.md).
+// themeManifest는 theme.json의 파싱 결과다.
 type themeManifest struct {
 	Name string `json:"name"`
-	// Extends는 상속할 테마 이름이다 (ADR 0054) — 내장 테마에서는 비어 있다.
+	// Extends는 상속할 테마 이름이다 — 내장 테마에서는 비어 있다.
 	// 이름은 **프로젝트의 어휘**(내장 ∪ `themes/<이름>/`)에서 풀리므로 그 어휘를 모르는 loadTheme은
 	// 비지 않은 값을 진단한다: 상속을 푸는 자리는 loadThemeNamed 하나다.
 	Extends string `json:"extends"`
 	// Layouts는 이 테마가 구현하는 표준 레이아웃 이름 목록이다. 테마는 표준 카탈로그 11종을
-	// **전부** 선언해야 한다 — 빠뜨린 레이아웃을 다른 테마로 폴백하지 않는 근거는 ADR 0052에
-	// 있고, 그 계약은 TestBuiltinThemesImplementEveryStandardLayout이 지킨다. 테마 자체
+	// **전부** 선언해야 한다 — 빠뜨린 레이아웃을 다른 테마로 폴백하면 한 덱에 두 테마가 섞이고,
+	// 그 계약은 TestBuiltinThemesImplementEveryStandardLayout이 지킨다. 테마 자체
 	// 레이아웃은 **없다**: `<slide layout>`의 어휘는 soml.SlideLayouts() 11종으로 닫혀 있어
-	// (resolver.slideLayout) 목록에 더한 이름은 어떤 슬라이드도 요청할 수 없다 (ADR 0054의 결정 10).
+	// (resolver.slideLayout) 목록에 더한 이름은 어떤 슬라이드도 요청할 수 없다.
 	Layouts []string `json:"layouts"`
-	// Chrome은 덱 크롬(페이지 번호·푸터) 선언이다 (ADR 0045).
+	// Chrome은 덱 크롬(페이지 번호·푸터) 선언이다.
 	//
 	// 테마가 소유하는 것은 **자리·정렬·역할·제외 규칙**이고, 내용과 켜짐은 `balpyo.json`의
 	// footer·pageNumber다. 테마가 어떤 kind를 선언하지 않으면 그 크롬은 값 층에서 경고와
-	// 함께 미탑재된다 (ADR 0044의 슬롯 규칙 그대로) — "테마가 받아야 뜻이 있다".
+	// 함께 미탑재된다 (슬롯 규칙 그대로) — "테마가 받아야 뜻이 있다".
 	Chrome []chromeDeclFile `json:"chrome"`
 }
 
@@ -129,10 +125,10 @@ type themePackage struct {
 	// 캐스케이드 내부 타입으로 이미 눕혀 담는다 — resolveText/Shape/Image가 재변환 없이 읽는다.
 	components components
 	// layouts는 레이아웃 이름→배치 CSS 원문 맵이다 (layouts/*.css). 값은 아직 컴파일하지 않은
-	// 원문이다 — 슬롯 배치 컴파일은 10/03, 실체 CSS는 10/06이 채운다. 로더는 이 맵의 키 집합이
+	// 원문이다. 로더는 이 맵의 키 집합이
 	// theme.json의 layouts 선언과 정확히 일치함을 대조한다.
 	layouts map[string]string
-	// slotLayouts는 레이아웃 이름→**슬롯 영역** CSS 원문 맵이다 (layouts/*.slots.css, ADR 0035).
+	// slotLayouts는 레이아웃 이름→**슬롯 영역** CSS 원문 맵이다 (layouts/*.slots.css).
 	// layouts와 나란히 두지만 파일이 다르다 (`title.slots.css`): 흐름 배치(layouts)와 슬롯 영역은
 	// 겨누는 선택자가 달라 한 선언 블록에 섞을 수 없다. 슬롯 영역 파일은 **선택**이라(슬롯이
 	// 없는 canvas는 파일이 없다) 로더는 키가 선언된 레이아웃의 부분집합임만 확인한다.
@@ -247,7 +243,7 @@ type componentsFile struct {
 	Code    codeComponentsFile  `json:"code"`
 }
 
-// codeComponentsFile은 코드 블록의 테마 절이다 (ADR 0051). 표가 **종류 → 색 토큰**이고,
+// codeComponentsFile은 코드 블록의 테마 절이다. 표가 **종류 → 색 토큰**이고,
 // `tabSize`는 값 층이 탭을 펼 때 쓰는 칼럼 간격이다 — 둘 다 테마의 것이다: 코드의 색은
 // 팔레트의 일부이고, 탭 폭은 코드 슬라이드의 리듬이다.
 type codeComponentsFile struct {
@@ -332,7 +328,7 @@ type imageVariantFile struct {
 	Shadow *string `json:"shadow"`
 }
 
-// tableComponentsFile은 표 셀 외관 원본 스키마다 (ADR 0036). shape/image와 달리 `variants`
+// tableComponentsFile은 표 셀 외관 원본 스키마다. shape/image와 달리 `variants`
 // 배열이 없다: 표의 유일한 변형(줄무늬)은 프레임 `<table variant="striped">`가 켜는 셀
 // 채움이고(stripe), 셀 단위 variant는 v1에 없다 (soml/table.go의 근거). 그래서 표는 세 자리만
 // 갖는다 — 모든 셀의 기본값(cell), `<th>`에 얹는 델타(header), 줄무늬 채움(stripe).
@@ -405,7 +401,7 @@ type tableComponents struct {
 }
 
 // rawTheme는 테마 하나의 **원문 선언**이다 — 변환도 검사도 하기 전 상태다. 상속 병합이 이
-// 층에서 일어나기 때문에 있는 타입이다 (ADR 0054의 결정 8): 파일 스키마의 모양(이름 붙은 배열
+// 층에서 일어나기 때문에 있는 타입이다: 파일 스키마의 모양(이름 붙은 배열
 // 몇 개와 싱글톤 절 몇 개) 그대로 병합하면 규칙이 한 문장이고, 변환·완전성 검사는 병합
 // **결과**에 한 번만 돈다 — 부모를 따로 완전하게 만들지 않아도 되고 자식의 부분 파일이 홀로
 // requireTokens를 통과해야 하는 이상한 계약이 생기지 않는다.
@@ -413,8 +409,8 @@ type rawTheme struct {
 	manifest   themeManifest
 	tokens     tokensFile
 	components componentsFile
-	// layouts·slotLayouts는 레이아웃 이름 → CSS 원문이다 (파일 단위 병합의 단위 — ADR 0054의
-	// 결정 9). 파싱하지 않고 문자열로 나르는 이유는 병합이 파일을 통째로 갈아 끼우기 때문이다.
+	// layouts·slotLayouts는 레이아웃 이름 → CSS 원문이다 (파일 단위 병합의 단위). 파싱하지
+	// 않고 문자열로 나르는 이유는 병합이 파일을 통째로 갈아 끼우기 때문이다.
 	layouts     map[string]string
 	slotLayouts map[string]string
 }
@@ -423,7 +419,7 @@ type rawTheme struct {
 // "themes/minimal", 로컬은 프로젝트 상대 경로). 이름은 매니페스트가 소유한다.
 //
 // 상속을 여기서 풀지 않는 이유는 부모를 찾을 **이름 어휘**가 이 함수에 없다는 것이다 (어휘는
-// 내장 ∪ 프로젝트 로컬이고 그것을 아는 자리는 loadThemeNamed다 — ADR 0054).
+// 내장 ∪ 프로젝트 로컬이고 그것을 아는 자리는 loadThemeNamed다).
 func loadTheme(fsys fs.FS, dir string) (themePackage, error) {
 	raw, err := readRawTheme(fsys, dir)
 	if err != nil {
@@ -470,7 +466,7 @@ func readRawTheme(fsys fs.FS, dir string) (rawTheme, error) {
 }
 
 // buildThemePackage는 원문 선언 한 벌을 **변환·검사**해 패키지로 만든다 (상속 병합이 끝난
-// 뒤의 한 번 — ADR 0054의 결정 8·12).
+// 뒤의 한 번).
 func buildThemePackage(raw rawTheme) (themePackage, error) {
 	var pkg themePackage
 	pkg.manifest = raw.manifest
@@ -484,13 +480,13 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 	pkg.chrome = chrome
 
 	tokens := tokensFromFile(raw.tokens, pkg.manifest.Name)
-	// 완전성 검사는 변환 **직후**다 (ADR 0052의 결정 3): 폴백 테마가 없으므로 빠진 토큰은
+	// 완전성 검사는 변환 **직후**다: 폴백 테마가 없으므로 빠진 토큰은
 	// 산출물에서 영 값으로 나타난다 — 근거는 theme_require.go의 패키지 주석에 있다. 컴포넌트
 	// 표보다 먼저 보는 이유는 역할 검사가 이 표를 참조로 쓴다는 것이다.
 	if err := requireTokens(tokens); err != nil {
 		return pkg, err
 	}
-	// 색 토큰의 clrScheme 자리도 여기서 본다 (ADR 0055) — 필수 이름이 다 있는지 다음에 보는
+	// 색 토큰의 clrScheme 자리도 여기서 본다 — 필수 이름이 다 있는지 다음에 보는
 	// 이유는 순서가 진단의 품질이라는 것이다: 슬롯 상한("남은 자리가 없다")보다 빠진 이름이
 	// 먼저 읽혀야 테마 제작자가 표를 두 번 고치지 않는다.
 	if err := requireColorSlots(tokens); err != nil {
@@ -518,7 +514,7 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 	return pkg, nil
 }
 
-// loadChrome은 매니페스트의 크롬 선언을 검사해 타입 붙은 목록으로 만든다 (ADR 0045).
+// loadChrome은 매니페스트의 크롬 선언을 검사해 타입 붙은 목록으로 만든다.
 //
 // 값 어휘가 어긋나면 **로드를 멈춘다** (경고가 아니다): 테마의 오타를 조용히 무시하면 저자는
 // "표지에 번호가 왜 찍히는가"를 자기 슬라이드에서 찾게 되고, 테마는 저자가 고칠 수 없는
@@ -549,7 +545,7 @@ func loadChrome(manifest themeManifest) ([]chromeDecl, error) {
 }
 
 // chromeDeclOf는 선언 하나의 값 어휘를 검사한다. align·role은 **생략할 수 없다** — 테마가
-// 자리와 타이포그래피를 소유하기로 했으므로(ADR 0045) 기본값을 엔진에 두면 그 소유가 반으로
+// 자리와 타이포그래피를 소유하므로 기본값을 엔진에 두면 그 소유가 반으로
 // 쪼개진다.
 func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool) (chromeDecl, error) {
 	var decl chromeDecl
@@ -947,10 +943,10 @@ func borderFromString(s string) (*soml.Border, error) {
 }
 
 // readLayoutCSS는 dir/layouts/ 아래 CSS를 두 맵으로 읽는다 — 흐름 배치(`<이름>.css`)와 슬롯
-// 영역(`<이름>.slots.css`, ADR 0035). 키는 접미를 뗀 레이아웃 이름이다.
+// 영역(`<이름>.slots.css`). 키는 접미를 뗀 레이아웃 이름이다.
 //
 // 두 맵을 한 번에 읽는 이유는 디렉토리를 한 번만 훑기 때문이고, 파일 내용을 문자열로 나르는
-// 이유는 병합의 단위가 **파일**이라는 것이다 (ADR 0054의 결정 9). 선언과의 대조는 병합 뒤에
+// 이유는 병합의 단위가 **파일**이라는 것이다. 선언과의 대조는 병합 뒤에
 // 도는 checkLayoutFiles의 몫이다 — 자식의 `layouts/`만으로는 대조가 성립하지 않는다.
 // optional이면 `layouts/`가 없어도 된다 (상속하는 테마 — 부모의 파일이 바닥이다).
 func readLayoutCSS(fsys fs.FS, dir string, optional bool) (layouts, slots map[string]string, err error) {

@@ -1,4 +1,4 @@
-/* image-text 슬롯 영역 (ADR 0035·0044) — 제목이 두 열에 걸쳐 위, 그 아래 그림과 글이
+/* image-text 슬롯 영역 — 제목이 두 열에 걸쳐 위, 그 아래 그림과 글이
    나란히. 흐름 image-text(문서 순서로 좌→우)와 달리 슬롯은 media·body 이름으로 자리를
    고정하므로 저자가 글을 먼저 써도 그림이 왼쪽에 앉는다 (two-column.slots.css와 같은 태도).
    align-items: center는 그림과 글의 높이가 다를 때 둘의 가운데를 맞춘다 — 제목 행은 auto라

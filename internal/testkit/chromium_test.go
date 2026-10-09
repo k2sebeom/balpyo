@@ -21,7 +21,7 @@ const geometryProbe = `<!DOCTYPE html>
 <body><div class="stage"><div class="box"></div></div></body></html>
 `
 
-// 지오메트리 패스(Iteration 1)와 앵커 계산(Iteration 7)이 이 헬퍼 위에 올라간다. 좌표를
+// 지오메트리 패스와 앵커 계산이 이 헬퍼 위에 올라간다. 좌표를
 // 잘못 읽으면 PPTX의 모든 도형이 틀린 자리에 놓이므로, 하네스 단계에서 축을 검증해 둔다.
 func TestBrowserReadsElementRects(t *testing.T) {
 	dir := t.TempDir()

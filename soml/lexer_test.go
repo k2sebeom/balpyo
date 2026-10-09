@@ -108,7 +108,7 @@ func TestTokenizeKinds(t *testing.T) {
 			texts: []string{"<", "slide", " ", "한", ">"},
 		},
 		{
-			// 마크업이 아닌 `<`는 텍스트에 남고 텍스트 토큰을 끊지 않는다 (ADR 0037).
+			// 마크업이 아닌 `<`는 텍스트에 남고 텍스트 토큰을 끊지 않는다.
 			name:  "마크업이 아닌 <는 텍스트다",
 			src:   `a < b <p>`,
 			want:  []TokenKind{TokenText, TokenTagStart, TokenName, TokenTagEnd, TokenEOF},

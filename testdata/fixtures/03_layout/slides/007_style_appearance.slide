@@ -1,8 +1,8 @@
 <!-- style에 **외관** 선언을 쓴 슬라이드 — 그 선언은 웹 전용이 되고 dev 모드가 경고한다
-     (ADR 0014). 경고 경로의 회귀 테스트는 골든 diagnostics.txt뿐이므로(fixtures README)
+     (PPTX로 옮길 수 없는 외관이다). 경고 경로의 회귀 테스트는 골든 diagnostics.txt뿐이므로(fixtures README)
      이 슬라이드가 그 경로의 유일한 시험대다: 경고 문구나 조건이 조용히 바뀌면 이 픽스처의
      골든 diff가 잡는다. 파서에는 진단이 없다 — style은 이름만 어휘에 있고 값의 allowlist
-     검사는 값 층(항목 02)이 한다. -->
+     검사는 값 층이 한다. -->
 <slide id="style-appearance-warning">
   <h2>외관을 style로 쓰면 웹 전용이 된다</h2>
   <row gap="md" style="background: #0F65F9; padding-inline: 24px">

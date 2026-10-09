@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// 이 파일은 **외부 테마 패키지**의 자리다 (P4.3 · ADR 0054) — 두 가지를 담는다:
+// 이 파일은 **외부 테마 패키지**의 자리다 — 두 가지를 담는다:
 //
 //  1. **이름의 어휘**: 테마는 이름이고, 그 이름을 찾는 자리가 둘이다 — 바이너리에 내장된 셋과
 //     `<프로젝트>/themes/<이름>/`. 경로 문법은 없다: 값의 종류가 둘이 되면(이름이면 내장,
@@ -24,8 +24,8 @@ import (
 
 // ThemeNames는 이 프로젝트에서 쓸 수 있는 테마 이름이다 — **내장 ∪ 프로젝트 로컬**, 정렬.
 //
-// fsys는 프로젝트 루트다 (nil이면 내장 테마만). 공개하는 이유는 BuiltinThemes와 같다 (ADR
-// 0048의 어휘 단일 출처): `--theme`의 진단과 설정 검사가 같은 목록을 말해야 한다.
+// fsys는 프로젝트 루트다 (nil이면 내장 테마만). 공개하는 이유는 BuiltinThemes와 같다 (어휘
+// 단일 출처): `--theme`의 진단과 설정 검사가 같은 목록을 말해야 한다.
 func ThemeNames(fsys fs.FS) []string {
 	names := BuiltinThemes()
 	for _, name := range localThemeNames(fsys) {
@@ -60,7 +60,7 @@ func localThemeNames(fsys fs.FS) []string {
 	return names
 }
 
-// CheckThemeName은 이름이 이 프로젝트의 어휘 안인지 본다 (ADR 0054의 결정 1·5).
+// CheckThemeName은 이름이 이 프로젝트의 어휘 안인지 본다.
 //
 // 설정 로드(LoadConfig)와 CLI 플래그가 이 함수를 쓴다 — 값 층도 같은 판정을 하지만(Resolve)
 // 여기서 먼저 멈추는 이유는 에러의 질이다: 고칠 자리(`balpyo.json` 또는 방금 친 명령)를
@@ -76,7 +76,7 @@ func CheckThemeName(fsys fs.FS, name string) error {
 	return nil
 }
 
-// checkThemeShadowing은 로컬 테마가 내장 이름을 가리지 않는지 본다 (ADR 0054의 결정 2).
+// checkThemeShadowing은 로컬 테마가 내장 이름을 가리지 않는지 본다.
 //
 // 요청한 테마가 무엇이든 멈추는 이유는 겹친 이름이 **답할 수 없는 질문**을 만든다는 것이다:
 // `extends: "minimal"`이 프로젝트의 minimal인가 내장 minimal인가. 어느 쪽이 이기는지 규칙으로
@@ -93,7 +93,7 @@ func checkThemeShadowing(fsys fs.FS) error {
 }
 
 // themeSource는 이름 하나의 파일 자리다 — 내장이면 임베드 FS, 로컬이면 프로젝트 FS다. 두
-// 출처가 **같은 로더**를 지나는 것이 Iteration 10이 로더를 fs.FS 위에 올린 이유다.
+// 출처가 **같은 로더**를 지난다 — 로더가 fs.FS 위에서 도는 이유다.
 func themeSource(fsys fs.FS, name string) (fs.FS, string, bool) {
 	if IsBuiltinTheme(name) {
 		return builtinThemes, path.Join(themeDir, name), true
@@ -131,7 +131,7 @@ func loadThemeNamed(fsys fs.FS, name string) (themePackage, error) {
 // readThemeChain은 뿌리부터 잎까지의 원문 선언이다 (`minimal` → `corp` → `corp-dark`).
 //
 // 순환은 체인을 그대로 적어 멈춘다 — 스택을 태우는 대신 고칠 자리를 보여야 한다. 디렉토리
-// 이름과 매니페스트의 `name`이 같아야 한다는 규칙도 여기서 지킨다 (ADR 0054의 결정 3): 요청은
+// 이름과 매니페스트의 `name`이 같아야 한다는 규칙도 여기서 지킨다: 요청은
 // 이름으로 오고 파일은 경로로 찾으므로, 둘이 갈리면 어느 이름으로 요청해야 하는지를 파일을
 // 열어 봐야 안다.
 func readThemeChain(fsys fs.FS, name string) ([]rawTheme, error) {
@@ -179,7 +179,7 @@ func readThemeChain(fsys fs.FS, name string) ([]rawTheme, error) {
 
 // ── 병합: 이름이 같으면 자식이 이기고, 없던 이름은 부모 순서 뒤에 붙는다 ─────
 
-// mergeRawTheme는 부모 위에 자식을 얹는다 (ADR 0054의 결정 7·9).
+// mergeRawTheme는 부모 위에 자식을 얹는다.
 func mergeRawTheme(parent, child rawTheme) rawTheme {
 	return rawTheme{
 		manifest:    mergeManifest(parent.manifest, child.manifest),
@@ -223,7 +223,7 @@ func mergeNamed[T any](parent, child []T, nameOf func(T) string) []T {
 }
 
 // mergeCSSFiles는 레이아웃 CSS를 **파일 단위**로 병합한다: 자식이 그 파일을 두면 내 것,
-// 두지 않으면 부모 것이다 (ADR 0054의 결정 9 — 선언 단위 병합은 저자가 두 파일을 동시에
+// 두지 않으면 부모 것이다 (선언 단위 병합은 저자가 두 파일을 동시에
 // 머리에 담아야 예측할 수 있고, 배치는 이 제품에서 가장 되돌리기 어려운 층이다).
 func mergeCSSFiles(parent, child map[string]string) map[string]string {
 	out := make(map[string]string, len(parent)+len(child))
@@ -238,7 +238,7 @@ func mergeCSSFiles(parent, child map[string]string) map[string]string {
 
 // mergeManifest는 매니페스트를 병합한다. 이름과 `extends`는 자식의 것이고(결과의 이름은 요청한
 // 이름이다), 크롬 선언은 `kind`를 이름으로 삼아 같은 규칙을 받는다. `layouts`는 자식이
-// 생략하면 부모의 목록이다 (ADR 0054의 결정 11) — 표준 11종 계약을 자식이 다시 적지 않아도
+// 생략하면 부모의 목록이다 — 표준 11종 계약을 자식이 다시 적지 않아도
 // 받는다.
 func mergeManifest(parent, child themeManifest) themeManifest {
 	out := child

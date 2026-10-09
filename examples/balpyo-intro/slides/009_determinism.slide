@@ -1,4 +1,4 @@
-<!-- 결정성 — two-column 슬롯 모드. 두 렌더가 같은 컴포넌트를 낸다는 것을 무엇이 판정하는가 (ADR 0064 · 0065). -->
+<!-- 결정성 — two-column 슬롯 모드. 두 렌더가 같은 컴포넌트를 낸다는 것을 무엇이 판정하는가. -->
 <slide id="determinism" layout="two-column">
   <h1 slot="title">두 렌더가 같은 컴포넌트를 낸다</h1>
   <col slot="left" gap="md">

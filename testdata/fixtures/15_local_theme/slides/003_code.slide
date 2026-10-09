@@ -1,6 +1,6 @@
 <!-- 코드 색도 이름 단위로 갈린다. corp는 `keyword` 하나만 다시 적었으므로(accent1 = 보라)
      name·attr·string·number·comment 다섯은 minimal의 색 그대로이고, `tabSize`는 적지 않아
-     minimal의 2가 그대로 온다 — 그래서 원문의 탭은 산출물에서 두 칸으로 펴진다 (ADR 0051).
+     minimal의 2가 그대로 온다 — 그래서 원문의 탭은 산출물에서 두 칸으로 펴진다.
 
      코드 레이아웃의 배치 CSS도 부모 것이다: corp의 layouts/에는 title.slots.css 한 파일뿐이다. -->
 <slide id="local-theme-code" layout="code">

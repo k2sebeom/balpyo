@@ -18,7 +18,7 @@ import (
 // ConfigFile은 덱 설정 파일 이름이다.
 const ConfigFile = "balpyo.json"
 
-// DefaultTheme는 테마를 말하지 않은 덱이 받는 내장 테마다 (ADR 0052).
+// DefaultTheme는 테마를 말하지 않은 덱이 받는 내장 테마다.
 //
 // 상수로 두는 이유는 기본값을 아는 자리가 셋이라는 것이다: 설정 기본값(DefaultConfig), 값
 // 층(Resolve — ThemeName이 빈 덱), `balpyo init`의 스캐폴드. 세 곳이 각자 문자열을 적으면
@@ -38,7 +38,7 @@ type Config struct {
 	SlidesDir string      `json:"slidesDir"`
 	OutDir    string      `json:"outDir"`
 	Targets   Targets     `json:"targets"`
-	// Footer는 덱 크롬의 푸터 한 줄이다 (ADR 0045). 빈 문자열이면 꺼져 있다.
+	// Footer는 덱 크롬의 푸터 한 줄이다. 빈 문자열이면 꺼져 있다.
 	//
 	// 크롬의 **내용과 켜짐만** 여기 있다 — 자리·정렬·역할·제외 규칙은 테마의 `chrome`
 	// 선언이 소유한다. 기본값이 꺼짐인 이유는 크롬이 덱마다의 선택이라는 것이다(내부 공유
@@ -107,7 +107,7 @@ func LoadConfig(projectDir string) (Config, error) {
 	if err := cfg.Validate(); err != nil {
 		return Config{}, fmt.Errorf("%s: %w", ConfigFile, err)
 	}
-	// 테마 이름은 **프로젝트의 어휘**와 대조한다 (ADR 0054의 결정 5): 내장 ∪ `themes/<이름>/`.
+	// 테마 이름은 **프로젝트의 어휘**와 대조한다: 내장 ∪ `themes/<이름>/`.
 	// Validate가 아니라 여기인 이유는 어휘가 파일시스템에 달렸다는 것이다 — 설정 구조체만으로는
 	// 로컬 테마를 알 수 없고, 프로젝트를 아는 자리는 이 함수다. 값 층이 같은 판정을 한 번 더
 	// 하는 이유는 설정 없이 Deck을 만드는 길이 있다는 것이다 (Resolve).
@@ -142,7 +142,7 @@ func (c *Config) Validate() error {
 	if _, err := c.Aspect.Stage(); err != nil {
 		return fmt.Errorf("aspect: %w", err)
 	}
-	// 테마 **이름의 어휘**는 여기서 보지 않는다 (ADR 0054의 결정 5): 쓸 수 있는 이름이 내장 ∪
+	// 테마 **이름의 어휘**는 여기서 보지 않는다: 쓸 수 있는 이름이 내장 ∪
 	// 프로젝트 로컬이므로 판정에 프로젝트 파일시스템이 필요하고, 이 함수는 그것을 모른다.
 	// 판정하는 자리는 둘이다 — 프로젝트를 아는 LoadConfig와 값 층의 Resolve. 폴백하지 않는
 	// 이유는 모르는 variant와 갈라지는 자리다: variant 어휘는 테마의 사유물이지만 테마 이름의

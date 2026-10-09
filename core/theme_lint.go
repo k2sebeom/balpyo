@@ -8,9 +8,9 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 **레이아웃 CSS 배치·외관 경계 린터**다 (SPECS.md 10/02, docs/reference/theme.md).
+// 이 파일은 **레이아웃 CSS 배치·외관 경계 린터**다.
 //
-// ADR 0014(`style` 탈출구 경계)를 레이아웃 CSS로 확장한다. 계약은 style.go와 같다:
+// `style` 탈출구의 배치 전용 경계를 레이아웃 CSS로 확장한다. 계약은 style.go와 같다:
 // 선언을 `프로퍼티: 값`으로 쪼개 프로퍼티 이름만 배치 allowlist(isLayoutStyleProperty)와
 // 대조한다. **값은 검증하지 않는다** — 엔진이 CSS 값 문법을 재구현하기 시작하면 경계가
 // 경계이기를 멈춘다. 문법 위반(콜론·이름·값 없음)만 에러, allowlist 밖 프로퍼티는 경고다.
@@ -54,7 +54,7 @@ func lintLayoutCSS(css, file string) soml.Diagnostics {
 		}
 		if !isLayoutStyleProperty(property) {
 			diags = append(diags, soml.Warningf(file, soml.Span{},
-				"레이아웃 CSS의 %q 선언은 배치가 아니다 — 웹에만 적용되고 PPTX 마스터에는 반영되지 않는다 (ADR 0014). 색·테두리 같은 외관은 components.json에 선언한다",
+				"레이아웃 CSS의 %q 선언은 배치가 아니다 — 웹에만 적용되고 PPTX 마스터에는 반영되지 않는다. 색·테두리 같은 외관은 components.json에 선언한다",
 				property))
 		}
 	}
@@ -78,7 +78,7 @@ func lintLayouts(dir, suffix string, layouts map[string]string) soml.Diagnostics
 }
 
 // lintThemeChain은 extends 체인(뿌리 → 잎)에서 **병합 결과에 남은** 로컬 테마의 레이아웃 파일을
-// 검사한다. 병합은 파일 단위로 자식이 이기므로(ADR 0054의 결정 9), 잎에서 뿌리로 내려가며 이름을
+// 검사한다. 병합은 파일 단위로 자식이 이기므로, 잎에서 뿌리로 내려가며 이름을
 // 처음 가진 테마가 그 파일의 주인이다 — 자식이 덮어 쓴 부모의 파일은 산출물에 닿지 않으므로
 // 진단하지 않고, 진단은 고칠 파일(그 주인의 경로)을 가리킨다. 주인이 내장 테마인 파일은 건너뛴다.
 func lintThemeChain(chain []rawTheme) soml.Diagnostics {

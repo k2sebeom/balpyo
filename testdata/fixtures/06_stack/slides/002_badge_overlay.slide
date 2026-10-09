@@ -1,7 +1,7 @@
 <!-- 배지 오버레이 — 그림 위에 배지 도형을 얹는다. 그림 안 글자는 도형의 일이고(<shape>
      안 <text>), 그림 **위** 배지는 겹침의 일이다 (soml.image.go·subset.go의 IsVoidElement
      주석이 가리키는 자리). stack의 형제 자식으로 쓴다 — 도형 안 겹침을 열지 않는 이유가
-     그것이다 (shapeChildren는 그대로다). TASKS의 리뷰 포인트가 이 슬라이드다. -->
+     그것이다 (shapeChildren는 그대로다). -->
 <slide id="badge-overlay">
   <h2>배지 오버레이</h2>
   <stack w="360" h="240">

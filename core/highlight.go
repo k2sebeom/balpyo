@@ -1,11 +1,11 @@
 package core
 
-// 코드 하이라이팅의 값 층이다 (P2.4 — ADR 0051).
+// 코드 하이라이팅의 값 층이다.
 //
 // 이 파일이 하는 일은 둘이다. **탭을 편다**(칼럼을 세어 스페이스로 — 폭은 테마의
 // `code.tabSize`), 그리고 `lang`이 붙은 `<pre>`의 문자 데이터를 **합성 인라인 런**으로
 // 컴파일한다. 두 렌더러는 손대지 않는다: 웹은 인라인을 `<span style>`로, PPTX는 `a:r` +
-// `rPr`로 내는 경로를 이미 갖고 있고(ADR 0008의 런 스타일 상속-복사), 하이라이팅은 그
+// `rPr`로 내는 경로를 이미 갖고 있고(확정 스타일의 상속-복사), 하이라이팅은 그
 // 경로에 **색이 확정된 조각**을 넣는 일이다. 색은 테마가 정하므로(components.json의
 // `code.tokens`) 합성 런은 색 토큰 이름을 가진 `color` 속성을 달고 나가며, 그 이름의 해석은
 // 저자가 쓴 `<span color>`와 **같은 함수**를 지난다 (resolveInlines) — 두 벌이 되면 진단과
@@ -25,7 +25,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// codeClass는 코드 토큰 종류의 **닫힌** 어휘다 (ADR 0051의 결정 2). Chroma의 수백 종류를
+// codeClass는 코드 토큰 종류의 **닫힌** 어휘다. Chroma의 수백 종류를
 // 여기로 축약하는 것이 우리 쪽 경계다: 종류가 늘면 테마마다 적을 표가 늘고, 적지 않은 테마의
 // 코드가 종류마다 다르게 죽는다.
 type codeClass string
@@ -50,7 +50,7 @@ var codeClasses = []codeClass{
 
 // codeLangs는 `lang` 값 → Chroma 렉서의 **닫힌** 표다 (순서 = 진단의 순서).
 //
-// 목록 밖은 에러다 (variant처럼 폴백하지 않는다 — ADR 0051): variant 어휘는 테마의 사유물이라
+// 목록 밖은 에러다 (variant처럼 폴백하지 않는다): variant 어휘는 테마의 사유물이라
 // 다른 테마로 만든 덱도 열려야 하지만, `lang`은 엔진 어휘이므로 목록 밖 이름은 오타이거나
 // 아직 없는 언어다. 조용히 하이라이팅을 끄면 저자는 자기 색이 왜 안 나오는지 알 수 없다.
 //
@@ -87,7 +87,7 @@ type codeRun struct {
 // 블록의 확정 스타일이 채워진 **뒤**, 인라인 런이 해석되기 **전**이다: 합성 런이 그 확정
 // 스타일을 부모로 상속해야 색만 다른 조각이 된다).
 //
-// 탭은 `lang`과 무관하게 편다 (D15) — 탭은 하이라이팅의 문제가 아니라 글자의 문제다. CSS
+// 탭은 `lang`과 무관하게 편다 — 탭은 하이라이팅의 문제가 아니라 글자의 문제다. CSS
 // `tab-size`와 OOXML의 절대 탭 정지점(`a:defTabSz`)은 같은 규칙이 아니어서, 탭을 그대로
 // 흘리면 두 산출물의 줄이 갈라진다.
 func (r *resolver) resolveCode(elem *soml.Element) {
@@ -247,7 +247,7 @@ func coalesceRuns(tokens []chroma.Token, colors map[codeClass]soml.ColorToken) [
 	return runs
 }
 
-// classOf는 Chroma 종류를 우리 7종으로 축약한다 (ADR 0051의 표).
+// classOf는 Chroma 종류를 우리 7종으로 축약한다.
 //
 // 카테고리로 받는 것이 이 표의 요령이다: Chroma의 종류는 1000 단위 카테고리·100 단위
 // 하위 카테고리로 번호가 매겨져 있어(`KeywordDeclaration`은 `Keyword`의 하위) 언어가 늘어도

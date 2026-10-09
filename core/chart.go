@@ -8,12 +8,12 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 이 파일은 `<chart>`의 **펼침**이다 (ADR 0059) — 값 층의 다른 갈래와 갈라지는 자리가 하나
+// 이 파일은 `<chart>`의 **펼침**이다 — 값 층의 다른 갈래와 갈라지는 자리가 하나
 // 있다: 나머지 갈래는 속성을 확정 값으로 눕히지만(resolveShape·resolveTable) 이 갈래는
 // **트리를 바꾼다**. 차트 하나가 도형·텍스트의 하위 트리가 되고, 그 뒤의 파이프라인
 // (지오메트리·웹·PPTX)은 차트라는 것을 모른다.
 //
-// 그렇게 하는 근거는 ADR 0059에 있고 요약은 둘이다:
+// 그렇게 하는 근거는 둘이다:
 //
 //   - **산출물에 차트라는 물건이 없다.** 네이티브 차트를 내면 값축·눈금·범례·라벨
 //     타이포그래피를 뷰어가 고르므로 같은 소스가 웹과 PPTX에서 다른 그림이 되고, 픽셀 비교로
@@ -23,23 +23,23 @@ import (
 //     채널을 몰래 열지 못한다"는 유일한 관문이다.
 //
 // 좌표 산수는 어디에도 없다: 막대 높이는 `값 ÷ 축 최대`의 **백분율**이고 픽셀은 브라우저가
-// 잰다 (ADR 0059의 결정 3). 그것이 이 파일이 200줄로 끝나는 이유다.
+// 잰다. 그것이 이 파일이 200줄로 끝나는 이유다.
 
 // 펼침의 상수. 값을 이름으로 두는 이유는 문서·픽스처와 같은 숫자를 봐야 하기 때문이다 —
 // 헤드룸이나 막대 폭을 바꾸는 커밋은 여기 한 줄만 고친다.
 const (
 	// chartFrameType은 뿌리 도형과 막대·기준선의 프리셋이다. 차트에 다른 프리셋을 쓸 자리는
-	// 없다 — 막대는 사각형이고, 모서리를 둥글리는 손잡이는 열지 않았다 (ADR 0059).
+	// 없다 — 막대는 사각형이고, 모서리를 둥글리는 손잡이는 열지 않았다.
 	chartFrameType = "rect"
 	// chartHeadroom은 축을 생략했을 때 **가장 높은 막대가 차지하는 비율**이다. 1.0이 아닌
 	// 근거는 값 라벨이 막대 위에 올라탄다는 것이다: 헤드룸이 없으면 가장 높은 막대의 라벨이
-	// 플롯 밴드를 넘어 잘린다 (뷰어에서 실측했다 — ADR 0059).
+	// 플롯 밴드를 넘어 잘린다 (뷰어에서 실측했다).
 	chartHeadroom = 0.9
 	// chartBarWidth는 한 범주 칸에서 막대가 차지하는 폭이다. 칸 폭은 `grow="1" basis="0"`이
 	// 균등 분배하므로 막대 사이 간격은 이 백분율의 나머지다 — 간격을 따로 세지 않는다.
 	// 70%는 008이 손으로 쓰던 140/200과 같은 리듬이다.
 	chartBarWidth = "70%"
-	// chartSeriesFill은 **기본** 계열색이다 — 저자가 `series`를 쓰면 그 색이 이긴다 (ADR 0060).
+	// chartSeriesFill은 **기본** 계열색이다 — 저자가 `series`를 쓰면 그 색이 이긴다.
 	// 단일 계열이므로 색 하나면 충분하고, 계열에서 벗어난 한 점의 강조는 점의 `fill`이 갖는다.
 	chartSeriesFill = "accent1"
 	// chartBaselineFill·chartBaselineHeight는 범주 칸의 바닥선이다. 칸마다 1px 도형을 두고
@@ -99,10 +99,10 @@ type chartSpec struct {
 // chartRootAttrs는 뿌리 도형의 속성이다 — 저자의 박스·배치·슬롯·`alt`을 그대로 물려받고
 // 차트 고유 속성(`type`·`unit`·`max`·`series`)은 소비되어 사라진다.
 //
-// 뿌리가 **배경**인 것이 이 표의 결정이다 (`fill="none" border="none"` — ADR 0049): 차트가
+// 뿌리가 **배경**인 것이 이 표의 결정이다 (`fill="none" border="none"`): 차트가
 // 상자에 담기면 저자가 지울 수 없는 테두리가 생긴다. 배경을 원하면 저자가 `<shape>`로 감싼다.
 //
-// `alt`을 물려받는 자리가 여기인 근거는 ADR 0058이다 — 이름이 붙을 자리가 뿌리 도형에 이미
+// `alt`을 물려받는 자리가 여기인 근거: 이름이 붙을 자리가 뿌리 도형에 이미
 // 있고(`p:sp`의 `descr`·`<svg aria-label>`), 값 검사도 도형의 것을 그대로 쓴다 (altName).
 // 값이 비었을 때의 진단이 저자의 `alt=""`을 가리키는 것은 Attr을 복사하지 않고 **옮기기**
 // 때문이다.
@@ -153,7 +153,7 @@ func (r *resolver) chartType(elem *soml.Element) bool {
 //
 // 근거는 기준의 순환이다: 막대 높이는 플롯 밴드에 대한 백분율이므로 밴드가 먼저 정해져야
 // 하는데, 내용이 높이를 정하는 차트에서는 밴드가 막대에 달리게 된다. 백분율 인셋 프리셋이
-// 확정 높이를 요구하는 것과 같은 종류의 순환이다 (shapeInsetTextHeight — ADR 0040).
+// 확정 높이를 요구하는 것과 같은 종류의 순환이다 (shapeInsetTextHeight).
 //
 // `h="fill"`도 높이다 (부모가 준다) — 값의 형태를 보지 않고 **있음**만 보는 이유가 그것이다.
 func (r *resolver) chartFrameHeight(elem *soml.Element) bool {
@@ -181,14 +181,14 @@ func (r *resolver) chartUnit(elem *soml.Element) string {
 	return attr.Value
 }
 
-// chartSeries는 계열색이다 — **모든 막대**의 색이고, 생략하면 기본 계열색이다 (ADR 0060).
+// chartSeries는 계열색이다 — **모든 막대**의 색이고, 생략하면 기본 계열색이다.
 //
 // 이 속성이 생긴 자리는 리뷰다: 008은 `surface` 막대와 `muted` 라벨을 함께 요구하고, 점의
 // `fill` 하나로는 그 그림을 쓸 수 없었다 (그 채널은 막대와 라벨을 함께 칠한다). 그래서 계열색은
 // 프레임이 갖고 **라벨에 오지 않는다** — 면의 색과 글의 색은 대비 요구가 다르다 (`surface`
 // 글자는 흰 배경에서 1.06:1이다).
 //
-// 이름이 `fill`이 아닌 근거도 같은 ADR에 있다: 뿌리 도형은 계약상 배경이므로(`fill="none"`)
+// 이름이 `fill`이 아닌 근거도 있다: 뿌리 도형은 계약상 배경이므로(`fill="none"`)
 // 같은 이름을 쓰면 저자가 막대를 칠하려다 회색 상자를 받는다.
 func (r *resolver) chartSeries(elem *soml.Element) string {
 	attr, ok := elem.Attr("series")
@@ -205,7 +205,7 @@ func (r *resolver) chartSeries(elem *soml.Element) string {
 // `<point fill>`이 공유한다). 문자열로 도는 이유는 펼침의 계약이다: 합성 노드가 저자가 쓸 수
 // 있는 표기를 그대로 실어야 손으로 쓴 덱과 같은 트리가 된다.
 //
-// 도형의 `fill`과 갈라지는 자리가 하나다 — **`none`을 받지 않는다** (ADR 0060의 결정 6).
+// 도형의 `fill`과 갈라지는 자리가 하나다 — **`none`을 받지 않는다**.
 // 근거는 둘이다: 그리지 않는 막대는 데이터가 아니라 빠뜨린 점이고(높이 0을 원하면 `value="0"`이
 // 그 표기다), 이 값은 라벨의 `color`로도 흐르므로 `none`을 통과시키면 저자가 쓰지 않은 이름으로
 // 진단이 난다 — 리뷰에서 실측한 모양이 그것이었다 ("color의 색 토큰 none이 테마에 없다" 둘).
@@ -298,7 +298,7 @@ func (r *resolver) chartLabel(point *soml.Element) (string, bool) {
 // chartValue는 점의 값이다 — 막대 높이가 이 수치다.
 //
 // 단위 접미사를 **받지 않는다** (`value="22분"`은 에러다): 표기를 값에서 떼어 `unit`에 둔 것이
-// ADR 0059의 결정이고, 값마다 단위를 적으면 축 계산이 저자가 적은 문자열에 달린다. 진단이
+// 펼침의 결정이고, 값마다 단위를 적으면 축 계산이 저자가 적은 문자열에 달린다. 진단이
 // 고칠 자리를 말한다.
 //
 // 음수도 받지 않는다 — 막대 차트의 축은 0에서 시작하고, 음수 막대는 축을 0 아래로 내리는
@@ -392,7 +392,7 @@ func chartPlot(data []chartDatum, spec chartSpec) *soml.Element {
 // chartColumn은 범주 한 칸이다 — 위에서 아래로 플롯 밴드·기준선·범주 라벨이다.
 //
 // 기준선이 칸마다 있는 이유는 chartBaselineFill의 주석에 있다 (`gap="0"`으로 이어 붙는다).
-// 읽기 순서가 값 → 범주인 것은 문서 순서가 곧 읽기 순서라는 계약을 따른다 (ADR 0058):
+// 읽기 순서가 값 → 범주인 것은 문서 순서가 곧 읽기 순서라는 계약을 따른다:
 // 스크린 리더는 "22분, 5월"로 읽는다.
 func chartColumn(datum chartDatum, spec chartSpec) *soml.Element {
 	col := chartNode(soml.ColElement, datum.span,
@@ -416,7 +416,7 @@ func chartColumn(datum chartDatum, spec chartSpec) *soml.Element {
 
 // chartBand는 한 칸의 플롯 밴드다 — 값 라벨과 막대가 **바닥에 정렬되어** 쌓인다
 // (`justify="end"`). 막대의 `shrink="0"`이 없으면 브라우저의 flex 축소가 100%에 가까운 막대를
-// 줄여 버린다 (뷰어에서 실측했다 — ADR 0059).
+// 줄여 버린다 (뷰어에서 실측했다).
 //
 // 값 0은 막대를 내지 않는다: 높이 0의 도형은 산출물에서 아무것도 아니므로 선언을 낼 이유가
 // 없다. 라벨은 남는다 — "0"이 데이터다.
@@ -432,7 +432,7 @@ func chartBand(datum chartDatum, spec chartSpec) *soml.Element {
 	if datum.value == 0 {
 		return band
 	}
-	// 계열색이 바탕이고 점의 강조색이 그 점만 이긴다 (ADR 0060의 결정 1·3).
+	// 계열색이 바탕이고 점의 강조색이 그 점만 이긴다.
 	fill := spec.series
 	if datum.fill != "" {
 		fill = datum.fill
@@ -451,7 +451,7 @@ func chartBand(datum chartDatum, spec chartSpec) *soml.Element {
 //
 // 역할이 캡션인 이유: 라벨은 그림을 읽는 보조 문구이고 테마가 그 크기·색을 이미 갖는다
 // (차트 전용 타이포그래피를 만들면 테마가 두 벌을 들게 된다). `w="fill"`은 칸 폭을 채워
-// `align="center"`가 칸 가운데를 뜻하게 한다 — 텍스트 자신의 폭 가운데가 아니다 (ADR 0043).
+// `align="center"`가 칸 가운데를 뜻하게 한다 — 텍스트 자신의 폭 가운데가 아니다.
 func chartTextNode(text, color string, span soml.Span) *soml.Element {
 	pairs := []string{
 		"role", string(soml.RoleCaption),

@@ -81,7 +81,7 @@ func DiagnosticsOf(diags soml.Diagnostics) []Diagnostic {
 // Server는 산출물 디렉토리를 서브하고 빌드 상태를 밀어 준다.
 //
 // 산출물을 **디스크에서** 읽는다 (메모리 사본이 아니다): 저자가 watch로 확인한 것이 그대로
-// 배포되는 파일이어야 하고, 그 사실이 코드에서 보여야 한다 (ADR 0046).
+// 배포되는 파일이어야 하고, 그 사실이 코드에서 보여야 한다.
 type Server struct {
 	dir string
 

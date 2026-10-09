@@ -309,7 +309,7 @@ func TestRenderShapeRotateAndFlip(t *testing.T) {
 }
 
 // chevron의 프리셋 rect는 폭 0 열(`x1 = x2 = w/2`)이라 좌우 인셋이 **음수**로 그 폭을
-// 되돌린다 (ADR 0041) — 되돌리지 않으면 뷰어가 글자를 한 자씩 세로로 쌓는다.
+// 되돌린다 — 되돌리지 않으면 뷰어가 글자를 한 자씩 세로로 쌓는다.
 // 세로는 0이다 — chevron 프리셋의 rect는 위아래가 박스와 같다.
 func TestRenderChevronCancelsItsTextRect(t *testing.T) {
 	shape := geom.Rect{X: 64, Y: 64, W: 280, H: 120}
@@ -322,7 +322,7 @@ func TestRenderChevronCancelsItsTextRect(t *testing.T) {
 		{"pad 없는 chevron", `type="chevron"`,
 			fmt.Sprintf(`lIns="%d" tIns="0" rIns="%d" bIns="0"`, -cancel, -cancel)},
 		// `pad`는 보정 **위에** 더해진다 — 뜻이 "텍스트 영역 안쪽으로"이므로 두 값이 한 축에서
-		// 만나고, 웹에서도 같은 여백이 같은 자리에 들어간다 (ADR 0040).
+		// 만나고, 웹에서도 같은 여백이 같은 자리에 들어간다.
 		{"pad 있는 chevron", `type="chevron" pad="16"`,
 			fmt.Sprintf(`lIns="%d" tIns="%d" rIns="%d" bIns="%d"`,
 				EMU(16)-cancel, EMU(16), EMU(16)-cancel, EMU(16))},

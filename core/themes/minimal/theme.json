@@ -1,5 +1,5 @@
 {
-  "$comment": "minimal 테마 매니페스트 (docs/reference/theme.md). name은 theme 필드가 이 이름으로 가리키는 내장 테마다. layouts는 이 테마가 구현하는 표준 레이아웃 이름 목록이고 표준 카탈로그(soml.SlideLayouts) 11종을 전부 담아야 한다 — 빠뜨린 레이아웃을 다른 테마 구현으로 폴백하지 않는다 (ADR 0052의 결정 7). chrome은 덱 크롬의 자리·정렬·역할·제외 규칙이다(ADR 0045) — 내용과 켜짐은 balpyo.json이 소유하므로 이 선언만으로는 아무것도 렌더되지 않는다. extends·web은 v1 minimal에서 비어 있다.",
+  "$comment": "minimal 테마 매니페스트. name은 theme 필드가 이 이름으로 가리키는 내장 테마다. layouts는 이 테마가 구현하는 표준 레이아웃 이름 목록이고 표준 카탈로그(soml.SlideLayouts) 11종을 전부 담아야 한다 — 빠뜨린 레이아웃을 다른 테마 구현으로 폴백하지 않는다. chrome은 덱 크롬의 자리·정렬·역할·제외 규칙이다 — 내용과 켜짐은 balpyo.json이 소유하므로 이 선언만으로는 아무것도 렌더되지 않는다. extends·web은 v1 minimal에서 비어 있다.",
 
   "name": "minimal",
   "extends": "",

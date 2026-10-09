@@ -1,4 +1,4 @@
-// 유효성 테스트 (ADR 0065). 도형이 든 슬라이드의 XML이 스키마에서 벗어나면 단위 테스트는
+// 유효성 테스트. 도형이 든 슬라이드의 XML이 스키마에서 벗어나면 단위 테스트는
 // 초록인 채 사용자만 PowerPoint의 복구 대화상자를 본다 — 그래서 조립 결과를 ECMA-376 스키마와
 // 파트 사이 검사(testkit.AssertValidPPTX)에 건다. 픽스처가 닿지 않는 조합을 여기서 모은다.
 //
@@ -40,7 +40,7 @@ func TestTextShapesAreValidPPTX(t *testing.T) {
   <note>데모 실패 시 스크린샷으로 대체. R&D 예산 언급은 생략.</note>
 </slide>`,
 		// 런 분할·hlinkClick·a:br·pre — 슬라이드 rels의 External 관계와 rPr의 i/u·
-		// hlinkClick 순서가 스키마를 벗어나면 여기서 검사가 실패한다 (항목 06).
+		// hlinkClick 순서가 스키마를 벗어나면 여기서 검사가 실패한다.
 		// 같은 URL이 두 번 나와 관계 재사용 경로도 지난다.
 		"<slide>\n" +
 			"  <h2>배포 <strong>자동화</strong> 회고</h2>\n" +
@@ -50,7 +50,7 @@ func TestTextShapesAreValidPPTX(t *testing.T) {
 			"</slide>",
 		// 리스트 — pPr의 marL/indent(행잉 인덴트)·buChar/buAutoNum·buFont(테마 참조
 		// "+mn-lt")·li 안의 인라인 런·<br/>·빈 li가 스키마를 벗어나면 여기서 복구
-		// 경고로 드러난다 (항목 07).
+		// 경고로 드러난다.
 		`<slide>
   <h2>다음 분기 계획</h2>
   <ul>
@@ -64,7 +64,7 @@ func TestTextShapesAreValidPPTX(t *testing.T) {
   </ol>
 </slide>`,
 		// 레이아웃 — 중첩 컨테이너 + <grid cols="4"> 카드 + <spacer/>. 컨테이너는 도형이
-		// 되지 않으므로 구조적으로는 텍스트 박스 여러 개일 뿐이지만(항목 04), 좌표가
+		// 되지 않으므로 구조적으로는 텍스트 박스 여러 개일 뿐이지만, 좌표가
 		// 많아지면 겹침·음수 좌표 같은 실수가 여기서 처음 드러난다. 빈 컨테이너와
 		// 컨테이너 안의 리스트도 함께 지난다 — 도형 0개와 도형 1개가 같은 순회에서 나온다.
 		`<slide>
@@ -146,7 +146,7 @@ func TestTextShapesAreValidPPTX(t *testing.T) {
 	}
 
 	// 합성 지오메트리로 충분하다 — 이 테스트의 관심은 좌표 값이 아니라 XML의 스키마
-	// 유효성이다 (좌표 정확성은 동일성 판정이 본다 — ADR 0064).
+	// 유효성이다 (좌표 정확성은 동일성 판정이 본다).
 	g := geom.Synthetic(deck, geom.Rect{X: 64, Y: 64, W: 1152, H: 67.2})
 	files, err := pptx.NewWithGeometry(g).Render(deck)
 	if err != nil {
@@ -158,7 +158,7 @@ func TestTextShapesAreValidPPTX(t *testing.T) {
 // 겹침(stack)과 음수·슬라이드 밖 좌표가 든 덱이 유효한지 — 음수 `a:off`나 스테이지 밖 도형이
 // 스키마의 타입·범위를 거스르면 여기서 드러난다.
 //
-// 항목 05는 이 경로에 새 코드를 더하지 않는다 — 문서 순서 = z-순서는 레이아웃 컨테이너
+// 이 경로에는 전용 코드가 없다 — 문서 순서 = z-순서는 레이아웃 컨테이너
 // 분기(도형 0개 + 자식 재귀)로 자동으로 맞고, 음수 좌표는 Offset이 그대로 흘려보낸다. 그래서
 // 이 테스트의 일은 "자동으로 맞을 것이 패키지로도 유효한지" 확인하는 것이다: 배경 카드
 // 위에 배지가 겹치고(같은 좌표), 한 배지는 슬라이드 왼쪽 위 밖으로 반쯤 걸친다(음수 x/y).

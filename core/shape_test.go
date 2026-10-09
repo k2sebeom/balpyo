@@ -47,7 +47,7 @@ func wantShapeStyle(delta soml.ShapeStyle) soml.ShapeStyle {
 	return style
 }
 
-// 도형 외관 속성 표(docs/reference/soml/shape.md) 전수 — 속성 → 확정 ShapeStyle 필드.
+// 도형 외관 속성 표 전수 — 속성 → 확정 ShapeStyle 필드.
 // want는 컴포넌트 기본값 위의 델타다.
 func TestResolveShapeStyle(t *testing.T) {
 	softShadow := minimalShadows()[0]
@@ -254,12 +254,12 @@ func TestResolveShapeDiagnostics(t *testing.T) {
 		{name: "flip 어휘 밖", attrs: `type="chevron" flip="both"`, needle: "both", contains: []string{"알 수 없는 flip", "h, v, hv"}},
 		{name: "flip 공백 표기", attrs: `type="chevron" flip="h v"`, needle: "h v", contains: []string{"알 수 없는 flip"}},
 
-		// 배경 모드(배치 자식) 도형의 rotate는 에러다 (ADR 0049 결정 6) — PPTX의 형제 도형은 남의
+		// 배경 모드(배치 자식) 도형의 rotate는 에러다 — PPTX의 형제 도형은 남의
 		// 회전을 물려받지 않아 두 타깃이 다른 그림이 된다.
 		{name: "배치를 담은 도형의 rotate", attrs: `type="rect" rotate="12"`, children: `<col gap="sm"><p>본문</p></col>`,
 			needle: "rotate", contains: []string{"배치를 담은 도형은 rotate를 쓸 수 없다", "자식은 형제 도형이 되어"},
 			dropped: func(s *soml.ShapeStyle) bool { return s.Rotate == nil }},
-		// 텍스트 영역이 박스보다 좁은 프리셋은 내용이 컨테이너여도 확정 높이를 요구한다 (ADR 0040·0049).
+		// 텍스트 영역이 박스보다 좁은 프리셋은 내용이 컨테이너여도 확정 높이를 요구한다.
 		{name: "inset 프리셋의 컨테이너 내용", attrs: `type="ellipse"`, children: `<col gap="sm"><p>라벨</p></col>`,
 			contains: []string{"h나 ratio가 필요하다", "ellipse"}},
 	}
@@ -312,7 +312,7 @@ func TestResolveShapeReportsEveryBadPiece(t *testing.T) {
 	}
 }
 
-// 그라디언트·색 변형 문법이 확정 색 모델로 해석된다 (ADR 0067 결정 5). 토큰은 이름으로 남는다.
+// 그라디언트·색 변형 문법이 확정 색 모델로 해석된다. 토큰은 이름으로 남는다.
 // 그라디언트 테두리(`<굵기> gradient(…)`)는 스타일을 실선으로 함께 정한다.
 func TestResolveColorFunctions(t *testing.T) {
 	cases := []struct{ name, fill, want string }{
@@ -347,7 +347,7 @@ func TestResolveColorFunctions(t *testing.T) {
 }
 
 // 텍스트 영역이 박스보다 좁은 프리셋(soml.ShapeInsetText)은 내용을 담을 때 확정 높이를 요구한다
-// (ADR 0040) — 12종 전수로 요구하는 쪽과 아닌 쪽을 함께 못 박는다. 규칙이 넓어지면 내용이 높이를
+// — 12종 전수로 요구하는 쪽과 아닌 쪽을 함께 못 박는다. 규칙이 넓어지면 내용이 높이를
 // 정하는 카드가 죽는다.
 func TestResolveShapeInsetTextNeedsDefiniteHeight(t *testing.T) {
 	for _, shapeType := range soml.ShapeTypes() {

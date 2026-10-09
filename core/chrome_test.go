@@ -10,7 +10,7 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 덱 크롬은 `balpyo.json`이 내용과 켜짐을 소유한다 (ADR 0045). 기본값은 **둘 다 꺼짐**이다 —
+// 덱 크롬은 `balpyo.json`이 내용과 켜짐을 소유한다. 기본값은 **둘 다 꺼짐**이다 —
 // 켜짐을 기본으로 두면 골든 9개와 예제 셋이 이 기능 하나로 움직인다.
 func TestConfigChromeFields(t *testing.T) {
 	dir := t.TempDir()
@@ -36,7 +36,7 @@ func TestConfigChromeFields(t *testing.T) {
 }
 
 // minimal은 두 크롬을 **다 선언한다** — 기본 테마가 못 받으면 `balpyo.json`의 두 필드가
-// 경고 뒤에 버려진다. 자리·역할은 테마의 몫이고(ADR 0045), 제외 목록은 표지 계열이다.
+// 경고 뒤에 버려진다. 자리·역할은 테마의 몫이고, 제외 목록은 표지 계열이다.
 func TestLoadBuiltinChrome(t *testing.T) {
 	pkg := loadBuiltinTheme("minimal")
 	decls := pkg.chromeDecls()
@@ -138,13 +138,13 @@ func themeFSWithChrome(chrome string) fstest.MapFS {
 	return fstest.MapFS{
 		"t/theme.json":  {Data: []byte(manifest)},
 		"t/tokens.json": {Data: []byte(`{"color":[],"font":[],"space":[],"radius":[],"shadow":[]}`)},
-		// code 절은 모든 테마가 적어야 한다 (탭 폭이 테마의 것이다 — ADR 0051).
+		// code 절은 모든 테마가 적어야 한다 (탭 폭이 테마의 것이다).
 		"t/components.json":     {Data: []byte(`{"text":{"roles":[]},"code":{"tabSize":2,"tokens":[]}}`)},
 		"t/layouts/content.css": {Data: []byte("")},
 	}
 }
 
-// 확정 모델에는 **걸러진 뒤의** 항목만 실린다 (ADR 0045) — 두 렌더러가 제외 규칙을 각자
+// 확정 모델에는 **걸러진 뒤의** 항목만 실린다 — 두 렌더러가 제외 규칙을 각자
 // 적지 않는다. 번호는 덱 안의 위치이고 **제외된 장도 센다**: `a:fld type="slidenum"`이
 // 주는 값이 그것이고, 웹이 다른 수를 찍으면 두 타깃이 갈린다.
 func TestResolveChromePerSlide(t *testing.T) {
@@ -230,7 +230,7 @@ func TestResolveChromeFooterOnly(t *testing.T) {
 	}
 }
 
-// 테마가 그 kind를 선언하지 않았으면 **경고 + 미탑재**다 (ADR 0044의 규칙 그대로) — 확정
+// 테마가 그 kind를 선언하지 않았으면 **경고 + 미탑재**다 (슬롯과 같은 규칙) — 확정
 // 모델에 싣지 않으므로 두 렌더러가 테마 조건을 각자 보지 않는다. 진단은 슬라이드가 아니라
 // `balpyo.json`을 가리킨다: 고칠 자리가 거기다.
 func TestResolveChromeWarnsWhenThemeIsSilent(t *testing.T) {

@@ -1,7 +1,7 @@
 // Package preview는 검수 산출물을 만든다 — PPTX를 그림으로 되돌리고, 웹 스크린샷과 나란히
 // 놓은 갤러리 문서 하나로 묶는다.
 //
-// 왜 테스트 하네스가 아니라 여기인가 (ADR 0047): 이 흐름은 Iteration 내내 사람이 손으로 돌던
+// 왜 테스트 하네스가 아니라 여기인가: 이 흐름은 개발 내내 사람이 손으로 돌던
 // 것이다 — 임시 테스트 파일을 쓰고, 컨테이너에 들어가고, soffice와 pdftoppm을 돌리고, PNG를
 // 열어 본다. 그 루프가 제품이어야 저자도 같은 것을 볼 수 있다. 반대로 `cmd/balpyo`가
 // internal/testkit을 임포트하면 릴리스 바이너리에 testing이 링크되고, "도구가 없으면
@@ -11,8 +11,8 @@
 // 테스트 정책(건너뛰기·t.Fatal)만 얹는다. internal/testkit이 internal/preview를 임포트하며,
 // 반대 방향은 없다.
 //
-// `balpyo preview`는 **판정하지 않는다** (ADR 0066). 두 타깃의 계약은 픽셀이 아니라 컴포넌트·
-// 레이아웃 동일성이고(ADR 0064) 그것은 `go test`가 본다 — 여기서 하는 일은 그림을 사람 앞에
+// `balpyo preview`는 **판정하지 않는다**. 두 타깃의 계약은 픽셀이 아니라 컴포넌트·
+// 레이아웃 동일성이고 그것은 `go test`가 본다 — 여기서 하는 일은 그림을 사람 앞에
 // 나란히 놓는 것까지다. 픽셀 diff · 비율 · 허용 오차 배지는 없다.
 package preview
 
@@ -41,7 +41,7 @@ const DefaultDirName = "preview"
 //
 // 기본이 둘인 이유: 이 명령의 존재 이유가 **두 타깃을 나란히 눈으로 보는 것**이다. 다만 PPTX
 // 열은 LibreOffice · poppler가 있어야 그릴 수 있다 — 기본 렌더에서 도구가 없으면 웹 열만으로
-// 갤러리를 만들고 그 사실을 로그와 갤러리 안내에 남긴다 (ADR 0066). 하나만 보려면 그 타깃을 준다.
+// 갤러리를 만들고 그 사실을 로그와 갤러리 안내에 남긴다. 하나만 보려면 그 타깃을 준다.
 func DefaultRenders() []render.Target { return []render.Target{render.TargetHTML, render.TargetPPTX} }
 
 // Options는 검수 실행의 입력이다.
@@ -141,7 +141,7 @@ func Run(opts Options) (*Result, error) {
 
 	// 웹 열이 있으면 세션을 우리가 띄우고 **지오메트리 패스에 넘긴다**: 스크린샷을 찍으려면
 	// 어차피 브라우저가 필요하고, 빌드가 자기 브라우저를 따로 띄우면 이 명령이 기동 비용을 두 번
-	// 낸다 (`balpyo watch`의 웜 세션과 같은 근거 — ADR 0046).
+	// 낸다 (`balpyo watch`의 웜 세션과 같은 근거).
 	build := opts.Build
 	build.ProjectDir = projectDir
 	build.Targets = renders
@@ -183,7 +183,7 @@ func Run(opts Options) (*Result, error) {
 		}
 		result.Noise = noise
 		if noise != "" {
-			// 경고를 실패로 바꾸지 않는 이유는 ADR 0047 결정 4와 같다 — 다만 **삼키지도** 않는다:
+			// 경고를 실패로 바꾸지 않는다 — preview는 게이트가 아니다. 다만 **삼키지도** 않는다:
 			// LibreOffice가 복구했다면 사용자도 파일을 열 때마다 그 경고를 본다.
 			fmt.Fprintf(log, "LibreOffice가 경고를 냈다 — PPTX를 직접 열어 확인한다:\n%s\n", noise)
 		}

@@ -201,7 +201,7 @@ func TestParseSlideAttributes(t *testing.T) {
 	}
 }
 
-// 표준 레이아웃 카탈로그는 11종이고 (docs/reference/layouts.md) 순서가 문서·진단 순서다.
+// 표준 레이아웃 카탈로그는 11종이고 순서가 문서·진단 순서다.
 func TestSlideLayoutsCatalog(t *testing.T) {
 	got := make([]string, len(SlideLayouts()))
 	for i, l := range SlideLayouts() {
@@ -402,7 +402,7 @@ func TestParseErrors(t *testing.T) {
 			want: []string{"1:9 <slide>의 자식으로 <slide>는 올 수 없다"},
 		},
 		{
-			// `<` + 공백은 마크업이 아니므로 문자 데이터다 (ADR 0037).
+			// `<` + 공백은 마크업이 아니므로 문자 데이터다.
 			name: "마크업이 아닌 <는 문자 데이터다",
 			src:  `<slide>< ></slide>`,
 			want: []string{"1:8 <slide> 안에 문자 데이터를 직접 쓸 수 없다"},

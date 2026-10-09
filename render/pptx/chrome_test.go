@@ -9,8 +9,8 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// chromeDeck은 확정된 크롬이 실린 덱이다 — 렌더러는 제외 규칙도 번호 계산도 하지 않는다
-// (ADR 0045). 콘텐츠도 하나 둔다: 크롬 도형이 콘텐츠 **뒤에** 오는지 보려면 둘이 있어야 한다.
+// chromeDeck은 확정된 크롬이 실린 덱이다 — 렌더러는 제외 규칙도 번호 계산도 하지 않는다.
+// 콘텐츠도 하나 둔다: 크롬 도형이 콘텐츠 **뒤에** 오는지 보려면 둘이 있어야 한다.
 func chromeDeck(t *testing.T) *soml.Deck {
 	t.Helper()
 	deck := resolvedContentDeck(t)
@@ -34,7 +34,7 @@ func resolvedContentDeck(t *testing.T) *soml.Deck {
 	return deck
 }
 
-// 번호는 **필드**다 (ADR 0045): 정적 텍스트로 내면 뷰어에서 장을 더하거나 순서를 바꾼 순간
+// 번호는 **필드**다: 정적 텍스트로 내면 뷰어에서 장을 더하거나 순서를 바꾼 순간
 // 번호가 거짓말을 한다. `a:t`에 잰 숫자를 캐시로 싣는 이유는 필드를 계산하지 않는 뷰어(썸네일·
 // 변환기)도 맞는 숫자를 보여야 한다는 것이다.
 func TestChromePageNumberIsAField(t *testing.T) {
@@ -60,7 +60,7 @@ func TestChromePageNumberIsAField(t *testing.T) {
 	}
 }
 
-// 크롬 도형은 **플레이스홀더가 아니다** (ADR 0045): 흐름 모드 슬라이드는 레이아웃 파트 하나를
+// 크롬 도형은 **플레이스홀더가 아니다**: 흐름 모드 슬라이드는 레이아웃 파트 하나를
 // 공유하므로(slideLayoutFile) `p:ph`로는 "표지에는 번호가 없다"를 표현할 수 없다.
 func TestChromeShapeIsNotAPlaceholder(t *testing.T) {
 	deck := chromeDeck(t)

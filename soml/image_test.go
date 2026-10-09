@@ -59,7 +59,7 @@ func TestParseImageErrors(t *testing.T) {
 			},
 		},
 		{
-			// 도형 안 그림은 컨테이너를 거친다 (ADR 0049) — 진단 목록이 그 길을 보여 준다.
+			// 도형 안 그림은 컨테이너를 거친다 — 진단 목록이 그 길을 보여 준다.
 			name: "도형 안의 이미지",
 			src:  `<slide><shape type="rect"><image src="assets/wide.png"/></shape></slide>`,
 			want: []string{"1:28 <shape>의 자식으로 <image>는 올 수 없다"},
@@ -73,7 +73,7 @@ func TestParseImageErrors(t *testing.T) {
 	})
 }
 
-// `fit` 값 어휘는 문서(docs/reference/soml/image.md)의 순서 그대로다 — 목록은 soml에
+// `fit` 값 어휘는 문서의 순서 그대로다 — 목록은 soml에
 // 있고 검사는 core다. 기본값은 **언어**의 것이다 (테마를 바꿨을 때 얼굴이 잘리기 시작하면 안 된다).
 func TestImageFits(t *testing.T) {
 	if DefaultImageFit != FitContain {
