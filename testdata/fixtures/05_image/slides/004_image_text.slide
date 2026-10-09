@@ -1,4 +1,4 @@
-<!-- 그림+텍스트 2단 — PRD §7.3의 `image-text` 레이아웃을 컨테이너로 손으로 펼친 모습이다
+<!-- 그림+텍스트 2단 — `image-text` 레이아웃(docs/reference/layouts.md)을 컨테이너로 손으로 펼친 모습이다
      (`layout=`/`slot=`은 Iteration 10). 그림이 `<row>`의 자식이므로 자식 배치 속성을 받고
      (`basis`), 캡션이 **형제 `<text>`**인 것이 void 결정의 실물이다 (soml.IsVoidElement).
 

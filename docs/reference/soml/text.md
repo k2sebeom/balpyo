@@ -28,7 +28,7 @@
 | `caption` | 18 | 400 | 1.4 | `muted` | `body` |
 | `code` | 20 | 400 | 1.5 | `fg` | `mono` |
 
-- `size`는 **단위 없는 논리 스테이지 px**다 (PRD §13-5). `px`·`pt`·`em` 접미사와 `%`는
+- `size`는 **단위 없는 논리 스테이지 px**다 ([ADR 0067](../../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 5). `px`·`pt`·`em` 접미사와 `%`는
   파스 에러다 — 상대 크기는 PPTX의 절대 폰트 크기(`rPr@sz`)로 번역할 곳이 없다.
 - `align`이 논리 이름인 이유: CSS `text-align: start|end`와 OOXML `a:pPr@algn`이 둘 다
   문단 방향(RTL)에 따라 뜻이 유지되는 논리 값을 받는다. `left`를 쓰면 진단이 대응하는

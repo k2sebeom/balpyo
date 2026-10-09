@@ -1,6 +1,6 @@
 # `<stack>` — 겹침 컨테이너
 
-`<stack>`은 자식을 **같은 칸에 겹쳐 쌓는** 레이아웃 컨테이너다 (PRD §7.4·§13-3). `<row>`가
+`<stack>`은 자식을 **같은 칸에 겹쳐 쌓는** 레이아웃 컨테이너다 ([ADR 0067](../../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 3). `<row>`가
 자식을 가로로, `<col>`이 세로로 늘어놓는다면 `<stack>`은 **한 자리에 층으로** 놓는다 —
 그림 위의 배지, 본문 아래의 워터마크, 카드 위의 라벨이 그 자리다.
 
@@ -73,7 +73,7 @@ PPTX에서 사라진다, 자식만 절대 좌표 도형이 된다)을 그대로 
   `x="0" y="0"`은 여백 안쪽 좌상단이다.
 - **음수를 받는다.** 크기 속성(`w`/`h`/`gap`)은 음수가 에러이지만 좌표는 음수가 정당하다 —
   박스 밖으로 반쯤 걸친 배지(전면 블리드)가 오버레이의 가장 흔한 장면이다. `x="-16"`은 박스
-  왼쪽 밖 16px이고, 산출물까지 부호 그대로 흐른다 (자르지 않는다 — PRD §13-1의 오버플로 허용).
+  왼쪽 밖 16px이고, 산출물까지 부호 그대로 흐른다 (자르지 않는다 — [ADR 0067](../../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 1의 오버플로 허용).
 - **`%`는 부모 축 기준이다** — `x="50%"`는 부모 폭의 절반, `y="100%"`는 부모 높이의 전부다
   (박스 아래 모서리에 얹는 표기).
 - **공간 토큰(`x="md"`)과 `fill`은 받지 않는다.** 토큰은 여백·간격의 어휘라 테마를 따라
@@ -99,7 +99,7 @@ PPTX에서 사라진다, 자식만 절대 좌표 도형이 된다)을 그대로 
 </stack>
 ```
 
-- **`z-index`를 열지 않은 이유**는 순서가 이미 z축이기 때문이다 (PRD §13-3). 저자용 z-index를
+- **`z-index`를 열지 않은 이유**는 순서가 이미 z축이기 때문이다 ([ADR 0067](../../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 3). 저자용 z-index를
   열면 문서 순서와 중복된 채널이 되고, 둘이 어긋날 때 누가 이기는지 저자가 외워야 한다 —
   한 축의 위치는 한 채널이 정한다는 기준의 적용이다
   ([ADR 0031](../../decisions/0031-position-is-one-channel.md)). `style` 탈출구의
@@ -215,7 +215,7 @@ iteration 때문에 움직이지 않게 — [레이아웃 태그](layout.md)의 
 ```
 
 - **단일 셀 grid + `grid-area: 1/1`**: 자식이 같은 칸에 겹치되 in-flow로 남아 stack 크기가
-  가장 큰 자식에 맞춰 결정된다 (absolute 전면 방식은 컨테이너 크기가 소실되어 배제 — PRD §13-3).
+  가장 큰 자식에 맞춰 결정된다 (absolute 전면 방식은 컨테이너 크기가 소실되어 배제 — [ADR 0067](../../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 3).
 - **stack 자신의 `position: relative`**: `x`/`y` 자식의 포함 블록을 stack의 패딩 박스로 만든다.
   오프셋이 없는 relative는 잰 rect를 움직이지 않는다.
 - **자식의 `position: relative`가 칠 순서를 문서 순서로 되돌린다.** CSS는 같은 쌓임 문맥에서

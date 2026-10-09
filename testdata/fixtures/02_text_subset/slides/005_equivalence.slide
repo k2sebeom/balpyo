@@ -1,4 +1,4 @@
-<!-- 등가 확인. <p> ≡ <text role="body">, <h2> ≡ <text role="heading"> (PRD §7.7) —
+<!-- 등가 확인. <p> ≡ <text role="body">, <h2> ≡ <text role="heading"> (docs/reference/soml/text-subset.md) —
      역할 등가(항목 03)가 구현되면 두 쌍이 같은 외관으로 렌더되어야 하는 대조군이다. -->
 <slide id="equivalence">
   <text role="heading">역할로 쓴 제목</text>

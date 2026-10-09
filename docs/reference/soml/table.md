@@ -1,6 +1,6 @@
 # `<table>` — 표
 
-`<table>`은 격자 데이터다 (PRD §7.6). 태그는 HTML을 그대로 빌린다 — 프레임이 `<table>`, 행이
+`<table>`은 격자 데이터다. 태그는 HTML을 그대로 빌린다 — 프레임이 `<table>`, 행이
 `<tr>`, 셀이 `<th>`/`<td>`이고, 병합도 HTML의 이름(`colspan`·`rowspan`)을 쓴다. 두 타깃 모두
 **진짜 표**가 된다: 웹은 `<table>` 요소이고 PPTX는 `p:graphicFrame` + `a:tbl`이다 — 도형을
 손으로 쌓은 그림이 아니라 PowerPoint에서 셀을 클릭해 고치고 행을 더할 수 있는 표다
@@ -48,7 +48,7 @@
   표 항해에 그대로 남는다. 붙는 자리와 빈 값이 에러인 이유는
   [외관 속성의 접근성 절](../appearance.md)이 소유한다 (도형·그림의 `alt`과 한 규칙이다).
 - `variant`가 어휘 밖이면 **경고**이고 기본 외관으로 계속한다 (테마를 바꿔도 콘텐츠가 남는다는
-  정책 — PRD §13-6). 셀에는 `variant`가 **없다**: 줄무늬는 프레임 하나가 켜는 행 채움이다.
+  정책 — [ADR 0067](../../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 6). 셀에는 `variant`가 **없다**: 줄무늬는 프레임 하나가 켜는 행 채움이다.
 
 ## 셀 속성 — `<th>`/`<td>`
 
