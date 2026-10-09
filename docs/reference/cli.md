@@ -70,8 +70,7 @@ balpyo init my-talk --author "이세범"
 ### 아직 아닌 것
 
 템플릿 선택(`--template`), 예제 덱 복사, 슬라이드 추가 명령(`balpyo new slide`)은 열지 않았다.
-저장소의 `examples/`는 스캐폴딩이 아니라 **회귀 테스트**다 — 어휘의 마찰점을 일부러
-밟고 다니므로 출발점으로는 시끄럽다.
+저장소의 `examples/decks/`는 읽어 보는 완성 덱이고, `init`이 만드는 세 장이 출발점이다.
 
 ## `balpyo build`
 
@@ -285,11 +284,11 @@ balpyo check --check-layout --strict
 고치면 다시 빌드하고 브라우저를 새로고침한다 — 저작 루프다.
 
 ```bash
-balpyo watch --project examples/quarterly-review
+balpyo watch --project examples/decks/quarterly-review
 ```
 
 ```
-감시 중: examples/quarterly-review → http://127.0.0.1:4600  (Ctrl+C로 끝낸다)
+감시 중: examples/decks/quarterly-review → http://127.0.0.1:4600  (Ctrl+C로 끝낸다)
 ✓ 14:31:02  슬라이드 6개 · 파일 1개 (41ms)
 ✓ 14:31:18  슬라이드 6개 · 파일 1개 (38ms)
 ✗ 14:31:33  빌드 실패: 에러 1건 (12ms)

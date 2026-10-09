@@ -137,7 +137,7 @@ What the suite judges, per fixture (`TestFixtures`) and per example (`TestExampl
 
 ```bash
 make test        # go test ./... (the gate; same command CI runs)
-make examples    # examples/* must build with zero warnings (also part of make test)
+make examples    # example decks and themes must build with zero warnings (also part of make test)
 make golden      # regenerate goldens (review the diff; commit with the implementation)
 make docs        # mkdocs build --strict (new pages must be in mkdocs.yml nav)
 ```
@@ -145,8 +145,10 @@ make docs        # mkdocs build --strict (new pages must be in mkdocs.yml nav)
 - Don't add pixel, ink or line-count assertions. LibreOffice/poppler are only used by
   `balpyo preview` rasterizing; their tests skip when the tools are absent.
 - Fixtures live in `testdata/fixtures/NN_name/` (`balpyo.json`, `slides/`, `golden/`).
-- `examples/` (balpyo-intro 12, incident-postmortem 10, quarterly-review 6 slides) are
-  regression decks gated by a strict zero-warning build, not goldens.
+- `examples/` is user-facing: `examples/decks/` (balpyo-intro 12, incident-postmortem 10,
+  quarterly-review 6 slides) and `examples/themes/` (standalone themes — `extends` empty). They are
+  gated by a strict zero-warning build, not goldens: every deck with its own theme, and every
+  example theme against every deck.
 - `core/docs_test.go` reads closed lists and quoted diagnostics from the docs — changing a
   vocabulary or message means updating the docs too.
 - Before committing: `gofmt -l .` empty, `go vet ./...`, `go test ./...`.

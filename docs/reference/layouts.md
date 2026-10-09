@@ -146,7 +146,7 @@
 
 세 문맥이 `width: 100%`를 `auto`로 되돌린다 — 그 리셋이 없으면 테마가 `*.slots.css`에 쓴
 `justify-items`가 아무것도 하지 못하고, 저자가 슬롯 자식마다 `align="center"`를 손으로 달게
-된다. 표지 예제(`examples/balpyo-intro/slides/001_cover.slide`)에 `align`이 한 줄도 없는
+된다. 표지 예제(`examples/decks/balpyo-intro/slides/001_cover.slide`)에 `align`이 한 줄도 없는
 이유가 그것이다.
 
 폭이 `auto`인 문맥에서 특정 폭 안에 글을 가운데 두려면 그 폭을 텍스트에 직접 준다

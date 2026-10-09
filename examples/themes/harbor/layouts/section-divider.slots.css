@@ -1,0 +1,8 @@
+/* section-divider 슬롯 영역 — 구역 제목과 부제를 세로 가운데에 쌓는다. 가로는 저자의
+   몫이다: justify-items를 쓰지 않으면 자식이 영역 폭까지 늘어나 저자의 `align`이 그 안에서
+   문단을 움직인다. */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: auto auto;
+grid-template-areas: "title" "subtitle";
+align-content: center;

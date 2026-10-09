@@ -1,0 +1,8 @@
+/* quote 슬롯 영역 — 인용문을 세로 가운데에 두고 출처를 그 아래에 붙인다. 가로는 저자의
+   몫이다 — 출처를 오른쪽으로 보내는 `<p slot="attribution" align="end">`가 뜻을 갖도록
+   justify-items를 쓰지 않는다. */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: auto auto;
+grid-template-areas: "quote" "attribution";
+align-content: center;

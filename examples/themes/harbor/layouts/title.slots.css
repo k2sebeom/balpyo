@@ -1,0 +1,9 @@
+/* title(표지) 슬롯 영역 — kicker·title·subtitle이 위 왼쪽에서 시작하고, 빈 행(1fr)이
+   그 아래를 비워 author·date를 바닥으로 민다 (`.`은 이름 없는 빈 셀이다).
+
+   가로에 justify-items를 쓰지 않는다: 왼쪽은 기본값이고, `start`를 적으면 항목이 내용 폭으로
+   줄어 저자의 `align`이 움직일 폭과 글줄의 여유 폭을 함께 잃는다. */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: auto auto auto 1fr auto auto;
+grid-template-areas: "kicker" "title" "subtitle" "." "author" "date";

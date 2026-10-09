@@ -1,0 +1,12 @@
+/* stat 슬롯 영역 — 큰 수치를 화면 가운데에 세운다: 제목, 수치, 라벨, 설명 순서. 이 테마에서
+   가로까지 가운데로 모는 레이아웃은 이것 하나다 — 수치 슬라이드는 가운데가 뜻이고, 저자가
+   자식마다 align="center"를 달게 둘 일이 아니다.
+
+   가운데의 대가: grid가 항목을 내용 폭으로 줄이므로 글줄의 여유 폭이 0이 되고, 문장부호가
+   많은 한글 줄은 PPTX에서 접힐 수 있다. 라벨과 설명은 짧게 쓴다. */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: auto auto auto auto;
+grid-template-areas: "title" "value" "label" "body";
+align-content: center;
+justify-items: center;

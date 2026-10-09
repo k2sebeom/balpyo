@@ -1,0 +1,7 @@
+/* two-column 슬롯 영역 — 제목이 두 열에 걸쳐 위, 그 아래 left·right가 나란히. 슬롯은
+   이름으로 자리를 고정하므로 저자가 slot="right"를 먼저 써도 오른쪽에 앉는다. */
+display: grid;
+grid-template-columns: 1fr 1fr;
+grid-template-rows: auto 1fr;
+grid-template-areas: "title title" "left right";
+align-content: start;

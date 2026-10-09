@@ -1,0 +1,60 @@
+{
+  "$comment": "harbor의 컴포넌트 외관. 제목은 굵고(800) 본문은 24px · 줄높이 1.5다 — 본문 크기와 줄높이는 테마를 갈아도 덱이 넘치지 않게 내장 테마와 같은 값을 쓴다. variant 이름(kicker · lead · card … · framed)도 내장 테마와 같은 어휘다: 덱이 쓰는 variant가 이 테마에 없으면 경고가 난다.",
+
+  "text": {
+    "roles": [
+      { "name": "title",   "font": "heading", "size": 58, "weight": 800, "lineHeight": 1.15, "color": "fg",    "align": "start" },
+      { "name": "heading", "font": "heading", "size": 36, "weight": 800, "lineHeight": 1.25, "color": "fg",    "align": "start" },
+      { "name": "body",    "font": "body",    "size": 24, "weight": 400, "lineHeight": 1.5,  "color": "fg",    "align": "start" },
+      { "name": "caption", "font": "body",    "size": 18, "weight": 400, "lineHeight": 1.4,  "color": "muted", "align": "start" },
+      { "name": "code",    "font": "mono",    "size": 20, "weight": 400, "lineHeight": 1.5,  "color": "fg",    "align": "start" }
+    ],
+    "componentDefaults": [
+      { "tag": "h3",         "size": 28, "color": "accent1" },
+      { "tag": "blockquote", "size": 32, "color": "fg" }
+    ],
+    "variants": [
+      { "name": "kicker", "size": 18, "weight": 800, "color": "accent5" },
+      { "name": "lead",   "size": 30, "color": "muted" }
+    ]
+  },
+
+  "shape": {
+    "default": { "fill": "surface", "border": "none", "radius": "md" },
+    "variants": [
+      { "name": "card",          "fill": "surface", "radius": "md", "shadow": "soft" },
+      { "name": "card-header",   "fill": "accent1", "radius": "sm" },
+      { "name": "card-body",     "fill": "surface" },
+      { "name": "card-backdrop", "fill": "none", "border": "3 solid accent1", "radius": "md" },
+      { "name": "stat-card",     "fill": "surface", "radius": "md", "shadow": "soft" },
+      { "name": "badge",         "fill": "surface", "border": "2 solid accent5", "radius": "lg" }
+    ]
+  },
+
+  "image": {
+    "default": {},
+    "variants": [
+      { "name": "framed", "radius": "md", "shadow": "soft" }
+    ]
+  },
+
+  "table": {
+    "$comment": "표 셀 외관. cell은 모든 셀, header는 <th>에 얹는 값, stripe는 variant=\"striped\"일 때 번갈아 칠하는 본문 행의 채움이다. 머리행을 남색 먹빛(fg)으로 칠해 강조색을 본문 데이터에 남겨 둔다.",
+    "cell":   { "border": "1 solid muted" },
+    "header": { "fill": "fg", "color": "bg", "weight": 700 },
+    "stripe": "surface"
+  },
+
+  "code": {
+    "$comment": "코드 블록. tabSize는 탭을 펼 때의 칸 수다 — 슬라이드는 폭이 좁다. tokens는 토큰 종류마다 색 토큰을 준다: 적지 않은 종류(punct)는 코드 블록의 글자색을 쓴다.",
+    "tabSize": 2,
+    "tokens": [
+      { "class": "keyword", "color": "accent6" },
+      { "class": "name",    "color": "accent1" },
+      { "class": "attr",    "color": "accent2" },
+      { "class": "string",  "color": "accent3" },
+      { "class": "number",  "color": "accent4" },
+      { "class": "comment", "color": "muted" }
+    ]
+  }
+}

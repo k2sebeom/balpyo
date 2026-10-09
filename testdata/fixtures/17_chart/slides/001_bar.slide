@@ -8,7 +8,7 @@
      없었다.
 
      점 다섯 중 마지막만 `fill="accent4"`다 — 그 색이 막대와 **두 라벨**까지 칠하는 것이
-     `examples/incident-postmortem/008`이 손으로 하던 일이다. -->
+     `examples/decks/incident-postmortem/008`이 손으로 하던 일이다. -->
 <slide id="chart-bar">
   <h2>차트는 도형과 텍스트로 펼쳐진다</h2>
   <chart type="bar" unit="분" alt="월별 평균 탐지 시간 — 5월 22분에서 9월 12분으로 줄었다" w="fill" h="380">
