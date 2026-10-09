@@ -6,7 +6,7 @@
 
 항목을 끝내면 이 목록에서 지운다 — 끝난 일의 기록은 커밋 로그와 ADR이 맡는다.
 
-## PPTX — OnlyOffice 검수 (P2–P3)
+## PPTX — OnlyOffice 검수 (P3)
 
 예제 덱 셋과 픽스처 전부(111장)를 OnlyOffice로 PPTX → PNG로 되돌려 웹과 나란히 본 결과다.
 OnlyOffice는 OOXML 명세의 프리셋 공식과 글꼴 메트릭을 따라 그리는 독립 엔진이라, 우리가 쓴
@@ -14,7 +14,6 @@ OnlyOffice는 OOXML 명세의 프리셋 공식과 글꼴 메트릭을 따라 그
 
 | # | 막힌 것 | 무게 |
 |---|---|---|
-| P2 | `tint(색, p%)`가 두 타깃에서 다른 색이다 — PPTX는 HSL 광도(`lumMod`+`lumOff`, PowerPoint의 "밝게 p%"), 웹은 RGB로 흰색과 섞는다(`color-mix`). 채도 높은 어두운 색에서 크게 갈린다 (12_palette 2장의 accent3) | 중간 |
 | P3 | chevron의 텍스트 영역이 도형 밖으로 나간다 — 조정값이 정확히 노치 = 폭/2라 명세 공식(`?: dx x1 l`, dx = 0이면 `l`)으로는 박스 전체인데, 우리는 폭 0 열로 보고 음수 인셋으로 되돌린다. 명세대로 읽는 엔진에서 글자가 박스 왼쪽 밖으로 밀린다 (04_shape 10장) | 작음 |
 
 OnlyOffice 쪽 한계로 확인된 차이는 [testing.md](internals/testing.md#사람이-하는-확인)가 적는다.

@@ -217,7 +217,7 @@ PowerPoint에서 확인한다**.
 | (역할에서) 폰트 | 폰트 토큰 이름 | `font-family: var(--balpyo-font-<토큰>)` | `a:latin`/`a:ea` 테마 참조 (`+mj-lt`·`+mj-ea` / `+mn-lt`·`+mn-ea`), mono는 리터럴 typeface |
 | `color` (토큰) | 토큰 이름 | `color: var(--balpyo-color-<토큰>)` | `a:solidFill/a:schemeClr@val` = 토큰의 Ref |
 | `color` (리터럴) | 대문자 6자리 hex | `color: #RRGGBB` | `a:solidFill/a:srgbClr@val="RRGGBB"` |
-| `color` (변형) | 밑색 + shade/tint/alpha | `color: color-mix(…)` (밑색 var()/#hex 유지) | `a:solidFill/…Clr` + `a:lumMod`/`a:lumOff`/`a:alpha` |
+| `color` (변형) | 밑색 + shade/tint/alpha | `color: hsl(from …)` · alpha는 `color-mix(…)` (밑색 var()/#hex 유지) | `a:solidFill/…Clr` + `a:lumMod`/`a:lumOff`/`a:alpha` |
 | `color` (그라디언트) | 스톱 목록 + 각도 | `background-image: linear-gradient(…)` + `background-clip: text` + `color: transparent` | `a:rPr/a:gradFill` (스톱마다 `a:gs`) |
 | `align` | 논리 이름 | `text-align: start\|center\|end\|justify` | `a:pPr@algn` = `l`\|`ctr`\|`r`\|`just` |
 | `anchor` | `top` `center` `bottom` | (부모 도형의) `justify-content: start\|center\|end` | (부모 도형의) `a:bodyPr@anchor` = `t`\|`ctr`\|`b` |
@@ -243,7 +243,7 @@ PowerPoint에서 확인한다**.
 |---|---|---|---|
 | `fill` (토큰) | 토큰 이름 | 그림 svg의 `fill: var(--balpyo-color-<토큰>)` | `a:solidFill/a:schemeClr@val` |
 | `fill` (리터럴) | hex | `fill: #RRGGBB` | `a:solidFill/a:srgbClr@val` |
-| `fill` (변형) | 밑색 + shade/tint/alpha | `fill: color-mix(…)` | `a:solidFill/…Clr` + `a:lumMod`/`a:lumOff`/`a:alpha` |
+| `fill` (변형) | 밑색 + shade/tint/alpha | `fill: hsl(from …)` · alpha는 `color-mix(…)` | `a:solidFill/…Clr` + `a:lumMod`/`a:lumOff`/`a:alpha` |
 | `fill` (그라디언트) | 스톱 목록 + 각도 | 그림 svg의 `<defs><linearGradient>` + `fill: url(#…)` | `a:gradFill/a:gsLst` (스톱마다 `a:gs pos`) + `a:lin@ang` |
 | `fill="none"` | `none` 상태 | `fill: none` | `a:noFill` |
 | `border` (굵기) | 논리 px | `stroke-width: <px>px` | `a:ln@w` = px × 9525 (EMU) |
@@ -305,14 +305,15 @@ PowerPoint에서 확인한다**.
 
 | 변형 | 웹 (CSS) | PPTX (색 요소 자식) |
 |---|---|---|
-| `shade(색, p%)` 어둡게 | `color-mix(in srgb, <밑색>, black p%)` | `a:lumMod val="(100−p)×1000"` |
-| `tint(색, p%)` 밝게 | `color-mix(in srgb, <밑색>, white p%)` | `a:lumMod val="(100−p)×1000"` + `a:lumOff val="p×1000"` |
+| `shade(색, p%)` 어둡게 | `hsl(from <밑색> h s calc(l * (100−p)/100))` | `a:lumMod val="(100−p)×1000"` |
+| `tint(색, p%)` 밝게 | `hsl(from <밑색> h s calc(l * (100−p)/100 + p))` | `a:lumMod val="(100−p)×1000"` + `a:lumOff val="p×1000"` |
 | `alpha(색, a)` 투명 | `color-mix(in srgb, transparent, <밑색> (a×100)%)` | `a:alpha val="a×100000"` |
 
-- 웹은 `color-mix()`가 sRGB 공간에서 섞고 PPTX는 광도 공간(`lumMod`/`lumOff`)에서 조절하므로
-  **미세한 색 차가 남는다** — 두 표기가 픽셀 단위로 같지 않은 것을 알고 고른 매핑이다: 목적은
-  색을 눕히지 않고 **`schemeClr` 참조를 살려 테마 색 편집을 따라가게** 하는 것이다. 실측상 shade/tint/alpha의
-  색 차는 텍스트 안티앨리어싱 잔차 수준이다.
+- shade/tint는 두 타깃에서 **같은 식**이다: HSL의 광도 L에 (100−p)%를 곱하고, tint는 p를 더한다.
+  PPTX의 `lumMod`/`lumOff`가 그 연산이고(PowerPoint 테마 색의 "어둡게/밝게 p%"), 웹은 같은 식을 CSS 상대
+  색 문법으로 쓴다. 색상(H)과 채도(S)는 그대로라 tint는 흰색과 섞은 색보다 선명하다 — `tint(#15803D, 40%)`은
+  밝은 초록 `#45E07F`이지 회녹색이 아니다. 두 표기 모두 색을 눕히지 않으므로 **`schemeClr` 참조가 살아
+  테마 색 편집을 따라간다.**
 - **도형 불투명도(`opacity`)와 변형 `alpha()`가 함께 있으면 곱한다** — 웹은 svg `opacity` ×
   색 알파, PPTX는 그 곱을 색 안의 `a:alpha` 하나로 낸다.
 
