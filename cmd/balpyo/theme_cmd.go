@@ -85,9 +85,9 @@ func runThemeInstall(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 	if len(positional) == 0 {
-		return fmt.Errorf("theme install에는 GitHub 저장소 주소가 필요하다 (예: balpyo theme install github.com/<owner>/<repo>)")
+		return fmt.Errorf("theme install에는 GitHub 저장소 주소나 로컬 디렉토리가 필요하다 (예: balpyo theme install github.com/<owner>/<repo>, balpyo theme install ./my-theme)")
 	}
-	src, err := themestore.ParseSource(positional[0])
+	src, err := themestore.ResolveSource(positional[0])
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,11 @@ func printInstalled(w io.Writer, store *themestore.Store, res themestore.Install
 	if res.Commit != "" {
 		from += " (" + shortCommit(res.Commit) + ")"
 	}
-	fmt.Fprintf(w, "%s에서 테마 %d개를 설치했다 → %s\n", from, len(res.Themes),
+	verb := "설치했다"
+	if res.Source.IsLocal() {
+		verb = "복사해 설치했다"
+	}
+	fmt.Fprintf(w, "%s에서 테마 %d개를 %s → %s\n", from, len(res.Themes), verb,
 		filepath.Join(store.Dir, "themes"))
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	for _, r := range res.Themes {
@@ -163,7 +167,7 @@ func runThemeList(args []string, stdout, stderr io.Writer) error {
 	}
 	fmt.Fprintf(tw, "설치한 테마 (%s)\n", store.Dir)
 	if len(installed) == 0 {
-		fmt.Fprintln(tw, "  (없음 — balpyo theme install <GitHub URL>로 설치한다)")
+		fmt.Fprintln(tw, "  (없음 — balpyo theme install <GitHub URL 또는 경로>로 설치한다)")
 	}
 	for _, r := range installed {
 		origin := r.Origin()

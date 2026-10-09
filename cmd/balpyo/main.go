@@ -71,7 +71,7 @@ func usage(w io.Writer) {
   balpyo check [옵션]   산출물 없이 진단만 한다
   balpyo watch [옵션]   고치면 다시 빌드하고 브라우저를 새로고침한다
   balpyo preview [옵션] 웹과 PPTX를 나란히 놓은 검수 갤러리를 만든다
-  balpyo theme <명령>   GitHub에서 테마를 설치하고 설치한 테마를 다룬다
+  balpyo theme <명령>   GitHub이나 로컬 디렉토리에서 테마를 설치하고 설치한 테마를 다룬다
   balpyo version        버전을 출력한다
 
 init 옵션:
@@ -114,8 +114,8 @@ preview 옵션:
   pdftoppm(poppler-utils)이 필요하다.
 
 theme 명령:
-  balpyo theme install <GitHub URL> [이름...] [--force]
-                        저장소의 테마를 설치한다 (이름을 주지 않으면 전부)
+  balpyo theme install <GitHub URL | 경로> [이름...] [--force]
+                        저장소나 디렉토리의 테마를 설치한다 (이름을 주지 않으면 전부)
   balpyo theme list [--project .]
                         쓸 수 있는 테마를 출처와 함께 나열한다
   balpyo theme remove <이름...>

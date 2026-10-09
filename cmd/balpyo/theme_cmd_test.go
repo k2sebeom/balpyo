@@ -163,3 +163,66 @@ func TestThemeCommandErrors(t *testing.T) {
 		}
 	}
 }
+
+// 로컬 디렉토리에서 설치 → 이름으로 빌드 → 목록이 경로를 출처로 보인다 → 원본을 고치고 update.
+// 설치한 것은 사본이라 원본 디렉토리를 지워도 빌드된다.
+func TestThemeInstallFromLocalPath(t *testing.T) {
+	isolatedHome(t)
+	src := filepath.Join(t.TempDir(), "brand")
+	for name, data := range map[string]string{
+		"theme.json":        `{"name":"acme","extends":"ink"}`,
+		"layouts/title.css": "/* v1 */",
+	} {
+		p := filepath.Join(src, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(data), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var stdout, stderr bytes.Buffer
+	if err := run([]string{"theme", "install", src}, &stdout, &stderr); err != nil {
+		t.Fatalf("%v\nstderr: %s", err, stderr.String())
+	}
+	for _, want := range []string{"테마 1개를 복사해 설치했다", "acme", `"theme": "acme"`} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("설치 출력에 %q가 없다:\n%s", want, stdout.String())
+		}
+	}
+
+	dir := newProject(t)
+	if err := os.WriteFile(filepath.Join(dir, "balpyo.json"), []byte(`{"title":"t","theme":"acme"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	if err := run([]string{"theme", "list", "--project", dir}, &stdout, &stderr); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "acme") || !strings.Contains(stdout.String(), "brand") {
+		t.Errorf("목록이 로컬 출처를 보이지 않았다:\n%s", stdout.String())
+	}
+
+	if err := os.WriteFile(filepath.Join(src, "layouts", "title.css"), []byte("/* v2 */"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	if err := run([]string{"theme", "update", "acme"}, &stdout, &stderr); err != nil {
+		t.Fatalf("%v\nstderr: %s", err, stderr.String())
+	}
+	home := os.Getenv(themestore.HomeEnv)
+	if css, _ := os.ReadFile(filepath.Join(home, "themes", "acme", "layouts", "title.css")); string(css) != "/* v2 */" {
+		t.Errorf("update가 원본에서 다시 복사하지 않았다: %q", css)
+	}
+
+	if err := os.RemoveAll(src); err != nil {
+		t.Fatal(err)
+	}
+	if err := run([]string{"build", "--project", dir, "--strict"}, &stdout, &stderr); err != nil {
+		t.Fatalf("원본을 지운 뒤 설치한 사본으로 빌드되지 않았다: %v\nstderr: %s", err, stderr.String())
+	}
+	html, _ := os.ReadFile(filepath.Join(dir, "dist", "index.html"))
+	if !strings.Contains(string(html), "#15171B") {
+		t.Error("산출물이 상속한 ink의 bg 토큰을 들고 있지 않다")
+	}
+}
