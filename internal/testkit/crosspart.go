@@ -23,6 +23,8 @@ import (
 //     가리키는 레이아웃과 같다 · 프레젠테이션의 `sldIdLst`가 슬라이드 파트를 모두 담는다.
 //   - 노트 파트는 노트 마스터와 슬라이드를 가리키고, 그 슬라이드가 노트 파트를 되가리킨다.
 //   - 슬라이드의 `p:ph`는 레이아웃에 같은 자리(`idx`, 없으면 `type`)가 있다.
+//   - 마스터(슬라이드 · 노트 · 유인물)는 테마 하나를 가리키고, 두 마스터가 한 테마 파트를 같이
+//     쓰지 않는다 — OPC로는 유효하지만 PowerPoint가 복구를 묻는다.
 
 const (
 	relNS      = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
@@ -182,6 +184,21 @@ func CheckCrossParts(parts map[string][]byte) []string {
 			if !have[ph.key()] {
 				fail("%s의 플레이스홀더 %s가 %s에 없다 — 상속할 자리가 없다", slide, ph, layout)
 			}
+		}
+	}
+
+	// 마스터마다 자기 테마.
+	themeOwner := map[string]string{}
+	for _, prefix := range []string{"ppt/slideMasters/slideMaster", "ppt/notesMasters/notesMaster", "ppt/handoutMasters/handoutMaster"} {
+		for _, master := range partsWithPrefix(parts, prefix) {
+			theme, ok := singleRel(parts, master, "theme", fail)
+			if !ok {
+				continue
+			}
+			if owner, dup := themeOwner[theme]; dup {
+				fail("%s와 %s가 테마 %s를 같이 쓴다 — 마스터마다 테마 파트가 따로 있어야 PowerPoint가 복구를 묻지 않는다", owner, master, theme)
+			}
+			themeOwner[theme] = master
 		}
 	}
 
