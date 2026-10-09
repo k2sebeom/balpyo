@@ -54,6 +54,29 @@
 그것이 같은 덱이 어느 기계에서나 같은 산출물을 내는 근거이고, 발표장에서 네트워크가 없어도
 덱이 온전한 근거다.
 
+### `theme:` — 테마가 가진 그림
+
+`theme:`으로 시작하는 값은 프로젝트의 파일이 아니라 **활성 테마의 그림**이다:
+
+```xml
+<image src="theme:icons/compute/lambda.png" w="64" alt="Lambda"/>
+```
+
+- 경로는 테마 패키지의 `assets/` 기준이다 — `theme:icons/a.png`는 `<테마>/assets/icons/a.png`다.
+- 찾는 자리는 활성 테마와 그 테마가 `extends`로 물려받은 테마들이다. 같은 경로의 파일이 둘 다에 있으면
+  **자식의 파일**이 이긴다 ([테마](../theme.md)의 `assets/`와 같은 파일 단위 병합).
+- 테마가 어디서 왔는지는 상관없다 — 내장 테마, 프로젝트의 `themes/<이름>/`, `balpyo theme install`로
+  설치한 테마가 모두 같다. 설치한 테마의 그림을 쓰려고 프로젝트에 `themes/`를 둘 필요가 없다.
+
+슬라이드가 테마의 이름도 자리도 적지 않으므로, `balpyo.json`의 `theme`만 바꿔 같은 덱을 다른 테마로 빌드할
+수 있다. 그 테마의 체인에 파일이 없으면 **빌드 에러**다 (빈 그림으로 빌드되지 않는다) — 진단이 찾아 본 테마를
+나열한다.
+
+경로 규칙은 프로젝트 경로와 같다: 절대 경로 · `assets/` 밖(`..`) · 역슬래시 · 열지 않은 확장자를 막고, 값은
+정규화된다 (`theme:./icons/a.png` = `theme:icons/a.png`). 내용 판정도 같다 — 확장자와 내용이 다른 파일은
+에러다. 산출물에서 테마의 그림은 그 파일을 가진 테마의 자리(`themes/<테마>/assets/…`)에 놓이고, 쓴 그림만
+나간다. 테마의 배경 · 로고와 같은 파일이면 산출물에 한 번 들어간다 (PPTX 미디어 파트도 하나다).
+
 ### 포맷 2종 — PNG·JPEG
 
 쓸 수 있는 확장자는 `.png` · `.jpg` · `.jpeg` 셋이고 **포맷은 둘**이다 (PNG·JPEG).
@@ -78,7 +101,7 @@
 
 | 속성 | 값 | 기본값 | 뜻 |
 |---|---|---|---|
-| `src` | 프로젝트 루트 기준 경로 | **필수** | 그림 파일 |
+| `src` | 프로젝트 루트 기준 경로, 또는 `theme:<경로>` | **필수** | 그림 파일 |
 | `fit` | `cover` `contain` | `contain` | 박스와 그림이 어긋날 때 (아래) |
 | `alt` | 임의 문자열 (빈 값 허용) | 없음 ≡ `alt=""` | 대체 텍스트 |
 
@@ -408,7 +431,8 @@
 | 어휘 밖의 속성 (`fill`·`frame`·`type`·`anchor` …) | `<image>에 알 수 없는 속성 fill (쓸 수 있는 속성: src, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
 
 값 해석(`core.Resolve`) — 경로 **문법**과 값 어휘. 디스크를 보지 않으므로 에디터가 프로젝트를
-열지 않고도 같은 진단을 낸다:
+열지 않고도 같은 진단을 낸다. `theme:` 그림만은 여기서 테마 패키지의 파일까지 판정한다 — 그 파일이
+없거나 내용이 확장자와 다르면 아래 에셋 패스와 같은 문구의 진단이 여기서 난다:
 
 | 조건 | 진단 메시지 |
 |---|---|
@@ -420,6 +444,10 @@
 | URL | `src에 URL은 쓸 수 없다 ("https://…") — 빌드가 네트워크에 의존하면 같은 덱이 CI에서 다르게 빌드되고 오프라인 발표 약속이 깨진다. 파일을 프로젝트 안에 두고 상대 경로로 가리킨다` |
 | `data:` URL | `src에 data: URL은 쓸 수 없다 — 그림은 파일로 커밋한다 (원문에 바이트를 실으면 슬라이드를 사람이 읽을 수도, 진단이 자리를 가리킬 수도 없다)` |
 | 역슬래시 | `src의 경로 구분자는 "/"다 ("assets\wide.png"에 역슬래시가 있다) — 같은 덱이 기계마다 다르게 빌드되지 않게 한다` |
+| `theme:` 뒤가 비었다 | `theme: 뒤에 경로가 없다 — 테마의 assets/ 기준 경로를 적는다 (예: "theme:icons/logo.png")` |
+| `theme:` 절대 경로 | `theme: 경로는 테마의 assets/ 기준 상대 경로다 ("theme:/x.png"는 절대 경로)` |
+| `theme:` 경로가 `assets/` 밖 | `src가 테마의 assets/ 밖을 가리킨다 ("theme:../x.png") — theme: 그림은 테마의 assets/ 안의 파일이다` |
+| `theme:` 그림이 테마 체인에 없다 | `theme:icons/x.png을 테마 "corp-dark"(→ "corp" → "minimal")의 assets/에서 찾을 수 없다` |
 | 확장자가 없다 | `src에 확장자가 없다 ("assets/photo") — 확장자가 PPTX의 콘텐츠 타입을 정한다 (쓸 수 있는 것: .png, .jpg, .jpeg)` |
 | 지원하지 않는 확장자 | `src의 ".svg"는 v1이 그리지 못한다 (쓸 수 있는 것: .png, .jpg, .jpeg) — PPTX는 벡터를 확장 요소(svgBlip)와 래스터 폴백으로 실어 소비자마다 다르게 열린다 — png나 jpeg로 내보낸다` |
 | CSS `object-fit` 값을 썼다 | `CSS object-fit의 "fill"는 PPTX에 대응이 없다 (쓸 수 있는 값: cover, contain) — 비율을 무시하고 늘리는 대신 ratio로 박스를 그림 비율에 맞춘다` |

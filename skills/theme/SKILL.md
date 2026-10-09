@@ -34,7 +34,7 @@ my-deck/
         ├── tokens.json        # partial, when inheriting
         ├── components.json    # partial
         ├── layouts/           # only the files being replaced
-        └── assets/            # optional — background and logo pictures (PNG/JPEG)
+        └── assets/            # optional — background, logo, and icon pictures (PNG/JPEG)
 ```
 
 Pick the closest built-in as the parent and override only what differs:
@@ -92,7 +92,8 @@ Formats, required names, and worked examples: `references/package.md`. Shortest 
   eleven), `chrome` (footer and page-number placement — `align` and `role` are mandatory — and
   an optional `logo`), and optional `backgrounds` (per-layout slide backgrounds: a colour,
   token gradient, or picture from `assets/`). Backgrounds and the logo are the theme's own: the
-  deck never mentions them, so a theme swap swaps them too.
+  deck never mentions them, so a theme swap swaps them too. Slides can also use any picture in
+  `assets/` with `<image src="theme:<path under assets/>">` — the way to ship an icon library.
 - **`tokens.json`** — the **names** authors may write. Each colour needs all four fields
   (`name`, `rgb`, `slot`, `ref`). Colour work in a child theme is **recolouring by name**: the
   `clrScheme` has 12 slots, built-ins use 10, so adding a new colour *name* requires a free

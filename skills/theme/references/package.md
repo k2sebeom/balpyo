@@ -94,6 +94,14 @@ files whose extension matches the content, and are judged like `<image src>`. On
 pictures are shipped. An inherited declaration's picture belongs to the theme that has it; a
 child file at the same path wins.
 
+Slides may use the same pictures: `<image src="theme:icons/a.png">` is `assets/icons/a.png`
+looked up through the active theme's `extends` chain, child first — for built-in, project, and
+installed themes alike. This is how a theme ships an icon or illustration library: a child theme
+overrides one icon by placing a file at the same path, and the deck's `src` never changes. The
+paths under `assets/` become public vocabulary — renaming or removing a file breaks every deck
+that uses it. Loading only indexes `assets/`; bytes are read for referenced files only, so a
+large library costs nothing until used.
+
 ## `tokens.json`
 
 Five **ordered arrays** — order determines CSS variable order, `clrScheme` assembly, and the
@@ -221,6 +229,7 @@ Things worth knowing about this file:
   `backgrounds` (per layout, `fill` *or* `image` — never both; an entry without `layouts` is the
   default) and a `logo` chrome entry (`image`, `height`, `alt`; it is on whenever declared).
   The deck never mentions them, so switching themes switches the backgrounds and the logo.
+  Slides reach any other picture there with `<image src="theme:<path under assets/>">`.
 - **A component default belongs to a tag or to a layout slot**, never both. A slot default sits
   above the tag default and below variants: `<blockquote slot="quote">` gets quote size, a
   `<blockquote>` in a flow slide stays body size. The built-in themes keep three slot contracts:

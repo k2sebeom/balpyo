@@ -41,6 +41,8 @@ Backgrounds and assets
 - [ ] No layout in two entries, at most one default (an entry without `layouts`), and every
       listed name is a layout of this theme.
 - [ ] Every background and logo picture is a real PNG/JPEG under the theme's `assets/`.
+- [ ] Pictures meant for slides (`theme:` paths) are PNG/JPEG with matching content, and a child
+      theme that overrides one keeps the parent's path.
 
 Tokens
 

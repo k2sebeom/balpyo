@@ -126,7 +126,7 @@ metadata: one per slide, direct child of `<slide>` only, text only, no attribute
 | `wrap`, `skip`, `reveal` | valueless, or `"true"` |
 | `shape type` | `rect` `rounded-rect` `ellipse` `diamond` `cylinder` `chevron` `arrow-right` `hexagon` `parallelogram` `callout` `star` `cloud` |
 | `chart type` | `bar` |
-| `image src` | a **project-root-relative** path to one file; `.png` `.jpg` `.jpeg` only. Absolute paths, `../` outside the project, URLs, and `data:` are all errors — the deck must carry its own images. `assets/` is the convention, not a rule |
+| `image src` | a **project-root-relative** path to one file; `.png` `.jpg` `.jpeg` only. Absolute paths, `../` outside the project, URLs, and `data:` are all errors — the deck must carry its own images. `assets/` is the convention, not a rule. **Or** `theme:<path>` — a picture from the active theme's `assets/` (searched through its `extends` chain, child first), e.g. `theme:icons/lambda.png`; works for installed themes with no `themes/` in the project, and a theme lacking the file is a build error |
 
 Sizes and spacing do **not** share one value vocabulary:
 
