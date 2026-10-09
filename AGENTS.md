@@ -3,8 +3,8 @@
 A guide for coding agents working in this repository. For the product overview see
 `docs/index.md`; for implemented behavior `docs/reference/`; for open work `docs/backlog.md`;
 for the design rationale `docs/decisions/` (ADRs — the pre-implementation decisions of the old
-PRD live in ADR 0067). Project docs, ADRs, diagnostics and commit subjects are written in
-**Korean** — keep new ones in Korean too.
+PRD live in ADR 0067). Project docs, ADRs and diagnostics are written in
+**Korean** — keep new ones in Korean too. Commit messages are written in **English**.
 
 ## What balpyo is
 
@@ -157,6 +157,6 @@ make docs        # mkdocs build --strict (new pages must be in mkdocs.yml nav)
   decision → rationale → consequences). **ADRs are never edited after the fact** — a later ADR supersedes.
 - `docs/reference/` documents implemented behavior only.
 - Diagnostic-wording changes keep the input that produced the message as a fixture.
-- Micro commits with `feat:` / `fix:` / `refactor:` / `test:` / `doc:` prefixes; no AI/author
-  attribution in commit messages.
+- Micro commits with `feat:` / `fix:` / `refactor:` / `test:` / `doc:` prefixes, written in English
+  (older history is in Korean — don't rewrite it); no AI/author attribution in commit messages.
 - Don't commit generated output: `dist/`, `review/`, `/preview/`, `site/`, `.make/`, `workspace/`.
