@@ -159,4 +159,4 @@ make docs        # mkdocs build --strict (new pages must be in mkdocs.yml nav)
 - Diagnostic-wording changes keep the input that produced the message as a fixture.
 - Micro commits with `feat:` / `fix:` / `refactor:` / `test:` / `doc:` prefixes; no AI/author
   attribution in commit messages.
-- Don't commit generated output: `dist/`, `review/`, `/preview/`, `site/`, `.make/`, `.scratch/`, `workspace/`.
+- Don't commit generated output: `dist/`, `review/`, `/preview/`, `site/`, `.make/`, `workspace/`.

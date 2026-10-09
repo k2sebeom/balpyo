@@ -334,5 +334,3 @@ review/
 /preview/
 # make가 만드는 바이너리 (`make review`의 balpyo)
 .make/
-# 리뷰 중에 손으로 찍는 스크린샷·임시 산출물 (사람이 보고 버린다 — 게이트는 골든과 예제다)
-.scratch/
