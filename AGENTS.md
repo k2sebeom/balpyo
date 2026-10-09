@@ -147,7 +147,7 @@ make docs        # mkdocs build --strict (new pages must be in mkdocs.yml nav)
   `balpyo preview` rasterizing; their tests skip when the tools are absent.
 - Fixtures live in `testdata/fixtures/NN_name/` (`balpyo.json`, `slides/`, `golden/`).
 - `examples/` is user-facing: `examples/decks/` (balpyo-intro 12, incident-postmortem 10,
-  quarterly-review 6 slides) and `examples/themes/` (standalone themes — `extends` empty). They are
+  quarterly-review 7 slides) and `examples/themes/` (standalone themes — `extends` empty). They are
   gated by a strict zero-warning build, not goldens: every deck with its own theme, and every
   example theme against every deck.
 - `core/docs_test.go` reads closed lists and quoted diagnostics from the docs — changing a
