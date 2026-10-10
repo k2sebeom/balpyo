@@ -33,10 +33,10 @@ jobs:
 
       # 내장 · 예제 테마의 글꼴이다. 측정 브라우저에 없으면 잰 빌드가 글꼴 경고를 내고, 예제
       # 게이트는 경고 0이어야 하므로 러너의 설치 목록에 따라 결과가 갈리면 안 된다.
-      - name: 테마 글꼴
+      - name: theme fonts
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-noto-core fonts-noto-mono fonts-noto-cjk
 
-      - name: 테스트
+      - name: test
         run: make test
 
   docs:
@@ -53,5 +53,5 @@ jobs:
 
       # --strict: 끊긴 링크와 nav에 없는 문서를 에러로 잡는다. 문서 갱신은 변경의
       # 완료 조건이므로 CI가 검사한다.
-      - name: 문서 빌드
+      - name: docs build
         run: make docs

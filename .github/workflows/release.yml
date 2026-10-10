@@ -39,21 +39,21 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: 게이트 (릴리스도 같은 테스트를 지난다)
+      - name: gate (a release passes the same tests)
         run: make test
 
       # 버전은 태그가 소유한다 — 워크플로가 이름을 만들지 않고 참조에서 그대로 읽는다.
-      - name: 릴리스 빌드
+      - name: release build
         run: make dist VERSION=${{ github.ref_name }}
 
-      - name: 산출물 확인
+      - name: verify artifacts
         run: |
           ls -l dist
           (cd dist && sha256sum -c SHA256SUMS)
 
       # 릴리스 노트는 사람이 쓴다 (커밋 메시지는 릴리스 노트가 아니다). 그래서
       # draft로 만들고, 발표는 사람이 누른다.
-      - name: GitHub Release 초안
+      - name: GitHub Release draft
         uses: softprops/action-gh-release@v2
         with:
           draft: true
