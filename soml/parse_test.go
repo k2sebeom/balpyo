@@ -342,12 +342,12 @@ func TestParseErrors(t *testing.T) {
 			// 속성 이름의 오타도 후보를 얻는다 — 목록은 그 태그의 속성이다.
 			name: "속성 이름의 오타",
 			src:  `<slide layot="title"></slide>`,
-			want: []string{"1:8 unknown attribute layot on <slide> — did you mean layout? (available attributes: layout, id, skip, justify, enter, transition)"},
+			want: []string{"1:8 unknown attribute layot on <slide> — did you mean layout? (available attributes: layout, id, skip, justify, enter, transition, invert)"},
 		},
 		{
 			name: "알 수 없는 속성",
 			src:  `<slide reveal="fade"></slide>`,
-			want: []string{"1:8 unknown attribute reveal on <slide> (available attributes: layout, id, skip, justify, enter, transition)"},
+			want: []string{"1:8 unknown attribute reveal on <slide> (available attributes: layout, id, skip, justify, enter, transition, invert)"},
 		},
 		{
 			name: "<note>에는 속성이 없다",

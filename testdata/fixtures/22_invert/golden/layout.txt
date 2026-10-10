@@ -1,0 +1,23 @@
+# slide 1 light
+textbox "h2 s0.0"
+  ¶ start | "Elastic compute"{heading 27pt b fg}
+textbox "p s0.1"
+  ¶ start | "Capacity follows demand."{body 18pt muted}
+textbox "chrome footer"
+  ¶ start | "What is Amazon EC2?"{body 13.5pt muted}
+textbox "chrome pageNumber"
+  ¶ end | "1"{field body 13.5pt muted}
+# slide 2 dark
+colors inverse
+textbox "text s1.0"
+  ¶ start | "KEY TAKEAWAYS"{body 13.5pt b tracking=1.35pt upper accent1}
+textbox "h2 s1.1"
+  ¶ start | "EC2 in four sentences"{heading 27pt b fg}
+textbox "p s1.2"
+  ¶ start | "Elastic, composable, purpose-built, cost-aware."{body 18pt muted}
+shape:roundRect "shape s1.3" fill=surface line=muted
+  ¶ start | "on surface"{body 18pt fg}
+textbox "chrome footer"
+  ¶ start | "What is Amazon EC2?"{body 13.5pt muted}
+textbox "chrome pageNumber"
+  ¶ end | "2"{field body 13.5pt muted}

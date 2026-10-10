@@ -101,7 +101,7 @@ func TestElementAttrs(t *testing.T) {
 		block = "variant size color align anchor w min-w max-w " + place
 	)
 	want := map[string]string{
-		RootElement:  "layout id skip justify enter transition",
+		RootElement:  "layout id skip justify enter transition invert",
 		noteElement:  "",
 		TextElement:  "role " + block,
 		"h1":         block,

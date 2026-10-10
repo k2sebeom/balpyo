@@ -639,8 +639,9 @@ const slideTemplate = xmlDecl + `<p:sld xmlns:a="http://schemas.openxmlformats.o
       </p:grpSpPr>{{.Shapes}}
     </p:spTree>
   </p:cSld>
-  <p:clrMapOvr>
-    <a:masterClrMapping/>
+  <p:clrMapOvr>{{if .Invert}}
+    <a:overrideClrMapping bg1="dk1" tx1="lt1" bg2="dk2" tx2="lt2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>{{else}}
+    <a:masterClrMapping/>{{end}}
   </p:clrMapOvr>{{.Transition}}{{.Timing}}
 </p:sld>
 `

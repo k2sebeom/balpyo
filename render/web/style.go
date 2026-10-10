@@ -74,8 +74,37 @@ func themeCSS(theme soml.Theme, feat features) string {
 		b.WriteString("\n")
 		fmt.Fprintf(&b, "  .balpyo-slide { background: var(%s%s); }\n", colorVarPrefix, bgToken)
 	}
+	if feat.inverse {
+		b.WriteString(inverseCSS(theme))
+	}
 	b.WriteString(layoutStagesCSS(theme, feat))
 	b.WriteString("}\n")
+	return b.String()
+}
+
+// InverseClass는 색 매핑을 뒤집은 슬라이드의 클래스다 (`<slide invert>`).
+const InverseClass = "balpyo-inverse"
+
+// inverseCSS는 반전된 장의 토큰 변수 재선언이다 — PPTX `overrideClrMapping`과 같은 매핑을 테마 표에서 푼다:
+// 배경 · 글자 자리(ref)를 가리키는 토큰은 짝 자리(slot)에 앉은 토큰의 색을 갖는다. 요소는 그대로 var()를
+// 가리키므로, 슬라이드에 선언한 변수가 그 장의 모든 색(바탕 포함)을 함께 뒤집는다.
+func inverseCSS(theme soml.Theme) string {
+	var b strings.Builder
+	b.WriteString("\n  /* Inverted slide — the background and text roles swap, as PPTX overrideClrMapping does. */\n")
+	fmt.Fprintf(&b, "  .balpyo-slide.%s {\n", InverseClass)
+	for _, token := range theme.Colors {
+		slot, ok := soml.InvertedRef[token.Ref]
+		if !ok {
+			continue
+		}
+		for _, pair := range theme.Colors {
+			if pair.Slot == slot {
+				fmt.Fprintf(&b, "    %s%s: #%s;\n", colorVarPrefix, token.Name, pair.RGB)
+				break
+			}
+		}
+	}
+	b.WriteString("  }\n")
 	return b.String()
 }
 

@@ -1,0 +1,5 @@
+<!-- A plain slide between two inverted ones: the mapping is per slide. -->
+<slide id="light">
+  <h2>Elastic compute</h2>
+  <p color="muted">Capacity follows demand.</p>
+</slide>

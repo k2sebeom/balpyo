@@ -175,6 +175,9 @@ type Slide struct {
 	Enter string
 	// EnterSpan은 enter 값 구간이다.
 	EnterSpan Span
+	// Invert는 이 장의 색 매핑을 뒤집는지다 (`<slide invert>`) — 배경 · 글자 네 자리(bg1↔tx1, bg2↔tx2)가 서로
+	// 바뀐다. 렌더러는 이 값 하나로 PPTX `overrideClrMapping`과 웹 토큰 변수의 재선언을 낸다.
+	Invert bool
 	// Transition은 이 장에 들어올 때의 전환이다. 파이프라인이 원문을 옮기고 core.Resolve가 테마의 기본값과
 	// 합쳐 **확정 값**(fade · push · 빈 값)으로 바꾼다 — 렌더러는 확정 값만 읽는다.
 	Transition SlideTransition

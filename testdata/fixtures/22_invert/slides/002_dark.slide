@@ -1,0 +1,9 @@
+<!-- An inverted slide: the background and text roles swap (PPTX overrideClrMapping), so the bg
+     background turns dark, fg text turns light, muted and surface trade places — every color stays
+     a theme reference. Accents do not move. The chrome follows too. -->
+<slide id="dark" invert>
+  <text variant="kicker">KEY TAKEAWAYS</text>
+  <h2>EC2 in four sentences</h2>
+  <p color="muted">Elastic, composable, purpose-built, cost-aware.</p>
+  <shape type="rounded-rect" fill="surface" w="400" h="80"><p>on surface</p></shape>
+</slide>

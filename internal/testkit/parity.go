@@ -36,7 +36,9 @@ type LayoutSlide struct {
 	Background string
 	// Transition은 이 장에 들어올 때의 전환이다 (`fade/fast` — 효과/속도 단계). 비면 전환이 없다.
 	Transition string
-	Nodes      []LayoutNode
+	// Inverse는 이 장의 색 매핑이 뒤집혔는지다 (`colors inverse`).
+	Inverse bool
+	Nodes   []LayoutNode
 }
 
 // LayoutNode는 PPTX 객체 하나(= 웹 요소 하나)다. 문서 순서 = 칠 순서다.
@@ -80,6 +82,9 @@ func FormatLayout(slides []LayoutSlide, withRect bool) string {
 		}
 		if s.Transition != "" {
 			b.WriteString("transition " + s.Transition + "\n")
+		}
+		if s.Inverse {
+			b.WriteString("colors inverse\n")
 		}
 		for _, n := range s.Nodes {
 			b.WriteString(n.Kind + " " + strconv.Quote(n.Name))
@@ -165,7 +170,7 @@ func (f Fixture) AssertParity(t testing.TB, result *pipeline.Result) {
 func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 	var slides []LayoutSlide
 	for _, slide := range deck.Slides {
-		s := LayoutSlide{ID: slide.ID}
+		s := LayoutSlide{ID: slide.ID, Inverse: slide.Invert}
 		if slide.Transition != "" {
 			// 속도 단계는 렌더러와 따로 접는다 — 600ms까지 fast, 875ms까지 med, 그보다 길면 slow.
 			spd := "slow"
@@ -630,6 +635,15 @@ type xSlide struct {
 			Items []xObject `xml:",any"`
 		} `xml:"spTree"`
 	} `xml:"cSld"`
+	// ClrMapOvr는 색 매핑 덮기다 — 반전된 장은 bg1이 dk1을 가리킨다.
+	ClrMapOvr struct {
+		Override *struct {
+			Bg1 string `xml:"bg1,attr"`
+			Tx1 string `xml:"tx1,attr"`
+			Bg2 string `xml:"bg2,attr"`
+			Tx2 string `xml:"tx2,attr"`
+		} `xml:"overrideClrMapping"`
+	} `xml:"clrMapOvr"`
 	// Transition은 슬라이드 전환이다 — 효과 요소 이름과 속도를 되읽는다.
 	Transition *struct {
 		Spd  string    `xml:"spd,attr"`
@@ -837,6 +851,9 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 			}
 		}
 		s := LayoutSlide{ID: x.CSld.Name}
+		if o := x.ClrMapOvr.Override; o != nil {
+			s.Inverse = o.Bg1 == "dk1" && o.Tx1 == "lt1" && o.Bg2 == "dk2" && o.Tx2 == "lt2"
+		}
 		if t := x.Transition; t != nil {
 			kind := "?"
 			switch {

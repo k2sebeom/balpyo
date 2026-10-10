@@ -52,6 +52,13 @@ type MotionTokens struct {
 	TransitionDuration int
 }
 
+// InvertAttr는 슬라이드의 색 반전 속성 이름이다 (`<slide invert>`).
+const InvertAttr = "invert"
+
+// InvertedRef는 반전된 장에서 테마 색 참조가 가리키는 자리다 — 배경 · 글자 네 자리가 짝과 바뀐다
+// (PPTX `overrideClrMapping`의 bg1="dk1" tx1="lt1" bg2="dk2" tx2="lt2"). 강조색 · 링크 색은 그대로다.
+var InvertedRef = map[string]string{"tx1": "lt1", "bg1": "dk1", "tx2": "lt2", "bg2": "dk2"}
+
 // TransitionAttr는 슬라이드 전환 속성 이름이다 (`<slide transition>`).
 const TransitionAttr = "transition"
 

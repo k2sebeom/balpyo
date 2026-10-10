@@ -175,8 +175,12 @@ func (r *Renderer) writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.S
 	if err != nil {
 		return fmt.Errorf("%s: background: %w", slide.Source, err)
 	}
+	class := SlideClass
+	if slide.Invert {
+		class += " " + InverseClass
+	}
 	fmt.Fprintf(b, "<section class=%q id=%q %s=\"%d\" data-slide-source=%q%s%s>\n",
-		SlideClass, html.EscapeString(slide.ID), SlideIndexAttr, slide.Index, html.EscapeString(slide.Source),
+		class, html.EscapeString(slide.ID), SlideIndexAttr, slide.Index, html.EscapeString(slide.Source),
 		transitionAttr(slide), styleAttr(bg))
 	if err := writeStage(b, deck, slide); err != nil {
 		return err

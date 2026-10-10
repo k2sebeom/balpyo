@@ -739,6 +739,8 @@ type features struct {
 	connectors bool
 	// entrances는 등장(`enter`)이 실린 요소가 있는지다 — 테마의 박자 변수(--balpyo-motion-duration)를 낸다.
 	entrances bool
+	// inverse는 색 매핑을 뒤집은 장이 있는지다 (inverseCSS).
+	inverse bool
 	// layouts는 이 덱이 실제로 쓴, **배치 CSS를 가진** 레이아웃 이름들이다 (정렬·중복 제거).
 	// themeCSS가 이 목록만 규칙으로 낸다 — 다른 어휘 조건과 같은 근거다 (골든 불변): 쓰지 않은
 	// 레이아웃의 배치 규칙이 산출물에 들어가면 diff가 무엇이 변했는지 말해 주지 못한다.
@@ -803,6 +805,9 @@ func contentFeatures(deck *soml.Deck) features {
 	seenFlow := map[string]bool{}
 	seenSlot := map[string]bool{}
 	for _, slide := range deck.Slides {
+		if slide.Invert {
+			feat.inverse = true
+		}
 		if slide.Layout == soml.LayoutCanvas {
 			// 캔버스 스테이지는 stack이다 — 스테이지 CSS(stackCSS)가 이때만
 			// 나간다. 슬라이드 수준 어휘라 콘텐츠 순회가 아니라 여기서 켠다.

@@ -37,7 +37,8 @@ func buildElementSpecs() map[string]elementSpec {
 			// 세로 리듬 채널이 없어서 `<col h="fill" justify="between">` 랩퍼가 그 자리를
 			// 대신하고 있었다. 값 어휘는 컨테이너와 같은 6종이고 검사는 core다.
 			// `enter`는 직속 자식마다 같은 등장을 준다 (자식의 `enter`가 이긴다 — core).
-			attrs: []string{"layout", "id", "skip", "justify", EnterAttr, TransitionAttr},
+			// `invert`는 그 장의 색 매핑을 뒤집는다 (배경 · 글자 네 자리 — 어두운 장).
+			attrs: []string{"layout", "id", "skip", "justify", EnterAttr, TransitionAttr, InvertAttr},
 			model: modelElements,
 			// `<slide>`에는 `reveal` 속성을 열지 않는다 — 웹 런타임의 reveal은 Phase 2이고,
 			// 렌더가 없는 속성을 어휘에 열면 닫힌 어휘가 막으려던 조용한 무시가 된다.
@@ -287,6 +288,8 @@ type SlideDoc struct {
 	Enter string
 	// EnterSpan은 enter 값 구간이다.
 	EnterSpan Span
+	// Invert는 `<slide invert>`다 — 그 장의 색 매핑(배경 · 글자 네 자리)을 뒤집는다.
+	Invert bool
 	// Transition은 `<slide transition>`의 값이다 (원문 그대로 — 어휘는 core가 본다).
 	Transition string
 	// TransitionSpan은 transition 값 구간이다.
@@ -854,6 +857,16 @@ func (p *parser) fillSlide(doc *SlideDoc) {
 		case attr.Value == "false":
 		default:
 			p.errorf(attr.ValueSpan, "skip must be true or false (%q)", attr.Value)
+		}
+	}
+	if attr, ok := root.Attr(InvertAttr); ok {
+		switch {
+		case !attr.HasValue, attr.Value == "true":
+			// skip과 같은 HTML 불리언 관례다.
+			doc.Invert = true
+		case attr.Value == "false":
+		default:
+			p.errorf(attr.ValueSpan, "invert must be true or false (%q)", attr.Value)
 		}
 	}
 	if attr, ok := root.Attr("layout"); ok {
