@@ -145,7 +145,7 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 		case "type":
 			// 위에서 해석했다 — 여기서 다시 보면 진단이 두 번 난다.
 		case "id":
-			if id, ok := r.shapeID(attr); ok {
+			if id, ok := r.shapeID(attr, elem); ok {
 				style.ID = id
 			}
 		case "alt":
@@ -248,7 +248,7 @@ func (r *resolver) shapeType(elem *soml.Element) string {
 //
 // 참조가 붙기 전에 검사하는 이유: 그때 처음 막으면 중복 id로 이미 쓴 덱이 깨진다. 지금은
 // id가 산출물에 아무것도 그리지 않아 고치는 비용이 이름 하나다.
-func (r *resolver) shapeID(attr soml.Attr) (string, bool) {
+func (r *resolver) shapeID(attr soml.Attr, elem *soml.Element) (string, bool) {
 	if !r.hasValue(attr) {
 		return "", false
 	}
@@ -261,6 +261,10 @@ func (r *resolver) shapeID(attr soml.Attr) (string, bool) {
 		r.ids = map[string]soml.Span{}
 	}
 	r.ids[attr.Value] = attr.ValueSpan
+	if r.idElems == nil {
+		r.idElems = map[string]*soml.Element{}
+	}
+	r.idElems[attr.Value] = elem
 	return attr.Value, true
 }
 

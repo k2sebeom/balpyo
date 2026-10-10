@@ -75,7 +75,10 @@ var (
 	// 소유하는 채널이다 — 같은 것을 두 이름으로 받으면 캐스케이드에 5단이 생기고 `variant`와
 	// `frame`이 충돌할 때 누가 이기는지를 정해야 하는데, 그것은 저자가 외울 이유가 없는
 	// 규칙이다. `<image variant="framed">`가 그 자리다 (테마가 정의하는 번들).
-	imageOwnAttrs = []string{"src", "fit", "alt"}
+	//
+	// `id`는 **연결선이 가리키는 이름**이다 (`<connector from>`) — 아키텍처 도식의 화살표는 아이콘을
+	// 잇는다. 도형의 `id`와 같은 표(슬라이드 안에서 유일)를 쓴다.
+	imageOwnAttrs = []string{"src", "id", "fit", "alt"}
 	// imageAppearanceAttrs는 외관 채널이다.
 	//
 	// **`fill`은 열지 않는다** — 그림 뒤의

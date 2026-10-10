@@ -18,6 +18,9 @@ package soml
 // "정하지 않음"의 표현은 ShapeStyle과 같다 — 포인터의 nil과 닫힌 어휘의 빈 문자열
 // (`opacity="1"`은 저자가 정한 1이고 "opacity를 말하지 않음"과 다르다).
 type ImageStyle struct {
+	// ID는 저자가 붙인 그림 이름이다 — 연결선(`<connector from>`)이 가리킨다. 도형의 ID와 같은 표에서
+	// 슬라이드 안 유일성을 검사받는다.
+	ID string
 	// Src는 **프로젝트 루트 기준 정규화 경로**다 — Deck.Assets의 키다 (Asset.Key). 원문이
 	// `theme:<경로>`이면 그 파일을 가진 테마의 키(`themes/<테마>/assets/…`)다 — 테마의 배경 · 로고와 같은 키라
 	// 같은 파일은 표에 한 번 실린다.

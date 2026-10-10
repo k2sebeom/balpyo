@@ -259,6 +259,8 @@ type componentsFile struct {
 	Image   imageComponentsFile `json:"image"`
 	Table   tableComponentsFile `json:"table"`
 	Code    codeComponentsFile  `json:"code"`
+	// Connector는 연결선의 기본값 · variant다 (connector.go) — 선택 절이다.
+	Connector connectorComponentsFile `json:"connector"`
 }
 
 // codeComponentsFile은 코드 블록의 테마 절이다. 표가 **종류 → 색 토큰**이고,
@@ -449,6 +451,9 @@ type components struct {
 	code             codeComponents
 	// markHighlight는 `<mark>`의 형광펜 색이다 (text.mark.highlight). 테마가 정하지 않으면 nil이다.
 	markHighlight *soml.Color
+	// connectorDefault · connectorVariants는 연결선 캐스케이드의 테마 단이다 (connector.go).
+	connectorDefault  connectorPatch
+	connectorVariants []connectorVariant
 }
 
 // tableComponents는 변환된 표 셀 외관 표다 (캐스케이드 내부 타입). shape/image의 default·
@@ -897,6 +902,18 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 			return comps, fmt.Errorf("image variant %q: %w", v.Name, err)
 		}
 		comps.imageVariants = append(comps.imageVariants, imageVariant{name: v.Name, patch: patch})
+	}
+
+	cd := file.Connector.Default
+	if comps.connectorDefault, err = connectorPatchFromFile(theme, "connector.default", cd.Line, cd.Start, cd.End); err != nil {
+		return comps, err
+	}
+	for _, v := range file.Connector.Variants {
+		patch, err := connectorPatchFromFile(theme, fmt.Sprintf("connector variant %q", v.Name), v.Line, v.Start, v.End)
+		if err != nil {
+			return comps, err
+		}
+		comps.connectorVariants = append(comps.connectorVariants, connectorVariant{name: v.Name, patch: patch})
 	}
 
 	table, err := tableComponentsFromFile(file.Table)

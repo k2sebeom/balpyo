@@ -41,7 +41,7 @@ func wantImageStyle(delta soml.ImageStyle) soml.ImageStyle {
 	}
 	mergeImage(&style, imagePatch{border: delta.Border, radius: delta.Radius, shadow: delta.Shadow,
 		opacity: delta.Opacity, rotate: delta.Rotate, flip: flip})
-	style.Src, style.Alt, style.Box = delta.Src, delta.Alt, delta.Box
+	style.Src, style.ID, style.Alt, style.Box = delta.Src, delta.ID, delta.Alt, delta.Box
 	if delta.Fit != "" {
 		style.Fit = delta.Fit
 	}
@@ -59,6 +59,7 @@ func TestResolveImageStyle(t *testing.T) {
 		want  soml.ImageStyle
 	}{
 		{"src", "src", src, soml.ImageStyle{Src: "assets/wide.png"}},
+		{"id", "id", src + ` id="icon"`, soml.ImageStyle{Src: "assets/wide.png", ID: "icon"}},
 		{"fit cover", "fit", src + ` fit="cover"`,
 			soml.ImageStyle{Src: "assets/wide.png", Fit: soml.FitCover}},
 		{"alt", "alt", src + ` alt="a chart"`,

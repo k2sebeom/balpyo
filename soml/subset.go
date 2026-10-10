@@ -84,6 +84,10 @@ const (
 	// `<tr>`처럼 도형이 되지 않지만 갈라지는 자리가 있다: 행은 프레임 안에 `a:tr`로 **접히고**
 	// 점은 아예 **사라진다** (점 하나가 도형 1 + 텍스트 2가 된다).
 	KindChartPoint
+	// KindConnector는 `<connector>`다 (connector.go). 별도 종류인 근거는 네 층의 산출이 전부
+	// 다르다는 것이다: 콘텐츠 모델이 void이고 슬라이드 직속뿐이며, **재지 않는 첫 그려지는 종류**다
+	// (끝점은 측정 결과에서 유도된다), 웹은 슬라이드 오버레이의 SVG 경로를, PPTX는 `p:cxnSp`를 낸다.
+	KindConnector
 )
 
 // ElementKinds는 카탈로그의 모든 종류다 (KindNone은 카탈로그 밖이므로 빠진다).
@@ -98,7 +102,7 @@ func ElementKinds() []ElementKind {
 		KindBlock, KindListContainer, KindListItem, KindInline,
 		KindLayoutContainer, KindSpacer, KindShape, KindImage,
 		KindTable, KindTableRow, KindTableCell,
-		KindChart, KindChartPoint,
+		KindChart, KindChartPoint, KindConnector,
 	}
 }
 
@@ -118,6 +122,7 @@ var elementKindNames = map[ElementKind]string{
 	KindTableCell:       "TableCell",
 	KindChart:           "Chart",
 	KindChartPoint:      "ChartPoint",
+	KindConnector:       "Connector",
 }
 
 // String은 종류 이름을 돌려준다.
@@ -151,7 +156,7 @@ func allElementNames() []string {
 	names = append(names, layoutContainerElements...)
 	names = append(names, SpacerElement, ShapeElement, ImageElement, TableElement, TableRowElement)
 	names = append(names, tableCellElements...)
-	return append(names, ChartElement, ChartPointElement)
+	return append(names, ChartElement, ChartPointElement, ConnectorElement)
 }
 
 // unrenderedKinds는 **파서와 값 층은 아는데 어느 렌더러도 그리지 못하는** 종류다.
@@ -166,7 +171,7 @@ func allElementNames() []string {
 // 지우지 않으면 그 대조가 실패한다.
 //
 // 목록이 빈 동안 관문 자체는 목록을 잠시 세워 보는 테스트가 지킨다 (withUnrenderedKinds).
-var unrenderedKinds []ElementKind
+var unrenderedKinds = []ElementKind{KindConnector}
 
 // PlannedAttrMessage는 "이름은 맞는데 아직 구현되지 않은 속성" 진단의 핵 문구다.
 // UnrenderedVocabMessage와 같은 이유로 상수다 — 진단을 내는 곳과 걸러 보는 곳이 같은
@@ -309,6 +314,7 @@ func buildElementKinds() map[string]ElementKind {
 	}
 	kinds[ChartElement] = KindChart
 	kinds[ChartPointElement] = KindChartPoint
+	kinds[ConnectorElement] = KindConnector
 	return kinds
 }
 
@@ -324,7 +330,7 @@ func KindOf(name string) ElementKind {
 // (`<shape>` 안 `<text>`) 그림 **위** 글자는 겹침(`<stack>`)의 일이다.
 func IsVoidElement(name string) bool {
 	return name == BreakElement || name == SpacerElement || name == ImageElement ||
-		name == ChartPointElement
+		name == ChartPointElement || name == ConnectorElement
 }
 
 // TagTextRole은 블록·리스트 항목 태그의 텍스트 역할이다 — 역할 등가 표

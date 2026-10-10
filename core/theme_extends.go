@@ -370,6 +370,15 @@ func mergeComponentsFile(parent, child componentsFile) componentsFile {
 	out.Shape.Variants = mergeNamed(parent.Shape.Variants, child.Shape.Variants,
 		func(v shapeVariantFile) string { return v.Name })
 
+	out.Connector.Comment = firstNonEmpty(child.Connector.Comment, parent.Connector.Comment)
+	out.Connector.Default = connectorStyleFile{
+		Line:  firstNonEmpty(child.Connector.Default.Line, parent.Connector.Default.Line),
+		Start: firstNonEmpty(child.Connector.Default.Start, parent.Connector.Default.Start),
+		End:   firstNonEmpty(child.Connector.Default.End, parent.Connector.Default.End),
+	}
+	out.Connector.Variants = mergeNamed(parent.Connector.Variants, child.Connector.Variants,
+		func(v connectorVariantFile) string { return v.Name })
+
 	out.Image.Comment = firstNonEmpty(child.Image.Comment, parent.Image.Comment)
 	out.Image.Variants = mergeNamed(parent.Image.Variants, child.Image.Variants,
 		func(v imageVariantFile) string { return v.Name })

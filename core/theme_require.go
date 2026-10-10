@@ -231,6 +231,14 @@ func requireComponentColors(theme soml.Theme, comps components) error {
 		errs = append(errs, check(fmt.Sprintf("text variant %q color", v.name), v.patch.color))
 	}
 	errs = append(errs, check("text.mark highlight", comps.markHighlight))
+	if l := comps.connectorDefault.line; l != nil {
+		errs = append(errs, check("connector.default line", &l.Color))
+	}
+	for _, v := range comps.connectorVariants {
+		if l := v.patch.line; l != nil {
+			errs = append(errs, check(fmt.Sprintf("connector variant %q line", v.name), &l.Color))
+		}
+	}
 	errs = append(errs, fill("shape.default", comps.shapeDefault.fill),
 		border("shape.default", comps.shapeDefault.border))
 	for _, v := range comps.shapeVariants {

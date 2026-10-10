@@ -105,6 +105,12 @@ func buildElementSpecs() map[string]elementSpec {
 			model: modelVoid,
 		},
 		noteElement: {model: modelText},
+		ConnectorElement: {
+			// 연결선은 void이고 박스·배치 속성이 없다 — 자리는 잇는 두 상자가 정한다. 슬라이드
+			// 직속뿐이다 (slideChildren): 렌더러가 슬라이드마다 오버레이 하나에 문서 순서로 그린다.
+			attrs: ConnectorAttrs(),
+			model: modelVoid,
+		},
 	}
 	for _, name := range tableCellElements {
 		// 셀은 텍스트+인라인을 담는다 (modelInline — `<li>`와 같은 콘텐츠 모델. 셀은 텍스트
@@ -209,7 +215,7 @@ func buildElementSpecs() map[string]elementSpec {
 // 레이아웃 컨테이너와 `<spacer>`가 들어 있다: 슬라이드 직속 `<spacer>`는 세로 스택에서
 // 밀어내기가 되므로 뜻이 있다 (머리글 아래 여백을 늘려 꼬리글을 바닥에 붙이는 배치).
 func slideChildren() []string {
-	children := []string{TextElement, ShapeElement, ImageElement, TableElement, ChartElement, noteElement}
+	children := []string{TextElement, ShapeElement, ImageElement, TableElement, ChartElement, ConnectorElement, noteElement}
 	children = append(children, blockElements...)
 	children = append(children, listContainerElements...)
 	children = append(children, layoutContainerElements...)

@@ -62,6 +62,7 @@ func TestElementKindCatalog(t *testing.T) {
 		{KindTableCell, "th td", false},
 		{KindChart, "chart", false},
 		{KindChartPoint, "point", true},
+		{KindConnector, "connector", true},
 	}
 	if len(tests) != len(ElementKinds()) {
 		t.Errorf("표의 종류 %d개, ElementKinds() %d개 — 새 종류를 여기에 적는다", len(tests), len(ElementKinds()))
@@ -125,13 +126,14 @@ func TestElementAttrs(t *testing.T) {
 		"stack":      "align justify " + box + " " + place,
 		"spacer":     place,
 		"shape":      "type id alt variant fill border radius shadow opacity rotate flip " + box + " " + place,
-		"image":      "src fit alt variant border radius shadow opacity rotate flip " + box + " " + place,
+		"image":      "src id fit alt variant border radius shadow opacity rotate flip " + box + " " + place,
 		"table":      "alt variant " + place,
 		"tr":         "",
 		"th":         "colspan rowspan fill border color align anchor",
 		"td":         "colspan rowspan fill border color align anchor",
 		"chart":      "type unit max series alt " + box + " " + place,
 		"point":      "label value fill",
+		"connector":  "from to route from-side to-side line start end variant",
 	}
 	if len(want) != len(elementSpecs) {
 		t.Errorf("표의 태그 %d개, elementSpecs %d개", len(want), len(elementSpecs))
@@ -165,7 +167,7 @@ func TestCatalogAccessors(t *testing.T) {
 		{"ShapeTypes", ShapeTypes, "rect rounded-rect ellipse diamond cylinder chevron arrow-right hexagon parallelogram callout star cloud"},
 		{"ShapeAttrs", ShapeAttrs, "type id alt variant fill border radius shadow opacity rotate flip pad w h min-w min-h max-w max-h ratio"},
 		{"ShapeAppearanceAttrs", ShapeAppearanceAttrs, "variant fill border radius shadow opacity rotate flip"},
-		{"ImageAttrs", ImageAttrs, "src fit alt variant border radius shadow opacity rotate flip pad w h min-w min-h max-w max-h ratio"},
+		{"ImageAttrs", ImageAttrs, "src id fit alt variant border radius shadow opacity rotate flip pad w h min-w min-h max-w max-h ratio"},
 		{"ImageAppearanceAttrs", ImageAppearanceAttrs, "variant border radius shadow opacity rotate flip"},
 		{"TableCellAttrs", TableCellAttrs, "colspan rowspan fill border color align anchor"},
 		{"ChartAttrs", ChartAttrs, "type unit max series alt pad w h min-w min-h max-w max-h ratio"},
@@ -185,12 +187,12 @@ func TestCatalogAccessors(t *testing.T) {
 	}
 }
 
-// 지금은 **카탈로그의 종류 전부**를 그릴 수 있다 (unrenderedKinds가 비었다). 두 렌더러가
+// 연결선을 뺀 **카탈로그의 종류 전부**를 그릴 수 있다 (연결선은 두 렌더러가 뒤따른다). 두 렌더러가
 // 정말로 받는지는 render/vocabulary_test.go가 보고, 여기서는 언어 층의 대답만 고정한다.
 func TestKindRendered(t *testing.T) {
 	for _, kind := range append(ElementKinds(), KindNone) {
-		if !KindRendered(kind) {
-			t.Errorf("KindRendered(%v) = false, want true", kind)
+		if got, want := KindRendered(kind), kind != KindConnector; got != want {
+			t.Errorf("KindRendered(%v) = %v, want %v", kind, got, want)
 		}
 	}
 }

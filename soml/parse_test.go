@@ -300,7 +300,7 @@ func TestParseErrors(t *testing.T) {
 			// 가까운 이름이 있으면 후보를 하나 말한다.
 			name: "어휘 밖 태그는 부모의 자식 어휘를 싣는다",
 			src:  "<slide><h6>제목</h6></slide>",
-			want: []string{"1:9 unknown tag <h6> — did you mean <h3>? (tags available inside <slide>: <text>, <shape>, <image>, <table>, <chart>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
+			want: []string{"1:9 unknown tag <h6> — did you mean <h3>? (tags available inside <slide>: <text>, <shape>, <image>, <table>, <chart>, <connector>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
 		},
 		{
 			// `<ul>` 안의 오타에 답은 `<li>` 하나다.

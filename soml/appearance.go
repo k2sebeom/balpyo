@@ -48,6 +48,9 @@ type Appearance struct {
 	// 이 번호를 소비하는 타깃은 웹 **하나**이고(발표자 뷰의 숨김), PPTX·인쇄·측정은 이 필드를
 	// 보지 않는다 — 평탄화가 "무시"로 구현되는 자리다.
 	Reveal int
+	// Connector는 확정된 연결선이다 (connector.go) — `<connector>`에만 채워진다. 렌더러는 잇는 두
+	// 상자의 잰 rect와 이 값으로 경로를 계산한다 (render/route).
+	Connector *ConnectorStyle
 	// Container는 확정된 컨테이너 배치다 (placement.go) — 레이아웃 컨테이너에만 채워진다.
 	// 외관과 형제로 두는 이유는 계약이 같기 때문이다: 값 층이 한 번 해석하고 렌더러는
 	// 읽기만 한다. 배치가 값 층을 두 번 지나면 CSS와 지오메트리 패스가 갈라진다.

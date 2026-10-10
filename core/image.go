@@ -94,6 +94,11 @@ func (r *resolver) imageAttrs(elem *soml.Element, style *soml.ImageStyle) imageP
 		switch attr.Name {
 		case "src":
 			// 위에서 해석했다 — 여기서 다시 보면 진단이 두 번 난다.
+		case "id":
+			// 연결선이 가리키는 이름 — 도형의 id와 같은 표에서 유일성을 본다.
+			if id, ok := r.shapeID(attr, elem); ok {
+				style.ID = id
+			}
 		case "fit":
 			if fit, ok := r.imageFit(attr); ok {
 				style.Fit = fit

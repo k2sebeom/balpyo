@@ -96,6 +96,7 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 		// 정하고(slideUsesSlots), 테마가 못 받는 슬롯은 실리지 않으므로(resolveSlot) 그
 		// 슬라이드는 흐름 모드로 판정되어 justify가 유효해진다.
 		r.slideJustify(slide)
+		r.resolveConnectors()
 		// 진단은 파일 안에서 소스 순서로 낸다 — 저자가 위에서 아래로 고칠 수 있게. 역할을
 		// 먼저 해석하고 나머지 속성을 훑기 때문에 발견 순서가 소스 순서와 어긋난다.
 		sort.SliceStable(r.diags, func(i, j int) bool {
@@ -131,6 +132,11 @@ type resolver struct {
 	// 한다). 상태가 resolver에 있는 것이 곧 검사 범위가 슬라이드라는 뜻이다 — 근거는
 	// resolver.shapeID의 주석에 있다.
 	ids map[string]soml.Span
+	// idElems는 같은 이름의 요소다 — 연결선이 `from`·`to`를 푸는 표다 (resolveConnectors).
+	idElems map[string]*soml.Element
+	// connectors는 이 슬라이드의 연결선이다 (문서 순서). 슬라이드를 다 읽은 **뒤**에 푼다 — 뒤에서
+	// 선언한 상자도 가리킬 수 있어야 한다.
+	connectors []*soml.Element
 	// revealTurn은 이 슬라이드에서 지금까지 `reveal`을 가진 리스트 항목의 수다 — 값 없는
 	// `reveal`이 받을 차례다 (resolveReveal). 상태가 resolver에 있는 것이 곧 스텝 번호의
 	// 범위가 슬라이드라는 뜻이다 (ids와 같은 태도).
@@ -232,6 +238,12 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 	}
 	r.resolveLayout(elem, parent)
 	r.resolveSlot(elem, parent)
+	if elem.Name == soml.ConnectorElement {
+		// 연결선은 슬라이드를 다 읽은 뒤에 푼다 (resolveConnectors) — 앞에서 아직 보지 않은 `id`를
+		// 가리킬 수 있다. void이므로 아래 순회가 데려갈 자식이 없다.
+		r.connectors = append(r.connectors, elem)
+		return
+	}
 	if elem.Name == soml.ChartElement {
 		// 여덟 번째 갈래이고 **유일하게 트리를 바꾸는** 갈래다: `<chart>`는 확정
 		// 값을 얻는 대신 도형·텍스트의 하위 트리로 **펼쳐진다**. 끝나면 elem은 `<shape>`이므로

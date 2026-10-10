@@ -186,7 +186,7 @@ func TestParseTextSubsetErrors(t *testing.T) {
 		{
 			name: "인라인이 슬라이드 직속 — 슬라이드의 자식 어휘",
 			src:  `<slide><strong>x</strong></slide>`,
-			want: []string{"1:9 <slide> cannot contain <strong> (available tags: <text>, <shape>, <image>, <table>, <chart>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
+			want: []string{"1:9 <slide> cannot contain <strong> (available tags: <text>, <shape>, <image>, <table>, <chart>, <connector>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
 		},
 		{
 			name: "ul 안의 문자 데이터",
