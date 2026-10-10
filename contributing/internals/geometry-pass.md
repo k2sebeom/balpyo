@@ -178,6 +178,14 @@ web.NewWithBoxes(g.RouteBox)    사용자가 받는 HTML — 연결선의 끝점
 주입된다 — 덱은 공개 계약이고, 덱에 실으면 값이 채워지는 시점이 `--target` 순서에
 의존한다. [ADR 0004](../decisions/0004-geometry-side-table.md)에 결정 전체가 있다.
 
+## SVG 대체 그림도 같은 세션이 그린다
+
+좌표와 글꼴을 다 읽은 뒤, 같은 브라우저 세션이 덱의 SVG 에셋마다 PNG 대체 그림을 그린다
+(`Session.RasterizeSVG` — 빈 문서에 `<img>` 하나를 고유 크기로 놓고 2배 배율 · 투명 바탕으로 찍는다).
+결과는 `geom.Geometry.Fallbacks`(에셋 표 순서)이고, PPTX 렌더러가 `asvg:svgBlip` 옆의 `blip`으로 싣는다.
+대체 그림도 측정값처럼 파생 값이라 덱에 넣지 않는다. SVG `<image>`는 재는 요소라서, PPTX를 내는 빌드는
+어차피 브라우저를 띄운다 — 따로 켤 조건이 없다.
+
 ## 단위 경계 — EMU·pt는 render/pptx만 안다
 
 패스가 주고받는 수치는 전부 **논리 스테이지 px**다 ([ADR 0067](../decisions/0067-prd-is-retired-and-its-standing-decisions-move-here.md) 결정 5). EMU·pt 환산은
