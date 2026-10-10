@@ -204,6 +204,9 @@ func decodeImageAsset(key string, data []byte) (soml.Asset, string) {
 	if !known {
 		return soml.Asset{}, fmt.Sprintf("the extension of %s is not an image format (available: %s)", key, strings.Join(soml.ImageExts(), ", "))
 	}
+	if declared == soml.FormatSVG {
+		return decodeSVGAsset(key, data)
+	}
 	config, format, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
 		if errors.Is(err, image.ErrFormat) {

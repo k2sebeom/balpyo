@@ -107,6 +107,11 @@ func (a *assetResolver) resolve(where, rel string) (string, error) {
 	if msg != "" {
 		return "", fmt.Errorf("%s: %s", where, msg)
 	}
+	if asset, ok := a.used.Get(key); ok && asset.Format == soml.FormatSVG {
+		// 배경 · 로고는 PPTX의 슬라이드 배경 · 크롬 그림이라 대체 그림의 크기를 정할 규칙이 따로 필요하다 — SVG는
+		// 슬라이드의 `<image>`에서만 연다.
+		return "", fmt.Errorf("%s %q is an SVG — theme backgrounds and logos are png or jpeg (SVG works in <image src>)", where, rel)
+	}
 	return key, nil
 }
 

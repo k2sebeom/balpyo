@@ -5,18 +5,18 @@ import (
 	"testing"
 )
 
-// 포맷 어휘 2종과 그 순서 — 목록이 진단·문서의 순서이고, 복사본이어야 소비자가 표를 흔들 수
+// 포맷 어휘 3종과 그 순서 — 목록이 진단·문서의 순서이고, 복사본이어야 소비자가 표를 흔들 수
 // 없다 (ImageFits와 같은 계약).
 func TestImageFormatVocabulary(t *testing.T) {
-	if want := []ImageFormat{FormatPNG, FormatJPEG}; !reflect.DeepEqual(ImageFormats(), want) {
+	if want := []ImageFormat{FormatPNG, FormatJPEG, FormatSVG}; !reflect.DeepEqual(ImageFormats(), want) {
 		t.Errorf("ImageFormats() = %v, want %v", ImageFormats(), want)
 	}
 	formats := ImageFormats()
-	formats[0] = "svg"
+	formats[0] = "gif"
 	if ImageFormats()[0] != FormatPNG {
 		t.Error("ImageFormats()가 내부 표를 그대로 내보낸다 — 복사본이어야 한다")
 	}
-	if want := []string{".png", ".jpg", ".jpeg"}; !reflect.DeepEqual(ImageExts(), want) {
+	if want := []string{".png", ".jpg", ".jpeg", ".svg"}; !reflect.DeepEqual(ImageExts(), want) {
 		t.Errorf("ImageExts() = %v, want %v", ImageExts(), want)
 	}
 }
@@ -34,7 +34,8 @@ func TestImageFormatForExt(t *testing.T) {
 		{".jpg", FormatJPEG, true},
 		{".jpeg", FormatJPEG, true},
 		{".JPEG", FormatJPEG, true},
-		{".svg", "", false},
+		{".svg", FormatSVG, true},
+		{".SVG", FormatSVG, true},
 		{".gif", "", false},
 		{".webp", "", false},
 		{"", "", false},

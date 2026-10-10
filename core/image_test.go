@@ -170,7 +170,6 @@ func TestResolveImageDiagnostics(t *testing.T) {
 		{name: "data URL", attrs: `src="data:image/png;base64,iVBORw0KGgo="`, needle: "data:",
 			contains: []string{"cannot be a data: URL", "commit the image as a file"}},
 		{name: "확장자 없음", attrs: `src="assets/photo"`, needle: "assets/photo", contains: []string{"has no extension", ".png"}},
-		{name: "svg", attrs: `src="assets/logo.svg"`, needle: "assets/logo.svg", contains: []string{"v1 cannot render", "png", "jpeg"}},
 		{name: "gif", attrs: `src="assets/anim.gif"`, needle: "assets/anim.gif", contains: []string{"v1 cannot render"}},
 		{name: "webp", attrs: `src="assets/photo.webp"`, needle: "assets/photo.webp", contains: []string{"v1 cannot render"}},
 		// CSS object-fit의 나머지 값은 PPTX에 대응이 없다는 사실까지 진단이 말한다.

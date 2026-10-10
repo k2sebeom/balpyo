@@ -22,12 +22,11 @@ import (
 // `fs.FS` 핸들을 덱에 실어 렌더러가 그때 읽게 하는 선택지는 버렸다: 렌더러가 순수 함수라는
 // 성질과 테스트가 디스크를 건드리지 않는다는 성질이 함께 깨진다.
 
-// ImageFormat은 v1이 그리는 이미지 포맷이다 — **PNG·JPEG 2종**.
+// ImageFormat은 그리는 이미지 포맷이다 — **PNG · JPEG · SVG 3종**.
 //
-// 어휘를 둘로 닫은 근거는 `<shape type>`을 OOXML 프리셋으로 닫은 것과 같다: **양 타깃이
-// 그리는 것만 연다.** SVG는 PPTX에서 확장 요소(`svgBlip`)와 래스터 폴백이 함께 필요해
-// 소비자마다 다르게 열리고, GIF/WebP는
-// 애니메이션과 소비자 지원이 갈린다.
+// 어휘를 닫은 근거는 `<shape type>`을 OOXML 프리셋으로 닫은 것과 같다: **양 타깃이
+// 그리는 것만 연다.** SVG는 PPTX에서 확장 요소(`svgBlip`)와 래스터 대체 그림을 함께 싣는다 — 대체
+// 그림을 웹과 같은 브라우저가 그리므로 두 그림이 같은 그림이다. GIF/WebP는 애니메이션과 소비자 지원이 갈린다.
 //
 // 값이 소문자 이름인 이유: image.DecodeConfig가 돌려주는 포맷 이름과 **같은 문자열**이어야
 // 판정이 한 번으로 끝난다 (core의 확장자·내용 대조).
@@ -38,12 +37,14 @@ const (
 	FormatPNG ImageFormat = "png"
 	// FormatJPEG는 JPEG다 (`.jpg`·`.jpeg`).
 	FormatJPEG ImageFormat = "jpeg"
+	// FormatSVG는 SVG다 (`.svg`). 자기 안에서 끝나는 SVG만 받는다 (스크립트 · 바깥 참조 없음 — core가 판정한다).
+	FormatSVG ImageFormat = "svg"
 )
 
 // ImageFormats는 포맷 어휘 전체다 (순서 = 진단·문서 순서). ImageFits와 같은 태도로 복사본을
 // 돌려준다 — 목록은 soml에 있고 **검사는 core**다.
 func ImageFormats() []ImageFormat {
-	return []ImageFormat{FormatPNG, FormatJPEG}
+	return []ImageFormat{FormatPNG, FormatJPEG, FormatSVG}
 }
 
 // imageExts는 확장자 → 포맷 표다. 순서가 곧 진단이 나열하는 순서다 (맵이 아닌 이유).
@@ -59,6 +60,7 @@ var imageExts = []struct {
 	{".png", FormatPNG},
 	{".jpg", FormatJPEG},
 	{".jpeg", FormatJPEG},
+	{".svg", FormatSVG},
 }
 
 // ImageExts는 쓸 수 있는 확장자 목록이다 (진단·문서 순서).

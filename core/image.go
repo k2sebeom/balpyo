@@ -239,7 +239,7 @@ func (r *resolver) imageFile(attr soml.Attr, raw, key string) bool {
 		return false
 	}
 	if _, known := soml.ImageFormatForExt(ext); !known {
-		// 진단은 **이유와 대안**을 말한다: 어휘를 2종으로 닫은 것은 양 타깃이 그리는 것만
+		// 진단은 **이유와 대안**을 말한다: 어휘를 닫은 것은 양 타깃이 그리는 것만
 		// 연다는 규칙의 결과이고(soml.ImageFormat), 저자에게는 늘 고칠 방법이 있다.
 		r.errorf(attr.ValueSpan, "v1 cannot render %q in src (available: %s) — %s",
 			strings.ToLower(ext), imageExtList(), imageExtReason(ext))
@@ -341,12 +341,9 @@ func srcScheme(raw string) string {
 }
 
 // imageExtReason은 지원하지 않는 확장자를 **왜** 열지 않았는지다. 문구가 진단 안에 있는 이유는
-// 저자가 "왜 안 되는가"를 알면 대안을 스스로 고르기 때문이다 (svg를 png로 내보낼지, 아이콘을
-// 기다릴지).
+// 저자가 "왜 안 되는가"를 알면 대안을 스스로 고르기 때문이다 (png로 내보낼지, 다른 형식을 고를지).
 func imageExtReason(ext string) string {
 	switch strings.ToLower(ext) {
-	case ".svg":
-		return "PPTX carries vectors as an extension element (svgBlip) with a raster fallback, so each consumer opens it differently — export as png or jpeg"
 	case ".gif", ".apng":
 		return "animation has no equivalent in both targets — export as png or jpeg"
 	case ".webp", ".avif", ".heic":
