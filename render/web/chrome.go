@@ -54,7 +54,7 @@ func writeChrome(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 		}
 		fmt.Fprintf(b, "<div class=%q %s=%q%s>%s</div>\n",
 			ChromeClass+" "+align, ChromeKindAttr, string(item.Kind),
-			styleAttr([]string{decls}), html.EscapeString(item.Text))
+			styleAttr([]string{decls}), html.EscapeString(item.Prefix+item.Text+item.Suffix))
 	}
 	return nil
 }

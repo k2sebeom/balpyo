@@ -6,7 +6,7 @@ textbox "p s0.1"
 textbox "chrome footer"
   ¶ start | "What is Amazon EC2?"{body 13.5pt muted}
 textbox "chrome pageNumber"
-  ¶ end | "1"{field body 13.5pt muted}
+  ¶ end | "1"{field body 13.5pt muted} · " / 2"{body 13.5pt muted}
 # slide 2 dark
 colors inverse
 textbox "text s1.0"
@@ -20,4 +20,4 @@ shape:roundRect "shape s1.3" fill=surface line=muted
 textbox "chrome footer"
   ¶ start | "What is Amazon EC2?"{body 13.5pt muted}
 textbox "chrome pageNumber"
-  ¶ end | "2"{field body 13.5pt muted}
+  ¶ end | "2"{field body 13.5pt muted} · " / 2"{body 13.5pt muted}

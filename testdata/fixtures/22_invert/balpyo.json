@@ -4,5 +4,6 @@
   "lang": "en",
   "aspect": "16:9",
   "footer": "What is Amazon EC2?",
-  "pageNumber": true
+  "pageNumber": true,
+  "theme": "talk"
 }

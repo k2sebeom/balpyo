@@ -109,6 +109,8 @@ type chromeDeclFile struct {
 	Image  string  `json:"image"`
 	Height float64 `json:"height"`
 	Alt    string  `json:"alt"`
+	// Format은 쪽번호의 모양이다 — `{n}`(번호) 하나와 `{total}`(전체 쪽수)을 담는 글 (pageNumber 전용).
+	Format string `json:"format"`
 }
 
 // chromeDecl은 검사가 끝난 크롬 선언 하나다.
@@ -123,6 +125,8 @@ type chromeDecl struct {
 	image  string
 	height float64
 	alt    string
+	// format은 쪽번호의 모양이다 (빈 값은 `{n}`).
+	format string
 }
 
 // themePackage는 로드된 테마 하나다 — 토큰 표(soml.Theme)와 매니페스트를 함께 담는다.
@@ -695,6 +699,16 @@ func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool, assets *assetReso
 	}
 	if raw.Image != "" || raw.Height != 0 || raw.Alt != "" {
 		return decl, fmt.Errorf("%s cannot have image · height · alt — those belong to picture chrome (logo)", decl.kind)
+	}
+	if raw.Format != "" {
+		if decl.kind != soml.ChromePageNumber {
+			return decl, fmt.Errorf("%s cannot have a format — only pageNumber has one", decl.kind)
+		}
+		rest := strings.ReplaceAll(strings.Replace(raw.Format, "{n}", "", 1), "{total}", "")
+		if strings.Count(raw.Format, "{n}") != 1 || strings.ContainsAny(rest, "{}") {
+			return decl, fmt.Errorf("pageNumber format %q needs {n} exactly once and may use {total} — e.g. \"{n} / {total}\"", raw.Format)
+		}
+		decl.format = raw.Format
 	}
 
 	roles := make([]string, 0, len(soml.TextRoles()))

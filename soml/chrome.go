@@ -55,6 +55,9 @@ type ChromeItem struct {
 	// `a:fld type="slidenum"`이 주는 값이 그것이라 웹이 다른 수를 찍으면 두 타깃이 갈린다.
 	// PPTX는 이 값을 필드의 캐시 텍스트로 싣는다 (필드를 계산하지 않는 뷰어도 맞는 숫자를 본다).
 	Text string
+	// Prefix · Suffix는 번호 앞뒤의 고정 글자다 (테마의 `format` — `{n} / {total}`이면 Suffix가 " / 13"이다).
+	// 번호만 필드(`a:fld`)이고 앞뒤는 보통 런이다 — 전체 쪽수는 필드가 아니라 빌드할 때의 수다.
+	Prefix, Suffix string
 	// Align은 바닥 띠에서 붙을 쪽이다 (ChromeAligns).
 	Align TextAlign
 	// Style은 테마 역할에서 확정된 텍스트 외관이다 — 크롬은 자기 크기·색을 갖지 않는다.

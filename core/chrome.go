@@ -2,6 +2,7 @@ package core
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -73,7 +74,7 @@ func resolveChrome(deck *soml.Deck, pkg themePackage) ([]soml.ChromeItem, soml.D
 //
 // 번호는 **덱 안의 위치**다 (1-based, 제외된 장도 센다): PPTX의 `a:fld type="slidenum"`이
 // 주는 값이 그것이라, 표지를 세지 않는 번호를 웹에 찍으면 두 타깃이 갈린다.
-func slideChrome(plan []soml.ChromeItem, pkg themePackage, slide *soml.Slide) []soml.ChromeItem {
+func slideChrome(plan []soml.ChromeItem, pkg themePackage, slide *soml.Slide, totalSlides int) []soml.ChromeItem {
 	if len(plan) == 0 {
 		return nil
 	}
@@ -85,6 +86,13 @@ func slideChrome(plan []soml.ChromeItem, pkg themePackage, slide *soml.Slide) []
 		}
 		if item.Kind == soml.ChromePageNumber {
 			item.Text = strconv.Itoa(slide.Index + 1)
+			// 모양의 `{n}` 앞뒤는 고정 글자다 — 전체 쪽수(`{total}`)는 빌드할 때의 장 수다 (PPTX의 필드는 번호뿐이다).
+			if ok && decl.format != "" {
+				before, after, _ := strings.Cut(decl.format, "{n}")
+				total := strconv.Itoa(totalSlides)
+				item.Prefix = strings.ReplaceAll(before, "{total}", total)
+				item.Suffix = strings.ReplaceAll(after, "{total}", total)
+			}
 		}
 		items = append(items, item)
 	}

@@ -110,6 +110,22 @@
   html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-from-right { translate: 100% 0; }
   html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-from-left { translate: -100% 0; }
 
+  /* Progress bar — a thin line at the top of the screen in the presenter view, as wide as the
+     share of the deck shown so far. It is viewer chrome (like the control bar), not slide
+     content: it does not exist in the document view, print, the overview or the measure view.
+     Its color borrows the deck's first accent so the line belongs to the talk it measures. */
+  .balpyo-viewer-progress { display: none; }
+  html[data-balpyo-view="presenter"] .balpyo-viewer-progress {
+    display: block;
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 3px;
+    background: var(--balpyo-color-accent1, #888);
+    transition: width 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+    z-index: 2;
+  }
+
   /* The control bar is visible in the overview too — for someone who does not know the
      keyboard, it is the way out of the overview. A selector that ignores the value
      (html[data-balpyo-view]) is not used because of the measure view: if the chrome were drawn
@@ -255,5 +271,6 @@
     .balpyo-slide.balpyo-viewer-active,
     html[data-balpyo-view] .balpyo-slide.balpyo-viewer-active { outline-color: transparent; }
     .balpyo-viewer-bar, html[data-balpyo-view] .balpyo-viewer-bar,
-    .balpyo-viewer-notes, html[data-balpyo-view] .balpyo-viewer-notes { display: none; }
+    .balpyo-viewer-notes, html[data-balpyo-view] .balpyo-viewer-notes,
+    .balpyo-viewer-progress, html[data-balpyo-view] .balpyo-viewer-progress { display: none; }
   }

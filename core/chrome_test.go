@@ -111,6 +111,16 @@ func TestLoadChromeRejectsBadDecls(t *testing.T) {
 			want: `chrome[0]: footer cannot have image · height · alt`,
 		},
 		{
+			name: "쪽번호 모양에 {n}이 없다",
+			src:  `[{"kind":"pageNumber","align":"end","role":"caption","format":"page {page}"}]`,
+			want: `pageNumber format "page {page}" needs {n} exactly once and may use {total}`,
+		},
+		{
+			name: "푸터에 모양을 쓴다",
+			src:  `[{"kind":"footer","align":"start","role":"caption","format":"{n}"}]`,
+			want: `chrome[0]: footer cannot have a format — only pageNumber has one`,
+		},
+		{
 			name: "알 수 없는 align",
 			src:  `[{"kind":"footer","align":"middle","role":"caption"}]`,
 			want: `chrome[0]: unknown align "middle" (available aligns: start, center, end)`,

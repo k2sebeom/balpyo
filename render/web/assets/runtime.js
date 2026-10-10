@@ -35,7 +35,12 @@
   notes.setAttribute("aria-label", "Speaker notes");
   notes.hidden = true;
 
-  document.body.append(notes, bar);
+  // 진행 막대 — 지금 장이 덱의 어디인지를 화면 맨 위의 얇은 선으로 보여 준다 (발표자 뷰에서만 보인다).
+  const progress = document.createElement("div");
+  progress.className = "balpyo-viewer-progress";
+  progress.setAttribute("aria-hidden", "true");
+
+  document.body.append(notes, bar, progress);
 
   let current = -1;
 
@@ -126,6 +131,7 @@
     if (dir) transition(from, slide, dir);
     enter(slide, Boolean(revealed));
     counter.textContent = (current + 1) + " / " + slides.length;
+    progress.style.width = ((current + 1) / slides.length * 100) + "%";
     // 들어가는 장의 스텝은 0이다 — 딥링크·오버뷰 타일·Home/End로 **곧장** 들어간 장은 아직
     // 말하지 않은 장이다 (뒤로 들어온 장만 전개된 상태로 온다).
     step = revealed ? lastStep(slide) : 0;

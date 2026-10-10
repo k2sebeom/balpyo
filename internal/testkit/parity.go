@@ -314,8 +314,17 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 			n.X, n.Y, n.W, n.H = rectEMU(rect)
 			if item.Text != "" {
 				style := webRunStyle(item.Style, deck.Theme, "")
-				style.field = item.Kind == soml.ChromePageNumber
-				n.Paras = []LayoutPara{{Align: string(item.Align), Runs: []string{formatRun(item.Text, style)}}}
+				var runs []string
+				if item.Prefix != "" {
+					runs = append(runs, formatRun(item.Prefix, style))
+				}
+				field := style
+				field.field = item.Kind == soml.ChromePageNumber
+				runs = append(runs, formatRun(item.Text, field))
+				if item.Suffix != "" {
+					runs = append(runs, formatRun(item.Suffix, style))
+				}
+				n.Paras = []LayoutPara{{Align: string(item.Align), Runs: runs}}
 			}
 			s.Nodes = append(s.Nodes, n)
 		}

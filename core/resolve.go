@@ -80,7 +80,7 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 		r.layout = slide.Layout
 		// 크롬 확정도 layout이 정해진 **뒤**다 — 제외 규칙의 입력이 확정된 레이아웃이라서,
 		// 어휘 밖 이름이 content로 폴백한 슬라이드도 폴백된 레이아웃으로 판정된다.
-		slide.Chrome = slideChrome(chromePlan, pkg, slide)
+		slide.Chrome = slideChrome(chromePlan, pkg, slide, len(deck.Slides))
 		// 배경도 확정 레이아웃의 것이다. 값을 복사해 싣는 이유는 확정 모델이 슬라이드마다 독립이어야
 		// 한다는 것이다 — 테마의 선언 값을 슬라이드들이 나눠 가리키면 한 슬라이드를 고친 코드가 전부를 고친다.
 		if bg := pkg.backgrounds.For(slide.Layout); bg != nil {
