@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/logo.png" alt="balpyo logo" width="200">
+</p>
+
 # balpyo
 
 **SOML**(Slide Oriented Markup Language)로 슬라이드를 쓰면, **balpyo**가 테마를 입혀
