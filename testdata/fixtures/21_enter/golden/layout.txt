@@ -1,0 +1,25 @@
+# slide 1 stagger
+textbox "h2 s0.0" enter=rise@150+600
+  ¶ start | "Pick a family by its bottleneck"{heading 27pt b fg}
+shape:roundRect "shape s0.1.0" fill=surface line=muted enter=rise@240+600
+  ¶ start | "General purpose"{body 18pt fg}
+shape:roundRect "shape s0.1.1" fill=surface line=muted enter=zoom@330+600
+  ¶ start | "Compute optimized"{body 18pt fg}
+shape:roundRect "shape s0.1.2" fill=surface line=muted enter=rise@240+600
+  ¶ start | "Memory optimized"{body 18pt fg}
+textbox "p s0.2"
+  ¶ start | "Sizes double as you go up."{body 18pt fg}
+# slide 2 effects
+textbox "h2 s1.0" enter=fade@150+600
+  ¶ start | "Four effects"{heading 27pt b fg}
+pic "image s1.1" enter=wipe@240+600
+table "table s1.2" enter=zoom@330+600
+  ¶ r0 start | "Model"{body 18pt b bg}
+  ¶ r0 start | "Discount"{body 18pt b bg}
+  ¶ r1 start | "Spot"{body 18pt fg}
+  ¶ r1 start | "90%"{body 18pt fg}
+textbox "ul s1.3" enter=rise@420+600
+  ¶ start ul | "Fade"{body 18pt fg}
+  ¶ start ul | "Wipe"{body 18pt fg}
+textbox "p s1.4"
+  ¶ start | "Static caption"{body 18pt fg}

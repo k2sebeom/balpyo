@@ -48,6 +48,9 @@ type Appearance struct {
 	// 이 번호를 소비하는 타깃은 웹 **하나**이고(발표자 뷰의 숨김), PPTX·인쇄·측정은 이 필드를
 	// 보지 않는다 — 평탄화가 "무시"로 구현되는 자리다.
 	Reveal int
+	// Enter는 확정된 등장이다 (motion.go) — `enter`를 가졌거나 `<slide enter>`를 물려받은 요소에만 실린다.
+	// Reveal과 같은 이유로 TextStyle 밖이다: 외관이 아니라 발표 순서다.
+	Enter *Entrance
 	// Connector는 확정된 연결선이다 (connector.go) — `<connector>`에만 채워진다. 렌더러는 잇는 두
 	// 상자의 잰 rect와 이 값으로 경로를 계산한다 (render/route).
 	Connector *ConnectorStyle
@@ -334,6 +337,9 @@ type Theme struct {
 	// Shadows는 그림자 토큰이다 (테마의 `shadow` 토큰) — `shadow="soft"`의 값
 	// 어휘이자 **유일한** 어휘다 (도형 외관은 그림자 수치를 받지 않는다 — ShadowToken).
 	Shadows []ShadowToken
+	// Motion은 등장의 박자다 (테마의 `motion` 토큰 — motion.go). nil이면 테마가 박자를 정하지 않았고,
+	// 그 테마에서 `enter`를 쓴 덱은 값 층의 에러다.
+	Motion *MotionTokens
 	// Layouts는 레이아웃 이름 → 스테이지에 얹는 **정규화된 배치 선언**이다 (`layouts/*.css`의
 	// 실체). 색·폰트처럼 이 표에 있는 이유: 배치도 테마가 소유하고, 웹의 스테이지
 	// CSS와 지오메트리 패스가 재는 박스가 **같은 한 표**에서 나와야 두 타깃의 배치가 갈라지지

@@ -70,18 +70,18 @@ func TestParseLayoutErrors(t *testing.T) {
 			// grid-template-*는 flex 컨테이너에서 무효다 — 받아 놓고 버리지 않는다.
 			name: "row에는 cols가 없다",
 			src:  `<slide><row cols="3"></row></slide>`,
-			want: []string{"1:13 unknown attribute cols on <row> (available attributes: gap, align, justify, wrap, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
+			want: []string{"1:13 unknown attribute cols on <row> (available attributes: gap, align, justify, wrap, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)"},
 		},
 		{
 			// 단일 셀이라는 것이 stack의 정의다 — gap·wrap·cols·rows는 뜻이 없다.
 			name: "stack에는 cols가 없다",
 			src:  `<slide><stack cols="2"><text>a</text></stack></slide>`,
-			want: []string{"1:15 unknown attribute cols on <stack> (available attributes: align, justify, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
+			want: []string{"1:15 unknown attribute cols on <stack> (available attributes: align, justify, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)"},
 		},
 		{
 			name: "spacer는 컨테이너가 아니다",
 			src:  `<slide><spacer gap="lg"/></slide>`,
-			want: []string{"1:16 unknown attribute gap on <spacer> (available attributes: grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
+			want: []string{"1:16 unknown attribute gap on <spacer> (available attributes: grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)"},
 		},
 		{
 			name: "블록 안의 컨테이너",

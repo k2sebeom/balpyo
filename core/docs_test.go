@@ -46,6 +46,10 @@ type docVocabulary struct {
 // docVocabularies는 문서에 사본이 있는 어휘 일곱 벌이다.
 var docVocabularies = []docVocabulary{
 	{
+		Doc: "reference/soml/enter.md", Vocab: "등장 효과",
+		Pattern: `unknown enter "spin" \(available values: ([^)]+)\)`, Sep: ", ", Want: soml.EnterEffects(),
+	},
+	{
 		Doc: "reference/soml/connector.md", Vocab: "연결선 경로",
 		Pattern: `unknown route "zigzag" \(available values: ([^)]+)\)`, Sep: ", ", Want: soml.ConnectorRoutes(),
 	},

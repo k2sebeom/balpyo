@@ -171,6 +171,10 @@ type Slide struct {
 	Justify BoxJustify
 	// JustifySpan은 justify 값 구간이다 (LayoutSpan과 같은 근거).
 	JustifySpan Span
+	// Enter는 `<slide enter>`의 원문이다 — 직속 자식마다 같은 등장을 준다. 어휘는 core.Resolve가 본다.
+	Enter string
+	// EnterSpan은 enter 값 구간이다.
+	EnterSpan Span
 	// Notes는 발표자 노트다 (`<note>`). PPTX에서는 노트 슬라이드가 된다.
 	Notes string
 	// Chrome은 이 슬라이드에 실릴 확정된 덱 크롬이다 — 테마 선언 순서를 지킨다.

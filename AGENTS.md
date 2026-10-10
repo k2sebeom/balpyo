@@ -56,7 +56,7 @@ my-talk/
 
 Vocabulary (closed — unknown tags/attributes are diagnostics):
 
-- `<slide>` (`layout`, `id`, `skip`, `justify`), `<note>`
+- `<slide>` (`layout`, `id`, `skip`, `justify`, `enter`), `<note>`; `enter` (fade/rise/zoom/wipe) on any content element — native PPTX entrance effects, staggered by the theme's `motion` tokens
 - `<text>` (`role`: title/heading/body/caption/code, `variant`, `size`, `color`, `align`, `anchor`, `w`/`min-w`/`max-w`)
 - Text subset: `h1`–`h3`, `p`, `ul`/`ol`/`li`, `blockquote`, `pre`, `strong`, `em`, `code`, `a`, `br`, `span`, `mark`; `reveal` for stepwise appearance
 - Layout: `row`, `col`, `grid`, `spacer`, `stack` (overlap; `at`, `x`/`y`), plus a `style` escape hatch

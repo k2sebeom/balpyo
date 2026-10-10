@@ -36,7 +36,8 @@ func buildElementSpecs() map[string]elementSpec {
 			// `justify`는 **흐름 모드 슬라이드의 세로 분배**다 — 저자에게
 			// 세로 리듬 채널이 없어서 `<col h="fill" justify="between">` 랩퍼가 그 자리를
 			// 대신하고 있었다. 값 어휘는 컨테이너와 같은 6종이고 검사는 core다.
-			attrs: []string{"layout", "id", "skip", "justify"},
+			// `enter`는 직속 자식마다 같은 등장을 준다 (자식의 `enter`가 이긴다 — core).
+			attrs: []string{"layout", "id", "skip", "justify", EnterAttr},
 			model: modelElements,
 			// `<slide>`에는 `reveal` 속성을 열지 않는다 — 웹 런타임의 reveal은 Phase 2이고,
 			// 렌더가 없는 속성을 어휘에 열면 닫힌 어휘가 막으려던 조용한 무시가 된다.
@@ -282,6 +283,10 @@ type SlideDoc struct {
 	Justify string
 	// JustifySpan은 justify 값 구간이다 (LayoutSpan과 같은 근거).
 	JustifySpan Span
+	// Enter는 `<slide enter>`의 값이다 (원문 그대로). 어휘는 core가 본다 — justify와 같은 경계.
+	Enter string
+	// EnterSpan은 enter 값 구간이다.
+	EnterSpan Span
 	// Notes는 `<note>`의 텍스트다.
 	Notes string
 	// Content는 `<slide>`의 콘텐츠 자식이다 (`<note>` 제외).
@@ -871,6 +876,17 @@ func (p *parser) fillSlide(doc *SlideDoc) {
 		default:
 			doc.Justify = attr.Value
 			doc.JustifySpan = attr.ValueSpan
+		}
+	}
+	if attr, ok := root.Attr(EnterAttr); ok {
+		switch {
+		case !attr.HasValue:
+			p.errorf(attr.NameSpan, "the enter attribute needs a value (enter=\"rise\")")
+		case attr.Value == "":
+			p.errorf(attr.ValueSpan, "the enter attribute is empty (remove it for no entrance)")
+		default:
+			doc.Enter = attr.Value
+			doc.EnterSpan = attr.ValueSpan
 		}
 	}
 

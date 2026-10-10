@@ -1,0 +1,15 @@
+<!-- The four effects on the four object kinds: a text box fades, a picture wipes, a table zooms,
+     and a list rises. Elements without enter on a slide without enter do not animate. -->
+<slide id="effects">
+  <h2 enter="fade">Four effects</h2>
+  <image src="assets/wide.png" h="120" enter="wipe"/>
+  <table enter="zoom">
+    <tr><th>Model</th><th>Discount</th></tr>
+    <tr><td>Spot</td><td>90%</td></tr>
+  </table>
+  <ul enter="rise">
+    <li>Fade</li>
+    <li>Wipe</li>
+  </ul>
+  <p>Static caption</p>
+</slide>

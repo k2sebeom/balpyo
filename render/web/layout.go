@@ -104,8 +104,8 @@ func writeContainer(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	fmt.Fprintf(b, "<div class=%q %s=%q %s=%q%s>\n",
-		class, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, styleAttr(decls))
+	fmt.Fprintf(b, "<div class=%q %s=%q %s=%q%s%s>\n",
+		class, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, enterAttr(elem), styleAttr(decls))
 	for i, child := range elem.Children {
 		if err := writeNode(b, deck, slide, child, ChildPath(path, i)); err != nil {
 			return err

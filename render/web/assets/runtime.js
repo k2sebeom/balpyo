@@ -72,6 +72,24 @@
     next.disabled = current === slides.length - 1 && step === lastStep(slide);
   };
 
+  // ── 등장 ──
+  //
+  // 지연은 마크업이 요소마다 나르고(data-balpyo-enter-delay) 여기서 전환에 건다 — 한 번이면 된다. 슬라이드에
+  // 들어갈 때 표식을 떼었다가 다음 프레임에 붙이면 요소들이 시작 상태에서 끝 상태로 엇갈려 움직인다. 뒤로
+  // 들어온 장(이미 말한 장)은 움직이지 않고 끝 상태로 온다.
+  const ENTERED_CLASS = "balpyo-viewer-entered";
+  const INSTANT_CLASS = "balpyo-viewer-instant";
+  document.querySelectorAll("[data-balpyo-enter]").forEach((el) => {
+    el.style.transitionDelay = (Number(el.getAttribute("data-balpyo-enter-delay")) || 0) + "ms";
+  });
+  const enter = (slide, instant) => {
+    slide.classList.remove(ENTERED_CLASS);
+    slide.classList.toggle(INSTANT_CLASS, instant);
+    if (instant) { slide.classList.add(ENTERED_CLASS); return; }
+    void slide.offsetWidth;
+    requestAnimationFrame(() => requestAnimationFrame(() => slide.classList.add(ENTERED_CLASS)));
+  };
+
   const show = (index, writeHash, revealed) => {
     const target = Math.min(Math.max(index, 0), slides.length - 1);
     if (target === current) return;
@@ -79,6 +97,7 @@
     current = target;
     const slide = slides[current];
     slide.classList.add("balpyo-viewer-active");
+    enter(slide, Boolean(revealed));
     counter.textContent = (current + 1) + " / " + slides.length;
     // 들어가는 장의 스텝은 0이다 — 딥링크·오버뷰 타일·Home/End로 **곧장** 들어간 장은 아직
     // 말하지 않은 장이다 (뒤로 들어온 장만 전개된 상태로 온다).

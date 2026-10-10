@@ -36,6 +36,10 @@ var (
 // 이유는 테마 제작자가 파일 하나를 고치는 흐름이라는 것이다 — 전부 모으면 첫 오류를 읽기 전에
 // 목록을 읽어야 한다.
 func requireTokens(theme soml.Theme) error {
+	if m := theme.Motion; m != nil && (m.Duration <= 0 || m.Stagger < 0 || m.Delay < 0) {
+		return fmt.Errorf("tokens.json motion needs duration > 0 and stagger, delay ≥ 0 (ms) — got duration %d, stagger %d, delay %d",
+			m.Duration, m.Stagger, m.Delay)
+	}
 	for _, name := range requiredColors {
 		if _, ok := theme.Color(name); !ok {
 			return fmt.Errorf("tokens.json has no color token %q (required: %s)",

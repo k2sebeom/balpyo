@@ -210,6 +210,16 @@ type tokensFile struct {
 	Space  []spaceTok  `json:"space"`
 	Radius []radiusTok `json:"radius"`
 	Shadow []shadowTok `json:"shadow"`
+	// Motion은 등장의 박자(ms)다 — 선택 절이다 (정하지 않은 테마에서 `enter`를 쓰면 에러).
+	Motion *motionTok `json:"motion"`
+}
+
+// motionTok은 등장 박자 절이다.
+type motionTok struct {
+	Comment  string `json:"$comment"`
+	Duration int    `json:"duration"`
+	Stagger  int    `json:"stagger"`
+	Delay    int    `json:"delay"`
 }
 
 type colorTok struct {
@@ -769,6 +779,9 @@ func tokensFromFile(file tokensFile, name string) soml.Theme {
 			Name: s.Name, Dist: s.Dist, Dir: s.Dir, Blur: s.Blur,
 			Color: soml.TokenColor(s.Color), Alpha: s.Alpha,
 		})
+	}
+	if m := file.Motion; m != nil {
+		theme.Motion = &soml.MotionTokens{Duration: m.Duration, Stagger: m.Stagger, Delay: m.Delay}
 	}
 	return theme
 }

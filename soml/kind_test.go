@@ -96,12 +96,12 @@ func TestElementKindCatalog(t *testing.T) {
 // 목록에 없는 속성은 진단이다. 고유 → 외관 → 박스 → 자식 배치 → 슬롯 순으로 이어진다.
 func TestElementAttrs(t *testing.T) {
 	const (
-		place = "grow shrink basis span self order at x y style slot"
+		place = "grow shrink basis span self order at x y style slot enter"
 		box   = "pad w h min-w min-h max-w max-h ratio"
 		block = "variant size color align anchor w min-w max-w " + place
 	)
 	want := map[string]string{
-		RootElement:  "layout id skip justify",
+		RootElement:  "layout id skip justify enter",
 		noteElement:  "",
 		TextElement:  "role " + block,
 		"h1":         block,

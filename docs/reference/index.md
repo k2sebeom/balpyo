@@ -28,7 +28,7 @@
   [`<table>`](soml/table.md) (`table`/`tr`/`th`/`td` + 프레임 `variant` + 셀 병합 2종·외관 5종),
   [`<chart>`](soml/chart.md) (`chart`/`point` + `type`·`unit`·`max`·`series`·`alt` — 값 층이
   도형·텍스트로 펼친다), [`<connector>`](soml/connector.md) (`from`·`to` + 경로 · 면 · 선 · 끝 표식 —
-  잰 두 상자를 잇는다)
+  잰 두 상자를 잇는다), [`enter`](soml/enter.md) (등장 효과 넷 — 테마의 박자로 엇갈린다)
 - 문법: [문자 참조와 CDATA](soml/text-subset.md) (닫힌 5종 + 수치 참조,
   원문 그대로 담는 섹션), 마크업이 아닌 `<`·`&`의 리터럴 규칙
 - [외관 속성](appearance.md) — 4단 캐스케이드, 텍스트 역할 5종, 컴포넌트 기본값과

@@ -409,10 +409,10 @@ CSS가 0으로 명시하므로 **브라우저 기본 스타일에 기대는 값�
 | 쓸 수 없는 코드포인트 (`&#0;` `&#xD800;` `&#x110000;`) | 같은 진단 — 참조 모양이지만 해석할 수 없다 |
 | CDATA가 닫히지 않았다 | ``CDATA section is not closed with `]]>` `` |
 | 요소만 담는 자리에 CDATA를 썼다 | `character data cannot appear directly inside <slide> (wrap it in <text>)` — 표기가 달라도 내용이다 |
-| 블록에 `role`을 썼다 | `unknown attribute role on <h1> (available attributes: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| 블록에 `role`을 썼다 | `unknown attribute role on <h1> (available attributes: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
 | `<span>`에 어휘 밖 속성 | `unknown attribute align on <span> (available attributes: color, weight, size)` |
 | `<li>`에 외관 속성을 썼다 | `unknown attribute size on <li> (available attributes: reveal)` — 외관은 `<ul>`/`<ol>`에 쓴다 |
-| `<ul variant>` | `unknown attribute variant on <ul> (available attributes: size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| `<ul variant>` | `unknown attribute variant on <ul> (available attributes: size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
 
 외관 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다. 블록의 `size`/`color`/`align`
 진단은 [`<text>`](text.md)와 같고, 서브셋 고유의 것은:

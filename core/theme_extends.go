@@ -334,7 +334,16 @@ func mergeTokensFile(parent, child tokensFile) tokensFile {
 		Space:  mergeNamed(parent.Space, child.Space, func(t spaceTok) string { return t.Name }),
 		Radius: mergeNamed(parent.Radius, child.Radius, func(t radiusTok) string { return t.Name }),
 		Shadow: mergeNamed(parent.Shadow, child.Shadow, func(t shadowTok) string { return t.Name }),
+		// 박자는 싱글톤 절이다 — 자식이 정하면 통째로 자식의 것 (세 수는 한 리듬이다).
+		Motion: firstMotion(child.Motion, parent.Motion),
 	}
+}
+
+func firstMotion(child, parent *motionTok) *motionTok {
+	if child != nil {
+		return child
+	}
+	return parent
 }
 
 // mergeComponentsFile은 컴포넌트 선언을 병합한다. 이름 붙은 표(역할·컴포넌트 기본값·variant·

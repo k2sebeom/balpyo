@@ -413,7 +413,7 @@ PPTX는 **같은 도형의 본문**(`txBody`)이다. 그래서 도형 안 텍스
 |---|---|
 | 도형 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <shape> (wrap it in <text>)` |
 | 도형의 **직속** 자식으로 리스트·그림·표·중첩 도형을 썼다 | `<shape> cannot contain <ul> (available tags: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)` — 컨테이너로 감싸면 들어간다 |
-| 어휘 밖의 속성 | `unknown attribute stroke on <shape> (available attributes: type, id, alt, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| 어휘 밖의 속성 | `unknown attribute stroke on <shape> (available attributes: type, id, alt, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
 | `<arrow>`·`<line>`·`<group>`을 썼다 | `unknown tag <arrow> — did you mean <row>? (tags available inside <slide>: …)` — 목록은 그 자리에 쓸 수 있는 태그다 |
 
 값 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다:

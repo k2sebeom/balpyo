@@ -154,7 +154,7 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			// 등가를 깬다.
 			name: "블록에는 role이 없다",
 			src:  `<slide><h1 role="body">제목</h1></slide>`,
-			want: []string{"1:12 unknown attribute role on <h1> (available attributes: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
+			want: []string{"1:12 unknown attribute role on <h1> (available attributes: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)"},
 		},
 		{
 			name: "인라인에는 속성이 없다",
@@ -171,7 +171,7 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			// 세로 축·pad·ratio는 텍스트에 닫혀 있다.
 			name: "text에는 h가 없다",
 			src:  `<slide><text h="56">x</text></slide>`,
-			want: []string{`1:14 unknown attribute h on <text> (available attributes: role, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)`},
+			want: []string{`1:14 unknown attribute h on <text> (available attributes: role, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)`},
 		},
 		{
 			name: "pre 안의 인라인은 아직이다",

@@ -356,8 +356,8 @@ func writeBlock(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	fmt.Fprintf(b, "<%s class=\"balpyo-text\" %s=%q %s=%q%s%s>",
-		tag, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, revealAttr(elem), styleAttr(decls))
+	fmt.Fprintf(b, "<%s class=\"balpyo-text\" %s=%q %s=%q%s%s%s>",
+		tag, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, revealAttr(elem), enterAttr(elem), styleAttr(decls))
 	if elem.Name == "pre" {
 		if first, ok := firstText(elem); ok && strings.HasPrefix(first, "\n") {
 			// 파서가 양 끝 개행을 하나씩 벗겼으므로 남은 선두 개행은 내용이다. 그런데 HTML
@@ -383,6 +383,22 @@ func revealAttr(elem *soml.Element) string {
 		return ""
 	}
 	return fmt.Sprintf(" %s=%q", RevealAttr, strconv.Itoa(elem.Appearance.Reveal))
+}
+
+// EnterAttr · EnterDelayAttr는 등장의 마크업이다 — 효과 이름과 지연(ms)을 나르고, 뷰어 런타임이 지연을
+// 전환에 걸어 슬라이드에 들어갈 때 켠다 (발표자 뷰에서만 — viewer.css).
+const (
+	EnterAttr      = "data-balpyo-enter"
+	EnterDelayAttr = "data-balpyo-enter-delay"
+)
+
+// enterAttr는 등장 속성이다 (등장이 없으면 속성 자체가 없다 — revealAttr와 같은 태도).
+func enterAttr(elem *soml.Element) string {
+	e := elem.EnterOf()
+	if e == nil {
+		return ""
+	}
+	return fmt.Sprintf(" %s=%q %s=\"%d\"", EnterAttr, string(e.Effect), EnterDelayAttr, e.Delay)
 }
 
 // firstText는 요소의 첫 문자 데이터 자식이다.
@@ -415,8 +431,8 @@ func writeList(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *som
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
-	fmt.Fprintf(b, "<%s class=\"balpyo-list\" %s=%q %s=%q%s>\n",
-		elem.Name, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, styleAttr(decls))
+	fmt.Fprintf(b, "<%s class=\"balpyo-list\" %s=%q %s=%q%s%s>\n",
+		elem.Name, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, enterAttr(elem), styleAttr(decls))
 	for i, child := range elem.Children {
 		if err := writeNode(b, deck, slide, child, ChildPath(path, i)); err != nil {
 			return err
@@ -721,6 +737,8 @@ type features struct {
 	tables bool
 	// connectors는 `<connector>`가 있는지다 (connectorCSS) — 연결선을 안 쓴 덱의 산출물이 움직이지 않는다.
 	connectors bool
+	// entrances는 등장(`enter`)이 실린 요소가 있는지다 — 테마의 박자 변수(--balpyo-motion-duration)를 낸다.
+	entrances bool
 	// layouts는 이 덱이 실제로 쓴, **배치 CSS를 가진** 레이아웃 이름들이다 (정렬·중복 제거).
 	// themeCSS가 이 목록만 규칙으로 낸다 — 다른 어휘 조건과 같은 근거다 (골든 불변): 쓰지 않은
 	// 레이아웃의 배치 규칙이 산출물에 들어가면 diff가 무엇이 변했는지 말해 주지 못한다.
@@ -775,6 +793,9 @@ func contentFeatures(deck *soml.Deck) features {
 				feat.tables = true
 			case soml.KindConnector:
 				feat.connectors = true
+			}
+			if elem.EnterOf() != nil {
+				feat.entrances = true
 			}
 			walk(elem.Children)
 		}

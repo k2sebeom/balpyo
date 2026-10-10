@@ -182,6 +182,8 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 			// justify도 layout처럼 원문·구간을 함께 옮긴다 — 어휘 검사는 core다.
 			Justify:     soml.BoxJustify(doc.Justify),
 			JustifySpan: doc.JustifySpan,
+			Enter:       doc.Enter,
+			EnterSpan:   doc.EnterSpan,
 			Notes:       doc.Notes,
 			Content:     doc.Content,
 			Tokens:      doc.Tokens,

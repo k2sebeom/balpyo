@@ -146,7 +146,7 @@ func (r *resolver) imageAttrs(elem *soml.Element, style *soml.ImageStyle) imageP
 			// `slot`을 따로 적는 근거는 도형 판과 같다 (shapeAttrs의 주석).
 			if r.boxAttr(&style.Box, attr) ||
 				containsName(soml.ChildPlacementAttrs(), attr.Name) ||
-				attr.Name == soml.SlotAttr {
+				attr.Name == soml.SlotAttr || attr.Name == soml.EnterAttr {
 				continue
 			}
 			r.catalogGap(elem, attr)

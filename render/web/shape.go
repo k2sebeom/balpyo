@@ -611,8 +611,8 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	if style.Rotate != nil {
 		class += " " + shapeRotateClass
 	}
-	fmt.Fprintf(b, "<div class=%q %s=%q %s=%q%s>\n",
-		class, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, styleAttr(decls))
+	fmt.Fprintf(b, "<div class=%q %s=%q %s=%q%s%s>\n",
+		class, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, enterAttr(elem), styleAttr(decls))
 	if err := writeShapeInk(b, geom, *style, deck.Theme, ElementID(slide.Index, path)); err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}

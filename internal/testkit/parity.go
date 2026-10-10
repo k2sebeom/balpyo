@@ -168,11 +168,15 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 				s.Background = "fill=" + webFill(bg.Fill, deck.Theme)
 			}
 		}
-		var walk func(node soml.Node, p []int) error
-		walk = func(node soml.Node, p []int) error {
+		// enter는 가장 가까운 등장 조상이다 — 객체는 그 등장과 함께 나타난다 (PPTX는 객체마다 효과 하나).
+		var walk func(node soml.Node, p []int, enter *soml.Entrance) error
+		walk = func(node soml.Node, p []int, enter *soml.Entrance) error {
 			elem, ok := node.(*soml.Element)
 			if !ok {
 				return nil
+			}
+			if e := elem.EnterOf(); e != nil {
+				enter = e
 			}
 			id := web.ElementID(slide.Index, p)
 			kind := soml.KindOf(elem.Name)
@@ -182,7 +186,7 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 			switch kind {
 			case soml.KindLayoutContainer:
 				for i, child := range elem.Children {
-					if err := walk(child, web.ChildPath(p, i)); err != nil {
+					if err := walk(child, web.ChildPath(p, i), enter); err != nil {
 						return err
 					}
 				}
@@ -245,11 +249,14 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 				return fmt.Errorf("%s: %s <%s> has no mapping to an object", slide.Source, id, elem.Name)
 			}
 			n.X, n.Y, n.W, n.H = rectEMU(rect)
+			if enter != nil {
+				n.Extra = fmt.Sprintf("enter=%s@%d+%d", enter.Effect, enter.Delay, enter.Duration)
+			}
 			s.Nodes = append(s.Nodes, n)
 			// 배경 모드 도형의 자식은 형제 객체다.
 			if kind == soml.KindShape && soml.ShapeHoldsLayout(elem) {
 				for i, child := range elem.Children {
-					if err := walk(child, web.ChildPath(p, i)); err != nil {
+					if err := walk(child, web.ChildPath(p, i), enter); err != nil {
 						return err
 					}
 				}
@@ -257,7 +264,7 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 			return nil
 		}
 		for i, node := range slide.Content {
-			if err := walk(node, []int{i}); err != nil {
+			if err := walk(node, []int{i}, nil); err != nil {
 				return nil, err
 			}
 		}
@@ -595,7 +602,35 @@ type xSlide struct {
 			Items []xObject `xml:",any"`
 		} `xml:"spTree"`
 	} `xml:"cSld"`
+	// Timing은 등장 효과다 — 효과마다 대상 도형 번호 · 효과 번호 · 지연 · 길이를 되읽는다.
+	Timing *struct {
+		Effects []xEffect `xml:"tnLst>par>cTn>childTnLst>seq>cTn>childTnLst>par>cTn>childTnLst>par>cTn>childTnLst>par"`
+	} `xml:"timing"`
 }
+
+// xEffect는 등장 효과 하나다 (`p:par > p:cTn[presetClass=entr]`).
+type xEffect struct {
+	CTn struct {
+		PresetID  int    `xml:"presetID,attr"`
+		PresetCls string `xml:"presetClass,attr"`
+		Cond      struct {
+			Delay int `xml:"delay,attr"`
+		} `xml:"stCondLst>cond"`
+		Set struct {
+			SpTgt struct {
+				Spid string `xml:"spid,attr"`
+			} `xml:"cBhvr>tgtEl>spTgt"`
+		} `xml:"childTnLst>set"`
+		Effect []struct {
+			CTn struct {
+				Dur int `xml:"dur,attr"`
+			} `xml:"cBhvr>cTn"`
+		} `xml:"childTnLst>animEffect"`
+	} `xml:"cTn"`
+}
+
+// pptxEnterNames는 PowerPoint 등장 효과 번호 → SOML 효과 이름이다 (렌더러의 표를 부르지 않고 따로 적는다).
+var pptxEnterNames = map[int]string{10: "fade", 42: "rise", 53: "zoom", 22: "wipe"}
 
 type xNv struct {
 	CNvPr struct {
@@ -782,9 +817,35 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 				}
 			}
 		}
+		// 등장은 대상 도형 번호로 객체에 붙는다.
+		enters := map[string]string{}
+		if x.Timing != nil {
+			for _, e := range x.Timing.Effects {
+				name, ok := pptxEnterNames[e.CTn.PresetID]
+				if !ok || e.CTn.PresetCls != "entr" {
+					name = fmt.Sprintf("preset%d", e.CTn.PresetID)
+				}
+				dur := 0
+				if len(e.CTn.Effect) > 0 {
+					dur = e.CTn.Effect[0].CTn.Dur
+				}
+				enters[e.CTn.Set.SpTgt.Spid] = fmt.Sprintf("enter=%s@%d+%d", name, e.CTn.Cond.Delay, dur)
+			}
+		}
 		for _, obj := range x.CSld.SpTree.Items {
 			n, ok := pptxNode(obj, theme, links, names)
 			if ok {
+				for _, nv := range []*xNv{obj.NvSpPr, obj.NvPicPr, obj.NvGraphicFramePr} {
+					if nv == nil {
+						continue
+					}
+					if e, ok := enters[nv.CNvPr.ID]; ok {
+						if n.Extra != "" {
+							n.Extra += " "
+						}
+						n.Extra += e
+					}
+				}
 				s.Nodes = append(s.Nodes, n)
 			}
 		}

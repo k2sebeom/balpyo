@@ -202,7 +202,7 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 			// 그래서 배치 목록만 면제하면 슬롯을 쓴 도형이 엔진 버그 진단을 받는다.
 			if r.boxAttr(&style.Box, attr) ||
 				containsName(soml.ChildPlacementAttrs(), attr.Name) ||
-				attr.Name == soml.SlotAttr {
+				attr.Name == soml.SlotAttr || attr.Name == soml.EnterAttr {
 				continue
 			}
 			r.catalogGap(elem, attr)

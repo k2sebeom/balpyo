@@ -61,6 +61,11 @@ func themeCSS(theme soml.Theme, feat features) string {
 		// 그림자도 같은 계약이다 (shadowVarsCSS) — 요소는 var()로 가리키고 표가 선언한다.
 		b.WriteString(shadowVarsCSS(theme))
 	}
+	if feat.entrances && theme.Motion != nil {
+		// 등장의 길이도 표에서 나온다 — PPTX 효과의 dur와 같은 값이다. 지연은 요소마다 다르므로 마크업이
+		// 나르고(EnterDelayAttr) 런타임이 건다.
+		fmt.Fprintf(&b, "    --balpyo-motion-duration: %dms;\n", theme.Motion.Duration)
+	}
 	b.WriteString("  }\n")
 	if _, ok := theme.Color(bgToken); ok {
 		// 슬라이드 바탕도 토큰에서 나온다. 렌더러가 배경색을 따로 갖고 있으면 테마를 바꿨을 때

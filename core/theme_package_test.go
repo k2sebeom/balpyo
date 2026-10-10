@@ -54,6 +54,7 @@ func TestLoadBuiltinMinimal(t *testing.T) {
 		Shadows: []soml.ShadowToken{
 			{Name: "soft", Dist: 4, Dir: 90, Blur: 16, Color: soml.TokenColor("fg"), Alpha: 0.15},
 		},
+		Motion: &soml.MotionTokens{Duration: 600, Stagger: 90, Delay: 150},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("로드된 minimal 토큰이 기대와 다르다:\ngot  %+v\nwant %+v", got, want)
