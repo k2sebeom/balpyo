@@ -31,7 +31,8 @@ var (
 // 박스 · 배치 속성이 없다: 연결선의 자리는 두 상자가 정한다.
 //   - `enter`: 등장 — `draw`(시작점에서 끝점으로 그려진다) · `fade` · `none`. `<slide enter>`는 연결선에
 //     닿지 않는다 (상자의 효과는 선에 뜻이 없다).
-var connectorAttrs = []string{"from", "to", "route", "from-side", "to-side", "line", "start", "end", "variant", "label", EnterAttr}
+//   - `flow`: 대시가 시작점에서 끝점 쪽으로 흐른다 (웹 발표자 뷰 — 다른 모든 자리는 멈춘 파선이다).
+var connectorAttrs = []string{"from", "to", "route", "from-side", "to-side", "line", "start", "end", "variant", "label", EnterAttr, "flow"}
 
 // ConnectorAttrs는 `<connector>`의 속성이다. 값 층이 이 목록을 소비한다 (ShapeAttrs와 같은 이유).
 func ConnectorAttrs() []string {
@@ -71,6 +72,9 @@ type ConnectorStyle struct {
 	// 재고(연결선의 요소 식별자로) 두 렌더러가 경로 옆 같은 자리에 놓는다 (route.Path.LabelRect).
 	Label      string
 	LabelStyle *TextStyle
+	// Flow면 선의 대시가 흐른다 — 웹 발표자 뷰에서만 움직이고, PPTX · 인쇄 · 문서 뷰는 같은 파선이 멈춘 모습이다.
+	// 흐르는 선은 언제나 파선이다 (값 층이 실선을 파선으로 바꾼다).
+	Flow bool
 }
 
 // HasConnectorLabel은 요소가 라벨 있는 확정 연결선인지다 — 지오메트리 패스가 그 라벨을 잰다.

@@ -1,6 +1,7 @@
 <!-- A state machine: three route kinds between flow-laid boxes. The connector takes no room in the
      flow — its ends come from the measured rects of the boxes it names. A label is measured as one
-     line and sits beside the middle of the path (above a horizontal run, right of a vertical one). -->
+     line and sits beside the middle of the path (above a horizontal run, right of a vertical one).
+     flow turns the accent line into a dashed line whose dashes run on the web (still in PPTX). -->
 <slide id="lifecycle" justify="center">
   <h2>Instance lifecycle</h2>
   <row gap="xl" align="center">
@@ -12,7 +13,7 @@
     <shape type="ellipse" id="terminated" w="200" h="72"><p align="center">terminated</p></shape>
   </row>
   <connector from="pending" to="running" label="boot"/>
-  <connector from="running" to="stopped" variant="accent" label="stop"/>
+  <connector from="running" to="stopped" variant="accent" label="stop" flow/>
   <connector from="stopped" to="pending" route="curved" from-side="top" to-side="top" variant="dashed" label="start"/>
   <connector from="running" to="terminated" route="elbow" from-side="bottom" to-side="left" label="terminate"/>
 </slide>

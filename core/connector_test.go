@@ -88,3 +88,15 @@ func TestResolveConnectorNeedsALine(t *testing.T) {
 		t.Errorf("진단 = %v", r.diags)
 	}
 }
+
+// 흐르는 선은 파선이다 — 실선 위에 flow를 쓰면 같은 굵기 · 색의 파선이 된다 (PPTX의 멈춘 모습도 같다).
+func TestResolveConnectorFlow(t *testing.T) {
+	deck, diags := connectorDeck(t, "  <connector from=\"a\" to=\"b\" flow/>\n  <shape type=\"rect\" id=\"a\"/>\n  <shape type=\"rect\" id=\"b\"/>")
+	if len(diags) != 0 {
+		t.Fatalf("진단: %v", diags)
+	}
+	conn := findElement(t, deck, soml.ConnectorElement).Appearance.Connector
+	if !conn.Flow || conn.Line.Style != soml.BorderDashed {
+		t.Errorf("흐르는 선 = flow %v · %s, want 파선", conn.Flow, conn.Line.Style)
+	}
+}

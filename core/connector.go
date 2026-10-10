@@ -101,6 +101,14 @@ func (r *resolver) resolveConnector(elem *soml.Element) {
 			}
 		case "variant":
 			// 위에서 해석했다 — 여기서 또 보면 모르는 variant 경고가 두 번 난다.
+		case "flow":
+			switch {
+			case !attr.HasValue, attr.Value == "true":
+				style.Flow = true
+			case attr.Value == "false":
+			default:
+				r.errorf(attr.ValueSpan, "flow must be true or false (%q)", attr.Value)
+			}
 		case "label":
 			if r.hasValue(attr) {
 				style.Label = attr.Value
@@ -113,6 +121,10 @@ func (r *resolver) resolveConnector(elem *soml.Element) {
 		}
 	}
 	mergeConnector(&style, inline)
+	if style.Flow && style.Line.Style == soml.BorderSolid {
+		// 흐르는 선은 파선이다 — 대시가 있어야 흐름이 보이고, PPTX의 멈춘 모습도 같은 파선이다.
+		style.Line.Style = soml.BorderDashed
+	}
 	if _, ok := elem.Attr("from"); !ok {
 		r.errorf(elem.NameSpan, "<connector> needs from — the id of the shape or image the line starts at")
 	}

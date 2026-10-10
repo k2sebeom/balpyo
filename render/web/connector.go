@@ -30,6 +30,9 @@ const ConnectorClass = "balpyo-connectors"
 // ConnectorAttr는 연결선 경로의 요소 식별자 속성이다 (테스트 하네스가 읽는다).
 const ConnectorAttr = "data-balpyo-connector"
 
+// FlowAttr는 흐르는 연결선의 표식이다 — 발표자 뷰에서 대시가 흐른다 (viewer.css).
+const FlowAttr = "data-balpyo-flow"
+
 // connectorMode는 렌더러가 연결선을 어떻게 다루는지다.
 type connectorMode int
 
@@ -238,6 +241,12 @@ func writeConnectorPath(b *strings.Builder, deck *soml.Deck, id string, conn *so
 	decls := []string{"fill: none", "stroke: " + stroke, "stroke-width: " + formatNumber(conn.Line.Width) + "px"}
 	if dash != "" {
 		decls = append(decls, "stroke-dasharray: "+dash)
+	}
+	if conn.Flow {
+		// 흐름은 대시 한 주기(파선 4 + 틈 3 = 굵기의 7배)만큼 오프셋을 옮기는 무한 애니메이션이다 — 발표자 뷰의 것이다
+		// (viewer.css). 주기를 변수로 싣는 이유는 키프레임이 선마다 다른 굵기를 알아야 해서다.
+		attrs = append(attrs, FlowAttr)
+		decls = append(decls, "--balpyo-flow-period: "+formatNumber(conn.Line.Width*7)+"px")
 	}
 	fmt.Fprintf(b, "<path %s%s/>\n", strings.Join(attrs, " "), styleAttr(decls))
 	return nil

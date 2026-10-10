@@ -10,7 +10,7 @@ shape:roundRect "shape s0.1.2" fill=surface line=muted
 shape:ellipse "shape s0.2.0" fill=surface line=muted
   ¶ center | "terminated"{body 18pt fg}
 connector:straightConnector1 "connector s0.3" line=muted rot=0 adj=50000 from="shape s0.1.0":3 to="shape s0.1.1":1 dash=solid ends=none/triangle
-connector:straightConnector1 "connector s0.4" line=accent1 rot=0 adj=50000 from="shape s0.1.1":3 to="shape s0.1.2":1 dash=solid ends=none/triangle
+connector:straightConnector1 "connector s0.4" line=accent1 rot=0 adj=50000 from="shape s0.1.1":3 to="shape s0.1.2":1 dash=dash ends=none/triangle
 connector:curvedConnector3 "connector s0.5" line=muted rot=90 adj=-12350000 from="shape s0.1.2":0 to="shape s0.1.0":0 dash=dash ends=none/triangle
 connector:bentConnector2 "connector s0.6" line=muted rot=90 flipV adj=50000 from="shape s0.1.1":2 to="shape s0.2.0":2 dash=solid ends=none/triangle
 textbox "connector-label s0.3"

@@ -110,6 +110,16 @@
   html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-from-right { translate: 100% 0; }
   html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-from-left { translate: -100% 0; }
 
+  /* Flowing connectors — the dashes run from start to end, one dash period every 1.2s, only in the
+     presenter view (everywhere else, PPTX included, the same dashed line stands still). */
+  @keyframes balpyo-flow { to { stroke-dashoffset: calc(-1 * var(--balpyo-flow-period, 14px)); } }
+  html[data-balpyo-view="presenter"] .balpyo-viewer-active [data-balpyo-flow] {
+    animation: balpyo-flow 1.2s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html[data-balpyo-view="presenter"] .balpyo-viewer-active [data-balpyo-flow] { animation: none; }
+  }
+
   /* Progress bar — a thin line at the top of the screen in the presenter view, as wide as the
      share of the deck shown so far. It is viewer chrome (like the control bar), not slide
      content: it does not exist in the document view, print, the overview or the measure view.
