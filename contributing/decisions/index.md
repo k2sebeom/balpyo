@@ -90,6 +90,7 @@
 | [0081](0081-entrance-is-a-native-effect-staggered-by-the-theme.md) | 등장은 두 타깃의 원어 효과이고, 엇갈림은 테마가 정한다 | 백로그 Q10 | 확정 |
 | [0082](0082-a-slide-transition-is-the-theme-rhythm-and-a-slide-may-override-it.md) | 슬라이드 전환은 테마의 리듬이고, 슬라이드가 덮어쓸 수 있다 | 백로그 Q12 | 확정 |
 | [0083](0083-an-inverted-slide-swaps-the-color-mapping.md) | 반전 슬라이드는 색 매핑을 뒤집는다 | 백로그 Q5 | 확정 |
+| [0084](0084-gradients-take-alpha-stops-and-a-radial-form-and-a-background-takes-an-overlay.md) | 그라디언트는 투명 스톱과 방사형을 받고, 배경은 덮개 하나를 받는다 | 백로그 Q6 | 확정 |
 
 0066까지의 ADR에 나오는 `PRD §…` 인용은 커밋 `2121a0b`의 `PRD.md`를 뜻한다. 그 절이 지금 어디에
 있는지는 [0067](0067-prd-is-retired-and-its-standing-decisions-move-here.md)의 대응표가 적는다.
