@@ -265,6 +265,10 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 				n.Kind = "pic"
 				if style := elem.ImageStyle(); style != nil {
 					n.Alt = style.Alt
+					// SVG 그림은 PPTX에서 svgBlip 확장을 함께 가져야 한다 — 대체 PNG만 남으면 벡터가 사라진다.
+					if asset, ok := deck.Assets.Get(style.Src); ok && asset.Format == soml.FormatSVG {
+						n.Extra = "svg"
+					}
 				}
 			case soml.KindTable:
 				n.Kind = "table"
@@ -277,7 +281,10 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 			}
 			n.X, n.Y, n.W, n.H = rectEMU(rect)
 			if enter != nil {
-				n.Extra = fmt.Sprintf("enter=%s@%d+%d", enter.Effect, enter.Delay, enter.Duration)
+				if n.Extra != "" {
+					n.Extra += " "
+				}
+				n.Extra += fmt.Sprintf("enter=%s@%d+%d", enter.Effect, enter.Delay, enter.Duration)
 			}
 			s.Nodes = append(s.Nodes, n)
 			// 배경 모드 도형의 자식은 형제 객체다.
@@ -831,8 +838,14 @@ type xObject struct {
 			} `xml:"tailEnd"`
 		} `xml:"ln"`
 	} `xml:"spPr"`
-	Xfrm    xXfrm    `xml:"xfrm"`
-	TxBody  *xTxBody `xml:"txBody"`
+	Xfrm   xXfrm    `xml:"xfrm"`
+	TxBody *xTxBody `xml:"txBody"`
+	// BlipFill은 그림의 채움이다 — SVG 그림이면 blip의 확장에 svgBlip이 있다.
+	BlipFill struct {
+		Blip struct {
+			SvgBlip *struct{} `xml:"extLst>ext>svgBlip"`
+		} `xml:"blip"`
+	} `xml:"blipFill"`
 	Graphic struct {
 		GraphicData struct {
 			Tbl *struct {
@@ -972,6 +985,9 @@ func pptxNode(obj xObject, theme soml.Theme, links map[string]string, names map[
 	case "pic":
 		nv = obj.NvPicPr
 		n.Kind = "pic"
+		if obj.BlipFill.Blip.SvgBlip != nil {
+			n.Extra = "svg"
+		}
 	case "graphicFrame":
 		nv = obj.NvGraphicFramePr
 		xfrm = obj.Xfrm

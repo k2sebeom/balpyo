@@ -1,0 +1,11 @@
+<!-- An SVG image: the web draws the file as is, PPTX carries it as asvg:svgBlip with a PNG fallback
+     the geometry pass rasterized at twice the intrinsic size (the root's 48×48). The same asset at
+     its intrinsic size, filling a 160 box (fit="cover" scales a vector up without blur) and faded
+     shares one SVG part and one fallback part. -->
+<slide id="svg">
+  <row gap="lg" align="center">
+    <image src="assets/chip.svg" alt="Processor chip"/>
+    <image src="assets/chip.svg" w="160" h="160" fit="cover" alt="Processor chip, large"/>
+    <image src="assets/chip.svg" w="96" opacity="0.5" alt="Processor chip, faded"/>
+  </row>
+</slide>

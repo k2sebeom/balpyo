@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/k2sebeom/balpyo/internal/pipeline"
+	"github.com/k2sebeom/balpyo/soml"
 )
 
 // 패키지 불변식: PPTX 패키지의 구조는 스냅샷이 아니라 **어느 덱에서나 성립하는 규칙**으로
@@ -96,6 +97,16 @@ func (f Fixture) AssertPackage(t testing.TB, result *pipeline.Result) {
 			t.Errorf("%s differs from the bytes of %s — the engine altered the image", part, asset.Key)
 		}
 		delete(media, part)
+		if asset.Format == soml.FormatSVG {
+			// SVG에는 같은 번호의 대체 PNG가 따라온다 — 지오메트리 패스가 그린 그림이고, PNG여야 한다.
+			fallback := fmt.Sprintf("ppt/media/image%d.png", i+1)
+			if !media[fallback] {
+				t.Errorf("SVG %s has no fallback part %s", asset.Key, fallback)
+			} else if !bytes.HasPrefix(parts[fallback], []byte("\x89PNG\r\n\x1a\n")) {
+				t.Errorf("fallback %s of %s is not a PNG", fallback, asset.Key)
+			}
+			delete(media, fallback)
+		}
 	}
 	for name := range media {
 		t.Errorf("media part not in the asset table: %s", name)

@@ -328,7 +328,7 @@ func TestRenderFixtureAssetsAreDeduplicatedAndDeterministic(t *testing.T) {
 		t.Fatal(err)
 	}
 	// 픽스처는 네 에셋을 일곱 슬라이드에서 스물네 번 쓴다 (wide.png 혼자 열다섯 번이다).
-	wantPaths := []string{"assets/dot.png", "assets/photo.jpg", "assets/tall.png", "assets/wide.png", IndexFile}
+	wantPaths := []string{"assets/chip.svg", "assets/dot.png", "assets/photo.jpg", "assets/tall.png", "assets/wide.png", IndexFile}
 	if got := files.Paths(); strings.Join(got, ",") != strings.Join(wantPaths, ",") {
 		t.Errorf("산출 파일 = %v, want %v", got, wantPaths)
 	}

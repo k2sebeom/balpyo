@@ -58,6 +58,15 @@ import (
 // 패키지를 풀어 보았을 때 그림이 어디 있는지 아는 자리다.
 const mediaPartDir = "ppt/media/"
 
+// fallbackExt는 SVG 대체 그림 파트의 확장자다.
+const fallbackExt = ".png"
+
+// svgBlipExtURI · svgBlipNS는 Office 2016의 SVG 그림 확장이다 — `a:blip/a:extLst/a:ext@uri`와 `asvg:svgBlip`의 이름공간.
+const (
+	svgBlipExtURI = "{96DAC541-7B7A-43D3-8B79-37D633B846F1}"
+	svgBlipNS     = "http://schemas.microsoft.com/office/drawing/2016/SVG/main"
+)
+
 // mediaPart는 N번째(1-based) 미디어 파트 경로다.
 //
 // **N은 덱 전체의 에셋 표 순서다** (soml.Assets — 첫 사용의 문서 순서로 결정적으로 정해져
@@ -140,9 +149,20 @@ func writePicShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem 
 		return fmt.Errorf("%s:%s <%s>: unknown file extension for format %q — a format was added without a media part name",
 			slide.Source, elem.Span, elem.Name, string(asset.Format))
 	}
-	spec, err := picSpec(shapeID, elem.Name+" "+id, box.Rect, *style, asset, rels.mediaID(mediaTarget(n, ext)))
+	// SVG 그림의 blip은 대체 PNG를 가리키고, 원본은 확장 요소가 가리킨다 — 벡터를 모르는 소비자도 그림을 그린다.
+	embedExt := ext
+	if asset.Format == soml.FormatSVG {
+		if _, ok := g.Fallback(asset.Key); !ok {
+			return fmt.Errorf("%s:%s <%s>: SVG %q has no raster fallback — the deck was not measured", slide.Source, elem.Span, elem.Name, asset.Key)
+		}
+		embedExt = fallbackExt
+	}
+	spec, err := picSpec(shapeID, elem.Name+" "+id, box.Rect, *style, asset, rels.mediaID(mediaTarget(n, embedExt)))
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
+	}
+	if asset.Format == soml.FormatSVG {
+		spec.svgEmbed = rels.mediaID(mediaTarget(n, ext))
 	}
 	spec.ph = slotPlaceholder(slide, elem)
 	if err := writePic(b, spec, deck.Theme); err != nil {
@@ -160,8 +180,10 @@ type picInfo struct {
 	descr string
 	// rect는 잰 rect 그대로다 (writePicShape의 주석).
 	rect geom.Rect
-	// embed는 미디어 관계 id다 (`blip@r:embed`).
+	// embed는 미디어 관계 id다 (`blip@r:embed`). SVG 그림이면 대체 PNG를 가리킨다.
 	embed string
+	// svgEmbed는 SVG 원본의 관계 id다 (`asvg:svgBlip@r:embed`) — SVG가 아니면 빈 문자열이다.
+	svgEmbed string
 	// crop은 cover의 srcRect다 (0이면 요소를 내지 않는다 — contain과 비율이 같은 cover).
 	crop srcRect
 	// alpha는 불투명도다 (nil이면 alphaModFix 없음). 그림·선·그림자에 함께 실린다.
@@ -337,9 +359,20 @@ func writePic(b *strings.Builder, spec picInfo, theme soml.Theme) error {
 		return fmt.Errorf("empty media relationship id")
 	}
 	w(1, "<p:blipFill>")
-	if spec.alpha != nil {
+	if spec.alpha != nil || spec.svgEmbed != "" {
 		w(2, fmt.Sprintf(`<a:blip r:embed="%s">`, spec.embed))
-		w(3, fmt.Sprintf(`<a:alphaModFix amt="%d"/>`, Alpha(*spec.alpha)))
+		if spec.alpha != nil {
+			w(3, fmt.Sprintf(`<a:alphaModFix amt="%d"/>`, Alpha(*spec.alpha)))
+		}
+		if spec.svgEmbed != "" {
+			// 스키마 순서(CT_Blip): 효과들 → extLst. svgBlip은 Office 2016의 확장이다 — 아는 소비자는 벡터를,
+			// 모르는 소비자는 blip의 PNG를 그린다.
+			w(3, "<a:extLst>")
+			w(4, `<a:ext uri="`+svgBlipExtURI+`">`)
+			w(5, fmt.Sprintf(`<asvg:svgBlip xmlns:asvg="%s" r:embed="%s"/>`, svgBlipNS, spec.svgEmbed))
+			w(4, "</a:ext>")
+			w(3, "</a:extLst>")
+		}
 		w(2, "</a:blip>")
 	} else {
 		w(2, fmt.Sprintf(`<a:blip r:embed="%s"/>`, spec.embed))
@@ -380,7 +413,7 @@ func writePic(b *strings.Builder, spec picInfo, theme soml.Theme) error {
 //
 // 바이트는 표의 것을 **그대로** 넘긴다 (복사·재압축 없음 — 엔진은 그림을 고치지 않는다.
 // soml.Asset.Bytes의 계약이고 웹의 assetFiles와 같은 태도다).
-func mediaParts(deck *soml.Deck) ([]part, error) {
+func mediaParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 	if len(deck.Assets) == 0 {
 		return nil, nil
 	}
@@ -395,6 +428,14 @@ func mediaParts(deck *soml.Deck) ([]part, error) {
 			return nil, fmt.Errorf("asset %q has no bytes — the deck did not go through the asset pass", asset.Key)
 		}
 		parts = append(parts, part{name: mediaPart(i+1, ext), data: asset.Bytes})
+		if asset.Format == soml.FormatSVG {
+			// 대체 PNG는 원본과 같은 번호의 형제 파트다 — 그림 하나가 파트 둘이다.
+			png, ok := g.Fallback(asset.Key)
+			if !ok {
+				return nil, fmt.Errorf("asset %q is an SVG without a raster fallback — the deck was not measured", asset.Key)
+			}
+			parts = append(parts, part{name: mediaPart(i+1, fallbackExt), data: png})
+		}
 	}
 	return parts, nil
 }
@@ -417,20 +458,32 @@ type mediaDefault struct {
 func mediaDefaults(deck *soml.Deck) ([]mediaDefault, error) {
 	var defaults []mediaDefault
 	seen := map[string]bool{}
-	for _, asset := range deck.Assets {
-		ext := strings.TrimPrefix(asset.Format.Ext(), ".")
+	add := func(format soml.ImageFormat, key string) error {
+		ext := strings.TrimPrefix(format.Ext(), ".")
 		if ext == "" {
-			return nil, fmt.Errorf("asset %q: format %q has no file extension", asset.Key, string(asset.Format))
+			return fmt.Errorf("asset %q: format %q has no file extension", key, string(format))
 		}
 		if seen[ext] {
-			continue
+			return nil
 		}
-		contentType, err := mediaContentType(asset.Format)
+		contentType, err := mediaContentType(format)
 		if err != nil {
-			return nil, fmt.Errorf("asset %q: %w", asset.Key, err)
+			return fmt.Errorf("asset %q: %w", key, err)
 		}
 		seen[ext] = true
 		defaults = append(defaults, mediaDefault{Ext: ext, ContentType: contentType})
+		return nil
+	}
+	for _, asset := range deck.Assets {
+		if err := add(asset.Format, asset.Key); err != nil {
+			return nil, err
+		}
+		if asset.Format == soml.FormatSVG {
+			// SVG에는 대체 PNG 파트가 따라온다 (mediaParts).
+			if err := add(soml.FormatPNG, asset.Key); err != nil {
+				return nil, err
+			}
+		}
 	}
 	return defaults, nil
 }
@@ -447,6 +500,8 @@ func mediaContentType(format soml.ImageFormat) (string, error) {
 		return "image/png", nil
 	case soml.FormatJPEG:
 		return "image/jpeg", nil
+	case soml.FormatSVG:
+		return "image/svg+xml", nil
 	}
 	return "", fmt.Errorf("unknown content type for format %q", string(format))
 }

@@ -187,7 +187,7 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 	// 슬라이드보다 앞에 두는 이유는 패키지를 풀어 본 사람이 그림을 슬라이드보다 먼저 만나는
 	// 것이 자연스럽기 때문이고, 순서는 결정적이면 어디든 유효하다 (zipParts는 이 순서를
 	// 지킨다 — [Content_Types].xml만 첫 엔트리여야 한다).
-	media, err := mediaParts(deck)
+	media, err := mediaParts(deck, g)
 	if err != nil {
 		return nil, err
 	}

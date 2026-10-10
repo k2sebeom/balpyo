@@ -432,7 +432,7 @@ func TestMediaDefaultsGroupPerFormat(t *testing.T) {
 		}
 	}
 	// 파트 이름도 포맷의 확장자를 쓴다 — `.jpeg` 원본이 `image2.jpg`가 된다.
-	media, err := mediaParts(deck)
+	media, err := mediaParts(deck, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
