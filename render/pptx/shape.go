@@ -50,6 +50,17 @@ func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, st
 		return "", "", nil, fmt.Errorf("%s: background: %w", slide.Source, err)
 	}
 	id := firstShapeID
+	if bg := slide.Background; bg != nil && bg.Overlay != nil {
+		// 배경 덮개는 맨 뒤다 — `p:bg`는 채움 하나뿐이라 덮개를 담을 수 없으므로 잠근 전면 사각형으로 칠한다
+		// (웹은 배경의 윗겹이다). 콘텐츠보다 먼저 써야 그 아래에 칠해진다.
+		stage := geom.Rect{W: float64(deck.Stage.Width), H: float64(deck.Stage.Height)}
+		spec := spSpec{id: id, name: "background overlay", rect: stage, preset: rectPreset,
+			fill: *bg.Overlay, border: soml.NoBorder(), locked: true}
+		if err := writeSp(&b, spec, deck.Theme); err != nil {
+			return "", "", nil, fmt.Errorf("%s: background overlay: %w", slide.Source, err)
+		}
+		id++
+	}
 	for i, node := range slide.Content {
 		if err := writeShapeNode(&b, deck, slide, node, []int{i}, &id, g, rels); err != nil {
 			return "", "", nil, err
@@ -434,6 +445,8 @@ type spSpec struct {
 	body string
 	// ph는 이 도형이 채우는 슬롯 플레이스홀더다 (nil이면 `<p:nvPr/>` — 슬롯 아님).
 	ph *placeholder
+	// locked는 선택할 수 없게 잠근 도형이다 (`a:spLocks noSelect`) — 배경 덮개처럼 슬라이드의 내용이 아닌 칠.
+	locked bool
 }
 
 // spAdjust는 `avLst`의 조정값 하나다 — 잰 박스로 평가가 끝난 값이다 (AdjustValue).
@@ -612,7 +625,11 @@ func writeSp(b *strings.Builder, spec spSpec, theme soml.Theme) error {
 	if spec.textBox {
 		w(2, `<p:cNvSpPr txBox="1"/>`)
 	} else {
-		w(2, "<p:cNvSpPr/>")
+		if spec.locked {
+			w(2, `<p:cNvSpPr><a:spLocks noGrp="1" noSelect="1" noMove="1" noResize="1"/></p:cNvSpPr>`)
+		} else {
+			w(2, "<p:cNvSpPr/>")
+		}
 	}
 	writeNvPr(w, 2, spec.ph)
 	w(1, "</p:nvSpPr>")
@@ -1535,7 +1552,15 @@ func writeGradFill(w func(depth int, line string), depth int, grad soml.Gradient
 		w(depth+2, "</a:gs>")
 	}
 	w(depth+1, "</a:gsLst>")
-	w(depth+1, fmt.Sprintf(`<a:lin ang="%d" scaled="1"/>`, GradientAngle(grad.Angle)))
+	if grad.Radial {
+		// 방사형은 원 경로다 — fillToRect가 중심(으로 오그라든 사각형)을 박스의 1000분율 인셋으로 준다.
+		l, t := int64(math.Round(grad.CX*1000)), int64(math.Round(grad.CY*1000))
+		w(depth+1, `<a:path path="circle">`)
+		w(depth+2, fmt.Sprintf(`<a:fillToRect l="%d" t="%d" r="%d" b="%d"/>`, l, t, 100000-l, 100000-t))
+		w(depth+1, "</a:path>")
+	} else {
+		w(depth+1, fmt.Sprintf(`<a:lin ang="%d" scaled="1"/>`, GradientAngle(grad.Angle)))
+	}
 	w(depth, "</a:gradFill>")
 	return nil
 }

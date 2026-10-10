@@ -690,13 +690,15 @@ func (r *resolver) colorFunc(name, raw string, span soml.Span) (soml.Color, bool
 	switch fn {
 	case "gradient":
 		return r.gradientFunc(name, inner, span, raw)
+	case "radial":
+		return r.radialFunc(name, inner, span, raw)
 	case string(soml.ModShade), string(soml.ModTint):
 		return r.variantFunc(soml.ColorModKind(fn), name, inner, span, raw)
 	case string(soml.ModAlpha):
 		return r.alphaFunc(name, inner, span, raw)
 	}
-	r.errorf(span, "unknown color function %q%s (available functions: gradient, shade, tint, alpha) — %q",
-		fn, didYouMean(fn, "gradient, shade, tint, alpha"), raw)
+	r.errorf(span, "unknown color function %q%s (available functions: gradient, radial, shade, tint, alpha) — %q",
+		fn, didYouMean(fn, "gradient, radial, shade, tint, alpha"), raw)
 	return soml.Color{}, false
 }
 
@@ -714,16 +716,7 @@ func (r *resolver) gradientFunc(name, inner string, span soml.Span, raw string) 
 		r.errorf(span, "gradient needs at least two colors (%q) — e.g. gradient(accent1 surface), or with an angle gradient(accent1 surface, 45deg)", raw)
 		return soml.Color{}, false
 	}
-	ok := true
-	stops := make([]soml.Color, 0, len(fields))
-	for _, f := range fields {
-		c, cok := r.simpleColor(name, f, span)
-		if !cok {
-			ok = false
-			continue
-		}
-		stops = append(stops, c)
-	}
+	stops, ok := r.gradientStops(name, fields, span)
 	angle := gradientDefaultAngle
 	if anglePart != "" {
 		a, aok := r.gradientAngle(anglePart, span, raw)
@@ -737,6 +730,66 @@ func (r *resolver) gradientFunc(name, inner string, span soml.Span, raw string) 
 		return soml.Color{}, false
 	}
 	return soml.GradientColor(stops, angle), true
+}
+
+// gradientStops는 그라디언트의 스톱들이다 — 스톱은 단색이고, `/퍼센트`로 불투명도를 받는다 (`bg/0`은 투명한 bg).
+// 불투명도는 alpha 변형과 같은 확정 값이 된다 (PPTX 스톱의 `a:alpha`).
+func (r *resolver) gradientStops(name string, fields []string, span soml.Span) ([]soml.Color, bool) {
+	ok := true
+	stops := make([]soml.Color, 0, len(fields))
+	for _, f := range fields {
+		base, pct, hasPct := strings.Cut(f, "/")
+		c, cok := r.simpleColor(name, base, span)
+		if !cok {
+			ok = false
+			continue
+		}
+		if hasPct {
+			n, err := strconv.ParseFloat(pct, 64)
+			if err != nil || n < 0 || n > 100 || strings.HasSuffix(pct, "%") {
+				r.errorf(span, "a gradient stop opacity is a percentage from 0 to 100 without %% (%q) — e.g. bg/0 or fg/40", f)
+				ok = false
+				continue
+			}
+			c = soml.VariantColor(c, soml.ModAlpha, n/100)
+		}
+		stops = append(stops, c)
+	}
+	return stops, ok
+}
+
+// radialFunc는 `radial(색… [, at X% Y%])`다 — 첫 색이 중심, 마지막 색이 가장 먼 모서리다.
+func (r *resolver) radialFunc(name, inner string, span soml.Span, raw string) (soml.Color, bool) {
+	colorPart, atPart, hasAt := strings.Cut(inner, ",")
+	fields := strings.Fields(colorPart)
+	if len(fields) < 2 {
+		r.errorf(span, "radial needs at least two colors (%q) — e.g. radial(accent1 bg/0), or with a center radial(accent1 bg/0, at 20%% 80%%)", raw)
+		return soml.Color{}, false
+	}
+	stops, ok := r.gradientStops(name, fields, span)
+	cx, cy := 50.0, 50.0
+	if hasAt {
+		parts := strings.Fields(strings.TrimSpace(atPart))
+		valid := len(parts) == 3 && parts[0] == "at"
+		var x, y float64
+		if valid {
+			var errX, errY error
+			x, errX = strconv.ParseFloat(strings.TrimSuffix(parts[1], "%"), 64)
+			y, errY = strconv.ParseFloat(strings.TrimSuffix(parts[2], "%"), 64)
+			valid = errX == nil && errY == nil && strings.HasSuffix(parts[1], "%") && strings.HasSuffix(parts[2], "%") &&
+				x >= 0 && x <= 100 && y >= 0 && y <= 100
+		}
+		if !valid {
+			r.errorf(span, "a radial center has the form `at X%% Y%%` with 0–100%% (%q) — e.g. radial(accent1 bg/0, at 20%% 80%%)", raw)
+			ok = false
+		} else {
+			cx, cy = x, y
+		}
+	}
+	if !ok {
+		return soml.Color{}, false
+	}
+	return soml.RadialColor(stops, cx, cy), true
 }
 
 // gradientDefaultAngle은 각도를 생략한 그라디언트의 CSS 각도다 (위→아래).

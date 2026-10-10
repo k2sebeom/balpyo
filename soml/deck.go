@@ -222,4 +222,7 @@ type Background struct {
 	// Image는 바탕 그림의 에셋 키다 (비면 그림 없음). 그림은 슬라이드를 **덮는다**(cover):
 	// 비율을 지키고 넘치는 쪽을 가운데 기준으로 잘라 낸다.
 	Image string
+	// Overlay는 바탕 위에 칠하는 채움이다 (nil이면 없음) — 웹은 배경의 윗겹, PPTX는 슬라이드 맨 뒤의 잠긴 전면
+	// 사각형이다 (`p:bg`는 채움 하나뿐이다).
+	Overlay *Fill
 }

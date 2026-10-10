@@ -402,3 +402,30 @@ func TestThemeFontTokensMapToFontScheme(t *testing.T) {
 		t.Errorf("major·minor 슬롯이 모두 채워져야 한다: %v", seen)
 	}
 }
+
+// 스톱의 불투명도(`색/퍼센트`)는 alpha 변형이 되고, radial은 중심을 박스의 비율로 받는다.
+func TestResolveGradientStopsAndRadial(t *testing.T) {
+	r := &resolver{theme: loadBuiltinTheme("minimal").tokens}
+	c, ok := r.colorValue("fill", "gradient(fg fg/0, 90deg)", soml.Span{})
+	if !ok || c.Gradient == nil || c.Gradient.Stops[1].Mod == nil || c.Gradient.Stops[1].Mod.Kind != soml.ModAlpha || c.Gradient.Stops[1].Mod.Amount != 0 {
+		t.Fatalf("투명 스톱 = %+v (진단 %v)", c, r.diags)
+	}
+	c, ok = r.colorValue("fill", "radial(accent4/30 bg/0, at 0% 100%)", soml.Span{})
+	if !ok || !c.Gradient.Radial || c.Gradient.CX != 0 || c.Gradient.CY != 100 || c.Gradient.Stops[0].Mod.Amount != 0.3 {
+		t.Fatalf("방사형 = %+v (진단 %v)", c.Gradient, r.diags)
+	}
+	if c, _ := r.colorValue("fill", "radial(accent1 bg)", soml.Span{}); c.Gradient == nil || c.Gradient.CX != 50 || c.Gradient.CY != 50 {
+		t.Errorf("중심 생략 = %+v, want 50%% 50%%", c.Gradient)
+	}
+	for _, tc := range []struct{ raw, want string }{
+		{"gradient(fg fg/140)", "a gradient stop opacity is a percentage from 0 to 100"},
+		{"gradient(fg fg/40%)", "without %"},
+		{"radial(fg)", "radial needs at least two colors"},
+		{"radial(fg bg, at left)", "a radial center has the form `at X% Y%`"},
+	} {
+		r := &resolver{theme: loadBuiltinTheme("minimal").tokens}
+		if _, ok := r.colorValue("fill", tc.raw, soml.Span{}); ok || len(r.diags) == 0 || !strings.Contains(r.diags[0].Message, tc.want) {
+			t.Errorf("%s: 진단 = %v, want %q", tc.raw, r.diags, tc.want)
+		}
+	}
+}

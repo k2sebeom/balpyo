@@ -269,6 +269,18 @@ func baseCSS(stage soml.Stage, feat features) string {
 `, stage.Width, stage.Height, contentCSS(feat), chromeCSS(feat), viewerCSS(), printPageCSS(stage))
 }
 
+// overlayLayer는 배경 덮개 한 겹이다 — 그라디언트는 그대로, 단색은 한 색짜리 선형 그라디언트로 낸다.
+func overlayLayer(fill soml.Fill, theme soml.Theme) (string, error) {
+	if fill.Color.IsGradient() {
+		return gradientCSS(*fill.Color.Gradient, theme)
+	}
+	c, err := colorValue(fill.Color, theme)
+	if err != nil {
+		return "", err
+	}
+	return "linear-gradient(" + c + ", " + c + ")", nil
+}
+
 // backgroundCSS는 테마가 정한 슬라이드 배경을 슬라이드 요소의 선언으로 만든다 (nil이면 없음 — 테마의
 // `.balpyo-slide { background: var(bg) }`가 그대로 산다).
 //
@@ -284,6 +296,16 @@ func backgroundCSS(bg *soml.Background, deck *soml.Deck) ([]string, error) {
 	}
 	var layers, sizes []string
 	var decls []string
+	if bg.Overlay != nil {
+		// 덮개는 맨 위 겹이다 (CSS 배경 겹은 앞에 쓴 것이 위다). 단색 덮개도 그림 겹으로 낸다 — 바탕색
+		// 자리(background-color)는 맨 아래 하나뿐이다.
+		layer, err := overlayLayer(*bg.Overlay, deck.Theme)
+		if err != nil {
+			return nil, fmt.Errorf("overlay: %w", err)
+		}
+		layers = append(layers, layer)
+		sizes = append(sizes, "auto")
+	}
 	if bg.Image != "" {
 		if _, ok := deck.Assets.Get(bg.Image); !ok {
 			return nil, fmt.Errorf("%q is not in the asset table — the deck did not go through core.ResolveAssets", bg.Image)

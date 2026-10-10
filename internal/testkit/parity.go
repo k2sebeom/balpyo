@@ -171,6 +171,12 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 	var slides []LayoutSlide
 	for _, slide := range deck.Slides {
 		s := LayoutSlide{ID: slide.ID, Inverse: slide.Invert}
+		if bg := slide.Background; bg != nil && bg.Overlay != nil {
+			// 배경 덮개는 맨 앞 객체다 — PPTX는 잠긴 전면 사각형이다 (웹은 배경의 윗겹).
+			n := LayoutNode{Kind: "shape:rect", Name: "background overlay", Fill: webFill(bg.Overlay, deck.Theme), Line: "none"}
+			n.X, n.Y, n.W, n.H = rectEMU(geom.Rect{W: float64(deck.Stage.Width), H: float64(deck.Stage.Height)})
+			s.Nodes = append(s.Nodes, n)
+		}
 		if slide.Transition != "" {
 			// 속도 단계는 렌더러와 따로 접는다 — 600ms까지 fast, 875ms까지 med, 그보다 길면 slow.
 			spd := "slow"
@@ -543,6 +549,9 @@ func webColor(c soml.Color) string {
 		for i, stop := range c.Gradient.Stops {
 			stops[i] = webColor(stop)
 		}
+		if c.Gradient.Radial {
+			return "radial(" + strings.Join(stops, ",") + ")"
+		}
 		return "gradient(" + strings.Join(stops, ",") + ")"
 	case c.Token != "":
 		return c.Token
@@ -735,7 +744,8 @@ type xColor struct {
 type xFills struct {
 	NoFill   *struct{} `xml:"noFill"`
 	GradFill *struct {
-		Gs []xColor `xml:"gsLst>gs"`
+		Gs   []xColor  `xml:"gsLst>gs"`
+		Path *struct{} `xml:"path"`
 	} `xml:"gradFill"`
 	SolidFill *xColor `xml:"solidFill"`
 }
@@ -1083,6 +1093,9 @@ func pptxColor(f xFills, theme soml.Theme) string {
 		stops := make([]string, len(f.GradFill.Gs))
 		for i, gs := range f.GradFill.Gs {
 			stops[i] = pptxSolid(&gs, theme)
+		}
+		if f.GradFill.Path != nil {
+			return "radial(" + strings.Join(stops, ",") + ")"
 		}
 		return "gradient(" + strings.Join(stops, ",") + ")"
 	case f.SolidFill != nil:

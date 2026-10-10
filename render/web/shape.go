@@ -951,20 +951,38 @@ func linearGradientDef(id string, grad soml.Gradient, theme soml.Theme) (string,
 	if len(grad.Stops) < 2 {
 		return "", fmt.Errorf("gradient has fewer than two stops (%d)", len(grad.Stops))
 	}
-	x1, y1, x2, y2 := gradientVector(grad.Angle)
 	var b strings.Builder
-	fmt.Fprintf(&b, `<linearGradient id=%q x1=%q y1=%q x2=%q y2=%q>`,
-		id, formatNumber(x1), formatNumber(y1), formatNumber(x2), formatNumber(y2))
+	tag := "linearGradient"
+	if grad.Radial {
+		// 방사형: 중심은 박스의 비율이고 반지름은 가장 먼 변까지다 — objectBoundingBox가 원을 박스로 늘려 CSS
+		// `ellipse farthest-side`와 같은 타원이 된다.
+		tag = "radialGradient"
+		cx, cy := grad.CX/100, grad.CY/100
+		r := math.Max(math.Max(cx, 1-cx), math.Max(cy, 1-cy))
+		fmt.Fprintf(&b, `<radialGradient id=%q cx=%q cy=%q r=%q>`,
+			id, formatNumber(round4(cx)), formatNumber(round4(cy)), formatNumber(round4(r)))
+	} else {
+		x1, y1, x2, y2 := gradientVector(grad.Angle)
+		fmt.Fprintf(&b, `<linearGradient id=%q x1=%q y1=%q x2=%q y2=%q>`,
+			id, formatNumber(x1), formatNumber(y1), formatNumber(x2), formatNumber(y2))
+	}
 	last := len(grad.Stops) - 1
 	for i, stop := range grad.Stops {
 		offset := formatNumber(round4(float64(i) / float64(last)))
-		color, err := baseColorValue(stop, theme)
+		// 불투명도는 stop-opacity로 싣는다 — SVG 그라디언트는 미리 곱하지 않은 색으로 보간하므로, 투명을 색에
+		// 섞으면(color-mix … transparent) 투명한 검정 쪽으로 보간되어 가운데가 회색으로 탁해진다.
+		opacity := ""
+		if stop.Mod != nil && stop.Mod.Kind == soml.ModAlpha {
+			opacity = "; stop-opacity: " + formatNumber(stop.Mod.Amount)
+			stop.Mod = nil
+		}
+		color, err := colorValue(stop, theme)
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(&b, `<stop offset=%q style="stop-color: %s"/>`, offset, color)
+		fmt.Fprintf(&b, `<stop offset=%q style="stop-color: %s%s"/>`, offset, color, opacity)
 	}
-	b.WriteString("</linearGradient>")
+	b.WriteString("</" + tag + ">")
 	return b.String(), nil
 }
 

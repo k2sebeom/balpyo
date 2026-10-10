@@ -269,10 +269,14 @@ func ColorMods() []ColorModKind { return []ColorModKind{ModShade, ModTint, ModAl
 // 변환은 렌더러의 몫이다 (render/pptx.GradientAngle). 스톱은 단색(Token/RGB)만 담으며
 // 변형·중첩 그라디언트를 담지 않는다 — 그 제약은 core가 파싱 때 건다.
 type Gradient struct {
-	// Stops는 그라디언트 색 목록이다 (문서 순서 = 스톱 0→1). 둘 이상이어야 한다.
+	// Stops는 그라디언트 색 목록이다 (문서 순서 = 스톱 0→1). 둘 이상이어야 한다. 스톱은 불투명도(alpha 변형)를
+	// 가질 수 있다 (`bg/0`).
 	Stops []Color
-	// Angle은 CSS 각도(도)다 — 생략 시 180(위→아래).
+	// Angle은 CSS 각도(도)다 — 생략 시 180(위→아래). 방사형에는 뜻이 없다.
 	Angle float64
+	// Radial은 방사형인지다 (`radial(…)`). CX · CY는 중심이다 — 박스의 백분율(0~100), 기본은 50 · 50.
+	Radial bool
+	CX, CY float64
 }
 
 // IsToken은 이 색이 토큰 참조인지 보고한다 (변형된 토큰 색도 참조로 센다 — Mod는 밑색을
@@ -297,6 +301,11 @@ func LiteralColor(rgb string) Color { return Color{RGB: rgb} }
 // GradientColor는 그라디언트 색이다 (스톱 목록 + CSS 각도).
 func GradientColor(stops []Color, angle float64) Color {
 	return Color{Gradient: &Gradient{Stops: stops, Angle: angle}}
+}
+
+// RadialColor는 방사형 그라디언트 색이다 — 중심 (cx, cy)는 박스의 백분율이다.
+func RadialColor(stops []Color, cx, cy float64) Color {
+	return Color{Gradient: &Gradient{Stops: stops, Radial: true, CX: cx, CY: cy}}
 }
 
 // VariantColor는 단색 base에 변형을 얹은 색이다 — base의 Token/RGB를 유지한다

@@ -1,0 +1,6 @@
+<!-- The default background (bg) under a radial glow, and a shape filled with a radial gradient
+     whose outer stop is transparent. -->
+<slide id="glow" layout="canvas">
+  <h2>Radial and alpha stops</h2>
+  <shape type="ellipse" fill="radial(accent1 accent1/0)" border="none" w="320" h="320" x="760" y="120"/>
+</slide>

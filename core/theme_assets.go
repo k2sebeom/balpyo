@@ -146,6 +146,8 @@ type backgroundFile struct {
 	Layouts []string `json:"layouts"`
 	Fill    string   `json:"fill"`
 	Image   string   `json:"image"`
+	// Overlay는 바탕(채움 · 그림) 위에 칠하는 채움이다 — 흔히 투명해지는 그라디언트다. 선택이다.
+	Overlay string `json:"overlay"`
 }
 
 // backgroundDecls는 검사가 끝난 배경 표다 — 레이아웃 → 배경, 그리고 기본값.
@@ -202,6 +204,20 @@ func loadBackgrounds(manifest themeManifest, theme soml.Theme, assets *assetReso
 				return decls, err
 			}
 			bg.Image = key
+		}
+		if raw.Overlay != "" {
+			overlay, err := themeFill(theme, raw.Overlay)
+			if err != nil {
+				return decls, fmt.Errorf("%s overlay: %w", where, err)
+			}
+			if overlay.None {
+				return decls, fmt.Errorf("%s overlay cannot be none — to drop the overlay, remove the key", where)
+			}
+			if bad, ok := notTokenRef(theme, overlay.Color); ok {
+				return decls, fmt.Errorf("%s overlay %q is not a color token reference of this theme — themes use only color token names (including modifiers and token gradients) (this theme: %s)",
+					where, bad, strings.Join(theme.ColorNames(), ", "))
+			}
+			bg.Overlay = overlay
 		}
 		if len(raw.Layouts) == 0 {
 			if decls.fallback != nil {

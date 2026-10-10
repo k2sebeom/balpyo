@@ -379,11 +379,18 @@ func gradientCSS(grad soml.Gradient, theme soml.Theme) (string, error) {
 	}
 	stops := make([]string, len(grad.Stops))
 	for i, stop := range grad.Stops {
-		v, err := baseColorValue(stop, theme)
+		// 스톱은 불투명도 변형을 가질 수 있다 (`bg/0`) — colorValue가 color-mix로 감싸 변수 참조를 살린다.
+		v, err := colorValue(stop, theme)
 		if err != nil {
 			return "", err
 		}
 		stops[i] = v
+	}
+	if grad.Radial {
+		// 방사형은 박스에 맞춰 늘어나는 타원이고 가장 먼 변에서 끝난다 — PPTX `a:path path="circle"`이 도형 박스로
+		// 늘어나 변에서 끝나는 것과 같은 모양이다.
+		return fmt.Sprintf("radial-gradient(ellipse farthest-side at %s%% %s%%, %s)",
+			formatNumber(grad.CX), formatNumber(grad.CY), strings.Join(stops, ", ")), nil
 	}
 	return fmt.Sprintf("linear-gradient(%sdeg, %s)", formatNumber(grad.Angle), strings.Join(stops, ", ")), nil
 }

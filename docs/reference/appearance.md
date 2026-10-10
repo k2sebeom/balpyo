@@ -324,7 +324,7 @@ PowerPoint에서 확인한다**.
 그라디언트 3종과 토큰 색 변형의 매핑은 실물 덱의 "디자인된 느낌"의 정체다.
 문법은 아래 "값 문법" 절에 있고, 여기서는 두 타깃의 매핑과 그 경계를 적는다.
 
-**그라디언트** — 채움·테두리·텍스트 색이 같은 `gradient(색… [, 각도deg])`를 받는다.
+**그라디언트** — 채움·테두리·텍스트 색이 같은 `gradient(색… [, 각도deg])`와 `radial(색… [, at X% Y%])`를 받는다.
 
 - **각도**: CSS(0deg = 아래→위, 시계방향)를 각 타깃으로 옮긴다. PPTX는
   `a:lin@ang = (css − 90) mod 360 × 60000` (0=왼→오)이라 기본 180deg는 `5400000`(위→아래)이
@@ -339,6 +339,15 @@ PowerPoint에서 확인한다**.
 - **테두리 그라디언트**는 웹에서 SVG `stroke`가 gradient def를 가리키고(CSS `border-image`는
   `border-radius`와 조합되지 않아 엔진이 SVG를 소유한다), PPTX에서 `a:ln` 안의 `a:gradFill`이다.
   축약은 `<굵기> gradient(…)` **2조각**이다 — 그라디언트가 스타일(실선)과 색을 함께 대신한다.
+- **스톱의 불투명도**: 스톱은 `색/퍼센트`로 불투명도를 받는다 — `gradient(fg fg/0, 90deg)`는 왼쪽의 `fg`에서 오른쪽의
+  투명으로 사라지는 덮개다. 퍼센트는 0~100이고 `%`를 붙이지 않는다 (`fg/40`). 리터럴도 같다 (`#000000/50`).
+  확정 값은 `alpha()` 변형과 같다 — PPTX 스톱의 `a:alpha`, 웹 CSS의 `color-mix(…, transparent)`, SVG의
+  `stop-opacity`다 (SVG는 미리 곱하지 않은 색으로 보간해 투명을 색에 섞으면 가운데가 회색으로 탁해진다).
+  어휘 밖이면 `a gradient stop opacity is a percentage from 0 to 100 without % ("fg/140") — e.g. bg/0 or fg/40`이다.
+- **방사형**: `radial(색… [, at X% Y%])` — 첫 색이 중심, 마지막 색이 가장 먼 변이다. 중심은 박스의 비율이고
+  생략하면 가운데다. 웹은 `radial-gradient(ellipse farthest-side at X% Y%, …)` · SVG `<radialGradient>`(박스로
+  늘어나는 원), PPTX는 `a:path path="circle"` + `a:fillToRect`(중심의 사각형)다. 번짐의 크기는 엔진마다 조금
+  다르다. 모서리 광채(`radial(accent4/30 bg/0, at 0% 100%)`)가 흔한 쓰임이다.
 - **다중 스톱의 뷰어 소관**: 3색 이상 그라디언트의 OOXML은 스펙대로 `a:gs`를 스톱 수만큼
   내지만, LibreOffice는 다중 스톱 `gradFill`을 근사해 그려 웹과 갈라진다. PowerPoint/Keynote는
   모든 스톱을 그대로 그린다 — 이 갈라짐은 산출물 결함이 아니라 뷰어 소관이다. 그림은
