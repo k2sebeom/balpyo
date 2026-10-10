@@ -230,6 +230,7 @@ func requireComponentColors(theme soml.Theme, comps components) error {
 	for _, v := range comps.textVariants {
 		errs = append(errs, check(fmt.Sprintf("text variant %q color", v.name), v.patch.color))
 	}
+	errs = append(errs, check("text.mark highlight", comps.markHighlight))
 	errs = append(errs, fill("shape.default", comps.shapeDefault.fill),
 		border("shape.default", comps.shapeDefault.border))
 	for _, v := range comps.shapeVariants {

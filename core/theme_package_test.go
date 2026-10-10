@@ -372,3 +372,30 @@ func TestLoadComponentsTypography(t *testing.T) {
 		})
 	}
 }
+
+// 형광펜은 단색 토큰 참조다 — a:highlight는 색 하나만 담으므로 그라디언트는 에러이고, 리터럴은
+// 다른 컴포넌트 색과 같은 진단으로 멈춘다.
+func TestLoadComponentsMark(t *testing.T) {
+	withMark := func(mark string) string {
+		return strings.Replace(fullComponents, `"text": { "roles": [`,
+			`"text": { "mark": `+mark+`, "roles": [`, 1)
+	}
+	theme, err := loadTheme(memTheme(fullTokens, withMark(`{"highlight":"tint(accent1, 70%)"}`)), "t")
+	if err != nil {
+		t.Fatalf("유효한 형광펜이 실패했다: %v", err)
+	}
+	if hl := theme.components.markHighlight; hl == nil || hl.Token != "accent1" || hl.Mod == nil {
+		t.Errorf("markHighlight = %+v, want tint(accent1, 70%%)", hl)
+	}
+	for _, tc := range []struct{ name, mark, want string }{
+		{"그라디언트", `{"highlight":"gradient(accent1 fg)"}`, "cannot be a gradient"},
+		{"리터럴", `{"highlight":"#FFEE00"}`, "text.mark highlight"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := loadTheme(memTheme(fullTokens, withMark(tc.mark)), "t")
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("에러 = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}

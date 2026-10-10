@@ -382,7 +382,16 @@ func webRunStyle(style soml.TextStyle, theme soml.Theme, link string) runStyle {
 		// 자간은 렌더러와 따로 환산한다 — em × 크기(px) × 0.75 × 100 = 1/100pt.
 		tracking: int64(math.Round(style.Tracking * style.Size * 0.75 * 100)),
 		upper:    style.Case == soml.CaseUpper,
+		mark:     webHighlight(style.Highlight),
 	}
+}
+
+// webHighlight는 런의 형광펜 색이다 (없으면 빈 문자열 — 줄에 나오지 않는다).
+func webHighlight(c *soml.Color) string {
+	if c == nil {
+		return ""
+	}
+	return webColor(*c)
 }
 
 func webColor(c soml.Color) string {
@@ -434,6 +443,8 @@ type runStyle struct {
 	// tracking은 자간(1/100pt)이고 upper는 대문자 표시다 — 정했을 때만 줄에 나온다.
 	tracking int64
 	upper    bool
+	// mark는 형광펜 색이다 (토큰 이름 · 리터럴 — 없으면 빈 문자열).
+	mark string
 }
 
 func formatRun(text string, s runStyle) string {
@@ -458,6 +469,9 @@ func formatRun(text string, s runStyle) string {
 		attrs = append(attrs, "upper")
 	}
 	attrs = append(attrs, s.color)
+	if s.mark != "" {
+		attrs = append(attrs, "mark="+s.mark)
+	}
 	if s.link != "" {
 		attrs = append(attrs, "→"+s.link)
 	}
@@ -547,7 +561,8 @@ type xRunItem struct {
 		Spc int64  `xml:"spc,attr"`
 		Cap string `xml:"cap,attr"`
 		xFills
-		Latin struct {
+		Highlight *xColor `xml:"highlight"`
+		Latin     struct {
 			Typeface string `xml:"typeface,attr"`
 		} `xml:"latin"`
 		HlinkClick *struct {
@@ -728,6 +743,7 @@ func pptxParas(paras []LayoutPara, body xTxBody, prefix string, theme soml.Theme
 					link:      link,
 					tracking:  item.RPr.Spc,
 					upper:     item.RPr.Cap == "all",
+					mark:      pptxHighlight(item.RPr.Highlight, theme),
 				}))
 			}
 		}
@@ -776,6 +792,14 @@ func pptxColor(f xFills, theme soml.Theme) string {
 		return pptxSolid(f.SolidFill, theme)
 	}
 	return "?"
+}
+
+// pptxHighlight는 런의 `a:highlight` 색이다 (없으면 빈 문자열).
+func pptxHighlight(c *xColor, theme soml.Theme) string {
+	if c == nil {
+		return ""
+	}
+	return pptxSolid(c, theme)
 }
 
 // pptxSolid는 색 요소 하나를 토큰 이름(`schemeClr` → 테마 표의 Ref)이나 `#RRGGBB`로 되돌린다.

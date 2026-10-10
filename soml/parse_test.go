@@ -320,7 +320,7 @@ func TestParseErrors(t *testing.T) {
 			// 습관이라 편집 거리 대신 별칭이 답한다 (거리로는 `<col>`에 닿는다).
 			name: "문단 안의 어휘 밖 태그",
 			src:  "<slide><p>a <bold>b</bold></p></slide>",
-			want: []string{"1:14 unknown tag <bold> — did you mean <strong>? (tags available inside <p>: <strong>, <em>, <code>, <a>, <br>, <span>)"},
+			want: []string{"1:14 unknown tag <bold> — did you mean <strong>? (tags available inside <p>: <strong>, <em>, <code>, <a>, <br>, <span>, <mark>)"},
 		},
 		{
 			// 자리 밖 후보는 거리 1까지만 — 멀리 있는 자리 밖 이름은 엉뚱한 답이 되기 쉽다.

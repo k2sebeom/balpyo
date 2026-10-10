@@ -217,3 +217,28 @@ func TestResolveInlineAppearanceNonNil(t *testing.T) {
 		}
 	}
 }
+
+// <mark>는 테마의 형광펜을 런에 얹고, 안의 런은 상속-복사로 같은 색을 받는다. 테마가 형광펜을
+// 정하지 않았으면 에러이고 런은 형광펜 없이 계속한다.
+func TestResolveMark(t *testing.T) {
+	deck, diags := resolveSlide(t, "<slide>\n  <p><mark>핵심 <strong>구절</strong></mark></p>\n</slide>\n")
+	if len(diags) != 0 {
+		t.Fatalf("진단 = %v", diags)
+	}
+	for _, name := range []string{"mark", "strong"} {
+		style := findElement(t, deck, name).TextStyle()
+		if style == nil || style.Highlight == nil || style.Highlight.Mod == nil || style.Highlight.Token != "accent4" {
+			t.Errorf("<%s> Highlight = %+v, want tint(accent4, …)", name, style)
+		}
+	}
+	if style := findElement(t, deck, "p").TextStyle(); style.Highlight != nil {
+		t.Errorf("<p> Highlight = %+v, want nil (형광펜은 <mark> 안에서만)", style.Highlight)
+	}
+
+	bare, _ := resolveSlide(t, "<slide>\n  <p><mark>x</mark></p>\n</slide>\n")
+	r := &resolver{theme: soml.Theme{Name: "bare"}}
+	r.resolveInlines(findElement(t, bare, "p"), &soml.TextStyle{Size: 24})
+	if len(r.diags) != 1 || !strings.Contains(r.diags[0].Message, `<mark> needs a highlight color, and theme "bare" defines none`) {
+		t.Errorf("진단 = %v, want 형광펜 없는 테마 에러", r.diags)
+	}
+}

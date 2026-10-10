@@ -249,7 +249,7 @@ func KindRendered(kind ElementKind) bool {
 var (
 	blockElements         = []string{"h1", "h2", "h3", "p", "blockquote", "pre"}
 	listContainerElements = []string{"ul", "ol"}
-	inlineElements        = []string{"strong", "em", "code", "a", "br", "span"}
+	inlineElements        = []string{"strong", "em", "code", "a", "br", "span", MarkElement}
 )
 
 // ListItemElement는 리스트 항목 태그 이름이다.
@@ -262,6 +262,10 @@ const ListItemElement = "li"
 // 이 속성이 외관 어휘가 아니라 **발표 순서**라는 점이 중요하다: 숨김은 발표자 뷰 하나의
 // 성질이고, 문서 뷰·측정·인쇄·PPTX는 전부 전개된 상태를 본다.
 const RevealAttr = "reveal"
+
+// MarkElement는 형광펜 태그 이름이다 — 색은 테마의 것이라 속성이 없고, 값 층이 런의
+// Highlight를 채운다. 웹 렌더러가 이 이름에만 배경을 칠한다 (안의 런은 같은 색을 물려받는다).
+const MarkElement = "mark"
 
 // BreakElement는 줄바꿈 태그 이름이다. 서브셋의 유일한 void 요소다 — 내용을 갖지 않고
 // `<br/>`(자기 닫힘)로만 쓴다. 렌더러가 런 분할에서 이 이름을 특별 취급한다.

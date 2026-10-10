@@ -1,6 +1,6 @@
 # `<text>`
 
-텍스트 블록 하나다. 문자 데이터와 [인라인 태그](text-subset.md)(strong/em/code/a/br/span)를
+텍스트 블록 하나다. 문자 데이터와 [인라인 태그](text-subset.md)(strong/em/code/a/br/span/mark)를
 담을 수 있고, 외관은 `role` 기본값 위에 `variant`와 인라인 속성이 얹혀 확정된다
 (캐스케이드는 [외관 속성](../appearance.md) 참조).
 

@@ -286,6 +286,16 @@ type textComponentsFile struct {
 	Roles             []textRoleFile             `json:"roles"`
 	ComponentDefaults []textComponentDefaultFile `json:"componentDefaults"`
 	Variants          []textVariantFile          `json:"variants"`
+	// Mark는 `<mark>`의 형광펜이다 — 선택 절이다 (정하지 않은 테마의 덱이 `<mark>`를 쓰면
+	// 값 층의 에러다: 어느 색으로도 조용히 칠하지 않는다).
+	Mark *textMarkFile `json:"mark"`
+}
+
+// textMarkFile은 형광펜 절이다. 색은 **단색** 토큰 참조다 (변형 포함) — PPTX `a:highlight`가
+// 색 하나(`CT_Color`)만 담으므로 그라디언트는 에러다.
+type textMarkFile struct {
+	Comment   string `json:"$comment"`
+	Highlight string `json:"highlight"`
 }
 
 type textRoleFile struct {
@@ -437,6 +447,8 @@ type components struct {
 	imageVariants    []imageVariant
 	table            tableComponents
 	code             codeComponents
+	// markHighlight는 `<mark>`의 형광펜 색이다 (text.mark.highlight). 테마가 정하지 않으면 nil이다.
+	markHighlight *soml.Color
 }
 
 // tableComponents는 변환된 표 셀 외관 표다 (캐스케이드 내부 타입). shape/image의 default·
@@ -831,6 +843,17 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 			}
 			comps.textSlotDefaults[d.key()] = patch
 		}
+	}
+
+	if m := file.Text.Mark; m != nil && m.Highlight != "" {
+		c, err := themeColor(theme, "text.mark highlight", m.Highlight)
+		if err != nil {
+			return comps, err
+		}
+		if c.IsGradient() {
+			return comps, fmt.Errorf("text.mark highlight %q cannot be a gradient — a highlight is one color (PPTX a:highlight holds a single color)", m.Highlight)
+		}
+		comps.markHighlight = &c
 	}
 
 	for _, v := range file.Text.Variants {

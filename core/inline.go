@@ -64,6 +64,14 @@ func (r *resolver) resolveInlines(parent *soml.Element, parentStyle *soml.TextSt
 			if href, ok := r.href(inline); ok {
 				appearance.Link = href
 			}
+		case soml.MarkElement:
+			// 형광펜 색은 테마의 것이다 (text.mark.highlight) — 저자 속성이 없다. 정하지 않은 테마에서
+			// 쓰면 에러이고 런은 형광펜 없이 계속한다 (어느 색으로도 조용히 칠하지 않는다).
+			if hl := r.comps.markHighlight; hl != nil {
+				style.Highlight = ptr(*hl)
+			} else {
+				r.errorf(inline.NameSpan, "<mark> needs a highlight color, and theme %q defines none — add \"mark\": { \"highlight\": \"<color token>\" } to text in its components.json", r.theme.Name)
+			}
 		case "span":
 			// span은 자기 인라인 속성(color·weight·size — 파서 allowlist)만 적용한다. 속성 없는
 			// span은 부모 그대로다 — 해석 흔적만 남는 무해한 요소. 값 어휘와 진단은

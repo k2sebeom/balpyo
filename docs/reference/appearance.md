@@ -205,6 +205,13 @@ slides/006_variant.slide:6:16: warning: variant "hero" is not in the theme — c
 - **대문자는 표시 속성이다.** 두 산출물의 글자 데이터는 저자가 쓴 대소문자 그대로이고, 대문자는
   웹의 `text-transform`과 PPTX의 `cap="all"`이 보여 준다. 그래서 PowerPoint에서 글을 고치면 원문
   대소문자로 편집되고, `case`가 없는 테마로 갈면 대문자가 사라진다.
+같은 `text` 절의 `mark`는 [`<mark>`](soml/text-subset.md)의 형광펜이다 — 색 하나(토큰 · 변형,
+그라디언트는 에러다: PPTX `a:highlight`가 색 하나만 담는다):
+
+```json
+"text": { "mark": { "highlight": "tint(accent4, 75%)" }, "roles": [ … ] }
+```
+
 - 범위 밖의 자간과 모르는 대소문자는 테마 로드 에러다:
   `text variant "kicker" tracking 0.8 is out of range — tracking is a multiple of the font size (em) between -0.1 and 0.5` ·
   `text variant "kicker" case "lower" is unknown (available values: upper, none)`.
@@ -411,7 +418,8 @@ PowerPoint에서 확인한다**.
 | `em` | 이탤릭 | `font-style: italic` | `a:rPr@i="1"` |
 | `code` | mono 폰트 (크기는 부모) | `font-family: var(--balpyo-font-mono)` | `a:latin`/`a:ea` 리터럴 typeface (mono는 fontScheme 슬롯이 없다) |
 | `a` | 밑줄 + `accent1` 색 + 링크 | `text-decoration: underline; color: var(--balpyo-color-accent1)` + `<a href>` | `a:rPr@u="sng"` + `schemeClr accent1` + `a:hlinkClick r:id` + 슬라이드 rels의 External 관계 |
-| `span` | 자기 `color`/`weight`만 | 해당 선언 | 해당 rPr 속성/채움 |
+| `span` | 자기 `color`/`weight`/`size`만 (`size`는 감싼 텍스트 이하) | 해당 선언 | 해당 rPr 속성/채움 |
+| `mark` | 형광펜 = 테마의 `text.mark.highlight` (안의 런도 물려받는다) | `<mark>` 자신의 `background-color` (안의 런은 다시 칠하지 않는다 — 알파 있는 색이 겹친다) | 런마다 `a:rPr/a:highlight` + `schemeClr` (+ 변형) |
 | `br` | 없음 (void) | `<br>` | `a:br` — 문단을 쪼개지 않는다 |
 
 링크 색은 전용 토큰이 아니라 `accent1`이다 — 런의 `schemeClr` 참조와 테마

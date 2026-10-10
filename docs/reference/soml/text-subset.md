@@ -16,6 +16,7 @@ HTML의 익숙한 텍스트 태그를 그대로 쓰는 서브셋이다. 블록 �
 | `strong` `em` `code` | 인라인 | 없음 | 블록·`<text>`·`<li>` 안. 인라인끼리 중첩 가능 |
 | `a` | 인라인 | `href` (필수) | `<a>` 안에 `<a>` 불가 |
 | `span` | 인라인 | `color` `weight` `size` | `size`는 감싼 텍스트 이하만 |
+| `mark` | 인라인 | 없음 — 형광펜 색은 테마의 것 | 블록·`<text>`·`<li>` 안 |
 | `br` | void | 없음 | 자기 닫힘 `<br/>`만 — 내용을 가질 수 없다 |
 
 배치 규칙에는 각각 이유가 있다:
@@ -32,6 +33,9 @@ HTML의 익숙한 텍스트 태그를 그대로 쓰는 서브셋이다. 블록 �
   변하는데 PPTX 줄간격은 문단 절대값(`spcPts`)이라 두 타깃의 글줄이 갈라진다. 작은 런은 블록의
   줄 박스 안에 앉으므로 그 문제가 없다 — 큰 수 뒤의 작은 단위(`<h1>750<span size="40">+</span></h1>`)가
   그 자리다. 같은 이유로 `<code>`는 code 역할의 크기(20px)를 끌어오지 않고 부모 크기를 따른다.
+- **`<mark>`는 속성이 없다**: 형광펜 색은 테마의 `text.mark.highlight`다 (강조색은 팔레트이고,
+  저자가 장마다 고르면 덱이 팔레트를 잃는다). 안의 런도 같은 형광펜을 받는다. 테마가 형광펜을
+  정하지 않았으면 에러다 — 어느 색으로도 조용히 칠하지 않는다.
 - **인라인은 슬라이드 직속이 될 수 없다**: 문단 없는 런은 두 타깃 어디에도 대응하는
   구조가 없다.
 - **`<li>`와 인라인 태그에는 자식 배치 속성이 없다**: `<li>`는 리스트 컨테이너의 자식이지
@@ -426,6 +430,7 @@ CSS가 0으로 명시하므로 **브라우저 기본 스타일에 기대는 값�
 | `weight`에 400/700 수치를 썼다 | `weight takes a name — instead of "700", use "bold"` |
 | `weight`에 그 외 수치를 썼다 | `weight "600" is not allowed — there are two weights, normal (400) and bold (700) (OOXML bold is on/off, so intermediate weights would only work on the web)` |
 | 어휘 밖의 `weight` | `unknown weight "…" (available values: normal, bold)` |
+| 형광펜을 정하지 않은 테마에서 `<mark>`를 썼다 | `<mark> needs a highlight color, and theme "corp" defines none — add "mark": { "highlight": "<color token>" } to text in its components.json` |
 | `<span size>`가 감싼 텍스트보다 크다 | `<span> size 40 is larger than the surrounding text (24) — a larger run would push the line apart on the web while PPTX line spacing stays fixed; make the block larger and shrink the rest instead` |
 
 모르는 `variant`는 에러가 아니라 **경고 + 기본 외관 폴백**이다 — 규칙은

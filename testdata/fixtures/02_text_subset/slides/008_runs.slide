@@ -1,0 +1,8 @@
+<!-- 작은 런과 형광펜. 큰 수 뒤의 작은 단위는 감싼 블록보다 작은 <span size>다 — 블록의 줄 박스
+     안에 앉으므로 웹 글줄과 PPTX 절대 줄간격이 갈라지지 않는다. <mark>의 색은 테마의 것이고
+     안의 런도 같은 형광펜을 받는다 (PPTX는 런마다 a:highlight). -->
+<slide id="runs">
+  <h1>750<span size="32">+</span></h1>
+  <p>청구 단위 1<span size="16" color="muted">초</span></p>
+  <p>EC2는 <mark>몇 분 안에 띄우고 <strong>초 단위로</strong> 내는</mark> 가상 서버다.</p>
+</slide>

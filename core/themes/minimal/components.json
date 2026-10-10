@@ -16,6 +16,7 @@
       { "layout": "stat",  "slot": "value", "size": 96, "weight": 700, "color": "accent1" },
       { "layout": "stat",  "slot": "label", "size": 28, "weight": 700 }
     ],
+    "mark": { "highlight": "tint(accent4, 75%)" },
     "variants": [
       { "name": "kicker", "size": 18, "weight": 700, "color": "accent1", "tracking": 0.1, "case": "upper" },
       { "name": "lead",   "size": 32 }

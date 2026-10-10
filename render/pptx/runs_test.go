@@ -139,3 +139,28 @@ func TestRunTrackingAndCase(t *testing.T) {
 		}
 	}
 }
+
+// <mark> 안의 런은 전부 a:highlight를 갖는다 (PPTX 런은 평평하다). 색은 schemeClr 참조 + 변형이고
+// 자리는 채움 뒤 · latin 앞이다 (CT_TextCharacterProperties의 자식 순서).
+func TestRunMarkHighlight(t *testing.T) {
+	xml := singleShapeXML(t, `<slide>
+  <p>EC2는 <mark>몇 분 안에 <strong>초 단위로</strong></mark> 낸다</p>
+</slide>`)
+	for _, text := range []string{"몇 분 안에 ", "초 단위로"} {
+		at := strings.Index(xml, "<a:t>"+text+"</a:t>")
+		if at < 0 {
+			t.Fatalf("런 %q가 없다\n%s", text, xml)
+		}
+		run := xml[strings.LastIndex(xml[:at], "<a:r>"):at]
+		hl := strings.Index(run, `<a:highlight>`)
+		if hl < 0 || !strings.Contains(run[hl:], `<a:schemeClr val="accent4">`) {
+			t.Errorf("런 %q에 토큰 형광펜이 없다\n%s", text, run)
+		}
+		if hl > strings.Index(run, "<a:latin") || hl < strings.Index(run, "</a:solidFill>") {
+			t.Errorf("런 %q의 a:highlight 자리가 스키마 순서와 다르다\n%s", text, run)
+		}
+	}
+	if at := strings.Index(xml, "<a:t>EC2는 </a:t>"); strings.Contains(xml[strings.LastIndex(xml[:at], "<a:r>"):at], "highlight") {
+		t.Error("<mark> 밖의 런에 형광펜이 있다")
+	}
+}

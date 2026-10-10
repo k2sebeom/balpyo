@@ -443,6 +443,20 @@ func writeInline(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *s
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
+	if elem.Name == soml.MarkElement {
+		// 형광펜은 `<mark>` 자신의 배경이다 — 안의 런은 같은 Highlight를 물려받지만(PPTX는 런이
+		// 평평해서 런마다 a:highlight가 필요하다) 웹에서 자식마다 다시 칠하면 알파 있는 색이
+		// 겹쳐 진해진다. UA 시트의 `mark { background: mark }`도 이 선언이 덮는다.
+		if style.Highlight == nil {
+			return fmt.Errorf("%s:%s <mark> highlight is unresolved — the deck did not go through core.Resolve",
+				slide.Source, elem.Span)
+		}
+		bg, err := colorValue(*style.Highlight, deck.Theme)
+		if err != nil {
+			return fmt.Errorf("%s:%s <mark>: %w", slide.Source, elem.Span, err)
+		}
+		decls += "; background-color: " + bg
+	}
 	if elem.Name == "a" {
 		link := elem.Appearance.Link
 		if link == "" {

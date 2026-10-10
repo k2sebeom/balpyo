@@ -1296,6 +1296,14 @@ func writeTextRuns(w func(depth int, line string), text string, style soml.TextS
 		if err := writeTextFill(w, 5, style.Color, theme); err != nil {
 			return err
 		}
+		if style.Highlight != nil {
+			// 형광펜은 채움 뒤 · 폰트 앞이다 (CT_TextCharacterProperties의 자식 순서).
+			w(5, "<a:highlight>")
+			if err := writeColor(w, 6, *style.Highlight, nil, theme); err != nil {
+				return err
+			}
+			w(5, "</a:highlight>")
+		}
 		w(5, latin)
 		w(5, ea)
 		if ctx.link != "" {

@@ -355,6 +355,11 @@ func mergeComponentsFile(parent, child componentsFile) componentsFile {
 		func(d textComponentDefaultFile) string { return d.key() })
 	out.Text.Variants = mergeNamed(parent.Text.Variants, child.Text.Variants,
 		func(v textVariantFile) string { return v.Name })
+	// 형광펜은 싱글톤 절이다 — 자식이 정하면 자식의 것, 아니면 부모의 것.
+	out.Text.Mark = parent.Text.Mark
+	if child.Text.Mark != nil {
+		out.Text.Mark = child.Text.Mark
+	}
 
 	out.Shape.Comment = firstNonEmpty(child.Shape.Comment, parent.Shape.Comment)
 	out.Shape.Default = shapeStyleFile{
