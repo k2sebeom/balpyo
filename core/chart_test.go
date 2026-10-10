@@ -238,7 +238,8 @@ func TestChartDiagnostics(t *testing.T) {
 		contains            []string
 	}{
 		{"type이 없다", `h="420"`, p, []string{"<chart> needs a type", "available types: bar", "no way to guess"}},
-		{"어휘 밖의 type", `type="line" h="420"`, p, []string{`unknown chart type "line"`, "available types: bar"}},
+		{"어휘 밖의 type", `type="pie" h="420"`, p, []string{`unknown chart type "pie"`, "available types: bar, line, area, step"}},
+		{"선 차트의 점 강조", `type="line" h="420"`, chartPoint(`label="May" value="22" fill="accent4"`), []string{"<point fill> highlights one bar — a line chart"}},
 		// 막대 높이가 축에 대한 백분율이라 차트 높이를 내용이 정하면 순환한다.
 		{"h도 ratio도 없다", `type="bar"`, p, []string{"<chart> needs h or ratio", "would be circular"}},
 		{"점이 없다", `type="bar" h="420"`, "", []string{"<chart> has no <point>", "no data to draw"}},
@@ -275,4 +276,42 @@ func TestChartDiagnostics(t *testing.T) {
 	attrs := `label="6월" value="-3"`
 	_, diag := oneDiag(t, chartSlide(`type="bar" h="420"`, p+chartPoint(attrs)))
 	assertDiag(t, diag, 4, len([]rune(`    <point label="6월" value="`))+1)
+}
+
+// 선 차트는 경로 도형 하나로 펼쳐진다 — 점은 범주 칸의 가운데(i + ½)/n, 세로는 값 ÷ 축을 아래에서 잰 자리다.
+// 계단은 칸마다 수평인 단이고, 영역은 같은 선 아래를 기준선까지 닫은 면을 먼저 깐다.
+func TestChartLineExpandsToAPath(t *testing.T) {
+	for _, tc := range []struct{ kind, want string }{
+		{"line", "M25,75 L75,25"},
+		{"step", "M0,75 H50 V25 H100"},
+		{"area", "M25,75 L75,25 L75,100 L25,100 Z"},
+	} {
+		t.Run(tc.kind, func(t *testing.T) {
+			deck, diags := resolveSlide(t, "<slide>\n  <chart type=\""+tc.kind+"\" max=\"100\" h=\"300\">"+
+				chartPoint(`label="a" value="25"`)+chartPoint(`label="b" value="75"`)+"</chart>\n</slide>\n")
+			if len(diags) != 0 {
+				t.Fatalf("진단: %v", diags)
+			}
+			found := false
+			var walk func(n soml.Node)
+			walk = func(n soml.Node) {
+				e, ok := n.(*soml.Element)
+				if !ok {
+					return
+				}
+				if d, ok := e.Attr("d"); ok && d.Value == tc.want {
+					found = true
+				}
+				for _, c := range e.Children {
+					walk(c)
+				}
+			}
+			for _, n := range deck.Slides[0].Content {
+				walk(n)
+			}
+			if !found {
+				t.Errorf("펼친 트리에 d=%q인 경로 도형이 없다", tc.want)
+			}
+		})
+	}
 }

@@ -172,7 +172,7 @@ func TestCatalogAccessors(t *testing.T) {
 		{"TableCellAttrs", TableCellAttrs, "colspan rowspan fill border color align anchor"},
 		{"ChartAttrs", ChartAttrs, "type unit max series alt pad w h min-w min-h max-w max-h ratio"},
 		{"ChartPointAttrs", ChartPointAttrs, "label value fill"},
-		{"ChartTypes", ChartTypes, "bar"},
+		{"ChartTypes", ChartTypes, "bar line area step"},
 	}
 	for _, tc := range tests {
 		got := tc.get()

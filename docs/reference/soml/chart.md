@@ -1,4 +1,4 @@
-# `<chart>` — 막대 차트
+# `<chart>` — 막대 · 선 · 영역 · 계단 차트
 
 `<chart>`는 데이터 한 줄을 그림으로 만든다. 점마다 `<point label value/>` 한 줄이고,
 막대 높이는 **값 ÷ 축 최대**다 — 좌표를 적는 자리가 없다.
@@ -24,14 +24,15 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 - `<chart>`는 슬라이드 직계 자식, [레이아웃 컨테이너](layout.md)의 자식(`<row><chart>`),
   그리고 [슬롯](../layouts.md)을 채우는 요소 셋 다 될 수 있다. [`<shape>`](shape.md)의 직속
   자식은 아니다 (표와 같은 규칙 — 컨테이너로 감싼다).
-- 종류는 하나다: `type="bar"` (세로 막대, 단일 계열). `line`·`pie`는 문법이 아니라 **값의
-  추가**이므로 근거가 생기면 어휘에 이름이 늘어난다.
+- 종류는 넷이다 — 모두 **단일 계열**: `bar`(세로 막대), `line`(점을 잇는 꺾은선), `area`(꺾은선 아래를 칠한
+  영역), `step`(범주 칸마다 수평인 계단). 선 · 영역 · 계단은 [경로 도형](shape.md)(`type="path"`) 하나로 펼쳐진다
+  (아래 "선 · 영역 · 계단" 절).
 
 ## 프레임 속성 — `<chart>`
 
 | 속성 | 허용 값 | 하는 일 |
 |---|---|---|
-| `type` | `bar` (**필수**) | 차트 종류 — 없으면 에러다 (쓸 수 있는 종류: bar) |
+| `type` | `bar` · `line` · `area` · `step` (**필수**) | 차트 종류 — 없으면 에러다 |
 | `unit` | 문자열 | 값 라벨의 꼬리 (`22` + `분`) — **표기**이므로 축 계산에 들어가지 않는다 |
 | `max` | 0보다 큰 수치 | 값축의 최대. 생략하면 **데이터 최대 ÷ 0.9**다 (헤드룸 10%) |
 | `series` | 색 토큰 · `#rrggbb` | **모든 막대**의 색. 생략하면 `accent1` — 라벨은 칠하지 않는다 |
@@ -70,6 +71,30 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
   내지 않는다. 라벨은 남는다: "0"이 데이터다.
 - 음수도 받지 않는다 — 막대 차트의 축은 0에서 시작하고, 음수 막대는 축을 0 아래로 내리는 다른
   그림이다 (v1에 없다).
+
+## 선 · 영역 · 계단
+
+`line` · `area` · `step`은 막대 대신 **경로 하나**가 계열이다. 칸 나눔은 막대와 같다 — 범주 칸이 폭을 똑같이
+나누고, 범주 라벨이 칸 가운데에 선다.
+
+```html
+<chart type="area" series="accent4" alt="Demand over the day" w="fill" h="320">
+  <point label="6am" value="12"/>
+  <point label="9am" value="40"/>
+  <point label="noon" value="55"/>
+  <point label="3pm" value="48"/>
+  <point label="6pm" value="70"/>
+</chart>
+```
+
+- **점의 자리**: 가로는 범주 칸의 가운데, 세로는 막대 높이와 같은 비율(값 ÷ 축)이다. 그 0~100 좌표로 쓴 경로
+  도형이 플롯 밴드로 늘어난다 — 픽셀은 여전히 브라우저가 잰다.
+- `line`은 점을 직선으로 잇는다. `step`은 칸마다 그 값의 높이로 칸 폭 전체를 수평으로 긋고 칸 경계에서 꺾는다.
+  `area`는 `line`과 같은 선 아래를 기준선까지 계열색 20%로 칠하고 그 위에 선을 긋는다.
+- 선의 굵기는 3px이고 색은 `series`다. 선 차트는 **값 라벨을 그리지 않는다** — 점 위의 수치가 필요하면 막대
+  차트다.
+- 점의 강조색(`<point fill>`)은 막대 하나를 칠하는 채널이라 선 · 영역 · 계단에서는 에러다.
+- PPTX에서는 사용자 지오메트리 도형(`a:custGeom`)이다 — PowerPoint의 점 편집으로 고칠 수 있다.
 
 ## 색 — 계열은 프레임이, 강조는 점이 갖는다
 
@@ -280,8 +305,9 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 
 | 조건 | 진단 메시지 |
 |---|---|
-| `type`이 없다 | `<chart> needs a type (available types: bar) — without a type there is no way to guess what to draw` |
-| 어휘 밖 `type` | `unknown chart type "line" (available types: bar)` |
+| `type`이 없다 | `<chart> needs a type (available types: bar, line, area, step) — without a type there is no way to guess what to draw` |
+| 어휘 밖 `type` | `unknown chart type "pie" (available types: bar, line, area, step)` |
+| 선 · 영역 · 계단 차트의 `<point fill>` | `<point fill> highlights one bar — a line chart draws its series as one line, so a point cannot take its own color` |
 | `h`도 `ratio`도 없다 | `<chart> needs h or ratio — bar heights are percentages of the axis, so letting the content set the height would be circular` |
 | 점이 하나도 없다 | `<chart> has no <point> — there is no data to draw (<point label="May" value="22"/>)` |
 | `label`이 없다 | `<point> needs a label — without saying what a bar measures, the chart cannot be read` |

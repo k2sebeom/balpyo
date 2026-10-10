@@ -59,3 +59,32 @@ textbox "text s1.1.1.0"
   ¶ start | "0은 막대가 없다"{heading 27pt b fg}
 textbox "p s1.1.1.1"
   ¶ start | "값이 0인 점은 라벨만 남는다 — 그 자리가 비어 있는 것이 데이터다."{body 18pt fg}
+# slide 3 lines
+shape:rect "shape s2.0.0" alt="Demand" fill=none line=none
+shape:custGeom "shape s2.0.0.0.0.0" fill=none line=accent1
+shape:rect "shape s2.0.0.0.1" fill=muted line=none
+textbox "text s2.0.0.0.2.0"
+  ¶ center | "6am"{body 13.5pt muted}
+textbox "text s2.0.0.0.2.1"
+  ¶ center | "noon"{body 13.5pt muted}
+textbox "text s2.0.0.0.2.2"
+  ¶ center | "6pm"{body 13.5pt muted}
+shape:rect "shape s2.0.1" alt="Demand area" fill=none line=none
+shape:custGeom "shape s2.0.1.0.0.0" fill=accent4 line=none
+shape:custGeom "shape s2.0.1.0.0.1" fill=none line=accent4
+shape:rect "shape s2.0.1.0.1" fill=muted line=none
+textbox "text s2.0.1.0.2.0"
+  ¶ center | "6am"{body 13.5pt muted}
+textbox "text s2.0.1.0.2.1"
+  ¶ center | "noon"{body 13.5pt muted}
+textbox "text s2.0.1.0.2.2"
+  ¶ center | "6pm"{body 13.5pt muted}
+shape:rect "shape s2.0.2" alt="Capacity" fill=none line=none
+shape:custGeom "shape s2.0.2.0.0.0" fill=none line=accent3
+shape:rect "shape s2.0.2.0.1" fill=muted line=none
+textbox "text s2.0.2.0.2.0"
+  ¶ center | "6am"{body 13.5pt muted}
+textbox "text s2.0.2.0.2.1"
+  ¶ center | "noon"{body 13.5pt muted}
+textbox "text s2.0.2.0.2.2"
+  ¶ center | "6pm"{body 13.5pt muted}
