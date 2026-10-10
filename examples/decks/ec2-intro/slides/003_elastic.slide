@@ -1,5 +1,5 @@
 <!-- Why elastic — two cards, each a small chart drawn with path shapes in a <stack>: the demand
-     curve (ink), the provisioned capacity (a step line) and the area between them. On the left
+     curve (ink), the provisioned capacity (a step line) and the area under it — hatched where it sits idle. On the left
      the capacity arrives in big steps and wastes the gap; on the right it hugs the demand. -->
 <slide id="elastic" enter="rise">
   <text variant="kicker">01 · Why elastic compute</text>
@@ -9,14 +9,14 @@
       <col gap="sm" h="fill">
         <h3>Traditional provisioning</h3>
         <stack grow="1" basis="0" w="fill">
-          <shape type="path" fill="surface" border="none" w="fill" h="fill" d="M0,85 H40 V55 H72 V30 H100 V100 H0 Z"/>
+          <shape type="path" fill="pattern(wide-diagonal-up muted/35 bg/0)" border="none" w="fill" h="fill" d="M0,85 H40 V55 H72 V30 H100 V100 H0 Z"/>
           <shape type="path" fill="none" border="2 solid muted" w="fill" h="fill" d="M0,85 H40 V55 H72 V30 H100"/>
           <shape type="path" fill="none" border="3 solid fg" w="fill" h="fill" d="M0,98 C15,85 25,90 40,78 C50,70 52,58 62,56 C70,55 75,40 85,36 C93,33 97,30 100,22"/>
         </stack>
         <row gap="md">
-          <text role="caption"><strong>━</strong> Demand</text>
-          <text role="caption" color="muted"><strong>━</strong> Provisioned</text>
-          <text role="caption" color="muted"><strong>■</strong> Idle capacity</text>
+          <row gap="xs" align="center"><shape type="rect" fill="fg" border="none" w="18" h="3"/><text role="caption">Demand</text></row>
+          <row gap="xs" align="center"><shape type="rect" fill="muted" border="none" w="18" h="2"/><text role="caption">Provisioned</text></row>
+          <row gap="xs" align="center"><shape type="rect" fill="pattern(wide-diagonal-up muted/60 bg/0)" border="1 solid muted" w="14" h="14"/><text role="caption">Idle capacity</text></row>
         </row>
         <p size="20" color="muted">Capacity arrives in big, slow steps. You <strong>pay for idle hardware</strong> most of the time — and <strong>still run short</strong> at peaks.</p>
       </col>
@@ -30,9 +30,9 @@
           <shape type="path" fill="none" border="3 solid fg" w="fill" h="fill" d="M0,98 C15,85 25,90 40,78 C50,70 52,58 62,56 C70,55 75,40 85,36 C93,33 97,30 100,22"/>
         </stack>
         <row gap="md">
-          <text role="caption"><strong>━</strong> Demand</text>
-          <text role="caption" color="accent1"><strong>━</strong> EC2 capacity</text>
-          <text role="caption" color="accent1"><strong>■</strong> Small headroom</text>
+          <row gap="xs" align="center"><shape type="rect" fill="fg" border="none" w="18" h="3"/><text role="caption">Demand</text></row>
+          <row gap="xs" align="center"><shape type="rect" fill="accent1" border="none" w="18" h="2"/><text role="caption" color="accent1">EC2 capacity</text></row>
+          <row gap="xs" align="center"><shape type="rect" fill="tint(accent1, 80%)" border="none" w="14" h="14"/><text role="caption" color="accent1">Small headroom</text></row>
         </row>
         <p size="20" color="muted">Add or remove instances in minutes, automatically. <strong>Pay per second</strong> for what you run — <strong>no upfront hardware</strong>.</p>
       </col>
