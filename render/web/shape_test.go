@@ -666,7 +666,7 @@ func TestMeasuredPresetsEvaluateTheFormulaOnTheBox(t *testing.T) {
 	ink := inkOf(t, string(files[IndexFile]), "s0.0")
 	for _, want := range []string{
 		`viewBox="0 0 790 90"`,
-		`d="M0,22.5 L767.5,22.5 L767.5,90 L0,90 Z"`, // 앞면
+		`d="M0,22.5 L767.5,22.5 L767.5,90 L0,90 Z"`,    // 앞면
 		`style="fill: rgb(0 0 0 / 0.2); stroke: none"`, // 오른쪽 면의 darkenLess
 	} {
 		if !strings.Contains(ink, want) {
