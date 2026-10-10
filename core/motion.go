@@ -73,3 +73,37 @@ func (r *resolver) enterValue(raw string, span soml.Span) (soml.EnterEffect, boo
 	r.errorf(span, "unknown enter %q%s (available values: %s)", raw, didYouMean(raw, list), list)
 	return "", false
 }
+
+// resolveTransition은 이 장에 들어올 때의 전환을 확정한다 — 슬라이드의 값이 테마의 기본값을 덮어쓴다
+// (`none`은 끈다). 확정 값은 fade · push · 빈 값이다.
+func (r *resolver) resolveTransition(slide *soml.Slide) {
+	transition := soml.SlideTransition("")
+	duration := 0
+	if m := r.theme.Motion; m != nil {
+		transition, duration = m.Transition, m.TransitionDuration
+	}
+	if raw := string(slide.Transition); raw != "" {
+		known := false
+		for _, v := range soml.SlideTransitions() {
+			known = known || raw == v
+		}
+		if !known {
+			list := strings.Join(soml.SlideTransitions(), ", ")
+			r.errorf(slide.TransitionSpan, "unknown transition %q%s (available values: %s)", raw, didYouMean(raw, list), list)
+		} else {
+			transition = soml.SlideTransition(raw)
+			if duration == 0 {
+				// 테마가 박자를 정하지 않았어도 슬라이드가 고른 전환은 산다 — 길이는 PowerPoint의 기본(빠름)이다.
+				duration = 500
+			}
+		}
+	}
+	if transition == soml.TransitionNone {
+		transition = ""
+	}
+	slide.Transition = transition
+	slide.TransitionDuration = 0
+	if transition != "" {
+		slide.TransitionDuration = duration
+	}
+}

@@ -1,6 +1,7 @@
 <!-- The four effects on the four object kinds: a text box fades, a picture wipes, a table zooms,
-     and a list rises. Elements without enter on a slide without enter do not animate. -->
-<slide id="effects">
+     and a list rises. Elements without enter on a slide without enter do not animate. The slide
+     pushes in over the theme's default fade. -->
+<slide id="effects" transition="push">
   <h2 enter="fade">Four effects</h2>
   <image src="assets/wide.png" h="120" enter="wipe"/>
   <table enter="zoom">

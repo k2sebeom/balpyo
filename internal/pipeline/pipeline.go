@@ -184,6 +184,9 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 			JustifySpan: doc.JustifySpan,
 			Enter:       doc.Enter,
 			EnterSpan:   doc.EnterSpan,
+			// 전환도 원문 그대로 옮긴다 — 어휘 · 테마의 기본값은 core가 본다.
+			Transition:     soml.SlideTransition(doc.Transition),
+			TransitionSpan: doc.TransitionSpan,
 			Notes:       doc.Notes,
 			Content:     doc.Content,
 			Tokens:      doc.Tokens,

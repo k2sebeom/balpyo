@@ -204,12 +204,17 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s: timing: %w", slide.Source, err)
 		}
+		transition, err := transitionXML(slide)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", slide.Source, err)
+		}
 		rendered, err := renderTemplate(slidePart(n), slideTemplate, struct {
 			*soml.Slide
 			Shapes     string
 			Background string
+			Transition string
 			Timing     string
-		}{slide, shapes, background, timing})
+		}{slide, shapes, background, transition, timing})
 		if err != nil {
 			return nil, err
 		}
@@ -636,7 +641,7 @@ const slideTemplate = xmlDecl + `<p:sld xmlns:a="http://schemas.openxmlformats.o
   </p:cSld>
   <p:clrMapOvr>
     <a:masterClrMapping/>
-  </p:clrMapOvr>{{.Timing}}
+  </p:clrMapOvr>{{.Transition}}{{.Timing}}
 </p:sld>
 `
 

@@ -175,6 +175,13 @@ type Slide struct {
 	Enter string
 	// EnterSpan은 enter 값 구간이다.
 	EnterSpan Span
+	// Transition은 이 장에 들어올 때의 전환이다. 파이프라인이 원문을 옮기고 core.Resolve가 테마의 기본값과
+	// 합쳐 **확정 값**(fade · push · 빈 값)으로 바꾼다 — 렌더러는 확정 값만 읽는다.
+	Transition SlideTransition
+	// TransitionSpan은 transition 값 구간이다.
+	TransitionSpan Span
+	// TransitionDuration은 확정된 전환의 길이(ms)다 (전환이 없으면 0).
+	TransitionDuration int
 	// Notes는 발표자 노트다 (`<note>`). PPTX에서는 노트 슬라이드가 된다.
 	Notes string
 	// Chrome은 이 슬라이드에 실릴 확정된 덱 크롬이다 — 테마 선언 순서를 지킨다.

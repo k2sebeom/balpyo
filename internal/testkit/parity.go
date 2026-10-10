@@ -34,6 +34,8 @@ type LayoutSlide struct {
 	// `image`다. 비면 배경을 정하지 않은 슬라이드다 (마스터의 bg1). 그림 바이트가 입력과 같은지는 패키지
 	// 판정(미디어 파트 = 에셋)이 본다.
 	Background string
+	// Transition은 이 장에 들어올 때의 전환이다 (`fade/fast` — 효과/속도 단계). 비면 전환이 없다.
+	Transition string
 	Nodes      []LayoutNode
 }
 
@@ -75,6 +77,9 @@ func FormatLayout(slides []LayoutSlide, withRect bool) string {
 		fmt.Fprintf(&b, "# slide %d %s\n", i+1, s.ID)
 		if s.Background != "" {
 			b.WriteString("bg " + s.Background + "\n")
+		}
+		if s.Transition != "" {
+			b.WriteString("transition " + s.Transition + "\n")
 		}
 		for _, n := range s.Nodes {
 			b.WriteString(n.Kind + " " + strconv.Quote(n.Name))
@@ -161,6 +166,17 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 	var slides []LayoutSlide
 	for _, slide := range deck.Slides {
 		s := LayoutSlide{ID: slide.ID}
+		if slide.Transition != "" {
+			// 속도 단계는 렌더러와 따로 접는다 — 600ms까지 fast, 875ms까지 med, 그보다 길면 slow.
+			spd := "slow"
+			switch {
+			case slide.TransitionDuration <= 600:
+				spd = "fast"
+			case slide.TransitionDuration <= 875:
+				spd = "med"
+			}
+			s.Transition = string(slide.Transition) + "/" + spd
+		}
 		if bg := slide.Background; bg != nil {
 			if bg.Image != "" {
 				s.Background = "image"
@@ -602,6 +618,14 @@ type xSlide struct {
 			Items []xObject `xml:",any"`
 		} `xml:"spTree"`
 	} `xml:"cSld"`
+	// Transition은 슬라이드 전환이다 — 효과 요소 이름과 속도를 되읽는다.
+	Transition *struct {
+		Spd  string    `xml:"spd,attr"`
+		Fade *struct{} `xml:"fade"`
+		Push *struct {
+			Dir string `xml:"dir,attr"`
+		} `xml:"push"`
+	} `xml:"transition"`
 	// Timing은 등장 효과다 — 효과마다 대상 도형 번호 · 효과 번호 · 지연 · 길이를 되읽는다.
 	Timing *struct {
 		Effects []xEffect `xml:"tnLst>par>cTn>childTnLst>seq>cTn>childTnLst>par>cTn>childTnLst>par>cTn>childTnLst>par"`
@@ -801,6 +825,16 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 			}
 		}
 		s := LayoutSlide{ID: x.CSld.Name}
+		if t := x.Transition; t != nil {
+			kind := "?"
+			switch {
+			case t.Fade != nil:
+				kind = "fade"
+			case t.Push != nil && t.Push.Dir == "l":
+				kind = "push"
+			}
+			s.Transition = kind + "/" + t.Spd
+		}
 		if bg := x.CSld.Bg; bg != nil {
 			if bg.BgPr.BlipFill != nil {
 				s.Background = "image"

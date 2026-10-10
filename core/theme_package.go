@@ -220,6 +220,9 @@ type motionTok struct {
 	Duration int    `json:"duration"`
 	Stagger  int    `json:"stagger"`
 	Delay    int    `json:"delay"`
+	// Transition은 덱의 기본 슬라이드 전환이고 TransitionDuration은 그 길이(ms — 0이면 Duration)다.
+	Transition         string `json:"transition"`
+	TransitionDuration int    `json:"transitionDuration"`
 }
 
 type colorTok struct {
@@ -781,7 +784,14 @@ func tokensFromFile(file tokensFile, name string) soml.Theme {
 		})
 	}
 	if m := file.Motion; m != nil {
-		theme.Motion = &soml.MotionTokens{Duration: m.Duration, Stagger: m.Stagger, Delay: m.Delay}
+		theme.Motion = &soml.MotionTokens{Duration: m.Duration, Stagger: m.Stagger, Delay: m.Delay,
+			Transition: soml.SlideTransition(m.Transition), TransitionDuration: m.TransitionDuration}
+		if theme.Motion.TransitionDuration == 0 {
+			theme.Motion.TransitionDuration = m.Duration
+		}
+		if theme.Motion.Transition == soml.TransitionNone {
+			theme.Motion.Transition = ""
+		}
 	}
 	return theme
 }

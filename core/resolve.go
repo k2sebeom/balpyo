@@ -99,6 +99,7 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 		r.resolveConnectors()
 		// 등장은 콘텐츠가 다 확정된 뒤에 센다 — 차트가 펼쳐진 트리에서 문서 순서가 정해진다.
 		r.resolveEntrances(slide)
+		r.resolveTransition(slide)
 		// 진단은 파일 안에서 소스 순서로 낸다 — 저자가 위에서 아래로 고칠 수 있게. 역할을
 		// 먼저 해석하고 나머지 속성을 훑기 때문에 발견 순서가 소스 순서와 어긋난다.
 		sort.SliceStable(r.diags, func(i, j int) bool {

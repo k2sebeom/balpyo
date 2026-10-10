@@ -40,6 +40,14 @@ func requireTokens(theme soml.Theme) error {
 		return fmt.Errorf("tokens.json motion needs duration > 0 and stagger, delay ≥ 0 (ms) — got duration %d, stagger %d, delay %d",
 			m.Duration, m.Stagger, m.Delay)
 	}
+	if m := theme.Motion; m != nil {
+		switch m.Transition {
+		case "", soml.TransitionFade, soml.TransitionPush:
+		default:
+			return fmt.Errorf("tokens.json motion transition %q is unknown (available values: %s)",
+				string(m.Transition), strings.Join(soml.SlideTransitions(), ", "))
+		}
+	}
 	for _, name := range requiredColors {
 		if _, ok := theme.Color(name); !ok {
 			return fmt.Errorf("tokens.json has no color token %q (required: %s)",

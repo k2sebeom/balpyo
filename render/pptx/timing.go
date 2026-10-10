@@ -203,3 +203,33 @@ func writeEntranceEffect(w func(int, string), depth int, o entranceObject, node 
 	w(depth, "</p:par>")
 	return nil
 }
+
+// transitionXML은 슬라이드의 `p:transition`이다 — 전환이 없으면 빈 문자열이다. 길이는 가장 가까운 속도
+// 단계로 접힌다 (fast 0.5초 · med 0.75초 · slow 1초 — 정밀한 길이는 확장 네임스페이스의 것이다).
+func transitionXML(slide *soml.Slide) (string, error) {
+	var effect string
+	switch slide.Transition {
+	case "":
+		return "", nil
+	case soml.TransitionFade:
+		effect = "<p:fade/>"
+	case soml.TransitionPush:
+		// 들어오는 장이 오른쪽에서 밀고 들어온다 — 웹의 다음 넘김과 같은 방향이다.
+		effect = `<p:push dir="l"/>`
+	default:
+		return "", fmt.Errorf("transition %q has no PowerPoint mapping", string(slide.Transition))
+	}
+	return fmt.Sprintf("\n  <p:transition spd=%q>%s</p:transition>", TransitionSpeed(slide.TransitionDuration), effect), nil
+}
+
+// TransitionSpeed는 전환 길이(ms)를 PowerPoint의 속도 단계(500 · 750 · 1000ms)로 접는다 — 600ms까지 fast, 875ms까지
+// med, 그보다 길면 slow다.
+func TransitionSpeed(ms int) string {
+	switch {
+	case ms <= 600:
+		return "fast"
+	case ms <= 875:
+		return "med"
+	}
+	return "slow"
+}

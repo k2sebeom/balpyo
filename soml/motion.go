@@ -40,6 +40,27 @@ type Entrance struct {
 type MotionTokens struct {
 	// Duration은 등장 하나의 길이, Stagger는 이웃 등장 사이의 간격, Delay는 첫 등장 앞의 기다림이다.
 	Duration, Stagger, Delay int
+	// Transition은 덱의 기본 슬라이드 전환이다 (빈 값은 없음). TransitionDuration은 그 길이(ms)다.
+	Transition         SlideTransition
+	TransitionDuration int
+}
+
+// TransitionAttr는 슬라이드 전환 속성 이름이다 (`<slide transition>`).
+const TransitionAttr = "transition"
+
+// SlideTransition은 슬라이드가 들어올 때의 전환이다. 빈 값은 전환 없음이다.
+type SlideTransition string
+
+const (
+	TransitionFade SlideTransition = "fade"
+	TransitionPush SlideTransition = "push"
+	// TransitionNone은 테마의 기본 전환을 그 장에서 끄는 값이다 (확정 값으로는 빈 값이다).
+	TransitionNone SlideTransition = "none"
+)
+
+// SlideTransitions는 전환 어휘다 (순서 = 진단 · 문서 순서).
+func SlideTransitions() []string {
+	return []string{string(TransitionFade), string(TransitionPush), string(TransitionNone)}
 }
 
 // EnterOf는 요소의 확정 등장이다 (없으면 nil).

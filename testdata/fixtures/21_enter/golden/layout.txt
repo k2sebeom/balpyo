@@ -10,6 +10,7 @@ shape:roundRect "shape s0.1.2" fill=surface line=muted enter=rise@240+600
 textbox "p s0.2"
   ¶ start | "Sizes double as you go up."{body 18pt fg}
 # slide 2 effects
+transition push/fast
 textbox "h2 s1.0" enter=fade@150+600
   ¶ start | "Four effects"{heading 27pt b fg}
 pic "image s1.1" enter=wipe@240+600

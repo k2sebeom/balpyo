@@ -175,8 +175,9 @@ func (r *Renderer) writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.S
 	if err != nil {
 		return fmt.Errorf("%s: background: %w", slide.Source, err)
 	}
-	fmt.Fprintf(b, "<section class=%q id=%q %s=\"%d\" data-slide-source=%q%s>\n",
-		SlideClass, html.EscapeString(slide.ID), SlideIndexAttr, slide.Index, html.EscapeString(slide.Source), styleAttr(bg))
+	fmt.Fprintf(b, "<section class=%q id=%q %s=\"%d\" data-slide-source=%q%s%s>\n",
+		SlideClass, html.EscapeString(slide.ID), SlideIndexAttr, slide.Index, html.EscapeString(slide.Source),
+		transitionAttr(slide), styleAttr(bg))
 	if err := writeStage(b, deck, slide); err != nil {
 		return err
 	}
@@ -197,6 +198,21 @@ func (r *Renderer) writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.S
 	}
 	b.WriteString("</section>\n")
 	return nil
+}
+
+// TransitionAttr · TransitionDurationAttr는 슬라이드 전환의 마크업이다 — 뷰어 런타임이 발표자 뷰에서 장을
+// 넘길 때 읽는다 (viewer.css · runtime.js).
+const (
+	TransitionAttr         = "data-balpyo-transition"
+	TransitionDurationAttr = "data-balpyo-transition-duration"
+)
+
+// transitionAttr는 슬라이드 전환 속성이다 (전환이 없으면 속성 자체가 없다).
+func transitionAttr(slide *soml.Slide) string {
+	if slide.Transition == "" {
+		return ""
+	}
+	return fmt.Sprintf(" %s=%q %s=\"%d\"", TransitionAttr, string(slide.Transition), TransitionDurationAttr, slide.TransitionDuration)
 }
 
 // baseCSS는 엔진이 소유하는 기본 CSS다 — 배치와 좌표계만 담고 색·폰트는 담지 않는다.

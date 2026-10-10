@@ -85,3 +85,34 @@ func TestResolveEntranceDiagnostics(t *testing.T) {
 		t.Errorf("박자 없는 테마의 진단 = %v", r.diags)
 	}
 }
+
+// 슬라이드의 transition이 테마의 기본값을 덮어쓰고(none은 끈다), 길이는 테마의 transitionDuration이다.
+// 테마가 기본 전환을 정하지 않으면(내장 테마) 슬라이드가 고른 장만 전환한다.
+func TestResolveTransition(t *testing.T) {
+	for _, tc := range []struct {
+		name, attr string
+		theme      *soml.MotionTokens
+		want       soml.SlideTransition
+		ms         int
+	}{
+		{"테마에 기본 전환이 없다", "", &soml.MotionTokens{Duration: 600, TransitionDuration: 600}, "", 0},
+		{"슬라이드가 고른다", "push", &soml.MotionTokens{Duration: 600, TransitionDuration: 600}, soml.TransitionPush, 600},
+		{"테마의 기본 전환", "", &soml.MotionTokens{Transition: soml.TransitionFade, TransitionDuration: 400}, soml.TransitionFade, 400},
+		{"none이 끈다", "none", &soml.MotionTokens{Transition: soml.TransitionFade, TransitionDuration: 400}, "", 0},
+		{"박자 없는 테마에서도 산다", "fade", nil, soml.TransitionFade, 500},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			slide := &soml.Slide{Transition: soml.SlideTransition(tc.attr)}
+			r := &resolver{theme: soml.Theme{Name: "t", Motion: tc.theme}}
+			r.resolveTransition(slide)
+			if len(r.diags) != 0 || slide.Transition != tc.want || slide.TransitionDuration != tc.ms {
+				t.Errorf("전환 = %q %dms (진단 %v), want %q %dms", slide.Transition, slide.TransitionDuration, r.diags, tc.want, tc.ms)
+			}
+		})
+	}
+	r := &resolver{theme: soml.Theme{Name: "t"}}
+	r.resolveTransition(&soml.Slide{Transition: "cube"})
+	if len(r.diags) != 1 || !strings.Contains(r.diags[0].Message, `unknown transition "cube" (available values: fade, push, none)`) {
+		t.Errorf("진단 = %v", r.diags)
+	}
+}

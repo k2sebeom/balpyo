@@ -90,13 +90,40 @@
     requestAnimationFrame(() => requestAnimationFrame(() => slide.classList.add(ENTERED_CLASS)));
   };
 
-  const show = (index, writeHash, revealed) => {
+  // ── 슬라이드 전환 ──
+  //
+  // 전환은 다음 · 이전으로 넘길 때만 있다 (딥링크 · 오버뷰 · Home/End는 곧장 간다). 들어오는 장의 전환을
+  // 쓰고, 이전으로 가면 방향만 뒤집는다. 나가는 장은 전환 동안 보이게 남는다 — fade는 두 장이 엇갈려
+  // 겹치고(크로스페이드), push는 두 장이 함께 밀린다. 표식은 전환 길이가 지나면 걷는다.
+  const MOVE_CLASSES = ["balpyo-viewer-moving", "balpyo-viewer-leaving",
+    "balpyo-viewer-from-fade", "balpyo-viewer-from-left", "balpyo-viewer-from-right"];
+  const reducedMotion = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const transition = (from, to, dir) => {
+    const kind = to.getAttribute("data-balpyo-transition");
+    if (!kind || !from || root.getAttribute("data-balpyo-view") !== "presenter" || reducedMotion()) return;
+    const ms = Number(to.getAttribute("data-balpyo-transition-duration")) || 0;
+    const start = kind === "push" ? (dir > 0 ? "balpyo-viewer-from-right" : "balpyo-viewer-from-left") : "balpyo-viewer-from-fade";
+    const end = kind === "push" ? (dir > 0 ? "balpyo-viewer-from-left" : "balpyo-viewer-from-right") : "balpyo-viewer-from-fade";
+    to.classList.add(start);
+    from.classList.add("balpyo-viewer-leaving");
+    void to.offsetWidth;
+    [from, to].forEach((s) => { s.classList.add("balpyo-viewer-moving"); s.style.transitionDuration = ms + "ms"; });
+    requestAnimationFrame(() => { to.classList.remove(start); from.classList.add(end); });
+    setTimeout(() => [from, to].forEach((s) => {
+      s.classList.remove(...MOVE_CLASSES);
+      s.style.transitionDuration = "";
+    }), ms + 50);
+  };
+
+  const show = (index, writeHash, revealed, dir) => {
     const target = Math.min(Math.max(index, 0), slides.length - 1);
     if (target === current) return;
-    if (current >= 0) slides[current].classList.remove("balpyo-viewer-active");
+    const from = current >= 0 ? slides[current] : null;
+    if (from) from.classList.remove("balpyo-viewer-active");
     current = target;
     const slide = slides[current];
     slide.classList.add("balpyo-viewer-active");
+    if (dir) transition(from, slide, dir);
     enter(slide, Boolean(revealed));
     counter.textContent = (current + 1) + " / " + slides.length;
     // 들어가는 장의 스텝은 0이다 — 딥링크·오버뷰 타일·Home/End로 **곧장** 들어간 장은 아직
@@ -118,11 +145,11 @@
   // 이미 말한 장을 다시 한 단계씩 누르게 만들지 않는다.
   const forward = () => {
     if (step < lastStep(slides[current])) { step++; applyReveal(); return; }
-    show(current + 1, true);
+    show(current + 1, true, false, 1);
   };
   const backward = () => {
     if (step > 0) { step--; applyReveal(); return; }
-    show(current - 1, true, true);
+    show(current - 1, true, true, -1);
   };
 
   // ── 오버뷰 ──

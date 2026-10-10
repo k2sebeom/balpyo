@@ -79,6 +79,20 @@
     }
   }
 
+  /* Slide transition — only in the presenter view, only when stepping with next / previous (the
+     runtime sets the classes; deep links, the overview, print and the measure view switch slides
+     without one). fade: the arriving slide comes in from transparent. push: the arriving slide
+     slides in from one side while the leaving slide, kept visible for the length of the
+     transition, slides out to the other. The duration comes from the slide's markup. */
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-moving {
+    transition-property: opacity, translate;
+    transition-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-leaving { visibility: visible; }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-from-fade { opacity: 0; }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-from-right { translate: 100% 0; }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-from-left { translate: -100% 0; }
+
   /* The control bar is visible in the overview too — for someone who does not know the
      keyboard, it is the way out of the overview. A selector that ignores the value
      (html[data-balpyo-view]) is not used because of the measure view: if the chrome were drawn

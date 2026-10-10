@@ -1,4 +1,4 @@
-# `enter` — 등장
+# `enter` — 등장과 전환
 
 슬라이드에 들어갈 때 요소가 나타나는 방식이다. 콘텐츠 요소(`<text>` · 블록 · 리스트 · 레이아웃 컨테이너 ·
 `<shape>` · `<image>` · `<table>` · `<chart>`)와 `<slide>`가 `enter` 속성을 받는다. 등장은 **자동**이다 —
@@ -59,6 +59,27 @@ PPTX에서는 PowerPoint의 기본 등장 효과다 — 애니메이션 창에 �
 - 운영체제가 동작 줄이기(`prefers-reduced-motion`)를 켰으면 웹은 움직이지 않는다.
 - JS가 꺼져 있으면 끝 상태로 열린다.
 
+## 슬라이드 전환 — `transition`
+
+`<slide transition="…">`는 그 장에 **들어올 때**의 전환이다. 기본값은 테마의 `motion.transition`이고
+(내장 테마 셋은 정하지 않는다 — 전환 없음), 슬라이드가 덮어쓴다. `none`은 테마의 기본 전환을 그 장에서 끈다.
+
+| `transition` | 웹 (발표자 뷰) | PPTX |
+|---|---|---|
+| `fade` | 두 장이 엇갈려 겹친다 (크로스페이드) | 페이드 (`p:fade`) |
+| `push` | 들어오는 장이 오른쪽에서 밀고 들어온다 (이전으로 가면 왼쪽에서) | 밀어내기 (`p:push dir="l"`) |
+| `none` | 전환 없음 | 전환 없음 |
+
+```json
+"motion": { "duration": 600, "stagger": 90, "delay": 150, "transition": "fade", "transitionDuration": 400 }
+```
+
+- 길이는 `motion.transitionDuration`(ms — 없으면 `duration`)이다. PPTX는 가장 가까운 속도 단계로 접는다:
+  600ms까지 빠름(`fast`), 875ms까지 보통(`med`), 그보다 길면 느림(`slow`).
+- 웹은 **다음 · 이전으로 넘길 때만** 전환한다. 딥링크 · 오버뷰 타일 · Home/End는 곧장 가고, 인쇄 ·
+  측정에는 전환이 없다. 동작 줄이기(`prefers-reduced-motion`)를 켰으면 전환하지 않는다.
+- 들어오는 장의 등장(`enter`)은 전환과 함께 시작한다.
+
 ## 진단
 
 | 조건 | 진단 메시지 |
@@ -67,3 +88,4 @@ PPTX에서는 PowerPoint의 기본 등장 효과다 — 애니메이션 창에 �
 | `enter`에 값이 없다 (`<slide enter>`) | `the enter attribute needs a value (enter="rise")` |
 | 테마에 박자가 없다 | `<p> has enter="rise", but theme "corp" defines no motion — add "motion": { "duration": 600, "stagger": 90, "delay": 150 } to its tokens.json` |
 | `motion`의 수가 틀렸다 | `tokens.json motion needs duration > 0 and stagger, delay ≥ 0 (ms) — …` |
+| 어휘 밖의 전환 | `unknown transition "cube" (available values: fade, push, none)` |

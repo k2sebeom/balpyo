@@ -12,6 +12,7 @@
 | `skip` | 없음 · `true` · `false` | `false` | 참이면 이 슬라이드를 렌더에서 뺀다 |
 | `justify` | `start` · `center` · `end` · `between` · `around` · `evenly` | 없음 (위에서부터 쌓는다) | 흐름 모드 슬라이드의 **세로 분배** (아래) |
 | `enter` | `fade` · `rise` · `zoom` · `wipe` · `none` | 없음 | 직속 자식마다의 [등장](enter.md) |
+| `transition` | `fade` · `push` · `none` | 테마의 `motion.transition` | 이 장에 들어올 때의 [전환](enter.md) |
 
 - `id`를 생략하면 파일명에서 유도한다: 순서용 숫자 접두(`001_`, `010-`)를 떼고 확장자를
   뗀 나머지가 앵커가 된다 — `001_title.slide`는 `title`. 순서 접두가 앵커에 들어가지
@@ -146,7 +147,7 @@
 | 파일에 `<slide>`가 둘 이상 | `a file must have exactly one root element <slide> (one slide per file)` |
 | 어휘 밖의 자식 태그 | `<slide> cannot contain <…> (available tags: <text>, <shape>, <image>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)` |
 | 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <slide> (wrap it in <text>)` |
-| 어휘 밖의 속성 | `unknown attribute … on <slide> (available attributes: layout, id, skip, justify, enter)` |
+| 어휘 밖의 속성 | `unknown attribute … on <slide> (available attributes: layout, id, skip, justify, enter, transition)` |
 | `id`에 값이 없다 (`<slide id>`) | `the id attribute needs a value (id="architecture")` |
 | `id=""` | `the id attribute is empty (remove it to derive the id from the file name)` |
 | `skip` 값이 `true`/`false`가 아니다 | `skip must be true or false (…)` |

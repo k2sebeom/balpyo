@@ -163,8 +163,9 @@ surface, accent1, …)`). 그래서 **토큰 이름은 테마가 소유하는 �
 | `radius` | `sm` · `md` · `lg` | `radius` | **없음** (OOXML에 반경 개념이 없다) |
 | `shadow` | `soft` | `shadow` | 없음 (도형마다 `outerShdw`를 굽고 **색만** 참조로 남는다) |
 
-다섯 범주 밖에 **선택 절** 하나가 있다: `motion` — [등장](soml/enter.md)의 박자(ms)다
-(`{ "duration": 600, "stagger": 90, "delay": 150 }`). 배열이 아니라 객체 하나이고, 상속에서는 통째로
+다섯 범주 밖에 **선택 절** 하나가 있다: `motion` — [등장](soml/enter.md)의 박자(ms)와 기본 슬라이드
+전환이다 (`{ "duration": 600, "stagger": 90, "delay": 150, "transition": "fade", "transitionDuration": 400 }` —
+`transition`은 생략하면 전환 없음). 배열이 아니라 객체 하나이고, 상속에서는 통째로
 갈린다. 정하지 않은 테마도 로드되지만, 그 테마에서 `enter`를 쓴 덱은 에러다. PPTX 테마 파트에는 자리가
 없다 — 효과마다 길이 · 지연으로 구워진다.
 
