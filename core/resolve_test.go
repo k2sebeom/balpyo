@@ -291,22 +291,22 @@ func TestResolveValueDiagnostics(t *testing.T) {
 		line, col       int
 		contains        string
 	}{
-		{"오타 role", "text", `role="titel"`, 2, 15, "알 수 없는 role"},
-		{"오타 align", "text", `align="centre"`, 2, 16, "알 수 없는 align"},
-		{"물리 정렬 이름", "text", `align="left"`, 2, 16, "논리 이름"},
-		{"size 단위 접미사", "text", `size="12pt"`, 2, 15, "단위 없는 논리 px"},
-		{"size 백분율", "text", `size="50%"`, 2, 15, "PPTX 폰트 크기는 절대값"},
-		{"size 0", "text", `size="0"`, 2, 15, "0보다 커야"},
-		{"size 비수치", "text", `size="큼"`, 2, 15, "수치가 아니다"},
-		{"알 수 없는 색 토큰", "text", `color="brand"`, 2, 16, "테마에 없다"},
-		{"알 수 없는 색 함수", "text", `color="glow(fg accent1)"`, 2, 16, "알 수 없는 색 함수"},
+		{"오타 role", "text", `role="titel"`, 2, 15, "unknown role"},
+		{"오타 align", "text", `align="centre"`, 2, 16, "unknown align"},
+		{"물리 정렬 이름", "text", `align="left"`, 2, 16, "logical names"},
+		{"size 단위 접미사", "text", `size="12pt"`, 2, 15, "unitless number in logical px"},
+		{"size 백분율", "text", `size="50%"`, 2, 15, "PPTX font sizes are absolute"},
+		{"size 0", "text", `size="0"`, 2, 15, "greater than 0"},
+		{"size 비수치", "text", `size="큼"`, 2, 15, "is not a number"},
+		{"알 수 없는 색 토큰", "text", `color="brand"`, 2, 16, "is not in the theme"},
+		{"알 수 없는 색 함수", "text", `color="glow(fg accent1)"`, 2, 16, "unknown color function"},
 		{"짧은 색 리터럴", "text", `color="#12"`, 2, 16, "#RRGGBB"},
-		{"값 없는 속성", "text", `role`, 2, 9, "값이 필요하다"},
-		{"빈 값", "text", `role=""`, 2, 15, "비어 있다"},
+		{"값 없는 속성", "text", `role`, 2, 9, "needs a value"},
+		{"빈 값", "text", `role=""`, 2, 15, "is empty"},
 		// variant의 값 없음은 모르는 variant(경고)와 달리 뜻을 정할 수 없어 에러다.
-		{"값 없는 variant", "text", `variant`, 2, 9, "값이 필요하다"},
-		{"빈 variant", "text", `variant=""`, 2, 18, "비어 있다"},
-		{"블록 태그도 같은 값 층", "h2", `color="brand"`, 2, 14, "테마에 없다"},
+		{"값 없는 variant", "text", `variant`, 2, 9, "needs a value"},
+		{"빈 variant", "text", `variant=""`, 2, 18, "is empty"},
+		{"블록 태그도 같은 값 층", "h2", `color="brand"`, 2, 14, "is not in the theme"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

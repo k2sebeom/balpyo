@@ -44,19 +44,19 @@ func writeChromeShapes(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, i
 		if !ok {
 			// 조용히 건너뛰면 웹에는 있고 PPTX에만 없는 크롬이 되고, 그 갈라짐은 두 산출물을
 			// 나란히 볼 때까지 드러나지 않는다.
-			return fmt.Errorf("%s: 크롬 %s의 측정된 좌표가 없다 — 잰 HTML이 이 덱의 산출물이 아니다",
+			return fmt.Errorf("%s: chrome %s has no measured coordinates — the measured HTML was not rendered from this deck",
 				slide.Source, item.Kind)
 		}
 		if item.Kind == soml.ChromeLogo {
 			if err := writeChromeLogo(b, deck, item, *id, rect, rels); err != nil {
-				return fmt.Errorf("%s: 크롬 %s: %w", slide.Source, item.Kind, err)
+				return fmt.Errorf("%s: chrome %s: %w", slide.Source, item.Kind, err)
 			}
 			*id++
 			continue
 		}
 		body, err := chromeBodyXML(item, deck.Theme)
 		if err != nil {
-			return fmt.Errorf("%s: 크롬 %s: %w", slide.Source, item.Kind, err)
+			return fmt.Errorf("%s: chrome %s: %w", slide.Source, item.Kind, err)
 		}
 		// 이름은 종류다 — PowerPoint 선택 창에서 저자가 "이 글자는 어디서 왔는가"를 묻는다.
 		spec := textBoxSp(*id, "chrome "+string(item.Kind), rect, body)
@@ -147,11 +147,11 @@ func writeChromeRun(w func(depth int, line string), item soml.ChromeItem, theme 
 func writeChromeLogo(b *strings.Builder, deck *soml.Deck, item soml.ChromeItem, id int, rect geom.Rect, rels *slideRels) error {
 	n, asset, ok := mediaOf(deck, item.Image)
 	if !ok {
-		return fmt.Errorf("에셋 표에 %q가 없다 — core.ResolveAssets를 거치지 않은 덱이다", item.Image)
+		return fmt.Errorf("%q is not in the asset table — the deck did not go through core.ResolveAssets", item.Image)
 	}
 	ext := asset.Format.Ext()
 	if ext == "" {
-		return fmt.Errorf("포맷 %q의 확장자를 모른다", string(asset.Format))
+		return fmt.Errorf("unknown file extension for format %q", string(asset.Format))
 	}
 	style := soml.ImageStyle{Src: item.Image, Fit: soml.FitContain, Alt: item.Alt}
 	spec, err := picSpec(id, "chrome "+string(item.Kind), rect, style, asset, rels.mediaID(mediaTarget(n, ext)))

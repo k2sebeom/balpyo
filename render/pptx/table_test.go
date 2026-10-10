@@ -208,7 +208,7 @@ func TestRenderTableWithoutGeometry(t *testing.T) {
 	var b strings.Builder
 	err := writeGraphicFrameTbl(&b, deck, slide, elem, "s0.0",
 		firstShapeID, &geom.Geometry{Stage: deck.Stage}, &slideRels{})
-	if err == nil || !strings.Contains(err.Error(), "측정된 좌표가 없다") {
+	if err == nil || !strings.Contains(err.Error(), "has no measured coordinates") {
 		t.Errorf("err = %v, want 측정된 좌표가 없다", err)
 	}
 }

@@ -19,17 +19,17 @@ import (
 func runCheck(args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	projectDir := fs.String("project", ".", "프로젝트 루트")
+	projectDir := fs.String("project", ".", "project root")
 	// build와 같은 플래그다: 테마가 배치를 바꾸므로(editorial의 표지는 아래에 앉는다)
 	// 검사도 빌드가 볼 테마를 봐야 한다 — 두 명령이 다른 테마를 보면 CI의 판정이 거짓이 된다.
-	theme := fs.String("theme", "", "테마 (기본: balpyo.json의 theme — 내장·프로젝트 themes/·설치한 테마)")
-	strict := fs.Bool("strict", false, "경고를 에러로 승격한다")
-	checkLayout := fs.Bool("check-layout", false, "배치도 검사한다 (넘침·스테이지 이탈·겹침 — 브라우저를 띄운다)")
+	theme := fs.String("theme", "", "theme (default: theme in balpyo.json — built-in, project themes/, or installed)")
+	strict := fs.Bool("strict", false, "promote warnings to errors")
+	checkLayout := fs.Bool("check-layout", false, "also check layout (overflow, off-stage, overlap — launches a browser)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
-		return fmt.Errorf("check는 인자를 받지 않는다: %v", fs.Args())
+		return fmt.Errorf("check takes no arguments: %v", fs.Args())
 	}
 	// `--target`을 받지 않는다: 진단은 타깃에 의존하지 않는다 (배치 경고까지 잰 박스에서
 	// 나온다). 렌더 단계에서만 나는 실패는 `build`의 판정이다.
@@ -44,21 +44,29 @@ func runCheck(args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		var de *soml.DiagnosticsError
 		if errors.As(err, &de) {
-			return fmt.Errorf("검사 실패: 에러 %d건", de.Count())
+			return fmt.Errorf("check failed: %s", count(de.Count(), "error"))
 		}
 		return err
 	}
 
 	// 무엇을 봤는지까지 말한다. "깨끗하다"와 "배치는 보지 않았다"는 다른 문장이고, 그 차이를
 	// 숨기면 사람은 재지 않은 판정을 다 본 판정으로 읽는다.
-	scope := "배치는 보지 않았다 (--check-layout)"
+	scope := "layout not checked (--check-layout)"
 	if result.Measured {
-		scope = "배치까지 봤다"
+		scope = "layout checked"
 	}
 	if warnings := len(result.Diagnostics); warnings > 0 {
-		fmt.Fprintf(stdout, "슬라이드 %d장 · 경고 %d건 · %s\n", len(result.Deck.Slides), warnings, scope)
+		fmt.Fprintf(stdout, "%s · %s · %s\n", count(len(result.Deck.Slides), "slide"), count(warnings, "warning"), scope)
 		return nil
 	}
-	fmt.Fprintf(stdout, "슬라이드 %d장 · 진단 없다 · %s\n", len(result.Deck.Slides), scope)
+	fmt.Fprintf(stdout, "%s · no diagnostics · %s\n", count(len(result.Deck.Slides), "slide"), scope)
 	return nil
+}
+
+// count는 요약 줄의 수량을 영어 단수·복수로 쓴다 ("1 slide", "3 slides").
+func count(n int, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, noun)
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }

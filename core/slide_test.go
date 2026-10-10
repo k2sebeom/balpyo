@@ -83,7 +83,7 @@ func TestResolveSlideLayoutUnknown(t *testing.T) {
 			if !diag.Span.Start.IsValid() || diag.Span.Start.Line != 1 || diag.Span.Start.Col != tc.col {
 				t.Errorf("위치 = %s, want 1:%d (%s)", diag.Span.Start, tc.col, diag.Message)
 			}
-			if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "알 수 없는 layout") {
+			if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "unknown layout") {
 				t.Errorf("진단 = %q, want '알 수 없는 layout' 에러", diag.String())
 			}
 			// 허용 목록이 어휘 정의(soml.SlideLayouts) 순서로 실린다 — 카탈로그의 앞부분.
@@ -149,7 +149,7 @@ func TestResolveSlideJustifyUnknown(t *testing.T) {
 	if len(diags) != 1 {
 		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
 	}
-	if diags[0].Severity != soml.SeverityError || !strings.Contains(diags[0].Message, "알 수 없는 justify") {
+	if diags[0].Severity != soml.SeverityError || !strings.Contains(diags[0].Message, "unknown justify") {
 		t.Errorf("진단 = %q, want '알 수 없는 justify' 에러", diags[0].String())
 	}
 	if !strings.Contains(diags[0].Message, "between") {
@@ -157,7 +157,7 @@ func TestResolveSlideJustifyUnknown(t *testing.T) {
 	}
 	// `space-` 접두는 접두 없는 이름을 짚어 준다.
 	_, diags = resolveSlide(t, `<slide justify="space-between"><p>x</p></slide>`)
-	if len(diags) != 1 || !strings.Contains(diags[0].Message, "접두 없는 이름") {
+	if len(diags) != 1 || !strings.Contains(diags[0].Message, "unprefixed names") {
 		t.Errorf("진단 = %v, want '접두 없는 이름'", diags)
 	}
 }
@@ -172,7 +172,7 @@ func TestResolveSlideJustifyInSlotMode(t *testing.T) {
 		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
 	}
 	diag := diags[0]
-	if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "슬롯") {
+	if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "slot-mode") {
 		t.Errorf("진단 = %q, want 슬롯 모드 에러", diag.String())
 	}
 	if !diag.Span.Start.IsValid() {

@@ -73,7 +73,7 @@ func TestServerServesAssetsByteForByte(t *testing.T) {
 // 그리고 이 자리표시자에도 클라이언트가 있어야 빌드가 성공한 순간 스스로 새로고침한다.
 func TestServerServesAPlaceholderBeforeTheFirstSuccess(t *testing.T) {
 	srv := newTestServer(t, t.TempDir())
-	srv.Publish(Status{Generation: 1, Error: "슬라이드가 없다: slides/ 아래에 .slide 파일이 필요하다"})
+	srv.Publish(Status{Generation: 1, Error: "no slides: slides/ needs .slide files"})
 
 	res := request(t, srv, "/")
 	if res.code != http.StatusOK {
@@ -90,7 +90,7 @@ func TestServerStatusCarriesDiagnostics(t *testing.T) {
 	srv.Publish(Status{
 		Generation: 3,
 		OK:         false,
-		Error:      "빌드 실패: 에러 1건",
+		Error:      "build failed: 1 error",
 		Diagnostics: []Diagnostic{{
 			Severity: soml.SeverityError.String(),
 			File:     "slides/001_a.slide",
@@ -145,7 +145,7 @@ func TestServerEventsPushEveryBuild(t *testing.T) {
 		t.Errorf("붙은 직후 받은 상태 = %+v, want generation 1 · 성공", first)
 	}
 
-	srv.Publish(Status{Generation: 2, OK: false, Error: "빌드 실패: 에러 1건"})
+	srv.Publish(Status{Generation: 2, OK: false, Error: "build failed: 1 error"})
 	var second Status
 	decode(t, nextEvent(t, reader), &second)
 	if second.Generation != 2 || second.OK {

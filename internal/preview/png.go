@@ -29,7 +29,7 @@ func RGB8(c color.Color) color.RGBA {
 func DecodePNG(data []byte) (image.Image, error) {
 	img, err := png.Decode(bytes.NewReader(data))
 	if err != nil {
-		return nil, fmt.Errorf("PNG를 디코드할 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot decode PNG: %w", err)
 	}
 	return img, nil
 }
@@ -38,7 +38,7 @@ func DecodePNG(data []byte) (image.Image, error) {
 func EncodePNG(img image.Image) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, img); err != nil {
-		return nil, fmt.Errorf("PNG를 인코드할 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot encode PNG: %w", err)
 	}
 	return buf.Bytes(), nil
 }
@@ -47,7 +47,7 @@ func EncodePNG(img image.Image) ([]byte, error) {
 func LoadPNG(path string) (image.Image, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("PNG를 읽을 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot read PNG: %w", err)
 	}
 	img, err := DecodePNG(data)
 	if err != nil {
@@ -59,14 +59,14 @@ func LoadPNG(path string) (image.Image, error) {
 // SavePNG는 이미지를 PNG 파일로 쓴다 (상위 디렉토리를 만든다).
 func SavePNG(path string, img image.Image) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("디렉토리를 만들 수 없다: %w", err)
+		return fmt.Errorf("cannot create directory: %w", err)
 	}
 	data, err := EncodePNG(img)
 	if err != nil {
 		return err
 	}
 	if err := os.WriteFile(path, data, 0o644); err != nil {
-		return fmt.Errorf("PNG를 쓸 수 없다: %w", err)
+		return fmt.Errorf("cannot write PNG: %w", err)
 	}
 	return nil
 }

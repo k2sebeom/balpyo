@@ -137,17 +137,17 @@ func TestResolveAssetsErrors(t *testing.T) {
 		contains []string
 	}{
 		{"없는 파일", "assets/missing.png",
-			[]string{"파일이 없다", "프로젝트 루트 기준"}},
+			[]string{"does not exist", "relative to the project root"}},
 		{"디렉토리", "assets/dir.png",
-			[]string{"디렉토리를 가리킨다"}},
+			[]string{"points to a directory"}},
 		{"0바이트", "assets/empty.png",
-			[]string{"비어 있다", "0바이트"}},
+			[]string{"is empty", "0 bytes"}},
 		{"잘린 헤더", "assets/cut.png",
-			[]string{"헤더를 읽을 수 없다", "잘렸다"}},
+			[]string{"cannot read the image header", "truncated"}},
 		{"확장자와 실제 포맷 불일치", "assets/liar.png",
-			[]string{"확장자는", "png", "내용은", "jpeg", "PowerPoint"}},
+			[]string{"the extension of", "png", "the content is", "jpeg", "PowerPoint"}},
 		{"이미지가 아닌 내용", "assets/text.png",
-			[]string{"png가 아니다", "PowerPoint"}},
+			[]string{"is not png", "PowerPoint"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -200,7 +200,7 @@ func TestResolveAssetsWithoutFS(t *testing.T) {
 	if len(diags) != 1 || !diags.HasErrors() {
 		t.Fatalf("진단 %d개, want 에러 1개: %v", len(diags), diags)
 	}
-	if !strings.Contains(diags[0].Message, "엔진 버그") {
+	if !strings.Contains(diags[0].Message, "engine bug") {
 		t.Errorf("진단 = %q, want 엔진 버그", diags[0].String())
 	}
 }

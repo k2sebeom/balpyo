@@ -117,86 +117,86 @@ func TestParseTextSubsetErrors(t *testing.T) {
 		{
 			name: "li가 슬라이드 직속",
 			src:  `<slide><li>항목</li></slide>`,
-			want: []string{"1:9 <li>는 <ul>/<ol>의 자식으로만 쓸 수 있다"},
+			want: []string{"1:9 <li> can only be a child of <ul>/<ol>"},
 		},
 		{
 			name: "li가 블록 안",
 			src:  `<slide><p><li>항목</li></p></slide>`,
-			want: []string{"1:12 <li>는 <ul>/<ol>의 자식으로만 쓸 수 있다"},
+			want: []string{"1:12 <li> can only be a child of <ul>/<ol>"},
 		},
 		{
 			name: "중첩 리스트는 아직이다",
 			src:  `<slide><ul><li><ul><li>깊다</li></ul></li></ul></slide>`,
-			want: []string{"1:17 중첩 리스트는 아직 지원하지 않는다"},
+			want: []string{"1:17 <ul> cannot be nested inside <li>"},
 		},
 		{
 			name: "블록 안의 블록",
 			src:  `<slide><ul><li><h2>제목</h2></li></ul></slide>`,
-			want: []string{"1:17 <li> 안에 블록 태그 <h2>는 올 수 없다 (블록은 겹치지 않는다)"},
+			want: []string{"1:17 block tag <h2> is not allowed inside <li> (blocks do not nest)"},
 		},
 		{
 			name: "a 안의 a — 사이에 인라인이 있어도",
 			src:  `<slide><p><a href="x"><strong><a href="y">z</a></strong></a></p></slide>`,
-			want: []string{"1:32 <a> 안에 <a>를 겹칠 수 없다"},
+			want: []string{"1:32 <a> cannot be nested inside <a>"},
 		},
 		{
 			name: "void 위반 — br에 내용",
 			src:  `<slide><p><br>텍스트</br></p></slide>`,
-			want: []string{"1:12 void 태그 <br>은 내용을 가질 수 없다 (<br/>로 쓴다)"},
+			want: []string{"1:12 void tag <br> cannot have content (write <br/>)"},
 		},
 		{
 			name: "span의 속성 목록",
 			src:  `<slide><p><span size="20">x</span></p></slide>`,
-			want: []string{"1:17 <span>에 알 수 없는 속성 size (쓸 수 있는 속성: color, weight)"},
+			want: []string{"1:17 unknown attribute size on <span> (available attributes: color, weight)"},
 		},
 		{
 			// 블록은 역할을 표에서만 얻는다 — role 속성을 열면 <p role="title">이 두 표기의
 			// 등가를 깬다.
 			name: "블록에는 role이 없다",
 			src:  `<slide><h1 role="body">제목</h1></slide>`,
-			want: []string{"1:12 <h1>에 알 수 없는 속성 role (쓸 수 있는 속성: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
+			want: []string{"1:12 unknown attribute role on <h1> (available attributes: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
 		},
 		{
 			name: "인라인에는 속성이 없다",
 			src:  `<slide><p><strong variant="kicker">x</strong></p></slide>`,
-			want: []string{"1:19 <strong>에는 속성을 쓸 수 없다 (variant)"},
+			want: []string{"1:19 <strong> takes no attributes (variant)"},
 		},
 		{
 			// 항목은 외관을 상속만 받는다 — 열린 것은 순서(reveal)뿐이다.
 			name: "li에는 외관 속성이 없다",
 			src:  `<slide><ul><li size="20">x</li></ul></slide>`,
-			want: []string{"1:16 <li>에 알 수 없는 속성 size (쓸 수 있는 속성: reveal)"},
+			want: []string{"1:16 unknown attribute size on <li> (available attributes: reveal)"},
 		},
 		{
 			// 세로 축·pad·ratio는 텍스트에 닫혀 있다.
 			name: "text에는 h가 없다",
 			src:  `<slide><text h="56">x</text></slide>`,
-			want: []string{`1:14 <text>에 알 수 없는 속성 h (쓸 수 있는 속성: role, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)`},
+			want: []string{`1:14 unknown attribute h on <text> (available attributes: role, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)`},
 		},
 		{
 			name: "pre 안의 인라인은 아직이다",
 			src:  `<slide><pre><code>x</code></pre></slide>`,
-			want: []string{"1:14 <pre> 안에는 문자 데이터만 올 수 있다 (<code>는 쓸 수 없다)"},
+			want: []string{"1:14 only character data is allowed inside <pre> (<code> is not allowed)"},
 		},
 		{
 			name: "블록 안의 text",
 			src:  `<slide><p><text>x</text></p></slide>`,
-			want: []string{"1:12 <p> 안에는 문자 데이터와 인라인 태그만 올 수 있다 (<text>는 쓸 수 없다)"},
+			want: []string{"1:12 only character data and inline tags are allowed inside <p> (<text> is not allowed)"},
 		},
 		{
 			name: "인라인이 슬라이드 직속 — 슬라이드의 자식 어휘",
 			src:  `<slide><strong>x</strong></slide>`,
-			want: []string{"1:9 <slide>의 자식으로 <strong>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <image>, <table>, <chart>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
+			want: []string{"1:9 <slide> cannot contain <strong> (available tags: <text>, <shape>, <image>, <table>, <chart>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
 		},
 		{
 			name: "ul 안의 문자 데이터",
 			src:  `<slide><ul>글자</ul></slide>`,
-			want: []string{"1:12 <ul> 안에 문자 데이터를 직접 쓸 수 없다 (<li>로 감싼다)"},
+			want: []string{"1:12 character data cannot appear directly inside <ul> (wrap it in <li>)"},
 		},
 		{
 			name: "ul의 자식은 li뿐",
 			src:  `<slide><ul><p>x</p></ul></slide>`,
-			want: []string{"1:13 <ul>의 자식으로 <p>는 올 수 없다 (쓸 수 있는 태그: <li>)"},
+			want: []string{"1:13 <ul> cannot contain <p> (available tags: <li>)"},
 		},
 	})
 }

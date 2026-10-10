@@ -34,7 +34,7 @@ func TestPreviewCommandWritesGallery(t *testing.T) {
 		t.Fatalf("갤러리가 만들어지지 않았다: %v", err)
 	}
 	out := stdout.String()
-	for _, want := range []string{"슬라이드 1장", gallery, "PowerPoint"} {
+	for _, want := range []string{"1 slide", gallery, "PowerPoint"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("출력에 %q가 없다:\n%s", want, out)
 		}
@@ -78,10 +78,10 @@ func TestPreviewCommandDefaultFallsBackToWebWithoutTools(t *testing.T) {
 		t.Fatalf("%v\nstderr: %s", err, stderr.String())
 	}
 	out := stdout.String()
-	if !strings.Contains(out, "PPTX 열을 뺀다") {
+	if !strings.Contains(out, "dropping the PPTX column") {
 		t.Errorf("PPTX 열을 뺐다고 말하지 않는다:\n%s", out)
 	}
-	if strings.Contains(out, "직접 열어 확인한다") {
+	if strings.Contains(out, "open the PPTX in PowerPoint") {
 		t.Errorf("pptx를 만들지 않았는데 직접 열어 보라고 한다:\n%s", out)
 	}
 }

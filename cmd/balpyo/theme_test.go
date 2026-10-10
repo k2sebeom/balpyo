@@ -79,7 +79,7 @@ func TestCheckAcceptsThemeFlag(t *testing.T) {
 	if err := run([]string{"check", "--project", dir, "--theme", "editorial"}, &stdout, &stderr); err != nil {
 		t.Fatalf("%v\nstderr: %s", err, stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "슬라이드 1장") {
+	if !strings.Contains(stdout.String(), "1 slide") {
 		t.Errorf("요약이 없다:\n%s", stdout.String())
 	}
 }

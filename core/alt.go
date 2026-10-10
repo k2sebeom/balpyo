@@ -18,12 +18,12 @@ import "github.com/k2sebeom/balpyo/soml"
 // (스크린 리더에게 "장식 이미지"다), 비대칭의 근거가 우리 밖에 있다는 것이 그 예외의 전부다.
 func (r *resolver) altName(attr soml.Attr) (string, bool) {
 	if !attr.HasValue {
-		r.errorf(attr.NameSpan, "alt 속성에는 값이 필요하다 (alt=%q) — 이름이 필요 없으면 속성을 지운다",
+		r.errorf(attr.NameSpan, "the alt attribute needs a value (alt=%q) — remove the attribute if no name is needed",
 			attrExample("alt"))
 		return "", false
 	}
 	if attr.Value == "" {
-		r.errorf(attr.ValueSpan, "alt은 비어 있을 수 없다 — 이름 없음이 기본값이므로 속성을 지운다 (그림의 alt=\"\"와 다르다: <img>에서 빈 alt은 \"장식 이미지\"라는 뜻이지만 도형·표에는 그 표기가 없다)")
+		r.errorf(attr.ValueSpan, "alt cannot be empty — no name is the default, so remove the attribute (unlike alt=\"\" on images: an empty alt on <img> means \"decorative image\", but shapes and tables have no such notation)")
 		return "", false
 	}
 	return attr.Value, true

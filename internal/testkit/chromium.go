@@ -59,7 +59,7 @@ func SharedSession(t testing.TB) *geom.Session {
 	bin := RequireChromium(t)
 	shared.once.Do(func() { shared.session, shared.err = geom.Launch(bin) })
 	if shared.err != nil {
-		t.Fatalf("브라우저를 띄울 수 없다: %v", shared.err)
+		t.Fatalf("cannot launch browser: %v", shared.err)
 	}
 	return shared.session
 }
@@ -92,7 +92,7 @@ func (b *Browser) ScreenshotElement(t testing.TB, selector string) image.Image {
 	t.Helper()
 	rects := b.Rects(t, selector)
 	if len(rects) == 0 {
-		t.Fatalf("%s에 맞는 요소가 없다", selector)
+		t.Fatalf("no element matches %s", selector)
 	}
 	buf, err := b.session.Clip(rects[0])
 	if err != nil {
@@ -119,7 +119,7 @@ func (b *Browser) PrintPDF(t testing.TB) string {
 	}
 	path := filepath.Join(t.TempDir(), "print.pdf")
 	if err := os.WriteFile(path, buf, 0o644); err != nil {
-		t.Fatalf("인쇄 결과를 쓸 수 없다: %v", err)
+		t.Fatalf("cannot write print output: %v", err)
 	}
 	return path
 }

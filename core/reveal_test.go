@@ -31,34 +31,34 @@ func TestRevealValueErrors(t *testing.T) {
 		{
 			name: "빈 값",
 			src:  `<slide><ul><li reveal="">항목</li></ul></slide>`,
-			want: []string{`1:24 reveal 속성이 비어 있다`},
+			want: []string{`1:24 the reveal attribute is empty`},
 		},
 		{
 			name: "0은 스텝이 아니다",
 			src:  `<slide><ul><li reveal="0">항목</li></ul></slide>`,
-			want: []string{`1:24 reveal은 1 이상 정수다 ("0")`},
+			want: []string{`1:24 reveal is an integer of at least 1 ("0")`},
 		},
 		{
 			name: "음수",
 			src:  `<slide><ul><li reveal="-1">항목</li></ul></slide>`,
-			want: []string{`1:24 reveal은 1 이상 정수다 ("-1")`},
+			want: []string{`1:24 reveal is an integer of at least 1 ("-1")`},
 		},
 		{
 			name: "소수",
 			src:  `<slide><ul><li reveal="1.5">항목</li></ul></slide>`,
-			want: []string{`1:24 reveal은 1 이상 정수다 ("1.5")`},
+			want: []string{`1:24 reveal is an integer of at least 1 ("1.5")`},
 		},
 		{
 			name: "낱말",
 			src:  `<slide><ul><li reveal="두번째">항목</li></ul></slide>`,
-			want: []string{`1:24 reveal은 1 이상 정수다 ("두번째")`},
+			want: []string{`1:24 reveal is an integer of at least 1 ("두번째")`},
 		},
 		{
 			name: "틀린 값 둘이면 진단도 둘이다",
 			src:  `<slide><ul><li reveal="0">하나</li><li reveal="x">둘</li></ul></slide>`,
 			want: []string{
-				`1:24 reveal은 1 이상 정수다 ("0")`,
-				`1:46 reveal은 1 이상 정수다 ("x")`,
+				`1:24 reveal is an integer of at least 1 ("0")`,
+				`1:46 reveal is an integer of at least 1 ("x")`,
 			},
 		},
 	}

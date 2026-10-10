@@ -50,7 +50,7 @@ func RepoRoot(t testing.TB) string {
 	t.Helper()
 	dir, err := os.Getwd()
 	if err != nil {
-		t.Fatalf("작업 디렉토리를 알 수 없다: %v", err)
+		t.Fatalf("cannot determine working directory: %v", err)
 	}
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
@@ -58,7 +58,7 @@ func RepoRoot(t testing.TB) string {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			t.Fatalf("go.mod가 있는 저장소 루트를 찾을 수 없다")
+			t.Fatalf("cannot find the repository root containing go.mod")
 		}
 		dir = parent
 	}
@@ -120,7 +120,7 @@ func requireTool(t testing.TB, name, env string, look func() (string, error)) st
 	if err == nil {
 		return path
 	}
-	msg := fmt.Sprintf("%s가 필요하다: %v — 설치하거나 %s로 경로를 지정한다", name, err, env)
+	msg := fmt.Sprintf("%s is required: %v — install it or set its path with %s", name, err, env)
 	if Strict() {
 		t.Fatal(msg)
 	}
@@ -133,7 +133,7 @@ func optionalTool(t testing.TB, name, env string, look func() (string, error)) s
 	t.Helper()
 	path, err := look()
 	if err != nil {
-		t.Skipf("%s가 없어 건너뛴다: %v — %s로 경로를 지정한다", name, err, env)
+		t.Skipf("skipping, %s not found: %v — set its path with %s", name, err, env)
 	}
 	return path
 }

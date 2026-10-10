@@ -339,24 +339,24 @@ func newIndex(boxes []Box) map[string]int {
 // 엉뚱한 요소로 간다. 그 실패는 산출물의 모양으로만 드러나므로 여기서 멈춘다.
 func (g *Geometry) Verify(deck *soml.Deck) error {
 	if g == nil {
-		return fmt.Errorf("지오메트리가 없다")
+		return fmt.Errorf("no geometry")
 	}
 	if deck == nil {
-		return fmt.Errorf("덱이 nil이다")
+		return fmt.Errorf("deck is nil")
 	}
 	if g.Stage != deck.Stage {
-		return fmt.Errorf("지오메트리는 논리 스테이지 %dx%d에서 측정되었다 — 덱의 스테이지는 %dx%d다",
+		return fmt.Errorf("geometry was measured on a %dx%d logical stage — the deck's stage is %dx%d",
 			g.Stage.Width, g.Stage.Height, deck.Stage.Width, deck.Stage.Height)
 	}
 	refs := Refs(deck)
 	if len(refs) != len(g.Boxes) {
-		return fmt.Errorf("측정된 요소 %d개, 덱의 요소 %d개 — 잰 덱과 다른 덱이다",
+		return fmt.Errorf("%d measured elements, %d deck elements — not the deck that was measured",
 			len(g.Boxes), len(refs))
 	}
 	for i, ref := range refs {
 		box := g.Boxes[i]
 		if box.ID != ref.ID || box.El != ref.El {
-			return fmt.Errorf("%s: %d번째 요소가 어긋난다 — 측정 %s <%s>, 덱 %s <%s>",
+			return fmt.Errorf("%s: element %d does not match — measured %s <%s>, deck %s <%s>",
 				ref.Source, i, box.ID, box.El, ref.ID, ref.El)
 		}
 	}
@@ -370,16 +370,16 @@ func (g *Geometry) Verify(deck *soml.Deck) error {
 // 놓치고, 그때 좌표는 조용히 뒤바뀐다.
 func newGeometry(deck *soml.Deck, m measurement) (*Geometry, error) {
 	if deck == nil {
-		return nil, fmt.Errorf("덱이 nil이다")
+		return nil, fmt.Errorf("deck is nil")
 	}
 	// devicePixelRatio가 1이 아니면 브라우저가 준 CSS px와 스크린샷 픽셀이 갈린다 — 좌표는
 	// 맞는데 리뷰의 픽셀 비교만 틀리는, 원인을 찾기 어려운 상태가 된다.
 	if m.DPR != 1 {
-		return nil, fmt.Errorf("브라우저 devicePixelRatio가 %s다 (1이어야 한다) — 논리 px와 실제 픽셀이 갈린다",
+		return nil, fmt.Errorf("browser devicePixelRatio is %s (must be 1) — logical px and device pixels diverge",
 			formatPx(m.DPR))
 	}
 	if len(m.Slides) != len(deck.Slides) {
-		return nil, fmt.Errorf("HTML의 슬라이드 수 %d개, 덱의 슬라이드 수 %d개 — 잰 HTML이 이 덱의 산출물이 아니다",
+		return nil, fmt.Errorf("%d slides in the HTML, %d slides in the deck — the measured HTML was not rendered from this deck",
 			len(m.Slides), len(deck.Slides))
 	}
 
@@ -391,14 +391,14 @@ func newGeometry(deck *soml.Deck, m measurement) (*Geometry, error) {
 	for i, sm := range m.Slides {
 		slide := deck.Slides[i]
 		if sm.Index != slide.Index {
-			return nil, fmt.Errorf("%s: %d번째 슬라이드의 %s가 %d다 (want %d)",
+			return nil, fmt.Errorf("%s: slide %d has %s %d (want %d)",
 				slide.Source, i, web.SlideIndexAttr, sm.Index, slide.Index)
 		}
 		// 스테이지가 CSS px와 1:1이라는 전제를 여기서 확인한다. 페이지가 스케일되면(zoom,
 		// transform, 뷰포트 맞춤) 모든 좌표가 같은 비율로 틀린 채 산출물까지 가고, 산출물은
 		// "열리지만 조금씩 어긋난" 상태가 되어 원인을 찾는 데 가장 오래 걸린다.
 		if !sameSize(sm.W, float64(deck.Stage.Width)) || !sameSize(sm.H, float64(deck.Stage.Height)) {
-			return nil, fmt.Errorf("%s: 브라우저가 잰 슬라이드 크기가 %s×%s다 — 논리 스테이지 %dx%d와 달라 페이지가 스케일된 상태다",
+			return nil, fmt.Errorf("%s: the browser measured the slide at %s×%s — it differs from the %dx%d logical stage, so the page is scaled",
 				slide.Source, formatPx(sm.W), formatPx(sm.H), deck.Stage.Width, deck.Stage.Height)
 		}
 
@@ -412,37 +412,37 @@ func newGeometry(deck *soml.Deck, m measurement) (*Geometry, error) {
 		// 크롬은 확정 모델과 **자리 하나씩** 맞댄다 — 수가 맞아도 kind가 뒤바뀌면
 		// 번호가 푸터 자리에 놓인 PPTX가 나오고, 그것은 열어 보기 전까지 정상으로 보인다.
 		if len(sm.Chrome) != len(slide.Chrome) {
-			return nil, fmt.Errorf("%s: HTML의 크롬 %d개, 덱의 크롬 %d개 — 잰 HTML이 이 덱의 산출물이 아니다",
+			return nil, fmt.Errorf("%s: %d chrome items in the HTML, %d in the deck — the measured HTML was not rendered from this deck",
 				slide.Source, len(sm.Chrome), len(slide.Chrome))
 		}
 		for j, cm := range sm.Chrome {
 			item := slide.Chrome[j]
 			if cm.Kind != string(item.Kind) {
-				return nil, fmt.Errorf("%s: %d번째 크롬이 어긋난다 — HTML %s, 덱 %s",
+				return nil, fmt.Errorf("%s: chrome item %d does not match — HTML %s, deck %s",
 					slide.Source, j, cm.Kind, item.Kind)
 			}
 			if !cm.Rect.valid() {
-				return nil, fmt.Errorf("%s: 크롬 %s의 rect %s가 유효하지 않다", slide.Source, cm.Kind, cm.Rect)
+				return nil, fmt.Errorf("%s: chrome %s has an invalid rect %s", slide.Source, cm.Kind, cm.Rect)
 			}
 			chrome = append(chrome, ChromeBox{Slide: slide.Index, Kind: item.Kind, Rect: cm.Rect})
 		}
 
 		for _, bm := range sm.Boxes {
 			if next >= len(refs) {
-				return nil, fmt.Errorf("%s: HTML에 덱보다 많은 요소가 있다 — %s <%s>는 덱에 없다",
+				return nil, fmt.Errorf("%s: the HTML has more elements than the deck — %s <%s> is not in the deck",
 					slide.Source, bm.ID, bm.El)
 			}
 			ref := refs[next]
 			if bm.ID != ref.ID || bm.El != ref.El {
-				return nil, fmt.Errorf("%s: %d번째 요소가 어긋난다 — HTML %s <%s>, 덱 %s <%s>",
+				return nil, fmt.Errorf("%s: element %d does not match — HTML %s <%s>, deck %s <%s>",
 					slide.Source, next, bm.ID, bm.El, ref.ID, ref.El)
 			}
 			if !bm.Rect.valid() {
-				return nil, fmt.Errorf("%s: %s의 rect %s가 유효하지 않다", slide.Source, bm.ID, bm.Rect)
+				return nil, fmt.Errorf("%s: %s has an invalid rect %s", slide.Source, bm.ID, bm.Rect)
 			}
 			for j, line := range bm.Lines {
 				if !line.valid() {
-					return nil, fmt.Errorf("%s: %s의 %d번째 줄 박스 %s가 유효하지 않다",
+					return nil, fmt.Errorf("%s: %s line box %d is invalid: %s",
 						slide.Source, bm.ID, j, line)
 				}
 			}
@@ -457,7 +457,7 @@ func newGeometry(deck *soml.Deck, m measurement) (*Geometry, error) {
 		for _, ref := range refs[next:] {
 			missing = append(missing, ref.ID)
 		}
-		return nil, fmt.Errorf("HTML에 없는 덱 요소가 있다: %s — 웹 렌더러가 낸 요소와 덱이 어긋났다",
+		return nil, fmt.Errorf("deck elements missing from the HTML: %s — the web renderer's output and the deck diverged",
 			strings.Join(missing, ", "))
 	}
 

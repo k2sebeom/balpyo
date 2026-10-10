@@ -39,7 +39,7 @@ func (a Aspect) Stage() (Stage, error) {
 	case Aspect4x3:
 		return Stage{Width: 960, Height: 720}, nil
 	default:
-		return Stage{}, fmt.Errorf("알 수 없는 종횡비 %q (%q 또는 %q)", string(a), Aspect16x9, Aspect4x3)
+		return Stage{}, fmt.Errorf("unknown aspect ratio %q (%q or %q)", string(a), Aspect16x9, Aspect4x3)
 	}
 }
 

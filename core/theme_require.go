@@ -38,31 +38,31 @@ var (
 func requireTokens(theme soml.Theme) error {
 	for _, name := range requiredColors {
 		if _, ok := theme.Color(name); !ok {
-			return fmt.Errorf("tokens.json에 색 토큰 %q가 없다 (필수: %s)",
+			return fmt.Errorf("tokens.json has no color token %q (required: %s)",
 				name, strings.Join(requiredColors, ", "))
 		}
 	}
 	for _, name := range requiredFonts {
 		if _, ok := theme.Font(name); !ok {
-			return fmt.Errorf("tokens.json에 폰트 토큰 %q가 없다 (필수: %s)",
+			return fmt.Errorf("tokens.json has no font token %q (required: %s)",
 				name, fontRoleList(requiredFonts))
 		}
 	}
 	for _, name := range requiredSpaces {
 		if _, ok := theme.Space(name); !ok {
-			return fmt.Errorf("tokens.json에 공간 토큰 %q가 없다 (필수: %s)",
+			return fmt.Errorf("tokens.json has no space token %q (required: %s)",
 				name, strings.Join(requiredSpaces, ", "))
 		}
 	}
 	for _, name := range requiredRadii {
 		if _, ok := theme.Radius(name); !ok {
-			return fmt.Errorf("tokens.json에 반경 토큰 %q가 없다 (필수: %s)",
+			return fmt.Errorf("tokens.json has no radius token %q (required: %s)",
 				name, strings.Join(requiredRadii, ", "))
 		}
 	}
 	for _, name := range requiredShadows {
 		if _, ok := theme.Shadow(name); !ok {
-			return fmt.Errorf("tokens.json에 그림자 토큰 %q가 없다 (필수: %s)",
+			return fmt.Errorf("tokens.json has no shadow token %q (required: %s)",
 				name, strings.Join(requiredShadows, ", "))
 		}
 	}
@@ -88,18 +88,18 @@ func requireColorSlots(theme soml.Theme) error {
 			continue
 		}
 		if first, dup := owner[token.Slot]; dup {
-			return fmt.Errorf("tokens.json의 clrScheme 슬롯 %q를 색 토큰 %q와 %q가 나눠 쓴다 — 어느 색이 그 자리를 차지하는지 정할 수 없다",
+			return fmt.Errorf("tokens.json clrScheme slot %q is shared by color tokens %q and %q — cannot tell which color owns the slot",
 				token.Slot, first, token.Name)
 		}
 		owner[token.Slot] = token.Name
 	}
 	for _, token := range theme.Colors {
 		if token.Slot == "" {
-			return fmt.Errorf("tokens.json의 색 토큰 %q에 clrScheme 슬롯이 없다 — 모든 색 토큰은 PPTX 테마 색 편집을 따라가야 한다 (%s)",
+			return fmt.Errorf("tokens.json color token %q has no clrScheme slot — every color token must follow PPTX theme color edits (%s)",
 				token.Name, freeColorSlots(owner))
 		}
 		if !knownColorSlot(token.Slot) {
-			return fmt.Errorf("tokens.json의 색 토큰 %q의 clrScheme 슬롯 %q가 없는 자리다 (쓸 수 있는 슬롯: %s)",
+			return fmt.Errorf("tokens.json color token %q has an unknown clrScheme slot %q (available slots: %s)",
 				token.Name, token.Slot, strings.Join(soml.ColorSlots(), ", "))
 		}
 	}
@@ -127,9 +127,9 @@ func freeColorSlots(owner map[string]string) string {
 		}
 	}
 	if len(free) == 0 {
-		return "남은 슬롯이 없다 — 새 색 이름 대신 기존 이름의 값을 갈아 끼운다"
+		return "no free slots — replace the value of an existing name instead of adding a new color name"
 	}
-	return "남은 슬롯: " + strings.Join(free, ", ")
+	return "free slots: " + strings.Join(free, ", ")
 }
 
 // requireComponents는 컴포넌트 표가 **역할 5종을 전부** 정하고, 각 역할이 이 테마의 토큰을
@@ -143,33 +143,33 @@ func requireComponents(theme soml.Theme, comps components) error {
 	for _, role := range soml.TextRoles() {
 		style, ok := comps.textRoles[role]
 		if !ok {
-			return fmt.Errorf("components.json의 text.roles에 역할 %q가 없다 (필수: %s)",
+			return fmt.Errorf("components.json text.roles has no role %q (required: %s)",
 				role, textRoleList(soml.TextRoles()))
 		}
 		if style.Size <= 0 {
-			return fmt.Errorf("역할 %q의 size가 %g다 — 역할은 캐스케이드의 바닥이라 완전한 값이어야 한다",
+			return fmt.Errorf("role %q has size %g — roles are the bottom of the cascade and must be complete",
 				role, style.Size)
 		}
 		if style.LineHeight <= 0 {
-			return fmt.Errorf("역할 %q의 lineHeight가 %g다 — 역할은 캐스케이드의 바닥이라 완전한 값이어야 한다",
+			return fmt.Errorf("role %q has lineHeight %g — roles are the bottom of the cascade and must be complete",
 				role, style.LineHeight)
 		}
 		if _, ok := theme.Font(style.Font); !ok {
-			return fmt.Errorf("역할 %q의 font %q가 이 테마의 폰트 토큰이 아니다 (이 테마: %s)",
+			return fmt.Errorf("role %q font %q is not a font token of this theme (this theme: %s)",
 				role, style.Font, fontRoleList(themeFontNames(theme)))
 		}
 		// 역할의 색은 **토큰 참조**만 뜻이 있다 (리터럴은 PPTX의 테마 색 편집을 끊는다 —
 		// tokens.json의 shadow color와 같은 계약).
 		if !style.Color.IsToken() {
-			return fmt.Errorf("역할 %q의 color가 색 토큰 이름이 아니다 (이 테마: %s)",
+			return fmt.Errorf("role %q color is not a color token name (this theme: %s)",
 				role, strings.Join(theme.ColorNames(), ", "))
 		}
 		if _, ok := theme.Color(style.Color.Token); !ok {
-			return fmt.Errorf("역할 %q의 color %q가 이 테마의 색 토큰이 아니다 (이 테마: %s)",
+			return fmt.Errorf("role %q color %q is not a color token of this theme (this theme: %s)",
 				role, style.Color.Token, strings.Join(theme.ColorNames(), ", "))
 		}
 		if style.Align == "" {
-			return fmt.Errorf("역할 %q의 align이 없다 (쓸 수 있는 align: %s)",
+			return fmt.Errorf("role %q has no align (available aligns: %s)",
 				role, textAlignList(soml.TextAligns()))
 		}
 	}
@@ -192,7 +192,7 @@ func requireComponentColors(theme soml.Theme, comps components) error {
 			return nil
 		}
 		if bad, ok := notTokenRef(theme, *color); ok {
-			return fmt.Errorf("components.json의 %s %q가 이 테마의 색 토큰 참조가 아니다 — 테마는 색 토큰 이름(변형 · 토큰 그라디언트 포함)만 쓴다 (이 테마: %s)",
+			return fmt.Errorf("components.json %s %q is not a color token reference of this theme — themes use only color token names (including modifiers and token gradients) (this theme: %s)",
 				where, bad, strings.Join(theme.ColorNames(), ", "))
 		}
 		return nil
@@ -217,7 +217,7 @@ func requireComponentColors(theme soml.Theme, comps components) error {
 	sort.Strings(tags)
 	var errs []error
 	for _, tag := range tags {
-		errs = append(errs, check(fmt.Sprintf("text.componentDefaults %q의 color", tag), comps.textComponentDefaults[tag].color))
+		errs = append(errs, check(fmt.Sprintf("text.componentDefaults %q color", tag), comps.textComponentDefaults[tag].color))
 	}
 	slots := make([]string, 0, len(comps.textSlotDefaults))
 	for slot := range comps.textSlotDefaults {
@@ -225,29 +225,29 @@ func requireComponentColors(theme soml.Theme, comps components) error {
 	}
 	sort.Strings(slots)
 	for _, slot := range slots {
-		errs = append(errs, check(fmt.Sprintf("text.componentDefaults 슬롯 %q의 color", slot), comps.textSlotDefaults[slot].color))
+		errs = append(errs, check(fmt.Sprintf("text.componentDefaults slot %q color", slot), comps.textSlotDefaults[slot].color))
 	}
 	for _, v := range comps.textVariants {
-		errs = append(errs, check(fmt.Sprintf("text variant %q의 color", v.name), v.patch.color))
+		errs = append(errs, check(fmt.Sprintf("text variant %q color", v.name), v.patch.color))
 	}
-	errs = append(errs, fill("shape.default의", comps.shapeDefault.fill),
-		border("shape.default의", comps.shapeDefault.border))
+	errs = append(errs, fill("shape.default", comps.shapeDefault.fill),
+		border("shape.default", comps.shapeDefault.border))
 	for _, v := range comps.shapeVariants {
-		where := fmt.Sprintf("shape variant %q의", v.name)
+		where := fmt.Sprintf("shape variant %q", v.name)
 		errs = append(errs, fill(where, v.patch.fill), border(where, v.patch.border))
 	}
-	errs = append(errs, border("image.default의", comps.imageDefault.border))
+	errs = append(errs, border("image.default", comps.imageDefault.border))
 	for _, v := range comps.imageVariants {
-		errs = append(errs, border(fmt.Sprintf("image variant %q의", v.name), v.patch.border))
+		errs = append(errs, border(fmt.Sprintf("image variant %q", v.name), v.patch.border))
 	}
 	for _, c := range []struct {
 		where string
 		patch cellPatch
-	}{{"table.cell의", comps.table.cell}, {"table.header의", comps.table.header}} {
+	}{{"table.cell", comps.table.cell}, {"table.header", comps.table.header}} {
 		errs = append(errs, fill(c.where, c.patch.fill), border(c.where, c.patch.border),
 			check(c.where+" color", c.patch.color))
 	}
-	errs = append(errs, fill("table.stripe의", comps.table.stripe))
+	errs = append(errs, fill("table.stripe", comps.table.stripe))
 	// 첫 에러 하나로 멈춘다 — requireTokens와 같은 이유 (파일 하나를 고치는 흐름).
 	for _, err := range errs {
 		if err != nil {

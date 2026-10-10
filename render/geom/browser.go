@@ -75,7 +75,7 @@ func LookChromium() (string, error) {
 			return path, nil
 		}
 	}
-	return "", fmt.Errorf("브라우저를 찾을 수 없다 (후보: %s) — %s로 경로를 지정한다",
+	return "", fmt.Errorf("no browser found (tried: %s) — set its path with %s",
 		strings.Join(candidates, ", "), EnvChromium)
 }
 
@@ -89,10 +89,10 @@ func executable(path string) error {
 		return err
 	}
 	if info.IsDir() {
-		return fmt.Errorf("디렉토리다")
+		return fmt.Errorf("is a directory")
 	}
 	if info.Mode()&0o111 == 0 {
-		return fmt.Errorf("실행 권한이 없다")
+		return fmt.Errorf("not executable")
 	}
 	return nil
 }
@@ -130,7 +130,7 @@ func Launch(bin string) (*Session, error) {
 			time.Sleep(time.Duration(attempt) * launchBackoff)
 		}
 	}
-	return nil, fmt.Errorf("브라우저를 띄울 수 없다 (%s, %d번 시도): %w", bin, launchAttempts, err)
+	return nil, fmt.Errorf("cannot launch the browser (%s, %d attempts): %w", bin, launchAttempts, err)
 }
 
 // launchOnce는 브라우저를 한 번 띄운다.
@@ -205,7 +205,7 @@ func (s *Session) run(actions ...chromedp.Action) error {
 func (s *Session) Open(htmlPath string) error {
 	abs, err := filepath.Abs(htmlPath)
 	if err != nil {
-		return fmt.Errorf("경로를 절대 경로로 바꿀 수 없다: %w", err)
+		return fmt.Errorf("cannot make the path absolute: %w", err)
 	}
 	fileURL := (&url.URL{Scheme: "file", Path: filepath.ToSlash(abs)}).String()
 	if err := s.run(
@@ -215,7 +215,7 @@ func (s *Session) Open(htmlPath string) error {
 		chromedp.Evaluate(`document.fonts.ready.then(() => true)`, nil, withAwaitPromise),
 		chromedp.Evaluate(imagesReadyScript, nil, withAwaitPromise),
 	); err != nil {
-		return fmt.Errorf("%s를 열 수 없다: %w", htmlPath, err)
+		return fmt.Errorf("cannot open %s: %w", htmlPath, err)
 	}
 	return nil
 }
@@ -237,7 +237,7 @@ const imagesReadyScript = `(async () => {
   await Promise.all(images.map((img) => img.decode().catch(() => null)));
   const broken = images.filter((img) => img.naturalWidth === 0).map((img) => img.getAttribute("src"));
   if (broken.length > 0) {
-    throw new Error("이미지를 읽을 수 없다: " + broken.join(", "));
+    throw new Error("cannot load images: " + broken.join(", "));
   }
   return true;
 })()`
@@ -250,7 +250,7 @@ func withAwaitPromise(p *runtime.EvaluateParams) *runtime.EvaluateParams {
 // Eval은 표현식을 평가해 결과를 out에 담는다 (out이 nil이면 값을 버린다).
 func (s *Session) Eval(expr string, out any) error {
 	if err := s.run(chromedp.Evaluate(expr, out)); err != nil {
-		return fmt.Errorf("스크립트 평가 실패: %w", err)
+		return fmt.Errorf("script evaluation failed: %w", err)
 	}
 	return nil
 }
@@ -272,7 +272,7 @@ func (s *Session) Print() ([]byte, error) {
 			WithPrintBackground(true).Do(ctx)
 		return err
 	})); err != nil {
-		return nil, fmt.Errorf("인쇄 실패: %w", err)
+		return nil, fmt.Errorf("print failed: %w", err)
 	}
 	return buf, nil
 }
@@ -297,7 +297,7 @@ const rectScript = `(() => {
 func (s *Session) Rects(selector string) ([]Rect, error) {
 	var rects []Rect
 	if err := s.Eval(fmt.Sprintf(rectScript, selector), &rects); err != nil {
-		return nil, fmt.Errorf("%s 좌표를 읽을 수 없다: %w", selector, err)
+		return nil, fmt.Errorf("cannot read the coordinates of %s: %w", selector, err)
 	}
 	return rects, nil
 }
@@ -310,7 +310,7 @@ func (s *Session) Rects(selector string) ([]Rect, error) {
 // 슬라이드조차 22% 다르다고 나온다).
 func (s *Session) Clip(r Rect) ([]byte, error) {
 	if r.W <= 0 || r.H <= 0 {
-		return nil, fmt.Errorf("크기가 0인 영역은 찍을 수 없다: %s", r)
+		return nil, fmt.Errorf("cannot capture a zero-size area: %s", r)
 	}
 	var buf []byte
 	if err := s.run(chromedp.ActionFunc(func(ctx context.Context) error {
@@ -321,7 +321,7 @@ func (s *Session) Clip(r Rect) ([]byte, error) {
 			WithClip(&page.Viewport{X: r.X, Y: r.Y, Width: r.W, Height: r.H, Scale: 1}).Do(ctx)
 		return err
 	})); err != nil {
-		return nil, fmt.Errorf("%s 스크린샷 실패: %w", r, err)
+		return nil, fmt.Errorf("screenshot of %s failed: %w", r, err)
 	}
 	return buf, nil
 }

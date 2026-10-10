@@ -109,8 +109,8 @@
   것과 갈라지는 자리다 (그쪽은 저자가 자리를 확인해야 하는 콘텐츠다).
 - `pad`에 **백분율은 쓸 수 없다.** CSS 백분율 padding은 부모의 **폭** 기준인데 OOXML 인셋은
   절대 EMU라, 잰 도형 rect만으로는 웹이 쓴 값을 복원할 수 없다 — 근사해서 내면 글자 위치가
-  조용히 어긋난다. 진단은 PPTX 조립 단계에서 난다 (`도형의 pad는 백분율을 쓸 수 없다 (…%) —
-  OOXML bodyPr 인셋은 절대 EMU이고 CSS 백분율 padding은 부모 폭 기준이다`) — 컨테이너의
+  조용히 어긋난다. 진단은 PPTX 조립 단계에서 난다 (`shape pad cannot be a percentage (…%) —
+  OOXML bodyPr insets are absolute EMU while CSS percentage padding is relative to the parent width`) — 컨테이너의
   `pad`는 백분율을 받는다 (컨테이너의 여백은 좌표로 구워지고 인셋이 되지 않는다).
 
 ### 자식 배치 속성
@@ -412,34 +412,34 @@ PPTX는 **같은 도형의 본문**(`txBody`)이다. 그래서 도형 안 텍스
 
 | 조건 | 진단 메시지 |
 |---|---|
-| 도형 안에 문자 데이터를 직접 썼다 | `<shape> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)` |
-| 도형의 **직속** 자식으로 리스트·그림·표·중첩 도형을 썼다 | `<shape>의 자식으로 <ul>는 올 수 없다 (쓸 수 있는 태그: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)` — 컨테이너로 감싸면 들어간다 |
-| 어휘 밖의 속성 | `<shape>에 알 수 없는 속성 stroke (쓸 수 있는 속성: type, id, alt, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
-| `<arrow>`·`<line>`·`<group>`을 썼다 | `알 수 없는 태그 <arrow> (<slide> 안에 쓸 수 있는 태그: …)` — 목록은 그 자리에 쓸 수 있는 태그다 |
+| 도형 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <shape> (wrap it in <text>)` |
+| 도형의 **직속** 자식으로 리스트·그림·표·중첩 도형을 썼다 | `<shape> cannot contain <ul> (available tags: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)` — 컨테이너로 감싸면 들어간다 |
+| 어휘 밖의 속성 | `unknown attribute stroke on <shape> (available attributes: type, id, alt, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| `<arrow>`·`<line>`·`<group>`을 썼다 | `unknown tag <arrow> — did you mean <row>? (tags available inside <slide>: …)` — 목록은 그 자리에 쓸 수 있는 태그다 |
 
 값 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다:
 
 | 조건 | 진단 메시지 |
 |---|---|
-| `type`이 없다 | `<shape>에 type이 필요하다 (쓸 수 있는 종류: rect, rounded-rect, ellipse, diamond, cylinder, chevron, arrow-right, hexagon, parallelogram, callout, star, cloud) — 도형의 종류는 추측할 수 없다` |
-| `type`이 12종 밖이다 | `알 수 없는 도형 type "elipse" (쓸 수 있는 종류: …)` |
-| 같은 슬라이드에 `id`가 둘 | `id "db"가 이 슬라이드에 이미 있다 (…) — 참조가 어느 도형인지 정할 수 없다` |
-| `alt`에 값이 없다 | `alt 속성에는 값이 필요하다 (alt="chart") — 이름이 필요 없으면 속성을 지운다` |
-| `alt=""` | `alt은 비어 있을 수 없다 — 이름 없음이 기본값이므로 속성을 지운다 (그림의 alt=""와 다르다: <img>에서 빈 alt은 "장식 이미지"라는 뜻이지만 도형·표에는 그 표기가 없다)` |
-| 테마에 없는 색 토큰 | `fill의 색 토큰 "brand"가 테마에 없다 (쓸 수 있는 토큰: fg, bg, muted, surface, accent1, accent2, accent3, accent4, accent5, accent6, 또는 #RRGGBB 리터럴)` |
-| `border` 조각 수가 3이 아니다 | `border는 \`<굵기> <스타일> <색>\` 3조각이다 ("solid muted"는 2조각) — 예: "1 solid muted", 또는 "none"` |
-| `border` 굵기가 0 이하 | `border의 굵기는 0보다 커야 한다 ("0") — 테두리를 지우려면 border="none"을 쓴다` |
-| 어휘 밖의 `border` 스타일 | `알 수 없는 border 스타일 "double" (쓸 수 있는 값: solid, dashed, dotted) — 조각 순서는 \`<굵기> <스타일> <색>\`이다` |
-| 백분율 인셋 프리셋에 내용을 담고 `h`·`ratio`를 안 썼다 | `type="ellipse" 도형이 내용을 담으면 h나 ratio가 필요하다 (예: h="120") — 이 프리셋의 텍스트 영역은 박스 높이의 백분율이라 내용이 높이를 정하면 기준이 순환한다` |
-| `radius`를 `rounded-rect` 밖에 썼다 | `radius는 type="rounded-rect"에서만 쓴다 (지금은 "rect") — 다른 프리셋에는 반경 조정값이 없어 웹만 둥글어진다` |
-| 모르는 `radius` 토큰 | `radius 값이 수치가 아니다 ("huge") — 토큰(sm, md, lg)이나 수치를 쓴다` |
-| 모르는 `shadow` 토큰 | `알 수 없는 shadow 토큰 "hard" (쓸 수 있는 토큰: soft) — 그림자는 수치가 아니라 토큰으로 쓴다 (두 타깃의 번짐 정의가 달라 같은 수치가 다르게 그려진다)` |
-| `opacity`에 `%`를 썼다 | `opacity에 %는 쓸 수 없다 ("40%") — 0~1 실수로 쓴다 (색 변형 alpha()와 표기를 하나로 유지한다)` |
-| `opacity`가 0~1 밖이다 | `opacity는 0~1 사이다 ("1.5")` |
-| `rotate`에 단위를 붙였다 | `rotate는 단위 없는 각도 수치다 ("45deg"의 "deg"를 뗀다) — 허용 접미사는 % 하나다` |
-| **배경 모드 도형에 `rotate`를 썼다** | `배치를 담은 도형은 rotate를 쓸 수 없다 — PPTX에서 자식은 형제 도형이 되어 도형의 회전을 물려받지 않는데 웹은 박스를 돌려 자식까지 돌리므로, 같은 SOML이 두 타깃에서 다른 그림이 된다 (회전을 지우거나 컨테이너를 빼고 텍스트만 담는다)` |
-| 어휘 밖의 `flip` | `알 수 없는 flip "both" (쓸 수 있는 값: h, v, hv — "hv"는 두 축 모두다)` |
-| 모르는 `variant` | **경고** — `variant "card-heder"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: card, card-header, card-body, card-backdrop, stat-card, badge)` |
+| `type`이 없다 | `<shape> needs a type (available types: rect, rounded-rect, ellipse, diamond, cylinder, chevron, arrow-right, hexagon, parallelogram, callout, star, cloud) — the shape type cannot be guessed` |
+| `type`이 12종 밖이다 | `unknown shape type "elipse" (available types: …)` |
+| 같은 슬라이드에 `id`가 둘 | `id "db" already exists on this slide (…) — a reference could not tell which shape it means` |
+| `alt`에 값이 없다 | `the alt attribute needs a value (alt="chart") — remove the attribute if no name is needed` |
+| `alt=""` | `alt cannot be empty — no name is the default, so remove the attribute (unlike alt="" on images: an empty alt on <img> means "decorative image", but shapes and tables have no such notation)` |
+| 테마에 없는 색 토큰 | `fill: color token "brand" is not in the theme (available tokens: fg, bg, muted, surface, accent1, accent2, accent3, accent4, accent5, accent6, or #RRGGBB)` |
+| `border` 조각 수가 3이 아니다 | ``border has 3 parts, `<width> <style> <color>` ("solid muted" has 2) — e.g. "1 solid muted", or "none"`` |
+| `border` 굵기가 0 이하 | `the border width must be greater than 0 ("0") — use border="none" to remove the border` |
+| 어휘 밖의 `border` 스타일 | ``unknown border style "double" (available values: solid, dashed, dotted) — the part order is `<width> <style> <color>` `` |
+| 백분율 인셋 프리셋에 내용을 담고 `h`·`ratio`를 안 썼다 | `a type="ellipse" shape with content needs h or ratio (e.g. h="120") — this preset's text area is a percentage of the box height, so letting the content set the height would be circular` |
+| `radius`를 `rounded-rect` 밖에 썼다 | `radius is only for type="rounded-rect" (this is "rect") — other presets have no radius adjustment, so only the web would be rounded` |
+| 모르는 `radius` 토큰 | `radius value is not a number ("huge") — use a token (sm, md, lg) or a number` |
+| 모르는 `shadow` 토큰 | `unknown shadow token "hard" (available tokens: soft) — shadows are written as tokens, not numbers (the two targets define blur differently, so the same numbers would draw differently)` |
+| `opacity`에 `%`를 썼다 | `opacity cannot use % ("40%") — write a real number from 0 to 1 (keeping one notation with the alpha() color modifier)` |
+| `opacity`가 0~1 밖이다 | `opacity is between 0 and 1 ("1.5")` |
+| `rotate`에 단위를 붙였다 | `rotate is a unitless angle (drop the "deg" from "45deg") — the only allowed suffix is %` |
+| **배경 모드 도형에 `rotate`를 썼다** | `a shape that holds layout cannot use rotate — in PPTX the children become sibling shapes and do not inherit the rotation, while the web rotates the box with its children, so the same SOML would look different in the two targets (remove the rotation, or drop the container and hold only text)` |
+| 어휘 밖의 `flip` | `unknown flip "both" (available values: h, v, hv — "hv" is both axes)` |
+| 모르는 `variant` | **경고** — `variant "card-heder" is not in the theme (did you mean "card-header"?) — continuing with the default appearance (variants in this theme: card, card-header, card-body, card-backdrop, stat-card, badge)` |
 
 크기·여백 속성(`pad`·`w`/`h`·`ratio` …)의 진단은 [레이아웃 태그](layout.md)와 **같은
 문구**다 — 목록이 한 벌이므로 진단도 한 벌이다.

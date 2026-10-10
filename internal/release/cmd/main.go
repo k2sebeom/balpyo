@@ -23,10 +23,10 @@ func main() {
 
 func run(args []string, stdout io.Writer) error {
 	fs := flag.NewFlagSet("release", flag.ContinueOnError)
-	version := fs.String("version", "", "릴리스 태그 (기본: HEAD에 붙은 태그)")
-	outDir := fs.String("out", "dist", "산출물 디렉토리")
-	repo := fs.String("repo", "k2sebeom/balpyo", "소유자/이름 (다운로드 URL과 포뮬러)")
-	targetList := fs.String("targets", "", "만들 플랫폼 (기본: 전부 — 예: linux/amd64,darwin/arm64)")
+	version := fs.String("version", "", "release tag (default: the tag on HEAD)")
+	outDir := fs.String("out", "dist", "output directory")
+	repo := fs.String("repo", "k2sebeom/balpyo", "owner/name (for download URLs and the formula)")
+	targetList := fs.String("targets", "", "platforms to build (default: all — e.g. linux/amd64,darwin/arm64)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func run(args []string, stdout io.Writer) error {
 		// 커밋 해시를 버전 자리에 넣으면 아카이브 이름이 우리가 발표하지 않은 이름이 된다.
 		var err error
 		if tag, err = describeTag(); err != nil {
-			return fmt.Errorf("%w\n태그를 붙이거나 버전을 직접 주자: make dist VERSION=v0.3.0", err)
+			return fmt.Errorf("%w\ntag HEAD or pass the version explicitly: make dist VERSION=v0.3.0", err)
 		}
 	}
 
@@ -66,7 +66,7 @@ func run(args []string, stdout io.Writer) error {
 		fmt.Fprintf(stdout, "  %s\n", release.FormulaName)
 	} else {
 		// 반쪽 포뮬러를 내지 않는 대신 **그것을 말한다** — 조용히 빠진 파일은 릴리스 날 찾게 된다.
-		fmt.Fprintf(stdout, "  (포뮬러는 플랫폼 표를 전부 만들 때 나온다 — 지금은 %d/%d)\n",
+		fmt.Fprintf(stdout, "  (the formula is only written when every platform is built — %d/%d this time)\n",
 			len(result.Artifacts), len(release.Targets()))
 	}
 	return nil
@@ -77,7 +77,7 @@ func run(args []string, stdout io.Writer) error {
 func describeTag() (string, error) {
 	out, err := exec.Command("git", "describe", "--tags", "--exact-match", "HEAD").Output()
 	if err != nil {
-		return "", fmt.Errorf("HEAD에 태그가 없다")
+		return "", fmt.Errorf("HEAD has no tag")
 	}
 	return strings.TrimSpace(string(out)), nil
 }
@@ -97,7 +97,7 @@ func parseTargets(list string) ([]release.Target, error) {
 		name = strings.TrimSpace(name)
 		target, ok := known[name]
 		if !ok {
-			return nil, fmt.Errorf("알 수 없는 플랫폼 %s (쓸 수 있는 플랫폼: %s)", name, strings.Join(names, ", "))
+			return nil, fmt.Errorf("unknown platform %s (available platforms: %s)", name, strings.Join(names, ", "))
 		}
 		targets = append(targets, target)
 	}

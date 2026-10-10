@@ -39,7 +39,7 @@ func TestInitScaffoldBuildsCleanly(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Errorf("진단이 나왔다:\n%s", stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "슬라이드 3장") {
+	if !strings.Contains(stdout.String(), "3 slides") {
 		t.Errorf("슬라이드 3장이 아니다:\n%s", stdout.String())
 	}
 	// 제목이 없으면 디렉토리 이름이 제목이고, PPTX 파일 이름이 그 제목에서 나온다.

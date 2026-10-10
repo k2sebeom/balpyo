@@ -329,9 +329,9 @@ func TestLoadComponentsSlotDefaults(t *testing.T) {
 		t.Fatalf("유효한 슬롯 기본값이 실패했다: %v", err)
 	}
 	for _, tc := range []struct{ name, defaults, want string }{
-		{"없는 슬롯", `{"layout":"quote","slot":"qoute","size":40}`, `"quote"/"qoute"가 레이아웃 어휘에 없다`},
-		{"태그와 슬롯을 함께", `{"tag":"p","layout":"quote","slot":"quote","size":40}`, "tag \"p\"와 slot을 함께 쓸 수 없다"},
-		{"주인 없음", `{"size":40}`, "주인이 없다"},
+		{"없는 슬롯", `{"layout":"quote","slot":"qoute","size":40}`, `"quote"/"qoute" is not in the layout vocabulary`},
+		{"태그와 슬롯을 함께", `{"tag":"p","layout":"quote","slot":"quote","size":40}`, "tag \"p\" cannot be combined with slot"},
+		{"주인 없음", `{"size":40}`, "has no owner"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := loadTheme(memTheme(fullTokens, withDefaults(tc.defaults)), "t")

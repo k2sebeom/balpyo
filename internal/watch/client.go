@@ -143,11 +143,11 @@ const clientJS = `
     var diags = status.diagnostics || [];
     var warnings = diags.filter(function (d) { return d.severity === "warning"; });
     if (!status.ok) {
-      show("error", status.error || "빌드 실패", status.builtAt, diags);
+      show("error", status.error || "build failed", status.builtAt, diags);
       return;
     }
     if (warnings.length) {
-      show("ok", "경고 " + warnings.length + "건", status.builtAt, warnings);
+      show("ok", warnings.length + (warnings.length === 1 ? " warning" : " warnings"), status.builtAt, warnings);
       return;
     }
     hide();
@@ -168,7 +168,7 @@ const clientJS = `
     source.onerror = function () {
       // EventSource가 스스로 다시 붙는다 — 여기서는 화면에만 말한다.
       if (source.readyState === EventSource.CONNECTING) {
-        show("offline", "감시 서버와 연결이 끊겼다 — 다시 붙는 중", "", []);
+        show("offline", "lost connection to the watch server — reconnecting", "", []);
       }
     };
   }
@@ -196,7 +196,7 @@ font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Apple SD Gothic Neo",sans-s
 </style>
 </head>
 <body>
-<p>아직 산출물이 없다 — 빌드가 성공하면 이 페이지가 스스로 바뀐다.</p>
+<p>No output yet — this page will update itself once a build succeeds.</p>
 </body>
 </html>
 `

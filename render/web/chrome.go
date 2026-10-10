@@ -44,13 +44,13 @@ func writeChrome(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 		}
 		if item.Kind == soml.ChromeLogo {
 			if err := writeChromeLogo(b, deck, item, align); err != nil {
-				return fmt.Errorf("%s: 크롬(%s): %w", slide.Source, item.Kind, err)
+				return fmt.Errorf("%s: chrome (%s): %w", slide.Source, item.Kind, err)
 			}
 			continue
 		}
 		decls, err := textStyleCSS(item.Style, deck.Theme)
 		if err != nil {
-			return fmt.Errorf("%s: 크롬(%s): %w", slide.Source, item.Kind, err)
+			return fmt.Errorf("%s: chrome (%s): %w", slide.Source, item.Kind, err)
 		}
 		fmt.Fprintf(b, "<div class=%q %s=%q%s>%s</div>\n",
 			ChromeClass+" "+align, ChromeKindAttr, string(item.Kind),
@@ -70,7 +70,7 @@ func chromeAlignClass(align soml.TextAlign) (string, error) {
 	case soml.AlignEnd:
 		return ChromeClass + "-end", nil
 	}
-	return "", fmt.Errorf("크롬 정렬 %q는 어휘가 아니다 (start, center, end)", string(align))
+	return "", fmt.Errorf("unknown chrome alignment %q (start, center, end)", string(align))
 }
 
 // chromeCSS는 바닥 띠의 배치다 — 크롬을 쓴 덱에만 나간다 (features.chrome).
@@ -87,7 +87,8 @@ func chromeCSS(feat features) string {
 		return ""
 	}
 	return fmt.Sprintf(`
-  /* 덱 크롬은 스테이지의 형제다 — 흐름 밖에 있어 본문 높이를 먹지 않는다. */
+  /* Deck chrome is a sibling of the stage — it sits outside the flow and does not take up body
+     height. */
   .%[1]s {
     position: absolute;
     bottom: 0;
@@ -110,10 +111,10 @@ func chromeCSS(feat features) string {
 // 늘어난다. 그래서 높이는 선언의 값이고, 띠 가운데에 오도록 바닥에서 (띠 − 높이)/2만큼 띄운다.
 func writeChromeLogo(b *strings.Builder, deck *soml.Deck, item soml.ChromeItem, align string) error {
 	if item.Image == "" || item.Height <= 0 {
-		return fmt.Errorf("그림이나 높이가 없는 로고다 — core.Resolve를 거치지 않은 덱이다")
+		return fmt.Errorf("logo has no picture or height — the deck did not go through core.Resolve")
 	}
 	if _, ok := deck.Assets.Get(item.Image); !ok {
-		return fmt.Errorf("에셋 표에 %q가 없다 — core.ResolveAssets를 거치지 않은 덱이다", item.Image)
+		return fmt.Errorf("%q is not in the asset table — the deck did not go through core.ResolveAssets", item.Image)
 	}
 	decls := []string{
 		fmt.Sprintf("height: %spx", formatNumber(item.Height)),

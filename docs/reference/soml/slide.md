@@ -34,8 +34,7 @@
   동작(세로 스택)에 이름이 있으므로 `layout="content"`가 에러가 아니고, 그 산출물은
   `layout` 없는 같은 슬라이드와 **바이트가 같다** (기본값과 명시가 같은 이름이다).
 - **어휘 밖 값은 빌드 에러다** — 오타가 조용히 기본 레이아웃으로 렌더되지 않게 막는다:
-  `알 수 없는 layout "titel" (쓸 수 있는 layout: title, section-divider, content, two-column,
-  image-full, image-text, quote, code, stat, canvas, end)`. 나열 순서는 카탈로그 순서
+  `unknown layout "titel" (available layouts: title, section-divider, content, two-column, image-full, image-text, quote, code, stat, canvas, end)`. 나열 순서는 카탈로그 순서
   (표지에서 마무리로)이고, 진단·문서·`soml.SlideLayouts()`가 같은 순서를 쓴다.
 - **슬롯은 레이아웃이 정한다** — 직계 자식의 `slot="title"` 같은 배정은 레이아웃마다 허용
   이름이 다르고, 그 표도 [`layout=` 페이지](../layouts.md)에 있다. 슬롯을 하나도 쓰지 않으면
@@ -141,28 +140,28 @@
 
 | 조건 | 진단 메시지 |
 |---|---|
-| 루트가 `<slide>`가 아니다 | `루트 요소는 <slide>여야 한다 (<text>는 그 안에 쓴다)` |
-| 파일에 `<slide>`가 없다 | `루트 요소 <slide>가 없다` |
-| 파일에 `<slide>`가 둘 이상 | `루트 요소 <slide>는 파일에 하나여야 한다 (슬라이드 하나가 파일 하나다)` |
-| 어휘 밖의 자식 태그 | `<slide>의 자식으로 <…>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <image>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)` |
-| 문자 데이터를 직접 썼다 | `<slide> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)` |
-| 어휘 밖의 속성 | `<slide>에 알 수 없는 속성 … (쓸 수 있는 속성: layout, id, skip, justify)` |
-| `id`에 값이 없다 (`<slide id>`) | `id 속성에는 값이 필요하다 (id="architecture")` |
-| `id=""` | `id 속성이 비어 있다 (지우면 파일명에서 유도한다)` |
-| `skip` 값이 `true`/`false`가 아니다 | `skip 값은 true 또는 false다 (…)` |
-| `layout`에 값이 없다 (`<slide layout>`) | `layout 속성에는 값이 필요하다 (layout="canvas")` |
-| `layout=""` | `layout 속성이 비어 있다 (지우면 content로 계속한다)` |
-| `justify`에 값이 없다 (`<slide justify>`) | `justify 속성에는 값이 필요하다 (justify="between")` |
-| `justify=""` | `justify 속성이 비어 있다 (지우면 위에서부터 쌓는다)` |
+| 루트가 `<slide>`가 아니다 | `the root element must be <slide> (write <text> inside it)` |
+| 파일에 `<slide>`가 없다 | `missing root element <slide>` |
+| 파일에 `<slide>`가 둘 이상 | `a file must have exactly one root element <slide> (one slide per file)` |
+| 어휘 밖의 자식 태그 | `<slide> cannot contain <…> (available tags: <text>, <shape>, <image>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)` |
+| 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <slide> (wrap it in <text>)` |
+| 어휘 밖의 속성 | `unknown attribute … on <slide> (available attributes: layout, id, skip, justify)` |
+| `id`에 값이 없다 (`<slide id>`) | `the id attribute needs a value (id="architecture")` |
+| `id=""` | `the id attribute is empty (remove it to derive the id from the file name)` |
+| `skip` 값이 `true`/`false`가 아니다 | `skip must be true or false (…)` |
+| `layout`에 값이 없다 (`<slide layout>`) | `the layout attribute needs a value (layout="canvas")` |
+| `layout=""` | `the layout attribute is empty (remove it to continue with content)` |
+| `justify`에 값이 없다 (`<slide justify>`) | `the justify attribute needs a value (justify="between")` |
+| `justify=""` | `the justify attribute is empty (remove it to stack from the top)` |
 
 값 층·검증기(`core`)가 내는 진단 — 어휘와 파일을 넘어야 알 수 있는 것. `layout`의 값
 어휘(테마와 함께 자란다)는 파서가 아니라 이 층이 본다:
 
 | 조건 | 진단 메시지 |
 |---|---|
-| 어휘 밖의 `layout` 값 | `알 수 없는 layout "titel" (쓸 수 있는 layout: title, section-divider, content, two-column, image-full, image-text, quote, code, stat, canvas, end)` |
+| 어휘 밖의 `layout` 값 | `unknown layout "titel" (available layouts: title, section-divider, content, two-column, image-full, image-text, quote, code, stat, canvas, end)` |
 | 레이아웃에 없는 `slot` 이름 | 레이아웃마다 허용 슬롯이 다르다 — [`layout=` 페이지](../layouts.md)의 슬롯 표 |
-| 어휘 밖의 `justify` 값 | `알 수 없는 justify "middle" (쓸 수 있는 값: start, center, end, between, around, evenly)` |
-| CSS 접두형 `justify` 값 | `justify는 접두 없는 이름을 쓴다 — "space-between" 대신 "between"` |
-| 슬롯 모드 슬라이드의 `justify` | `슬롯 모드 슬라이드에는 justify를 쓸 수 없다 (세로 리듬은 테마의 content.slots.css가 소유한다) — 슬롯을 쓰지 않는 슬라이드에서 쓴다` |
-| 두 슬라이드의 ID가 같다 | `슬라이드 ID "…"가 …와 충돌한다 (한쪽에 다른 id를 주거나, 필요 없는 슬라이드를 지운다)` — 진단은 뒤 슬라이드의 `id` 값(파일명에서 유도했으면 `<slide>` 태그)에 서고, 메시지는 앞 슬라이드를 `파일:줄:열`로 가리킨다 |
+| 어휘 밖의 `justify` 값 | `unknown justify "middle" (available values: start, center, end, between, around, evenly)` |
+| CSS 접두형 `justify` 값 | `justify takes unprefixed names — instead of "space-between", use "between"` |
+| 슬롯 모드 슬라이드의 `justify` | `justify cannot be used on a slot-mode slide (the theme's content.slots.css owns the vertical rhythm) — use it on slides without slots` |
+| 두 슬라이드의 ID가 같다 | `slide ID "…" collides with … (give one of them a different id, or remove the slide you do not need)` — 진단은 뒤 슬라이드의 `id` 값(파일명에서 유도했으면 `<slide>` 태그)에 서고, 메시지는 앞 슬라이드를 `파일:줄:열`로 가리킨다 |

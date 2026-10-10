@@ -122,9 +122,9 @@
 
   | 속성 | 뜻이 있는 부모 | 밖에서 쓰면 |
   |---|---|---|
-  | `span` | `<grid>`의 자식 | `span은 <grid>의 자식에서만 쓴다 (부모는 <row>다) — flex 컨테이너에서 grid-column은 무효다` |
-  | `at` | [`<stack>`](stack.md)의 자식 | `at은 <stack>의 자식에서만 쓴다 (…) — 겹침이 필요하면 <stack>으로 감싼다` |
-  | `x` / `y` | `<stack>`의 자식 · `layout="canvas"` 슬라이드의 직속 자식 | `x는 <stack>의 자식이나 layout="canvas" 슬라이드의 직속 자식에서만 쓴다 (…) — <stack>으로 감싸거나 슬라이드에 layout="canvas"를 준다` |
+  | `span` | `<grid>`의 자식 | `span is only for children of <grid> (the parent is <row>) — grid-column has no effect in a flex container` |
+  | `at` | [`<stack>`](stack.md)의 자식 | `at is only for children of <stack> (…) — wrap it in <stack> if you need overlap` |
+  | `x` / `y` | `<stack>`의 자식 · `layout="canvas"` 슬라이드의 직속 자식 | `x is only for children of <stack> or direct children of a layout="canvas" slide (…) — wrap it in <stack> or give the slide layout="canvas"` |
 
   `at`과 `x`/`y`는 같은 자식에 **함께 쓸 수 없다** — 둘 다 자리를 정하는 채널이라 하나만
   쓴다 ([`<stack>`](stack.md)). 9지점 앵커 어휘·좌표 문법(음수·`%`·기준 박스)의 전모는
@@ -365,7 +365,7 @@ translate
 ```
 
 ```
-slides/007_style_appearance.slide:8:24: warning: style의 "background" 선언은 배치가 아니다 — 웹에만 적용되고 PPTX에는 이식되지 않는다. 색·테두리 같은 외관은 컴포넌트 속성으로 쓴다
+slides/007_style_appearance.slide:8:24: warning: the "background" declaration in style is not layout — it applies only to the web and does not carry over to PPTX; write appearance such as color or border as component attributes
 ```
 
 경고인 이유는 에러로 두면 엔진이 CSS 프로퍼티 전체를 알아야 하고, 그것이 탈출구의 존재
@@ -379,44 +379,44 @@ slides/007_style_appearance.slide:8:24: warning: style의 "background" 선언은
 
 | 조건 | 진단 메시지 |
 |---|---|
-| `<spacer>`에 자식·문자 데이터를 썼다 | `void 태그 <spacer>은 내용을 가질 수 없다 (<spacer/>로 쓴다)` |
-| 컨테이너 안에 문자 데이터를 직접 썼다 | `<row> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)` |
-| 어휘 밖의 자식 태그 | `<row>의 자식으로 <note>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <image>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <spacer>)` |
-| flex 컨테이너에 트랙을 썼다 | `<row>에 알 수 없는 속성 cols (쓸 수 있는 속성: gap, align, justify, wrap, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, style)` |
-| `<spacer>`에 컨테이너 속성을 썼다 | `<spacer>에 알 수 없는 속성 gap (쓸 수 있는 속성: grow, shrink, basis, span, self, order, style)` |
-| `<li>`에 배치 속성을 썼다 | `<li>에 알 수 없는 속성 grow (쓸 수 있는 속성: reveal)` |
-| 인라인 태그에 배치 속성을 썼다 | `<strong>에는 속성을 쓸 수 없다 (order)` |
-| 블록·`<text>`·`<li>` 안에 컨테이너를 썼다 | `<p> 안에는 문자 데이터와 인라인 태그만 올 수 있다 (<row>는 쓸 수 없다)` |
-| `<ul>`/`<ol>`의 자식에 컨테이너를 썼다 | `<ul>의 자식으로 <row>는 올 수 없다 (쓸 수 있는 태그: <li>)` |
-| `<stack>`에 `gap`·`wrap`·`cols`·`rows`를 썼다 | `<stack>에 알 수 없는 속성 gap (쓸 수 있는 속성: align, justify, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style)` |
+| `<spacer>`에 자식·문자 데이터를 썼다 | `void tag <spacer> cannot have content (write <spacer/>)` |
+| 컨테이너 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <row> (wrap it in <text>)` |
+| 어휘 밖의 자식 태그 | `<row> cannot contain <note> (available tags: <text>, <shape>, <image>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <spacer>)` |
+| flex 컨테이너에 트랙을 썼다 | `unknown attribute cols on <row> (available attributes: gap, align, justify, wrap, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, style)` |
+| `<spacer>`에 컨테이너 속성을 썼다 | `unknown attribute gap on <spacer> (available attributes: grow, shrink, basis, span, self, order, style)` |
+| `<li>`에 배치 속성을 썼다 | `unknown attribute grow on <li> (available attributes: reveal)` |
+| 인라인 태그에 배치 속성을 썼다 | `<strong> takes no attributes (order)` |
+| 블록·`<text>`·`<li>` 안에 컨테이너를 썼다 | `only character data and inline tags are allowed inside <p> (<row> is not allowed)` |
+| `<ul>`/`<ol>`의 자식에 컨테이너를 썼다 | `<ul> cannot contain <row> (available tags: <li>)` |
+| `<stack>`에 `gap`·`wrap`·`cols`·`rows`를 썼다 | `unknown attribute gap on <stack> (available attributes: align, justify, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style)` |
 
 값 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다. 진단은 문제가 된 **조각**을
 가리킨다 (`pad="sm huge"`의 진단은 `huge`를 가리킨다):
 
 | 조건 | 진단 메시지 |
 |---|---|
-| 모르는 공간 토큰 | `알 수 없는 공간 토큰 "huge" (쓸 수 있는 토큰: xs, sm, md, lg, xl, 2xl, 또는 수치·백분율)` |
-| 단위 접미사를 붙였다 | `gap는 단위 없는 논리 px 수치다 ("16px"의 "px"를 뗀다) — px·pt·em 접미사는 쓸 수 없다` |
-| 음수 길이 | `gap는 0보다 작을 수 없다 ("-4")` |
-| 크기에 공간 토큰을 썼다 | `공간 토큰 "md"는 gap·pad에만 쓴다 — w는 수치·백분율·fill이다` |
-| 어휘 밖의 `align`/`self` | `알 수 없는 align "centre" (쓸 수 있는 값: start, center, end, stretch, baseline)` |
-| CSS 접두를 붙였다 | `align는 접두 없는 이름을 쓴다 — "flex-start" 대신 "start"` |
-| 어휘 밖의 `justify` | `알 수 없는 justify "middle" (쓸 수 있는 값: start, center, end, between, around, evenly)` |
-| `justify`에 `space-` 접두를 붙였다 | `justify는 접두 없는 이름을 쓴다 — "space-between" 대신 "between"` |
-| `wrap="false"` | `wrap은 값 없는 속성(<row wrap>)이거나 wrap="true"다 ("false") — 줄바꿈 없음이 기본값이므로 끄려면 속성을 지운다` |
-| `pad`에 값이 5개 이상 | `pad는 1~4개 값이다 ("1 2 3 4 5"는 5개) — CSS padding의 상·우·하·좌 축약과 같은 규칙이다` |
-| 트랙 개수가 0 이하 | `cols의 트랙 개수는 1 이상 정수다 ("0")` |
-| 어휘 밖의 트랙 값 | `cols의 트랙 값 "넷"를 알 수 없다 (쓸 수 있는 형태: 수치·Nfr·N%·auto, 또는 트랙 개수 정수 하나)` |
-| 잘못된 `ratio` | `ratio는 W:H 정수 쌍이다 ("16") — 예: 16:9` / `ratio의 W와 H는 0보다 커야 한다 ("0:9")` |
-| `grow`/`shrink`가 정수가 아니다 | `grow는 정수다 ("1.5")` / `grow는 0보다 작을 수 없다 ("-1")` |
-| `span`이 1보다 작다 | `span은 1 이상 정수다 ("0")` |
-| `span`을 grid 밖에서 썼다 | `span은 <grid>의 자식에서만 쓴다 (부모는 <row>다) — flex 컨테이너에서 grid-column은 무효다` |
-| `at`을 stack 밖에서 썼다 | `at은 <stack>의 자식에서만 쓴다 (부모는 <row>다) — 겹침이 필요하면 <stack>으로 감싼다` |
-| `x`/`y`를 유효하지 않은 부모에서 썼다 | `x는 <stack>의 자식이나 layout="canvas" 슬라이드의 직속 자식에서만 쓴다 (…) — <stack>으로 감싸거나 슬라이드에 layout="canvas"를 준다` |
-| `at`과 `x`/`y`를 함께 썼다 | `at과 x를 함께 쓸 수 없다 (x는 …에 있다) — 둘 다 자리를 정하는 채널이라 하나만 쓴다 (at은 9지점 앵커, x/y는 절대 오프셋)` |
-| `style` 선언에 콜론이 없다 | `style 선언 "width 100px"에 콜론이 없다 — \`속성: 값\` 형태로 쓴다` |
-| `style` 선언에 값이 없다 | `style 선언 "width:"에 값이 없다` |
-| 배치 속성에 값이 없다 | `w 속성에는 값이 필요하다 (w="fill")` / `gap 속성이 비어 있다 (지우면 기본값을 쓴다)` |
+| 모르는 공간 토큰 | `unknown space token "huge" (available tokens: xs, sm, md, lg, xl, 2xl, or a number or percentage)` |
+| 단위 접미사를 붙였다 | `gap is a unitless number in logical px (drop the "px" from "16px") — px, pt and em suffixes are not allowed` |
+| 음수 길이 | `gap cannot be negative ("-4")` |
+| 크기에 공간 토큰을 썼다 | `space token "md" is only for gap and pad — w takes a number, percentage, fill` |
+| 어휘 밖의 `align`/`self` | `unknown align "centre" (available values: start, center, end, stretch, baseline)` |
+| CSS 접두를 붙였다 | `align takes unprefixed names — instead of "flex-start", use "start"` |
+| 어휘 밖의 `justify` | `unknown justify "middle" (available values: start, center, end, between, around, evenly)` |
+| `justify`에 `space-` 접두를 붙였다 | `justify takes unprefixed names — instead of "space-between", use "between"` |
+| `wrap="false"` | `wrap is either a valueless attribute (<row wrap>) or wrap="true" ("false") — no wrapping is the default, so remove the attribute to turn it off` |
+| `pad`에 값이 5개 이상 | `pad takes 1 to 4 values ("1 2 3 4 5" has 5) — the same top/right/bottom/left shorthand rule as CSS padding` |
+| 트랙 개수가 0 이하 | `the track count of cols is an integer of at least 1 ("0")` |
+| 어휘 밖의 트랙 값 | `unknown track value "넷" in cols (available forms: a number, Nfr, N%, auto, or a single integer track count)` |
+| 잘못된 `ratio` | `ratio is a W:H pair of integers ("16") — e.g. 16:9` / `W and H of ratio must be greater than 0 ("0:9")` |
+| `grow`/`shrink`가 정수가 아니다 | `grow is an integer ("1.5")` / `grow cannot be negative ("-1")` |
+| `span`이 1보다 작다 | `span is an integer of at least 1 ("0")` |
+| `span`을 grid 밖에서 썼다 | `span is only for children of <grid> (the parent is <row>) — grid-column has no effect in a flex container` |
+| `at`을 stack 밖에서 썼다 | `at is only for children of <stack> (the parent is <row>) — wrap it in <stack> if you need overlap` |
+| `x`/`y`를 유효하지 않은 부모에서 썼다 | `x is only for children of <stack> or direct children of a layout="canvas" slide (…) — wrap it in <stack> or give the slide layout="canvas"` |
+| `at`과 `x`/`y`를 함께 썼다 | `at cannot be combined with x (x is at …) — both set the position, so use only one (at is a 9-point anchor, x/y are absolute offsets)` |
+| `style` 선언에 콜론이 없다 | `` style declaration "width 100px" has no colon — write it as `property: value` `` |
+| `style` 선언에 값이 없다 | `style declaration "width:" has no value` |
+| 배치 속성에 값이 없다 | `the w attribute needs a value (w="fill")` / `the gap attribute is empty (remove it to use the default)` |
 
 `style`의 allowlist 밖 프로퍼티는 **경고**다 (위 탈출구 절) — 에러가 아니므로 기본 빌드는
 통과하고 `--strict`가 승격한다.

@@ -48,7 +48,7 @@ func resolveChrome(deck *soml.Deck, pkg themePackage) ([]soml.ChromeItem, soml.D
 		decl, ok := pkg.chromeDeclFor(kind)
 		if !ok {
 			diags = append(diags, soml.Warningf(ConfigFile, soml.Span{},
-				"테마 %q에 %s 크롬 선언이 없어 %s를 쓸 수 없다 (theme.json의 chrome) — 이 덱은 %s 없이 렌더된다",
+				"theme %q has no %s chrome declaration, so %s cannot be used (chrome in theme.json) — this deck renders without a %s",
 				pkg.manifest.Name, kind, kind, chromeNoun(kind)))
 			continue
 		}
@@ -113,7 +113,7 @@ func chromeStyle(pkg themePackage, role soml.TextRole) soml.TextStyle {
 // 나오면 그 문장은 설정 키를 말하는 것인지 결과를 말하는 것인지 모르게 된다.
 func chromeNoun(kind soml.ChromeKind) string {
 	if kind == soml.ChromePageNumber {
-		return "페이지 번호"
+		return "page number"
 	}
-	return "푸터"
+	return "footer"
 }

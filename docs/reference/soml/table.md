@@ -288,29 +288,29 @@
 
 | 조건 | 진단 메시지 |
 |---|---|
-| `<tr>`을 표 밖에 썼다 | `<tr>는 <table>의 자식으로만 쓸 수 있다` |
-| `<th>`/`<td>`를 행 밖에 썼다 | `<th>/<td>는 <tr>의 자식으로만 쓸 수 있다` |
-| `<table>`에 행이 아닌 자식을 썼다 | `<table>의 자식으로 <p>는 올 수 없다 (쓸 수 있는 태그: <tr>)` |
-| 셀 안에 블록을 썼다 | `<td> 안에 블록 태그 <p>는 올 수 없다` |
-| `<table>` 안에 문자 데이터를 직접 썼다 | `<table> 안에 문자 데이터를 직접 쓸 수 없다 (<tr>로 감싼다)` |
-| `<tr>` 안에 문자 데이터를 직접 썼다 | `<tr> 안에 문자 데이터를 직접 쓸 수 없다 (<td>로 감싼다)` |
-| `<table>`에 `w`/`h`를 썼다 | `<table>에 알 수 없는 속성 w (쓸 수 있는 속성: alt, variant, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
-| `<tr>`에 속성을 썼다 | `<tr>에는 속성을 쓸 수 없다 (fill)` |
-| 셀에 `variant`를 썼다 | `<td>에 알 수 없는 속성 variant (쓸 수 있는 속성: colspan, rowspan, fill, border, color, align, anchor)` |
+| `<tr>`을 표 밖에 썼다 | `<tr> can only be a child of <table>` |
+| `<th>`/`<td>`를 행 밖에 썼다 | `<th>/<td> can only be children of <tr>` |
+| `<table>`에 행이 아닌 자식을 썼다 | `<table> cannot contain <p> (available tags: <tr>)` |
+| 셀 안에 블록을 썼다 | `block tag <p> is not allowed inside <td> (blocks do not nest)` |
+| `<table>` 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <table> (wrap it in <tr>)` |
+| `<tr>` 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <tr> (wrap it in <td>)` |
+| `<table>`에 `w`/`h`를 썼다 | `unknown attribute w on <table> (available attributes: alt, variant, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| `<tr>`에 속성을 썼다 | `<tr> takes no attributes (fill)` |
+| 셀에 `variant`를 썼다 | `unknown attribute variant on <td> (available attributes: colspan, rowspan, fill, border, color, align, anchor)` |
 
 값 해석(`core.Resolve`) — 격자와 값 어휘. 격자 진단은 **행 하나에 하나**다 (어느 셀이 틀렸는지는
 값 층이 알 수 없다 — 칸 수만 안다):
 
 | 조건 | 진단 메시지 |
 |---|---|
-| 첫 행이 비었다 | `표의 첫 행에 셀이 없다 — 첫 행이 표의 열 수를 정한다` |
-| 행의 칸 수가 열 수와 다르다 | `이 행은 4칸인데 표의 열은 5칸이다 — 첫 행이 열 수를 정한다 (셀이나 colspan을 맞춘다)` |
-| `colspan`이 위 행의 `rowspan`이 덮은 칸을 지난다 | `병합이 겹친다 — 2번째 열은 위 행의 rowspan이 이미 덮었다 (colspan 2이 그 칸을 지난다)` |
-| `rowspan`이 마지막 행을 넘는다 | `rowspan 3은 표의 마지막 행을 넘는다 — 이 셀 아래 남은 행은 1개다` |
-| `colspan`/`rowspan`이 0·음수·정수가 아니다 | `colspan는 1 이상 정수다 ("0")` |
-| `alt`에 값이 없다 | `alt 속성에는 값이 필요하다 (alt="chart") — 이름이 필요 없으면 속성을 지운다` |
-| `alt=""` | `alt은 비어 있을 수 없다 — 이름 없음이 기본값이므로 속성을 지운다 (그림의 alt=""와 다르다: <img>에서 빈 alt은 "장식 이미지"라는 뜻이지만 도형·표에는 그 표기가 없다)` |
-| 어휘 밖 `variant` (**경고**) | `variant "zebra"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: striped)` |
+| 첫 행이 비었다 | `the first row of the table has no cells — the first row sets the column count` |
+| 행의 칸 수가 열 수와 다르다 | `this row has 4 cell(s) but the table has 5 column(s) — the first row sets the column count (adjust the cells or colspan)` |
+| `colspan`이 위 행의 `rowspan`이 덮은 칸을 지난다 | `merged cells overlap — column 2 is already covered by a rowspan from a row above (colspan 2 crosses it)` |
+| `rowspan`이 마지막 행을 넘는다 | `rowspan 3 runs past the last row of the table — only 1 row(s) remain below this cell` |
+| `colspan`/`rowspan`이 0·음수·정수가 아니다 | `colspan is an integer of at least 1 ("0")` |
+| `alt`에 값이 없다 | `the alt attribute needs a value (alt="chart") — remove the attribute if no name is needed` |
+| `alt=""` | `alt cannot be empty — no name is the default, so remove the attribute (unlike alt="" on images: an empty alt on <img> means "decorative image", but shapes and tables have no such notation)` |
+| 어휘 밖 `variant` (**경고**) | `variant "zebra" is not in the theme — continuing with the default appearance (variants in this theme: striped)` |
 
 `fill`·`border`·`color`·`align`·`anchor`의 값 진단은 [외관 속성](../appearance.md)·
 [`<shape>`](shape.md)와 **같은 문구**다 — 목록이 한 벌이므로 진단도 한 벌이다.

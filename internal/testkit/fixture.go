@@ -44,7 +44,7 @@ func Fixtures(t testing.TB) []Fixture {
 	root := filepath.Join(RepoRoot(t), filepath.FromSlash(FixturesDir))
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		t.Fatalf("픽스처 디렉토리를 읽을 수 없다: %v", err)
+		t.Fatalf("cannot read fixtures directory: %v", err)
 	}
 	var fixtures []Fixture
 	for _, entry := range entries {
@@ -55,7 +55,7 @@ func Fixtures(t testing.TB) []Fixture {
 		fixtures = append(fixtures, Fixture{Name: entry.Name(), Dir: filepath.Join(root, entry.Name())})
 	}
 	if len(fixtures) == 0 {
-		t.Fatalf("픽스처가 없다: %s", root)
+		t.Fatalf("no fixtures: %s", root)
 	}
 	sort.Slice(fixtures, func(i, j int) bool { return fixtures[i].Name < fixtures[j].Name })
 	return fixtures
@@ -79,7 +79,7 @@ func (f Fixture) Build(t testing.TB) *pipeline.Result {
 		Measurer:   session,
 	})
 	if err != nil {
-		t.Fatalf("%s 빌드 실패: %v", f.Name, err)
+		t.Fatalf("%s build failed: %v", f.Name, err)
 	}
 	return result
 }
@@ -117,18 +117,18 @@ func PPTXParts(t testing.TB, data []byte) map[string][]byte {
 	t.Helper()
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
-		t.Fatalf("pptx를 열 수 없다: %v", err)
+		t.Fatalf("cannot open pptx: %v", err)
 	}
 	parts := make(map[string][]byte, len(zr.File))
 	for _, entry := range zr.File {
 		rc, err := entry.Open()
 		if err != nil {
-			t.Fatalf("파트 %s를 열 수 없다: %v", entry.Name, err)
+			t.Fatalf("cannot open part %s: %v", entry.Name, err)
 		}
 		content, err := io.ReadAll(rc)
 		rc.Close()
 		if err != nil {
-			t.Fatalf("파트 %s를 읽을 수 없다: %v", entry.Name, err)
+			t.Fatalf("cannot read part %s: %v", entry.Name, err)
 		}
 		parts[entry.Name] = content
 	}
@@ -143,6 +143,6 @@ func (f Fixture) Output(t testing.TB, result *pipeline.Result, ext string) strin
 			return filepath.Join(result.OutDir, filepath.FromSlash(name))
 		}
 	}
-	t.Fatalf("%s: 확장자가 %s인 산출물이 없다 (%v)", f.Name, ext, result.Written)
+	t.Fatalf("%s: no output with extension %s (%v)", f.Name, ext, result.Written)
 	return ""
 }

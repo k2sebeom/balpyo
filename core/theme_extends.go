@@ -97,7 +97,7 @@ func CheckThemeName(fsys fs.FS, name string) error {
 // unknownThemeError는 세 자리 어디에도 없는 이름의 에러다. 받을 곳은 말하지 않는다 —
 // `balpyo.json`은 이름만 담으므로 그것을 아는 것은 사람이다.
 func unknownThemeError(fsys fs.FS, name string) error {
-	return fmt.Errorf("알 수 없는 테마 %q — 내장 테마도, 프로젝트 themes/의 테마도, 설치한 테마도 아니다 (쓸 수 있는 테마: %s)",
+	return fmt.Errorf("unknown theme %q — not a built-in theme, a theme in the project's themes/, or an installed theme (available themes: %s)",
 		name, strings.Join(ThemeNames(fsys), ", "))
 }
 
@@ -110,7 +110,7 @@ func unknownThemeError(fsys fs.FS, name string) error {
 func checkThemeShadowing(fsys fs.FS) error {
 	for _, name := range localThemeNames(fsys) {
 		if IsBuiltinTheme(name) {
-			return fmt.Errorf("%s/%s/가 내장 테마 %q와 이름이 같다 — 로컬 테마의 이름을 바꾼다",
+			return fmt.Errorf("%s/%s/ has the same name as the built-in theme %q — rename the local theme",
 				themeDir, name, name)
 		}
 	}
@@ -146,10 +146,10 @@ func locateTheme(fsys fs.FS, name string) (themeLocation, bool, error) {
 	switch {
 	case installed && builtin:
 		return themeLocation{}, false, fmt.Errorf(
-			"설치한 테마 %q가 내장 테마와 이름이 같다 — balpyo theme remove %s로 설치를 지운다", name, name)
+			"installed theme %q has the same name as a built-in theme — remove the installation with balpyo theme remove %s", name, name)
 	case installed && local:
 		return themeLocation{}, false, fmt.Errorf(
-			"테마 %q가 프로젝트의 %s/%s/에도, 설치한 테마에도 있다 — 로컬 테마의 이름을 바꾸거나 balpyo theme remove %s로 설치를 지운다",
+			"theme %q exists both in the project's %s/%s/ and among installed themes — rename the local theme or remove the installation with balpyo theme remove %s",
 			name, themeDir, name, name)
 	case builtin:
 		return themeLocation{builtinThemes, path.Join(themeDir, name), originBuiltin}, true, nil
@@ -208,7 +208,7 @@ func readThemeChain(fsys fs.FS, name string) ([]rawTheme, error) {
 	for {
 		for _, prev := range seen {
 			if prev == name {
-				return nil, fmt.Errorf("theme.json의 extends가 순환한다: %s → %s",
+				return nil, fmt.Errorf("theme.json extends forms a cycle: %s → %s",
 					strings.Join(seen, " → "), name)
 			}
 		}
@@ -223,15 +223,15 @@ func readThemeChain(fsys fs.FS, name string) ([]rawTheme, error) {
 				return nil, unknownThemeError(fsys, name)
 			}
 			// 부모가 없는 경우는 **자식을 가리켜** 멈춘다 — 고칠 자리가 그 자식의 theme.json이다.
-			return nil, fmt.Errorf("테마 %q의 extends가 없는 테마 %q를 가리킨다 (쓸 수 있는 테마: %s)",
+			return nil, fmt.Errorf("theme %q extends theme %q, which does not exist (available themes: %s)",
 				seen[len(seen)-2], name, strings.Join(ThemeNames(fsys), ", "))
 		}
 		raw, err := readRawTheme(loc.fsys, loc.dir)
 		if err != nil {
-			return nil, fmt.Errorf("테마 %q: %w", name, err)
+			return nil, fmt.Errorf("theme %q: %w", name, err)
 		}
 		if raw.manifest.Name != name {
-			return nil, fmt.Errorf("%s/theme.json의 name이 %q다 — 디렉토리 이름 %q와 같아야 한다",
+			return nil, fmt.Errorf("%s/theme.json has name %q — it must match the directory name %q",
 				loc.dir, raw.manifest.Name, name)
 		}
 		raw.origin = loc.origin

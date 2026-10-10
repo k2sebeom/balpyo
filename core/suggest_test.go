@@ -14,15 +14,15 @@ func TestValueTyposSuggestACandidate(t *testing.T) {
 		want string
 	}{
 		{"layout", `<slide layout="two-colum"></slide>`,
-			`알 수 없는 layout "two-colum" — 혹시 "two-column"? (쓸 수 있는 layout: `},
+			`unknown layout "two-colum" — did you mean "two-column"? (available layouts: `},
 		{"role", `<slide><text role="heding">제목</text></slide>`,
-			`알 수 없는 role "heding" — 혹시 "heading"? (쓸 수 있는 역할: `},
+			`unknown role "heding" — did you mean "heading"? (available roles: `},
 		{"도형 type", `<slide><shape type="elipse" w="100" h="100"/></slide>`,
-			`알 수 없는 도형 type "elipse" — 혹시 "ellipse"? (쓸 수 있는 종류: `},
+			`unknown shape type "elipse" — did you mean "ellipse"? (available types: `},
 		{"색 토큰", `<slide><text color="acent1">a</text></slide>`,
-			`의 색 토큰 "acent1"가 테마에 없다 — 혹시 "accent1"? (쓸 수 있는 토큰: `},
+			`: color token "acent1" is not in the theme — did you mean "accent1"? (available tokens: `},
 		{"align", `<slide><text align="centre">a</text></slide>`,
-			`알 수 없는 align "centre" — 혹시 "center"? (쓸 수 있는 값: `},
+			`unknown align "centre" — did you mean "center"? (available values: `},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -41,7 +41,7 @@ func TestValueTyposSuggestACandidate(t *testing.T) {
 func TestValueTyposWithoutCandidate(t *testing.T) {
 	_, diags := resolveSlide(t, `<slide><shape type="arrow" w="100" h="100"/></slide>`)
 	for _, diag := range diags {
-		if strings.Contains(diag.Message, "혹시") {
+		if strings.Contains(diag.Message, "did you mean") {
 			t.Errorf("먼 이름에 후보가 붙었다: %s", diag.Message)
 		}
 	}

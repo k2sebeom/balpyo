@@ -134,7 +134,7 @@ func TestLoadDeckSkipsSlides(t *testing.T) {
 func TestLoadDeckAllSlidesSkipped(t *testing.T) {
 	dir := newProject(t, map[string]string{"slides/001_title.slide": "<slide skip></slide>"})
 	_, _, err := LoadDeck(Options{ProjectDir: dir})
-	if err == nil || !strings.Contains(err.Error(), "모두 skip") {
+	if err == nil || !strings.Contains(err.Error(), "are skipped") {
 		t.Errorf("에러 = %v, want \"모두 skip\"", err)
 	}
 }
@@ -151,7 +151,7 @@ func TestLoadDeckReportsParseErrors(t *testing.T) {
 	if len(diags) != 1 {
 		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
 	}
-	want := "slides/001_title.slide:2:4: error: 알 수 없는 태그 <txt>"
+	want := "slides/001_title.slide:2:4: error: unknown tag <txt>"
 	if !strings.HasPrefix(diags[0].String(), want) {
 		t.Errorf("진단 = %q, want %q로 시작", diags[0].String(), want)
 	}
@@ -322,7 +322,7 @@ func TestLoadDeckErrors(t *testing.T) {
 		{
 			name:    "슬라이드 파일이 없다",
 			files:   map[string]string{"slides/README.md": "메모"},
-			wantMsg: "슬라이드가 없다",
+			wantMsg: "no slides",
 		},
 		{
 			name: "ID가 충돌한다",
@@ -330,7 +330,7 @@ func TestLoadDeckErrors(t *testing.T) {
 				"slides/001_intro.slide":    "<slide></slide>",
 				"slides/ch/002_intro.slide": "<slide></slide>",
 			},
-			wantMsg: "충돌",
+			wantMsg: "collides",
 		},
 		{
 			name:    "설정이 깨졌다",
@@ -362,7 +362,7 @@ func TestLoadDeckDuplicateIDHasPositions(t *testing.T) {
 	if err == nil {
 		t.Fatal("ID 충돌을 통과시켰다")
 	}
-	want := `slides/ch/001_cover.slide:2:2: error: 슬라이드 ID "cover"가 slides/001_title.slide:1:12와 충돌한다 (한쪽에 다른 id를 주거나, 필요 없는 슬라이드를 지운다)`
+	want := `slides/ch/001_cover.slide:2:2: error: slide ID "cover" collides with slides/001_title.slide:1:12 (give one of them a different id, or remove the slide you do not need)`
 	if !strings.Contains(err.Error(), want) {
 		t.Errorf("진단\n got: %v\nwant: %s", err, want)
 	}
@@ -561,8 +561,8 @@ func TestLoadDeckRejectsMissingAsset(t *testing.T) {
 	if err == nil {
 		t.Fatal("없는 src는 빌드 에러여야 한다")
 	}
-	if !diags.HasErrors() || !strings.Contains(diags[0].Message, "파일이 없다") {
-		t.Errorf("진단 = %v, want 파일이 없다", diags)
+	if !diags.HasErrors() || !strings.Contains(diags[0].Message, "does not exist") {
+		t.Errorf("진단 = %v, want does not exist", diags)
 	}
 	// 진단은 슬라이드 파일의 값 위치를 가리킨다 — 저자가 에디터에서 바로 고친다.
 	if diags[0].File != "slides/001_title.slide" || diags[0].Span.Start.Line != 2 {
@@ -614,8 +614,8 @@ func TestLoadDeckRejectsUnknownLayout(t *testing.T) {
 	if err == nil {
 		t.Fatal("어휘 밖 layout은 빌드 에러여야 한다")
 	}
-	if len(diags) != 1 || !strings.Contains(diags[0].Message, "알 수 없는 layout") {
-		t.Fatalf("진단 = %v, want '알 수 없는 layout'", diags)
+	if len(diags) != 1 || !strings.Contains(diags[0].Message, "unknown layout") {
+		t.Fatalf("진단 = %v, want 'unknown layout'", diags)
 	}
 	// 진단은 슬라이드 파일의 값 위치를 가리킨다 — 저자가 에디터에서 바로 고친다.
 	if diags[0].File != "slides/001_title.slide" || diags[0].Span.Start.Line != 1 || diags[0].Span.Start.Col != 23 {

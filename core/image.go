@@ -166,18 +166,18 @@ func (r *resolver) imageAttrs(elem *soml.Element, style *soml.ImageStyle) imageP
 func (r *resolver) imageSrc(elem *soml.Element) string {
 	attr, ok := elem.Attr("src")
 	if !ok {
-		r.errorf(elem.NameSpan, "<%s>에 src가 필요하다 (src=%q) — 그림의 경로는 추측할 수 없다",
+		r.errorf(elem.NameSpan, "<%s> needs a src (src=%q) — the image path cannot be guessed",
 			soml.ImageElement, attrExample("src"))
 		return ""
 	}
 	// hasValue를 그대로 쓰지 않는 이유는 빈 값의 진단 문구다: "지우면 기본값을 쓴다"가 여기서는
 	// 틀린 안내다 (src에는 기본값이 없고, 지우면 위의 에러가 난다).
 	if !attr.HasValue {
-		r.errorf(attr.NameSpan, "src 속성에는 값이 필요하다 (src=%q)", attrExample("src"))
+		r.errorf(attr.NameSpan, "the src attribute needs a value (src=%q)", attrExample("src"))
 		return ""
 	}
 	if attr.Value == "" {
-		r.errorf(attr.ValueSpan, "src가 비어 있다 — 프로젝트 루트 기준 경로를 적는다 (예: %q)",
+		r.errorf(attr.ValueSpan, "src is empty — write a path relative to the project root (e.g. %q)",
 			attrExample("src"))
 		return ""
 	}
@@ -185,7 +185,7 @@ func (r *resolver) imageSrc(elem *soml.Element) string {
 	if strings.ContainsRune(raw, '\\') {
 		// 역슬래시를 조용히 `/`로 바꾸지 않는다: 파일 이름에 역슬래시를 쓸 수 있는 파일
 		// 시스템이 있어 변환이 다른 파일을 가리킬 수 있고, 그 차이는 CI에서만 드러난다.
-		r.errorf(attr.ValueSpan, "src의 경로 구분자는 %q다 (%q에 역슬래시가 있다) — 같은 덱이 기계마다 다르게 빌드되지 않게 한다",
+		r.errorf(attr.ValueSpan, "the path separator in src is %q (%q contains a backslash) — so the same deck builds the same on every machine",
 			"/", raw)
 		return ""
 	}
@@ -194,15 +194,15 @@ func (r *resolver) imageSrc(elem *soml.Element) string {
 			return r.themeImageSrc(attr, raw[len(scheme)+1:])
 		}
 		if scheme == "data" {
-			r.errorf(attr.ValueSpan, "src에 data: URL은 쓸 수 없다 — 그림은 파일로 커밋한다 (원문에 바이트를 실으면 슬라이드를 사람이 읽을 수도, 진단이 자리를 가리킬 수도 없다)")
+			r.errorf(attr.ValueSpan, "src cannot be a data: URL — commit the image as a file (bytes inlined in the source make the slide unreadable to people and leave diagnostics nothing to point at)")
 			return ""
 		}
-		r.errorf(attr.ValueSpan, "src에 URL은 쓸 수 없다 (%q) — 빌드가 네트워크에 의존하면 같은 덱이 CI에서 다르게 빌드되고 오프라인 발표 약속이 깨진다. 파일을 프로젝트 안에 두고 상대 경로로 가리킨다",
+		r.errorf(attr.ValueSpan, "src cannot be a URL (%q) — a build that depends on the network builds the same deck differently in CI and breaks the offline-presentation promise; put the file in the project and point to it with a relative path",
 			raw)
 		return ""
 	}
 	if strings.HasPrefix(raw, "/") {
-		r.errorf(attr.ValueSpan, "src는 프로젝트 루트 기준 상대 경로다 (%q는 절대 경로) — 절대 경로는 빌드를 이 기계에 묶는다 (CI에서 같은 덱이 다르게 빌드된다)",
+		r.errorf(attr.ValueSpan, "src is a path relative to the project root (%q is absolute) — an absolute path ties the build to this machine (the same deck builds differently in CI)",
 			raw)
 		return ""
 	}
@@ -210,7 +210,7 @@ func (r *resolver) imageSrc(elem *soml.Element) string {
 	// 같은 바이트가 두 번 들어간다 (PPTX 미디어 파트가 둘이 된다).
 	key := path.Clean(raw)
 	if key == ".." || strings.HasPrefix(key, "../") {
-		r.errorf(attr.ValueSpan, "src가 프로젝트 밖을 가리킨다 (%q) — 에셋은 프로젝트 안에 둔다 (밖을 가리키면 빌드가 이 기계에 의존한다)",
+		r.errorf(attr.ValueSpan, "src points outside the project (%q) — keep assets inside the project (pointing outside makes the build depend on this machine)",
 			raw)
 		return ""
 	}
@@ -224,19 +224,19 @@ func (r *resolver) imageSrc(elem *soml.Element) string {
 // 프로젝트 경로와 `theme:` 경로가 같은 규칙을 지난다 (raw는 진단에 싣는 원문이다).
 func (r *resolver) imageFile(attr soml.Attr, raw, key string) bool {
 	if key == "." || key == "/" {
-		r.errorf(attr.ValueSpan, "src가 파일을 가리키지 않는다 (%q)", raw)
+		r.errorf(attr.ValueSpan, "src does not point to a file (%q)", raw)
 		return false
 	}
 	ext := path.Ext(key)
 	if ext == "" {
-		r.errorf(attr.ValueSpan, "src에 확장자가 없다 (%q) — 확장자가 PPTX의 콘텐츠 타입을 정한다 (쓸 수 있는 것: %s)",
+		r.errorf(attr.ValueSpan, "src has no extension (%q) — the extension sets the PPTX content type (available: %s)",
 			raw, imageExtList())
 		return false
 	}
 	if _, known := soml.ImageFormatForExt(ext); !known {
 		// 진단은 **이유와 대안**을 말한다: 어휘를 2종으로 닫은 것은 양 타깃이 그리는 것만
 		// 연다는 규칙의 결과이고(soml.ImageFormat), 저자에게는 늘 고칠 방법이 있다.
-		r.errorf(attr.ValueSpan, "src의 %q는 v1이 그리지 못한다 (쓸 수 있는 것: %s) — %s",
+		r.errorf(attr.ValueSpan, "v1 cannot render %q in src (available: %s) — %s",
 			strings.ToLower(ext), imageExtList(), imageExtReason(ext))
 		return false
 	}
@@ -258,17 +258,17 @@ const themeSrcScheme = "theme"
 func (r *resolver) themeImageSrc(attr soml.Attr, rel string) string {
 	raw := attr.Value
 	if rel == "" {
-		r.errorf(attr.ValueSpan, "%s: 뒤에 경로가 없다 — 테마의 %s/ 기준 경로를 적는다 (예: %q)",
+		r.errorf(attr.ValueSpan, "no path after %s: — write a path relative to the theme's %s/ (e.g. %q)",
 			themeSrcScheme, themeAssetDir, themeSrcScheme+":icons/logo.png")
 		return ""
 	}
 	if strings.HasPrefix(rel, "/") {
-		r.errorf(attr.ValueSpan, "%s: 경로는 테마의 %s/ 기준 상대 경로다 (%q는 절대 경로)", themeSrcScheme, themeAssetDir, raw)
+		r.errorf(attr.ValueSpan, "a %s: path is relative to the theme's %s/ (%q is absolute)", themeSrcScheme, themeAssetDir, raw)
 		return ""
 	}
 	clean := path.Clean(rel)
 	if clean == ".." || strings.HasPrefix(clean, "../") {
-		r.errorf(attr.ValueSpan, "src가 테마의 %s/ 밖을 가리킨다 (%q) — %s: 그림은 테마의 %s/ 안의 파일이다",
+		r.errorf(attr.ValueSpan, "src points outside the theme's %s/ (%q) — a %s: image is a file inside the theme's %s/",
 			themeAssetDir, raw, themeSrcScheme, themeAssetDir)
 		return ""
 	}
@@ -276,12 +276,12 @@ func (r *resolver) themeImageSrc(attr soml.Attr, rel string) string {
 		return ""
 	}
 	if r.themeAssets == nil {
-		r.errorf(attr.ValueSpan, "%s: 그림을 찾을 테마가 없다 (%q) — 엔진 버그다 (값 층이 테마 색인 없이 돌았다)", themeSrcScheme, raw)
+		r.errorf(attr.ValueSpan, "no theme to look up the %s: image in (%q) — this is an engine bug (the value layer ran without a theme index)", themeSrcScheme, raw)
 		return ""
 	}
 	key, found, msg := r.themeAssets.use(path.Join(themeAssetDir, clean))
 	if !found {
-		r.errorf(attr.ValueSpan, "%s:%s을 테마 %s의 %s/에서 찾을 수 없다", themeSrcScheme, clean, themeChainText(r.themeChain), themeAssetDir)
+		r.errorf(attr.ValueSpan, "cannot find %s:%s in theme %s (under %s/)", themeSrcScheme, clean, themeChainText(r.themeChain), themeAssetDir)
 		return ""
 	}
 	if msg != "" {
@@ -341,15 +341,15 @@ func srcScheme(raw string) string {
 func imageExtReason(ext string) string {
 	switch strings.ToLower(ext) {
 	case ".svg":
-		return "PPTX는 벡터를 확장 요소(svgBlip)와 래스터 폴백으로 실어 소비자마다 다르게 열린다 — png나 jpeg로 내보낸다"
+		return "PPTX carries vectors as an extension element (svgBlip) with a raster fallback, so each consumer opens it differently — export as png or jpeg"
 	case ".gif", ".apng":
-		return "애니메이션에는 양 타깃의 대응이 없다 — png나 jpeg로 내보낸다"
+		return "animation has no equivalent in both targets — export as png or jpeg"
 	case ".webp", ".avif", ".heic":
-		return "PowerPoint 버전마다 지원이 갈려 열리지 않는 기계가 생긴다 — png나 jpeg로 내보낸다"
+		return "support varies across PowerPoint versions, so some machines cannot open it — export as png or jpeg"
 	case ".bmp", ".tif", ".tiff":
-		return "웹 브라우저의 지원이 갈린다 — png나 jpeg로 내보낸다"
+		return "web browser support varies — export as png or jpeg"
 	}
-	return "png나 jpeg로 내보낸다"
+	return "export as png or jpeg"
 }
 
 // imageFit은 `fit`을 해석한다 — 어휘 2종이다 (soml.ImageFits).
@@ -367,11 +367,11 @@ func (r *resolver) imageFit(attr soml.Attr) (soml.ImageFit, bool) {
 		}
 	}
 	if cssOnlyFits[attr.Value] {
-		r.errorf(attr.ValueSpan, "CSS object-fit의 %q는 PPTX에 대응이 없다 (쓸 수 있는 값: %s) — 비율을 무시하고 늘리는 대신 ratio로 박스를 그림 비율에 맞춘다",
+		r.errorf(attr.ValueSpan, "CSS object-fit %q has no PPTX equivalent (available values: %s) — instead of stretching past the aspect ratio, match the box to the image with ratio",
 			attr.Value, imageFitList())
 		return "", false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 fit %q%s (쓸 수 있는 값: %s)", attr.Value, didYouMean(attr.Value, imageFitList()), imageFitList())
+	r.errorf(attr.ValueSpan, "unknown fit %q%s (available values: %s)", attr.Value, didYouMean(attr.Value, imageFitList()), imageFitList())
 	return "", false
 }
 
@@ -387,7 +387,7 @@ var cssOnlyFits = map[string]bool{"fill": true, "none": true, "scale-down": true
 // 낸다. 값 **없는** `alt`은 여전히 에러다: 뜻을 정할 수 없는 형태다.
 func (r *resolver) imageAlt(attr soml.Attr) (string, bool) {
 	if !attr.HasValue {
-		r.errorf(attr.NameSpan, "alt 속성에는 값이 필요하다 (alt=%q) — 장식 그림은 alt=\"\"로 적는다",
+		r.errorf(attr.NameSpan, "the alt attribute needs a value (alt=%q) — write alt=\"\" for a decorative image",
 			attrExample("alt"))
 		return "", false
 	}

@@ -64,12 +64,12 @@ type part struct {
 func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 	cx, cy := SlideSize(deck.Stage)
 	if cx <= 0 || cy <= 0 {
-		return nil, fmt.Errorf("논리 스테이지 크기가 유효하지 않다: %dx%d", deck.Stage.Width, deck.Stage.Height)
+		return nil, fmt.Errorf("invalid logical stage size: %dx%d", deck.Stage.Width, deck.Stage.Height)
 	}
 	if len(deck.Theme.Colors) == 0 {
 		// 테마 파트는 토큰 표에서만 나온다 — 표 없이 조립하면 clrScheme을 채울 수 없고,
 		// 하드코딩 기본값으로 채우면 웹과 다른 색을 내는 파일이 조용히 만들어진다.
-		return nil, fmt.Errorf("덱에 테마 토큰 표가 없다 — core.Resolve를 거치지 않은 덱이다")
+		return nil, fmt.Errorf("the deck has no theme token table — the deck did not go through core.Resolve")
 	}
 	clrScheme, err := clrSchemeXML(deck.Theme)
 	if err != nil {
@@ -302,11 +302,11 @@ var partFuncs = template.FuncMap{
 func renderTemplate(name, text string, data any) ([]byte, error) {
 	tpl, err := template.New(name).Funcs(partFuncs).Parse(text)
 	if err != nil {
-		return nil, fmt.Errorf("%s 템플릿 파싱 실패: %w", name, err)
+		return nil, fmt.Errorf("parsing template %s failed: %w", name, err)
 	}
 	var buf bytes.Buffer
 	if err := tpl.Execute(&buf, data); err != nil {
-		return nil, fmt.Errorf("%s 렌더 실패: %w", name, err)
+		return nil, fmt.Errorf("rendering %s failed: %w", name, err)
 	}
 	return buf.Bytes(), nil
 }

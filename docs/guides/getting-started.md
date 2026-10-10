@@ -78,8 +78,8 @@ my-talk/
 ```
 
 ```
-감시 중: my-talk → http://127.0.0.1:4600  (Ctrl+C로 끝낸다)
-✓ 14:31:02  슬라이드 3개 · 파일 1개 (41ms)
+watching my-talk → http://127.0.0.1:4600  (Ctrl+C to stop)
+✓ 14:31:02  3 slides · 1 file (41ms)
 ```
 
 주소를 브라우저에 붙이고 `slides/001_title.slide`의 제목을 고쳐 저장하면 그 탭이 스스로
@@ -135,7 +135,7 @@ my-talk/
 ```
 
 ```
-슬라이드 4장 → /path/to/my-talk/dist
+4 slides → /path/to/my-talk/dist
   index.html
   my-talk.pptx
 ```

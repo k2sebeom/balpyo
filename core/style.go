@@ -83,7 +83,7 @@ func (r *resolver) placementStyle(attr soml.Attr) (string, bool) {
 	}
 	parts := splitDeclarations(attr.Value)
 	if len(parts) == 0 {
-		r.errorf(attr.ValueSpan, "style에 선언이 없다 (%q) — `속성: 값` 형태로 쓴다", attr.Value)
+		r.errorf(attr.ValueSpan, "style has no declarations (%q) — write them as `property: value`", attr.Value)
 		return "", false
 	}
 	decls := make([]string, 0, len(parts))
@@ -91,7 +91,7 @@ func (r *resolver) placementStyle(attr soml.Attr) (string, bool) {
 	for _, part := range parts {
 		name, value, found := strings.Cut(part.text, ":")
 		if !found {
-			r.errorf(part.span(attr), "style 선언 %q에 콜론이 없다 — `속성: 값` 형태로 쓴다", part.text)
+			r.errorf(part.span(attr), "style declaration %q has no colon — write it as `property: value`", part.text)
 			valid = false
 			continue
 		}
@@ -99,17 +99,17 @@ func (r *resolver) placementStyle(attr soml.Attr) (string, bool) {
 		declaration := strings.TrimSpace(value)
 		switch {
 		case property == "":
-			r.errorf(part.span(attr), "style 선언 %q에 속성 이름이 없다", part.text)
+			r.errorf(part.span(attr), "style declaration %q has no property name", part.text)
 			valid = false
 			continue
 		case declaration == "":
 			// 빈 값은 "검증하지 않는 값"이 아니라 완성되지 않은 선언이다 — CSS도 버린다.
-			r.errorf(part.span(attr), "style 선언 %q에 값이 없다", part.text)
+			r.errorf(part.span(attr), "style declaration %q has no value", part.text)
 			valid = false
 			continue
 		}
 		if !isLayoutStyleProperty(property) {
-			r.warnf(part.span(attr), "style의 %q 선언은 배치가 아니다 — 웹에만 적용되고 PPTX에는 이식되지 않는다. 색·테두리 같은 외관은 컴포넌트 속성으로 쓴다",
+			r.warnf(part.span(attr), "the %q declaration in style is not layout — it applies only to the web and does not carry over to PPTX; write appearance such as color or border as component attributes",
 				property)
 		}
 		decls = append(decls, property+": "+declaration)

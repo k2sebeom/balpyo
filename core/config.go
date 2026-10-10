@@ -101,14 +101,14 @@ func LoadConfigWithThemes(projectDir string, home fs.FS) (Config, error) {
 	case errors.Is(err, fs.ErrNotExist):
 		return cfg, nil
 	case err != nil:
-		return Config{}, fmt.Errorf("%s를 읽을 수 없다: %w", ConfigFile, err)
+		return Config{}, fmt.Errorf("cannot read %s: %w", ConfigFile, err)
 	}
 
 	// 파일에 있는 필드만 덮어쓰도록 기본값이 담긴 cfg에 그대로 언마샬한다.
 	dec := json.NewDecoder(strings.NewReader(string(data)))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&cfg); err != nil {
-		return Config{}, fmt.Errorf("%s 파싱 실패: %w", ConfigFile, err)
+		return Config{}, fmt.Errorf("cannot parse %s: %w", ConfigFile, err)
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, fmt.Errorf("%s: %w", ConfigFile, err)
@@ -157,7 +157,7 @@ func (c *Config) Validate() error {
 	switch c.Targets.PPTX.Mode {
 	case PPTXNative, PPTXImage:
 	default:
-		return fmt.Errorf("targets.pptx.mode: 알 수 없는 모드 %q (%q 또는 %q)",
+		return fmt.Errorf("targets.pptx.mode: unknown mode %q (%q or %q)",
 			string(c.Targets.PPTX.Mode), PPTXNative, PPTXImage)
 	}
 	return nil

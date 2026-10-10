@@ -34,7 +34,7 @@ func TestBuildCommand(t *testing.T) {
 		t.Fatalf("%v\nstderr: %s", err, stderr.String())
 	}
 	out := stdout.String()
-	for _, want := range []string{"슬라이드 1장", "index.html", "my-talk.pptx"} {
+	for _, want := range []string{"1 slide", "index.html", "my-talk.pptx"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("출력에 %q가 없다:\n%s", want, out)
 		}
@@ -73,7 +73,7 @@ func TestBuildCheckLayoutPrintsWarnings(t *testing.T) {
 	if err := run([]string{"build", "--project", dir, "--check-layout"}, &stdout, &stderr); err != nil {
 		t.Fatalf("경고가 빌드를 멈췄다: %v\nstderr: %s", err, stderr.String())
 	}
-	if want := "콘텐츠 박스를 오른쪽으로 48px 넘친다"; !strings.Contains(stderr.String(), want) {
+	if want := "overflows the content box on the right by 48px"; !strings.Contains(stderr.String(), want) {
 		t.Errorf("stderr에 %q가 없다:\n%s", want, stderr.String())
 	}
 
@@ -132,11 +132,11 @@ func TestBuildErrorDiagnosticsPrintedOnce(t *testing.T) {
 		t.Fatal("에러여야 한다")
 	}
 	// 상세 진단은 stderr에 한 번만.
-	if n := strings.Count(stderr.String(), "알 수 없는 태그 <marquee>"); n != 1 {
+	if n := strings.Count(stderr.String(), "unknown tag <marquee>"); n != 1 {
 		t.Errorf("진단이 stderr에 %d번 찍혔다 (1번이어야 한다):\n%s", n, stderr.String())
 	}
 	// 돌려준 에러는 요약이어야 한다 — main이 이걸 다시 출력해도 진단이 겹치지 않게.
-	if strings.Contains(err.Error(), "알 수 없는 태그 <marquee>") {
+	if strings.Contains(err.Error(), "unknown tag <marquee>") {
 		t.Errorf("반환 에러가 상세 진단을 되풀이한다 (요약이어야 한다): %v", err)
 	}
 }
@@ -165,7 +165,7 @@ func TestUnknownSubcommand(t *testing.T) {
 		t.Error("알 수 없는 서브커맨드는 에러여야 한다")
 	}
 	// 사용법은 stderr로 나가야 파이프를 오염시키지 않는다.
-	if !strings.Contains(stderr.String(), "사용법") {
+	if !strings.Contains(stderr.String(), "Usage:") {
 		t.Error("에러 시 사용법을 보여줘야 한다")
 	}
 

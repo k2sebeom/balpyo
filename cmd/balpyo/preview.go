@@ -23,17 +23,17 @@ func runPreview(args []string, stdout, stderr io.Writer) error {
 	fs.SetOutput(stderr)
 	// 플래그 이름과 뜻은 build와 같다 — `--out`은 여기서도 **빌드 산출물**이 가는 곳이다.
 	// 갤러리에 같은 이름을 쓰면 `--out dist`가 어느 디렉토리를 뜻하는지 사람이 매번 확인해야 한다.
-	targetList := fs.String("target", "", "검수할 렌더 (html, pptx — 쉼표로 여러 개; 기본: html과, 도구가 있으면 pptx)")
-	outDir := fs.String("out", "", "빌드 출력 디렉토리 (기본: balpyo.json의 outDir)")
-	projectDir := fs.String("project", ".", "프로젝트 루트")
-	theme := fs.String("theme", "", "테마 (기본: balpyo.json의 theme — 내장·프로젝트 themes/·설치한 테마)")
-	strict := fs.Bool("strict", false, "경고를 에러로 승격한다")
-	galleryDir := fs.String("gallery", "", "검수 갤러리 디렉토리 (기본: <프로젝트>/"+preview.DefaultDirName+")")
+	targetList := fs.String("target", "", "renders to review (html, pptx — comma-separated; default: html, plus pptx when the tools are available)")
+	outDir := fs.String("out", "", "build output directory (default: outDir in balpyo.json)")
+	projectDir := fs.String("project", ".", "project root")
+	theme := fs.String("theme", "", "theme (default: theme in balpyo.json — built-in, project themes/, or installed)")
+	strict := fs.Bool("strict", false, "promote warnings to errors")
+	galleryDir := fs.String("gallery", "", "review gallery directory (default: <project>/"+preview.DefaultDirName+")")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
-		return fmt.Errorf("preview는 인자를 받지 않는다: %v", fs.Args())
+		return fmt.Errorf("preview takes no arguments: %v", fs.Args())
 	}
 	// 주지 않으면 비워 둔다 — 기본 렌더에서만 도구가 없을 때 PPTX 열을 뺀다 (preview.Options.Renders).
 	// 빈 값을 **준** 것은 주지 않은 것과 다르다 — 그것은 잘못된 입력이다.
@@ -69,17 +69,17 @@ func runPreview(args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		var de *soml.DiagnosticsError
 		if errors.As(err, &de) {
-			return fmt.Errorf("검수할 산출물을 만들지 못했다: 에러 %d건", de.Count())
+			return fmt.Errorf("could not build the output to review: %s", count(de.Count(), "error"))
 		}
 		return err
 	}
 
-	fmt.Fprintf(stdout, "슬라이드 %d장 → %s\n", len(result.Slides), result.Index)
+	fmt.Fprintf(stdout, "%s → %s\n", count(len(result.Slides), "slide"), result.Index)
 	// 갤러리로 판정할 수 없는 확인이 남는다 — PPTX를 PowerPoint/Keynote로 열어 텍스트 박스가
 	// 진짜 텍스트 박스인지, 테마 색 편집이 먹는지 보는 일. 어느 엔진의 렌더도 그 확인을 대신하지
 	// 못한다 (그라디언트 선 · 다중 스톱 같은 자리에서 뷰어끼리 갈라진다).
 	if hasTarget(result.Renders, render.TargetPPTX) {
-		fmt.Fprintf(stdout, "PPTX는 PowerPoint·Keynote로 직접 열어 확인한다: %s\n", result.OutDir)
+		fmt.Fprintf(stdout, "open the PPTX in PowerPoint or Keynote to review it: %s\n", result.OutDir)
 	}
 	return nil
 }

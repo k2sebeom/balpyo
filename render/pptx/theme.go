@@ -46,10 +46,10 @@ func clrSchemeXML(theme soml.Theme) (string, error) {
 		if token.Slot == "" {
 			// 슬롯 없는 색 토큰은 테마 색 편집을 따라가지 못한다 (soml.ColorToken의 주석) —
 			// 여기서 막아야 그 상태가 파일을 열어 보기 전에 드러난다.
-			return "", fmt.Errorf("색 토큰 %q에 clrScheme 슬롯이 없다", token.Name)
+			return "", fmt.Errorf("color token %q has no clrScheme slot", token.Name)
 		}
 		if first, dup := values[token.Slot]; dup {
-			return "", fmt.Errorf("clrScheme 슬롯 %q가 겹친다 (%s와 %s) — 어느 색이 이기는지 정할 수 없다",
+			return "", fmt.Errorf("clrScheme slot %q is assigned twice (%s and %s) — cannot decide which color wins",
 				token.Slot, first, token.RGB)
 		}
 		values[token.Slot] = token.RGB
@@ -65,7 +65,7 @@ func clrSchemeXML(theme soml.Theme) (string, error) {
 			}
 		}
 		if !ok {
-			return "", fmt.Errorf("테마 %q에 clrScheme %s 자리를 채울 색 토큰이 없다", theme.Name, slot)
+			return "", fmt.Errorf("theme %q has no color token for clrScheme slot %s", theme.Name, slot)
 		}
 		fmt.Fprintf(&b, `      <a:%s><a:srgbClr val="%s"/></a:%s>`+"\n", slot, rgb, slot)
 	}
@@ -91,7 +91,7 @@ func fontSchemeXML(theme soml.Theme) (string, error) {
 		}
 	}
 	if major == nil || minor == nil {
-		return "", fmt.Errorf("테마 %q의 폰트 표에 fontScheme major/minor 슬롯이 비어 있다 — rPr의 +mj-lt/+mn-lt 참조가 해석될 곳이 없다",
+		return "", fmt.Errorf("theme %q font table has empty fontScheme major/minor slots — rPr +mj-lt/+mn-lt references have nothing to resolve to",
 			theme.Name)
 	}
 

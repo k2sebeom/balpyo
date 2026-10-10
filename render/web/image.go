@@ -121,21 +121,21 @@ func writeImage(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	if style == nil {
 		// 해석되지 않은 외관을 기본값으로 그리면 웹만 그럴듯하게 나오고 PPTX와 갈라진다
 		// (writeShape·writeBlock과 같은 관문).
-		return fmt.Errorf("%s:%s <%s>의 이미지 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+		return fmt.Errorf("%s:%s <%s> image appearance is unresolved — the deck did not go through core.Resolve",
 			slide.Source, elem.Span, elem.Name)
 	}
 	if style.Src == "" {
 		// 값 층이 이미 진단했다 (없는 src·경로 문법·지원하지 않는 포맷 — core/image.go).
 		// 그래도 여기서 멈추는 이유는 `<img src="">`가 **현재 문서를 다시 받는** 요청이 되어
 		// 브라우저가 그림이 아닌 바이트를 디코드하려 하기 때문이다 (측정이 그 상태를 잰다).
-		return fmt.Errorf("%s:%s <%s>의 src가 해석되지 않았다 — 그릴 것이 없다",
+		return fmt.Errorf("%s:%s <%s> src is unresolved — nothing to draw",
 			slide.Source, elem.Span, elem.Name)
 	}
 	asset, ok := deck.Assets.Get(style.Src)
 	if !ok {
 		// 에셋 패스를 거치지 않은 덱이다 (core.ResolveAssets). 표에 없으면 산출물에 바이트가
 		// 실리지 않으므로 그림이 깨진 채로 나가고, 그 상태를 재면 rect가 0×0이 된다.
-		return fmt.Errorf("%s:%s <%s>: 에셋 표에 %q가 없다 — core.ResolveAssets를 거치지 않은 덱이다",
+		return fmt.Errorf("%s:%s <%s>: %q is not in the asset table — the deck did not go through core.ResolveAssets",
 			slide.Source, elem.Span, elem.Name, style.Src)
 	}
 	boxDecls, err := imageBoxCSS(*style, elem)
@@ -201,7 +201,7 @@ func imageInkCSS(style soml.ImageStyle, theme soml.Theme) ([]string, error) {
 			return nil, err
 		}
 		if style.Border.Width <= 0 {
-			return nil, fmt.Errorf("테두리 굵기가 해석되지 않았다 (%s)", formatNumber(style.Border.Width))
+			return nil, fmt.Errorf("border width is unresolved (%s)", formatNumber(style.Border.Width))
 		}
 		borderStyle, err := borderStyleValue(style.Border.Style)
 		if err != nil {
@@ -225,7 +225,7 @@ func imageInkCSS(style soml.ImageStyle, theme soml.Theme) ([]string, error) {
 		if _, ok := theme.Shadow(style.Shadow.Name); !ok {
 			// var()는 정의되지 않은 변수를 조용히 무시한다 — 검사하지 않으면 그림자가 사라지고
 			// 아무 에러도 나지 않는다 (shapeInkCSS와 같은 근거).
-			return nil, fmt.Errorf("그림자 토큰 %q가 테마에 없다", style.Shadow.Name)
+			return nil, fmt.Errorf("shadow token %q is not in the theme", style.Shadow.Name)
 		}
 		// `filter: drop-shadow`는 그림의 **알파 실루엣**을 따라간다 — 투명 배경 PNG의
 		// 그림자가 사각형이 되지 않고, `border-radius`로 자른 모서리도 따라온다.
@@ -235,7 +235,7 @@ func imageInkCSS(style soml.ImageStyle, theme soml.Theme) ([]string, error) {
 	}
 	if style.Opacity != nil {
 		if *style.Opacity < 0 || *style.Opacity > 1 {
-			return nil, fmt.Errorf("불투명도 %s가 0~1 밖이다", formatNumber(*style.Opacity))
+			return nil, fmt.Errorf("opacity %s is outside 0–1", formatNumber(*style.Opacity))
 		}
 		decls = append(decls, "opacity: "+formatNumber(*style.Opacity))
 	}
@@ -270,7 +270,7 @@ func imageFitCSS(style soml.ImageStyle) ([]string, error) {
 	// 어휘 밖 값은 core가 이미 막았다 (닫힌 어휘). 여기서 멈추는 이유는 빈 문자열이다:
 	// 해석되지 않은 `Fit`을 통과시키면 `fit` 선언이 하나도 없는 그림이 나가고, 그 그림은
 	// 박스가 정해졌을 때 **늘어난다** (`<img>`의 기본 object-fit은 `fill`이다).
-	return nil, fmt.Errorf("fit %q는 맞춤 어휘 밖이다", string(style.Fit))
+	return nil, fmt.Errorf("fit %q is not a known fit value", string(style.Fit))
 }
 
 // containFitDecls는 "박스를 넘지 않는다"의 선언이다.
@@ -302,7 +302,7 @@ func borderStyleValue(style soml.BorderStyle) (string, error) {
 	case soml.BorderSolid, soml.BorderDashed, soml.BorderDotted:
 		return string(style), nil
 	}
-	return "", fmt.Errorf("테두리 스타일 %q는 어휘 밖이다", string(style))
+	return "", fmt.Errorf("unknown border style %q", string(style))
 }
 
 // imageCSS는 그림의 엔진 CSS다 — **태그마다 고정인 선언만** 있다 (shapeCSS와 같은 경계).
@@ -312,17 +312,19 @@ func borderStyleValue(style soml.BorderStyle) (string, error) {
 // 못한다.
 func imageCSS() string {
 	return fmt.Sprintf(`
-  /* <image>는 **박스 하나와 그림 하나**다. 박스는 저자가 준 크기이고 그림은 그 안에서
-     맞춰진 실제 rect다 (=PPTX xfrm). 가운데 정렬인 이유는 `+"`contain`"+`의 여백이 한쪽으로
-     몰리지 않아야 하기 때문이다 — object-fit의 기본 정렬(50%% 50%%)과 같은 자리에 그림이 온다.
-     flex: 0 0 auto는 스택이 스테이지보다 길 때 박스가 눌리는 것을 막는다 (박스 고정 정책,
-     .balpyo-text와 같은 근거) — 눌린 박스를 재면 PPTX가 그 크기로 그림을 그린다.
+  /* <image> is **one box and one picture**. The box has the size the author gave and the
+     picture is the actual fitted rect inside it (=PPTX xfrm). It is centered so that the empty
+     space of contain is not pushed to one side — the picture lands where the default object-fit
+     position (50%% 50%%) puts it. flex: 0 0 auto keeps the box from being squeezed when the
+     stack is taller than the stage (the fixed-box policy, same reasoning as .balpyo-text) — if
+     a squeezed box were measured, PPTX would draw the picture at that size.
 
-     min-*: 0은 flex/grid 항목의 **자동 최소 크기**를 끈다. 켜져 있으면 박스가 내용보다 작을 수
-     없어서 `+"`ratio`"+`가 진 박스가 그림 때문에 커진다 — 실측: `+"`fit=\"cover\" w=\"fill\" ratio=\"4:3\"`"+`
-     칸에 세로로 긴 그림(8×16)을 넣으면 박스가 558×418.5가 아니라 **558×1116**이 되고
-     (그림의 height:100%% 가 순환을 만나 auto로 풀리고, 그 높이가 다시 박스의 최소 높이가 된다)
-     잰 rect가 저자가 준 박스를 넘어 슬라이드 밖으로 나간다. 박스는 저자가 준 크기여야 한다. */
+     min-*: 0 turns off the **automatic minimum size** of flex/grid items. With it on, the box
+     cannot be smaller than its content, so a box with a ratio grows because of the picture —
+     measured: a tall picture (8×16) in a fit="cover" w="fill" ratio="4:3" cell makes the box
+     **558×1116** instead of 558×418.5 (the picture's height:100%% hits a cycle and resolves to
+     auto, and that height becomes the box's minimum height again), and the measured rect
+     extends past the author's box and off the slide. The box must be the size the author gave. */
   .balpyo-image {
     display: flex;
     align-items: center;
@@ -332,21 +334,24 @@ func imageCSS() string {
     min-height: 0;
   }
 
-  /* display: block은 인라인 <img>의 기준선 아래 여백을 없앤다 — 그 여백은 박스에만 생기고
-     그림에는 없어서, 남겨 두면 저자가 준 박스와 그림 사이에 설명할 수 없는 몇 px이 남는다.
-     min-*: 0은 flex 항목의 자동 최소 크기를 끈다 (그림이 박스보다 클 때 max-*가 줄이는 것을
-     자동 최소 크기가 막는다 — 그러면 contain이 넘친다). */
+  /* display: block removes the space below the baseline of an inline <img> — that space exists
+     only in the box, not in the picture, so leaving it would put a few unexplained px between
+     the author's box and the picture. min-*: 0 turns off the automatic minimum size of flex
+     items (the automatic minimum size would stop max-* from shrinking a picture larger than the
+     box — and then contain would overflow). */
   .balpyo-image-ink {
     display: block;
     min-width: 0;
     min-height: 0;
   }
 
-  /* 회전·대칭 — 선언은 여기, 값은 인라인 커스텀 프로퍼티다 (imageRotateVar·imageFlipVar).
-     측정 뷰가 이 선언을 무효화해야 잰 rect가 **회전 전** 박스가 된다: 실측에서 200×100 그림에
-     rotate(15deg)를 걸면 getBoundingClientRect가 219.07×148.36을 준다. 대칭은 bbox를 바꾸지
-     않으므로 함께 꺼도 잰 rect가 같다 (도형은 대칭이 그림 svg에 걸려 측정 뷰가 건드리지
-     않는다 — 요소가 하나인 그림에서는 나눌 수 없고, 나눌 필요도 없다는 뜻이다). */
+  /* Rotation and flip — the declaration lives here, the values are inline custom properties
+     (imageRotateVar, imageFlipVar). The measure view must cancel this declaration so the
+     measured rect is the **pre-rotation** box: measured, rotate(15deg) on a 200×100 picture
+     makes getBoundingClientRect return 219.07×148.36. Flipping does not change the bbox, so
+     turning it off too leaves the measured rect the same (on shapes the flip sits on the
+     picture svg and the measure view leaves it alone — a picture is a single element, so it
+     cannot be split there, and need not be). */
   .balpyo-image-transform {
     transform: rotate(var(%s, 0deg)) var(%s, scale(1));
   }
@@ -368,15 +373,15 @@ func assetFiles(deck *soml.Deck) (render.Files, error) {
 	files := make(render.Files, len(deck.Assets))
 	for _, asset := range deck.Assets {
 		if asset.Key == "" {
-			return nil, fmt.Errorf("에셋 표에 키 없는 항목이 있다")
+			return nil, fmt.Errorf("the asset table has an entry without a key")
 		}
 		if asset.Key == IndexFile {
 			// 저자가 `src="index.html"`을 쓸 수는 없지만(확장자 어휘) 산출 파일 이름이 바뀌면
 			// 여기가 조용히 문서를 덮어쓴다 — 덮어쓴 산출물은 열리지도 않는다.
-			return nil, fmt.Errorf("에셋 경로 %q가 산출 문서와 같다", asset.Key)
+			return nil, fmt.Errorf("asset path %q collides with the output document", asset.Key)
 		}
 		if len(asset.Bytes) == 0 {
-			return nil, fmt.Errorf("에셋 %q의 바이트가 비었다", asset.Key)
+			return nil, fmt.Errorf("asset %q has no bytes", asset.Key)
 		}
 		files[asset.Key] = asset.Bytes
 	}

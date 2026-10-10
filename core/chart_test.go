@@ -237,32 +237,32 @@ func TestChartDiagnostics(t *testing.T) {
 		name, attrs, points string
 		contains            []string
 	}{
-		{"type이 없다", `h="420"`, p, []string{"<chart>에 type이 필요하다", "쓸 수 있는 종류: bar", "추측할 수 없다"}},
-		{"어휘 밖의 type", `type="line" h="420"`, p, []string{`알 수 없는 차트 type "line"`, "쓸 수 있는 종류: bar"}},
+		{"type이 없다", `h="420"`, p, []string{"<chart> needs a type", "available types: bar", "no way to guess"}},
+		{"어휘 밖의 type", `type="line" h="420"`, p, []string{`unknown chart type "line"`, "available types: bar"}},
 		// 막대 높이가 축에 대한 백분율이라 차트 높이를 내용이 정하면 순환한다.
-		{"h도 ratio도 없다", `type="bar"`, p, []string{"<chart>에 h나 ratio가 필요하다", "기준이 순환한다"}},
-		{"점이 없다", `type="bar" h="420"`, "", []string{"<chart>에 <point>가 하나도 없다", "그릴 데이터가 없다"}},
-		{"label이 없다", `type="bar" h="420"`, chartPoint(`value="22"`), []string{"<point>에 label이 필요하다"}},
-		{"value가 없다", `type="bar" h="420"`, chartPoint(`label="5월"`), []string{"<point>에 value가 필요하다"}},
+		{"h도 ratio도 없다", `type="bar"`, p, []string{"<chart> needs h or ratio", "would be circular"}},
+		{"점이 없다", `type="bar" h="420"`, "", []string{"<chart> has no <point>", "no data to draw"}},
+		{"label이 없다", `type="bar" h="420"`, chartPoint(`value="22"`), []string{"<point> needs a label"}},
+		{"value가 없다", `type="bar" h="420"`, chartPoint(`label="5월"`), []string{"<point> needs a value"}},
 		{"value가 수치가 아니다", `type="bar" unit="분" h="420"`, chartPoint(`label="5월" value="22분"`),
-			[]string{`value가 수치가 아니다 ("22분")`, "단위는 <chart unit>에 쓴다"}},
-		{"value가 음수다", `type="bar" h="420"`, chartPoint(`label="5월" value="-3"`), []string{"value는 음수일 수 없다", "0에서 시작한다"}},
+			[]string{`value is not a number ("22분")`, "put the unit in <chart unit>"}},
+		{"value가 음수다", `type="bar" h="420"`, chartPoint(`label="5월" value="-3"`), []string{"value cannot be negative", "starts at 0"}},
 		{"값이 전부 0이다", `type="bar" h="420"`, chartPoint(`label="5월" value="0"`) + chartPoint(`label="6월" value="0"`),
-			[]string{"값이 모두 0이다", "축을 정할 수 없다"}},
-		{"value가 max를 넘는다", `type="bar" max="20" h="420"`, p, []string{"value 22가 max 20보다 크다", "막대가 축을 넘는다"}},
-		{"max가 수치가 아니다", `type="bar" max="스물" h="420"`, p, []string{`max가 수치가 아니다 ("스물")`}},
-		{"max가 0 이하다", `type="bar" max="0" h="420"`, chartPoint(`label="5월" value="1"`), []string{"max는 0보다 커야 한다"}},
-		{"unit에 값이 없다", `type="bar" unit h="420"`, p, []string{"unit 속성에는 값이 필요하다"}},
-		{"alt이 비었다", `type="bar" alt="" h="420"`, p, []string{"alt은 비어 있을 수 없다"}},
+			[]string{"are 0", "axis cannot be determined"}},
+		{"value가 max를 넘는다", `type="bar" max="20" h="420"`, p, []string{"value 22 is greater than max 20", "the bar exceeds the axis"}},
+		{"max가 수치가 아니다", `type="bar" max="스물" h="420"`, p, []string{`max is not a number ("스물")`}},
+		{"max가 0 이하다", `type="bar" max="0" h="420"`, chartPoint(`label="5월" value="1"`), []string{"max must be greater than 0"}},
+		{"unit에 값이 없다", `type="bar" unit h="420"`, p, []string{"the unit attribute needs a value"}},
+		{"alt이 비었다", `type="bar" alt="" h="420"`, p, []string{"alt cannot be empty"}},
 		// 점의 fill·series는 도형 fill과 같은 어휘·문구이고, 한 오타에 진단은 하나다 (막대와 라벨에
 		// 두 번 말하지 않는다). 진단은 저자가 쓴 이름으로 말한다.
 		{"점의 fill이 테마에 없다", `type="bar" h="420"`, chartPoint(`label="5월" value="22" fill="brand"`),
-			[]string{`fill의 색 토큰 "brand"가 테마에 없다`}},
-		{"series가 테마에 없다", `type="bar" series="brand" h="420"`, p, []string{`series의 색 토큰 "brand"가 테마에 없다`}},
+			[]string{`fill: color token "brand" is not in the theme`}},
+		{"series가 테마에 없다", `type="bar" series="brand" h="420"`, p, []string{`series: color token "brand" is not in the theme`}},
 		// 그리지 않는 막대는 데이터가 아니라 none만 빠진다.
-		{"series가 none이다", `type="bar" series="none" h="420"`, p, []string{`series에 none을 쓸 수 없다`, `value="0"`}},
-		{"점의 fill이 none이다", `type="bar" h="420"`, chartPoint(`label="5월" value="22" fill="none"`), []string{`fill에 none을 쓸 수 없다`}},
-		{"series에 값이 없다", `type="bar" series h="420"`, p, []string{"series 속성에는 값이 필요하다"}},
+		{"series가 none이다", `type="bar" series="none" h="420"`, p, []string{`series cannot be none`, `value="0"`}},
+		{"점의 fill이 none이다", `type="bar" h="420"`, chartPoint(`label="5월" value="22" fill="none"`), []string{`fill cannot be none`}},
+		{"series에 값이 없다", `type="bar" series h="420"`, p, []string{"the series attribute needs a value"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

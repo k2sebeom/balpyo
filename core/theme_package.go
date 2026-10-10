@@ -52,7 +52,7 @@ func BuiltinThemes() []string {
 	if err != nil {
 		// 내장 파일은 빌드 시점에 고정이다 — 읽히지 않으면 프로그래머 오류다
 		// (loadBuiltinTheme의 panic과 같은 자리).
-		panic(fmt.Sprintf("내장 테마 목록을 읽을 수 없다: %v", err))
+		panic(fmt.Sprintf("cannot read the built-in theme list: %v", err))
 	}
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
@@ -475,7 +475,7 @@ func loadTheme(fsys fs.FS, dir string) (themePackage, error) {
 	}
 	if raw.manifest.Extends != "" {
 		return themePackage{}, fmt.Errorf(
-			"theme.json의 extends(%q)는 이름 어휘가 있는 자리에서만 풀린다", raw.manifest.Extends)
+			"theme.json extends (%q) is resolved only where theme names are known", raw.manifest.Extends)
 	}
 	return buildThemePackage(raw)
 }
@@ -491,13 +491,13 @@ func readRawTheme(fsys fs.FS, dir string) (rawTheme, error) {
 
 	manifestBytes, err := fs.ReadFile(fsys, path.Join(dir, "theme.json"))
 	if err != nil {
-		return raw, fmt.Errorf("theme.json을 읽을 수 없다: %w", err)
+		return raw, fmt.Errorf("cannot read theme.json: %w", err)
 	}
 	if err := json.Unmarshal(manifestBytes, &raw.manifest); err != nil {
-		return raw, fmt.Errorf("theme.json 파싱 실패: %w", err)
+		return raw, fmt.Errorf("cannot parse theme.json: %w", err)
 	}
 	if raw.manifest.Name == "" {
-		return raw, fmt.Errorf("theme.json에 name이 없다")
+		return raw, fmt.Errorf("theme.json has no name")
 	}
 	optional := raw.manifest.Extends != ""
 
@@ -596,10 +596,10 @@ func loadChrome(manifest themeManifest, assets *assetResolver) ([]chromeDecl, er
 	for i, raw := range manifest.Chrome {
 		decl, err := chromeDeclOf(raw, layouts, assets)
 		if err != nil {
-			return nil, fmt.Errorf("theme.json의 chrome[%d]: %w", i, err)
+			return nil, fmt.Errorf("theme.json chrome[%d]: %w", i, err)
 		}
 		if seen[decl.kind] {
-			return nil, fmt.Errorf("theme.json의 chrome[%d]: kind %s가 두 번 선언되었다", i, decl.kind)
+			return nil, fmt.Errorf("theme.json chrome[%d]: kind %s is declared twice", i, decl.kind)
 		}
 		seen[decl.kind] = true
 		decls = append(decls, decl)
@@ -620,7 +620,7 @@ func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool, assets *assetReso
 		}
 	}
 	if decl.kind == "" {
-		return decl, fmt.Errorf("알 수 없는 kind %q (쓸 수 있는 kind: %s)", raw.Kind, strings.Join(kinds, ", "))
+		return decl, fmt.Errorf("unknown kind %q (available kinds: %s)", raw.Kind, strings.Join(kinds, ", "))
 	}
 
 	aligns := make([]string, 0, len(soml.ChromeAligns()))
@@ -632,23 +632,23 @@ func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool, assets *assetReso
 	}
 	if decl.align == "" {
 		if raw.Align == "" {
-			return decl, fmt.Errorf("align이 없다 (쓸 수 있는 align: %s)", strings.Join(aligns, ", "))
+			return decl, fmt.Errorf("missing align (available aligns: %s)", strings.Join(aligns, ", "))
 		}
-		return decl, fmt.Errorf("알 수 없는 align %q (쓸 수 있는 align: %s)", raw.Align, strings.Join(aligns, ", "))
+		return decl, fmt.Errorf("unknown align %q (available aligns: %s)", raw.Align, strings.Join(aligns, ", "))
 	}
 
 	if decl.kind == soml.ChromeLogo {
 		// 그림 크롬은 역할이 아니라 그림과 높이를 갖는다 — 글자 외관이 없으므로 role은 뜻이 없다.
 		if raw.Role != "" {
-			return decl, fmt.Errorf("logo에는 role을 쓸 수 없다 (%q) — 그림 크롬은 글자 외관이 없다. 크기는 height가 정한다", raw.Role)
+			return decl, fmt.Errorf("logo cannot have a role (%q) — picture chrome has no text appearance; height sets its size", raw.Role)
 		}
 		if raw.Image == "" {
-			return decl, fmt.Errorf("logo에 image가 없다 — 테마 패키지의 그림을 가리킨다 (예: %s/logo.png)", themeAssetDir)
+			return decl, fmt.Errorf("logo has no image — point it at a picture in the theme package (e.g. %s/logo.png)", themeAssetDir)
 		}
 		if raw.Height <= 0 {
-			return decl, fmt.Errorf("logo의 height가 없거나 0 이하다 (%g) — 논리 px 높이를 준다. 폭은 그림의 비율이 정한다", raw.Height)
+			return decl, fmt.Errorf("logo height is missing or not positive (%g) — give a height in logical px; the picture's aspect ratio sets the width", raw.Height)
 		}
-		key, err := assets.resolve("logo의 image", raw.Image)
+		key, err := assets.resolve("logo image", raw.Image)
 		if err != nil {
 			return decl, err
 		}
@@ -656,7 +656,7 @@ func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool, assets *assetReso
 		return decl, chromeSkips(&decl, raw, layouts)
 	}
 	if raw.Image != "" || raw.Height != 0 || raw.Alt != "" {
-		return decl, fmt.Errorf("%s에는 image · height · alt를 쓸 수 없다 — 그림 크롬(logo)의 자리다", decl.kind)
+		return decl, fmt.Errorf("%s cannot have image · height · alt — those belong to picture chrome (logo)", decl.kind)
 	}
 
 	roles := make([]string, 0, len(soml.TextRoles()))
@@ -668,9 +668,9 @@ func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool, assets *assetReso
 	}
 	if decl.role == "" {
 		if raw.Role == "" {
-			return decl, fmt.Errorf("role이 없다 (쓸 수 있는 role: %s)", strings.Join(roles, ", "))
+			return decl, fmt.Errorf("missing role (available roles: %s)", strings.Join(roles, ", "))
 		}
-		return decl, fmt.Errorf("알 수 없는 role %q (쓸 수 있는 role: %s)", raw.Role, strings.Join(roles, ", "))
+		return decl, fmt.Errorf("unknown role %q (available roles: %s)", raw.Role, strings.Join(roles, ", "))
 	}
 	return decl, chromeSkips(&decl, raw, layouts)
 }
@@ -683,7 +683,7 @@ func chromeSkips(decl *chromeDecl, raw chromeDeclFile, layouts map[string]bool) 
 	decl.skip = make(map[soml.SlideLayout]bool, len(raw.SkipLayouts))
 	for _, name := range raw.SkipLayouts {
 		if !layouts[name] {
-			return fmt.Errorf("skipLayouts의 %q는 이 테마의 레이아웃이 아니다 (이 테마의 레이아웃: %s)",
+			return fmt.Errorf("skipLayouts: %q is not a layout of this theme (layouts in this theme: %s)",
 				name, strings.Join(sortedKeys(layouts), ", "))
 		}
 		decl.skip[soml.SlideLayout(name)] = true
@@ -710,10 +710,10 @@ func readTokensFile(fsys fs.FS, dir string, optional bool) (tokensFile, error) {
 		if optional && errors.Is(err, fs.ErrNotExist) {
 			return file, nil
 		}
-		return file, fmt.Errorf("tokens.json을 읽을 수 없다: %w", err)
+		return file, fmt.Errorf("cannot read tokens.json: %w", err)
 	}
 	if err := json.Unmarshal(raw, &file); err != nil {
-		return file, fmt.Errorf("tokens.json 파싱 실패: %w", err)
+		return file, fmt.Errorf("cannot parse tokens.json: %w", err)
 	}
 	return file, nil
 }
@@ -758,12 +758,12 @@ func readComponentsFile(fsys fs.FS, dir string, optional bool) (componentsFile, 
 		if optional && errors.Is(err, fs.ErrNotExist) {
 			return file, nil
 		}
-		return file, fmt.Errorf("components.json을 읽을 수 없다: %w", err)
+		return file, fmt.Errorf("cannot read components.json: %w", err)
 	}
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&file); err != nil {
-		return file, fmt.Errorf("components.json 파싱 실패: %w", err)
+		return file, fmt.Errorf("cannot parse components.json: %w", err)
 	}
 	return file, nil
 }
@@ -792,7 +792,7 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 			patch.weight = d.Weight
 		}
 		if d.Color != nil {
-			c, err := themeColor(theme, fmt.Sprintf("text.componentDefaults %q의 color", d.key()), *d.Color)
+			c, err := themeColor(theme, fmt.Sprintf("text.componentDefaults %q color", d.key()), *d.Color)
 			if err != nil {
 				return comps, err
 			}
@@ -801,15 +801,15 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 		switch {
 		case d.Slot == "" && d.Layout == "":
 			if d.Tag == "" {
-				return comps, fmt.Errorf("text.componentDefaults의 한 줄에 주인이 없다 — tag나 layout + slot을 쓴다")
+				return comps, fmt.Errorf("a text.componentDefaults entry has no owner — use tag, or layout + slot")
 			}
 			comps.textComponentDefaults[d.Tag] = patch
 		case d.Tag != "":
-			return comps, fmt.Errorf("text.componentDefaults의 tag %q와 slot을 함께 쓸 수 없다 — 한 줄의 주인은 하나다", d.Tag)
+			return comps, fmt.Errorf("text.componentDefaults: tag %q cannot be combined with slot — an entry has one owner", d.Tag)
 		default:
 			layout := soml.SlideLayout(d.Layout)
 			if _, ok := soml.LayoutSlot(layout, d.Slot); !ok {
-				return comps, fmt.Errorf("text.componentDefaults의 슬롯 %q/%q가 레이아웃 어휘에 없다 (레이아웃 %q의 슬롯: %s)",
+				return comps, fmt.Errorf("text.componentDefaults: slot %q/%q is not in the layout vocabulary (slots of layout %q: %s)",
 					d.Layout, d.Slot, d.Layout, strings.Join(soml.SlotNames(layout), ", "))
 			}
 			comps.textSlotDefaults[d.key()] = patch
@@ -825,7 +825,7 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 			patch.weight = v.Weight
 		}
 		if v.Color != nil {
-			c, err := themeColor(theme, fmt.Sprintf("text variant %q의 color", v.Name), *v.Color)
+			c, err := themeColor(theme, fmt.Sprintf("text variant %q color", v.Name), *v.Color)
 			if err != nil {
 				return comps, err
 			}
@@ -1066,7 +1066,7 @@ func themeValueErr(r *resolver, ok bool) error {
 		msgs = append(msgs, d.Message)
 	}
 	if len(msgs) == 0 {
-		msgs = append(msgs, "값을 해석할 수 없다")
+		msgs = append(msgs, "cannot interpret the value")
 	}
 	return errors.New(strings.Join(msgs, "; "))
 }
@@ -1088,11 +1088,11 @@ func borderFromString(s string) (*soml.Border, error) {
 	}
 	fields := strings.Fields(s)
 	if len(fields) != borderParts {
-		return nil, fmt.Errorf("border는 %q 또는 `<굵기> <스타일> <색>` 3조각이다 (%q)", noneValue, s)
+		return nil, fmt.Errorf("border is %q or three parts `<width> <style> <color>` (%q)", noneValue, s)
 	}
 	width, err := strconv.ParseFloat(fields[0], 64)
 	if err != nil {
-		return nil, fmt.Errorf("border 굵기가 수치가 아니다 (%q)", fields[0])
+		return nil, fmt.Errorf("border width is not a number (%q)", fields[0])
 	}
 	style := soml.BorderStyle(fields[1])
 	ok := false
@@ -1102,7 +1102,7 @@ func borderFromString(s string) (*soml.Border, error) {
 		}
 	}
 	if !ok {
-		return nil, fmt.Errorf("알 수 없는 border 스타일 %q", fields[1])
+		return nil, fmt.Errorf("unknown border style %q", fields[1])
 	}
 	return &soml.Border{Width: width, Style: style, Color: soml.TokenColor(fields[2])}, nil
 }
@@ -1120,7 +1120,7 @@ func readLayoutCSS(fsys fs.FS, dir string, optional bool) (layouts, slots map[st
 		if optional && errors.Is(err, fs.ErrNotExist) {
 			return map[string]string{}, map[string]string{}, nil
 		}
-		return nil, nil, fmt.Errorf("layouts/를 읽을 수 없다: %w", err)
+		return nil, nil, fmt.Errorf("cannot read layouts/: %w", err)
 	}
 	layouts, slots = map[string]string{}, map[string]string{}
 	for _, e := range entries {
@@ -1129,7 +1129,7 @@ func readLayoutCSS(fsys fs.FS, dir string, optional bool) (layouts, slots map[st
 		}
 		raw, err := fs.ReadFile(fsys, path.Join(dir, "layouts", e.Name()))
 		if err != nil {
-			return nil, nil, fmt.Errorf("layouts/%s를 읽을 수 없다: %w", e.Name(), err)
+			return nil, nil, fmt.Errorf("cannot read layouts/%s: %w", e.Name(), err)
 		}
 		// 슬롯 영역 파일을 먼저 가른다 — 흐름 맵에 실으면 `title.slots`라는 존재하지 않는
 		// 레이아웃으로 오인해 "선언에 없다" 에러가 난다.
@@ -1158,7 +1158,7 @@ func checkLayoutFiles(manifest themeManifest, layouts, slots map[string]string) 
 	for _, name := range manifest.Layouts {
 		declared[name] = true
 		if _, ok := layouts[name]; !ok {
-			return fmt.Errorf("theme.json의 layouts에 %q가 있지만 layouts/%s.css가 없다", name, name)
+			return fmt.Errorf("theme.json layouts lists %q but layouts/%s.css is missing", name, name)
 		}
 	}
 	// 파일 → 선언: 맵은 순서가 없으므로 정렬해 진단이 결정적이게 한다.
@@ -1170,7 +1170,7 @@ func checkLayoutFiles(manifest themeManifest, layouts, slots map[string]string) 
 	}
 	sort.Strings(undeclared)
 	if len(undeclared) > 0 {
-		return fmt.Errorf("layouts/%s.css가 있지만 theme.json의 layouts 선언에 없다", undeclared[0])
+		return fmt.Errorf("layouts/%s.css exists but is not declared in theme.json layouts", undeclared[0])
 	}
 	undeclared = nil
 	for name := range slots {
@@ -1180,7 +1180,7 @@ func checkLayoutFiles(manifest themeManifest, layouts, slots map[string]string) 
 	}
 	sort.Strings(undeclared)
 	if len(undeclared) > 0 {
-		return fmt.Errorf("layouts/%s.slots.css가 있지만 theme.json의 layouts 선언에 %q가 없다",
+		return fmt.Errorf("layouts/%s.slots.css exists but theme.json layouts does not declare %q",
 			undeclared[0], undeclared[0])
 	}
 	return nil
@@ -1193,7 +1193,7 @@ func checkLayoutFiles(manifest themeManifest, layouts, slots map[string]string) 
 func loadBuiltinTheme(name string) themePackage {
 	pkg, err := loadTheme(builtinThemes, path.Join(themeDir, name))
 	if err != nil {
-		panic(fmt.Sprintf("내장 테마 %q 로드 실패: %v", name, err))
+		panic(fmt.Sprintf("cannot load built-in theme %q: %v", name, err))
 	}
 	return pkg
 }

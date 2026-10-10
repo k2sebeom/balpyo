@@ -12,19 +12,19 @@ func withPlannedAttrs(list []plannedAttr) func() {
 // 계획된 속성은 오타와 **다른 문장으로** 말한다 — 없는 것이 이름이 아니라 구현일
 // 때 저자가 이름을 의심하지 않게. 오늘 예정 목록은 비어 있어 목록을 잠시 세워 관문이 사는지 본다.
 func TestPlannedAttrDiagnostic(t *testing.T) {
-	restore := withPlannedAttrs([]plannedAttr{{Tag: "shape", Name: "lang", Opens: "가상 항목"}})
+	restore := withPlannedAttrs([]plannedAttr{{Tag: "shape", Name: "lang", Opens: "a hypothetical item"}})
 	defer restore()
 	runDiagCases(t, []diagCase{
 		{
 			name: "예정된 속성은 구현을 말한다",
 			src:  `<slide><shape type="rect" lang="go"/></slide>`,
-			want: []string{`1:27 <shape>의 lang는 ` + PlannedAttrMessage + ` — 가상 항목이 그 속성을 연다`},
+			want: []string{`1:27 lang on <shape> ` + PlannedAttrMessage + ` — a hypothetical item opens that attribute`},
 		},
 		{
 			// 예정 목록은 **닫혀** 있고, 목록 밖은 어휘의 문제다.
 			name: "목록 밖 이름은 여전히 오타다",
 			src:  `<slide><shape type="rect" atl="x"/></slide>`,
-			want: []string{`1:27 <shape>에 알 수 없는 속성 atl`},
+			want: []string{`1:27 unknown attribute atl on <shape>`},
 		},
 	})
 }

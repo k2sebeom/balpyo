@@ -106,7 +106,7 @@ func TestScaffoldTitleDefaultsToDirName(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(cover), "발표자") {
+	if !strings.Contains(string(cover), "Presenter") {
 		t.Errorf("표지에 발표자 자리표시자가 없다:\n%s", cover)
 	}
 }

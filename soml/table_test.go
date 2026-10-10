@@ -38,16 +38,16 @@ func TestParseTableAndChart(t *testing.T) {
 // 따를 수 없는 말이다).
 func TestParseTableAndChartErrors(t *testing.T) {
 	runDiagCases(t, []diagCase{
-		{name: "tr은 table 밖에 올 수 없다", src: `<slide><tr><td>x</td></tr></slide>`, want: []string{"1:9 <tr>는 <table>의 자식으로만 쓸 수 있다"}},
-		{name: "td는 tr 밖에 올 수 없다", src: `<slide><table><td>x</td></table></slide>`, want: []string{"1:16 <th>/<td>는 <tr>의 자식으로만 쓸 수 있다"}},
-		{name: "table의 자식은 tr뿐", src: `<slide><table><p>본문</p></table></slide>`, want: []string{"1:16 <table>의 자식으로 <p>는 올 수 없다 (쓸 수 있는 태그: <tr>)"}},
-		{name: "셀 안의 블록", src: `<slide><table><tr><td><p>본문</p></td></tr></table></slide>`, want: []string{"1:24 <td> 안에 블록 태그 <p>는 올 수 없다"}},
-		{name: "table 안의 문자 데이터", src: `<slide><table>지역</table></slide>`, want: []string{"1:15 <table> 안에 문자 데이터를 직접 쓸 수 없다 (<tr>로 감싼다)"}},
-		{name: "tr 안의 문자 데이터", src: `<slide><table><tr>지역</tr></table></slide>`, want: []string{"1:19 <tr> 안에 문자 데이터를 직접 쓸 수 없다 (<td>로 감싼다)"}},
-		{name: "point는 chart 밖에 올 수 없다", src: `<slide><point label="a" value="1"/></slide>`, want: []string{"1:9 <point>는 <chart>의 자식으로만 쓸 수 있다"}},
-		{name: "chart의 자식은 point뿐", src: `<slide><chart type="bar"><p>본문</p></chart></slide>`, want: []string{"1:27 <chart>의 자식으로 <p>는 올 수 없다 (쓸 수 있는 태그: <point>)"}},
-		{name: "chart 안의 문자 데이터", src: `<slide><chart type="bar">22</chart></slide>`, want: []string{"1:26 <chart> 안에 문자 데이터를 직접 쓸 수 없다 (<point>로 감싼다)"}},
-		{name: "point는 void", src: `<slide><chart><point label="a">22</point></chart></slide>`, want: []string{"1:16 void 태그 <point>은 내용을 가질 수 없다 (<point/>로 쓴다)"}},
-		{name: "chart는 도형의 직속 자식이 아니다", src: `<slide><shape type="rect"><chart/></shape></slide>`, want: []string{"1:28 <shape>의 자식으로 <chart>는 올 수 없다"}},
+		{name: "tr은 table 밖에 올 수 없다", src: `<slide><tr><td>x</td></tr></slide>`, want: []string{"1:9 <tr> can only be a child of <table>"}},
+		{name: "td는 tr 밖에 올 수 없다", src: `<slide><table><td>x</td></table></slide>`, want: []string{"1:16 <th>/<td> can only be children of <tr>"}},
+		{name: "table의 자식은 tr뿐", src: `<slide><table><p>본문</p></table></slide>`, want: []string{"1:16 <table> cannot contain <p> (available tags: <tr>)"}},
+		{name: "셀 안의 블록", src: `<slide><table><tr><td><p>본문</p></td></tr></table></slide>`, want: []string{"1:24 block tag <p> is not allowed inside <td>"}},
+		{name: "table 안의 문자 데이터", src: `<slide><table>지역</table></slide>`, want: []string{"1:15 character data cannot appear directly inside <table> (wrap it in <tr>)"}},
+		{name: "tr 안의 문자 데이터", src: `<slide><table><tr>지역</tr></table></slide>`, want: []string{"1:19 character data cannot appear directly inside <tr> (wrap it in <td>)"}},
+		{name: "point는 chart 밖에 올 수 없다", src: `<slide><point label="a" value="1"/></slide>`, want: []string{"1:9 <point> can only be a child of <chart>"}},
+		{name: "chart의 자식은 point뿐", src: `<slide><chart type="bar"><p>본문</p></chart></slide>`, want: []string{"1:27 <chart> cannot contain <p> (available tags: <point>)"}},
+		{name: "chart 안의 문자 데이터", src: `<slide><chart type="bar">22</chart></slide>`, want: []string{"1:26 character data cannot appear directly inside <chart> (wrap it in <point>)"}},
+		{name: "point는 void", src: `<slide><chart><point label="a">22</point></chart></slide>`, want: []string{"1:16 void tag <point> cannot have content (write <point/>)"}},
+		{name: "chart는 도형의 직속 자식이 아니다", src: `<slide><shape type="rect"><chart/></shape></slide>`, want: []string{"1:28 <shape> cannot contain <chart>"}},
 	})
 }

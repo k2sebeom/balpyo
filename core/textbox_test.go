@@ -108,11 +108,11 @@ func TestResolveTextBoxDiagnostics(t *testing.T) {
 		col      int
 		contains string
 	}{
-		{"크기에 쓴 공간 토큰", "text", `<text w="md">라벨</text>`, 12, "gap·pad에만"},
-		{"단위 접미사", "text", `<text w="140px">라벨</text>`, 12, "단위 없는 논리 px"},
-		{"음수", "p", `<p max-w="-10">본문</p>`, 13, "0보다 작을 수 없다"},
-		{"값 없음", "text", `<text w>라벨</text>`, 9, "값이 필요하다"},
-		{"빈 값", "ul", `<ul min-w=""><li>항목</li></ul>`, 14, "비어 있다"},
+		{"크기에 쓴 공간 토큰", "text", `<text w="md">라벨</text>`, 12, "only for gap and pad"},
+		{"단위 접미사", "text", `<text w="140px">라벨</text>`, 12, "unitless number in logical px"},
+		{"음수", "p", `<p max-w="-10">본문</p>`, 13, "cannot be negative"},
+		{"값 없음", "text", `<text w>라벨</text>`, 9, "needs a value"},
+		{"빈 값", "ul", `<ul min-w=""><li>항목</li></ul>`, 14, "is empty"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

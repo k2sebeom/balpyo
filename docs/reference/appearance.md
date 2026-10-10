@@ -116,7 +116,7 @@ SOML에는 선언 채널이 **둘**이다: 이 페이지가 담는 **외관 채�
 ([CLI](cli.md)):
 
 ```
-slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: kicker, lead)
+slides/006_variant.slide:6:16: warning: variant "hero" is not in the theme — continuing with the default appearance (variants in this theme: kicker, lead)
 ```
 
 문구는 텍스트와 도형이 **같고 나열된 목록만 다르다** — 어느 어휘인지는 목록이 말한다.
@@ -483,7 +483,7 @@ PPTX는 `a:r` + `a:rPr/a:solidFill/a:schemeClr`다.
   덱에서 무엇인가라 테마나 `variant`가 물려줄 수 있는 값이 아니다.
 - **빈 값의 뜻이 그림에서만 열려 있다.** `<image alt="">`는 "장식 이미지"라는 뜻이고 그 정의는
   HTML `<img>`의 것이다 (우리가 만든 표기가 아니다). 도형·표에는 그런 표기가 없으므로
-  `alt=""`과 값 없는 `alt`은 **에러**이고 진단이 "속성을 지운다"고 말한다 — 이름 없음이 이미
+  `alt=""`과 값 없는 `alt`은 **에러**이고 진단이 "remove the attribute"라고 말한다 — 이름 없음이 이미
   기본값이라 `alt=""`은 기본값을 어렵게 적는 방법이다 (`wrap="false"`를 막은 것과 같은 기준).
 
 ### 읽기 순서는 문서 순서다
@@ -616,8 +616,8 @@ PPTX는 마스터 배경의 `bg1` 참조).
   - `shade(색, <백분율>%)` 어둡게 · `tint(색, <백분율>%)` 밝게 — 백분율은 0 초과 100 이하다.
   - `alpha(색, <0~1>)` 투명도 — 백분율이 아니라 0~1 실수다 (`alpha(fg, 0.6)`).
   - **중첩은 없다** (v1): 함수 인자는 토큰명·리터럴 단색뿐이라 `shade(gradient(…), …)`나
-    `gradient(shade(…) …)`는 "색 함수는 중첩할 수 없다" 에러다. 알 수 없는 함수 이름은
-    "알 수 없는 색 함수"다.
+    `gradient(shade(…) …)`는 "color functions cannot be nested" 에러다. 알 수 없는 함수 이름은
+    "unknown color function"이다.
 - **색 함수도 토큰 참조를 보존한다**: 변형된 토큰 색은 PPTX에서 `schemeClr` + `lumMod`/
   `lumOff`/`alpha`로, 웹에서 `color-mix()`로 나가 밑색의 참조가 살아남는다. 그라디언트
   스톱도 토큰이면 스톱마다 `schemeClr`/`var()`를 유지한다 (아래 매핑 표).

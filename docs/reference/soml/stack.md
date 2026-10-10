@@ -252,21 +252,21 @@ PowerPoint에서 각각 선택·이동되는 낱개 도형이고, 좌표는 슬�
 
 | 조건 | 진단 메시지 |
 |---|---|
-| stack에 `gap`·`wrap`을 썼다 | `<stack>에 알 수 없는 속성 gap (쓸 수 있는 속성: align, justify, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style)` |
-| stack에 `cols`·`rows`를 썼다 | `<stack>에 알 수 없는 속성 cols (쓸 수 있는 속성: …)` |
-| stack 안에 문자 데이터를 직접 썼다 | `<stack> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)` |
+| stack에 `gap`·`wrap`을 썼다 | `unknown attribute gap on <stack> (available attributes: align, justify, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style)` |
+| stack에 `cols`·`rows`를 썼다 | `unknown attribute cols on <stack> (available attributes: …)` |
+| stack 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <stack> (wrap it in <text>)` |
 
 값 해석(`core.Resolve`) — 값 어휘와 **부모 한정**은 이 층이 소유한다. 진단은 고칠 방법
 (`<stack>`으로 감싸기·`layout="canvas"`)을 담는다:
 
 | 조건 | 진단 메시지 |
 |---|---|
-| `at`을 stack 밖에서 썼다 | `at은 <stack>의 자식에서만 쓴다 (부모는 <row>다) — 겹침이 필요하면 <stack>으로 감싼다` |
-| 어휘 밖의 `at` | `알 수 없는 at "middle" (쓸 수 있는 9지점 앵커: top-left, top-center, top-right, center-left, center, center-right, bottom-left, bottom-center, bottom-right)` |
-| 오타·짧은 이름·뒤바뀐 축 | `알 수 없는 at "top" — "top-center"를 뜻한 것인가? (9지점 앵커: …)` |
-| `x`/`y`를 유효하지 않은 부모에서 썼다 | `x는 <stack>의 자식이나 layout="canvas" 슬라이드의 직속 자식에서만 쓴다 (여기는 슬라이드 직속이다) — <stack>으로 감싸거나 슬라이드에 layout="canvas"를 준다` |
-| `x`/`y`에 공간 토큰을 썼다 | `공간 토큰 "md"는 gap·pad에만 쓴다 — x는 수치·백분율이다` |
-| `at`과 `x`/`y`를 함께 썼다 | `at과 x를 함께 쓸 수 없다 (x는 …에 있다) — 둘 다 자리를 정하는 채널이라 하나만 쓴다 (at은 9지점 앵커, x/y는 절대 오프셋)` |
+| `at`을 stack 밖에서 썼다 | `at is only for children of <stack> (the parent is <row>) — wrap it in <stack> if you need overlap` |
+| 어휘 밖의 `at` | `unknown at "middle" (available 9-point anchors: top-left, top-center, top-right, center-left, center, center-right, bottom-left, bottom-center, bottom-right)` |
+| 오타·짧은 이름·뒤바뀐 축 | `unknown at "top" — did you mean "top-center"? (9-point anchors: …)` |
+| `x`/`y`를 유효하지 않은 부모에서 썼다 | `x is only for children of <stack> or direct children of a layout="canvas" slide (this is a direct child of the slide) — wrap it in <stack> or give the slide layout="canvas"` |
+| `x`/`y`에 공간 토큰을 썼다 | `space token "md" is only for gap and pad — x takes a number, percentage` |
+| `at`과 `x`/`y`를 함께 썼다 | `at cannot be combined with x (x is at …) — both set the position, so use only one (at is a 9-point anchor, x/y are absolute offsets)` |
 
 크기·여백 속성(`pad`·`w`/`h`·`ratio` …)의 진단은 [레이아웃 태그](layout.md)·[`<shape>`](shape.md)와
 **같은 문구**다 — 목록이 한 벌이므로 진단도 한 벌이다.

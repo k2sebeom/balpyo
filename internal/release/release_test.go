@@ -215,7 +215,7 @@ func TestBuildProducesARunnableArchive(t *testing.T) {
 		t.Errorf("첫 줄 = %q, want %q", lines[0], want)
 	}
 	// 릴리스 바이너리는 커밋을 안다 — 툴체인이 박고 -trimpath가 지우지 않는다.
-	if len(lines) != 3 || !strings.HasPrefix(lines[1], "커밋 ") {
+	if len(lines) != 3 || !strings.HasPrefix(lines[1], "commit ") {
 		t.Errorf("릴리스 바이너리의 버전 출력이 세 줄(커밋 포함)이 아니다:\n%s", out)
 	}
 	if want := host.String() + " · " + runtime.Version(); lines[len(lines)-1] != want {

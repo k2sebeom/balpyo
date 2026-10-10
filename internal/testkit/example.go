@@ -39,7 +39,7 @@ func Examples(t testing.TB) []Example {
 	root := filepath.Join(RepoRoot(t), filepath.FromSlash(ExamplesDir))
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		t.Fatalf("예제 디렉토리를 읽을 수 없다: %v", err)
+		t.Fatalf("cannot read examples directory: %v", err)
 	}
 	var examples []Example
 	for _, entry := range entries {
@@ -49,7 +49,7 @@ func Examples(t testing.TB) []Example {
 		examples = append(examples, Example{Name: entry.Name(), Dir: filepath.Join(root, entry.Name())})
 	}
 	if len(examples) == 0 {
-		t.Fatalf("예제가 없다: %s", root)
+		t.Fatalf("no examples: %s", root)
 	}
 	sort.Slice(examples, func(i, j int) bool { return examples[i].Name < examples[j].Name })
 	return examples
@@ -78,7 +78,7 @@ func (e Example) Build(t testing.TB) *pipeline.Result {
 	if err != nil {
 		// 승격된 경고는 진단으로 이미 찍혔으므로 여기서 다시 나열하지 않는다 — 호출자가
 		// 진단을 보고한다.
-		t.Fatalf("%s 빌드 실패: %v", e.Name, err)
+		t.Fatalf("%s build failed: %v", e.Name, err)
 	}
 	return result
 }
@@ -97,7 +97,7 @@ func ExampleThemes(t testing.TB) []ExampleTheme {
 	root := filepath.Join(RepoRoot(t), filepath.FromSlash(ExampleThemesDir))
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		t.Fatalf("예제 테마 디렉토리를 읽을 수 없다: %v", err)
+		t.Fatalf("cannot read example themes directory: %v", err)
 	}
 	var themes []ExampleTheme
 	for _, entry := range entries {
@@ -107,7 +107,7 @@ func ExampleThemes(t testing.TB) []ExampleTheme {
 		themes = append(themes, ExampleTheme{Name: entry.Name(), Dir: filepath.Join(root, entry.Name())})
 	}
 	if len(themes) == 0 {
-		t.Fatalf("예제 테마가 없다: %s", root)
+		t.Fatalf("no example themes: %s", root)
 	}
 	sort.Slice(themes, func(i, j int) bool { return themes[i].Name < themes[j].Name })
 	return themes
@@ -121,10 +121,10 @@ func (e Example) BuildWithTheme(t testing.TB, theme ExampleTheme) *pipeline.Resu
 	t.Helper()
 	project := t.TempDir()
 	if err := os.CopyFS(project, os.DirFS(e.Dir)); err != nil {
-		t.Fatalf("예제 %s를 복사할 수 없다: %v", e.Name, err)
+		t.Fatalf("cannot copy example %s: %v", e.Name, err)
 	}
 	if err := os.CopyFS(filepath.Join(project, "themes", theme.Name), os.DirFS(theme.Dir)); err != nil {
-		t.Fatalf("예제 테마 %s를 복사할 수 없다: %v", theme.Name, err)
+		t.Fatalf("cannot copy example theme %s: %v", theme.Name, err)
 	}
 	session := SharedSession(t)
 	result, err := pipeline.Build(pipeline.Options{
@@ -136,7 +136,7 @@ func (e Example) BuildWithTheme(t testing.TB, theme ExampleTheme) *pipeline.Resu
 		Theme:      theme.Name,
 	})
 	if err != nil {
-		t.Fatalf("%s를 테마 %s로 빌드하지 못했다: %v", e.Name, theme.Name, err)
+		t.Fatalf("cannot build %s with theme %s: %v", e.Name, theme.Name, err)
 	}
 	return result
 }

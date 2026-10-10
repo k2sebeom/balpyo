@@ -61,7 +61,7 @@ func TestReadSlideZipOrdersByNumber(t *testing.T) {
 // 번호가 비면 어느 슬라이드가 빠졌는지 말한다 — 조용히 당겨 놓으면 뒤의 짝이 전부 어긋난다.
 func TestReadSlideZipRejectsGap(t *testing.T) {
 	_, err := readSlideZip(writeSlideZip(t, map[string]int{"image1.png": 1, "image3.png": 3}))
-	if err == nil || !strings.Contains(err.Error(), "2번") {
+	if err == nil || !strings.Contains(err.Error(), "slide 2") {
 		t.Fatalf("빠진 장을 말하지 않는다: %v", err)
 	}
 }

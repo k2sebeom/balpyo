@@ -200,7 +200,7 @@ balpyo theme list
 `balpyo theme update`로 다시 받는다. 저장소가 비공개이거나 GitHub 밖에 있으면 체크아웃한 디렉토리를
 경로로 설치한다 (`balpyo theme install ./slide-themes`) — 파일을 홈으로 복사하고, `update`가 같은
 디렉토리에서 다시 복사한다. 처음 보는 기계나 CI에서는 같은 `install`을 먼저 친다 — 빌드는
-받을 곳을 모르고, 없는 이름은 `알 수 없는 테마`로 멈춘다. 규칙 전체는
+받을 곳을 모르고, 없는 이름은 `unknown theme` 에러로 멈춘다. 규칙 전체는
 [설치한 테마](../reference/theme.md#설치한-테마-github에서-받는다)에 있다.
 
 옮기기 전에 테마 디렉토리를 프로젝트에서 지운다 — 같은 이름이 프로젝트 `themes/`와 설치한 테마에

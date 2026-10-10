@@ -52,24 +52,24 @@ func (f Fixture) AssertPackage(t testing.TB, result *pipeline.Result) {
 			notes++
 		}
 		if bytes.Contains(part, []byte("<p:hf")) {
-			t.Errorf("%s에 p:hf가 있다 — 크롬은 마스터가 아니라 슬라이드의 도형이다", name)
+			t.Errorf("%s has p:hf — chrome is slide shapes, not master", name)
 		}
 	}
 	if slides != len(result.Deck.Slides) {
-		t.Errorf("슬라이드 파트 %d개, 덱은 %d장", slides, len(result.Deck.Slides))
+		t.Errorf("%d slide parts, but the deck has %d slides", slides, len(result.Deck.Slides))
 	}
 	wantNotes := 0
 	for i, slide := range result.Deck.Slides {
 		part := fmt.Sprintf("ppt/notesSlides/notesSlide%d.xml", i+1)
 		if _, ok := parts[part]; ok != (slide.Notes != "") {
-			t.Errorf("%s(%s): 노트 파트 있음=%v, 노트 있음=%v", part, slide.ID, ok, slide.Notes != "")
+			t.Errorf("%s(%s): has notes part=%v, has notes=%v", part, slide.ID, ok, slide.Notes != "")
 		}
 		if slide.Notes != "" {
 			wantNotes++
 		}
 	}
 	if notes != wantNotes {
-		t.Errorf("노트 파트 %d개, 노트가 있는 장 %d장", notes, wantNotes)
+		t.Errorf("%d notes parts, but %d slides have notes", notes, wantNotes)
 	}
 
 	// 미디어: 파트 이름은 에셋 표의 자리 + 포맷의 확장자이고, 엔진은 그림을 고치지 않는다.
@@ -82,23 +82,23 @@ func (f Fixture) AssertPackage(t testing.TB, result *pipeline.Result) {
 	for i, asset := range result.Deck.Assets {
 		want, err := os.ReadFile(filepath.Join(f.Dir, filepath.FromSlash(asset.Key)))
 		if err != nil {
-			t.Fatalf("픽스처 에셋을 읽을 수 없다: %v", err)
+			t.Fatalf("cannot read fixture asset: %v", err)
 		}
 		if got, err := os.ReadFile(filepath.Join(result.OutDir, filepath.FromSlash(asset.Key))); err != nil {
-			t.Errorf("웹 산출에 에셋 %s가 없다: %v", asset.Key, err)
+			t.Errorf("web output is missing asset %s: %v", asset.Key, err)
 		} else if !bytes.Equal(got, want) {
-			t.Errorf("웹 산출 %s의 바이트가 입력과 다르다 — 엔진이 그림을 고쳤다", asset.Key)
+			t.Errorf("web output %s differs from the input bytes — the engine altered the image", asset.Key)
 		}
 		part := fmt.Sprintf("ppt/media/image%d%s", i+1, asset.Format.Ext())
 		if !media[part] {
-			t.Errorf("미디어 파트 %s(%s)가 없다", part, asset.Key)
+			t.Errorf("media part %s(%s) is missing", part, asset.Key)
 		} else if !bytes.Equal(parts[part], want) {
-			t.Errorf("%s의 바이트가 %s와 다르다 — 엔진이 그림을 고쳤다", part, asset.Key)
+			t.Errorf("%s differs from the bytes of %s — the engine altered the image", part, asset.Key)
 		}
 		delete(media, part)
 	}
 	for name := range media {
-		t.Errorf("에셋 표에 없는 미디어 파트가 있다: %s", name)
+		t.Errorf("media part not in the asset table: %s", name)
 	}
 }
 
@@ -109,11 +109,11 @@ func AssertValidPPTX(t testing.TB, data []byte) map[string][]byte {
 	t.Helper()
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
-		t.Fatalf("pptx를 열 수 없다: %v", err)
+		t.Fatalf("cannot open pptx: %v", err)
 	}
 	for _, entry := range zr.File {
 		if y, m, d := entry.Modified.Date(); y != 1980 || m != 1 || d != 1 {
-			t.Errorf("%s의 zip 타임스탬프가 %s다 — 같은 입력이 다른 바이트가 된다", entry.Name, entry.Modified)
+			t.Errorf("%s has zip timestamp %s — the same input would produce different bytes", entry.Name, entry.Modified)
 		}
 	}
 	parts := PPTXParts(t, data)
@@ -128,16 +128,16 @@ func AssertValidPPTX(t testing.TB, data []byte) map[string][]byte {
 func (f Fixture) AssertSameBytes(t testing.TB, first, second *pipeline.Result) {
 	t.Helper()
 	if strings.Join(first.Written, ",") != strings.Join(second.Written, ",") {
-		t.Fatalf("산출 목록이 다르다: %v vs %v", first.Written, second.Written)
+		t.Fatalf("output lists differ: %v vs %v", first.Written, second.Written)
 	}
 	for _, name := range first.Written {
 		a, errA := os.ReadFile(filepath.Join(first.OutDir, filepath.FromSlash(name)))
 		b, errB := os.ReadFile(filepath.Join(second.OutDir, filepath.FromSlash(name)))
 		if errA != nil || errB != nil {
-			t.Fatalf("산출물을 읽을 수 없다: %v / %v", errA, errB)
+			t.Fatalf("cannot read outputs: %v / %v", errA, errB)
 		}
 		if !bytes.Equal(a, b) {
-			t.Errorf("%s: 같은 입력의 두 빌드가 다른 바이트를 냈다", name)
+			t.Errorf("%s: two builds of the same input produced different bytes", name)
 		}
 	}
 }
@@ -154,7 +154,7 @@ func assertContentTypes(t testing.TB, parts map[string][]byte) {
 		} `xml:"Override"`
 	}
 	if err := xml.Unmarshal(parts[contentTypesPart], &types); err != nil {
-		t.Fatalf("%s를 읽을 수 없다: %v", contentTypesPart, err)
+		t.Fatalf("cannot read %s: %v", contentTypesPart, err)
 	}
 	defaults, overrides := map[string]bool{}, map[string]bool{}
 	for _, d := range types.Defaults {
@@ -164,7 +164,7 @@ func assertContentTypes(t testing.TB, parts map[string][]byte) {
 		name := strings.TrimPrefix(o.PartName, "/")
 		overrides[name] = true
 		if _, ok := parts[name]; !ok {
-			t.Errorf("content type Override가 없는 파트를 가리킨다: %s", o.PartName)
+			t.Errorf("content type Override points to a missing part: %s", o.PartName)
 		}
 	}
 	for _, name := range sortedParts(parts) {
@@ -172,7 +172,7 @@ func assertContentTypes(t testing.TB, parts map[string][]byte) {
 			continue
 		}
 		if !defaults[strings.ToLower(strings.TrimPrefix(path.Ext(name), "."))] {
-			t.Errorf("파트 %s에 content type이 없다", name)
+			t.Errorf("part %s has no content type", name)
 		}
 	}
 }
@@ -192,7 +192,7 @@ func assertRels(t testing.TB, parts map[string][]byte) {
 		}
 		if owner := path.Join(dir, strings.TrimSuffix(path.Base(name), ".rels")); owner != "" {
 			if _, ok := parts[owner]; !ok {
-				t.Errorf("%s의 주인 파트 %s가 없다", name, owner)
+				t.Errorf("%s: owner part %s is missing", name, owner)
 			}
 		}
 		var rels struct {
@@ -203,12 +203,12 @@ func assertRels(t testing.TB, parts map[string][]byte) {
 			} `xml:"Relationship"`
 		}
 		if err := xml.Unmarshal(parts[name], &rels); err != nil {
-			t.Fatalf("%s를 읽을 수 없다: %v", name, err)
+			t.Fatalf("cannot read %s: %v", name, err)
 		}
 		ids := map[string]bool{}
 		for _, rel := range rels.Rels {
 			if ids[rel.ID] {
-				t.Errorf("%s에 rId %s가 두 번 있다", name, rel.ID)
+				t.Errorf("%s has rId %s twice", name, rel.ID)
 			}
 			ids[rel.ID] = true
 			if rel.TargetMode == "External" {
@@ -219,14 +219,14 @@ func assertRels(t testing.TB, parts map[string][]byte) {
 				target = path.Join(dir, rel.Target)
 			}
 			if _, ok := parts[target]; !ok {
-				t.Errorf("%s의 %s가 없는 파트 %s를 가리킨다", name, rel.ID, target)
+				t.Errorf("%s: %s points to missing part %s", name, rel.ID, target)
 			}
 			targeted[target] = true
 		}
 	}
 	for _, name := range sortedParts(parts) {
 		if name != contentTypesPart && !strings.HasSuffix(name, ".rels") && !targeted[name] {
-			t.Errorf("아무 관계도 가리키지 않는 파트가 있다: %s", name)
+			t.Errorf("part not targeted by any relationship: %s", name)
 		}
 	}
 }

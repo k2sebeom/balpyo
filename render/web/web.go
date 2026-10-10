@@ -96,11 +96,11 @@ func (*Renderer) Target() render.Target { return render.TargetHTML }
 // 것이다.
 func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 	if deck == nil {
-		return nil, fmt.Errorf("덱이 nil이다")
+		return nil, fmt.Errorf("deck is nil")
 	}
 	stage := deck.Stage
 	if stage.Width <= 0 || stage.Height <= 0 {
-		return nil, fmt.Errorf("논리 스테이지 크기가 유효하지 않다: %dx%d", stage.Width, stage.Height)
+		return nil, fmt.Errorf("invalid logical stage size: %dx%d", stage.Width, stage.Height)
 	}
 
 	var b strings.Builder
@@ -160,7 +160,7 @@ func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 	bg, err := backgroundCSS(slide.Background, deck)
 	if err != nil {
-		return fmt.Errorf("%s: 배경: %w", slide.Source, err)
+		return fmt.Errorf("%s: background: %w", slide.Source, err)
 	}
 	fmt.Fprintf(b, "<section class=%q id=%q %s=\"%d\" data-slide-source=%q%s>\n",
 		SlideClass, html.EscapeString(slide.ID), SlideIndexAttr, slide.Index, html.EscapeString(slide.Source), styleAttr(bg))
@@ -202,7 +202,8 @@ func baseCSS(stage soml.Stage, feat features) string {
 
   * { box-sizing: border-box; }
 
-  /* 뷰어 크롬의 바탕 — 슬라이드 밖의 색이므로 덱의 색이 아니다 (테마 토큰이 아닌 유일한 색). */
+  /* Viewer chrome background — a color outside the slide, so not a deck color (the only color
+     that is not a theme token). */
   html, body {
     margin: 0;
     padding: 0;
@@ -217,8 +218,9 @@ func baseCSS(stage soml.Stage, feat features) string {
     padding: 24px;
   }
 
-  /* 슬라이드는 논리 스테이지 크기를 그대로 갖는다. 저자·웹·지오메트리 패스가 같은
-     좌표계를 쓰므로 지오메트리 패스가 읽은 rect가 곧 PPTX 좌표다 (환산 분기 없음). */
+  /* A slide has exactly the logical stage size. The author, the web and the geometry pass share
+     one coordinate system, so the rect the geometry pass reads is the PPTX coordinate (no
+     conversion branch). */
   .balpyo-slide {
     position: relative;
     width: var(--balpyo-stage-width);
@@ -240,13 +242,13 @@ func backgroundCSS(bg *soml.Background, deck *soml.Deck) ([]string, error) {
 		return nil, nil
 	}
 	if (bg.Fill == nil) == (bg.Image == "") {
-		return nil, fmt.Errorf("배경은 채움이거나 그림이다 (둘 다 없거나 둘 다 있다) — core.Resolve를 거치지 않은 덱이다")
+		return nil, fmt.Errorf("a background is either a fill or a picture (it has neither or both) — the deck did not go through core.Resolve")
 	}
 	var layers, sizes []string
 	var decls []string
 	if bg.Image != "" {
 		if _, ok := deck.Assets.Get(bg.Image); !ok {
-			return nil, fmt.Errorf("에셋 표에 %q가 없다 — core.ResolveAssets를 거치지 않은 덱이다", bg.Image)
+			return nil, fmt.Errorf("%q is not in the asset table — the deck did not go through core.ResolveAssets", bg.Image)
 		}
 		layers = append(layers, fmt.Sprintf("url(%q)", bg.Image))
 		sizes = append(sizes, "cover")
@@ -254,7 +256,7 @@ func backgroundCSS(bg *soml.Background, deck *soml.Deck) ([]string, error) {
 	if bg.Fill != nil {
 		switch {
 		case bg.Fill.None:
-			return nil, fmt.Errorf("배경 채움에 none은 뜻이 없다")
+			return nil, fmt.Errorf("none is meaningless as a background fill")
 		case bg.Fill.Color.IsGradient():
 			grad, err := gradientCSS(*bg.Fill.Color.Gradient, deck.Theme)
 			if err != nil {

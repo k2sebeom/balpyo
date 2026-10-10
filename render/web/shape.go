@@ -487,7 +487,7 @@ func shapeGeometryOf(shapeType string) (shapeGeometry, error) {
 			return geom, nil
 		}
 	}
-	return shapeGeometry{}, fmt.Errorf("도형 type %q의 기하가 없다 (프리셋 %s)",
+	return shapeGeometry{}, fmt.Errorf("no geometry for shape type %q (presets: %s)",
 		shapeType, strings.Join(soml.ShapeTypes(), ", "))
 }
 
@@ -583,7 +583,7 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	if style == nil {
 		// 해석되지 않은 외관을 기본값으로 그리면 웹만 그럴듯하게 나오고 PPTX와 갈라진다
 		// (writeBlock·writeContainer와 같은 관문).
-		return fmt.Errorf("%s:%s <%s>의 도형 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+		return fmt.Errorf("%s:%s <%s> shape appearance is unresolved — the deck did not go through core.Resolve",
 			slide.Source, elem.Span, elem.Name)
 	}
 	geom, err := shapeGeometryOf(style.Type)
@@ -661,20 +661,20 @@ func writeShapeInk(b *strings.Builder, geom shapeGeometry, style soml.ShapeStyle
 				// CSS 기본 반경은 0이고 OOXML roundRect의 기본 조정값은 16.67%다 — 값이
 				// 비어 있으면 두 타깃이 서로 다른 모서리를 그린다 (core가 컴포넌트 기본값으로
 				// 채우는 자리다).
-				return fmt.Errorf("type=%q인데 반경이 해석되지 않았다", geom.Type)
+				return fmt.Errorf("type=%q but the radius is unresolved", geom.Type)
 			}
 			attrs += fmt.Sprintf(" rx=%q", formatNumber(radius.Px))
 		} else if style.Radius != nil {
 			// 반경을 실을 자리가 없는 프리셋에 반경이 남아 있으면 **웹만 둥글어지고 PPTX는
 			// 각진 채** 남는 길이 열린다 (core가 그 조합을 막는다 — core/shape.go).
-			return fmt.Errorf("type=%q에는 반경을 실을 자리가 없다", geom.Type)
+			return fmt.Errorf("type=%q has no place for a radius", geom.Type)
 		}
 		fmt.Fprintf(b, "<%s %s/>", geom.Element, attrs)
 		b.WriteString("</svg>\n")
 		return nil
 	}
 	if style.Radius != nil {
-		return fmt.Errorf("type=%q에는 반경을 실을 자리가 없다", geom.Type)
+		return fmt.Errorf("type=%q has no place for a radius", geom.Type)
 	}
 	fmt.Fprintf(b, "<svg class=%q viewBox=\"0 0 100 100\" preserveAspectRatio=\"none\"%s%s>",
 		shapeInkClass, inkAccessAttrs(style.Alt), styleAttr(decls))
@@ -815,7 +815,7 @@ func anchorValue(anchor soml.TextAnchor) (string, error) {
 	case soml.AnchorBottom:
 		return "end", nil
 	}
-	return "", fmt.Errorf("anchor %q는 세로 앵커 어휘 밖이다", string(anchor))
+	return "", fmt.Errorf("anchor %q is not a known vertical anchor", string(anchor))
 }
 
 // shapeInkCSS는 확정된 도형 외관을 그림의 CSS 선언 목록으로 컴파일한다 (외관 매핑 표의 도형 외관).
@@ -836,7 +836,7 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, 
 	// 만들고 `fill: url(#…)`로 가리킨다 (CSS `border-image`가 radius와 조합되지
 	// 않아 엔진이 SVG def를 소유한다).
 	if style.Fill == nil {
-		return nil, "", fmt.Errorf("채움이 해석되지 않았다")
+		return nil, "", fmt.Errorf("fill is unresolved")
 	}
 	if style.Fill.None {
 		decls = append(decls, "fill: none")
@@ -858,13 +858,13 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, 
 	// border: 굵기·스타일·색이 각자의 선언으로 갈라진다 (축약을 다시 만들지 않는 이유는
 	// soml.Border의 주석 — 렌더러가 축약을 해석하면 규칙이 두 곳에 생긴다).
 	if style.Border == nil {
-		return nil, "", fmt.Errorf("테두리가 해석되지 않았다")
+		return nil, "", fmt.Errorf("border is unresolved")
 	}
 	if style.Border.None {
 		decls = append(decls, "stroke: none")
 	} else {
 		if style.Border.Width <= 0 {
-			return nil, "", fmt.Errorf("테두리 굵기가 해석되지 않았다 (%s)", formatNumber(style.Border.Width))
+			return nil, "", fmt.Errorf("border width is unresolved (%s)", formatNumber(style.Border.Width))
 		}
 		dash, err := dashArray(style.Border.Style, style.Border.Width)
 		if err != nil {
@@ -904,7 +904,7 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, 
 		if _, ok := theme.Shadow(style.Shadow.Name); !ok {
 			// var()는 정의되지 않은 변수를 조용히 무시한다 — 검사하지 않으면 그림자가
 			// 사라지고 아무 에러도 나지 않는다 (colorValue와 같은 근거).
-			return nil, "", fmt.Errorf("그림자 토큰 %q가 테마에 없다", style.Shadow.Name)
+			return nil, "", fmt.Errorf("shadow token %q is not in the theme", style.Shadow.Name)
 		}
 		decls = append(decls, fmt.Sprintf("filter: drop-shadow(var(%s%s))", shadowVarPrefix, style.Shadow.Name))
 	}
@@ -913,7 +913,7 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, 
 		// OOXML이 알파를 `solidFill`·`ln` 안에 싣는 것과 짝이다 — 도형 전체 투명도는
 		// `a:alphaModFix` 효과이고 두 타깃이 그 지점에서 갈라지면 같은 덱이 다르게 보인다.
 		if *style.Opacity < 0 || *style.Opacity > 1 {
-			return nil, "", fmt.Errorf("불투명도 %s가 0~1 밖이다", formatNumber(*style.Opacity))
+			return nil, "", fmt.Errorf("opacity %s is outside 0–1", formatNumber(*style.Opacity))
 		}
 		decls = append(decls, "opacity: "+formatNumber(*style.Opacity))
 	}
@@ -949,7 +949,7 @@ func defsBlock(defs []string) string {
 // 못하지만 CSS 프로퍼티는 풀어서 토큰 참조가 살아남는다.
 func linearGradientDef(id string, grad soml.Gradient, theme soml.Theme) (string, error) {
 	if len(grad.Stops) < 2 {
-		return "", fmt.Errorf("그라디언트 스톱이 둘 미만이다 (%d)", len(grad.Stops))
+		return "", fmt.Errorf("gradient has fewer than two stops (%d)", len(grad.Stops))
 	}
 	x1, y1, x2, y2 := gradientVector(grad.Angle)
 	var b strings.Builder
@@ -1010,7 +1010,7 @@ func dashArray(style soml.BorderStyle, width float64) (string, error) {
 	case soml.BorderDotted:
 		return pattern(1, 3), nil
 	}
-	return "", fmt.Errorf("테두리 스타일 %q는 어휘 밖이다", string(style))
+	return "", fmt.Errorf("unknown border style %q", string(style))
 }
 
 // flipValue는 대칭을 CSS transform 값으로 만든다.
@@ -1023,7 +1023,7 @@ func flipValue(flip soml.Flip) (string, error) {
 	case soml.FlipBoth:
 		return "scale(-1, -1)", nil
 	}
-	return "", fmt.Errorf("flip %q는 대칭 어휘 밖이다", string(flip))
+	return "", fmt.Errorf("flip %q is not a known flip value", string(flip))
 }
 
 // shadowVarsCSS는 그림자 토큰의 CSS 변수 선언이다 — 참조(shapeInkCSS)와 선언이 **한 표**에서
@@ -1072,18 +1072,20 @@ func shadowColorValue(token soml.ShadowToken) string {
 // 렌더가 붙었다는 이유로 달라지면 골든 diff가 무엇이 움직였는지 말해 주지 못한다.
 func shapeCSS() string {
 	return fmt.Sprintf(`
-  /* <shape>는 **박스 하나와 그림 하나**다. 박스가 잰 rect(=PPTX xfrm)이고 그림은 절대
-     배치로 흐름에서 빠지므로, 프리셋 기하가 배치에 영향을 주지 않는다. 세로 flex인 이유는
-     도형 안 텍스트가 문서 순서대로 쌓이고 세로 앵커가 주축 분배가 되기 때문이다. */
+  /* <shape> is **one box and one picture**. The box is the measured rect (=PPTX xfrm) and the
+     picture is absolutely positioned out of the flow, so the preset geometry does not affect
+     layout. It is a vertical flex because text inside a shape stacks in document order and the
+     vertical anchor becomes main-axis distribution. */
   .balpyo-shape {
     position: relative;
     display: flex;
     flex-direction: column;
   }
 
-  /* 그림은 박스를 덮는다. overflow: visible이어야 하는 이유가 둘이다 — 선이 경로 중앙에
-     그려져 굵기의 절반이 박스 밖으로 번지고(OOXML a:ln과 같은 규약), callout의 꼬리가
-     박스 아래로 나간다. UA는 바깥 <svg>에 overflow: hidden을 걸므로 명시한다. */
+  /* The picture covers the box. overflow: visible is needed for two reasons — strokes are drawn
+     centered on the path, so half the width spills outside the box (the same convention as
+     OOXML a:ln), and a callout's tail extends below the box. The UA sets overflow: hidden on
+     the outer <svg>, so it is stated explicitly. */
   .balpyo-shape-ink {
     position: absolute;
     left: 0;
@@ -1093,14 +1095,16 @@ func shapeCSS() string {
     overflow: visible;
   }
 
-  /* 그림이 절대 배치라 흐름 콘텐츠보다 위에 칠해진다 — 자식을 position: relative로 올려
-     글자가 그림 위에 오게 한다. z-index로 그림을 내리는 길은 스택 문맥에 따라 슬라이드
-     바탕 아래로 사라질 수 있어 쓰지 않는다.
+  /* The picture is absolutely positioned, so it paints above flow content — children are raised
+     with position: relative so the text sits above the picture. Lowering the picture with
+     z-index is avoided because, depending on the stacking context, it can disappear beneath the
+     slide background.
 
-     목록이 다섯 줄인 이유는 **배경 모드**다: 도형이 컨테이너를 담으면 올릴 것이
-     글자가 아니라 컨테이너다. 자식 전부를 한 줄로 집는 길(> :not(.balpyo-shape-ink))은 쓰지
-     않는다 — 특정도 (0,2,0)이 아래 .balpyo-shape-body (0,1,0)를 이겨 프리셋 텍스트 영역의
-     절대 배치가 풀린다 (텍스트 영역 래퍼가 흐름으로 돌아간다). */
+     The list has five lines because of **background mode**: when a shape holds a container,
+     what must be raised is the container, not text. A single selector catching all children (>
+     :not(.balpyo-shape-ink)) is not used — its specificity (0,2,0) would beat
+     .balpyo-shape-body (0,1,0) below and undo the absolute positioning of the preset text area
+     (the text-area wrapper would return to the flow). */
   .balpyo-shape > .balpyo-text,
   .balpyo-shape > .balpyo-row,
   .balpyo-shape > .balpyo-col,
@@ -1109,19 +1113,21 @@ func shapeCSS() string {
     position: relative;
   }
 
-  /* 프리셋의 텍스트 영역. 네 변의 인셋은 인라인 백분율이고, 이 규칙은 "그
-     사각형이 박스 안의 절대 배치 상자이며 텍스트가 세로로 쌓인다"는 정의만 갖는다.
-     그림보다 문서 순서에서 뒤에 오므로 글자가 그림 위에 칠해진다 (위 규칙과 같은 이유로
-     z-index를 쓰지 않는다). */
+  /* The preset's text area. The four insets are inline percentages; this rule only holds the
+     definition "that rectangle is an absolutely positioned box inside the box, and text stacks
+     vertically in it". It comes after the picture in document order, so the text paints above
+     the picture (no z-index, for the same reason as the rule above). */
   .balpyo-shape-body {
     position: absolute;
     display: flex;
     flex-direction: column;
   }
 
-  /* 회전 — 선언은 여기, 각도는 인라인 커스텀 프로퍼티다. 측정 뷰가 이 선언을 무효화해야
-     잰 rect가 **회전 전** 박스가 된다 (getBoundingClientRect는 회전된 bbox를 준다: 45도에서
-     1.41배). 인라인 style은 층 밖에서 이기므로 선언이 요소 쪽에 있으면 덮을 수 없다. */
+  /* Rotation — the declaration lives here, the angle is an inline custom property. The measure
+     view must cancel this declaration so the measured rect is the **pre-rotation** box
+     (getBoundingClientRect returns the rotated bbox: 1.41× at 45 degrees). Inline style wins
+     from outside the layers, so the declaration could not be overridden if it were on the
+     element. */
   .balpyo-shape-rotate {
     transform: rotate(var(%s, 0deg));
   }

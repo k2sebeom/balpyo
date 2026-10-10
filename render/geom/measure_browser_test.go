@@ -178,7 +178,7 @@ func TestMeasureRejectsScaledPage(t *testing.T) {
 		return strings.Replace(html, "</head>", "<style>.balpyo-slide { zoom: 0.5; }</style>\n</head>", 1)
 	})
 	_, err := testkit.SharedSession(t).Measure(deck, path)
-	if err == nil || !strings.Contains(err.Error(), "스케일") {
+	if err == nil || !strings.Contains(err.Error(), "scaled") {
 		t.Errorf("스케일된 페이지의 에러 = %v, want 스케일 진단", err)
 	}
 }

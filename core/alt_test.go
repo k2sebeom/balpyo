@@ -47,7 +47,7 @@ func TestAltRejectsEmptyAndValuelessOnShapeAndTable(t *testing.T) {
 			if len(diags) != 1 {
 				t.Fatalf("진단 %d건, want 1건: %v", len(diags), diags)
 			}
-			if !strings.Contains(diags[0].Message, "alt") || !strings.Contains(diags[0].Message, "지운다") {
+			if !strings.Contains(diags[0].Message, "alt") || !strings.Contains(diags[0].Message, "remove the attribute") {
 				t.Errorf("진단 = %q, want alt과 지우는 법", diags[0].Message)
 			}
 		})

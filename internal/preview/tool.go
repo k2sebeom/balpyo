@@ -74,7 +74,7 @@ func LookTool(env string, candidates []string) (string, error) {
 			return path, nil
 		}
 	}
-	return "", fmt.Errorf("실행 파일을 찾을 수 없다 (후보: %s)", strings.Join(candidates, ", "))
+	return "", fmt.Errorf("cannot find executable (candidates: %s)", strings.Join(candidates, ", "))
 }
 
 // executable은 경로가 실행 가능한 파일인지 본다.
@@ -84,10 +84,10 @@ func executable(path string) error {
 		return err
 	}
 	if info.IsDir() {
-		return fmt.Errorf("디렉토리다")
+		return fmt.Errorf("is a directory")
 	}
 	if info.Mode()&0o111 == 0 {
-		return fmt.Errorf("실행 권한이 없다")
+		return fmt.Errorf("not executable")
 	}
 	return nil
 }

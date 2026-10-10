@@ -61,10 +61,10 @@ func (s Snapshot) Equal(other Snapshot) bool {
 func Scan(root string, skip SkipFunc) (Snapshot, error) {
 	info, err := os.Stat(root)
 	if err != nil {
-		return nil, fmt.Errorf("감시할 디렉토리를 열 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot open directory to watch: %w", err)
 	}
 	if !info.IsDir() {
-		return nil, fmt.Errorf("감시할 디렉토리가 아니다: %s", root)
+		return nil, fmt.Errorf("not a directory to watch: %s", root)
 	}
 	snap := Snapshot{}
 	err = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
@@ -104,7 +104,7 @@ func Scan(root string, skip SkipFunc) (Snapshot, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%s를 걸을 수 없다: %w", root, err)
+		return nil, fmt.Errorf("cannot walk %s: %w", root, err)
 	}
 	return snap, nil
 }
@@ -119,13 +119,13 @@ func Scan(root string, skip SkipFunc) (Snapshot, error) {
 func ProjectSkip(root, outDir string) (SkipFunc, error) {
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
-		return nil, fmt.Errorf("프로젝트 경로를 정할 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot resolve project path: %w", err)
 	}
 	var outRel string
 	if outDir != "" {
 		absOut, err := filepath.Abs(outDir)
 		if err != nil {
-			return nil, fmt.Errorf("출력 디렉토리 경로를 정할 수 없다: %w", err)
+			return nil, fmt.Errorf("cannot resolve output directory path: %w", err)
 		}
 		rel, err := filepath.Rel(absRoot, absOut)
 		if err == nil && rel != "." && !strings.HasPrefix(rel, "..") {

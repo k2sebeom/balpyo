@@ -454,14 +454,14 @@ func TestRenderPicErrors(t *testing.T) {
 		breakIt func(deck *soml.Deck, style *soml.ImageStyle)
 		want    string
 	}{
-		{"에셋 표가 없다", true, func(*soml.Deck, *soml.ImageStyle) {}, "에셋 표에"},
-		{"src가 해석되지 않았다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Src = "" }, "src가 해석되지 않았다"},
-		{"fit이 어휘 밖이다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Fit = soml.ImageFit("fill") }, "맞춤 어휘 밖이다"},
-		{"테두리 굵기가 0이다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Border = &soml.Border{Style: soml.BorderSolid} }, "테두리 굵기가 해석되지 않았다"},
-		{"불투명도가 범위 밖이다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Opacity = &over }, "0~1 밖이다"},
-		{"flip이 어휘 밖이다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Flip = soml.Flip("x") }, "대칭 어휘 밖이다"},
-		{"에셋의 바이트가 비었다", false, func(d *soml.Deck, _ *soml.ImageStyle) { d.Assets[0].Bytes = nil }, "바이트가 비었다"},
-		{"포맷의 콘텐츠 타입을 모른다", false, func(d *soml.Deck, _ *soml.ImageStyle) { d.Assets[0].Format = soml.ImageFormat("webp") }, "확장자가 없다"},
+		{"에셋 표가 없다", true, func(*soml.Deck, *soml.ImageStyle) {}, "is not in the asset table"},
+		{"src가 해석되지 않았다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Src = "" }, "src is unresolved"},
+		{"fit이 어휘 밖이다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Fit = soml.ImageFit("fill") }, "is not a known fit value"},
+		{"테두리 굵기가 0이다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Border = &soml.Border{Style: soml.BorderSolid} }, "border width is unresolved"},
+		{"불투명도가 범위 밖이다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Opacity = &over }, "outside 0–1"},
+		{"flip이 어휘 밖이다", false, func(_ *soml.Deck, s *soml.ImageStyle) { s.Flip = soml.Flip("x") }, "is not a known flip value"},
+		{"에셋의 바이트가 비었다", false, func(d *soml.Deck, _ *soml.ImageStyle) { d.Assets[0].Bytes = nil }, "has no bytes"},
+		{"포맷의 콘텐츠 타입을 모른다", false, func(d *soml.Deck, _ *soml.ImageStyle) { d.Assets[0].Format = soml.ImageFormat("webp") }, "has no file extension"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

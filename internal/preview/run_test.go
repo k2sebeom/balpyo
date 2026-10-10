@@ -92,7 +92,7 @@ func TestRunRejectsOverlappingGalleryAndOutDir(t *testing.T) {
 				}
 				return
 			}
-			if err == nil || !strings.Contains(err.Error(), "겹친다") {
+			if err == nil || !strings.Contains(err.Error(), "overlaps") {
 				t.Fatalf("겹침을 원인으로 말해야 한다: %v", err)
 			}
 			if _, statErr := os.Stat(filepath.Join(project, "dist")); !os.IsNotExist(statErr) {
@@ -144,7 +144,7 @@ func TestRunBuildsGalleryWithBothRenders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("갤러리를 읽을 수 없다: %v", err)
 	}
-	for _, want := range []string{"web", "pptx", "raster-deck", "title", "body", result.Engine + "로 되돌린 PPTX"} {
+	for _, want := range []string{"web", "pptx", "raster-deck", "title", "body", "the PPTX rendered by " + result.Engine} {
 		if !strings.Contains(string(index), want) {
 			t.Errorf("갤러리에 %q가 없다", want)
 		}
@@ -195,14 +195,14 @@ func TestRunDefaultRendersFallBackToWebWithoutTools(t *testing.T) {
 	if !strings.Contains(result.SkippedPPTX, preview.EnvSoffice) {
 		t.Errorf("PPTX를 뺀 이유에 경로를 주는 방법이 없다: %q", result.SkippedPPTX)
 	}
-	if !strings.Contains(log.String(), "PPTX 열을 뺀다") {
+	if !strings.Contains(log.String(), "dropping the PPTX column") {
 		t.Errorf("PPTX 열을 조용히 뺐다 — 로그:\n%s", log.String())
 	}
 	index, err := os.ReadFile(result.Index)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(index), "PPTX 열을 뺐다") {
+	if !strings.Contains(string(index), "the PPTX column is omitted") {
 		t.Error("갤러리 안내가 PPTX 열이 빠졌다고 말하지 않는다 — 사람은 두 타깃을 다 봤다고 읽는다")
 	}
 	if _, err := os.Stat(filepath.Join(result.Dir, "raster-deck", fmtName(0, "web"))); err != nil {

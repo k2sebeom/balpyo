@@ -46,7 +46,7 @@ func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, st
 	rels := &slideRels{}
 	background, err := backgroundXML(deck, slide, rels)
 	if err != nil {
-		return "", "", nil, fmt.Errorf("%s: 배경: %w", slide.Source, err)
+		return "", "", nil, fmt.Errorf("%s: background: %w", slide.Source, err)
 	}
 	id := firstShapeID
 	for i, node := range slide.Content {
@@ -213,7 +213,7 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 	if !ok {
 		// 슬라이드 콘텐츠와 레이아웃 컨테이너는 요소만 담는다 (파서의 modelElements) —
 		// 여기 도달했다면 파서를 거치지 않은 덱이므로 조용히 건너뛰지 않고 멈춘다.
-		return fmt.Errorf("%s: %s 자리에 요소가 아닌 노드 %T가 있다",
+		return fmt.Errorf("%s: %s holds a non-element node %T",
 			slide.Source, web.ElementID(slide.Index, path), node)
 	}
 	// 텍스트 박스가 되는 것은 <text>·블록 종류 카탈로그·리스트 컨테이너다 (soml.KindOf —
@@ -267,7 +267,7 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 	default:
 		// 웹 렌더러와 같은 이유로 멈춘다 (render/web.writeNode): 어휘에 태그를 추가하고 렌더
 		// 매핑을 잊으면 "파싱은 되는데 그려지지 않는" 조용한 실패가 된다.
-		return fmt.Errorf("%s:%s <%s>를 PPTX로 렌더하는 매핑이 없다", slide.Source, elem.Span, elem.Name)
+		return fmt.Errorf("%s:%s <%s> has no PPTX mapping", slide.Source, elem.Span, elem.Name)
 	}
 	return nil
 }
@@ -301,13 +301,13 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 	if !ok {
 		// checkGeometry의 Verify가 먼저 잡지만, 이 함수 단독 호출에서도 좌표 없는 도형이
 		// 원점에 조용히 놓이는 일은 없어야 한다.
-		return fmt.Errorf("%s: %s <%s>의 측정된 좌표가 없다", slide.Source, id, elem.Name)
+		return fmt.Errorf("%s: %s <%s> has no measured coordinates", slide.Source, id, elem.Name)
 	}
 	style := elem.TextStyle()
 	if style == nil {
 		// 해석되지 않은 외관을 기본값으로 그리면 PPTX만 그럴듯하게 나오고 웹과 갈라진다
 		// (render/web.writeText와 같은 계약).
-		return fmt.Errorf("%s:%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+		return fmt.Errorf("%s:%s <%s> appearance is unresolved — the deck did not go through core.Resolve",
 			slide.Source, elem.Span, elem.Name)
 	}
 	body, err := textBodyXML(elem, *style, deck.Theme, rels, fillsOneLine(box))
@@ -328,7 +328,7 @@ func writeTextShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 func writeListShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, rels *slideRels) error {
 	box, ok := g.Box(id)
 	if !ok {
-		return fmt.Errorf("%s: %s <%s>의 측정된 좌표가 없다", slide.Source, id, elem.Name)
+		return fmt.Errorf("%s: %s <%s> has no measured coordinates", slide.Source, id, elem.Name)
 	}
 	body, err := listBodyXML(elem, deck.Theme, rels)
 	if err != nil {
@@ -346,13 +346,13 @@ func writeListShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 func writeShapeSp(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, rels *slideRels) error {
 	box, ok := g.Box(id)
 	if !ok {
-		return fmt.Errorf("%s: %s <%s>의 측정된 좌표가 없다", slide.Source, id, elem.Name)
+		return fmt.Errorf("%s: %s <%s> has no measured coordinates", slide.Source, id, elem.Name)
 	}
 	style := elem.ShapeStyle()
 	if style == nil {
 		// 해석되지 않은 외관을 기본값으로 그리면 PPTX만 그럴듯하게 나오고 웹과 갈라진다
 		// (render/web.writeShape와 같은 관문).
-		return fmt.Errorf("%s:%s <%s>의 도형 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+		return fmt.Errorf("%s:%s <%s> shape appearance is unresolved — the deck did not go through core.Resolve",
 			slide.Source, elem.Span, elem.Name)
 	}
 	spec, err := shapeSp(shapeID, elem.Name+" "+id, box.Rect, *style)
@@ -500,15 +500,15 @@ func shapeSp(id int, name string, rect geom.Rect, style soml.ShapeStyle) (spSpec
 		// 어휘에 프리셋을 더하고 매핑을 잊으면 조용히 사각형이 되는 대신 멈춘다 — `prst`
 		// 이름이 틀려도 파일은 열리므로(뷰어가 모르는 프리셋을 무시한다) 이 관문과 골든
 		// 어서션만이 그것을 잡는다.
-		return spSpec{}, fmt.Errorf("도형 type %q의 prstGeom 매핑이 없다", style.Type)
+		return spSpec{}, fmt.Errorf("no prstGeom mapping for shape type %q", style.Type)
 	}
 	spec := spSpec{id: id, name: name, descr: style.Alt, rect: rect, preset: preset}
 	if style.Fill == nil {
-		return spSpec{}, fmt.Errorf("채움이 해석되지 않았다")
+		return spSpec{}, fmt.Errorf("fill is unresolved")
 	}
 	spec.fill = *style.Fill
 	if style.Border == nil {
-		return spSpec{}, fmt.Errorf("테두리가 해석되지 않았다")
+		return spSpec{}, fmt.Errorf("border is unresolved")
 	}
 	spec.border = *style.Border
 	adjust, err := shapeAdjusts(style, rect)
@@ -520,7 +520,7 @@ func shapeSp(id int, name string, rect geom.Rect, style soml.ShapeStyle) (spSpec
 	if style.Opacity != nil {
 		if *style.Opacity < 0 || *style.Opacity > 1 {
 			// 웹과 같은 관문이다 (shapeInkCSS) — 범위 밖 알파는 뷰어가 조용히 자른다.
-			return spSpec{}, fmt.Errorf("불투명도 %v가 0~1 밖이다", *style.Opacity)
+			return spSpec{}, fmt.Errorf("opacity %v is outside 0–1", *style.Opacity)
 		}
 		spec.alpha = style.Opacity
 	}
@@ -542,7 +542,7 @@ func shapeSp(id int, name string, rect geom.Rect, style soml.ShapeStyle) (spSpec
 func shapeAdjusts(style soml.ShapeStyle, rect geom.Rect) ([]spAdjust, error) {
 	specs, ok := web.ShapeAdjusts(style.Type)
 	if !ok {
-		return nil, fmt.Errorf("도형 type %q의 조정값 명세가 없다", style.Type)
+		return nil, fmt.Errorf("no adjust-value spec for shape type %q", style.Type)
 	}
 	needsRadius := false
 	for _, spec := range specs {
@@ -553,9 +553,9 @@ func shapeAdjusts(style soml.ShapeStyle, rect geom.Rect) ([]spAdjust, error) {
 	var radius float64
 	switch {
 	case needsRadius && style.Radius == nil:
-		return nil, fmt.Errorf("type=%q인데 반경이 해석되지 않았다", style.Type)
+		return nil, fmt.Errorf("type=%q but the radius is unresolved", style.Type)
 	case !needsRadius && style.Radius != nil:
-		return nil, fmt.Errorf("type=%q에는 반경을 실을 자리가 없다", style.Type)
+		return nil, fmt.Errorf("type=%q has no place for a radius", style.Type)
 	case needsRadius:
 		radius = style.Radius.Px
 	}
@@ -665,7 +665,7 @@ func transformOf(rotate *float64, flip soml.Flip) (xfrm, error) {
 	case soml.FlipBoth:
 		t.flipH, t.flipV = true, true
 	default:
-		return xfrm{}, fmt.Errorf("flip %q는 대칭 어휘 밖이다", string(flip))
+		return xfrm{}, fmt.Errorf("flip %q is not a known flip value", string(flip))
 	}
 	return t, nil
 }
@@ -734,7 +734,7 @@ func writeLineElem(w func(depth int, line string), depth int, name string, borde
 		return nil
 	}
 	if border.Width <= 0 {
-		return fmt.Errorf("테두리 굵기가 해석되지 않았다 (%v)", border.Width)
+		return fmt.Errorf("border width is unresolved (%v)", border.Width)
 	}
 	dash, err := prstDashValue(border.Style)
 	if err != nil {
@@ -827,7 +827,7 @@ func prstDashValue(style soml.BorderStyle) (string, error) {
 	case soml.BorderDotted:
 		return "dot", nil
 	}
-	return "", fmt.Errorf("테두리 스타일 %q는 어휘 밖이다", string(style))
+	return "", fmt.Errorf("unknown border style %q", string(style))
 }
 
 // fullLineRatio는 "한 줄이 박스를 채웠다"의 문턱이다 — 잰 줄 폭이 박스 폭의 이 비율 이상이면
@@ -983,19 +983,19 @@ func shapeBodyXML(elem *soml.Element, style soml.ShapeStyle, rect geom.Rect, the
 			if !ok {
 				// 도형 직속 문자 데이터는 파서가 막는다 (modelElements) — 여기 도달했다면
 				// 파서를 거치지 않은 덱이므로 조용히 건너뛰지 않고 멈춘다.
-				return "", fmt.Errorf("<%s> 안에 요소가 아닌 노드 %T가 있다", elem.Name, child)
+				return "", fmt.Errorf("<%s> contains a non-element node %T", elem.Name, child)
 			}
 			if text.Name != soml.TextElement && soml.KindOf(text.Name) != soml.KindBlock {
 				// 흡수 모드에 남은 자식은 텍스트 요소뿐이다 (파서의 children allowlist —
 				// soml.shapeChildren이 여는 나머지는 컨테이너 넷이고, 그것이 하나라도 있으면
 				// 위 분기가 이 도형을 배경으로 돌린다). 여기 도달한 태그는 어휘와 렌더 매핑이
 				// 어긋난 것이다.
-				return "", fmt.Errorf("%s <%s> 안의 <%s>를 PPTX로 렌더하는 매핑이 없다",
+				return "", fmt.Errorf("%s <%s>: no PPTX mapping for child <%s>",
 					text.Span, elem.Name, text.Name)
 			}
 			textStyle := text.TextStyle()
 			if textStyle == nil {
-				return "", fmt.Errorf("%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+				return "", fmt.Errorf("%s <%s> appearance is unresolved — the deck did not go through core.Resolve",
 					text.Span, text.Name)
 			}
 			if err := writeTextParagraph(w, text, *textStyle, theme, rels); err != nil {
@@ -1021,7 +1021,7 @@ func bodyAnchorValue(anchor soml.TextAnchor) (string, error) {
 	case soml.AnchorBottom:
 		return "b", nil
 	}
-	return "", fmt.Errorf("anchor %q는 세로 앵커 어휘 밖이다", string(anchor))
+	return "", fmt.Errorf("anchor %q is not a known vertical anchor", string(anchor))
 }
 
 // bodyInsets는 도형의 `pad`를 `bodyPr`의 인셋 속성 넷으로 만든다 (`pad`가 없으면 전부 0).
@@ -1038,7 +1038,7 @@ func bodyInsets(pad *soml.Pad) (string, error) {
 	if pad != nil {
 		for i, side := range [4]soml.Length{pad.Left, pad.Top, pad.Right, pad.Bottom} {
 			if side.Percent {
-				return "", fmt.Errorf("도형의 pad는 백분율을 쓸 수 없다 (%v%%) — OOXML bodyPr 인셋은 절대 EMU이고 CSS 백분율 padding은 부모 폭 기준이다",
+				return "", fmt.Errorf("shape pad cannot be a percentage (%v%%) — OOXML bodyPr insets are absolute EMU while CSS percentage padding is relative to the parent width",
 					side.Value)
 			}
 			insets[i] = EMU(side.Value)
@@ -1059,13 +1059,13 @@ func checkTextStyle(style soml.TextStyle, theme soml.Theme) error {
 		return err
 	}
 	if style.Size <= 0 {
-		return fmt.Errorf("폰트 크기가 해석되지 않았다 (%v)", style.Size)
+		return fmt.Errorf("font size is unresolved (%v)", style.Size)
 	}
 	if style.Weight <= 0 {
-		return fmt.Errorf("폰트 굵기가 해석되지 않았다 (%d)", style.Weight)
+		return fmt.Errorf("font weight is unresolved (%d)", style.Weight)
 	}
 	if style.LineHeight <= 0 {
-		return fmt.Errorf("줄높이가 해석되지 않았다 (%v)", style.LineHeight)
+		return fmt.Errorf("line height is unresolved (%v)", style.LineHeight)
 	}
 	return nil
 }
@@ -1098,11 +1098,11 @@ func listBodyXML(list *soml.Element, theme soml.Theme, rels *slideRels) (string,
 		if !ok {
 			// 리스트 컨테이너 직속 문자 데이터는 파서가 막는다 (modelElements) — 여기
 			// 도달했다면 파서를 거치지 않은 덱이므로 조용히 건너뛰지 않고 멈춘다.
-			return "", fmt.Errorf("<%s> 안에 요소가 아닌 노드 %T가 있다", list.Name, child)
+			return "", fmt.Errorf("<%s> contains a non-element node %T", list.Name, child)
 		}
 		if soml.KindOf(li.Name) != soml.KindListItem {
 			// 콘텐츠 모델상 리스트 컨테이너의 자식은 <li>뿐이다 (파서의 children allowlist).
-			return "", fmt.Errorf("%s <%s> 안의 <%s>를 PPTX로 렌더하는 매핑이 없다",
+			return "", fmt.Errorf("%s <%s>: no PPTX mapping for child <%s>",
 				li.Span, list.Name, li.Name)
 		}
 		if err := writeListItem(w, list, li, theme, rels); err != nil {
@@ -1129,7 +1129,7 @@ func listBodyXML(list *soml.Element, theme soml.Theme, rels *slideRels) (string,
 func writeListItem(w func(depth int, line string), list, li *soml.Element, theme soml.Theme, rels *slideRels) error {
 	style := li.TextStyle()
 	if style == nil {
-		return fmt.Errorf("%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+		return fmt.Errorf("%s <%s> appearance is unresolved — the deck did not go through core.Resolve",
 			li.Span, li.Name)
 	}
 	algn, err := algnValue(style.Align)
@@ -1179,7 +1179,7 @@ func bulletXML(container string) (string, error) {
 	}
 	// 컨테이너 어휘(soml.KindListContainer)에 이름을 추가하고 마커 매핑을 잊으면
 	// 조용히 마커 없는 리스트가 되는 대신 멈춘다.
-	return "", fmt.Errorf("<%s>의 마커 매핑이 없다", container)
+	return "", fmt.Errorf("no marker mapping for <%s>", container)
 }
 
 // bulletFontXML은 마커 폰트 요소다 — li의 확정 폰트 토큰에서 나온다 (근거는 writeListItem).
@@ -1231,11 +1231,11 @@ func writeRuns(w func(depth int, line string), parent *soml.Element, style soml.
 			if soml.KindOf(node.Name) != soml.KindInline {
 				// 콘텐츠 모델상 블록 안에는 인라인뿐이다 — 여기 도달했다면 파서를 거치지
 				// 않은 덱이므로 조용히 건너뛰지 않고 멈춘다 (웹 writeInlineChild와 같은 계약).
-				return fmt.Errorf("%s 인라인 자리의 <%s>를 PPTX로 렌더하는 매핑이 없다", node.Span, node.Name)
+				return fmt.Errorf("%s <%s> in inline position has no PPTX mapping", node.Span, node.Name)
 			}
 			childStyle := node.TextStyle()
 			if childStyle == nil {
-				return fmt.Errorf("%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+				return fmt.Errorf("%s <%s> appearance is unresolved — the deck did not go through core.Resolve",
 					node.Span, node.Name)
 			}
 			childCtx := runContext{inline: true, link: ctx.link}
@@ -1244,7 +1244,7 @@ func writeRuns(w func(depth int, line string), parent *soml.Element, style soml.
 				if childCtx.link == "" {
 					// core의 href 검증(없음/빈 값 에러)을 지나지 않은 값이 산출물에 실릴
 					// 길을 막는다 (render/web.writeInline과 같은 계약).
-					return fmt.Errorf("%s <a>의 링크가 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+					return fmt.Errorf("%s <a> link is unresolved — the deck did not go through core.Resolve",
 						node.Span)
 				}
 			}
@@ -1252,7 +1252,7 @@ func writeRuns(w func(depth int, line string), parent *soml.Element, style soml.
 				return err
 			}
 		default:
-			return fmt.Errorf("알 수 없는 노드 종류 %T", node)
+			return fmt.Errorf("unknown node type %T", node)
 		}
 	}
 	return nil
@@ -1325,7 +1325,7 @@ func algnValue(align soml.TextAlign) (string, error) {
 	case soml.AlignJustify:
 		return "just", nil
 	}
-	return "", fmt.Errorf("정렬 %q는 논리 이름 어휘 밖이다", string(align))
+	return "", fmt.Errorf("align %q is not a known logical alignment", string(align))
 }
 
 // boldValue는 font-weight 수치를 rPr@b로 눕힌다.
@@ -1377,18 +1377,18 @@ func writeTextFill(w func(depth int, line string), depth int, color soml.Color, 
 func colorElem(color soml.Color, theme soml.Theme) (name, attrs string, err error) {
 	switch {
 	case color.IsGradient():
-		return "", "", fmt.Errorf("그라디언트는 단일 색 요소가 아니다 — gradFill로 낸다")
+		return "", "", fmt.Errorf("a gradient is not a solid color — emit it as gradFill")
 	case color.IsZero():
-		return "", "", fmt.Errorf("색이 해석되지 않았다")
+		return "", "", fmt.Errorf("color is unresolved")
 	case color.IsToken():
 		token, ok := theme.Color(color.Token)
 		if !ok {
-			return "", "", fmt.Errorf("색 토큰 %q가 테마에 없다", color.Token)
+			return "", "", fmt.Errorf("color token %q is not in the theme", color.Token)
 		}
 		if token.Ref == "" {
 			// Ref 없는 토큰은 schemeClr를 만들 수 없다 — RGB로 눕히는 폴백은 토큰 보존
 			// 계약을 조용히 깨므로 두지 않는다.
-			return "", "", fmt.Errorf("색 토큰 %q에 schemeClr 참조(Ref)가 없다", color.Token)
+			return "", "", fmt.Errorf("color token %q has no schemeClr reference (Ref)", color.Token)
 		}
 		return "a:schemeClr", fmt.Sprintf(`val="%s"`, token.Ref), nil
 	default:
@@ -1467,7 +1467,7 @@ func writeColor(w func(depth int, line string), depth int, color soml.Color, alp
 // 통째로 받는 표기가 없어(alpha는 색의 성질이다) 스톱 색에 나눠 싣는다.
 func writeGradFill(w func(depth int, line string), depth int, grad soml.Gradient, alpha *float64, theme soml.Theme) error {
 	if len(grad.Stops) < 2 {
-		return fmt.Errorf("그라디언트 스톱이 둘 미만이다 (%d)", len(grad.Stops))
+		return fmt.Errorf("gradient has fewer than two stops (%d)", len(grad.Stops))
 	}
 	w(depth, "<a:gradFill>")
 	w(depth+1, "<a:gsLst>")
@@ -1503,7 +1503,7 @@ func writeGradFill(w func(depth int, line string), depth int, grad soml.Gradient
 func validateColor(color soml.Color, theme soml.Theme) error {
 	if color.IsGradient() {
 		if len(color.Gradient.Stops) < 2 {
-			return fmt.Errorf("그라디언트 스톱이 둘 미만이다 (%d)", len(color.Gradient.Stops))
+			return fmt.Errorf("gradient has fewer than two stops (%d)", len(color.Gradient.Stops))
 		}
 		for _, stop := range color.Gradient.Stops {
 			if _, _, err := colorElem(stop, theme); err != nil {
@@ -1535,11 +1535,11 @@ func typefaces(role soml.FontRole, theme soml.Theme) (latin, ea string, err erro
 // 없다 (soml.FontToken.Scheme의 주석 — 테마 폰트 편집을 따라가지 못하는 유일한 예외).
 func typefaceValues(role soml.FontRole, theme soml.Theme) (latin, ea string, err error) {
 	if role == "" {
-		return "", "", fmt.Errorf("폰트 토큰이 해석되지 않았다")
+		return "", "", fmt.Errorf("font token is unresolved")
 	}
 	token, ok := theme.Font(role)
 	if !ok {
-		return "", "", fmt.Errorf("폰트 토큰 %q가 테마에 없다", string(role))
+		return "", "", fmt.Errorf("font token %q is not in the theme", string(role))
 	}
 	switch token.Scheme {
 	case "major":
@@ -1549,7 +1549,7 @@ func typefaceValues(role soml.FontRole, theme soml.Theme) (latin, ea string, err
 	case "":
 		return token.Latin, token.EastAsian, nil
 	}
-	return "", "", fmt.Errorf("폰트 토큰 %q의 fontScheme 슬롯 %q를 모른다 (major/minor/빈 문자열)",
+	return "", "", fmt.Errorf("font token %q has an unknown fontScheme slot %q (major/minor/empty)",
 		string(role), token.Scheme)
 }
 
@@ -1566,7 +1566,7 @@ func backgroundXML(deck *soml.Deck, slide *soml.Slide, rels *slideRels) (string,
 		return "", nil
 	}
 	if (bg.Fill == nil) == (bg.Image == "") {
-		return "", fmt.Errorf("배경은 채움이거나 그림이다 (둘 다 없거나 둘 다 있다) — core.Resolve를 거치지 않은 덱이다")
+		return "", fmt.Errorf("a background is either a fill or a picture (it has neither or both) — the deck did not go through core.Resolve")
 	}
 	var b strings.Builder
 	w := func(depth int, line string) {
@@ -1576,7 +1576,7 @@ func backgroundXML(deck *soml.Deck, slide *soml.Slide, rels *slideRels) (string,
 	w(1, "<p:bgPr>")
 	if bg.Fill != nil {
 		if bg.Fill.None {
-			return "", fmt.Errorf("배경 채움에 none은 뜻이 없다")
+			return "", fmt.Errorf("none is meaningless as a background fill")
 		}
 		if err := writeFill(w, 2, *bg.Fill, nil, deck.Theme); err != nil {
 			return "", err
@@ -1584,11 +1584,11 @@ func backgroundXML(deck *soml.Deck, slide *soml.Slide, rels *slideRels) (string,
 	} else {
 		n, asset, ok := mediaOf(deck, bg.Image)
 		if !ok {
-			return "", fmt.Errorf("에셋 표에 %q가 없다 — core.ResolveAssets를 거치지 않은 덱이다", bg.Image)
+			return "", fmt.Errorf("%q is not in the asset table — the deck did not go through core.ResolveAssets", bg.Image)
 		}
 		ext := asset.Format.Ext()
 		if ext == "" {
-			return "", fmt.Errorf("포맷 %q의 확장자를 모른다", string(asset.Format))
+			return "", fmt.Errorf("unknown file extension for format %q", string(asset.Format))
 		}
 		crop, err := coverCrop(asset, geom.Rect{W: float64(deck.Stage.Width), H: float64(deck.Stage.Height)})
 		if err != nil {

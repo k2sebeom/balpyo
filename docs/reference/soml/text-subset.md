@@ -193,7 +193,7 @@ func warm(ctx context.Context, ids []string) error {
 - **마크업이 아닌 `<`는 내용이다.** `<`가 태그를 여는 것은 **영문자**·`/`·`<!--`·`<![CDATA[`
   앞일 때뿐이므로 `a < b`·`x <= y`·`1<2`·`a <- b`를 그냥 쓴다. `&lt;`로 써도 결과는 같다.
   이 규칙이 오타를 놓치지 않는 근거는 태그 이름이 항상 영문자로 시작한다는 것이다 —
-  `<txt>`는 여전히 `알 수 없는 태그 <txt>`로 잡힌다.
+  `<txt>`는 여전히 `unknown tag <txt>`로 잡힌다.
 - **접기 다음에 참조를 푼다.** `&#32;`로 쓴 공백은 접히지 않으므로 `가&#32;&#32;나`는 두
   칸을 남긴다 — 접는 모델에서 공백을 의도대로 넣는 유일한 길이다.
 - **참조는 한 번만 풀린다.** `&amp;lt;`는 `&lt;`라는 **글자 다섯**이고, 산출물에서 웹은
@@ -222,7 +222,7 @@ func warm(ctx context.Context, ids []string) error {
   `<p>` 안에서는 접힌다. CDATA는 "참조를 끄는 표기"이지 "공백 규칙을 바꾸는 표기"가
   아니다.
 - CDATA와 일반 텍스트는 이어 붙는다 — `식: <![CDATA[a < b]]> 끝`은 한 문단이다.
-- `]]>`로 닫지 않으면 에러다 (`CDATA 섹션이 ]]>로 닫히지 않았다`). 닫히지 않은 CDATA는
+- `]]>`로 닫지 않으면 에러다 (``CDATA section is not closed with `]]>` ``). 닫히지 않은 CDATA는
   파일의 나머지를 삼키므로 열리지 않은 태그 진단이 함께 난다 — 닫히지 않은 주석과 같다.
 - **CDATA 안에 `]]>`는 담을 수 없다** (XML과 같다) — 첫 `]]>`가 섹션을 닫는다. 그 글자가
   내용이어야 하면 섹션을 둘로 쪼개거나(`]]]]><![CDATA[>`) `&gt;`를 쓴다.
@@ -390,41 +390,41 @@ CSS가 0으로 명시하므로 **브라우저 기본 스타일에 기대는 값�
 
 | 조건 | 진단 메시지 |
 |---|---|
-| 서브셋 밖의 HTML 태그 (`<h6>` 등) | `알 수 없는 태그 <h6> — 혹시 <h3>? (<slide> 안에 쓸 수 있는 태그: …)` — 목록은 그 자리(부모)에 쓸 수 있는 태그다. `<b>`·`<i>`·`<img>`·`<h4>`–`<h6>` 같은 HTML 습관과 철자가 한두 글자 다른 이름은 후보를 하나 말한다 |
-| `<li>`가 리스트 밖에 있다 | `<li>는 <ul>/<ol>의 자식으로만 쓸 수 있다` |
-| 중첩 리스트 | `<li> 안에 <ul>을 겹칠 수 없다 — 중첩 리스트는 아직 지원하지 않는다` |
-| `<ul>`/`<ol>` 직속 문자 데이터 | `<ul> 안에 문자 데이터를 직접 쓸 수 없다 (<li>로 감싼다)` |
-| `<ul>`/`<ol>`의 자식이 `<li>`가 아니다 | `<ul>의 자식으로 <p>는 올 수 없다 (쓸 수 있는 태그: <li>)` |
-| 블록 안의 블록·리스트 | `<p> 안에 블록 태그 <h2>는 올 수 없다 (블록은 겹치지 않는다)` |
-| `<a>` 안의 `<a>` (중첩 포함) | `<a> 안에 <a>를 겹칠 수 없다` |
-| `<br>`을 여닫아 썼다 | `void 태그 <br>은 내용을 가질 수 없다 (<br/>로 쓴다)` |
-| `<pre>` 안에 요소를 썼다 | `<pre> 안에는 문자 데이터만 올 수 있다 (<strong>는 쓸 수 없다)` |
-| `<pre>` 아닌 블록에 `lang`을 썼다 | `<p>에 알 수 없는 속성 lang (쓸 수 있는 속성: variant, size, …)` — `lang`은 `<pre>` 고유 속성이다 |
-| 어휘 밖의 문자 참조 (`&nbsp;`) | `쓸 수 없는 문자 참조 &nbsp; (쓸 수 있는 것: &amp;, &apos;, &gt;, &lt;, &quot;, &#10진수;, &#x16진수;)` |
+| 서브셋 밖의 HTML 태그 (`<h6>` 등) | `unknown tag <h6> — did you mean <h3>? (tags available inside <slide>: …)` — 목록은 그 자리(부모)에 쓸 수 있는 태그다. `<b>`·`<i>`·`<img>`·`<h4>`–`<h6>` 같은 HTML 습관과 철자가 한두 글자 다른 이름은 후보를 하나 말한다 |
+| `<li>`가 리스트 밖에 있다 | `<li> can only be a child of <ul>/<ol>` |
+| 중첩 리스트 | `<ul> cannot be nested inside <li> — nested lists are not supported yet` |
+| `<ul>`/`<ol>` 직속 문자 데이터 | `character data cannot appear directly inside <ul> (wrap it in <li>)` |
+| `<ul>`/`<ol>`의 자식이 `<li>`가 아니다 | `<ul> cannot contain <p> (available tags: <li>)` |
+| 블록 안의 블록·리스트 | `block tag <h2> is not allowed inside <p> (blocks do not nest)` |
+| `<a>` 안의 `<a>` (중첩 포함) | `<a> cannot be nested inside <a>` |
+| `<br>`을 여닫아 썼다 | `void tag <br> cannot have content (write <br/>)` |
+| `<pre>` 안에 요소를 썼다 | `only character data is allowed inside <pre> (<strong> is not allowed)` |
+| `<pre>` 아닌 블록에 `lang`을 썼다 | `unknown attribute lang on <p> (available attributes: variant, size, …)` — `lang`은 `<pre>` 고유 속성이다 |
+| 어휘 밖의 문자 참조 (`&nbsp;`) | `` unsupported character reference &nbsp; (available: &amp;, &apos;, &gt;, &lt;, &quot;, `&#decimal;`, `&#xhex;`) `` |
 | 쓸 수 없는 코드포인트 (`&#0;` `&#xD800;` `&#x110000;`) | 같은 진단 — 참조 모양이지만 해석할 수 없다 |
-| CDATA가 닫히지 않았다 | `CDATA 섹션이 ]]>로 닫히지 않았다` |
-| 요소만 담는 자리에 CDATA를 썼다 | `<slide> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)` — 표기가 달라도 내용이다 |
-| 블록에 `role`을 썼다 | `<h1>에 알 수 없는 속성 role (쓸 수 있는 속성: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
-| `<span size>` | `<span>에 알 수 없는 속성 size (쓸 수 있는 속성: color, weight)` |
-| `<li>`에 외관 속성을 썼다 | `<li>에 알 수 없는 속성 size (쓸 수 있는 속성: reveal)` — 외관은 `<ul>`/`<ol>`에 쓴다 |
-| `<ul variant>` | `<ul>에 알 수 없는 속성 variant (쓸 수 있는 속성: size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| CDATA가 닫히지 않았다 | ``CDATA section is not closed with `]]>` `` |
+| 요소만 담는 자리에 CDATA를 썼다 | `character data cannot appear directly inside <slide> (wrap it in <text>)` — 표기가 달라도 내용이다 |
+| 블록에 `role`을 썼다 | `unknown attribute role on <h1> (available attributes: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| `<span size>` | `unknown attribute size on <span> (available attributes: color, weight)` |
+| `<li>`에 외관 속성을 썼다 | `unknown attribute size on <li> (available attributes: reveal)` — 외관은 `<ul>`/`<ol>`에 쓴다 |
+| `<ul variant>` | `unknown attribute variant on <ul> (available attributes: size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
 
 외관 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다. 블록의 `size`/`color`/`align`
 진단은 [`<text>`](text.md)와 같고, 서브셋 고유의 것은:
 
 | 조건 | 진단 메시지 |
 |---|---|
-| 어휘 밖의 `lang` | `알 수 없는 lang "typescript" (쓸 수 있는 값: go, xml, soml, json, bash)` |
-| `lang`에 값이 없다 (`<pre lang>`) | `lang 속성에는 값이 필요하다 (lang="go")` |
-| `lang=""` | `lang 속성이 비어 있다 (지우면 기본값을 쓴다)` — 하이라이팅 없는 `<pre>`가 기본값이다 |
-| `<a>`에 `href`가 없다 | `<a>에는 href가 필요하다 — 목적지 없는 링크는 뜻을 정할 수 없다` |
-| `href`에 값이 없다 (`<a href>`) | `href 속성에는 값이 필요하다 (href="https://example.com")` |
-| `href=""` | `href가 비어 있다 — 목적지 없는 링크는 뜻을 정할 수 없다` |
-| `reveal=""` | `reveal 속성이 비어 있다 (값을 지우면 자기 차례를 받는다)` |
-| `reveal`이 1 이상 정수가 아니다 (`0`·`-1`·`1.5`·낱말) | `reveal은 1 이상 정수다 ("0")` — 그 항목만 순서를 잃고 나머지 항목의 번호는 그대로다 |
-| `weight`에 400/700 수치를 썼다 | `weight는 이름을 쓴다 — "700" 대신 "bold"` |
-| `weight`에 그 외 수치를 썼다 | `weight "600"는 쓸 수 없다 — 굵기는 normal(400)과 bold(700) 두 단계다 (OOXML 굵기는 켬/끔이라 중간 굵기는 웹에서만 동작한다)` |
-| 어휘 밖의 `weight` | `알 수 없는 weight "…" (쓸 수 있는 값: normal, bold)` |
+| 어휘 밖의 `lang` | `unknown lang "typescript" (available values: go, xml, soml, json, bash)` |
+| `lang`에 값이 없다 (`<pre lang>`) | `the lang attribute needs a value (lang="go")` |
+| `lang=""` | `the lang attribute is empty (remove it to use the default)` — 하이라이팅 없는 `<pre>`가 기본값이다 |
+| `<a>`에 `href`가 없다 | `<a> needs an href — a link without a destination has no meaning` |
+| `href`에 값이 없다 (`<a href>`) | `the href attribute needs a value (href="https://example.com")` |
+| `href=""` | `href is empty — a link without a destination has no meaning` |
+| `reveal=""` | `the reveal attribute is empty (remove the value to take the next step in order)` |
+| `reveal`이 1 이상 정수가 아니다 (`0`·`-1`·`1.5`·낱말) | `reveal is an integer of at least 1 ("0")` — 그 항목만 순서를 잃고 나머지 항목의 번호는 그대로다 |
+| `weight`에 400/700 수치를 썼다 | `weight takes a name — instead of "700", use "bold"` |
+| `weight`에 그 외 수치를 썼다 | `weight "600" is not allowed — there are two weights, normal (400) and bold (700) (OOXML bold is on/off, so intermediate weights would only work on the web)` |
+| 어휘 밖의 `weight` | `unknown weight "…" (available values: normal, bold)` |
 
 모르는 `variant`는 에러가 아니라 **경고 + 기본 외관 폴백**이다 — 규칙은
 [외관 속성](../appearance.md)의 캐스케이드 절에 있다.

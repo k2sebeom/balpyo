@@ -135,7 +135,7 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) Listen(addr string) (net.Listener, error) {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return nil, fmt.Errorf("%s를 열 수 없다: %w", addr, err)
+		return nil, fmt.Errorf("cannot listen on %s: %w", addr, err)
 	}
 	return ln, nil
 }
@@ -170,7 +170,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "이 서버는 스트리밍을 할 수 없다", http.StatusInternalServerError)
+		http.Error(w, "this server does not support streaming", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -227,7 +227,7 @@ func writeEvent(w http.ResponseWriter, flusher http.Flusher, status Status) bool
 // handleFile은 산출물 하나를 서브한다. 문서에만 리로드 클라이언트를 주입한다.
 func (s *Server) handleFile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		http.Error(w, "GET만 받는다", http.StatusMethodNotAllowed)
+		http.Error(w, "only GET is allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	clean := path.Clean(r.URL.Path)

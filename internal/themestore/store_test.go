@@ -230,7 +230,7 @@ func TestInstallByNamePullsParents(t *testing.T) {
 	}
 	_, err := s.Install(context.Background(), mustSource(t, "github.com/acme/themes"),
 		InstallOptions{Names: []string{"nope"}})
-	if err == nil || !strings.Contains(err.Error(), "있는 테마: acme, acme-dark, other") {
+	if err == nil || !strings.Contains(err.Error(), "themes found: acme, acme-dark, other") {
 		t.Errorf("없는 이름은 있는 테마를 나열해야 한다: %v", err)
 	}
 }
@@ -282,7 +282,7 @@ func TestInstallRepoWithBuiltinNames(t *testing.T) {
 	gh.set("k2sebeom/balpyo@HEAD", repo{files: files})
 	src := mustSource(t, "github.com/k2sebeom/balpyo")
 	_, err := s.Install(context.Background(), src, InstallOptions{})
-	if err == nil || !strings.Contains(err.Error(), "내장 테마와 이름이 같아") {
+	if err == nil || !strings.Contains(err.Error(), "same name as a built-in theme") {
 		t.Fatalf("내장 이름은 설치 에러여야 한다: %v", err)
 	}
 	if names := installedNames(t, s); len(names) != 0 {
@@ -307,7 +307,7 @@ func TestInstallRollsBackOnBrokenTheme(t *testing.T) {
 	child(broken, "", "acme", "nope")
 	gh.set("acme/theme@v1", repo{files: broken})
 	_, err := s.Install(context.Background(), src, InstallOptions{})
-	if err == nil || !strings.Contains(err.Error(), "설치하지 않았다") {
+	if err == nil || !strings.Contains(err.Error(), "nothing was installed") {
 		t.Fatalf("깨진 테마는 설치 에러여야 한다: %v", err)
 	}
 	css, err := os.ReadFile(filepath.Join(s.Dir, "themes", "acme", "layouts", "title.css"))
@@ -334,7 +334,7 @@ func TestInstallConflictNeedsForce(t *testing.T) {
 	}
 	fork := mustSource(t, "github.com/fork/theme")
 	_, err := s.Install(context.Background(), fork, InstallOptions{})
-	if err == nil || !strings.Contains(err.Error(), "github.com/acme/theme에서 설치했다") {
+	if err == nil || !strings.Contains(err.Error(), "installed from github.com/acme/theme") {
 		t.Fatalf("다른 출처의 같은 이름은 에러여야 한다: %v", err)
 	}
 	if _, err := s.Install(context.Background(), fork, InstallOptions{Force: true}); err != nil {
@@ -352,7 +352,7 @@ func TestInstallRejectsLinksAndEscapes(t *testing.T) {
 	child(files, "theme/", "acme", "")
 	gh.set("acme/links@HEAD", repo{files: files, links: map[string]string{"theme/assets/bg.png": "/etc/passwd"}})
 	if _, err := s.Install(context.Background(), mustSource(t, "github.com/acme/links"), InstallOptions{}); err == nil ||
-		!strings.Contains(err.Error(), "링크") {
+		!strings.Contains(err.Error(), "link") {
 		t.Errorf("테마 안의 링크는 에러여야 한다: %v", err)
 	}
 	// 테마 밖의 링크는 상관없다.
@@ -386,7 +386,7 @@ func TestInstallReportsLint(t *testing.T) {
 func TestInstallMissingRepo(t *testing.T) {
 	s, _ := newStore(t)
 	_, err := s.Install(context.Background(), mustSource(t, "github.com/acme/nothing"), InstallOptions{})
-	if err == nil || !strings.Contains(err.Error(), "찾을 수 없다") {
+	if err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Errorf("없는 저장소는 찾을 수 없다는 에러여야 한다: %v", err)
 	}
 }
@@ -400,7 +400,7 @@ func TestRemove(t *testing.T) {
 	if _, err := s.Install(context.Background(), mustSource(t, "github.com/acme/themes"), InstallOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Remove([]string{"acme"}); err == nil || !strings.Contains(err.Error(), `"acme-dark"가 "acme"를 상속한다`) {
+	if err := s.Remove([]string{"acme"}); err == nil || !strings.Contains(err.Error(), `"acme-dark" extends "acme"`) {
 		t.Fatalf("남는 테마가 상속하는 테마는 지우지 않아야 한다: %v", err)
 	}
 	if err := s.Remove([]string{"acme", "acme-dark"}); err != nil {

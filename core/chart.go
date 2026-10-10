@@ -136,7 +136,7 @@ func (r *resolver) chartType(elem *soml.Element) bool {
 		if ok {
 			span = attr.NameSpan
 		}
-		r.errorf(span, "<%s>에 type이 필요하다 (쓸 수 있는 종류: %s) — 종류 없이는 무엇을 그릴지 추측할 수 없다",
+		r.errorf(span, "<%s> needs a type (available types: %s) — without a type there is no way to guess what to draw",
 			soml.ChartElement, chartTypeList())
 		return false
 	}
@@ -145,7 +145,7 @@ func (r *resolver) chartType(elem *soml.Element) bool {
 			return true
 		}
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 차트 type %q%s (쓸 수 있는 종류: %s)", attr.Value, didYouMean(attr.Value, chartTypeList()), chartTypeList())
+	r.errorf(attr.ValueSpan, "unknown chart type %q%s (available types: %s)", attr.Value, didYouMean(attr.Value, chartTypeList()), chartTypeList())
 	return false
 }
 
@@ -163,7 +163,7 @@ func (r *resolver) chartFrameHeight(elem *soml.Element) bool {
 		}
 	}
 	r.errorf(elem.NameSpan,
-		"<%s>에 h나 ratio가 필요하다 — 막대 높이가 축에 대한 백분율이라 내용이 높이를 정하면 기준이 순환한다",
+		"<%s> needs h or ratio — bar heights are percentages of the axis, so letting the content set the height would be circular",
 		soml.ChartElement)
 	return false
 }
@@ -214,7 +214,7 @@ func (r *resolver) chartColor(attr soml.Attr) (string, bool) {
 		return "", false
 	}
 	if attr.Value == noneValue {
-		r.errorf(attr.ValueSpan, "%s에 %s을 쓸 수 없다 — 그리지 않는 막대는 데이터가 아니다 (빈 막대는 value=\"0\"이다)",
+		r.errorf(attr.ValueSpan, "%s cannot be %s — a bar that is not drawn is not data (an empty bar is value=\"0\")",
 			attr.Name, noneValue)
 		return "", false
 	}
@@ -253,7 +253,7 @@ func (r *resolver) chartData(elem *soml.Element) ([]chartDatum, bool) {
 		}
 	}
 	if written == 0 {
-		r.errorf(elem.NameSpan, "<%s>에 <%s>가 하나도 없다 — 그릴 데이터가 없다 (<%s label=\"5월\" value=\"22\"/>)",
+		r.errorf(elem.NameSpan, "<%s> has no <%s> — there is no data to draw (<%s label=\"May\" value=\"22\"/>)",
 			soml.ChartElement, soml.ChartPointElement, soml.ChartPointElement)
 		return nil, false
 	}
@@ -288,7 +288,7 @@ func (r *resolver) chartLabel(point *soml.Element) (string, bool) {
 		if ok {
 			span = attr.NameSpan
 		}
-		r.errorf(span, "<%s>에 label이 필요하다 — 막대가 무엇의 값인지 없으면 그림이 읽히지 않는다",
+		r.errorf(span, "<%s> needs a label — without saying what a bar measures, the chart cannot be read",
 			soml.ChartPointElement)
 		return "", false
 	}
@@ -310,17 +310,17 @@ func (r *resolver) chartValue(point *soml.Element) (float64, string, bool) {
 		if ok {
 			span = attr.NameSpan
 		}
-		r.errorf(span, "<%s>에 value가 필요하다 — 막대 높이가 그 값이다", soml.ChartPointElement)
+		r.errorf(span, "<%s> needs a value — it is the bar height", soml.ChartPointElement)
 		return 0, "", false
 	}
 	value, err := strconv.ParseFloat(attr.Value, 64)
 	if err != nil {
-		r.errorf(attr.ValueSpan, "value가 수치가 아니다 (%q) — 단위는 <%s unit>에 쓴다 (value=\"22\" unit=\"분\")",
+		r.errorf(attr.ValueSpan, "value is not a number (%q) — put the unit in <%s unit> (value=\"22\" unit=\"min\")",
 			attr.Value, soml.ChartElement)
 		return 0, "", false
 	}
 	if value < 0 {
-		r.errorf(attr.ValueSpan, "value는 음수일 수 없다 (%q) — 막대 차트의 축은 0에서 시작한다", attr.Value)
+		r.errorf(attr.ValueSpan, "value cannot be negative (%q) — a bar chart axis starts at 0", attr.Value)
 		return 0, "", false
 	}
 	return value, attr.Value, true
@@ -344,7 +344,7 @@ func (r *resolver) chartAxis(elem *soml.Element, data []chartDatum) (float64, bo
 			if len(data) == 0 {
 				return 0, false // 점이 없다 — 진단은 chartData가 이미 냈다.
 			}
-			r.errorf(elem.NameSpan, "<%s>의 값이 모두 0이다 — 축을 정할 수 없다 (max를 적으면 빈 차트를 그릴 수 있다)",
+			r.errorf(elem.NameSpan, "all values of <%s> are 0 — the axis cannot be determined (set max to draw an empty chart)",
 				soml.ChartElement)
 			return 0, false
 		}
@@ -355,16 +355,16 @@ func (r *resolver) chartAxis(elem *soml.Element, data []chartDatum) (float64, bo
 	}
 	axis, err := strconv.ParseFloat(attr.Value, 64)
 	if err != nil {
-		r.errorf(attr.ValueSpan, "max가 수치가 아니다 (%q) — 값축의 최대를 수치로 쓴다", attr.Value)
+		r.errorf(attr.ValueSpan, "max is not a number (%q) — write the value axis maximum as a number", attr.Value)
 		return 0, false
 	}
 	if axis <= 0 {
-		r.errorf(attr.ValueSpan, "max는 0보다 커야 한다 (%q) — 축이 0이면 막대 높이의 분모가 없다", attr.Value)
+		r.errorf(attr.ValueSpan, "max must be greater than 0 (%q) — a zero axis leaves bar heights without a denominator", attr.Value)
 		return 0, false
 	}
 	for _, datum := range data {
 		if datum.value > axis {
-			r.errorf(attr.ValueSpan, "value %s가 max %s보다 크다 — 막대가 축을 넘는다 (max를 올리거나 지운다)",
+			r.errorf(attr.ValueSpan, "value %s is greater than max %s — the bar exceeds the axis (raise or remove max)",
 				datum.raw, attr.Value)
 			return 0, false
 		}

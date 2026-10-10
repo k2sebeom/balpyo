@@ -80,7 +80,7 @@ func TestResolveStyleWarnsOnAppearanceDeclarations(t *testing.T) {
 				t.Errorf("심각도 = %s, want warning — 외관 선언은 빌드를 멈추지 않는다", diag.Severity)
 			}
 			if !strings.Contains(diag.Message, tc.prop) ||
-				!strings.Contains(diag.Message, "웹에만 적용되고 PPTX에는 이식되지 않는다") {
+				!strings.Contains(diag.Message, "applies only to the web and does not carry over to PPTX") {
 				t.Errorf("진단 = %q", diag.String())
 			}
 			if diag.Span.Start.Line != 2 || diag.Span.Start.Col != tc.col {
@@ -107,10 +107,10 @@ func TestResolveStyleSyntaxErrors(t *testing.T) {
 		col      int
 		contains string
 	}{
-		{"콜론 없음", "display flex", 18, "콜론이 없다"},
-		{"속성 이름 없음", ": 40px", 18, "속성 이름이 없다"},
-		{"값 없음", "width:", 18, "값이 없다"},
-		{"둘째 선언의 위반", "gap: 8px; width", 28, "콜론이 없다"},
+		{"콜론 없음", "display flex", 18, "has no colon"},
+		{"속성 이름 없음", ": 40px", 18, "has no property name"},
+		{"값 없음", "width:", 18, "has no value"},
+		{"둘째 선언의 위반", "gap: 8px; width", 28, "has no colon"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -141,10 +141,10 @@ func TestResolveStyleEmpty(t *testing.T) {
 		content  string
 		contains string
 	}{
-		{"빈 값", `<row><p style="">내용</p></row>`, "비어 있다"},
-		{"값 없음", `<row><p style>내용</p></row>`, "값이 필요하다"},
-		{"공백뿐", `<row><p style="  ">내용</p></row>`, "선언이 없다"},
-		{"세미콜론뿐", `<row><p style=";">내용</p></row>`, "선언이 없다"},
+		{"빈 값", `<row><p style="">내용</p></row>`, "is empty"},
+		{"값 없음", `<row><p style>내용</p></row>`, "needs a value"},
+		{"공백뿐", `<row><p style="  ">내용</p></row>`, "has no declarations"},
+		{"세미콜론뿐", `<row><p style=";">내용</p></row>`, "has no declarations"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

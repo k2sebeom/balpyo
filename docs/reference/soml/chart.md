@@ -267,36 +267,36 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 
 | 조건 | 진단 메시지 |
 |---|---|
-| `<point>`를 차트 밖에 썼다 | `<point>는 <chart>의 자식으로만 쓸 수 있다` |
-| `<chart>`에 점이 아닌 자식을 썼다 | `<chart>의 자식으로 <p>는 올 수 없다 (쓸 수 있는 태그: <point>)` |
-| `<chart>` 안에 문자 데이터를 직접 썼다 | `<chart> 안에 문자 데이터를 직접 쓸 수 없다 (<point>로 감싼다)` |
-| `<point>`에 내용을 담았다 | `void 태그 <point>은 내용을 가질 수 없다 (<point/>로 쓴다)` |
-| `<chart>`를 도형의 직속 자식으로 썼다 | `<shape>의 자식으로 <chart>는 올 수 없다` |
-| `<chart>`에 `fill`을 썼다 | `<chart>에 알 수 없는 속성 fill (쓸 수 있는 속성: type, unit, max, series, alt, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
-| `<point>`에 `w`를 썼다 | `<point>에 알 수 없는 속성 w (쓸 수 있는 속성: label, value, fill)` |
+| `<point>`를 차트 밖에 썼다 | `<point> can only be a child of <chart>` |
+| `<chart>`에 점이 아닌 자식을 썼다 | `<chart> cannot contain <p> (available tags: <point>)` |
+| `<chart>` 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <chart> (wrap it in <point>)` |
+| `<point>`에 내용을 담았다 | `void tag <point> cannot have content (write <point/>)` |
+| `<chart>`를 도형의 직속 자식으로 썼다 | `<shape> cannot contain <chart> (available tags: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)` |
+| `<chart>`에 `fill`을 썼다 | `unknown attribute fill on <chart> (available attributes: type, unit, max, series, alt, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| `<point>`에 `w`를 썼다 | `unknown attribute w on <point> (available attributes: label, value, fill)` |
 
 값 해석(`core.Resolve`) — 데이터와 값 어휘. 자리는 **저자의 것**이다: 합성 노드가 아니라
 `<chart>`/`<point>`의 그 속성에 밑줄이 그어지고, 한 오타에 진단은 하나다:
 
 | 조건 | 진단 메시지 |
 |---|---|
-| `type`이 없다 | `<chart>에 type이 필요하다 (쓸 수 있는 종류: bar) — 종류 없이는 무엇을 그릴지 추측할 수 없다` |
-| 어휘 밖 `type` | `알 수 없는 차트 type "line" (쓸 수 있는 종류: bar)` |
-| `h`도 `ratio`도 없다 | `<chart>에 h나 ratio가 필요하다 — 막대 높이가 축에 대한 백분율이라 내용이 높이를 정하면 기준이 순환한다` |
-| 점이 하나도 없다 | `<chart>에 <point>가 하나도 없다 — 그릴 데이터가 없다 (<point label="5월" value="22"/>)` |
-| `label`이 없다 | `<point>에 label이 필요하다 — 막대가 무엇의 값인지 없으면 그림이 읽히지 않는다` |
-| `value`가 없다 | `<point>에 value가 필요하다 — 막대 높이가 그 값이다` |
-| `value`에 단위를 붙였다 | `value가 수치가 아니다 ("22분") — 단위는 <chart unit>에 쓴다 (value="22" unit="분")` |
-| `value`가 음수다 | `value는 음수일 수 없다 ("-3") — 막대 차트의 축은 0에서 시작한다` |
-| 값이 모두 0인데 `max`가 없다 | `<chart>의 값이 모두 0이다 — 축을 정할 수 없다 (max를 적으면 빈 차트를 그릴 수 있다)` |
-| `value`가 `max`를 넘는다 | `value 22가 max 20보다 크다 — 막대가 축을 넘는다 (max를 올리거나 지운다)` |
-| `max`가 수치가 아니다 | `max가 수치가 아니다 ("스물") — 값축의 최대를 수치로 쓴다` |
-| `max`가 0 이하다 | `max는 0보다 커야 한다 ("0") — 축이 0이면 막대 높이의 분모가 없다` |
-| `series`/`fill`이 `none`이다 | `series에 none을 쓸 수 없다 — 그리지 않는 막대는 데이터가 아니다 (빈 막대는 value="0"이다)` |
-| `alt=""` | `alt은 비어 있을 수 없다 — 이름 없음이 기본값이므로 속성을 지운다` |
+| `type`이 없다 | `<chart> needs a type (available types: bar) — without a type there is no way to guess what to draw` |
+| 어휘 밖 `type` | `unknown chart type "line" (available types: bar)` |
+| `h`도 `ratio`도 없다 | `<chart> needs h or ratio — bar heights are percentages of the axis, so letting the content set the height would be circular` |
+| 점이 하나도 없다 | `<chart> has no <point> — there is no data to draw (<point label="May" value="22"/>)` |
+| `label`이 없다 | `<point> needs a label — without saying what a bar measures, the chart cannot be read` |
+| `value`가 없다 | `<point> needs a value — it is the bar height` |
+| `value`에 단위를 붙였다 | `value is not a number ("22분") — put the unit in <chart unit> (value="22" unit="min")` |
+| `value`가 음수다 | `value cannot be negative ("-3") — a bar chart axis starts at 0` |
+| 값이 모두 0인데 `max`가 없다 | `all values of <chart> are 0 — the axis cannot be determined (set max to draw an empty chart)` |
+| `value`가 `max`를 넘는다 | `value 22 is greater than max 20 — the bar exceeds the axis (raise or remove max)` |
+| `max`가 수치가 아니다 | `max is not a number ("스물") — write the value axis maximum as a number` |
+| `max`가 0 이하다 | `max must be greater than 0 ("0") — a zero axis leaves bar heights without a denominator` |
+| `series`/`fill`이 `none`이다 | `series cannot be none — a bar that is not drawn is not data (an empty bar is value="0")` |
+| `alt=""` | `alt cannot be empty — no name is the default, so remove the attribute (…)` |
 
 `series`·`fill`의 색 값 진단은 [외관 속성](../appearance.md)·[`<shape>`](shape.md)와 **같은
-문구**다 (`series의 색 토큰 "brand"가 테마에 없다`) — 목록이 한 벌이므로 진단도 한 벌이고,
+문구**다 (`series: color token "brand" is not in the theme`) — 목록이 한 벌이므로 진단도 한 벌이고,
 진단은 저자가 쓴 속성 이름으로 말한다.
 
 막대가 박스를 넘치는 사고는 [배치 경고](../../guides/layout-warnings.md)가 말한다 — 펼친 트리가

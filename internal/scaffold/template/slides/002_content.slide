@@ -1,16 +1,16 @@
-<!-- 파일 이름의 번호가 슬라이드 순서다. 사이에 끼울 때는 번호를 다시 매기는 쪽이 낫다. -->
+<!-- The number in the file name is the slide order. To insert a slide in between, renumbering is the cleaner choice. -->
 <slide id="what" layout="content">
-  <text role="title">무엇을 말하려는가</text>
+  <text role="title">What are we here to say?</text>
   <row gap="lg" align="start">
     <col grow="1" gap="md">
-      <text role="heading">주장 한 줄</text>
+      <text role="heading">The claim in one line</text>
       <ul>
-        <li>근거 하나</li>
-        <li>근거 둘</li>
+        <li>First reason</li>
+        <li>Second reason</li>
       </ul>
     </col>
     <shape type="rounded-rect" fill="surface" w="420" h="180" pad="lg">
-      <p color="muted">도형 안에도 글이 들어간다. 이 칸은 지워도 된다.</p>
+      <p color="muted">Shapes can hold text too. Feel free to delete this box.</p>
     </shape>
   </row>
 </slide>

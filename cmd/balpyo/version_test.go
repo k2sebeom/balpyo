@@ -27,7 +27,7 @@ func TestVersionTagWinsOverModuleVersion(t *testing.T) {
 		},
 	}, "v0.3.0", "linux/amd64", "go1.26")
 
-	want := "balpyo v0.3.0\n커밋 feda13c (2026-09-21T01:27:36Z)\nlinux/amd64 · go1.26"
+	want := "balpyo v0.3.0\ncommit feda13c (2026-09-21T01:27:36Z)\nlinux/amd64 · go1.26"
 	if got := formatVersion(info); got != want {
 		t.Errorf("버전 출력 =\n%s\nwant\n%s", got, want)
 	}
@@ -44,7 +44,7 @@ func TestVersionWithoutInjectionUsesModuleAndVCS(t *testing.T) {
 		},
 	}, "", "darwin/arm64", "go1.26")
 
-	want := "balpyo v0.0.0-20260921012736-feda13ce5d78\n커밋 feda13c (2026-09-21T01:27:36Z)\ndarwin/arm64 · go1.26"
+	want := "balpyo v0.0.0-20260921012736-feda13ce5d78\ncommit feda13c (2026-09-21T01:27:36Z)\ndarwin/arm64 · go1.26"
 	if got := formatVersion(info); got != want {
 		t.Errorf("버전 출력 =\n%s\nwant\n%s", got, want)
 	}
@@ -61,7 +61,7 @@ func TestVersionMarksADirtyTree(t *testing.T) {
 		},
 	}, "", "linux/arm64", "go1.26")
 
-	if got := formatVersion(info); !strings.Contains(got, "커밋 feda13c+dirty (") {
+	if got := formatVersion(info); !strings.Contains(got, "commit feda13c+dirty (") {
 		t.Errorf("버전 출력 =\n%s\nwant 커밋 줄에 +dirty", got)
 	}
 	// 태그도 모듈 버전도 없으면 개발 빌드다 — 없는 이름을 만들지 않는다.
@@ -77,7 +77,7 @@ func TestVersionOmitsTheCommitLineWhenThereIsNone(t *testing.T) {
 	if lines := strings.Split(got, "\n"); len(lines) != 2 {
 		t.Fatalf("줄 %d개, want 2개 (커밋 줄이 없다):\n%s", len(lines), got)
 	}
-	if strings.Contains(got, "커밋") {
+	if strings.Contains(got, "commit") {
 		t.Errorf("커밋을 모르는 빌드가 커밋 줄을 냈다:\n%s", got)
 	}
 	// 시각만 있고 커밋이 없는 일은 없다 — 시각은 커밋 줄의 괄호이므로 혼자 나가지 않는다.
@@ -91,7 +91,7 @@ func TestVersionCommitWithoutTime(t *testing.T) {
 	info := buildInfoFrom(&debug.BuildInfo{
 		Settings: []debug.BuildSetting{{Key: "vcs.revision", Value: "feda13ce5d780470789b86c378272d543d8ac60d"}},
 	}, "v0.3.0", "linux/amd64", "go1.26")
-	if got, want := strings.Split(formatVersion(info), "\n")[1], "커밋 feda13c"; got != want {
+	if got, want := strings.Split(formatVersion(info), "\n")[1], "commit feda13c"; got != want {
 		t.Errorf("커밋 줄 = %q, want %q", got, want)
 	}
 }

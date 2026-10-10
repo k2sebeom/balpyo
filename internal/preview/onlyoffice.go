@@ -44,7 +44,7 @@ func LookOnlyOffice() (string, error) {
 			return dir, nil
 		}
 	}
-	return "", fmt.Errorf("Document Builder를 찾을 수 없다 (후보: %s)", strings.Join(OnlyOfficeCandidates, ", "))
+	return "", fmt.Errorf("cannot find Document Builder (candidates: %s)", strings.Join(OnlyOfficeCandidates, ", "))
 }
 
 // onlyOfficeDir는 dir이 변환기와 색인 생성기를 함께 가진 설치인지 본다.
@@ -81,40 +81,40 @@ func (o *OnlyOffice) Name() string { return "OnlyOffice" }
 // 남짓이라 매번 돈다. 설치 디렉토리에 쓸 수 없어 갱신이 실패해도 색인이 남아 있으면 그것으로 간다.
 func (o *OnlyOffice) Slides(pptxPath string, size image.Point, workDir string) (pages []image.Image, noise string, err error) {
 	if size.X <= 0 || size.Y <= 0 {
-		return nil, "", fmt.Errorf("렌더 크기가 유효하지 않다: %dx%d", size.X, size.Y)
+		return nil, "", fmt.Errorf("invalid render size: %dx%d", size.X, size.Y)
 	}
 	absPPTX, err := filepath.Abs(pptxPath)
 	if err != nil {
-		return nil, "", fmt.Errorf("PPTX 경로를 정할 수 없다: %w", err)
+		return nil, "", fmt.Errorf("cannot resolve PPTX path: %w", err)
 	}
 	work := filepath.Join(workDir, "onlyoffice")
 	if err := os.MkdirAll(work, 0o755); err != nil {
-		return nil, "", fmt.Errorf("변환 디렉토리를 만들 수 없다: %w", err)
+		return nil, "", fmt.Errorf("cannot create conversion directory: %w", err)
 	}
 	work, err = filepath.Abs(work)
 	if err != nil {
-		return nil, "", fmt.Errorf("변환 디렉토리 경로를 정할 수 없다: %w", err)
+		return nil, "", fmt.Errorf("cannot resolve conversion directory path: %w", err)
 	}
 
 	fontIndex := filepath.Join(o.Dir, "sdkjs", "common", "AllFonts.js")
 	empty := filepath.Join(work, "fonts.docbuilder")
 	if err := os.WriteFile(empty, nil, 0o644); err != nil {
-		return nil, "", fmt.Errorf("글꼴 색인 스크립트를 쓸 수 없다: %w", err)
+		return nil, "", fmt.Errorf("cannot write font index script: %w", err)
 	}
 	_, refreshErr, refreshFail := o.run("docbuilder", empty)
 	if _, statErr := os.Stat(fontIndex); statErr != nil {
-		return nil, "", fmt.Errorf("OnlyOffice 글꼴 색인이 없다 (%s) — docbuilder가 만들지 못했다: %v\n%s",
+		return nil, "", fmt.Errorf("OnlyOffice font index missing (%s) — docbuilder failed to create it: %v\n%s",
 			fontIndex, refreshFail, refreshErr)
 	}
 
 	out := filepath.Join(work, "slides.zip")
 	params := filepath.Join(work, "params.xml")
 	if err := os.WriteFile(params, []byte(x2tParams(absPPTX, out, o.Dir, work, size)), 0o644); err != nil {
-		return nil, "", fmt.Errorf("변환 설정을 쓸 수 없다: %w", err)
+		return nil, "", fmt.Errorf("cannot write conversion config: %w", err)
 	}
 	stdout, stderr, err := o.run("x2t", params)
 	if err != nil {
-		return nil, "", fmt.Errorf("OnlyOffice 변환 실패: %w\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return nil, "", fmt.Errorf("OnlyOffice conversion failed: %w\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 	pages, err = readSlideZip(out)
 	if err != nil {
@@ -169,7 +169,7 @@ func x2tParams(from, to, dir, temp string, size image.Point) string {
 func readSlideZip(path string) ([]image.Image, error) {
 	archive, err := zip.OpenReader(path)
 	if err != nil {
-		return nil, fmt.Errorf("OnlyOffice가 그림 묶음을 내지 않았다: %w", err)
+		return nil, fmt.Errorf("OnlyOffice produced no image archive: %w", err)
 	}
 	defer archive.Close()
 	type page struct {
@@ -186,13 +186,13 @@ func readSlideZip(path string) ([]image.Image, error) {
 		found = append(found, page{n, f})
 	}
 	if len(found) == 0 {
-		return nil, fmt.Errorf("OnlyOffice 그림 묶음에 슬라이드가 없다 (%s)", path)
+		return nil, fmt.Errorf("OnlyOffice image archive has no slides (%s)", path)
 	}
 	sort.Slice(found, func(i, j int) bool { return found[i].n < found[j].n })
 	images := make([]image.Image, 0, len(found))
 	for i, p := range found {
 		if p.n != i+1 {
-			return nil, fmt.Errorf("OnlyOffice 그림 묶음에 %d번 슬라이드가 없다", i+1)
+			return nil, fmt.Errorf("OnlyOffice image archive is missing slide %d", i+1)
 		}
 		rc, err := p.file.Open()
 		if err != nil {

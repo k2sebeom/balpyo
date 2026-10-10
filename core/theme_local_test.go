@@ -158,12 +158,12 @@ func TestLocalThemeColorNeedsAFreeClrSchemeSlot(t *testing.T) {
 		{
 			name:  "슬롯이 없다",
 			color: `{"name":"brand","rgb":"445566"}`,
-			want:  []string{"brand", "슬롯이 없다", "hlink", "folHlink"},
+			want:  []string{"brand", "has no clrScheme slot", "hlink", "folHlink"},
 		},
 		{
 			name:  "없는 자리를 가리킨다",
 			color: `{"name":"brand","rgb":"445566","slot":"accent7","ref":"accent7"}`,
-			want:  []string{"brand", "accent7", "쓸 수 있는 슬롯"},
+			want:  []string{"brand", "accent7", "available slots"},
 		},
 		{
 			name:  "부모가 쓰는 자리를 빼앗는다",
@@ -198,12 +198,12 @@ func TestFullColorTableLeavesNoFreeSlot(t *testing.T) {
 	for _, slot := range soml.ColorSlots() {
 		owner[slot] = "쓰는 색"
 	}
-	if got := freeColorSlots(owner); !strings.Contains(got, "갈아 끼운다") {
+	if got := freeColorSlots(owner); !strings.Contains(got, "replace the value") {
 		t.Errorf("자리가 다 찬 표의 문구 = %q — 고치는 방법을 말하지 않는다", got)
 	}
 	delete(owner, "folHlink")
-	if got := freeColorSlots(owner); got != "남은 슬롯: folHlink" {
-		t.Errorf("한 자리 남은 표의 문구 = %q, want 남은 슬롯: folHlink", got)
+	if got := freeColorSlots(owner); got != "free slots: folHlink" {
+		t.Errorf("한 자리 남은 표의 문구 = %q, want free slots: folHlink", got)
 	}
 }
 
@@ -322,12 +322,12 @@ func TestComponentColorsMustBeThemeTokens(t *testing.T) {
 		// 토큰 그라디언트는 참조로 남으므로 받는다 (아래 TestThemeGradientTokens) — 리터럴 스톱이 섞이면
 		// 그 스톱만 테마 색 편집을 따라가지 못하므로 막는다.
 		{"shape variant 리터럴 스톱 그라디언트", `{"shape":{"variants":[{"name":"chip","fill":"gradient(#FF9900 accent1, 90deg)"}]}}`,
-			`shape variant "chip"의 fill "#FF9900"`},
+			`shape variant "chip" fill "#FF9900"`},
 		{"shape variant 테두리 리터럴", `{"shape":{"variants":[{"name":"badge","border":"2 solid #FF9900"}]}}`,
-			`shape variant "badge"의 border "#FF9900"`},
+			`shape variant "badge" border "#FF9900"`},
 		{"text variant 오타", `{"text":{"variants":[{"name":"kicker","color":"acent1"}]}}`,
-			`text variant "kicker"의 color의 색 토큰 "acent1"가 테마에 없다 — 혹시 "accent1"?`},
-		{"표 줄무늬", `{"table":{"stripe":"zebra"}}`, `table.stripe의 fill "zebra"`},
+			`text variant "kicker" color: color token "acent1" is not in the theme — did you mean "accent1"?`},
+		{"표 줄무늬", `{"table":{"stripe":"zebra"}}`, `table.stripe fill "zebra"`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

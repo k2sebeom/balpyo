@@ -129,7 +129,7 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 		return nil, nil, err
 	}
 	if len(files) == 0 {
-		return nil, nil, fmt.Errorf("슬라이드가 없다: %s/ 아래에 %s 파일이 필요하다", cfg.SlidesDir, soml.Ext)
+		return nil, nil, fmt.Errorf("no slides: %s/ needs %s files", cfg.SlidesDir, soml.Ext)
 	}
 
 	deck := &soml.Deck{
@@ -151,7 +151,7 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 		source := path.Join(cfg.SlidesDir, file.Path)
 		src, err := os.ReadFile(filepath.Join(projectDir, filepath.FromSlash(source)))
 		if err != nil {
-			return nil, nil, fmt.Errorf("%s를 읽을 수 없다: %w", source, err)
+			return nil, nil, fmt.Errorf("cannot read %s: %w", source, err)
 		}
 		doc, fileDiags := soml.Parse(source, string(src))
 		diags = append(diags, fileDiags...)
@@ -198,7 +198,7 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 	// 모두 skip이면 렌더할 것이 없다 — 산출물을 빈 덱으로 내는 대신 멈춘다. 파일이 없는
 	// 경우와 같은 이유의 실패이므로 같은 자리에서 같은 모양으로 알린다.
 	if len(deck.Slides) == 0 {
-		return nil, diags, fmt.Errorf("렌더할 슬라이드가 없다: 수집된 %d개가 모두 skip 상태다", len(files))
+		return nil, diags, fmt.Errorf("no slides to render: all %d collected slides are skipped", len(files))
 	}
 	return deck, diags, nil
 }
@@ -224,7 +224,7 @@ func Render(deck *soml.Deck, opts Options) (map[render.Target]render.Files, *geo
 	// 사용자는 오타를 알기까지 기동 시간을 기다린다.
 	for _, target := range targets {
 		if _, ok := Renderers(nil)[target]; !ok {
-			return nil, nil, nil, fmt.Errorf("타깃 %q의 렌더러가 없다", string(target))
+			return nil, nil, nil, fmt.Errorf("no renderer for target %q", string(target))
 		}
 	}
 
@@ -253,7 +253,7 @@ func Render(deck *soml.Deck, opts Options) (map[render.Target]render.Files, *geo
 	for _, target := range targets {
 		files, err := available[target].Render(deck)
 		if err != nil {
-			return nil, geometry, diags, fmt.Errorf("%s 렌더 실패: %w", string(target), err)
+			return nil, geometry, diags, fmt.Errorf("%s render failed: %w", string(target), err)
 		}
 		out[target] = files
 	}
@@ -312,11 +312,11 @@ func deckHasChrome(deck *soml.Deck) bool {
 func measure(deck *soml.Deck, measurer Measurer) (*geom.Geometry, error) {
 	files, err := web.New().Render(deck)
 	if err != nil {
-		return nil, fmt.Errorf("지오메트리 패스의 입력을 만들 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot prepare geometry pass input: %w", err)
 	}
 	dir, err := os.MkdirTemp("", "balpyo-geom-")
 	if err != nil {
-		return nil, fmt.Errorf("지오메트리 패스의 임시 디렉토리를 만들 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot create geometry pass temp directory: %w", err)
 	}
 	defer os.RemoveAll(dir)
 	for _, name := range files.Paths() {
@@ -332,7 +332,7 @@ func measure(deck *soml.Deck, measurer Measurer) (*geom.Geometry, error) {
 		g, err = geom.Measure(deck, htmlPath)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("지오메트리 패스 실패: %w", err)
+		return nil, fmt.Errorf("geometry pass failed: %w", err)
 	}
 	return g, nil
 }
@@ -447,7 +447,7 @@ func OutDirPath(opts Options) (string, error) {
 	}
 	abs, err := filepath.Abs(outDir)
 	if err != nil {
-		return "", fmt.Errorf("출력 디렉토리 경로를 정할 수 없다: %w", err)
+		return "", fmt.Errorf("cannot resolve output directory path: %w", err)
 	}
 	return abs, nil
 }
@@ -459,7 +459,7 @@ func resolveOutDir(opts Options) (string, error) {
 		return "", err
 	}
 	if err := os.MkdirAll(abs, 0o755); err != nil {
-		return "", fmt.Errorf("출력 디렉토리 %s를 만들 수 없다: %w", abs, err)
+		return "", fmt.Errorf("cannot create output directory %s: %w", abs, err)
 	}
 	return abs, nil
 }
@@ -469,11 +469,11 @@ func writeFile(outDir, name string, data []byte) error {
 	dest := filepath.Join(outDir, filepath.FromSlash(name))
 	if dir := filepath.Dir(dest); dir != outDir {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return fmt.Errorf("%s를 만들 수 없다: %w", dir, err)
+			return fmt.Errorf("cannot create %s: %w", dir, err)
 		}
 	}
 	if err := os.WriteFile(dest, data, 0o644); err != nil {
-		return fmt.Errorf("%s를 쓸 수 없다: %w", dest, err)
+		return fmt.Errorf("cannot write %s: %w", dest, err)
 	}
 	return nil
 }

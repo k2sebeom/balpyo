@@ -223,14 +223,14 @@ func Measure(deck *soml.Deck, htmlPath string) (*Geometry, error) {
 // Measure는 열려 있는 세션으로 지오메트리를 읽는다.
 func (s *Session) Measure(deck *soml.Deck, htmlPath string) (*Geometry, error) {
 	if deck == nil {
-		return nil, fmt.Errorf("덱이 nil이다")
+		return nil, fmt.Errorf("deck is nil")
 	}
 	if err := s.Open(htmlPath); err != nil {
 		return nil, err
 	}
 	var m measurement
 	if err := s.Eval(measureExpr(), &m); err != nil {
-		return nil, fmt.Errorf("%s의 지오메트리를 읽을 수 없다: %w", htmlPath, err)
+		return nil, fmt.Errorf("cannot read the geometry of %s: %w", htmlPath, err)
 	}
 	g, err := newGeometry(deck, m)
 	if err != nil {

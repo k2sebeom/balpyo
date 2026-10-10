@@ -53,7 +53,7 @@ func OOXMLSchema(t testing.TB) *xsd.Schema {
 	t.Helper()
 	ooxmlOnce.Do(func() { ooxmlSchema, ooxmlErr = loadOOXMLSchema() })
 	if ooxmlErr != nil {
-		t.Fatalf("ECMA-376 스키마를 적재할 수 없다: %v", ooxmlErr)
+		t.Fatalf("cannot load ECMA-376 schemas: %v", ooxmlErr)
 	}
 	return ooxmlSchema
 }
@@ -102,7 +102,7 @@ func AssertSchema(t testing.TB, parts map[string][]byte) {
 			continue
 		}
 		if err := ValidatePart(t, parts[name]); err != nil {
-			t.Errorf("%s가 ECMA-376 스키마에 맞지 않는다 — PowerPoint가 복구를 묻는다:\n%v", name, err)
+			t.Errorf("%s does not validate against the ECMA-376 schemas — PowerPoint will offer to repair:\n%v", name, err)
 		}
 	}
 }

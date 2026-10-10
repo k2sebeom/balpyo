@@ -1,9 +1,10 @@
-  /* 이 파일은 뷰어 CSS다 (render/web.viewerCSS가 go:embed로 싣는다). index.html의 <style>
-     안, `@layer balpyo.base` 블록 **안에** 그대로 들어가므로 규칙이 2칸 들여쓰기로 시작한다.
-     닫는 style 태그를 담으면(주석 안이어도) 문서가 그 자리에서 끝난다 — runtime_test가 막는다. */
+  /* This file is the viewer CSS (render/web.viewerCSS embeds it with go:embed). It goes
+     verbatim into index.html's <style>, **inside** the `@layer balpyo.base` block, so its rules
+     start with a 2-space indent. Containing a closing style tag (even inside a comment) would
+     end the document right there — runtime_test guards against it. */
 
-  /* ── 발표자 뷰 ── 런타임 JS가 <html>에 data-balpyo-view="presenter"를 켠다.
-     속성이 없으면(JS 꺼짐, 또는 지오메트리 패스가 지운 상태) 위의 세로 스택 그대로다. */
+  /* ── Presenter view ── The runtime JS sets data-balpyo-view="presenter" on <html>. Without
+     the attribute (JS off, or removed by the geometry pass) it stays the vertical stack above. */
   .balpyo-viewer-bar, .balpyo-viewer-notes { display: none; }
 
   html[data-balpyo-view="presenter"] { height: 100%; }
@@ -15,8 +16,9 @@
     display: block;
   }
 
-  /* 슬라이드는 전부 화면 가운데 겹쳐 두고 활성 슬라이드만 보인다. display가 아니라
-     visibility인 이유와 transform 스케일인 이유는 파일 머리 주석에 있다. */
+  /* All slides are stacked in the center of the screen and only the active slide is visible.
+     Why visibility rather than display, and why a transform scale, is explained in the header
+     comment of this file. */
   html[data-balpyo-view="presenter"] .balpyo-slide {
     position: absolute;
     left: 50%;
@@ -28,21 +30,27 @@
     visibility: visible;
   }
 
-  /* 순차 등장 — 스텝을 가진 항목은 **발표자 뷰에서만** 숨는다. 게이트 안에 있다는
-     것이 계약의 전부다: 문서 뷰·측정 뷰·오버뷰·인쇄는 전개된 상태를 보므로 지오메트리 패스가
-     재는 배치와 PPTX 좌표가 reveal을 쓰기 전과 한 픽셀도 다르지 않다. 숨기는 수단이
-     visibility인 이유는 슬라이드와 같다 — display: none은 항목이 나타날 때마다 아래 줄을 밀어
-     올려, 저자가 짠 한 배치가 발표 중에 여러 배치가 된다.
-     되돌리는 규칙을 활성 슬라이드 안으로 좁히는 이유: 겹쳐 둔 다른 장의 항목이 visible이면
-     숨은 슬라이드 위에 글자가 떠오른다 (visibility는 자식에서 되살아난다). */
+  /* Stepwise reveal — items with a step are hidden **only in the presenter view**. Being inside
+     the gate is the whole contract: the document view, measure view, overview and print all see
+     the fully revealed state, so the layout the geometry pass measures and the PPTX coordinates
+     do not differ by a single pixel from before reveal was used. The hiding mechanism is
+     visibility for the same reason as slides — display: none would push the lines below up each
+     time an item appears, turning the author's single layout into several layouts during the
+     talk.
+
+     The restoring rule is narrowed to the active slide because if items on the other stacked
+     slides were visible, their text would float over hidden slides (visibility comes back to
+     life in children). */
   html[data-balpyo-view="presenter"] [data-balpyo-reveal] { visibility: hidden; }
   html[data-balpyo-view="presenter"] .balpyo-viewer-active [data-balpyo-reveal].balpyo-viewer-revealed {
     visibility: visible;
   }
 
-  /* 컨트롤 바는 오버뷰에서도 보인다 — 키보드를 모르는 사람이 오버뷰에서 나갈 길이 그것이다.
-     값을 묻지 않는 선택자(html[data-balpyo-view])를 쓰지 않는 이유는 측정 뷰다: 재는 동안
-     크롬이 그려지면 그 뒤에 찍는 스크린샷이 산출물이 아닌 측정 상태를 본다. */
+  /* The control bar is visible in the overview too — for someone who does not know the
+     keyboard, it is the way out of the overview. A selector that ignores the value
+     (html[data-balpyo-view]) is not used because of the measure view: if the chrome were drawn
+     during measuring, screenshots taken afterwards would show the measuring state rather than
+     the output. */
   html[data-balpyo-view="presenter"] .balpyo-viewer-bar,
   html[data-balpyo-view="overview"] .balpyo-viewer-bar {
     display: flex;
@@ -95,15 +103,17 @@
     font: 15px/1.6 system-ui, sans-serif;
     white-space: pre-wrap;
   }
-  /* hidden 속성이 이겨야 한다 — 위의 display: block이 UA 스타일을 덮으므로 명시한다. */
+  /* The hidden attribute must win — display: block above overrides the UA style, so it is
+     stated explicitly. */
   html[data-balpyo-view="presenter"] .balpyo-viewer-notes[hidden] { display: none; }
   .balpyo-viewer-notes.balpyo-viewer-empty { color: #999; font-style: italic; }
 
-  /* ── 오버뷰 ── 슬라이드 전부를 격자로 줄여 놓고 하나를 골라 들어간다.
-     줄이는 수단은 zoom이다: transform은 부모가 보는 칸 크기를 줄이지 않아 타일마다 감싸는
-     요소가 필요하고, 그 요소는 지오메트리 패스가 읽는 부모 사슬을 바꾼다. zoom 아래에서도
-     레이아웃 크기(offsetWidth)는 논리 스테이지 그대로이므로 화면 맞춤 배율 계산에 되먹임이
-     없다. 열 수와 배율은 런타임이 창에 맞춰 계산해 넣는다 — CSS는 슬라이드 수를 모른다. */
+  /* ── Overview ── All slides are shrunk into a grid and you pick one to enter. The shrinking
+     mechanism is zoom, because transform does not shrink the cell size the parent sees, so every tile
+     would need a wrapper element, and that element would change the parent chain the geometry
+     pass reads. Under zoom the layout size (offsetWidth) is still the logical stage, so there
+     is no feedback in the fit-to-screen scale calculation. The runtime computes the column
+     count and scale for the window — CSS does not know the slide count. */
   html[data-balpyo-view="overview"] { height: 100%; }
   html[data-balpyo-view="overview"] body { height: 100%; overflow: hidden; }
   html[data-balpyo-view="overview"] .balpyo-deck {
@@ -113,7 +123,8 @@
     align-content: center;
     height: 100%;
     gap: 16px;
-    /* 아래쪽은 컨트롤 바 높이만큼 더 비운다 — 런타임의 열 계산이 같은 값을 쓴다. */
+    /* The bottom leaves extra room for the control bar height — the runtime's column
+       calculation uses the same value. */
     padding: 16px 16px 64px;
   }
   html[data-balpyo-view="overview"] .balpyo-slide {
@@ -121,19 +132,21 @@
     cursor: pointer;
     outline: 12px solid transparent;
   }
-  /* 활성 슬라이드는 **나갈 자리**다 (오버뷰는 이동이 아니라 보기다) — 테두리로 표시한다.
-     테두리도 zoom을 받으므로 12px은 화면에서 3px 남짓이고, 흰 슬라이드와 어두운 바탕 **양쪽**에
-     보이는 색이어야 한다 (흰 테두리는 밝은 슬라이드에 묻힌다 — 실물에서 보이지 않았다). */
+  /* The active slide is **where you will exit to** (the overview is a view, not navigation) —
+     it is marked with a border. The border is zoomed too, so 12px is a little over 3px on
+     screen, and the color must be visible on **both** white slides and the dark background (a
+     white border disappears on light slides — it was invisible in practice). */
   html[data-balpyo-view="overview"] .balpyo-slide.balpyo-viewer-active {
     outline-color: #4c8dff;
   }
 
-  /* ── 인쇄 ── 어느 뷰에서 눌러도 문서 뷰의 그림이 나온다.
-     인쇄는 뷰가 아니라 **미디어**다: 사람은 뷰를 바꾸고 인쇄하지 않고 보고 있는 화면에서
-     누른다 (그래서 인쇄 CSS가 없으면 발표자 뷰에서 누른 사람은 활성 슬라이드 한 장만 담긴
-     letter PDF를 받는다 — 실측). 그러므로 켜진 뷰를 되돌려야 하고, 이 절은 뷰 규칙 **뒤**에
-     온다: 게이트와 같은 명시도의 선택자(값을 묻지 않는 html[data-balpyo-view])를 뒤에 두면
-     !important 없이 이긴다. 종이 크기(@page)는 스테이지가 덱마다 달라 baseCSS가 만든다. */
+  /* ── Print ── Printing from any view produces the document view. Print is a **medium**, not a
+     view: people do not switch views before printing, they press print on the screen they are
+     looking at (so without print CSS, someone printing from the presenter view gets a letter
+     PDF with only the active slide — measured). So the active view has to be undone, and this
+     section comes **after** the view rules: a selector with the same specificity as the gate
+     (html[data-balpyo-view], ignoring the value) placed later wins without !important. The
+     paper size (@page) differs per deck stage, so baseCSS generates it. */
   @media print {
     html, html[data-balpyo-view] { height: auto; background: #fff; }
     body, html[data-balpyo-view] body { height: auto; overflow: visible; background: #fff; }
@@ -144,7 +157,8 @@
       gap: 0;
       padding: 0;
     }
-    /* 한 장이 한 페이지다 — 겹쳐 둔 슬라이드를 세로 스택으로 돌리고 페이지를 나눈다. */
+    /* One slide per page — the stacked slides return to a vertical stack and pages break
+       between them. */
     .balpyo-slide, html[data-balpyo-view] .balpyo-slide {
       position: relative;
       left: auto;
@@ -156,13 +170,15 @@
       break-inside: avoid;
       break-after: page;
     }
-    /* 순차 등장은 종이에서 전부 전개된다 — 발표 중에 Cmd+P를 누른 사람의
-       종이에서 아직 말하지 않은 항목이 빠지면 안 된다. 선택자의 명시도가 발표자 뷰 게이트와
-       같고 자리가 뒤이므로 그대로 이긴다 (위 슬라이드 되돌리기와 같은 수법). */
+    /* Stepwise reveal is fully expanded on paper — someone pressing Cmd+P mid-talk must not get
+       paper missing the items not yet presented. The selector has the same specificity as the
+       presenter-view gate and comes later, so it wins as is (the same technique as the slide
+       restore above). */
     [data-balpyo-reveal], html[data-balpyo-view] [data-balpyo-reveal] { visibility: visible; }
-    /* 마지막 장 뒤에 빈 페이지를 하나 더 만들지 않는다. */
+    /* Do not create an extra blank page after the last slide. */
     .balpyo-slide:last-child, html[data-balpyo-view] .balpyo-slide:last-child { break-after: auto; }
-    /* 오버뷰의 활성 테두리는 종이에 남지 않는다 (테두리 규칙이 한 단계 더 구체적이다). */
+    /* The overview's active border does not carry over to paper (the border rule is one step
+       more specific). */
     .balpyo-slide.balpyo-viewer-active,
     html[data-balpyo-view] .balpyo-slide.balpyo-viewer-active { outline-color: transparent; }
     .balpyo-viewer-bar, html[data-balpyo-view] .balpyo-viewer-bar,

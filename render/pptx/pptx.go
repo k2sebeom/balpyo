@@ -64,11 +64,11 @@ func FileName(deck *soml.Deck) string {
 // Render는 덱을 pptx 파일 하나로 조립한다.
 func (r *Renderer) Render(deck *soml.Deck) (render.Files, error) {
 	if deck == nil {
-		return nil, fmt.Errorf("덱이 nil이다")
+		return nil, fmt.Errorf("deck is nil")
 	}
 	if len(deck.Slides) == 0 {
 		// 슬라이드가 없는 프레젠테이션은 PowerPoint가 열지 못한다.
-		return nil, fmt.Errorf("슬라이드가 없다")
+		return nil, fmt.Errorf("no slides")
 	}
 	if err := r.checkGeometry(deck); err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func (r *Renderer) checkGeometry(deck *soml.Deck) error {
 		if len(refs) > 0 {
 			source = refs[0].Source
 		}
-		return fmt.Errorf("좌표가 필요한 요소가 %d개(덱 크롬 %d개)인데 지오메트리가 없다 (%s) — 지오메트리 패스를 거치지 않았다",
+		return fmt.Errorf("%d elements (%d deck chrome items) need coordinates but there is no geometry (%s) — the geometry pass did not run",
 			len(refs), chrome, source)
 	}
 	// 잰 덱과 조립하는 덱이 다르면 좌표가 전부 엉뚱한 요소로 간다.
@@ -128,14 +128,14 @@ func zipParts(parts []part) ([]byte, error) {
 			Modified: zipEpoch,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("zip 엔트리 %s 생성 실패: %w", p.name, err)
+			return nil, fmt.Errorf("creating zip entry %s failed: %w", p.name, err)
 		}
 		if _, err := w.Write(p.data); err != nil {
-			return nil, fmt.Errorf("zip 엔트리 %s 쓰기 실패: %w", p.name, err)
+			return nil, fmt.Errorf("writing zip entry %s failed: %w", p.name, err)
 		}
 	}
 	if err := zw.Close(); err != nil {
-		return nil, fmt.Errorf("zip 마무리 실패: %w", err)
+		return nil, fmt.Errorf("finalizing zip failed: %w", err)
 	}
 	return buf.Bytes(), nil
 }

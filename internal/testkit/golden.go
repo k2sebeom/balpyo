@@ -21,13 +21,13 @@ func AssertGolden(t testing.TB, goldenPath string, got []byte) {
 	}
 	want, err := os.ReadFile(goldenPath)
 	if os.IsNotExist(err) {
-		t.Fatalf("골든이 없다: %s — `make golden`으로 만든다", goldenPath)
+		t.Fatalf("golden missing: %s — create it with `make golden`", goldenPath)
 	}
 	if err != nil {
-		t.Fatalf("골든을 읽을 수 없다: %v", err)
+		t.Fatalf("cannot read golden: %v", err)
 	}
 	if !bytes.Equal(want, got) {
-		t.Errorf("골든과 다르다: %s\n%s\n갱신하려면 `make golden`", goldenPath, diffReport(want, got))
+		t.Errorf("differs from golden: %s\n%s\nto update, run `make golden`", goldenPath, diffReport(want, got))
 	}
 }
 
@@ -50,12 +50,12 @@ func AssertGoldenTree(t testing.TB, goldenDir string, files map[string][]byte) {
 	for _, stale := range staleGoldens(t, goldenDir, files) {
 		if UpdateGolden() {
 			if err := os.Remove(filepath.Join(goldenDir, filepath.FromSlash(stale))); err != nil {
-				t.Fatalf("남은 골든 %s를 지울 수 없다: %v", stale, err)
+				t.Fatalf("cannot remove stale golden %s: %v", stale, err)
 			}
-			t.Logf("남은 골든 삭제: %s", stale)
+			t.Logf("removed stale golden: %s", stale)
 			continue
 		}
-		t.Errorf("골든 %s에 대응하는 산출 파일이 없다 — 이름이 바뀌었으면 `make golden`", stale)
+		t.Errorf("golden %s has no matching output file — if it was renamed, run `make golden`", stale)
 	}
 }
 
@@ -83,7 +83,7 @@ func staleGoldens(t testing.TB, goldenDir string, files map[string][]byte) []str
 		return nil
 	})
 	if err != nil && !os.IsNotExist(err) {
-		t.Fatalf("골든 디렉토리를 순회할 수 없다: %v", err)
+		t.Fatalf("cannot walk golden directory: %v", err)
 	}
 	sort.Strings(stale)
 	return stale
@@ -97,12 +97,12 @@ func writeGolden(t testing.TB, goldenPath string, data []byte) {
 		return
 	}
 	if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
-		t.Fatalf("골든 디렉토리를 만들 수 없다: %v", err)
+		t.Fatalf("cannot create golden directory: %v", err)
 	}
 	if err := os.WriteFile(goldenPath, data, 0o644); err != nil {
-		t.Fatalf("골든을 쓸 수 없다: %v", err)
+		t.Fatalf("cannot write golden: %v", err)
 	}
-	t.Logf("골든 갱신: %s", goldenPath)
+	t.Logf("updated golden: %s", goldenPath)
 }
 
 // diffReport는 사람이 읽을 차이 요약이다. 첫 번째로 다른 줄과 그 앞뒤를 보여 준다 —
@@ -110,14 +110,14 @@ func writeGolden(t testing.TB, goldenPath string, data []byte) {
 // 갈라졌나"만 짚는다.
 func diffReport(want, got []byte) string {
 	if !isText(want) || !isText(got) {
-		return fmt.Sprintf("  바이너리: want %d바이트, got %d바이트 (첫 차이 오프셋 %d)",
+		return fmt.Sprintf("  binary: want %d bytes, got %d bytes (first difference at offset %d)",
 			len(want), len(got), firstDiffOffset(want, got))
 	}
 	wantLines := strings.Split(string(want), "\n")
 	gotLines := strings.Split(string(got), "\n")
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "  want %d줄, got %d줄\n", len(wantLines), len(gotLines))
+	fmt.Fprintf(&b, "  want %d lines, got %d lines\n", len(wantLines), len(gotLines))
 	for i := 0; i < len(wantLines) || i < len(gotLines); i++ {
 		w, g := lineAt(wantLines, i), lineAt(gotLines, i)
 		if w == g {
@@ -136,7 +136,7 @@ func diffReport(want, got []byte) string {
 // lineAt은 범위를 벗어나면 없음 표시를 돌려준다.
 func lineAt(lines []string, i int) string {
 	if i < 0 || i >= len(lines) {
-		return "<없음>"
+		return "<none>"
 	}
 	return lines[i]
 }

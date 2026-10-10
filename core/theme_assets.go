@@ -50,7 +50,7 @@ func readThemeAssets(fsys fs.FS, dir, owner string) (map[string]rawAsset, error)
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("%s를 읽을 수 없다: %w", root, err)
+		return nil, fmt.Errorf("cannot read %s: %w", root, err)
 	}
 	assets := map[string]rawAsset{}
 	err := fs.WalkDir(fsys, root, func(p string, d fs.DirEntry, err error) error {
@@ -62,7 +62,7 @@ func readThemeAssets(fsys fs.FS, dir, owner string) (map[string]rawAsset, error)
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%s를 읽을 수 없다: %w", root, err)
+		return nil, fmt.Errorf("cannot read %s: %w", root, err)
 	}
 	return assets, nil
 }
@@ -98,11 +98,11 @@ type assetResolver struct {
 func (a *assetResolver) resolve(where, rel string) (string, error) {
 	clean := path.Clean(rel)
 	if clean != rel || !strings.HasPrefix(rel, themeAssetDir+"/") {
-		return "", fmt.Errorf("%s의 %q는 테마의 %s/ 아래 경로여야 한다 (예: %s/bg.png)", where, rel, themeAssetDir, themeAssetDir)
+		return "", fmt.Errorf("%s %q must be a path under the theme's %s/ (e.g. %s/bg.png)", where, rel, themeAssetDir, themeAssetDir)
 	}
 	key, found, msg := a.use(rel)
 	if !found {
-		return "", fmt.Errorf("%s가 가리키는 %q가 테마 패키지에 없다", where, rel)
+		return "", fmt.Errorf("%s points to %q, which is not in the theme package", where, rel)
 	}
 	if msg != "" {
 		return "", fmt.Errorf("%s: %s", where, msg)
@@ -126,7 +126,7 @@ func (a *assetResolver) use(rel string) (key string, found bool, msg string) {
 	}
 	data, err := file.read()
 	if err != nil {
-		return "", true, fmt.Sprintf("%s를 읽을 수 없다: %v", key, err)
+		return "", true, fmt.Sprintf("cannot read %s: %v", key, err)
 	}
 	asset, msg := decodeImageAsset(key, data)
 	if msg != "" {
@@ -174,30 +174,30 @@ func loadBackgrounds(manifest themeManifest, theme soml.Theme, assets *assetReso
 		layouts[name] = true
 	}
 	for i, raw := range manifest.Backgrounds {
-		where := fmt.Sprintf("theme.json의 backgrounds[%d]", i)
+		where := fmt.Sprintf("theme.json backgrounds[%d]", i)
 		if raw.Fill == "" && raw.Image == "" {
-			return decls, fmt.Errorf("%s에 fill도 image도 없다 — 배경은 둘 중 하나다", where)
+			return decls, fmt.Errorf("%s has neither fill nor image — a background is one of the two", where)
 		}
 		if raw.Fill != "" && raw.Image != "" {
-			return decls, fmt.Errorf("%s에 fill과 image를 함께 쓸 수 없다 — PPTX 슬라이드 배경은 채움 하나라 그림 아래 채움이 사라진다 (둘을 그림 한 장으로 합친다)", where)
+			return decls, fmt.Errorf("%s cannot have both fill and image — a PPTX slide background is a single fill, so the fill under the picture would be lost (merge the two into one picture)", where)
 		}
 		bg := &soml.Background{}
 		if raw.Fill != "" {
 			fill, err := themeFill(theme, raw.Fill)
 			if err != nil {
-				return decls, fmt.Errorf("%s의 fill: %w", where, err)
+				return decls, fmt.Errorf("%s fill: %w", where, err)
 			}
 			if fill.None {
-				return decls, fmt.Errorf("%s의 fill에 none은 쓸 수 없다 — 배경을 끄려면 선언을 지운다", where)
+				return decls, fmt.Errorf("%s fill cannot be none — to turn the background off, remove the declaration", where)
 			}
 			if bad, ok := notTokenRef(theme, fill.Color); ok {
-				return decls, fmt.Errorf("%s의 fill %q가 이 테마의 색 토큰 참조가 아니다 — 테마는 색 토큰 이름(변형 · 토큰 그라디언트 포함)만 쓴다 (이 테마: %s)",
+				return decls, fmt.Errorf("%s fill %q is not a color token reference of this theme — themes use only color token names (including modifiers and token gradients) (this theme: %s)",
 					where, bad, strings.Join(theme.ColorNames(), ", "))
 			}
 			bg.Fill = fill
 		}
 		if raw.Image != "" {
-			key, err := assets.resolve(where+"의 image", raw.Image)
+			key, err := assets.resolve(where+" image", raw.Image)
 			if err != nil {
 				return decls, err
 			}
@@ -205,18 +205,18 @@ func loadBackgrounds(manifest themeManifest, theme soml.Theme, assets *assetReso
 		}
 		if len(raw.Layouts) == 0 {
 			if decls.fallback != nil {
-				return decls, fmt.Errorf("%s: layouts 없는 기본 배경이 두 번 선언되었다", where)
+				return decls, fmt.Errorf("%s: the default background without layouts is declared twice", where)
 			}
 			decls.fallback = bg
 			continue
 		}
 		for _, name := range raw.Layouts {
 			if !layouts[name] {
-				return decls, fmt.Errorf("%s의 layouts에 %q는 이 테마의 레이아웃이 아니다 (이 테마의 레이아웃: %s)",
+				return decls, fmt.Errorf("%s layouts: %q is not a layout of this theme (layouts in this theme: %s)",
 					where, name, strings.Join(sortedKeys(layouts), ", "))
 			}
 			if _, dup := decls.byLayout[soml.SlideLayout(name)]; dup {
-				return decls, fmt.Errorf("%s: 레이아웃 %q의 배경이 두 선언에 나온다 — 한 레이아웃의 배경은 하나다", where, name)
+				return decls, fmt.Errorf("%s: the background of layout %q appears in two declarations — a layout has one background", where, name)
 			}
 			decls.byLayout[soml.SlideLayout(name)] = bg
 		}

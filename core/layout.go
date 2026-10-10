@@ -249,7 +249,7 @@ func (r *resolver) placementConflict(elem *soml.Element) bool {
 	if !hasX {
 		coord = y
 	}
-	r.errorf(at.NameSpan, "at과 %s를 함께 쓸 수 없다 (%s는 %s에 있다) — 둘 다 자리를 정하는 채널이라 하나만 쓴다 (at은 9지점 앵커, x/y는 절대 오프셋)",
+	r.errorf(at.NameSpan, "at cannot be combined with %s (%s is at %s) — both set the position, so use only one (at is a 9-point anchor, x/y are absolute offsets)",
 		coord.Name, coord.Name, coord.NameSpan.Start)
 	return true
 }
@@ -267,7 +267,7 @@ func (r *resolver) catalogGap(elem *soml.Element, attr soml.Attr) {
 	if !containsName(soml.ElementAttrs(elem.Name), attr.Name) {
 		return
 	}
-	r.errorf(attr.NameSpan, "%s 속성의 값 해석이 없다 — 카탈로그(soml)와 값 층(core)이 어긋났다 (엔진 버그)", attr.Name)
+	r.errorf(attr.NameSpan, "no value parser for the %s attribute — the catalog (soml) and the value layer (core) disagree (engine bug)", attr.Name)
 }
 
 // lengthSyntax는 길이 값이 어떤 형태를 받는지다. 속성마다 받는 형태가 다르다 — 공간 토큰은 `gap`/`pad`의 값이고
@@ -318,7 +318,7 @@ func (r *resolver) lengthValue(name, raw string, span soml.Span, syntax lengthSy
 		}
 		if !startsNumeric(raw) {
 			names := strings.Join(r.theme.SpaceNames(), ", ")
-			r.errorf(span, "알 수 없는 공간 토큰 %q%s (쓸 수 있는 토큰: %s, 또는 수치·백분율)",
+			r.errorf(span, "unknown space token %q%s (available tokens: %s, or a number or percentage)",
 				raw, didYouMean(raw, names), names)
 			return soml.Length{}, false
 		}
@@ -326,7 +326,7 @@ func (r *resolver) lengthValue(name, raw string, span soml.Span, syntax lengthSy
 		if _, ok := r.theme.Space(raw); ok {
 			// 크기에 공간 토큰을 쓰는 것은 흔한 혼동이다 — 어휘 목록을 던지는 대신 그 값이
 			// 어디에 쓰이는지 짚어 준다 (align의 left/right 진단과 같은 태도).
-			r.errorf(span, "공간 토큰 %q는 gap·pad에만 쓴다 — %s는 %s이다", raw, name, lengthForms(syntax))
+			r.errorf(span, "space token %q is only for gap and pad — %s takes %s", raw, name, lengthForms(syntax))
 			return soml.Length{}, false
 		}
 	}
@@ -336,19 +336,19 @@ func (r *resolver) lengthValue(name, raw string, span soml.Span, syntax lengthSy
 		value = strings.TrimSuffix(value, "%")
 	}
 	if unit := numberSuffix(value); unit != "" {
-		r.errorf(span, "%s는 단위 없는 논리 px 수치다 (%q의 %q를 뗀다) — px·pt·em 접미사는 쓸 수 없다",
+		r.errorf(span, "%s is a unitless number in logical px (drop the %[3]q from %[2]q) — px, pt and em suffixes are not allowed",
 			name, raw, unit)
 		return soml.Length{}, false
 	}
 	n, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		r.errorf(span, "%s 값이 수치가 아니다 (%q) — %s를 쓴다", name, raw, lengthForms(syntax))
+		r.errorf(span, "%s value is not a number (%q) — use %s", name, raw, lengthForms(syntax))
 		return soml.Length{}, false
 	}
 	if n < 0 && !syntax.signed {
 		// 음수 길이는 CSS가 무효로 버리는 선언이다 — 조용히 사라지므로 값 층에서 막는다.
 		// 좌표(signed)는 예외다: 음수 오프셋이 정당하다 (lengthSyntax.signed의 근거).
-		r.errorf(span, "%s는 0보다 작을 수 없다 (%q)", name, raw)
+		r.errorf(span, "%s cannot be negative (%q)", name, raw)
 		return soml.Length{}, false
 	}
 	return soml.Length{Value: n, Percent: percent}, true
@@ -357,12 +357,12 @@ func (r *resolver) lengthValue(name, raw string, span soml.Span, syntax lengthSy
 // lengthForms는 진단에 실을 허용 형태 목록이다 — 문법 정의(lengthSyntax)와 메시지가
 // 갈라지지 않도록 손으로 쓰지 않는다.
 func lengthForms(syntax lengthSyntax) string {
-	forms := "수치·백분율"
+	forms := "a number, percentage"
 	if syntax.tokens {
-		forms += "·공간 토큰"
+		forms += ", space token"
 	}
 	if syntax.fill {
-		forms += "·fill"
+		forms += ", fill"
 	}
 	return forms
 }
@@ -377,10 +377,10 @@ func (r *resolver) pad(attr soml.Attr) (soml.Pad, bool) {
 	parts := splitValues(attr.Value)
 	switch {
 	case len(parts) == 0:
-		r.errorf(attr.ValueSpan, "pad에 값이 없다 (%q)", attr.Value)
+		r.errorf(attr.ValueSpan, "pad has no value (%q)", attr.Value)
 		return soml.Pad{}, false
 	case len(parts) > 4:
-		r.errorf(attr.ValueSpan, "pad는 1~4개 값이다 (%q는 %d개) — CSS padding의 상·우·하·좌 축약과 같은 규칙이다",
+		r.errorf(attr.ValueSpan, "pad takes 1 to 4 values (%q has %d) — the same top/right/bottom/left shorthand rule as CSS padding",
 			attr.Value, len(parts))
 		return soml.Pad{}, false
 	}
@@ -415,7 +415,7 @@ func (r *resolver) tracks(attr soml.Attr) (soml.Tracks, bool) {
 	}
 	parts := splitValues(attr.Value)
 	if len(parts) == 0 {
-		r.errorf(attr.ValueSpan, "%s에 값이 없다 (%q)", attr.Name, attr.Value)
+		r.errorf(attr.ValueSpan, "%s has no value (%q)", attr.Name, attr.Value)
 		return soml.Tracks{}, false
 	}
 	if len(parts) == 1 && isDigits(parts[0].text) {
@@ -425,7 +425,7 @@ func (r *resolver) tracks(attr soml.Attr) (soml.Tracks, bool) {
 		// 형태를 붙인다 — 그 애매함은 문서가 말한다.
 		n, err := strconv.Atoi(parts[0].text)
 		if err != nil || n < 1 {
-			r.errorf(parts[0].span(attr), "%s의 트랙 개수는 1 이상 정수다 (%q)", attr.Name, attr.Value)
+			r.errorf(parts[0].span(attr), "the track count of %s is an integer of at least 1 (%q)", attr.Name, attr.Value)
 			return soml.Tracks{}, false
 		}
 		return soml.Tracks{Count: n}, true
@@ -458,12 +458,12 @@ func (r *resolver) track(name, raw string, span soml.Span) (soml.Track, bool) {
 	}
 	n, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		r.errorf(span, "%s의 트랙 값 %q를 알 수 없다 (쓸 수 있는 형태: 수치·Nfr·N%%·auto, 또는 트랙 개수 정수 하나)",
+		r.errorf(span, "unknown track value %[2]q in %[1]s (available forms: a number, Nfr, N%%, auto, or a single integer track count)",
 			name, raw)
 		return soml.Track{}, false
 	}
 	if n < 0 {
-		r.errorf(span, "%s의 트랙은 0보다 작을 수 없다 (%q)", name, raw)
+		r.errorf(span, "tracks of %s cannot be negative (%q)", name, raw)
 		return soml.Track{}, false
 	}
 	return soml.Track{Kind: kind, Value: n}, true
@@ -478,18 +478,18 @@ func (r *resolver) ratio(attr soml.Attr) (soml.Ratio, bool) {
 	raw := attr.Value
 	w, h, found := strings.Cut(raw, ":")
 	if !found {
-		r.errorf(attr.ValueSpan, "ratio는 W:H 정수 쌍이다 (%q) — 예: 16:9", raw)
+		r.errorf(attr.ValueSpan, "ratio is a W:H pair of integers (%q) — e.g. 16:9", raw)
 		return soml.Ratio{}, false
 	}
 	width, errW := strconv.Atoi(w)
 	height, errH := strconv.Atoi(h)
 	if errW != nil || errH != nil {
-		r.errorf(attr.ValueSpan, "ratio는 W:H 정수 쌍이다 (%q) — 예: 16:9", raw)
+		r.errorf(attr.ValueSpan, "ratio is a W:H pair of integers (%q) — e.g. 16:9", raw)
 		return soml.Ratio{}, false
 	}
 	if width <= 0 || height <= 0 {
 		// 0이나 음수 비율은 CSS가 무효로 버린다 — 조용히 사라지는 선언을 값 층에서 막는다.
-		r.errorf(attr.ValueSpan, "ratio의 W와 H는 0보다 커야 한다 (%q)", raw)
+		r.errorf(attr.ValueSpan, "W and H of ratio must be greater than 0 (%q)", raw)
 		return soml.Ratio{}, false
 	}
 	return soml.Ratio{W: width, H: height}, true
@@ -512,10 +512,10 @@ func (r *resolver) boxAlign(attr soml.Attr) (soml.BoxAlign, bool) {
 		"flex-start": soml.BoxAlignStart,
 		"flex-end":   soml.BoxAlignEnd,
 	}[raw]; ok {
-		r.errorf(attr.ValueSpan, "%s는 접두 없는 이름을 쓴다 — %q 대신 %q", attr.Name, raw, string(logical))
+		r.errorf(attr.ValueSpan, "%s takes unprefixed names — instead of %q, use %q", attr.Name, raw, string(logical))
 		return "", false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 %s %q%s (쓸 수 있는 값: %s)", attr.Name, raw, didYouMean(raw, boxAlignList()), boxAlignList())
+	r.errorf(attr.ValueSpan, "unknown %s %q%s (available values: %s)", attr.Name, raw, didYouMean(raw, boxAlignList()), boxAlignList())
 	return "", false
 }
 
@@ -537,10 +537,10 @@ func (r *resolver) boxJustify(attr soml.Attr) (soml.BoxJustify, bool) {
 		"space-around":  soml.BoxJustifyAround,
 		"space-evenly":  soml.BoxJustifyEvenly,
 	}[raw]; ok {
-		r.errorf(attr.ValueSpan, "justify는 접두 없는 이름을 쓴다 — %q 대신 %q", raw, string(logical))
+		r.errorf(attr.ValueSpan, "justify takes unprefixed names — instead of %q, use %q", raw, string(logical))
 		return "", false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 justify %q%s (쓸 수 있는 값: %s)", raw, didYouMean(raw, boxJustifyList()), boxJustifyList())
+	r.errorf(attr.ValueSpan, "unknown justify %q%s (available values: %s)", raw, didYouMean(raw, boxJustifyList()), boxJustifyList())
 	return "", false
 }
 
@@ -557,13 +557,13 @@ func (r *resolver) wrap(attr soml.Attr) (bool, bool) {
 	case "true":
 		return true, true
 	case "":
-		r.errorf(attr.ValueSpan, "wrap 속성이 비어 있다 (지우면 줄바꿈 없음 — 기본값이다)")
+		r.errorf(attr.ValueSpan, "the wrap attribute is empty (remove it for no wrapping — the default)")
 		return false, false
 	}
 	// `wrap="false"`를 받지 않는 이유: 줄바꿈 없음이 CSS 기본값이므로 끄는 표기는 속성을
 	// 지우는 것이다 (hasValue 진단의 "지우면 기본값을 쓴다"와 같은 태도). 기본값을 명시하는
 	// 표기를 열면 저자가 "줄바꿈이 켜졌는가"를 두 곳에서 확인해야 한다.
-	r.errorf(attr.ValueSpan, "wrap은 값 없는 속성(<row wrap>)이거나 wrap=\"true\"다 (%q) — 줄바꿈 없음이 기본값이므로 끄려면 속성을 지운다", attr.Value)
+	r.errorf(attr.ValueSpan, "wrap is either a valueless attribute (<row wrap>) or wrap=\"true\" (%q) — no wrapping is the default, so remove the attribute to turn it off", attr.Value)
 	return false, false
 }
 
@@ -574,7 +574,7 @@ func (r *resolver) integer(attr soml.Attr) (int, bool) {
 	}
 	n, err := strconv.Atoi(attr.Value)
 	if err != nil {
-		r.errorf(attr.ValueSpan, "%s는 정수다 (%q)", attr.Name, attr.Value)
+		r.errorf(attr.ValueSpan, "%s is an integer (%q)", attr.Name, attr.Value)
 		return 0, false
 	}
 	return n, true
@@ -588,7 +588,7 @@ func (r *resolver) nonNegativeInt(attr soml.Attr) (int, bool) {
 	}
 	if n < 0 {
 		// CSS는 음수 flex-grow/flex-shrink를 무효로 버린다 — 조용히 사라지는 선언을 막는다.
-		r.errorf(attr.ValueSpan, "%s는 0보다 작을 수 없다 (%q)", attr.Name, attr.Value)
+		r.errorf(attr.ValueSpan, "%s cannot be negative (%q)", attr.Name, attr.Value)
 		return 0, false
 	}
 	return n, true
@@ -607,11 +607,11 @@ func (r *resolver) span(attr soml.Attr, parent *soml.Element) (int, bool) {
 		return 0, false
 	}
 	if n < 1 {
-		r.errorf(attr.ValueSpan, "span은 1 이상 정수다 (%q)", attr.Value)
+		r.errorf(attr.ValueSpan, "span is an integer of at least 1 (%q)", attr.Value)
 		return 0, false
 	}
 	if parent == nil || parent.Name != soml.GridElement {
-		r.errorf(attr.NameSpan, "span은 <%s>의 자식에서만 쓴다 (%s) — flex 컨테이너에서 grid-column은 무효다",
+		r.errorf(attr.NameSpan, "span is only for children of <%s> (%s) — grid-column has no effect in a flex container",
 			soml.GridElement, parentDesc(parent))
 		return 0, false
 	}
@@ -621,9 +621,9 @@ func (r *resolver) span(attr soml.Attr, parent *soml.Element) (int, bool) {
 // parentDesc는 진단에 실을 부모 설명이다.
 func parentDesc(parent *soml.Element) string {
 	if parent == nil {
-		return "여기는 슬라이드 직속이다"
+		return "this is a direct child of the slide"
 	}
-	return fmt.Sprintf("부모는 <%s>다", parent.Name)
+	return fmt.Sprintf("the parent is <%s>", parent.Name)
 }
 
 // stackAnchor는 `at`의 9지점 앵커를 해석한다.
@@ -646,7 +646,7 @@ func (r *resolver) stackAnchor(attr soml.Attr, parent *soml.Element, conflict bo
 	for _, anchor := range soml.StackAnchors() {
 		if string(anchor) == raw {
 			if parent == nil || parent.Name != soml.StackElement {
-				r.errorf(attr.NameSpan, "at은 <%s>의 자식에서만 쓴다 (%s) — 겹침이 필요하면 <%s>으로 감싼다",
+				r.errorf(attr.NameSpan, "at is only for children of <%s> (%s) — wrap it in <%s> if you need overlap",
 					soml.StackElement, parentDesc(parent), soml.StackElement)
 				return "", false
 			}
@@ -656,11 +656,11 @@ func (r *resolver) stackAnchor(attr soml.Attr, parent *soml.Element, conflict bo
 	// 흔한 오타·짧은 이름·축이 뒤바뀐 이름은 올바른 9지점을 짚어 준다 — 고치는 방법이 진단
 	// 안에 있어야 한 번에 끝난다 (boxAlign의 flex- 접두 안내와 같은 태도).
 	if suggestion, ok := anchorTypo(raw); ok {
-		r.errorf(attr.ValueSpan, "알 수 없는 at %q — %q를 뜻한 것인가? (9지점 앵커: %s)",
+		r.errorf(attr.ValueSpan, "unknown at %q — did you mean %q? (9-point anchors: %s)",
 			raw, string(suggestion), stackAnchorList())
 		return "", false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 at %q%s (쓸 수 있는 9지점 앵커: %s)", raw, didYouMean(raw, stackAnchorList()), stackAnchorList())
+	r.errorf(attr.ValueSpan, "unknown at %q%s (available 9-point anchors: %s)", raw, didYouMean(raw, stackAnchorList()), stackAnchorList())
 	return "", false
 }
 
@@ -688,7 +688,7 @@ func (r *resolver) coord(attr soml.Attr, parent *soml.Element, conflict bool) (s
 		return soml.Length{}, false
 	}
 	if !r.coordParentOK(parent) {
-		r.errorf(attr.NameSpan, "%s는 <%s>의 자식이나 layout=\"canvas\" 슬라이드의 직속 자식에서만 쓴다 (%s) — <%s>으로 감싸거나 슬라이드에 layout=\"canvas\"를 준다",
+		r.errorf(attr.NameSpan, "%s is only for children of <%s> or direct children of a layout=\"canvas\" slide (%s) — wrap it in <%s> or give the slide layout=\"canvas\"",
 			attr.Name, soml.StackElement, parentDesc(parent), soml.StackElement)
 		return soml.Length{}, false
 	}

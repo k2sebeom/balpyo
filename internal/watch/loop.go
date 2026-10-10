@@ -59,7 +59,7 @@ func New(opts Options) (*Runner, error) {
 	if !hasHTML(targets) {
 		// html이 없으면 볼 페이지가 없다. pptx만 감시하는 것은 "저장하면 파일이 갱신된다"일 뿐
 		// 이고, 그것은 `balpyo build`를 다시 돌리는 일이다.
-		return nil, fmt.Errorf("watch는 html 타깃이 필요하다: --target에 html을 넣어라")
+		return nil, fmt.Errorf("watch requires the html target: add html to --target")
 	}
 	opts.Build.Targets = targets
 
@@ -71,10 +71,10 @@ func New(opts Options) (*Runner, error) {
 	// 디렉토리를 새로 만들고 "슬라이드가 없다"로 나타난다 (오타를 그 메시지에서 알아볼 수 없다).
 	info, err := os.Stat(root)
 	if err != nil {
-		return nil, fmt.Errorf("감시할 프로젝트를 열 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot open project to watch: %w", err)
 	}
 	if !info.IsDir() {
-		return nil, fmt.Errorf("감시할 프로젝트가 디렉토리가 아니다: %s", root)
+		return nil, fmt.Errorf("project to watch is not a directory: %s", root)
 	}
 	outDir, err := pipeline.OutDir(opts.Build)
 	if err != nil {
@@ -166,7 +166,7 @@ func (r *Runner) Watch(ctx context.Context) error {
 func summarize(err error) string {
 	var de *soml.DiagnosticsError
 	if errors.As(err, &de) {
-		return fmt.Sprintf("빌드 실패: 에러 %d건", de.Count())
+		return "build failed: " + count(de.Count(), "error")
 	}
 	return err.Error()
 }
@@ -177,9 +177,9 @@ func summarize(err error) string {
 // 있을 수 있고, 그때 유일한 단서가 이 로그다.
 func (r *Runner) log(status Status, result *pipeline.Result, elapsed time.Duration) {
 	mark := "✓"
-	summary := fmt.Sprintf("슬라이드 %d개", status.Slides)
+	summary := count(status.Slides, "slide")
 	if result != nil && len(result.Written) > 0 {
-		summary += fmt.Sprintf(" · 파일 %d개", len(result.Written))
+		summary += " · " + count(len(result.Written), "file")
 	}
 	if !status.OK {
 		mark = "✗"
@@ -257,4 +257,12 @@ func (w *warmSession) closeLocked() {
 		w.live.Close()
 		w.live = nil
 	}
+}
+
+// count는 요약 줄의 수량을 영어 단수·복수로 쓴다 ("1 slide", "3 slides").
+func count(n int, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, noun)
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }

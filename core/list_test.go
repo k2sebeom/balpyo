@@ -99,7 +99,7 @@ func TestResolveListValueDiagnostics(t *testing.T) {
 		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
 	}
 	diag := diags[0]
-	if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "테마에 없다") {
+	if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "is not in the theme") {
 		t.Errorf("진단 = %q, want 색 토큰 에러", diag.String())
 	}
 	if diag.Span.Start.Line != 2 || diag.Span.Start.Col != 14 {

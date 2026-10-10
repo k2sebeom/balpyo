@@ -27,18 +27,18 @@ func runWatch(ctx context.Context, args []string, stdout, stderr io.Writer) erro
 	fs.SetOutput(stderr)
 	// 플래그는 build와 같은 이름·같은 뜻이다 — 저작 루프에서 쓰는 명령이 빌드와 다른 옵션을
 	// 요구하면 저자는 두 벌을 외워야 한다.
-	targetList := fs.String("target", "", "렌더 타깃 (html, pptx — 쉼표로 여러 개, html은 필수)")
-	outDir := fs.String("out", "", "출력 디렉토리 (기본: balpyo.json의 outDir)")
-	projectDir := fs.String("project", ".", "프로젝트 루트")
-	theme := fs.String("theme", "", "테마 (기본: balpyo.json의 theme — 내장·프로젝트 themes/·설치한 테마)")
-	strict := fs.Bool("strict", false, "경고를 에러로 승격한다")
-	checkLayout := fs.Bool("check-layout", false, "배치를 검사한다 (넘침·스테이지 이탈·겹침)")
-	addr := fs.String("addr", defaultWatchAddr, "감시 서버 주소")
+	targetList := fs.String("target", "", "render targets (html, pptx — comma-separated; html is required)")
+	outDir := fs.String("out", "", "output directory (default: outDir in balpyo.json)")
+	projectDir := fs.String("project", ".", "project root")
+	theme := fs.String("theme", "", "theme (default: theme in balpyo.json — built-in, project themes/, or installed)")
+	strict := fs.Bool("strict", false, "promote warnings to errors")
+	checkLayout := fs.Bool("check-layout", false, "check layout (overflow, off-stage, overlap)")
+	addr := fs.String("addr", defaultWatchAddr, "watch server address")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
-		return fmt.Errorf("watch는 인자를 받지 않는다: %v", fs.Args())
+		return fmt.Errorf("watch takes no arguments: %v", fs.Args())
 	}
 
 	opts := pipeline.Options{
@@ -69,7 +69,7 @@ func runWatch(ctx context.Context, args []string, stdout, stderr io.Writer) erro
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "감시 중: %s → http://%s  (Ctrl+C로 끝낸다)\n", *projectDir, ln.Addr())
+	fmt.Fprintf(stdout, "watching %s → http://%s  (Ctrl+C to stop)\n", *projectDir, ln.Addr())
 
 	served := make(chan error, 1)
 	go func() { served <- runner.Server().Serve(ctx, ln) }()

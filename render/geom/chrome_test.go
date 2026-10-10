@@ -82,9 +82,9 @@ func TestNewGeometryRejectsChromeMismatch(t *testing.T) {
 		mutate  func(m *measurement)
 		wantMsg string
 	}{
-		{"HTML에 크롬이 없다", func(m *measurement) { m.Slides[0].Chrome = nil }, "크롬"},
-		{"kind가 어긋난다", func(m *measurement) { m.Slides[0].Chrome[1].Kind = string(soml.ChromeFooter) }, "크롬"},
-		{"rect가 유효하지 않다", func(m *measurement) { m.Slides[0].Chrome[0].Rect = Rect{W: math.Inf(1)} }, "유효하지 않다"},
+		{"HTML에 크롬이 없다", func(m *measurement) { m.Slides[0].Chrome = nil }, "chrome"},
+		{"kind가 어긋난다", func(m *measurement) { m.Slides[0].Chrome[1].Kind = string(soml.ChromeFooter) }, "chrome"},
+		{"rect가 유효하지 않다", func(m *measurement) { m.Slides[0].Chrome[0].Rect = Rect{W: math.Inf(1)} }, "invalid"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -119,8 +119,8 @@ func TestDiagnoseChrome(t *testing.T) {
 		want  []string
 	}{
 		{"띠 안의 크롬은 조용하다", 2, []Rect{chromeBand(64, 120), chromeBand(1180, 36)}, nil},
-		{"슬라이드 이탈", 1, []Rect{chromeBand(64, 1300)}, []string{"footer", "슬라이드", "오른쪽으로"}},
-		{"푸터가 번호를 덮는다", 2, []Rect{chromeBand(64, 1140), chromeBand(1180, 36)}, []string{"footer", "pageNumber", "겹친다"}},
+		{"슬라이드 이탈", 1, []Rect{chromeBand(64, 1300)}, []string{"footer", "slide", "on the right"}},
+		{"푸터가 번호를 덮는다", 2, []Rect{chromeBand(64, 1140), chromeBand(1180, 36)}, []string{"footer", "pageNumber", "overlaps"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

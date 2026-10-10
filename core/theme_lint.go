@@ -36,7 +36,7 @@ func lintLayoutCSS(css, file string) soml.Diagnostics {
 		name, value, found := strings.Cut(part.text, ":")
 		if !found {
 			diags = append(diags, soml.Errorf(file, soml.Span{},
-				"레이아웃 CSS 선언 %q에 콜론이 없다 — `속성: 값` 형태로 쓴다", part.text))
+				"layout CSS declaration %q has no colon — write it as `property: value`", part.text))
 			continue
 		}
 		property := strings.ToLower(strings.TrimSpace(name))
@@ -44,17 +44,17 @@ func lintLayoutCSS(css, file string) soml.Diagnostics {
 		switch {
 		case property == "":
 			diags = append(diags, soml.Errorf(file, soml.Span{},
-				"레이아웃 CSS 선언 %q에 속성 이름이 없다", part.text))
+				"layout CSS declaration %q has no property name", part.text))
 			continue
 		case declaration == "":
 			// 빈 값은 "검증하지 않는 값"이 아니라 완성되지 않은 선언이다 — CSS도 버린다.
 			diags = append(diags, soml.Errorf(file, soml.Span{},
-				"레이아웃 CSS 선언 %q에 값이 없다", part.text))
+				"layout CSS declaration %q has no value", part.text))
 			continue
 		}
 		if !isLayoutStyleProperty(property) {
 			diags = append(diags, soml.Warningf(file, soml.Span{},
-				"레이아웃 CSS의 %q 선언은 배치가 아니다 — 웹에만 적용되고 PPTX 마스터에는 반영되지 않는다. 색·테두리 같은 외관은 components.json에 선언한다",
+				"layout CSS declaration %q is not layout — it applies to the web only and is not reflected in the PPTX master; declare appearance such as color and borders in components.json",
 				property))
 		}
 	}

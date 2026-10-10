@@ -17,12 +17,12 @@ func Validate(deck *soml.Deck) soml.Diagnostics {
 	for _, slide := range deck.Slides {
 		if slide.ID == "" {
 			diags = append(diags, soml.Errorf(slide.Source, soml.Span{},
-				"슬라이드 ID가 비어 있다"))
+				"slide ID is empty"))
 			continue
 		}
 		if first, dup := seen[slide.ID]; dup {
 			diags = append(diags, soml.Errorf(slide.Source, slide.IDSpan,
-				"슬라이드 ID %q가 %s와 충돌한다 (한쪽에 다른 id를 주거나, 필요 없는 슬라이드를 지운다)",
+				"slide ID %q collides with %s (give one of them a different id, or remove the slide you do not need)",
 				slide.ID, sourceAt(first.Source, first.IDSpan)))
 			continue
 		}

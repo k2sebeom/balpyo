@@ -112,32 +112,32 @@ const roundRectPreset = "roundRect"
 func writePicShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, rels *slideRels) error {
 	box, ok := g.Box(id)
 	if !ok {
-		return fmt.Errorf("%s: %s <%s>의 측정된 좌표가 없다", slide.Source, id, elem.Name)
+		return fmt.Errorf("%s: %s <%s> has no measured coordinates", slide.Source, id, elem.Name)
 	}
 	style := elem.ImageStyle()
 	if style == nil {
 		// 해석되지 않은 외관을 기본값으로 그리면 PPTX만 그럴듯하게 나오고 웹과 갈라진다
 		// (render/web.writeImage와 같은 관문).
-		return fmt.Errorf("%s:%s <%s>의 이미지 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+		return fmt.Errorf("%s:%s <%s> image appearance is unresolved — the deck did not go through core.Resolve",
 			slide.Source, elem.Span, elem.Name)
 	}
 	if style.Src == "" {
 		// 값 층이 이미 진단했다 (없는 src·경로 문법·지원하지 않는 포맷 — core/image.go).
 		// 그래도 멈추는 이유: 빈 `r:embed`는 **파일이 열리는** 실패다 (뷰어가 관계를 찾지
 		// 못해 그림 자리를 비운다).
-		return fmt.Errorf("%s:%s <%s>의 src가 해석되지 않았다 — 그릴 것이 없다",
+		return fmt.Errorf("%s:%s <%s> src is unresolved — nothing to draw",
 			slide.Source, elem.Span, elem.Name)
 	}
 	n, asset, ok := mediaOf(deck, style.Src)
 	if !ok {
 		// 에셋 패스를 거치지 않은 덱이다 (core.ResolveAssets) — 표에 없으면 미디어 파트에
 		// 실을 바이트가 없다.
-		return fmt.Errorf("%s:%s <%s>: 에셋 표에 %q가 없다 — core.ResolveAssets를 거치지 않은 덱이다",
+		return fmt.Errorf("%s:%s <%s>: %q is not in the asset table — the deck did not go through core.ResolveAssets",
 			slide.Source, elem.Span, elem.Name, style.Src)
 	}
 	ext := asset.Format.Ext()
 	if ext == "" {
-		return fmt.Errorf("%s:%s <%s>: 포맷 %q의 확장자를 모른다 — 포맷 어휘를 늘리고 미디어 파트 이름을 잊었다",
+		return fmt.Errorf("%s:%s <%s>: unknown file extension for format %q — a format was added without a media part name",
 			slide.Source, elem.Span, elem.Name, string(asset.Format))
 	}
 	spec, err := picSpec(shapeID, elem.Name+" "+id, box.Rect, *style, asset, rels.mediaID(mediaTarget(n, ext)))
@@ -207,7 +207,7 @@ func (s srcRect) attrs() string {
 // 있다 (반경을 rounded-rect 프리셋에만 허용하는 제약은 도형의 것이다 — soml.ImageStyle.Radius).
 func picSpec(id int, name string, rect geom.Rect, style soml.ImageStyle, asset soml.Asset, embed string) (picInfo, error) {
 	if embed == "" {
-		return picInfo{}, fmt.Errorf("미디어 관계 id가 비었다")
+		return picInfo{}, fmt.Errorf("empty media relationship id")
 	}
 	spec := picInfo{id: id, name: name, descr: style.Alt, rect: rect, embed: embed}
 	switch style.Fit {
@@ -223,7 +223,7 @@ func picSpec(id int, name string, rect geom.Rect, style soml.ImageStyle, asset s
 		// 어휘 밖 값은 core가 이미 막았다 (닫힌 어휘). 여기서 멈추는 이유는 빈 문자열이다:
 		// 해석되지 않은 `Fit`을 통과시키면 크롭 없는 cover가 나가 그림이 **늘어난다**
 		// (stretch/fillRect는 원본을 도형에 맞춰 늘린다 — 웹의 `object-fit: fill`과 같은 상태).
-		return picInfo{}, fmt.Errorf("fit %q는 맞춤 어휘 밖이다", string(style.Fit))
+		return picInfo{}, fmt.Errorf("fit %q is not a known fit value", string(style.Fit))
 	}
 	// 테두리를 정하지 않은 그림(nil)은 **선 없음**이다 — 도형과 갈라지는 자리다: 도형의
 	// 확정 외관에는 테마 컴포넌트 기본값이 언제나 채워져 있지만(테마의 shape.default)
@@ -249,7 +249,7 @@ func picSpec(id int, name string, rect geom.Rect, style soml.ImageStyle, asset s
 	if style.Opacity != nil {
 		if *style.Opacity < 0 || *style.Opacity > 1 {
 			// 웹과 같은 관문이다 (imageInkCSS) — 범위 밖 알파는 뷰어가 조용히 자른다.
-			return picInfo{}, fmt.Errorf("불투명도 %v가 0~1 밖이다", *style.Opacity)
+			return picInfo{}, fmt.Errorf("opacity %v is outside 0–1", *style.Opacity)
 		}
 		spec.alpha = style.Opacity
 	}
@@ -283,7 +283,7 @@ func coverCrop(asset soml.Asset, rect geom.Rect) (srcRect, error) {
 	if asset.Width <= 0 || asset.Height <= 0 {
 		// 에셋 패스가 이미 막았다 (고유 크기 0은 진단이다 — core/asset.go). 여기서 멈추는
 		// 이유는 0으로 나눈 NaN이 `srcRect`에 실리면 파일이 열리지 않기 때문이다.
-		return srcRect{}, fmt.Errorf("고유 크기가 %d×%d다 — 크롭을 계산할 수 없다", asset.Width, asset.Height)
+		return srcRect{}, fmt.Errorf("intrinsic size is %d×%d — cannot compute the crop", asset.Width, asset.Height)
 	}
 	if rect.W <= 0 || rect.H <= 0 {
 		return srcRect{}, nil
@@ -334,7 +334,7 @@ func writePic(b *strings.Builder, spec picInfo, theme soml.Theme) error {
 	writeNvPr(w, 2, spec.ph)
 	w(1, "</p:nvPicPr>")
 	if spec.embed == "" {
-		return fmt.Errorf("미디어 관계 id가 비었다")
+		return fmt.Errorf("empty media relationship id")
 	}
 	w(1, "<p:blipFill>")
 	if spec.alpha != nil {
@@ -388,11 +388,11 @@ func mediaParts(deck *soml.Deck) ([]part, error) {
 	for i, asset := range deck.Assets {
 		ext := asset.Format.Ext()
 		if ext == "" {
-			return nil, fmt.Errorf("에셋 %q의 포맷 %q에 확장자가 없다", asset.Key, string(asset.Format))
+			return nil, fmt.Errorf("asset %q: format %q has no file extension", asset.Key, string(asset.Format))
 		}
 		if len(asset.Bytes) == 0 {
 			// 빈 파트는 파일을 열 수는 있게 두고 그림만 비운다 — 조용한 실패다.
-			return nil, fmt.Errorf("에셋 %q의 바이트가 비었다 — 에셋 패스를 거치지 않은 덱이다", asset.Key)
+			return nil, fmt.Errorf("asset %q has no bytes — the deck did not go through the asset pass", asset.Key)
 		}
 		parts = append(parts, part{name: mediaPart(i+1, ext), data: asset.Bytes})
 	}
@@ -420,14 +420,14 @@ func mediaDefaults(deck *soml.Deck) ([]mediaDefault, error) {
 	for _, asset := range deck.Assets {
 		ext := strings.TrimPrefix(asset.Format.Ext(), ".")
 		if ext == "" {
-			return nil, fmt.Errorf("에셋 %q의 포맷 %q에 확장자가 없다", asset.Key, string(asset.Format))
+			return nil, fmt.Errorf("asset %q: format %q has no file extension", asset.Key, string(asset.Format))
 		}
 		if seen[ext] {
 			continue
 		}
 		contentType, err := mediaContentType(asset.Format)
 		if err != nil {
-			return nil, fmt.Errorf("에셋 %q: %w", asset.Key, err)
+			return nil, fmt.Errorf("asset %q: %w", asset.Key, err)
 		}
 		seen[ext] = true
 		defaults = append(defaults, mediaDefault{Ext: ext, ContentType: contentType})
@@ -448,5 +448,5 @@ func mediaContentType(format soml.ImageFormat) (string, error) {
 	case soml.FormatJPEG:
 		return "image/jpeg", nil
 	}
-	return "", fmt.Errorf("포맷 %q의 콘텐츠 타입을 모른다", string(format))
+	return "", fmt.Errorf("unknown content type for format %q", string(format))
 }

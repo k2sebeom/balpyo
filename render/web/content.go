@@ -298,9 +298,9 @@ func writeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node soml
 		// 상태가 된다 — 닫힌 어휘로 막으려던 바로 그 조용한 실패다. 여기서 멈춘다.
 		// (파서가 이미 같은 사실을 진단하므로 여기까지 오는 것은 파서를 거치지 않은 덱뿐이다 —
 		// soml.KindRendered와 renderedKinds를 대조하는 테스트가 그 계약을 지킨다.)
-		return fmt.Errorf("%s:%s <%s>를 웹으로 렌더하는 매핑이 없다", slide.Source, node.Span, node.Name)
+		return fmt.Errorf("%s:%s <%s> has no web mapping", slide.Source, node.Span, node.Name)
 	default:
-		return fmt.Errorf("%s: 알 수 없는 노드 종류 %T", slide.Source, node)
+		return fmt.Errorf("%s: unknown node type %T", slide.Source, node)
 	}
 }
 
@@ -324,7 +324,7 @@ func writeBlock(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	style := elem.TextStyle()
 	if style == nil {
 		// 해석되지 않은 외관을 기본값으로 그리면 웹만 그럴듯하게 나오고 PPTX와 갈라진다.
-		return fmt.Errorf("%s:%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+		return fmt.Errorf("%s:%s <%s> appearance is unresolved — the deck did not go through core.Resolve",
 			slide.Source, elem.Span, elem.Name)
 	}
 	text, err := textStyleCSS(*style, deck.Theme)
@@ -436,7 +436,7 @@ func writeInline(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *s
 	}
 	style := elem.TextStyle()
 	if style == nil {
-		return fmt.Errorf("%s:%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+		return fmt.Errorf("%s:%s <%s> appearance is unresolved — the deck did not go through core.Resolve",
 			slide.Source, elem.Span, elem.Name)
 	}
 	decls, err := runStyleCSS(*style, deck.Theme)
@@ -447,7 +447,7 @@ func writeInline(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *s
 		link := elem.Appearance.Link
 		if link == "" {
 			// core의 href 검증(없음/빈 값 에러)을 지나지 않은 값이 산출물에 실릴 길을 막는다.
-			return fmt.Errorf("%s:%s <a>의 링크가 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+			return fmt.Errorf("%s:%s <a> link is unresolved — the deck did not go through core.Resolve",
 				slide.Source, elem.Span)
 		}
 		// href는 원문 그대로 싣되 HTML 속성으로 이스케이프한다 — &가 그대로 나가면
@@ -477,10 +477,10 @@ func writeInlineChild(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, no
 		if soml.KindOf(node.Name) == soml.KindInline {
 			return writeInline(b, deck, slide, node)
 		}
-		return fmt.Errorf("%s:%s 인라인 안의 <%s>를 웹으로 렌더하는 매핑이 없다",
+		return fmt.Errorf("%s:%s <%s> inside inline content has no web mapping",
 			slide.Source, node.Span, node.Name)
 	default:
-		return fmt.Errorf("%s: 알 수 없는 노드 종류 %T", slide.Source, node)
+		return fmt.Errorf("%s: unknown node type %T", slide.Source, node)
 	}
 }
 
@@ -540,8 +540,8 @@ func ChildPath(path []int, i int) []int {
 // 주석에 같은 판단이 있다).
 func contentCSS(feat features) string {
 	css := fmt.Sprintf(`
-  /* 스테이지는 자식을 문서 순서대로 세로로 쌓는다. 여백 64px은 1280폭의 5%%로,
-     프로젝터의 오버스캔에서도 글자가 잘리지 않는다. */
+  /* The stage stacks its children vertically in document order. The 64px margin is 5%% of the
+     1280 width, so text is not cut off by projector overscan. */
   .balpyo-stage {
     position: relative;
     width: 100%%;
@@ -552,19 +552,21 @@ func contentCSS(feat features) string {
     gap: %dpx;
   }
 
-  /* 한국어는 어절에서 접는다 — 글자 사이에서 접는 브라우저 기본은 한국어 조판 관행이 아니다.
-     PPTX와 맞추려는 것이 아니다 (줄바꿈 위치는 계약 밖이다). overflow-wrap:
-     anywhere는 좁은 칸에서 한 어절이 칸보다 길 때만 그 어절을 자른다 — keep-all만 두면 그
-     어절이 칸을 넘친다. 중국어·일본어는 띄어쓰기가 없어 keep-all이 줄바꿈을 막으므로
-     lang이 ko일 때만이다. */
+  /* Korean breaks at word boundaries — the browser default of breaking between characters is
+     not Korean typesetting practice. This is not about matching PPTX (line-break positions are
+     outside the contract). overflow-wrap: anywhere breaks a word only when a single word is
+     wider than a narrow cell — with keep-all alone that word overflows the cell. Chinese and
+     Japanese have no spaces between words, so keep-all would block wrapping; hence this applies
+     only when lang is ko. */
   .balpyo-stage:lang(ko) {
     word-break: keep-all;
     overflow-wrap: anywhere;
   }
 
-  /* 텍스트 블록은 콘텐츠 폭 전체를 갖는다 — 줄바꿈 폭이 확정되어야 브라우저가 잰 박스가
-     PPTX 텍스트 박스로 그대로 간다. flex: 0 0 auto는 스택이 스테이지보다 길 때 박스가
-     눌리는 것을 막는다 (기본 정책은 박스 고정 + 오버플로 허용). */
+  /* A text block takes the full content width — the wrap width must be fixed so the box the
+     browser measured carries over to the PPTX text box as is. flex: 0 0 auto keeps the box from
+     being squeezed when the stack is taller than the stage (the default policy is fixed boxes +
+     allowed overflow). */
   .balpyo-text {
     margin: 0;
     width: 100%%;
@@ -601,9 +603,10 @@ func contentCSS(feat features) string {
 // 달라지면 골든 diff가 무엇이 움직였는지 말해 주지 못한다 (빈 스테이지와 같은 근거).
 func listCSS() string {
 	return fmt.Sprintf(`
-  /* 리스트 — 마커는 UA의 ::marker가 아니라 엔진이 그린다 (list-style: none + ::before).
-     UA 마커는 텍스트 왼쪽에 오른쪽 정렬이지만 PPTX는 marL+indent 위치에 왼쪽 정렬이고
-     뷰어가 그리는 방식이라 바꿀 수 없다 — 웹이 PPTX의 관례를 따른다 (ListTextIndent 주석). */
+  /* Lists — the engine draws the markers (list-style: none + ::before), not the UA ::marker.
+     The UA marker is right-aligned to the left of the text, while PPTX left-aligns it at
+     marL+indent and that is how the viewers draw it, so it cannot change — the web follows the
+     PPTX convention (see ListTextIndent). */
   .balpyo-list {
     margin: 0;
     padding: 0;
@@ -612,10 +615,11 @@ func listCSS() string {
     flex: 0 0 auto;
   }
 
-  /* display: block은 UA의 list-item 마커 박스를 아예 없앤다 — list-style: none 위에
-     이중 안전판이다. 항목 간 margin은 ListItemGap(0) — 수직 리듬은 줄높이가 소유한다.
-     행잉 인덴트는 padding-left + 음수 text-indent다 (첫 줄만 마커 자리로 나간다) —
-     PPTX의 marL + 음수 indent와 같은 모델이다. */
+  /* display: block removes the UA list-item marker box entirely — a second safeguard on top of
+     list-style: none. The margin between items is ListItemGap (0) — line height owns the
+     vertical rhythm. The hanging indent is padding-left + a negative text-indent (only the
+     first line moves out into the marker slot) — the same model as PPTX marL + a negative
+     indent. */
   .balpyo-list > li {
     display: block;
     margin: 0 0 %dpx;
@@ -623,13 +627,15 @@ func listCSS() string {
     text-indent: -%dpx;
   }
 
-  /* 마커는 **텍스트 흐름 안의 첫 박스**다 — 폭이 ListMarkerHang인 inline-block이라
-     텍스트가 정확히 padding 경계에서 시작한다. 흐름 밖(절대 배치)에 두지 않는 이유는
-     정렬이다: OOXML은 마커를 문단과 함께 정렬하므로 algn="ctr"이면 마커도 텍스트와 함께
-     가운데로 오는데, 절대 배치 마커는 들여쓰기 자리에 남아 두 타깃이 갈라진다.
-     text-indent를 되돌리는 것은 inline-block이 블록 컨테이너라 li의 음수 값을 상속해
-     자기 첫 줄에 다시 적용하기 때문이다. 확정 스타일(폰트·색·줄높이)은 그대로 상속하므로
-     마커와 첫 줄의 기준선이 맞는다 — PPTX의 마커도 런 서식을 따른다. */
+  /* The marker is **the first box in the text flow** — an inline-block ListMarkerHang wide, so
+     the text starts exactly at the padding edge. It is not taken out of the flow (absolutely
+     positioned) because of alignment: OOXML aligns the marker with its paragraph, so with
+     algn="ctr" the marker is centered along with the text, whereas an absolutely positioned
+     marker would stay in the indent and the two targets would diverge. text-indent is reset
+     because an inline-block is a block container that would inherit the li's negative value and
+     apply it again to its own first line. The resolved style (font, color, line height) is
+     still inherited, so the marker and the first line share a baseline — PPTX markers follow
+     the run formatting too. */
   .balpyo-list > li::before {
     display: inline-block;
     width: %dpx;
@@ -638,8 +644,8 @@ func listCSS() string {
 
   ul.balpyo-list > li::before { content: %q; }
 
-  /* ol은 엔진 카운터를 쓴다 — UA의 list-item 카운터는 display를 되돌려야 움직이므로
-     의존하지 않는다. "1." 형식은 PPTX buAutoNum@type="arabicPeriod"와 짝이다. */
+  /* ol uses an engine counter — the UA list-item counter only advances if display is restored,
+     so it is not relied on. The "1." format pairs with PPTX buAutoNum@type="arabicPeriod". */
   ol.balpyo-list { counter-reset: balpyo-item; }
   ol.balpyo-list > li {
     counter-increment: balpyo-item;

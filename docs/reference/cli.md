@@ -13,14 +13,14 @@ balpyo init my-talk --author "이세범"
 ```
 
 ```
-프로젝트를 만들었다: /path/to/my-talk
+created project: /path/to/my-talk
   balpyo.json
   slides/001_title.slide
   slides/002_content.slide
   slides/003_end.slide
   .gitignore
 
-다음:
+Next:
   balpyo watch --project my-talk
   balpyo build --project my-talk --target html,pptx
 ```
@@ -47,10 +47,10 @@ Sans · Noto Sans Mono · Noto Sans CJK KR · Noto Sans Mono CJK KR)이 빌드�
 |---|---|---|
 | `--project <dir>` | `.` | 만들 프로젝트 루트 (위치 인자와 같은 뜻) |
 | `--title <제목>` | 디렉토리 이름 | 덱 제목. PPTX 파일 이름이 여기서 나온다 |
-| `--author <이름>` | `발표자` (자리표시자) | 발표자 |
+| `--author <이름>` | `Presenter` (자리표시자) | 발표자 |
 | `--theme <이름>` | `minimal` | 테마. **내장 테마만** 받는다 (`minimal`·`editorial`·`ink`) |
 | `--aspect <비율>` | `16:9` | 종횡비 (`16:9`·`4:3`) |
-| `--lang <코드>` | `ko` | 덱 언어 (`index.html`의 `lang`) |
+| `--lang <코드>` | `en` | 덱 언어 (`index.html`의 `lang`) |
 
 `init`의 `--theme`만 내장 테마로 **제한**된다 (`build`·`check`·`watch`·`preview`는 로컬 테마
 이름도 받는다): 이 명령은 프로젝트를 **만드는** 명령이라 `themes/`가 아직 없고, 읽히지 않는 이름을
@@ -83,7 +83,7 @@ balpyo build --project my-talk --target html,pptx
 ```
 
 ```
-슬라이드 3장 → /path/to/dist
+3 slides → /path/to/dist
   index.html
   text-deck.pptx
 ```
@@ -157,7 +157,7 @@ PDF 산출 명령은 아직 없다. 브라우저에서 **그대로 인쇄하면*
 진단은 stderr에 한 줄씩, 에디터가 클릭할 수 있는 관례적 형태로 나온다:
 
 ```
-slides/002_overview.slide:3:9: error: 알 수 없는 role "heding" — 혹시 "heading"? (쓸 수 있는 역할: title, heading, body, caption, code)
+slides/002_overview.slide:3:9: error: unknown role "heding" — did you mean "heading"? (available roles: title, heading, body, caption, code)
 ```
 
 형태는 `파일:행:열: 심각도: 메시지`다. 행·열은 1-based이고 열은 룬(문자) 기준이다 —
@@ -167,7 +167,7 @@ slides/002_overview.slide:3:9: error: 알 수 없는 role "heding" — 혹시 "h
 
 어휘는 닫혀 있으므로 이름이 틀린 진단은 **그 자리에 쓸 수 있는 목록**을 함께 싣는다 — 태그는 부모가
 받는 자식(`<ul>` 안이면 `<li>`), 속성은 그 태그의 속성, 값은 그 속성의 어휘다. 철자가 목록의 이름과
-한두 글자 다르면(네 글자 이하의 이름은 한 글자) `— 혹시 "heading"?`처럼 후보를 하나 단다. `<b>`·`<i>`·
+한두 글자 다르면(네 글자 이하의 이름은 한 글자) `— did you mean "heading"?`처럼 후보를 하나 단다. `<b>`·`<i>`·
 `<img>`·`<h4>`–`<h6>`처럼 HTML에서 온 태그 이름은 철자 대신 SOML의 같은 뜻(`<strong>`·`<em>`·
 `<image>`·`<h3>`)을 권한다.
 
@@ -176,7 +176,7 @@ slides/002_overview.slide:3:9: error: 알 수 없는 role "heding" — 혹시 "h
 위에서 아래로 고쳐 내려가면 된다.
 
 각 진단은 **정확히 한 번** 찍힌다. 빌드가 진단 에러로 실패하면 stderr에 진단들이
-한 줄씩 나온 뒤 마지막에 개수 요약 한 줄(`빌드 실패: 에러 N건`)이 붙는다 — 같은 진단을
+한 줄씩 나온 뒤 마지막에 개수 요약 한 줄(`build failed: N errors`)이 붙는다 — 같은 진단을
 통째로 다시 찍지 않는다. 설정·파일 같은 진단 아닌 에러는 그 에러 메시지가 그대로 나온다.
 
 지금 어휘에서 경고가 나오는 곳은 테마에 없는 `variant`, **배치**, 그리고 측정 브라우저에 없는
@@ -184,7 +184,7 @@ slides/002_overview.slide:3:9: error: 알 수 없는 role "heding" — 혹시 "h
 [외관 속성](appearance.md)의 캐스케이드 절에 있다:
 
 ```
-slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: kicker, lead)
+slides/006_variant.slide:6:16: warning: variant "hero" is not in the theme — continuing with the default appearance (variants in this theme: kicker, lead)
 ```
 
 이 빌드는 코드 0으로 통과하고 산출물이 쓰인다. `--strict`를 켜면 같은 진단이 에러가
@@ -203,7 +203,7 @@ slides/006_variant.slide:6:16: warning: variant "hero"가 테마에 없다 — �
 | 형제 겹침 | 같은 부모의 두 박스가 서로 겹쳤다 |
 
 ```
-slides/003_kpis.slide:7:6: warning: <p>가 부모 <shape>를 아래로 34px 넘친다 — 부모 박스 크기가 내용을 담기에 모자란다
+slides/003_kpis.slide:7:6: warning: <p> overflows its parent <shape> at the bottom by 34px — the parent box is too small for its content
 ```
 
 의도한 겹침과 의도한 이탈은 묻지 않는다: `at`·`x`·`y`를 쓴 요소(와 그 자손), `layout="canvas"`
@@ -219,7 +219,7 @@ slides/003_kpis.slide:7:6: warning: <p>가 부모 <shape>를 아래로 34px 넘�
 하나가 나온다 (위치 없음 — 원인은 슬라이드가 아니라 테마와 이 기계의 조합이다):
 
 ```
-warning: 테마 "corp"의 글꼴 "Malgun Gothic"(heading.ea, body.ea)가 측정 브라우저에 없다 — 대체 글꼴로 잰 배치라 PowerPoint가 이 글꼴로 그리면 텍스트 박스가 어긋난다. 빌드하는 기계에 글꼴을 설치하거나, 설치된 글꼴로 테마의 font 토큰을 바꾼다
+warning: theme "corp" font "Malgun Gothic" (heading.ea, body.ea) is missing from the measuring browser — the layout was measured with a fallback font, so text boxes will be off when PowerPoint draws with this font. Install the font on the build machine, or change the theme's font token to an installed font
 ```
 
 - 테마의 토큰을 **전부** 묻는다 — 덱이 그 역할을 지금 쓰는지는 보지 않는다. 코드 블록이 없는
@@ -246,7 +246,7 @@ balpyo check --project my-talk
 ```
 
 ```
-슬라이드 3장 · 진단 없다 · 배치는 보지 않았다 (--check-layout)
+3 slides · no diagnostics · layout not checked (--check-layout)
 ```
 
 판정은 `build`와 **같은 코드**다: 설정 → 수집 → 파싱 → 값 해석 → 에셋 → 검증, 그리고
@@ -271,8 +271,8 @@ balpyo check --project my-talk
 같다 — 브라우저 기동이 가장 큰 고정 비용이고, 브라우저가 없는 CI에서도 어휘 검사는 돌아야
 한다.
 
-요약 한 줄은 **무엇을 봤는지** 말한다: `배치는 보지 않았다 (--check-layout)` 또는
-`배치까지 봤다`. "깨끗하다"와 "안 봤다"는 다른 문장이다.
+요약 한 줄은 **무엇을 봤는지** 말한다: `layout not checked (--check-layout)` 또는
+`layout checked`. "깨끗하다"와 "안 봤다"는 다른 문장이다.
 
 ### 종료 코드
 
@@ -285,20 +285,20 @@ balpyo check --project my-talk
 
 ```
 $ balpyo check
-slides/002_content.slide:1:30: warning: variant "hero"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: kicker, lead)
-슬라이드 3장 · 경고 1건 · 배치는 보지 않았다 (--check-layout)
+slides/002_content.slide:1:30: warning: variant "hero" is not in the theme — continuing with the default appearance (variants in this theme: kicker, lead)
+3 slides · 1 warning · layout not checked (--check-layout)
 $ echo $?
 0
 
 $ balpyo check --strict
-slides/002_content.slide:1:30: error: variant "hero"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: kicker, lead)
-검사 실패: 에러 1건
+slides/002_content.slide:1:30: error: variant "hero" is not in the theme — continuing with the default appearance (variants in this theme: kicker, lead)
+check failed: 1 error
 $ echo $?
 1
 ```
 
 진단의 형태와 중복 규칙은 위 `balpyo build`의 **진단 출력** 절과 같다 — 각 진단은 stderr에
-정확히 한 번 나오고, 마지막 한 줄이 개수를 요약한다 (`검사 실패: 에러 N건`). 실패한 검사는 stdout에
+정확히 한 번 나오고, 마지막 한 줄이 개수를 요약한다 (`check failed: N errors`). 실패한 검사는 stdout에
 아무것도 쓰지 않는다.
 
 ```bash
@@ -319,11 +319,11 @@ balpyo watch --project examples/decks/quarterly-review
 ```
 
 ```
-감시 중: examples/decks/quarterly-review → http://127.0.0.1:4600  (Ctrl+C로 끝낸다)
-✓ 14:31:02  슬라이드 6개 · 파일 1개 (41ms)
-✓ 14:31:18  슬라이드 6개 · 파일 1개 (38ms)
-✗ 14:31:33  빌드 실패: 에러 1건 (12ms)
-  slides/003_kpis.slide:7:6: error: 알 수 없는 태그 <txt> — 혹시 <text>? (<col> 안에 쓸 수 있는 태그: …)
+watching examples/decks/quarterly-review → http://127.0.0.1:4600  (Ctrl+C to stop)
+✓ 14:31:02  6 slides · 1 file (41ms)
+✓ 14:31:18  6 slides · 1 file (38ms)
+✗ 14:31:33  build failed: 1 error (12ms)
+  slides/003_kpis.slide:7:6: error: unknown tag <txt> — did you mean <text>? (tags available inside <col>: …)
 ```
 
 주소 줄을 브라우저에 붙이면 그 탭이 빌드마다 스스로 새로고침한다. 빌드 하나가 터미널에
@@ -365,14 +365,14 @@ balpyo watch --project examples/decks/quarterly-review
 {
   "generation": 3,
   "ok": false,
-  "error": "빌드 실패: 에러 1건",
+  "error": "build failed: 1 error",
   "diagnostics": [
     {
       "severity": "error",
       "file": "slides/003_kpis.slide",
       "line": 7,
       "column": 6,
-      "message": "알 수 없는 태그 <txt> — 혹시 <text>? (<col> 안에 쓸 수 있는 태그: …)"
+      "message": "unknown tag <txt> — did you mean <text>? (tags available inside <col>: …)"
     }
   ],
   "slides": 0,
@@ -426,8 +426,8 @@ balpyo preview --project my-talk
 ```
 
 ```
-슬라이드 10장 → /path/to/preview/index.html
-PPTX는 PowerPoint·Keynote로 직접 열어 확인한다: /path/to/dist
+10 slides → /path/to/preview/index.html
+open the PPTX in PowerPoint or Keynote to review it: /path/to/dist
 ```
 
 `preview/index.html`을 브라우저로 열면 슬라이드마다 두 칸이 나란히 있다: 웹 스크린샷과
@@ -458,8 +458,8 @@ OnlyOffice(없으면 LibreOffice)로 되돌린 PPTX — 갤러리 안내가 어�
 
 그래서 갤러리와 빌드 출력은 **겹칠 수 없다** — 같은 디렉토리이거나 한쪽이 다른 쪽 안에 있으면
 (`--gallery dist`, `balpyo.json`의 `outDir`가 `preview` 등) 빌드를 시작하기 전에 멈춘다:
-`검수 갤러리 디렉토리 …가 빌드 출력 디렉토리 …와 겹친다 — 갤러리는 만들 때 디렉토리를 비우므로
-빌드 산출물이 지워진다. --gallery나 --out을 서로 겹치지 않는 곳으로 준다`.
+`preview gallery directory … overlaps build output directory … — the gallery clears its directory
+when created, which would delete the build output; point --gallery and --out at non-overlapping locations`.
 
 ### PPTX 칸은 래스터 엔진이 필요하다
 
@@ -474,7 +474,7 @@ PPTX를 그림으로 되돌리는 엔진은 둘 중 하나다. 앞의 것이 있
 쓴다 — 빌드는 여전히 바이너리 하나로 끝난다.
 
 - `--target`을 **주지 않았는데** 도구를 못 찾으면 웹 칸만으로 갤러리를 만든다. 조용히 빼지 않는다 —
-  출력에 `PPTX 열을 뺀다 — <이유>`가, 갤러리 안내에 PPTX 열을 뺐다는 문장이 남는다.
+  출력에 `dropping the PPTX column — <reason>`가, 갤러리 안내에 PPTX 열을 뺐다는 문장이 남는다.
 - `--target`에 `pptx`를 **명시했는데** 도구를 못 찾으면 **빌드를 시작하기 전에** 멈춘다 — PPTX를
   보려고 친 명령이 웹만 내면 사람은 두 타깃을 다 봤다고 읽는다.
 
@@ -515,10 +515,10 @@ GitHub 저장소나 이 기계의 디렉토리에서 테마를 설치하고, 설
 [설치한 테마](theme.md#설치한-테마-github에서-받는다)에 있다.
 
 ```bash
-balpyo theme install <GitHub 주소 | 경로> [이름...] [--force]
+balpyo theme install <GitHub URL | path> [name...] [--force]
 balpyo theme list [--project .]
-balpyo theme remove <이름...>
-balpyo theme update [이름...]
+balpyo theme remove <name...>
+balpyo theme update [name...]
 ```
 
 | 명령 | 하는 일 |
@@ -555,17 +555,17 @@ balpyo theme update [이름...]
 
 ```
 $ balpyo theme install github.com/acme/slide-themes@v1.2.0
-github.com/acme/slide-themes@v1.2.0 (3f2a91c)에서 테마 2개를 설치했다 → /home/me/.balpyo/themes
+installed 2 themes from github.com/acme/slide-themes@v1.2.0 (3f2a91c) → /home/me/.balpyo/themes
   acme       themes/light
   acme-dark  themes/dark
-balpyo.json에 "theme": "acme"처럼 이름을 쓴다.
+use the name in balpyo.json, e.g. "theme": "acme"
 ```
 
 ```
 $ balpyo theme install ./brand
-/home/me/work/brand에서 테마 1개를 복사해 설치했다 → /home/me/.balpyo/themes
+copied and installed 1 theme from /home/me/work/brand → /home/me/.balpyo/themes
   acme  .
-balpyo.json에 "theme": "acme"처럼 이름을 쓴다.
+use the name in balpyo.json, e.g. "theme": "acme"
 ```
 
 종료 코드는 성공 0, 실패 1이다. 실패한 설치는 홈을 바꾸지 않는다.
@@ -578,19 +578,19 @@ balpyo.json에 "theme": "acme"처럼 이름을 쓴다.
 ```
 $ balpyo version
 balpyo v0.3.0
-커밋 feda13c (2026-09-21T01:27:36Z)
+commit feda13c (2026-09-21T01:27:36Z)
 linux/amd64 · go1.26
 ```
 
 | 줄 | 사실 | 출처 |
 | --- | --- | --- |
 | `balpyo v0.3.0` | 릴리스 태그 | 릴리스 빌드가 주입한다 (`-X main.version=`) |
-| `커밋 feda13c (…)` | 커밋과 그 커밋의 시각 | Go 툴체인이 박는 `vcs.revision`·`vcs.time` |
+| `commit feda13c (…)` | 커밋과 그 커밋의 시각 | Go 툴체인이 박는 `vcs.revision`·`vcs.time` |
 | `linux/amd64 · go1.26` | OS/아키텍처와 툴체인 | 실행 중인 런타임 |
 
 - **커밋은 주입하지 않는다.** 툴체인이 박고 `-trimpath`도 그것을 지우지 않으므로,
   `go install`로 받은 바이너리도 자기 커밋을 안다.
-- **커밋되지 않은 트리에서 빌드하면 그렇게 말한다**: `커밋 feda13c+dirty (…)`.
+- **커밋되지 않은 트리에서 빌드하면 그렇게 말한다**: `commit feda13c+dirty (…)`.
 - **아는 것만 적는다.** 태그도 모듈 버전도 없으면 첫 줄이 `balpyo (devel)`이고, 커밋을 모르는
   빌드(예: `go build`로 만든 저장소 밖의 사본)는 **그 줄이 없다** — `알 수 없음`을 찍으면
   리포트에 쓸모없는 줄이 하나 늘 뿐이다. 마지막 줄은 언제나 있다.

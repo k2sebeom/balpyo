@@ -82,9 +82,9 @@ func TestFontDiagnostics(t *testing.T) {
 	if len(diags) != 1 {
 		t.Fatalf("경고 한 건이어야 한다: %v", diags)
 	}
-	want := `warning: 테마 "aws"의 글꼴 "Malgun Gothic"(heading.ea, body.ea)가 측정 브라우저에 없다 — ` +
-		`대체 글꼴로 잰 배치라 PowerPoint가 이 글꼴로 그리면 텍스트 박스가 어긋난다. ` +
-		`빌드하는 기계에 글꼴을 설치하거나, 설치된 글꼴로 테마의 font 토큰을 바꾼다`
+	want := `warning: theme "aws" font "Malgun Gothic" (heading.ea, body.ea) is missing from the measuring browser — ` +
+		`the layout was measured with a fallback font, so text boxes will be off when PowerPoint draws with this font. ` +
+		`Install the font on the build machine, or change the theme's font token to an installed font`
 	if got := diags[0].String(); got != want {
 		t.Errorf("진단\n got: %s\nwant: %s", got, want)
 	}

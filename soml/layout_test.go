@@ -41,52 +41,52 @@ func TestParseLayoutErrors(t *testing.T) {
 		{
 			name: "spacer는 void다",
 			src:  `<slide><spacer><text>a</text></spacer></slide>`,
-			want: []string{"1:9 void 태그 <spacer>은 내용을 가질 수 없다 (<spacer/>로 쓴다)"},
+			want: []string{"1:9 void tag <spacer> cannot have content (write <spacer/>)"},
 		},
 		{
 			name: "컨테이너 안의 문자 데이터",
 			src:  `<slide><row>글자</row></slide>`,
-			want: []string{"1:13 <row> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)"},
+			want: []string{"1:13 character data cannot appear directly inside <row> (wrap it in <text>)"},
 		},
 		{
 			// 노트는 콘텐츠가 아니라 슬라이드 메타데이터다 (SlideDoc.Notes).
 			name: "컨테이너 안의 note",
 			src:  `<slide><row><note>메모</note></row></slide>`,
-			want: []string{"1:14 <row>의 자식으로 <note>는 올 수 없다 (쓸 수 있는 태그: <text>, <shape>, <image>, <table>, <chart>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
+			want: []string{"1:14 <row> cannot contain <note> (available tags: <text>, <shape>, <image>, <table>, <chart>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
 		},
 		{
 			// <li>는 리스트 컨테이너의 자식이지 flex 항목이 아니다.
 			name: "li에는 자식 배치 속성이 없다",
 			src:  `<slide><ul><li grow="1">x</li></ul></slide>`,
-			want: []string{"1:16 <li>에 알 수 없는 속성 grow (쓸 수 있는 속성: reveal)"},
+			want: []string{"1:16 unknown attribute grow on <li> (available attributes: reveal)"},
 		},
 		{
 			// 인라인은 박스가 아니라 런이다.
 			name: "인라인에는 style도 없다",
 			src:  `<slide><p><em style="order: 1">x</em></p></slide>`,
-			want: []string{"1:15 <em>에는 속성을 쓸 수 없다 (style)"},
+			want: []string{"1:15 <em> takes no attributes (style)"},
 		},
 		{
 			// grid-template-*는 flex 컨테이너에서 무효다 — 받아 놓고 버리지 않는다.
 			name: "row에는 cols가 없다",
 			src:  `<slide><row cols="3"></row></slide>`,
-			want: []string{"1:13 <row>에 알 수 없는 속성 cols (쓸 수 있는 속성: gap, align, justify, wrap, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
+			want: []string{"1:13 unknown attribute cols on <row> (available attributes: gap, align, justify, wrap, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
 		},
 		{
 			// 단일 셀이라는 것이 stack의 정의다 — gap·wrap·cols·rows는 뜻이 없다.
 			name: "stack에는 cols가 없다",
 			src:  `<slide><stack cols="2"><text>a</text></stack></slide>`,
-			want: []string{"1:15 <stack>에 알 수 없는 속성 cols (쓸 수 있는 속성: align, justify, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
+			want: []string{"1:15 unknown attribute cols on <stack> (available attributes: align, justify, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
 		},
 		{
 			name: "spacer는 컨테이너가 아니다",
 			src:  `<slide><spacer gap="lg"/></slide>`,
-			want: []string{"1:16 <spacer>에 알 수 없는 속성 gap (쓸 수 있는 속성: grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
+			want: []string{"1:16 unknown attribute gap on <spacer> (available attributes: grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
 		},
 		{
 			name: "블록 안의 컨테이너",
 			src:  `<slide><p><row><text>a</text></row></p></slide>`,
-			want: []string{"1:12 <p> 안에는 문자 데이터와 인라인 태그만 올 수 있다 (<row>는 쓸 수 없다)"},
+			want: []string{"1:12 only character data and inline tags are allowed inside <p> (<row> is not allowed)"},
 		},
 	})
 }

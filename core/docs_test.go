@@ -47,19 +47,19 @@ type docVocabulary struct {
 var docVocabularies = []docVocabulary{
 	{
 		Doc: "reference/soml/shape.md", Vocab: "도형 프리셋",
-		Pattern: `쓸 수 있는 종류: ([^)]+)\)`, Sep: ", ", Want: soml.ShapeTypes(),
+		Pattern: `available types: ([^)]+)\)`, Sep: ", ", Want: soml.ShapeTypes(),
 	},
 	{
 		Doc: "reference/soml/slide.md", Vocab: "표준 레이아웃",
-		Pattern: `쓸 수 있는 layout: ([^)]+)\)`, Sep: ", ", Want: docSlideLayouts(),
+		Pattern: `available layouts: ([^)]+)\)`, Sep: ", ", Want: docSlideLayouts(),
 	},
 	{
 		Doc: "reference/soml/text.md", Vocab: "색 토큰",
-		Pattern: `쓸 수 있는 토큰: ([^)]+), 또는 #RRGGBB`, Sep: ", ", Want: requiredColors,
+		Pattern: `available tokens: ([^)]+), or #RRGGBB`, Sep: ", ", Want: requiredColors,
 	},
 	{
 		Doc: "reference/soml/shape.md", Vocab: "색 토큰",
-		Pattern: `쓸 수 있는 토큰: ([^)]+), 또는 #RRGGBB`, Sep: ", ", Want: requiredColors,
+		Pattern: `available tokens: ([^)]+), or #RRGGBB`, Sep: ", ", Want: requiredColors,
 	},
 	// 테마 문서의 "채워야 하는 이름" 표는 로더의 완전성 검사 그 자체다 (theme_require.go의
 	// 주석이 그 표를 가리킨다) — 범주마다 한 줄이므로 범주 이름으로 칸을 집는다.
@@ -85,19 +85,19 @@ var docVocabularies = []docVocabulary{
 	},
 	{
 		Doc: "reference/theme.md", Vocab: "텍스트 역할",
-		Pattern: `역할 "[^"]*"가 없다 \(필수: ([^)]+)\)`, Sep: ", ", Want: docTextRoles(),
+		Pattern: `has no role "[^"]*" \(required: ([^)]+)\)`, Sep: ", ", Want: docTextRoles(),
 	},
 	{
 		Doc: "reference/soml/layout.md", Vocab: "공간 토큰",
-		Pattern: `쓸 수 있는 토큰: ([^)]+), 또는 수치·백분율`, Sep: ", ", Want: requiredSpaces,
+		Pattern: `available tokens: ([^)]+), or a number or percentage`, Sep: ", ", Want: requiredSpaces,
 	},
 	{
 		Doc: "reference/soml/shape.md", Vocab: "반경 토큰",
-		Pattern: `토큰\(([^)]+)\)이나 수치`, Sep: ", ", Want: requiredRadii,
+		Pattern: `use a token \(([^)]+)\) or a number`, Sep: ", ", Want: requiredRadii,
 	},
 	{
 		Doc: "reference/soml/shape.md", Vocab: "그림자 토큰",
-		Pattern: `shadow 토큰[^(]*\(쓸 수 있는 토큰: ([^)]+)\)`, Sep: ", ", Want: requiredShadows,
+		Pattern: `shadow token[^(]*\(available tokens: ([^)]+)\)`, Sep: ", ", Want: requiredShadows,
 	},
 	{
 		Doc: "reference/index.md", Vocab: "내장 테마",
@@ -111,54 +111,54 @@ var docVocabularies = []docVocabulary{
 		Doc: "index.md", Vocab: "내장 테마",
 		Pattern: `내장 셋\(([^)]+)\)`, Sep: "·", Want: BuiltinThemes(),
 	},
-	// **태그가 여는 속성 목록**이다 ("알 수 없는 속성" 진단의 사본). 이 자리를 뒤늦게 등록하는
+	// **태그가 여는 속성 목록**이다 ("unknown attribute" 진단의 사본). 이 자리를 뒤늦게 등록하는
 	// 이유는 속성을 새로 열 때 문서의 사본이 따라오지 않기 쉽기 때문이다
 	// (문서를 읽은 저자는 쓸 수 있는 속성을 못 쓴다고 믿는다 — 닫힌 목록의 낡음 중 가장 비싼
 	// 종류다). 태그 이름을 패턴에 넣어 한 문서의 여러 목록(`<table>`과 `<td>`)이 섞이지 않게 한다.
 	{
 		Doc: "reference/soml/shape.md", Vocab: "<shape>의 속성",
-		Pattern: `<shape>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Pattern: `unknown attribute [a-z-]+ on <shape>[^(]*\(available attributes: ([^)]+)\)`,
 		Sep:     ", ", Want: soml.ElementAttrs(soml.ShapeElement),
 	},
 	{
 		Doc: "reference/soml/image.md", Vocab: "<image>의 속성",
-		Pattern: `<image>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Pattern: `unknown attribute [a-z-]+ on <image>[^(]*\(available attributes: ([^)]+)\)`,
 		Sep:     ", ", Want: soml.ElementAttrs(soml.ImageElement),
 	},
 	{
 		Doc: "reference/soml/table.md", Vocab: "<table>의 속성",
-		Pattern: `<table>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Pattern: `unknown attribute [a-z-]+ on <table>[^(]*\(available attributes: ([^)]+)\)`,
 		Sep:     ", ", Want: soml.ElementAttrs(soml.TableElement),
 	},
 	{
 		Doc: "reference/soml/table.md", Vocab: "<td>의 속성",
-		Pattern: `<td>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Pattern: `unknown attribute [a-z-]+ on <td>[^(]*\(available attributes: ([^)]+)\)`,
 		Sep:     ", ", Want: soml.ElementAttrs(soml.TableDataCellElement),
 	},
 	{
 		Doc: "reference/soml/chart.md", Vocab: "<chart>의 속성",
-		Pattern: `<chart>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Pattern: `unknown attribute [a-z-]+ on <chart>[^(]*\(available attributes: ([^)]+)\)`,
 		Sep:     ", ", Want: soml.ElementAttrs(soml.ChartElement),
 	},
 	{
 		Doc: "reference/soml/chart.md", Vocab: "<point>의 속성",
-		Pattern: `<point>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Pattern: `unknown attribute [a-z-]+ on <point>[^(]*\(available attributes: ([^)]+)\)`,
 		Sep:     ", ", Want: soml.ElementAttrs(soml.ChartPointElement),
 	},
 	// 차트 종류는 도형 프리셋과 같은 종류의 닫힌 목록이다 — 진단 문구가 목록을 싣고 문서가
 	// 그 문장을 그대로 인용하므로, 종류가 늘면 두 자리가 함께 움직여야 한다.
 	{
 		Doc: "reference/soml/chart.md", Vocab: "차트 종류",
-		Pattern: `쓸 수 있는 종류: ([^)]+)\)`, Sep: ", ", Want: soml.ChartTypes(),
+		Pattern: `available types: ([^)]+)\)`, Sep: ", ", Want: soml.ChartTypes(),
 	},
 	{
 		Doc: "reference/soml/text-subset.md", Vocab: "<li>의 속성",
-		Pattern: `<li>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Pattern: `unknown attribute [a-z-]+ on <li>[^(]*\(available attributes: ([^)]+)\)`,
 		Sep:     ", ", Want: soml.ElementAttrs(soml.ListItemElement),
 	},
 	{
 		Doc: "reference/soml/text-subset.md", Vocab: "<h1>의 속성",
-		Pattern: `<h1>에 알 수 없는 속성 [a-z-]+ \(쓸 수 있는 속성: ([^)]+)\)`,
+		Pattern: `unknown attribute [a-z-]+ on <h1>[^(]*\(available attributes: ([^)]+)\)`,
 		Sep:     ", ", Want: soml.ElementAttrs("h1"),
 	},
 }
@@ -174,7 +174,7 @@ func TestDocsVocabularyListsMatchCode(t *testing.T) {
 			want := sortedCopy(entry.Want)
 			checked := 0
 			for _, match := range matches {
-				// 생략한 자리(`(쓸 수 있는 종류: …)`)는 사람을 위한 축약이므로 건너뛴다 —
+				// 생략한 자리(`(available types: …)`)는 사람을 위한 축약이므로 건너뛴다 —
 				// 다만 한 문서에 생략만 남으면 아래에서 실패한다.
 				if strings.Contains(match[1], "…") {
 					continue

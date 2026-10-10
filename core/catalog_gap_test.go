@@ -7,10 +7,10 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
-// 값 층의 "엔진 버그" 가드는 **카탈로그가 연 속성**에만 소리를 내야 한다 (catalogGap).
+// 값 층의 "engine bug" 가드는 **카탈로그가 연 속성**에만 소리를 내야 한다 (catalogGap).
 //
 // 파서가 이미 "알 수 없는 속성"으로 거절한 이름까지 그 가드에 닿으면 저자는 오타 하나에
-// 진단 둘을 받고, 둘째가 "엔진 버그"라고 말한다 — 자기 오타를 제품의 결함으로 읽게 만드는
+// 진단 둘을 받고, 둘째가 "engine bug"라고 말한다 — 자기 오타를 제품의 결함으로 읽게 만드는
 // 진단이다. 컨테이너는 카탈로그 목록에 없는 이름을
 // 조용히 지나가므로, 이 테스트는 도형·그림이 그 결을 따르는지 본다.
 func TestValueLayerStaysQuietOnAttrsTheParserRejected(t *testing.T) {
@@ -38,7 +38,7 @@ func TestValueLayerStaysQuietOnAttrsTheParserRejected(t *testing.T) {
 				ID: "s", Source: doc.File, Content: doc.Content, Tokens: doc.Tokens,
 			}}}
 			for _, diag := range Resolve(deck, nil) {
-				if strings.Contains(diag.Message, "엔진 버그") {
+				if strings.Contains(diag.Message, "engine bug") {
 					t.Errorf("파서가 거절한 이름에 값 층이 엔진 버그를 말한다: %s", diag.Message)
 				}
 			}
@@ -56,7 +56,7 @@ func TestCatalogGapStillSpeaksForAttrsTheCatalogOpened(t *testing.T) {
 	if len(r.diags) != 1 {
 		t.Fatalf("진단 %d건, want 1 — 카탈로그가 <shape w>를 열었으므로 값 층의 공백은 엔진 버그다", len(r.diags))
 	}
-	if !strings.Contains(r.diags[0].Message, "엔진 버그") {
+	if !strings.Contains(r.diags[0].Message, "engine bug") {
 		t.Errorf("진단 = %q, want 엔진 버그", r.diags[0].String())
 	}
 }

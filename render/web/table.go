@@ -47,7 +47,7 @@ func writeTable(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	if style == nil {
 		// 해석되지 않은 외관을 기본값으로 그리면 웹만 그럴듯하게 나오고 PPTX와 갈라진다
 		// (writeBlock과 같은 계약).
-		return fmt.Errorf("%s:%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+		return fmt.Errorf("%s:%s <%s> appearance is unresolved — the deck did not go through core.Resolve",
 			slide.Source, elem.Span, elem.Name)
 	}
 	class := "balpyo-table"
@@ -69,7 +69,7 @@ func writeTable(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 		if !ok || row.Name != soml.TableRowElement {
 			// 콘텐츠 모델은 파서가 지켰다 (tableChildren) — 여기까지 온 다른 노드는 파서를
 			// 거치지 않은 덱이므로 조용히 버리지 않는다.
-			return fmt.Errorf("%s:%s <table>의 자식 %T는 행이 아니다 — 파서를 거치지 않은 덱이다",
+			return fmt.Errorf("%s:%s <table> child %T is not a row — the deck did not go through the parser",
 				slide.Source, elem.Span, child)
 		}
 		if err := writeTableRow(b, deck, slide, row, ChildPath(path, i)); err != nil {
@@ -87,7 +87,7 @@ func writeTableRow(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, row *
 	for i, child := range row.Children {
 		cell, ok := child.(*soml.Element)
 		if !ok || !soml.IsTableCell(cell.Name) {
-			return fmt.Errorf("%s:%s <tr>의 자식 %T는 셀이 아니다 — 파서를 거치지 않은 덱이다",
+			return fmt.Errorf("%s:%s <tr> child %T is not a cell — the deck did not go through the parser",
 				slide.Source, row.Span, child)
 		}
 		if err := writeTableCell(b, deck, slide, cell, ChildPath(path, i)); err != nil {
@@ -106,7 +106,7 @@ func writeTableRow(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, row *
 func writeTableCell(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, cell *soml.Element, path []int) error {
 	cs := cell.CellStyle()
 	if cs == nil {
-		return fmt.Errorf("%s:%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+		return fmt.Errorf("%s:%s <%s> appearance is unresolved — the deck did not go through core.Resolve",
 			slide.Source, cell.Span, cell.Name)
 	}
 	decls, err := cellStyleCSS(*cs, deck.Theme)
@@ -145,7 +145,7 @@ func writeTableCell(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, cell
 // 되살아난다.
 func cellStyleCSS(cs soml.CellStyle, theme soml.Theme) ([]string, error) {
 	if cs.Text == nil {
-		return nil, fmt.Errorf("셀 텍스트 외관이 해석되지 않았다")
+		return nil, fmt.Errorf("cell text appearance is unresolved")
 	}
 	text, err := textStyleCSS(*cs.Text, theme)
 	if err != nil {
@@ -206,7 +206,7 @@ func cellAnchorValue(anchor soml.TextAnchor) (string, error) {
 	case soml.AnchorBottom:
 		return "bottom", nil
 	}
-	return "", fmt.Errorf("anchor %q는 세로 앵커 어휘 밖이다", string(anchor))
+	return "", fmt.Errorf("anchor %q is not a known vertical anchor", string(anchor))
 }
 
 // tableCSS는 표 배치 CSS다 — 표를 쓴 덱에만 나간다 (listCSS와 같은 골든 불변 규칙).
@@ -215,11 +215,13 @@ func cellAnchorValue(anchor soml.TextAnchor) (string, error) {
 // 상수인 셀 여백. 나머지(채움·테두리·글자·세로 정렬)는 셀의 인라인 style이 명시한다.
 func tableCSS() string {
 	return fmt.Sprintf(`
-  /* 표 — 프레임은 콘텐츠 폭 전체이고 열 너비는 브라우저의 표 알고리즘이 정한다. 그 잰 값이
-     PPTX a:tblGrid의 열 너비가 되므로 격자 기하를 엔진이 계산하지 않는다.
+  /* Tables — the frame takes the full content width and the browser's table algorithm decides
+     the column widths. Those measured values become the PPTX a:tblGrid column widths, so the
+     engine does not compute grid geometry.
 
-     border-collapse: collapse는 이웃한 셀의 테두리를 한 줄로 합친다 — PPTX의 a:tc 테두리도
-     격자선 하나를 공유하므로, 합치지 않으면 웹에서만 선이 2px로 겹쳐 보인다. */
+     border-collapse: collapse merges the borders of neighboring cells into one line — PPTX a:tc
+     borders share a single grid line too, so without it the lines would overlap at 2px on the
+     web only. */
   .balpyo-table {
     width: 100%%;
     flex: 0 0 auto;
@@ -227,8 +229,9 @@ func tableCSS() string {
     table-layout: auto;
   }
 
-  /* 셀 여백은 엔진 상수다 (TableCellPadX·TableCellPadY) — PPTX a:tcPr의 mar*가 같은 값을
-     쓴다. 나머지 셀 외관은 인라인 style이 전부 명시한다 (cellStyleCSS). */
+  /* Cell padding is an engine constant (TableCellPadX, TableCellPadY) — PPTX a:tcPr mar* uses
+     the same values. Inline style states the rest of the cell appearance in full
+     (cellStyleCSS). */
   .balpyo-table th,
   .balpyo-table td {
     padding: %dpx %dpx;

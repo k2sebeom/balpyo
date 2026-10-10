@@ -43,7 +43,7 @@ func themeCSS(theme soml.Theme, feat features) string {
 
 	var b strings.Builder
 	b.WriteString("\n@layer balpyo.theme {\n")
-	fmt.Fprintf(&b, "  /* 테마 %q의 토큰 표 — 웹 변수와 PPTX 테마 파트가 이 한 표에서 나온다. */\n", theme.Name)
+	fmt.Fprintf(&b, "  /* Token table of theme %q — the web variables and the PPTX theme part both come from this one table. */\n", theme.Name)
 	b.WriteString("  :root {\n")
 	// 선언 순서는 표의 순서다 (soml.Theme가 맵이 아닌 이유) — 골든이 실행마다 같아야 한다.
 	for _, token := range theme.Colors {
@@ -200,13 +200,13 @@ func textStyleCSS(style soml.TextStyle, theme soml.Theme) (string, error) {
 		colorDecl = "color: " + color
 	}
 	if style.Size <= 0 {
-		return "", fmt.Errorf("폰트 크기가 해석되지 않았다 (%s)", formatNumber(style.Size))
+		return "", fmt.Errorf("font size is unresolved (%s)", formatNumber(style.Size))
 	}
 	if style.Weight <= 0 {
-		return "", fmt.Errorf("폰트 굵기가 해석되지 않았다 (%d)", style.Weight)
+		return "", fmt.Errorf("font weight is unresolved (%d)", style.Weight)
 	}
 	if style.LineHeight <= 0 {
-		return "", fmt.Errorf("줄높이가 해석되지 않았다 (%s)", formatNumber(style.LineHeight))
+		return "", fmt.Errorf("line height is unresolved (%s)", formatNumber(style.LineHeight))
 	}
 
 	var b strings.Builder
@@ -261,10 +261,10 @@ func runStyleCSS(style soml.TextStyle, theme soml.Theme) (string, error) {
 // 색과 같다 — 테마를 바꿨을 때 요소가 따라가야 한다.
 func fontVar(role soml.FontRole, theme soml.Theme) (string, error) {
 	if role == "" {
-		return "", fmt.Errorf("폰트 토큰이 해석되지 않았다")
+		return "", fmt.Errorf("font token is unresolved")
 	}
 	if _, ok := theme.Font(role); !ok {
-		return "", fmt.Errorf("폰트 토큰 %q가 테마에 없다", string(role))
+		return "", fmt.Errorf("font token %q is not in the theme", string(role))
 	}
 	return fmt.Sprintf("var(%s%s)", fontVarPrefix, string(role)), nil
 }
@@ -276,7 +276,7 @@ func fontVar(role soml.FontRole, theme soml.Theme) (string, error) {
 // 아니므로(background-image·gradient def) 여기서 받지 않는다 — 호출자가 갈린다.
 func colorValue(color soml.Color, theme soml.Theme) (string, error) {
 	if color.IsGradient() {
-		return "", fmt.Errorf("그라디언트는 단일 색 값이 아니다 — linear-gradient나 gradient def로 낸다")
+		return "", fmt.Errorf("a gradient is not a solid color value — emit it as linear-gradient or a gradient def")
 	}
 	base, err := baseColorValue(color, theme)
 	if err != nil {
@@ -303,7 +303,7 @@ func colorValue(color soml.Color, theme soml.Theme) (string, error) {
 		// transparent와 base를 섞으면 base가 (a×100)%만큼 남아 그 알파가 된다.
 		return fmt.Sprintf("color-mix(in srgb, transparent, %s %s%%)", base, formatNumber(color.Mod.Amount*100)), nil
 	}
-	return "", fmt.Errorf("색 변형 %q는 어휘 밖이다", string(color.Mod.Kind))
+	return "", fmt.Errorf("unknown color modifier %q", string(color.Mod.Kind))
 }
 
 // baseColorValue는 변형·그라디언트를 벗긴 단색의 CSS 값이다 (var() 참조 또는 #리터럴) —
@@ -311,12 +311,12 @@ func colorValue(color soml.Color, theme soml.Theme) (string, error) {
 func baseColorValue(color soml.Color, theme soml.Theme) (string, error) {
 	switch {
 	case color.IsZero():
-		return "", fmt.Errorf("색이 해석되지 않았다")
+		return "", fmt.Errorf("color is unresolved")
 	case color.IsToken():
 		if _, ok := theme.Color(color.Token); !ok {
 			// var()는 정의되지 않은 변수를 조용히 무시한다 — 검사하지 않으면 글자가 상속색으로
 			// 그려지고 아무 에러도 나지 않는다.
-			return "", fmt.Errorf("색 토큰 %q가 테마에 없다", color.Token)
+			return "", fmt.Errorf("color token %q is not in the theme", color.Token)
 		}
 		return fmt.Sprintf("var(%s%s)", colorVarPrefix, color.Token), nil
 	default:
@@ -332,7 +332,7 @@ func baseColorValue(color soml.Color, theme soml.Theme) (string, error) {
 // 토큰이 var() 참조로 남는다.
 func gradientCSS(grad soml.Gradient, theme soml.Theme) (string, error) {
 	if len(grad.Stops) < 2 {
-		return "", fmt.Errorf("그라디언트 스톱이 둘 미만이다 (%d)", len(grad.Stops))
+		return "", fmt.Errorf("gradient has fewer than two stops (%d)", len(grad.Stops))
 	}
 	stops := make([]string, len(grad.Stops))
 	for i, stop := range grad.Stops {
@@ -357,7 +357,7 @@ func alignValue(align soml.TextAlign) (string, error) {
 			return string(align), nil
 		}
 	}
-	return "", fmt.Errorf("정렬 %q는 논리 이름 어휘 밖이다", string(align))
+	return "", fmt.Errorf("align %q is not a known logical alignment", string(align))
 }
 
 // formatNumber는 수치를 자릿수를 늘리지 않고 쓴다 (24 → "24", 20.5 → "20.5").

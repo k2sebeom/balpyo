@@ -69,7 +69,7 @@ func (r *resolver) shapeInsetTextHeight(elem *soml.Element, style *soml.ShapeSty
 			// 문자 데이터는 파서가 이미 막았다 (도형의 내용 모델은 블록이다).
 			continue
 		}
-		r.errorf(elem.NameSpan, "type=%q 도형이 내용을 담으면 h나 ratio가 필요하다 (예: h=\"120\") — 이 프리셋의 텍스트 영역은 박스 높이의 백분율이라 내용이 높이를 정하면 기준이 순환한다",
+		r.errorf(elem.NameSpan, "a type=%q shape with content needs h or ratio (e.g. h=\"120\") — this preset's text area is a percentage of the box height, so letting the content set the height would be circular",
 			style.Type)
 		return
 	}
@@ -181,7 +181,7 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 			// 속성과 내용의 **조합**이 문제이므로 진단은 속성 이름을 가리키고, 실린 각도는
 			// 남기지 않는다 (아래 themeShapePatch가 테마 단의 각도도 버린다).
 			if soml.ShapeHoldsLayout(elem) {
-				r.errorf(attr.NameSpan, "배치를 담은 도형은 rotate를 쓸 수 없다 — PPTX에서 자식은 형제 도형이 되어 도형의 회전을 물려받지 않는데 웹은 박스를 돌려 자식까지 돌리므로, 같은 SOML이 두 타깃에서 다른 그림이 된다 (회전을 지우거나 컨테이너를 빼고 텍스트만 담는다)")
+				r.errorf(attr.NameSpan, "a shape that holds layout cannot use rotate — in PPTX the children become sibling shapes and do not inherit the rotation, while the web rotates the box with its children, so the same SOML would look different in the two targets (remove the rotation, or drop the container and hold only text)")
 				continue
 			}
 			if rotate, ok := r.rotate(attr); ok {
@@ -224,7 +224,7 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 func (r *resolver) shapeType(elem *soml.Element) string {
 	attr, ok := elem.Attr("type")
 	if !ok {
-		r.errorf(elem.NameSpan, "<%s>에 type이 필요하다 (쓸 수 있는 종류: %s) — 도형의 종류는 추측할 수 없다",
+		r.errorf(elem.NameSpan, "<%s> needs a type (available types: %s) — the shape type cannot be guessed",
 			soml.ShapeElement, shapeTypeList())
 		return ""
 	}
@@ -236,7 +236,7 @@ func (r *resolver) shapeType(elem *soml.Element) string {
 			return name
 		}
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 도형 type %q%s (쓸 수 있는 종류: %s)", attr.Value, didYouMean(attr.Value, shapeTypeList()), shapeTypeList())
+	r.errorf(attr.ValueSpan, "unknown shape type %q%s (available types: %s)", attr.Value, didYouMean(attr.Value, shapeTypeList()), shapeTypeList())
 	return ""
 }
 
@@ -253,7 +253,7 @@ func (r *resolver) shapeID(attr soml.Attr) (string, bool) {
 		return "", false
 	}
 	if first, dup := r.ids[attr.Value]; dup {
-		r.errorf(attr.ValueSpan, "id %q가 이 슬라이드에 이미 있다 (%s) — 참조가 어느 도형인지 정할 수 없다",
+		r.errorf(attr.ValueSpan, "id %q already exists on this slide (%s) — a reference could not tell which shape it means",
 			attr.Value, first.Start)
 		return "", false
 	}
@@ -316,7 +316,7 @@ func (r *resolver) border(attr soml.Attr) (soml.Border, bool) {
 		}
 	}
 	if len(parts) != borderParts {
-		r.errorf(attr.ValueSpan, "border는 `<굵기> <스타일> <색>` 3조각이다 (%q는 %d조각) — 예: %q, 또는 %q",
+		r.errorf(attr.ValueSpan, "border has 3 parts, `<width> <style> <color>` (%q has %d) — e.g. %q, or %q",
 			attr.Value, len(parts), "1 solid muted", noneValue)
 		return soml.Border{}, false
 	}
@@ -342,7 +342,7 @@ func (r *resolver) border(attr soml.Attr) (soml.Border, bool) {
 // 짚는다.
 func (r *resolver) gradientBorder(attr soml.Attr, parts []valuePart) (soml.Border, bool) {
 	if len(parts) != gradientBorderParts {
-		r.errorf(attr.ValueSpan, "gradient 테두리는 `<굵기> gradient(…)` 2조각이다 (%q는 %d조각) — 그라디언트가 스타일과 색을 함께 대신한다",
+		r.errorf(attr.ValueSpan, "a gradient border has 2 parts, `<width> gradient(…)` (%q has %d) — the gradient stands in for both style and color",
 			attr.Value, len(parts))
 		return soml.Border{}, false
 	}
@@ -366,17 +366,17 @@ const gradientBorderParts = 2
 func (r *resolver) borderWidth(part valuePart, attr soml.Attr) (float64, bool) {
 	span := part.span(attr)
 	if unit := numberSuffix(part.text); unit != "" {
-		r.errorf(span, "border의 굵기는 단위 없는 논리 px 수치다 (%q의 %q를 뗀다) — px·pt·em 접미사는 쓸 수 없다",
+		r.errorf(span, "the border width is a unitless number in logical px (drop the %[2]q from %[1]q) — px, pt and em suffixes are not allowed",
 			part.text, unit)
 		return 0, false
 	}
 	width, err := strconv.ParseFloat(part.text, 64)
 	if err != nil {
-		r.errorf(span, "border의 굵기가 수치가 아니다 (%q) — 조각 순서는 `<굵기> <스타일> <색>`이다", part.text)
+		r.errorf(span, "the border width is not a number (%q) — the part order is `<width> <style> <color>`", part.text)
 		return 0, false
 	}
 	if width <= 0 {
-		r.errorf(span, "border의 굵기는 0보다 커야 한다 (%q) — 테두리를 지우려면 border=%q를 쓴다",
+		r.errorf(span, "the border width must be greater than 0 (%q) — use border=%q to remove the border",
 			part.text, noneValue)
 		return 0, false
 	}
@@ -390,7 +390,7 @@ func (r *resolver) borderStyle(part valuePart, attr soml.Attr) (soml.BorderStyle
 			return style, true
 		}
 	}
-	r.errorf(part.span(attr), "알 수 없는 border 스타일 %q%s (쓸 수 있는 값: %s) — 조각 순서는 `<굵기> <스타일> <색>`이다",
+	r.errorf(part.span(attr), "unknown border style %q%s (available values: %s) — the part order is `<width> <style> <color>`",
 		part.text, didYouMean(part.text, borderStyleList()), borderStyleList())
 	return "", false
 }
@@ -415,7 +415,7 @@ func (r *resolver) radius(attr soml.Attr, shapeType string) (soml.Radius, bool) 
 		if shapeType == "" {
 			return soml.Radius{}, false
 		}
-		r.errorf(attr.NameSpan, "radius는 type=%q에서만 쓴다 (지금은 %q) — 다른 프리셋에는 반경 조정값이 없어 웹만 둥글어진다",
+		r.errorf(attr.NameSpan, "radius is only for type=%q (this is %q) — other presets have no radius adjustment, so only the web would be rounded",
 			roundedRectType, shapeType)
 		return soml.Radius{}, false
 	}
@@ -438,23 +438,23 @@ func (r *resolver) radiusValue(attr soml.Attr) (soml.Radius, bool) {
 	}
 	if !startsNumeric(attr.Value) {
 		names := strings.Join(r.theme.RadiusNames(), ", ")
-		r.errorf(attr.ValueSpan, "알 수 없는 radius 토큰 %q%s (쓸 수 있는 토큰: %s, 또는 수치)",
+		r.errorf(attr.ValueSpan, "unknown radius token %q%s (available tokens: %s, or a number)",
 			attr.Value, didYouMean(attr.Value, names), names)
 		return soml.Radius{}, false
 	}
 	if unit := numberSuffix(attr.Value); unit != "" {
-		r.errorf(attr.ValueSpan, "radius는 단위 없는 논리 px 수치다 (%q의 %q를 뗀다) — px·pt·em 접미사는 쓸 수 없다",
+		r.errorf(attr.ValueSpan, "radius is a unitless number in logical px (drop the %[2]q from %[1]q) — px, pt and em suffixes are not allowed",
 			attr.Value, unit)
 		return soml.Radius{}, false
 	}
 	px, err := strconv.ParseFloat(attr.Value, 64)
 	if err != nil {
-		r.errorf(attr.ValueSpan, "radius 값이 수치가 아니다 (%q) — 토큰(%s)이나 수치를 쓴다",
+		r.errorf(attr.ValueSpan, "radius value is not a number (%q) — use a token (%s) or a number",
 			attr.Value, strings.Join(r.theme.RadiusNames(), ", "))
 		return soml.Radius{}, false
 	}
 	if px < 0 {
-		r.errorf(attr.ValueSpan, "radius는 0보다 작을 수 없다 (%q)", attr.Value)
+		r.errorf(attr.ValueSpan, "radius cannot be negative (%q)", attr.Value)
 		return soml.Radius{}, false
 	}
 	return soml.PxRadius(px), true
@@ -476,7 +476,7 @@ func (r *resolver) shadow(attr soml.Attr) (soml.ShadowToken, bool) {
 	token, ok := r.theme.Shadow(attr.Value)
 	if !ok {
 		names := strings.Join(r.theme.ShadowNames(), ", ")
-		r.errorf(attr.ValueSpan, "알 수 없는 shadow 토큰 %q%s (쓸 수 있는 토큰: %s) — 그림자는 수치가 아니라 토큰으로 쓴다 (두 타깃의 번짐 정의가 달라 같은 수치가 다르게 그려진다)",
+		r.errorf(attr.ValueSpan, "unknown shadow token %q%s (available tokens: %s) — shadows are written as tokens, not numbers (the two targets define blur differently, so the same numbers would draw differently)",
 			attr.Value, didYouMean(attr.Value, names), names)
 		return soml.ShadowToken{}, false
 	}
@@ -494,20 +494,20 @@ func (r *resolver) opacity(attr soml.Attr) (float64, bool) {
 	}
 	raw := attr.Value
 	if strings.HasSuffix(raw, "%") {
-		r.errorf(attr.ValueSpan, "opacity에 %%는 쓸 수 없다 (%q) — 0~1 실수로 쓴다 (색 변형 alpha()와 표기를 하나로 유지한다)", raw)
+		r.errorf(attr.ValueSpan, "opacity cannot use %% (%q) — write a real number from 0 to 1 (keeping one notation with the alpha() color modifier)", raw)
 		return 0, false
 	}
 	if unit := numberSuffix(raw); unit != "" {
-		r.errorf(attr.ValueSpan, "opacity는 단위 없는 0~1 실수다 (%q의 %q를 뗀다)", raw, unit)
+		r.errorf(attr.ValueSpan, "opacity is a unitless real number from 0 to 1 (drop the %[2]q from %[1]q)", raw, unit)
 		return 0, false
 	}
 	value, err := strconv.ParseFloat(raw, 64)
 	if err != nil {
-		r.errorf(attr.ValueSpan, "opacity 값이 수치가 아니다 (%q) — 0~1 실수로 쓴다", raw)
+		r.errorf(attr.ValueSpan, "opacity value is not a number (%q) — write a real number from 0 to 1", raw)
 		return 0, false
 	}
 	if value < 0 || value > 1 {
-		r.errorf(attr.ValueSpan, "opacity는 0~1 사이다 (%q)", raw)
+		r.errorf(attr.ValueSpan, "opacity is between 0 and 1 (%q)", raw)
 		return 0, false
 	}
 	return value, true
@@ -526,13 +526,13 @@ func (r *resolver) rotate(attr soml.Attr) (float64, bool) {
 	}
 	raw := attr.Value
 	if unit := numberSuffix(raw); unit != "" {
-		r.errorf(attr.ValueSpan, "rotate는 단위 없는 각도 수치다 (%q의 %q를 뗀다) — 허용 접미사는 %% 하나다",
+		r.errorf(attr.ValueSpan, "rotate is a unitless angle (drop the %[2]q from %[1]q) — the only allowed suffix is %%",
 			raw, unit)
 		return 0, false
 	}
 	deg, err := strconv.ParseFloat(raw, 64)
 	if err != nil {
-		r.errorf(attr.ValueSpan, "rotate 값이 수치가 아니다 (%q) — 시계방향 각도를 수치로 쓴다 (음수 가능)", raw)
+		r.errorf(attr.ValueSpan, "rotate value is not a number (%q) — write the clockwise angle as a number (negative allowed)", raw)
 		return 0, false
 	}
 	return deg, true
@@ -548,7 +548,7 @@ func (r *resolver) flip(attr soml.Attr) (soml.Flip, bool) {
 			return flip, true
 		}
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 flip %q%s (쓸 수 있는 값: %s — %q는 두 축 모두다)",
+	r.errorf(attr.ValueSpan, "unknown flip %q%s (available values: %s — %q is both axes)",
 		attr.Value, didYouMean(attr.Value, flipList()), flipList(), string(soml.FlipBoth))
 	return "", false
 }
@@ -573,11 +573,11 @@ func (r *resolver) anchor(attr soml.Attr) (soml.TextAnchor, bool) {
 		string(soml.AlignStart): soml.AnchorTop,
 		string(soml.AlignEnd):   soml.AnchorBottom,
 	}[attr.Value]; ok {
-		r.errorf(attr.ValueSpan, "anchor는 세로 이름을 쓴다 — %q 대신 %q (세로축은 문단 방향으로 뒤집히지 않는다)",
+		r.errorf(attr.ValueSpan, "anchor takes vertical names — instead of %q, use %q (the vertical axis does not flip with paragraph direction)",
 			attr.Value, string(physical))
 		return "", false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 anchor %q%s (쓸 수 있는 값: %s)", attr.Value, didYouMean(attr.Value, anchorList()), anchorList())
+	r.errorf(attr.ValueSpan, "unknown anchor %q%s (available values: %s)", attr.Value, didYouMean(attr.Value, anchorList()), anchorList())
 	return "", false
 }
 

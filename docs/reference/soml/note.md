@@ -44,6 +44,6 @@ PPTX의 `a:t`가 같은 문자열을 받는다.
 
 | 조건 | 진단 메시지 |
 |---|---|
-| 슬라이드에 `<note>`가 둘 이상 | `<note>는 슬라이드당 하나만 쓸 수 있다 (…의 것을 쓴다)` |
-| 자식으로 요소를 썼다 | `<note> 안에는 문자 데이터만 올 수 있다 (<…>는 쓸 수 없다)` |
-| 속성을 썼다 | `<note>에는 속성을 쓸 수 없다 (…)` |
+| 슬라이드에 `<note>`가 둘 이상 | `only one <note> is allowed per slide (using the one at …)` |
+| 자식으로 요소를 썼다 | `only character data is allowed inside <note> (<…> is not allowed)` |
+| 속성을 썼다 | `<note> takes no attributes (…)` |

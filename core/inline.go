@@ -94,11 +94,11 @@ func (r *resolver) href(elem *soml.Element) (string, bool) {
 	attr, ok := elem.Attr("href")
 	switch {
 	case !ok:
-		r.errorf(elem.NameSpan, "<a>에는 href가 필요하다 — 목적지 없는 링크는 뜻을 정할 수 없다")
+		r.errorf(elem.NameSpan, "<a> needs an href — a link without a destination has no meaning")
 	case !attr.HasValue:
-		r.errorf(attr.NameSpan, "href 속성에는 값이 필요하다 (href=%q)", attrExample("href"))
+		r.errorf(attr.NameSpan, "the href attribute needs a value (href=%q)", attrExample("href"))
 	case attr.Value == "":
-		r.errorf(attr.ValueSpan, "href가 비어 있다 — 목적지 없는 링크는 뜻을 정할 수 없다")
+		r.errorf(attr.ValueSpan, "href is empty — a link without a destination has no meaning")
 	default:
 		return attr.Value, true
 	}
@@ -124,14 +124,14 @@ func (r *resolver) weight(attr soml.Attr) (int, bool) {
 	if n, err := strconv.Atoi(raw); err == nil {
 		switch n {
 		case 400:
-			r.errorf(attr.ValueSpan, "weight는 이름을 쓴다 — %q 대신 %q", raw, "normal")
+			r.errorf(attr.ValueSpan, "weight takes a name — instead of %q, use %q", raw, "normal")
 		case boldWeight:
-			r.errorf(attr.ValueSpan, "weight는 이름을 쓴다 — %q 대신 %q", raw, "bold")
+			r.errorf(attr.ValueSpan, "weight takes a name — instead of %q, use %q", raw, "bold")
 		default:
-			r.errorf(attr.ValueSpan, "weight %q는 쓸 수 없다 — 굵기는 normal(400)과 bold(700) 두 단계다 (OOXML 굵기는 켬/끔이라 중간 굵기는 웹에서만 동작한다)", raw)
+			r.errorf(attr.ValueSpan, "weight %q is not allowed — there are two weights, normal (400) and bold (700) (OOXML bold is on/off, so intermediate weights would only work on the web)", raw)
 		}
 		return 0, false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 weight %q%s (쓸 수 있는 값: normal, bold)", raw, didYouMean(raw, "normal, bold"))
+	r.errorf(attr.ValueSpan, "unknown weight %q%s (available values: normal, bold)", raw, didYouMean(raw, "normal, bold"))
 	return 0, false
 }

@@ -425,10 +425,10 @@
 
 | 조건 | 진단 메시지 |
 |---|---|
-| 내용을 담았다 | `void 태그 <image>은 내용을 가질 수 없다 (<image/>로 쓴다)` |
-| 문단·리스트 항목 안에 썼다 | `<p> 안에는 문자 데이터와 인라인 태그만 올 수 있다 (<image>는 쓸 수 없다)` |
-| 도형의 **직속** 자식으로 썼다 | `<shape>의 자식으로 <image>는 올 수 없다 (쓸 수 있는 태그: <text>, <h1>, …, <row>, <col>, <grid>, <stack>)` — 도형 안 그림은 컨테이너를 거쳐 들어온다 (`<shape><col><image/></col></shape>`) |
-| 어휘 밖의 속성 (`fill`·`frame`·`type`·`anchor` …) | `<image>에 알 수 없는 속성 fill (쓸 수 있는 속성: src, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| 내용을 담았다 | `void tag <image> cannot have content (write <image/>)` |
+| 문단·리스트 항목 안에 썼다 | `only character data and inline tags are allowed inside <p> (<image> is not allowed)` |
+| 도형의 **직속** 자식으로 썼다 | `<shape> cannot contain <image> (available tags: <text>, <h1>, …, <row>, <col>, <grid>, <stack>)` — 도형 안 그림은 컨테이너를 거쳐 들어온다 (`<shape><col><image/></col></shape>`) |
+| 어휘 밖의 속성 (`fill`·`frame`·`type`·`anchor` …) | `unknown attribute fill on <image> (available attributes: src, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
 
 값 해석(`core.Resolve`) — 경로 **문법**과 값 어휘. 디스크를 보지 않으므로 에디터가 프로젝트를
 열지 않고도 같은 진단을 낸다. `theme:` 그림만은 여기서 테마 패키지의 파일까지 판정한다 — 그 파일이
@@ -436,24 +436,24 @@
 
 | 조건 | 진단 메시지 |
 |---|---|
-| `src`가 없다 | `<image>에 src가 필요하다 (src="assets/photo.png") — 그림의 경로는 추측할 수 없다` |
-| `src`에 값이 없다 | `src 속성에는 값이 필요하다 (src="assets/photo.png")` |
-| `src=""` | `src가 비어 있다 — 프로젝트 루트 기준 경로를 적는다 (예: "assets/photo.png")` |
-| 절대 경로 | `src는 프로젝트 루트 기준 상대 경로다 ("/Users/me/a.png"는 절대 경로) — 절대 경로는 빌드를 이 기계에 묶는다 (CI에서 같은 덱이 다르게 빌드된다)` |
-| 프로젝트 밖 | `src가 프로젝트 밖을 가리킨다 ("../shared/a.png") — 에셋은 프로젝트 안에 둔다 (밖을 가리키면 빌드가 이 기계에 의존한다)` |
-| URL | `src에 URL은 쓸 수 없다 ("https://…") — 빌드가 네트워크에 의존하면 같은 덱이 CI에서 다르게 빌드되고 오프라인 발표 약속이 깨진다. 파일을 프로젝트 안에 두고 상대 경로로 가리킨다` |
-| `data:` URL | `src에 data: URL은 쓸 수 없다 — 그림은 파일로 커밋한다 (원문에 바이트를 실으면 슬라이드를 사람이 읽을 수도, 진단이 자리를 가리킬 수도 없다)` |
-| 역슬래시 | `src의 경로 구분자는 "/"다 ("assets\wide.png"에 역슬래시가 있다) — 같은 덱이 기계마다 다르게 빌드되지 않게 한다` |
-| `theme:` 뒤가 비었다 | `theme: 뒤에 경로가 없다 — 테마의 assets/ 기준 경로를 적는다 (예: "theme:icons/logo.png")` |
-| `theme:` 절대 경로 | `theme: 경로는 테마의 assets/ 기준 상대 경로다 ("theme:/x.png"는 절대 경로)` |
-| `theme:` 경로가 `assets/` 밖 | `src가 테마의 assets/ 밖을 가리킨다 ("theme:../x.png") — theme: 그림은 테마의 assets/ 안의 파일이다` |
-| `theme:` 그림이 테마 체인에 없다 | `theme:icons/x.png을 테마 "corp-dark"(→ "corp" → "minimal")의 assets/에서 찾을 수 없다` |
-| 확장자가 없다 | `src에 확장자가 없다 ("assets/photo") — 확장자가 PPTX의 콘텐츠 타입을 정한다 (쓸 수 있는 것: .png, .jpg, .jpeg)` |
-| 지원하지 않는 확장자 | `src의 ".svg"는 v1이 그리지 못한다 (쓸 수 있는 것: .png, .jpg, .jpeg) — PPTX는 벡터를 확장 요소(svgBlip)와 래스터 폴백으로 실어 소비자마다 다르게 열린다 — png나 jpeg로 내보낸다` |
-| CSS `object-fit` 값을 썼다 | `CSS object-fit의 "fill"는 PPTX에 대응이 없다 (쓸 수 있는 값: cover, contain) — 비율을 무시하고 늘리는 대신 ratio로 박스를 그림 비율에 맞춘다` |
-| 어휘 밖의 `fit` | `알 수 없는 fit "crop" (쓸 수 있는 값: cover, contain)` |
-| `alt`에 값이 없다 | `alt 속성에는 값이 필요하다 (alt="chart") — 장식 그림은 alt=""로 적는다` |
-| 모르는 `variant` | **경고** — `variant "frame"가 테마에 없다 — 기본 외관으로 계속한다 (이 테마의 variant: framed)` |
+| `src`가 없다 | `<image> needs a src (src="assets/photo.png") — the image path cannot be guessed` |
+| `src`에 값이 없다 | `the src attribute needs a value (src="assets/photo.png")` |
+| `src=""` | `src is empty — write a path relative to the project root (e.g. "assets/photo.png")` |
+| 절대 경로 | `src is a path relative to the project root ("/Users/me/a.png" is absolute) — an absolute path ties the build to this machine (the same deck builds differently in CI)` |
+| 프로젝트 밖 | `src points outside the project ("../shared/a.png") — keep assets inside the project (pointing outside makes the build depend on this machine)` |
+| URL | `src cannot be a URL ("https://…") — a build that depends on the network builds the same deck differently in CI and breaks the offline-presentation promise; put the file in the project and point to it with a relative path` |
+| `data:` URL | `src cannot be a data: URL — commit the image as a file (bytes inlined in the source make the slide unreadable to people and leave diagnostics nothing to point at)` |
+| 역슬래시 | `the path separator in src is "/" ("assets\wide.png" contains a backslash) — so the same deck builds the same on every machine` |
+| `theme:` 뒤가 비었다 | `no path after theme: — write a path relative to the theme's assets/ (e.g. "theme:icons/logo.png")` |
+| `theme:` 절대 경로 | `a theme: path is relative to the theme's assets/ ("theme:/x.png" is absolute)` |
+| `theme:` 경로가 `assets/` 밖 | `src points outside the theme's assets/ ("theme:../x.png") — a theme: image is a file inside the theme's assets/` |
+| `theme:` 그림이 테마 체인에 없다 | `cannot find theme:icons/x.png in theme "corp-dark"(→ "corp" → "minimal") (under assets/)` |
+| 확장자가 없다 | `src has no extension ("assets/photo") — the extension sets the PPTX content type (available: .png, .jpg, .jpeg)` |
+| 지원하지 않는 확장자 | `v1 cannot render ".svg" in src (available: .png, .jpg, .jpeg) — PPTX carries vectors as an extension element (svgBlip) with a raster fallback, so each consumer opens it differently — export as png or jpeg` |
+| CSS `object-fit` 값을 썼다 | `CSS object-fit "fill" has no PPTX equivalent (available values: cover, contain) — instead of stretching past the aspect ratio, match the box to the image with ratio` |
+| 어휘 밖의 `fit` | `unknown fit "crop" (available values: cover, contain)` |
+| `alt`에 값이 없다 | `the alt attribute needs a value (alt="chart") — write alt="" for a decorative image` |
+| 모르는 `variant` | **경고** — `variant "frame" is not in the theme (did you mean "framed"?) — continuing with the default appearance (variants in this theme: framed)` |
 
 외관 값 어휘(`border`·`radius`·`shadow`·`opacity`·`rotate`·`flip`)와 박스 속성의 진단은
 [도형](shape.md)·[레이아웃 태그](layout.md)와 **같은 문구**다 — 같은 함수가 해석하므로 진단도
@@ -464,13 +464,13 @@
 
 | 조건 | 진단 메시지 |
 |---|---|
-| 파일이 없다 | `src가 가리키는 파일이 없다 (assets/missing.png) — 경로는 프로젝트 루트 기준이다 (슬라이드 파일 기준이 아니다)` |
-| 디렉토리다 | `src가 디렉토리를 가리킨다 (assets/dir.png) — 그림 파일 하나를 가리킨다` |
-| 0바이트 | `assets/empty.png가 비어 있다 (0바이트) — 그림 파일이 아니다 (내려받기나 LFS 체크아웃이 끝나지 않았을 수 있다)` |
-| 헤더가 잘렸다 | `assets/cut.png의 이미지 헤더를 읽을 수 없다 (파일이 잘렸다) — 커밋된 바이트를 확인한다` |
-| 확장자와 내용이 다르다 | `assets/liar.png의 확장자는 png를 말하는데 내용은 jpeg다 — [Content_Types]가 확장자로 콘텐츠 타입을 정하므로 이대로는 PowerPoint가 파일을 열지 못한다 (확장자를 ".jpg"로 바꾼다)` |
-| 그림이 아니다 | `assets/text.png의 내용이 png가 아니다 — 확장자만 바꾼 파일은 빌드는 성공하고 PowerPoint가 열지 못한다 (png나 jpeg로 다시 내보낸다)` |
-| 고유 크기가 0 | `assets/zero.png의 고유 크기가 0×0다 — 그릴 것이 없다` |
+| 파일이 없다 | `the file src points to does not exist (assets/missing.png) — paths are relative to the project root (not to the slide file)` |
+| 디렉토리다 | `src points to a directory (assets/dir.png) — point it at a single image file` |
+| 0바이트 | `assets/empty.png is empty (0 bytes) — not an image file (a download or LFS checkout may not have finished)` |
+| 헤더가 잘렸다 | `cannot read the image header of assets/cut.png (the file is truncated) — check the committed bytes` |
+| 확장자와 내용이 다르다 | `the extension of assets/liar.png says png but the content is jpeg — [Content_Types] derives the content type from the extension, so PowerPoint cannot open the file as is (change the extension to ".jpg")` |
+| 그림이 아니다 | `the content of assets/text.png is not png — a file with only its extension changed builds fine but PowerPoint cannot open it (re-export as png or jpeg)` |
+| 고유 크기가 0 | `assets/zero.png has an intrinsic size of 0×0 — nothing to draw` |
 
 렌더 단계에는 진단이 없다 — 그림을 그릴 수 없는 상태는 값 층과 에셋 패스가 이미 전부 막는다.
 브라우저 단계에 하나 남는데, 그것은 저자의 실수가 아니라 산출물의 이상이다: **산출물의 그림이

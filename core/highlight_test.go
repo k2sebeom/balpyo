@@ -166,21 +166,21 @@ func TestHighlightLangVocabulary(t *testing.T) {
 		{
 			name: "목록 밖 언어",
 			src:  `<slide><pre lang="typescript">let x = 1</pre></slide>`,
-			want: `알 수 없는 lang "typescript" (쓸 수 있는 값: go, xml, soml, json, bash)`,
+			want: `unknown lang "typescript" (available values: go, xml, soml, json, bash)`,
 		},
 		{
 			// 예시 값까지 단정한다 — 값이 필요하다는 말만으로는 저자가 **무엇을** 적을지 모르고,
 			// 그 목록은 이 어휘를 닫은 표에만 있다 (예시가 비면 진단이 `lang=""`로 끝난다).
 			name: "값 없는 lang",
 			src:  `<slide><pre lang>x</pre></slide>`,
-			want: `lang 속성에는 값이 필요하다 (lang="go")`,
+			want: `the lang attribute needs a value (lang="go")`,
 		},
 		{
 			// 값 없음·빈 값의 문구는 hasValue가 소유한다 — 외관 속성과 같은 자리에서 같은
 			// 문장을 쓴다 (같은 규칙이 두 벌이 되면 진단이 속성마다 갈라진다).
 			name: "빈 lang",
 			src:  `<slide><pre lang="">x</pre></slide>`,
-			want: "lang 속성이 비어 있다",
+			want: "the lang attribute is empty",
 		},
 	}
 	for _, tc := range tests {
@@ -222,22 +222,22 @@ func TestCodeComponentsAreValidated(t *testing.T) {
 		{
 			name: "모르는 종류 이름",
 			code: `{"tabSize":2,"tokens":[{"class":"kewyord","color":"accent6"}]}`,
-			want: "알 수 없는 코드 토큰 종류",
+			want: "unknown code token class",
 		},
 		{
 			name: "테마에 없는 색 토큰",
 			code: `{"tabSize":2,"tokens":[{"class":"keyword","color":"brand"}]}`,
-			want: `색 토큰 "brand"`,
+			want: `color token "brand"`,
 		},
 		{
 			name: "리터럴 hex",
 			code: `{"tabSize":2,"tokens":[{"class":"keyword","color":"#DC2626"}]}`,
-			want: "색 토큰 이름이어야 한다",
+			want: "must be a color token name",
 		},
 		{
 			name: "탭 폭이 0",
 			code: `{"tabSize":0,"tokens":[]}`,
-			want: "tabSize는 1 이상이어야 한다",
+			want: "tabSize must be at least 1",
 		},
 	}
 	for _, tc := range tests {

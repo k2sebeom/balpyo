@@ -46,29 +46,29 @@ func TestParseImageErrors(t *testing.T) {
 		{
 			name: "이미지 안의 내용",
 			src:  `<slide><image src="assets/wide.png">캡션<text>x</text></image></slide>`,
-			want: []string{`1:9 void 태그 <image>은 내용을 가질 수 없다 (<image/>로 쓴다)`},
+			want: []string{`1:9 void tag <image> cannot have content (write <image/>)`},
 		},
 		{
 			// 세 진단이 모두 저자의 `<image>` 이름을 가리킨다 (들여쓰기가 아니라 태그).
 			name: "닫히지 않은 이미지 태그",
 			src:  "<slide>\n  <image src=\"assets/wide.png\"\n</slide>",
 			want: []string{
-				"2:4 <image> 태그가 `>`로 닫히지 않았다",
-				"2:4 void 태그 <image>은 내용을 가질 수 없다",
-				"2:4 <image> 태그가 </slide>보다 먼저 닫혀야 한다",
+				"2:4 tag <image> is not closed with `>`",
+				"2:4 void tag <image> cannot have content",
+				"2:4 tag <image> must be closed before </slide>",
 			},
 		},
 		{
 			// 도형 안 그림은 컨테이너를 거친다 — 진단 목록이 그 길을 보여 준다.
 			name: "도형 안의 이미지",
 			src:  `<slide><shape type="rect"><image src="assets/wide.png"/></shape></slide>`,
-			want: []string{"1:28 <shape>의 자식으로 <image>는 올 수 없다"},
+			want: []string{"1:28 <shape> cannot contain <image>"},
 		},
 		{
 			// 그림 뒤의 칠이 보이는 자리는 contain의 여백뿐이고 PPTX에서 pic 박스 밖이다.
 			name: "이미지에 fill은 없다",
 			src:  `<slide><image src="assets/wide.png" fill="surface"/></slide>`,
-			want: []string{`1:37 <image>에 알 수 없는 속성 fill (쓸 수 있는 속성: src, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)`},
+			want: []string{`1:37 unknown attribute fill on <image> (available attributes: src, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)`},
 		},
 	})
 }

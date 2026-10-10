@@ -144,15 +144,15 @@ func TestThemeLoadReadsOnlyDeclaredAssets(t *testing.T) {
 // 배경 선언의 검사 — 테마의 실수는 로딩에서 멈춘다 (그 레이아웃을 쓴 슬라이드가 없어도).
 func TestThemeBackgroundsRejectBadDecls(t *testing.T) {
 	for _, tc := range []struct{ name, backgrounds, want string }{
-		{"빈 선언", `[{"layouts":["title"]}]`, "fill도 image도 없다"},
-		{"채움과 그림을 함께", `[{"fill":"bg","image":"assets/cover.png"}]`, "fill과 image를 함께 쓸 수 없다"},
-		{"리터럴 색", `[{"fill":"#FF0000"}]`, `fill "#FF0000"가 이 테마의 색 토큰 참조가 아니다`},
-		{"none", `[{"fill":"none"}]`, "fill에 none은 쓸 수 없다"},
-		{"모르는 레이아웃", `[{"layouts":["cover"],"fill":"bg"}]`, `layouts에 "cover"는 이 테마의 레이아웃이 아니다`},
-		{"겹친 레이아웃", `[{"layouts":["title"],"fill":"bg"},{"layouts":["title"],"fill":"surface"}]`, `레이아웃 "title"의 배경이 두 선언에 나온다`},
-		{"기본 배경 둘", `[{"fill":"bg"},{"fill":"surface"}]`, "기본 배경이 두 번 선언되었다"},
-		{"없는 그림", `[{"image":"assets/none.png"}]`, `"assets/none.png"가 테마 패키지에 없다`},
-		{"그림이 아닌 파일", `[{"image":"assets/notes.txt"}]`, "그림 포맷이 아니다"},
+		{"빈 선언", `[{"layouts":["title"]}]`, "has neither fill nor image"},
+		{"채움과 그림을 함께", `[{"fill":"bg","image":"assets/cover.png"}]`, "cannot have both fill and image"},
+		{"리터럴 색", `[{"fill":"#FF0000"}]`, `fill "#FF0000" is not a color token reference of this theme`},
+		{"none", `[{"fill":"none"}]`, "fill cannot be none"},
+		{"모르는 레이아웃", `[{"layouts":["cover"],"fill":"bg"}]`, `layouts: "cover" is not a layout of this theme`},
+		{"겹친 레이아웃", `[{"layouts":["title"],"fill":"bg"},{"layouts":["title"],"fill":"surface"}]`, `the background of layout "title" appears in two declarations`},
+		{"기본 배경 둘", `[{"fill":"bg"},{"fill":"surface"}]`, "default background without layouts is declared twice"},
+		{"없는 그림", `[{"image":"assets/none.png"}]`, `"assets/none.png", which is not in the theme package`},
+		{"그림이 아닌 파일", `[{"image":"assets/notes.txt"}]`, "is not an image format"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			project := brandProject(t, `{"name":"brand","extends":"minimal","backgrounds":`+tc.backgrounds+`}`)

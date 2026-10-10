@@ -40,9 +40,9 @@ const templateDir = "template"
 // 못하므로 템플릿에서는 `gitignore`라는 이름으로 산다.
 const GitignoreFile = ".gitignore"
 
-// DefaultLang은 스캐폴딩 덱의 언어다. core의 기본값("en")과 다른 이유는 템플릿 슬라이드의
-// 글이 한국어라는 것이다 — 언어가 어긋나면 뷰어의 줄바꿈·하이픈 규칙이 글과 맞지 않는다.
-const DefaultLang = "ko"
+// DefaultLang은 스캐폴딩 덱의 언어다. 템플릿 슬라이드의 글이 영어이므로 core의 기본값("en")과
+// 같다 — 언어가 어긋나면 뷰어의 줄바꿈·하이픈 규칙이 글과 맞지 않는다.
+const DefaultLang = "en"
 
 // Options는 스캐폴딩 입력이다. 빈 값은 기본값으로 채운다.
 type Options struct {
@@ -102,7 +102,7 @@ func Write(opts Options) (*Result, error) {
 	}
 	abs, err := filepath.Abs(dir)
 	if err != nil {
-		return nil, fmt.Errorf("프로젝트 경로를 정할 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot resolve the project path: %w", err)
 	}
 
 	cfg := core.DefaultConfig()
@@ -129,7 +129,7 @@ func Write(opts Options) (*Result, error) {
 	// 테마 이름은 **내장 목록**에 대조한다. 스캐폴딩이 만드는 프로젝트에는 로컬 테마(themes/)가
 	// 없으므로, 내장 테마가 아닌 이름을 써 주면 첫 빌드가 그 테마를 찾지 못하고 실패한다.
 	if !core.IsBuiltinTheme(file.Theme) {
-		return nil, fmt.Errorf("내장 테마가 아니다: %q (쓸 수 있는 테마: %s)",
+		return nil, fmt.Errorf("not a built-in theme: %q (available themes: %s)",
 			file.Theme, strings.Join(core.BuiltinThemes(), ", "))
 	}
 	// 종횡비는 스테이지를 만들 수 있어야 한다 — 빌드가 첫 명령에서 실패하지 않는 것이
@@ -146,7 +146,7 @@ func Write(opts Options) (*Result, error) {
 		return nil, err
 	}
 	if err := os.MkdirAll(abs, 0o755); err != nil {
-		return nil, fmt.Errorf("%s를 만들 수 없다: %w", abs, err)
+		return nil, fmt.Errorf("cannot create %s: %w", abs, err)
 	}
 
 	result := &Result{Dir: abs}
@@ -160,11 +160,11 @@ func Write(opts Options) (*Result, error) {
 		}
 		if parent := filepath.Dir(dest); parent != abs {
 			if err := os.MkdirAll(parent, 0o755); err != nil {
-				return nil, fmt.Errorf("%s를 만들 수 없다: %w", parent, err)
+				return nil, fmt.Errorf("cannot create %s: %w", parent, err)
 			}
 		}
 		if err := os.WriteFile(dest, f.data, 0o644); err != nil {
-			return nil, fmt.Errorf("%s를 쓸 수 없다: %w", dest, err)
+			return nil, fmt.Errorf("cannot write %s: %w", dest, err)
 		}
 		result.Written = append(result.Written, f.name)
 	}
@@ -182,13 +182,13 @@ type plannedFile struct {
 func plan(file configFile) ([]plannedFile, error) {
 	data, err := json.MarshalIndent(file, "", "  ")
 	if err != nil {
-		return nil, fmt.Errorf("%s를 만들 수 없다: %w", core.ConfigFile, err)
+		return nil, fmt.Errorf("cannot create %s: %w", core.ConfigFile, err)
 	}
 	out := []plannedFile{{name: core.ConfigFile, data: append(data, '\n')}}
 
 	vars := slideVars{Title: file.Title, Author: file.Author}
 	if vars.Author == "" {
-		vars.Author = "발표자"
+		vars.Author = "Presenter"
 	}
 	slides, err := renderSlides(vars)
 	if err != nil {
@@ -198,7 +198,7 @@ func plan(file configFile) ([]plannedFile, error) {
 
 	ignore, err := files.ReadFile(path.Join(templateDir, "gitignore"))
 	if err != nil {
-		return nil, fmt.Errorf("스캐폴딩 템플릿을 읽을 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot read the scaffold template: %w", err)
 	}
 	return append(out, plannedFile{name: GitignoreFile, data: ignore}), nil
 }
@@ -208,7 +208,7 @@ func renderSlides(vars slideVars) ([]plannedFile, error) {
 	dir := path.Join(templateDir, "slides")
 	entries, err := fs.ReadDir(files, dir)
 	if err != nil {
-		return nil, fmt.Errorf("스캐폴딩 템플릿을 읽을 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot read the scaffold template: %w", err)
 	}
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
@@ -222,15 +222,15 @@ func renderSlides(vars slideVars) ([]plannedFile, error) {
 	for _, name := range names {
 		raw, err := files.ReadFile(path.Join(dir, name))
 		if err != nil {
-			return nil, fmt.Errorf("스캐폴딩 템플릿을 읽을 수 없다: %w", err)
+			return nil, fmt.Errorf("cannot read the scaffold template: %w", err)
 		}
 		tmpl, err := template.New(name).Option("missingkey=error").Parse(string(raw))
 		if err != nil {
-			return nil, fmt.Errorf("스캐폴딩 템플릿 %s 파싱 실패: %w", name, err)
+			return nil, fmt.Errorf("parsing scaffold template %s failed: %w", name, err)
 		}
 		var buf bytes.Buffer
 		if err := tmpl.Execute(&buf, vars); err != nil {
-			return nil, fmt.Errorf("스캐폴딩 템플릿 %s 치환 실패: %w", name, err)
+			return nil, fmt.Errorf("executing scaffold template %s failed: %w", name, err)
 		}
 		// 슬라이드는 core.DefaultConfig().SlidesDir 아래에 간다 — 설정의 slidesDir을
 		// 스캐폴딩이 바꾸지 않으므로 기본값 하나가 두 자리(경로와 설정)를 함께 정한다.
@@ -245,7 +245,7 @@ func renderSlides(vars slideVars) ([]plannedFile, error) {
 // checkEmpty는 이 디렉토리가 아직 balpyo 프로젝트가 아님을 확인한다.
 func checkEmpty(dir, slidesDir string) error {
 	if _, err := os.Stat(filepath.Join(dir, core.ConfigFile)); err == nil {
-		return fmt.Errorf("이미 balpyo 프로젝트다: %s에 %s가 있다", dir, core.ConfigFile)
+		return fmt.Errorf("already a balpyo project: %s contains %s", dir, core.ConfigFile)
 	}
 	entries, err := os.ReadDir(filepath.Join(dir, slidesDir))
 	if err != nil {
@@ -254,7 +254,7 @@ func checkEmpty(dir, slidesDir string) error {
 	}
 	for _, e := range entries {
 		if !e.IsDir() && strings.HasSuffix(e.Name(), soml.Ext) {
-			return fmt.Errorf("이미 슬라이드가 있다: %s에 %s가 있다",
+			return fmt.Errorf("slides already exist: %s contains %s",
 				filepath.Join(dir, slidesDir), e.Name())
 		}
 	}

@@ -110,7 +110,7 @@ func Run(opts Options) (*Result, error) {
 		case render.TargetPPTX:
 			wantPPTX = true
 		default:
-			return nil, fmt.Errorf("검수할 수 없는 타깃 %q", string(target))
+			return nil, fmt.Errorf("target %q cannot be previewed", string(target))
 		}
 	}
 
@@ -125,7 +125,7 @@ func Run(opts Options) (*Result, error) {
 			skipped = err.Error()
 			wantPPTX = false
 			renders = []render.Target{render.TargetHTML}
-			fmt.Fprintf(log, "PPTX 열을 뺀다 — %s\n", skipped)
+			fmt.Fprintf(log, "dropping the PPTX column — %s\n", skipped)
 		case err != nil:
 			return nil, err
 		default:
@@ -180,7 +180,7 @@ func Run(opts Options) (*Result, error) {
 	if wantPPTX {
 		workDir, err := os.MkdirTemp("", "balpyo-preview-")
 		if err != nil {
-			return result, fmt.Errorf("검수 임시 디렉토리를 만들 수 없다: %w", err)
+			return result, fmt.Errorf("cannot create preview temp directory: %w", err)
 		}
 		defer os.RemoveAll(workDir)
 		pages, noise, err := raster.Slides(pptxPath, size, workDir)
@@ -191,10 +191,10 @@ func Run(opts Options) (*Result, error) {
 		if noise != "" {
 			// 경고를 실패로 바꾸지 않는다 — preview는 게이트가 아니다. 다만 **삼키지도** 않는다:
 			// 엔진이 복구했다면 사용자도 파일을 열 때마다 그 경고를 본다.
-			fmt.Fprintf(log, "%s가 경고를 냈다 — PPTX를 직접 열어 확인한다:\n%s\n", raster.Name(), noise)
+			fmt.Fprintf(log, "%s reported warnings — open the PPTX directly to check:\n%s\n", raster.Name(), noise)
 		}
 		if len(pages) != len(deck.Slides) {
-			return result, fmt.Errorf("PPTX 페이지 %d장, 덱 슬라이드 %d장 — 산출물이 덱과 맞지 않는다",
+			return result, fmt.Errorf("%d PPTX pages, %d deck slides — the output does not match the deck",
 				len(pages), len(deck.Slides))
 		}
 		pptxPages = pages
@@ -282,11 +282,11 @@ func checkSeparateDirs(galleryDir string, build pipeline.Options, projectDir str
 	}
 	gallery, err := filepath.Abs(galleryDir)
 	if err != nil {
-		return fmt.Errorf("갤러리 디렉토리 경로를 정할 수 없다: %w", err)
+		return fmt.Errorf("cannot resolve gallery directory path: %w", err)
 	}
 	if within(outDir, gallery) || within(gallery, outDir) {
-		return fmt.Errorf("검수 갤러리 디렉토리 %s가 빌드 출력 디렉토리 %s와 겹친다 — 갤러리는 만들 때 "+
-			"디렉토리를 비우므로 빌드 산출물이 지워진다. --gallery나 --out을 서로 겹치지 않는 곳으로 준다",
+		return fmt.Errorf("preview gallery directory %s overlaps build output directory %s — the gallery clears its "+
+			"directory when created, which would delete the build output; point --gallery and --out at non-overlapping locations",
 			gallery, outDir)
 	}
 	return nil
@@ -312,7 +312,7 @@ func screenshot(session *geom.Session, index int) (image.Image, error) {
 		return nil, err
 	}
 	if len(rects) == 0 {
-		return nil, fmt.Errorf("%s에 맞는 요소가 없다 — 웹 산출물이 덱과 맞지 않는다", selector)
+		return nil, fmt.Errorf("no element matches %s — the web output does not match the deck", selector)
 	}
 	buf, err := session.Clip(rects[0])
 	if err != nil {
@@ -324,9 +324,9 @@ func screenshot(session *geom.Session, index int) (image.Image, error) {
 // galleryTitle은 갤러리 문서 제목이다 — 덱 이름이 보이면 탭을 여러 개 열어 두고 비교할 수 있다.
 func galleryTitle(deck *soml.Deck) string {
 	if deck.Title == "" {
-		return "balpyo 검수"
+		return "balpyo preview"
 	}
-	return "balpyo 검수 — " + deck.Title
+	return "balpyo preview — " + deck.Title
 }
 
 // galleryLede는 열이 무엇인지 말하는 한 줄이다. 열이 하나뿐인 갤러리에 "왼쪽이 웹"이라고 쓰면
@@ -335,15 +335,15 @@ func galleryTitle(deck *soml.Deck) string {
 func galleryLede(hasWeb, hasPPTX, skippedPPTX bool, engine string) string {
 	switch {
 	case hasWeb && hasPPTX:
-		return "왼쪽이 웹 스크린샷, 오른쪽이 " + engine + "로 되돌린 PPTX다. 두 타깃은 컴포넌트와 레이아웃이 " +
-			"같고 줄바꿈 · 글리프는 각 엔진의 몫이다 — 판정은 `go test`가 하고, 여기는 눈으로 보는 자리다."
+		return "Left: web screenshot. Right: the PPTX rendered by " + engine + ". The two targets share components and layout; " +
+			"line breaks and glyphs are up to each engine — `go test` is the judge, this page is for your eyes."
 	case skippedPPTX:
-		return "웹 스크린샷이다. PPTX를 그림으로 되돌릴 엔진(OnlyOffice, 또는 LibreOffice와 pdftoppm)이 없어 " +
-			"PPTX 열을 뺐다 — 설치하면 나란히 보인다."
+		return "Web screenshots. No engine to render the PPTX (OnlyOffice, or LibreOffice with pdftoppm) was found, " +
+			"so the PPTX column is omitted — install one to see them side by side."
 	case hasPPTX:
-		return engine + "로 되돌린 PPTX다. 웹과 나란히 보려면 --target에 html을 넣는다."
+		return "The PPTX rendered by " + engine + ". To compare with the web side by side, add html to --target."
 	default:
-		return "웹 스크린샷이다. PPTX와 나란히 보려면 --target에 pptx를 넣는다 (OnlyOffice나 LibreOffice가 필요하다)."
+		return "Web screenshots. To compare with the PPTX side by side, add pptx to --target (requires OnlyOffice or LibreOffice)."
 	}
 }
 

@@ -122,8 +122,8 @@ CSS 선언(`font-family` `font-size` `font-weight` `line-height` `color` `text-a
 
 | 조건 | 진단 메시지 |
 |---|---|
-| 자식으로 블록·리스트 요소를 썼다 | `<text> 안에는 문자 데이터와 인라인 태그만 올 수 있다 (<…>는 쓸 수 없다)` |
-| 어휘 밖의 속성 | `<text>에 알 수 없는 속성 … (쓸 수 있는 속성: role, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| 자식으로 블록·리스트 요소를 썼다 | `only character data and inline tags are allowed inside <text> (<…> is not allowed)` |
+| 어휘 밖의 속성 | `unknown attribute … on <text> (available attributes: role, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
 
 속성 목록의 뒤쪽 열한 개는 [자식 배치 속성](layout.md)과 슬롯 배정이다 — `<text>`는 레이아웃
 컨테이너의 자식이 될 수 있으므로 `<row><text grow="1">`이 유효하고, `at`·`x`/`y`는
@@ -139,13 +139,13 @@ CSS 선언(`font-family` `font-size` `font-weight` `line-height` `color` `text-a
 
 | 조건 | 진단 메시지 |
 |---|---|
-| 어휘 밖의 역할 | `알 수 없는 role "…" (쓸 수 있는 역할: title, heading, body, caption, code)` |
-| `size`에 단위가 붙었다 | `size는 단위 없는 논리 px 수치다 (…의 …를 뗀다) — px·pt·em 접미사는 쓸 수 없다` |
-| `size`에 `%`를 썼다 | `size에 %는 쓸 수 없다 (…) — PPTX 폰트 크기는 절대값이라 상대 크기를 번역할 곳이 없다. 논리 px 수치나 role을 쓴다` |
-| `size`가 수치가 아니다 | `size 값이 수치가 아니다 (…)` |
-| `size`가 0 이하 | `size는 0보다 커야 한다 (…)` |
-| 테마에 없는 색 토큰 | `color의 색 토큰 "…"가 테마에 없다 (쓸 수 있는 토큰: fg, bg, muted, surface, accent1, accent2, accent3, accent4, accent5, accent6, 또는 #RRGGBB 리터럴)` |
-| 색 리터럴 형식 오류 | `색 리터럴은 #RRGGBB 또는 #RGB 형태다 (…)` |
-| 물리 정렬 이름 | `align은 논리 이름을 쓴다 — "left" 대신 "start" (RTL에서도 뜻이 유지된다)` |
-| 어휘 밖의 정렬 | `알 수 없는 align "…" (쓸 수 있는 값: start, center, end, justify)` |
-| 외관 속성에 값이 없다 | `… 속성에는 값이 필요하다 (…="…")` / `… 속성이 비어 있다 (지우면 기본값을 쓴다)` |
+| 어휘 밖의 역할 | `unknown role "…" (available roles: title, heading, body, caption, code)` |
+| `size`에 단위가 붙었다 | `size is a unitless number in logical px (drop the … from …) — px, pt and em suffixes are not allowed` |
+| `size`에 `%`를 썼다 | `size cannot use % (…) — PPTX font sizes are absolute, so a relative size has nothing to translate to; use a number in logical px or a role` |
+| `size`가 수치가 아니다 | `size value is not a number (…)` |
+| `size`가 0 이하 | `size must be greater than 0 (…)` |
+| 테마에 없는 색 토큰 | `color: color token "…" is not in the theme (available tokens: fg, bg, muted, surface, accent1, accent2, accent3, accent4, accent5, accent6, or #RRGGBB)` |
+| 색 리터럴 형식 오류 | `a color literal has the form #RRGGBB or #RGB (…)` |
+| 물리 정렬 이름 | `align takes logical names — instead of "left", use "start" (the meaning holds in RTL too)` |
+| 어휘 밖의 정렬 | `unknown align "…" (available values: start, center, end, justify)` |
+| 외관 속성에 값이 없다 | `the … attribute needs a value (…="…")` / `the … attribute is empty (remove it to use the default)` |

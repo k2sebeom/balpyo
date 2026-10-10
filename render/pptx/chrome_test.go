@@ -86,7 +86,7 @@ func TestChromeRequiresMeasuredRect(t *testing.T) {
 	g := geom.Synthetic(resolvedContentDeck(t), geom.Rect{X: 64, Y: 64, W: 1152, H: 36})
 	if _, err := NewWithGeometry(g).Render(deck); err == nil {
 		t.Fatal("크롬 좌표가 없는데 렌더되었다")
-	} else if !strings.Contains(err.Error(), "크롬") {
+	} else if !strings.Contains(err.Error(), "chrome") {
 		t.Errorf("에러가 크롬을 가리키지 않는다: %v", err)
 	}
 }

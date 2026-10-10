@@ -75,7 +75,7 @@ func (p *assetPass) theme(key string) {
 	}
 	asset, ok := p.deck.Theme.Assets.Get(key)
 	if !ok {
-		p.errorf(soml.Span{}, "테마 자산 %q가 테마의 자산 표에 없다 — 엔진 버그다 (테마 로딩과 에셋 패스가 어긋났다)", key)
+		p.errorf(soml.Span{}, "theme asset %q is not in the theme asset table — this is an engine bug (theme loading and the asset pass disagree)", key)
 		return
 	}
 	p.seen[key] = true
@@ -160,25 +160,25 @@ func (p *assetPass) image(elem *soml.Element) {
 // 그 차이를 확인할 방법이 없다).
 func (p *assetPass) load(key string, span soml.Span) (soml.Asset, bool) {
 	if p.fsys == nil {
-		p.errorf(span, "에셋을 읽을 파일 시스템이 없다 (%s) — 엔진 버그다 (호출자가 ResolveAssets에 fs.FS를 넘기지 않았다)", key)
+		p.errorf(span, "no file system to read assets from (%s) — this is an engine bug (the caller did not pass an fs.FS to ResolveAssets)", key)
 		return soml.Asset{}, false
 	}
 	info, err := fs.Stat(p.fsys, key)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			p.errorf(span, "src가 가리키는 파일이 없다 (%s) — 경로는 프로젝트 루트 기준이다 (슬라이드 파일 기준이 아니다)", key)
+			p.errorf(span, "the file src points to does not exist (%s) — paths are relative to the project root (not to the slide file)", key)
 			return soml.Asset{}, false
 		}
-		p.errorf(span, "%s를 읽을 수 없다: %v", key, err)
+		p.errorf(span, "cannot read %s: %v", key, err)
 		return soml.Asset{}, false
 	}
 	if info.IsDir() {
-		p.errorf(span, "src가 디렉토리를 가리킨다 (%s) — 그림 파일 하나를 가리킨다", key)
+		p.errorf(span, "src points to a directory (%s) — point it at a single image file", key)
 		return soml.Asset{}, false
 	}
 	data, err := fs.ReadFile(p.fsys, key)
 	if err != nil {
-		p.errorf(span, "%s를 읽을 수 없다: %v", key, err)
+		p.errorf(span, "cannot read %s: %v", key, err)
 		return soml.Asset{}, false
 	}
 	asset, msg := decodeImageAsset(key, data)
@@ -196,30 +196,30 @@ func (p *assetPass) load(key string, span soml.Span) (soml.Asset, bool) {
 // 그 실패를 통과시킨다.
 func decodeImageAsset(key string, data []byte) (soml.Asset, string) {
 	if len(data) == 0 {
-		return soml.Asset{}, fmt.Sprintf("%s가 비어 있다 (0바이트) — 그림 파일이 아니다 (내려받기나 LFS 체크아웃이 끝나지 않았을 수 있다)", key)
+		return soml.Asset{}, fmt.Sprintf("%s is empty (0 bytes) — not an image file (a download or LFS checkout may not have finished)", key)
 	}
 	// 확장자의 어휘는 해석 단계가 이미 확인했다 (imageSrc) — 여기서 확장자는 **선언**이고
 	// 내용이 판정이다.
 	declared, known := soml.ImageFormatForExt(path.Ext(key))
 	if !known {
-		return soml.Asset{}, fmt.Sprintf("%s의 확장자는 그림 포맷이 아니다 (쓸 수 있는 것: %s)", key, strings.Join(soml.ImageExts(), ", "))
+		return soml.Asset{}, fmt.Sprintf("the extension of %s is not an image format (available: %s)", key, strings.Join(soml.ImageExts(), ", "))
 	}
 	config, format, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
 		if errors.Is(err, image.ErrFormat) {
 			// 확장자만 바꾼 파일이 여기 걸린다. 조용히 통과시키면 산출물은 만들어지고
 			// PowerPoint만 열지 못한다 — 조용한 실패의 교과서다.
-			return soml.Asset{}, fmt.Sprintf("%s의 내용이 %s가 아니다 — 확장자만 바꾼 파일은 빌드는 성공하고 PowerPoint가 열지 못한다 (png나 jpeg로 다시 내보낸다)",
+			return soml.Asset{}, fmt.Sprintf("the content of %s is not %s — a file with only its extension changed builds fine but PowerPoint cannot open it (re-export as png or jpeg)",
 				key, declared)
 		}
-		return soml.Asset{}, fmt.Sprintf("%s의 이미지 헤더를 읽을 수 없다 (파일이 잘렸다) — 커밋된 바이트를 확인한다", key)
+		return soml.Asset{}, fmt.Sprintf("cannot read the image header of %s (the file is truncated) — check the committed bytes", key)
 	}
 	if soml.ImageFormat(format) != declared {
-		return soml.Asset{}, fmt.Sprintf("%s의 확장자는 %s를 말하는데 내용은 %s다 — [Content_Types]가 확장자로 콘텐츠 타입을 정하므로 이대로는 PowerPoint가 파일을 열지 못한다 (확장자를 %q로 바꾼다)",
+		return soml.Asset{}, fmt.Sprintf("the extension of %s says %s but the content is %s — [Content_Types] derives the content type from the extension, so PowerPoint cannot open the file as is (change the extension to %q)",
 			key, declared, format, soml.ImageFormat(format).Ext())
 	}
 	if config.Width <= 0 || config.Height <= 0 {
-		return soml.Asset{}, fmt.Sprintf("%s의 고유 크기가 %d×%d다 — 그릴 것이 없다", key, config.Width, config.Height)
+		return soml.Asset{}, fmt.Sprintf("%s has an intrinsic size of %d×%d — nothing to draw", key, config.Width, config.Height)
 	}
 	return soml.Asset{
 		Key:    key,

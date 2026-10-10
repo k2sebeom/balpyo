@@ -126,7 +126,7 @@ func (r *resolver) checkTableGrid(rows []*soml.Element) {
 		cols += cellSpans(cell).col
 	}
 	if cols == 0 {
-		r.errorf(rows[0].NameSpan, "표의 첫 행에 셀이 없다 — 첫 행이 표의 열 수를 정한다")
+		r.errorf(rows[0].NameSpan, "the first row of the table has no cells — the first row sets the column count")
 		return
 	}
 
@@ -146,7 +146,7 @@ func (r *resolver) checkTableGrid(rows []*soml.Element) {
 		}
 		if filled != cols {
 			// 행 하나에 진단 하나 — 어느 셀이 틀렸는지는 값 층이 알 수 없다 (칸 수만 안다).
-			r.errorf(row.NameSpan, "이 행은 %d칸인데 표의 열은 %d칸이다 — 첫 행이 열 수를 정한다 (셀이나 colspan을 맞춘다)", filled, cols)
+			r.errorf(row.NameSpan, "this row has %d cell(s) but the table has %d column(s) — the first row sets the column count (adjust the cells or colspan)", filled, cols)
 			decaySpill(spill)
 			continue
 		}
@@ -163,7 +163,7 @@ func (r *resolver) checkTableGrid(rows []*soml.Element) {
 			cs := cellSpans(cell)
 			for c := col; c < col+cs.col && c < cols; c++ {
 				if spill[c] > 0 {
-					r.errorf(cell.NameSpan, "병합이 겹친다 — %d번째 열은 위 행의 rowspan이 이미 덮었다 (colspan %d이 그 칸을 지난다)", c+1, cs.col)
+					r.errorf(cell.NameSpan, "merged cells overlap — column %d is already covered by a rowspan from a row above (colspan %d crosses it)", c+1, cs.col)
 					overlap = true
 					break
 				}
@@ -173,7 +173,7 @@ func (r *resolver) checkTableGrid(rows []*soml.Element) {
 			}
 			if cs.row > 1 {
 				if rest := len(rows) - 1 - i; cs.row-1 > rest {
-					r.errorf(cell.NameSpan, "rowspan %d은 표의 마지막 행을 넘는다 — 이 셀 아래 남은 행은 %d개다", cs.row, rest)
+					r.errorf(cell.NameSpan, "rowspan %d runs past the last row of the table — only %d row(s) remain below this cell", cs.row, rest)
 				}
 				for c := col; c < col+cs.col && c < cols; c++ {
 					// 남은 행 수로 깎아 둔다 — 넘친 rowspan이 아래 행의 칸 수까지 어긋나게 해
@@ -335,7 +335,7 @@ func (r *resolver) cellSpan(attr soml.Attr) (int, bool) {
 		return 0, false
 	}
 	if n < 1 {
-		r.errorf(attr.ValueSpan, "%s는 1 이상 정수다 (%q)", attr.Name, attr.Value)
+		r.errorf(attr.ValueSpan, "%s is an integer of at least 1 (%q)", attr.Name, attr.Value)
 		return 0, false
 	}
 	return n, true

@@ -48,12 +48,12 @@ func (r *resolver) resolveReveal(item *soml.Element) {
 // 수라는 것이다 — 1.5번째 등장은 없다.
 func (r *resolver) revealStep(attr soml.Attr) (int, bool) {
 	if attr.Value == "" {
-		r.errorf(attr.ValueSpan, "%s 속성이 비어 있다 (값을 지우면 자기 차례를 받는다)", attr.Name)
+		r.errorf(attr.ValueSpan, "the %s attribute is empty (remove the value to take the next step in order)", attr.Name)
 		return 0, false
 	}
 	n, err := strconv.Atoi(attr.Value)
 	if err != nil || n < 1 {
-		r.errorf(attr.ValueSpan, "%s은 1 이상 정수다 (%q)", attr.Name, attr.Value)
+		r.errorf(attr.ValueSpan, "%s is an integer of at least 1 (%q)", attr.Name, attr.Value)
 		return 0, false
 	}
 	return n, true

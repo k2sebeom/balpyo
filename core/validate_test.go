@@ -48,7 +48,7 @@ func TestValidateDuplicateIDPointsAtBothSlides(t *testing.T) {
 	if len(diags) != 1 {
 		t.Fatalf("진단 한 건이어야 한다: %v", diags)
 	}
-	want := `slides/ch/001_cover.slide:2:2: error: 슬라이드 ID "cover"가 slides/001_title.slide:1:12와 충돌한다 (한쪽에 다른 id를 주거나, 필요 없는 슬라이드를 지운다)`
+	want := `slides/ch/001_cover.slide:2:2: error: slide ID "cover" collides with slides/001_title.slide:1:12 (give one of them a different id, or remove the slide you do not need)`
 	if got := diags[0].String(); got != want {
 		t.Errorf("진단\n got: %s\nwant: %s", got, want)
 	}

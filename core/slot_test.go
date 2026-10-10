@@ -71,7 +71,7 @@ func TestResolveSlotUnknown(t *testing.T) {
 	if !diag.Span.Start.IsValid() || diag.Span.Start.Line != 1 || diag.Span.Start.Col != 34 {
 		t.Errorf("위치 = %s, want 1:34 (%s)", diag.Span.Start, diag.Message)
 	}
-	if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "없는 슬롯") {
+	if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "has no slot") {
 		t.Errorf("진단 = %q, want '없는 슬롯' 에러", diag.String())
 	}
 	// 허용 목록이 어휘 순서(content: title, body)로 실린다.
@@ -90,7 +90,7 @@ func TestResolveSlotOnSlotlessLayout(t *testing.T) {
 	if len(diags) != 1 {
 		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
 	}
-	if diags[0].Severity != soml.SeverityError || !strings.Contains(diags[0].Message, "없는 슬롯") {
+	if diags[0].Severity != soml.SeverityError || !strings.Contains(diags[0].Message, "has no slot") {
 		t.Errorf("진단 = %q, want '없는 슬롯' 에러", diags[0].String())
 	}
 }
@@ -105,7 +105,7 @@ func TestResolveSlotNested(t *testing.T) {
 		t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
 	}
 	diag := diags[0]
-	if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "직계 자식") {
+	if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, "direct children") {
 		t.Errorf("진단 = %q, want '직계 자식' 에러", diag.String())
 	}
 	// 중첩 요소에는 슬롯이 실리지 않는다.
@@ -145,7 +145,7 @@ func TestResolveSlotWarnsWhenThemeHasNoArea(t *testing.T) {
 	if diag.Severity != soml.SeverityWarning {
 		t.Errorf("심각도 = %v, want 경고 (테마 교체로 풀리는 이식성 문제다)", diag.Severity)
 	}
-	if !strings.Contains(diag.Message, "테마") {
+	if !strings.Contains(diag.Message, "theme") {
 		t.Errorf("진단이 테마를 짚지 않는다: %q", diag.Message)
 	}
 	// 값 구간을 짚는다 — 진단이 부호가 아니라 슬롯 이름에 밑줄을 긋는다.

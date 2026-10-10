@@ -140,16 +140,16 @@ func TestResolveInlineDiagnostics(t *testing.T) {
 		col          int
 		contains     string
 	}{
-		{"href 없음", `<a>링크</a>`, 7, "href가 필요하다"},
-		{"값 없는 href", `<a href>링크</a>`, 9, "값이 필요하다"},
-		{"빈 href", `<a href="">링크</a>`, 15, "비어 있다"},
+		{"href 없음", `<a>링크</a>`, 7, "needs an href"},
+		{"값 없는 href", `<a href>링크</a>`, 9, "needs a value"},
+		{"빈 href", `<a href="">링크</a>`, 15, "is empty"},
 		{"weight 수치 400", `<span weight="400">x</span>`, 20, `"normal"`},
 		{"weight 수치 700", `<span weight="700">x</span>`, 20, `"bold"`},
-		{"중간 굵기", `<span weight="600">x</span>`, 20, "두 단계"},
-		{"알 수 없는 weight", `<span weight="semibold">x</span>`, 20, "알 수 없는 weight"},
-		{"값 없는 weight", `<span weight>x</span>`, 12, "값이 필요하다"},
-		{"빈 weight", `<span weight="">x</span>`, 20, "비어 있다"},
-		{"span color", `<span color="brand">x</span>`, 19, "테마에 없다"},
+		{"중간 굵기", `<span weight="600">x</span>`, 20, "two weights"},
+		{"알 수 없는 weight", `<span weight="semibold">x</span>`, 20, "unknown weight"},
+		{"값 없는 weight", `<span weight>x</span>`, 12, "needs a value"},
+		{"빈 weight", `<span weight="">x</span>`, 20, "is empty"},
+		{"span color", `<span color="brand">x</span>`, 19, "is not in the theme"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

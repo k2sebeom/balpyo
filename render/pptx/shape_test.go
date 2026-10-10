@@ -202,7 +202,7 @@ func TestRenderRejectsUnresolvedModel(t *testing.T) {
 	}{
 		{"매핑 없는 태그", `<slide><text>본문</text></slide>`, func(c []soml.Node) {
 			c[0] = &soml.Element{Name: "box"}
-		}, []string{"매핑이 없다"}},
+		}, []string{"has no PPTX mapping"}},
 		{"해석 안 된 외관", `<slide><text>본문</text></slide>`, func(c []soml.Node) {
 			c[0].(*soml.Element).Appearance = nil
 		}, []string{"core.Resolve"}},
@@ -216,7 +216,7 @@ func TestRenderRejectsUnresolvedModel(t *testing.T) {
 		{"컨테이너 안 문자 데이터", `<slide><row><text>본문</text></row></slide>`, func(c []soml.Node) {
 			row := c[0].(*soml.Element)
 			row.Children = append(row.Children, &soml.Text{Value: "떠 있는 글자"})
-		}, []string{"요소가 아닌 노드", "s0.0.1"}},
+		}, []string{"non-element node", "s0.0.1"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

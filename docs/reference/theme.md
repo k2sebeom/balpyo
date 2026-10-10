@@ -35,8 +35,8 @@ v1에 실려 있는 테마는 **내장 셋**이다 — `minimal`(기본값)·`ed
 `themes/`가 아직 없다.
 
 **없는 이름은 에러다.** 두 자리가 같은 어휘로 같은 판정을 한다: 설정 로드가 `balpyo.json`을
-가리키며 쓸 수 있는 이름을 나열하고(`theme: 알 수 없는 테마 "inkk" — 내장 테마도, 프로젝트
-themes/의 테마도, 설치한 테마도 아니다 (쓸 수 있는 테마: editorial, ink, minimal)`), 값 층도 같은
+가리키며 쓸 수 있는 이름을 나열하고(`theme: unknown theme "inkk" — not a built-in theme, a theme in the
+project's themes/, or an installed theme (available themes: editorial, ink, minimal)`), 값 층도 같은
 문구로 **그 덱의 해석을 중단한다**. `minimal`로
 폴백하지 않는 이유는 오타의 값이다 — 조용히 기본 테마로 그리면 저자는 "내 테마가 왜 안 먹지"를
 슬라이드에서 찾는다. 모르는 `variant`가 경고 + 폴백인 것과 갈라지는 자리이기도 하다: variant
@@ -131,8 +131,8 @@ CSS와 [슬롯](layouts.md) 영역으로 짓는다.
 
 토큰은 **저자가 속성에 쓰는 이름의 집합**이다. `color="accent3"`·`gap="md"`·`radius="lg"`가
 해석되는 자리가 이 파일이고, 이름이 여기 없으면 빌드가 멈춘다 — 쓸 수 있는 이름 목록을 진단이
-함께 적는다 (`색 토큰 "brand"가 테마에 없다 (쓸 수 있는 토큰: fg, bg, muted, surface,
-accent1, …)`). 그래서 **토큰 이름은 테마가 소유하는 어휘**다: 새 테마는 값을 갈 수 있지만
+함께 적는다 (`color token "brand" is not in the theme (available tokens: fg, bg, muted,
+surface, accent1, …)`). 그래서 **토큰 이름은 테마가 소유하는 어휘**다: 새 테마는 값을 갈 수 있지만
 이름을 빼면 그 이름을 쓴 덱이 빌드되지 않는다.
 
 ```json
@@ -399,7 +399,7 @@ my-deck/
 
 **경로 문법은 없다.** `"theme": "./themes/corp"`도 `"theme": "~/themes/corp"`도 쓸 수 없다 —
 값은 언제나 **이름**이고, 그 이름의 어휘는 **내장 셋 ∪ `themes/` 아래 디렉토리**다. 이름 하나로
-닫아 둔 이유는 둘이다: 진단이 어휘 하나만 나열하면 되고("쓸 수 있는 테마: corp, editorial, ink,
+닫아 둔 이유는 둘이다: 진단이 어휘 하나만 나열하면 되고("available themes: corp, editorial, ink,
 minimal"), 테마를 프로젝트 파일시스템 안에서만 읽으므로 `..`이나 절대 경로로 프로젝트 밖 파일을
 읽는 길이 없다.
 
@@ -407,8 +407,8 @@ minimal"), 테마를 프로젝트 파일시스템 안에서만 읽으므로 `..`
 
 | 규칙 | 어기면 | 왜 |
 |---|---|---|
-| `themes/<이름>/theme.json`의 `name`이 디렉토리 이름과 같아야 한다 | 에러 — `themes/corp/theme.json의 name이 "corp-dark"다 — 디렉토리 이름 "corp"와 같아야 한다` | 요청은 이름으로 오고 파일은 경로로 찾는다. 둘이 갈리면 어느 이름을 써야 하는지 파일을 열어 봐야 안다 |
-| 로컬 테마가 내장 이름을 가릴 수 없다 | 에러 — `themes/minimal/가 내장 테마 "minimal"와 이름이 같다 — 로컬 테마의 이름을 바꾼다` | `extends: "minimal"`이 어느 minimal인지 답할 수 없다. 규칙으로 정할 수는 있지만 그 규칙을 외운 사람만 자기 테마의 출처를 안다 |
+| `themes/<이름>/theme.json`의 `name`이 디렉토리 이름과 같아야 한다 | 에러 — `themes/corp/theme.json has name "corp-dark" — it must match the directory name "corp"` | 요청은 이름으로 오고 파일은 경로로 찾는다. 둘이 갈리면 어느 이름을 써야 하는지 파일을 열어 봐야 안다 |
+| 로컬 테마가 내장 이름을 가릴 수 없다 | 에러 — `themes/minimal/ has the same name as the built-in theme "minimal" — rename the local theme` | `extends: "minimal"`이 어느 minimal인지 답할 수 없다. 규칙으로 정할 수는 있지만 그 규칙을 외운 사람만 자기 테마의 출처를 안다 |
 | 가림은 **요청한 테마와 무관하게** 멈춘다 | 에러 | `--theme ink`로 빌드하는 동안 `themes/minimal/`이 조용히 무시되면, 다음 사람이 그 디렉토리를 고쳐도 아무 일도 일어나지 않는다 |
 
 `balpyo init --theme`만 이 어휘를 받지 않는다 (내장 셋뿐이다) — 프로젝트를 **만드는** 명령이라
@@ -425,9 +425,9 @@ minimal"), 테마를 프로젝트 파일시스템 안에서만 읽으므로 `..`
 
 | 상황 | 결과 |
 |---|---|
-| 없는 이름을 가리킨다 | 에러 — `테마 "corp"의 extends가 없는 테마 "minimalx"를 가리킨다 (쓸 수 있는 테마: …)` (고칠 자리인 **자식**을 가리킨다) |
-| 자기 자신을 가리킨다 | 에러 — `theme.json의 extends가 순환한다: corp → corp` |
-| 돌아온다 (`a` → `b` → `a`) | 에러 — 체인을 그대로 적는다: `theme.json의 extends가 순환한다: a → b → a` |
+| 없는 이름을 가리킨다 | 에러 — `theme "corp" extends theme "minimalx", which does not exist (available themes: …)` (고칠 자리인 **자식**을 가리킨다) |
+| 자기 자신을 가리킨다 | 에러 — `theme.json extends forms a cycle: corp → corp` |
+| 돌아온다 (`a` → `b` → `a`) | 에러 — 체인을 그대로 적는다: `theme.json extends forms a cycle: a → b → a` |
 
 상속하는 테마의 `tokens.json`·`components.json`·`layouts/`는 **부분이어도 되고 아예 없어도**
 된다 (부모가 바닥을 깐다). 상속하지 않는 테마는 내장 테마와 **같은 조건**을 받는다: 세 파일이
@@ -487,7 +487,7 @@ balpyo theme install github.com/acme/slide-themes@v1.2.0
   테마·프로젝트 `themes/`와 같다. 어디서 받았는지(저장소·하위 경로·ref·커밋)는
   `~/.balpyo/themes.json`에 적힌다.
 - **빌드는 네트워크를 쓰지 않는다.** 설치한 테마는 이 기계의 디렉토리일 뿐이다. 다른 기계·CI에서
-  그 이름이 없으면 빌드가 `알 수 없는 테마`로 멈추고, 같은 `balpyo theme install`을 그 기계에서
+  그 이름이 없으면 빌드가 `unknown theme`로 멈추고, 같은 `balpyo theme install`을 그 기계에서
   친다.
 - **`extends`도 같은 어휘다.** 설치한 테마가 내장 테마를, 프로젝트의 테마가 설치한 테마를 상속할
   수 있다.
@@ -534,11 +534,11 @@ acme/slide-themes
 
 | 상황 | 문구(요지) |
 |---|---|
-| 내장 테마와 같은 이름 | `… 테마 "minimal"는 내장 테마와 이름이 같아 설치할 수 없다 — 설치할 테마의 이름을 골라 다시 친다` |
-| 저장소 안에 같은 이름이 둘 | `… 테마 "acme"가 여럿이다: v1, v2 — 하위 경로를 주소에 붙여 하나를 가리킨다` |
-| 다른 출처에서 이미 설치한 이름 | `테마 "acme"는 이미 github.com/…에서 설치했다 — 갈아 끼우려면 --force` |
-| 테마 디렉토리 안의 심볼릭 링크 | `… 링크 …가 있다 — 테마는 정규 파일만 담는다` |
-| 로드되지 않는 테마 | `… 테마 "acme"를 로드할 수 없어 설치하지 않았다: …` |
+| 내장 테마와 같은 이름 | `…: theme "minimal" has the same name as a built-in theme and cannot be installed — pick the themes to install by name and run again` |
+| 저장소 안에 같은 이름이 둘 | `… has more than one theme "acme": v1, v2 — append a subpath to the address to pick one` |
+| 다른 출처에서 이미 설치한 이름 | `theme "acme" is already installed from github.com/… — use --force to replace it` |
+| 테마 디렉토리 안의 심볼릭 링크 | `… contains link … — themes contain regular files only` |
+| 로드되지 않는 테마 | `…: theme "acme" cannot be loaded, so nothing was installed: …` |
 
 설치한 테마의 레이아웃 CSS 경고(외관 프로퍼티)는 **설치할 때** 나오고 빌드에서는 나오지 않는다 —
 덱 저자가 고칠 수 없는 파일이 `--strict` 빌드를 막지 않게 하기 위해서다. 명령의 전체 표면
@@ -550,7 +550,7 @@ acme/slide-themes
 요청하면(`theme`·`--theme`·`extends` 체인) 어느 쪽인지 답할 수 없으므로 에러다:
 
 ```text
-테마 "acme"가 프로젝트의 themes/acme/에도, 설치한 테마에도 있다 — 로컬 테마의 이름을 바꾸거나 balpyo theme remove acme로 설치를 지운다
+theme "acme" exists both in the project's themes/acme/ and among installed themes — rename the local theme or remove the installation with balpyo theme remove acme
 ```
 
 `balpyo theme list`가 겹치는 이름을 표시한다. 포맷이 데이터 전용(JSON + CSS + 그림)이라 받은
@@ -560,37 +560,37 @@ acme/slide-themes
 
 | 상황 | 결과 | 문구(요지) |
 |---|---|---|
-| `theme` 이름이 어휘(내장 ∪ 로컬 ∪ 설치)에 없다 | **에러** | `알 수 없는 테마 "inkk" — 내장 테마도, 프로젝트 themes/의 테마도, 설치한 테마도 아니다 (쓸 수 있는 테마: corp, editorial, ink, minimal)` — 설정 로드와 값 층 둘이 같은 판정을 하고, 목록에 **이 프로젝트의 로컬 테마와 설치한 테마**가 함께 들어간다 |
-| 요청한 이름이 로컬 테마이면서 설치한 테마다 | **에러** (그 이름을 요청할 때만) | `테마 "acme"가 프로젝트의 themes/acme/에도, 설치한 테마에도 있다 — …` |
-| 요청한 이름의 설치한 테마가 내장 이름이다 (손으로 넣은 디렉토리) | **에러** (그 이름을 요청할 때만) | `설치한 테마 "ink"가 내장 테마와 이름이 같다 — balpyo theme remove ink로 설치를 지운다` |
-| `theme.json`에 `name`이 없다 | **에러** | `theme.json에 name이 없다` |
-| `themes/<이름>/theme.json`의 `name`이 디렉토리 이름과 다르다 | **에러** | `themes/corp/theme.json의 name이 "corp-dark"다 — 디렉토리 이름 "corp"와 같아야 한다` |
-| 로컬 테마가 내장 이름을 가린다 | **에러** (요청한 테마와 무관하게) | `themes/minimal/가 내장 테마 "minimal"와 이름이 같다 — 로컬 테마의 이름을 바꾼다` |
-| `extends`가 없는 이름을 가리킨다 | **에러** | `테마 "corp"의 extends가 없는 테마 "minimalx"를 가리킨다 (쓸 수 있는 테마: …)` |
-| `extends`가 순환한다 (자기 자신 포함) | **에러** | 체인을 그대로 적는다 — `theme.json의 extends가 순환한다: a → b → a` |
+| `theme` 이름이 어휘(내장 ∪ 로컬 ∪ 설치)에 없다 | **에러** | `unknown theme "inkk" — not a built-in theme, a theme in the project's themes/, or an installed theme (available themes: corp, editorial, ink, minimal)` — 설정 로드와 값 층 둘이 같은 판정을 하고, 목록에 **이 프로젝트의 로컬 테마와 설치한 테마**가 함께 들어간다 |
+| 요청한 이름이 로컬 테마이면서 설치한 테마다 | **에러** (그 이름을 요청할 때만) | `theme "acme" exists both in the project's themes/acme/ and among installed themes — …` |
+| 요청한 이름의 설치한 테마가 내장 이름이다 (손으로 넣은 디렉토리) | **에러** (그 이름을 요청할 때만) | `installed theme "ink" has the same name as a built-in theme — remove the installation with balpyo theme remove ink` |
+| `theme.json`에 `name`이 없다 | **에러** | `theme.json has no name` |
+| `themes/<이름>/theme.json`의 `name`이 디렉토리 이름과 다르다 | **에러** | `themes/corp/theme.json has name "corp-dark" — it must match the directory name "corp"` |
+| 로컬 테마가 내장 이름을 가린다 | **에러** (요청한 테마와 무관하게) | `themes/minimal/ has the same name as the built-in theme "minimal" — rename the local theme` |
+| `extends`가 없는 이름을 가리킨다 | **에러** | `theme "corp" extends theme "minimalx", which does not exist (available themes: …)` |
+| `extends`가 순환한다 (자기 자신 포함) | **에러** | 체인을 그대로 적는다 — `theme.json extends forms a cycle: a → b → a` |
 | `chrome`의 `kind`·`align`·`role`이 어휘 밖이거나 비었다 | **에러** | 쓸 수 있는 값을 함께 나열한다 |
-| `chrome`에 같은 `kind`가 두 번 | **에러** | `kind footer가 두 번 선언되었다` |
+| `chrome`에 같은 `kind`가 두 번 | **에러** | `kind footer is declared twice` |
 | `logo`에 `image`·`height`가 없거나, 글자 크롬에 `image`·`height`·`alt`를 썼다 | **에러** | 빠지거나 잘못 쓴 키를 말한다 |
 | `backgrounds`의 선언에 `fill`도 `image`도 없거나 둘 다 있다 · 레이아웃이 두 선언에 나온다 · 기본 배경이 둘이다 · 레이아웃이 이 테마의 것이 아니다 | **에러** | 선언의 자리(`backgrounds[1]`)와 이유를 말한다 |
 | 배경 · 로고의 그림이 `assets/` 밖이거나 패키지에 없거나 그림이 아니다 | **에러** | `<image>`의 파일과 같은 판정 문구다 |
-| `skipLayouts`의 이름이 이 테마의 레이아웃이 아니다 | **에러** | `skipLayouts의 "cover"는 이 테마의 레이아웃이 아니다` |
-| `layouts`에 선언했는데 `layouts/<이름>.css`가 없다 | **에러** | `layouts에 …가 있지만 layouts/….css가 없다` |
-| `layouts/<이름>.css`가 있는데 선언에 없다 | **에러** | `…css가 있지만 theme.json의 layouts 선언에 없다` |
-| `tokens.json`에 필수 토큰 이름이 없다 | **에러** | `tokens.json에 색 토큰 "accent6"가 없다 (필수: fg, bg, muted, surface, accent1, …)` |
-| 색 토큰에 `clrScheme` 슬롯이 없다 | **에러** | 남은 자리를 나열한다 — `… 슬롯이 없다 … (남은 슬롯: hlink, folHlink)`. 자리가 다 찼으면 `남은 슬롯이 없다 — 새 색 이름 대신 기존 이름의 값을 갈아 끼운다` |
-| 두 색 토큰이 같은 슬롯을 쓴다 | **에러** | `clrScheme 슬롯 "accent1"를 색 토큰 "accent1"와 "brand"가 나눠 쓴다 — 어느 색이 그 자리를 차지하는지 정할 수 없다` |
-| `components.json`의 `text.roles`에 역할 5종 중 하나가 없다 | **에러** | `components.json의 text.roles에 역할 "code"가 없다 (필수: title, heading, body, caption, code)` |
-| 역할의 `size`·`lineHeight`가 0 이하이거나 `align`이 없다 | **에러** | `역할은 캐스케이드의 바닥이라 완전한 값이어야 한다` |
+| `skipLayouts`의 이름이 이 테마의 레이아웃이 아니다 | **에러** | `skipLayouts: "cover" is not a layout of this theme` |
+| `layouts`에 선언했는데 `layouts/<이름>.css`가 없다 | **에러** | `theme.json layouts lists … but layouts/….css is missing` |
+| `layouts/<이름>.css`가 있는데 선언에 없다 | **에러** | `layouts/….css exists but is not declared in theme.json layouts` |
+| `tokens.json`에 필수 토큰 이름이 없다 | **에러** | `tokens.json has no color token "accent6" (required: fg, bg, muted, surface, accent1, …)` |
+| 색 토큰에 `clrScheme` 슬롯이 없다 | **에러** | 남은 자리를 나열한다 — `… has no clrScheme slot … (free slots: hlink, folHlink)`. 자리가 다 찼으면 `no free slots — replace the value of an existing name instead of adding a new color name` |
+| 두 색 토큰이 같은 슬롯을 쓴다 | **에러** | `tokens.json clrScheme slot "accent1" is shared by color tokens "accent1" and "brand" — cannot tell which color owns the slot` |
+| `components.json`의 `text.roles`에 역할 5종 중 하나가 없다 | **에러** | `components.json text.roles has no role "code" (required: title, heading, body, caption, code)` |
+| 역할의 `size`·`lineHeight`가 0 이하이거나 `align`이 없다 | **에러** | `roles are the bottom of the cascade and must be complete` |
 | 역할의 `font`·`color`가 이 테마의 토큰이 아니다 | **에러** | 이 테마가 가진 이름을 함께 나열한다 |
 | 컴포넌트 기본값·variant·이미지·표의 `color`·`fill`·`border` 색이 이 테마의 색 토큰 참조가 아니다 (`#RRGGBB` 리터럴, 리터럴 스톱이 섞인 그라디언트) | **에러** | 자리와 문제의 조각을 가리키고 이 테마의 색 토큰을 나열한다 — 그 variant를 쓴 슬라이드가 없어도 로딩에서 멈춘다 |
 | `components.json`에 모르는 키가 있다 | **에러** | 미지원 키를 가리킨다 (오타·미구현 키) |
-| `code.tabSize`가 1 미만이다 | **에러** | `tabSize는 1 이상이어야 한다` |
-| `code.tokens`에 모르는 종류가 있다 | **에러** | `알 수 없는 코드 토큰 종류 "kw" (쓸 수 있는 종류: keyword, name, attr, string, number, comment, punct)` |
-| `code.tokens`에 같은 종류가 두 번 | **에러** | `코드 토큰 종류 "keyword"가 두 번 적혀 있다` |
-| 코드 토큰 색이 리터럴·색 함수다 | **에러** | `…의 색은 색 토큰 이름이어야 한다 … 리터럴 색은 참조를 끊는다` |
+| `code.tabSize`가 1 미만이다 | **에러** | `tabSize must be at least 1` |
+| `code.tokens`에 모르는 종류가 있다 | **에러** | `unknown code token class "kw" (available types: keyword, name, attr, string, number, comment, punct)` |
+| `code.tokens`에 같은 종류가 두 번 | **에러** | `code token class "keyword" is listed twice` |
+| 코드 토큰 색이 리터럴·색 함수다 | **에러** | `the color of code token … must be a color token name … — a literal color breaks the reference` |
 | 코드 토큰 색이 이 테마에 없는 토큰이다 | **에러** | 쓸 수 있는 색 토큰 이름을 함께 나열한다 |
 | 로컬 테마의 레이아웃 CSS에 배치 아닌 프로퍼티(색·배경·글꼴 등)가 있다 | **경고** (내장 테마는 테스트가 전수로 막는다) | 그 파일(`themes/<이름>/layouts/….css`)을 가리킨다 — 외관은 `components.json`의 몫이고 그 프로퍼티는 PPTX에 도달하지 않는다. `extends` 체인에서는 병합 결과에 남은 파일만 본다 |
-| 로컬 테마의 레이아웃 CSS 선언에 콜론·이름·값이 없다 | **에러** | `레이아웃 CSS 선언 "…"에 콜론이 없다` |
+| 로컬 테마의 레이아웃 CSS 선언에 콜론·이름·값이 없다 | **에러** | `layout CSS declaration "…" has no colon` |
 | 설정이 켠 크롬을 테마가 선언하지 않았다 | **경고** + 미탑재 | `balpyo.json`을 가리킨다 — 고칠 자리가 거기다 |
 
 에러는 테마 로딩에서 나므로 **어느 슬라이드도 렌더되기 전에** 멈춘다. 크롬 선언은 토큰·컴포넌트

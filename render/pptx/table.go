@@ -63,13 +63,13 @@ const (
 func writeGraphicFrameTbl(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *soml.Element, id string, shapeID int, g *geom.Geometry, rels *slideRels) error {
 	box, ok := g.Box(id)
 	if !ok {
-		return fmt.Errorf("%s: %s <%s>의 측정된 좌표가 없다", slide.Source, id, elem.Name)
+		return fmt.Errorf("%s: %s <%s> has no measured coordinates", slide.Source, id, elem.Name)
 	}
 	style := elem.TableStyle()
 	if style == nil {
 		// 해석되지 않은 외관을 기본값으로 그리면 PPTX만 그럴듯하게 나오고 웹과 갈라진다
 		// (render/web.writeTable과 같은 관문).
-		return fmt.Errorf("%s:%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+		return fmt.Errorf("%s:%s <%s> appearance is unresolved — the deck did not go through core.Resolve",
 			slide.Source, elem.Span, elem.Name)
 	}
 	spec, err := tableSpec(slide, elem, id, shapeID, box.Rect, g)
@@ -137,7 +137,7 @@ func tableSpec(slide *soml.Slide, elem *soml.Element, id string, shapeID int, re
 		// 행 없는 표는 격자가 없다 — `a:tblGrid`는 열 하나 이상을 요구하므로 파일이 열리지
 		// 않는다 (빈 `<ul>`이 빈 문단으로 도형을 내는 것과 갈라지는 자리: 리스트는 도형
 		// 하나이고 표는 격자다).
-		return tableInfo{}, fmt.Errorf("행이 없다 — 표는 행 하나 이상을 담아야 한다")
+		return tableInfo{}, fmt.Errorf("no rows — a table must contain at least one row")
 	}
 	grid, err := tableGridCells(slide, rows)
 	if err != nil {
@@ -183,7 +183,7 @@ func tableRowNodes(table *soml.Element, id string) ([]tableNode, error) {
 	for i, child := range table.Children {
 		row, ok := child.(*soml.Element)
 		if !ok || row.Name != soml.TableRowElement {
-			return nil, fmt.Errorf("<table>의 자식 %T는 행이 아니다 — 파서를 거치지 않은 덱이다", child)
+			return nil, fmt.Errorf("<table> child %T is not a row — the deck did not go through the parser", child)
 		}
 		rows = append(rows, tableNode{elem: row, id: web.ChildID(id, i)})
 	}
@@ -195,7 +195,7 @@ func tableCellNodes(row tableNode) ([]tableNode, error) {
 	for i, child := range row.elem.Children {
 		cell, ok := child.(*soml.Element)
 		if !ok || !soml.IsTableCell(cell.Name) {
-			return nil, fmt.Errorf("<tr>의 자식 %T는 셀이 아니다 — 파서를 거치지 않은 덱이다", child)
+			return nil, fmt.Errorf("<tr> child %T is not a cell — the deck did not go through the parser", child)
 		}
 		cells = append(cells, tableNode{elem: cell, id: web.ChildID(row.id, i)})
 	}
@@ -220,7 +220,7 @@ func tableGridCells(slide *soml.Slide, rows []tableNode) ([][]tableCellInfo, err
 		for _, node := range nodes {
 			style := node.elem.CellStyle()
 			if style == nil {
-				return nil, fmt.Errorf("%s <%s>의 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+				return nil, fmt.Errorf("%s <%s> appearance is unresolved — the deck did not go through core.Resolve",
 					node.elem.Span, node.elem.Name)
 			}
 			authored[i] = append(authored[i], tableCellInfo{
@@ -237,7 +237,7 @@ func tableGridCells(slide *soml.Slide, rows []tableNode) ([][]tableCellInfo, err
 	if cols == 0 {
 		// 값 층이 같은 문구로 이미 막았다 (checkTableGrid) — 빈 `a:tblGrid`는 파일이 열리지
 		// 않으므로 여기서도 멈춘다.
-		return nil, fmt.Errorf("첫 행에 셀이 없다 — 첫 행이 표의 열 수를 정한다")
+		return nil, fmt.Errorf("the first row has no cells — the first row sets the table's column count")
 	}
 
 	// owner[i][c]는 (i,c) 칸을 차지한 셀의 **좌상단 자리**다 — 그 자리와 다른 칸이 덮인 칸이고,
@@ -256,14 +256,14 @@ func tableGridCells(slide *soml.Slide, rows []tableNode) ([][]tableCellInfo, err
 				col++
 			}
 			if col+cell.colSpan > cols || i+cell.rowSpan > len(rows) {
-				return nil, fmt.Errorf("%s <%s>의 병합이 격자를 넘는다 (%d×%d 표의 %d번째 열) — 값 층의 격자 검증과 갈라졌다",
+				return nil, fmt.Errorf("%s <%s> merge extends past the grid (%d×%d table, column %d) — diverged from the value layer's grid validation",
 					cell.elem.Span, cell.elem.Name, cols, len(rows), col+1)
 			}
 			here := &origin{row: i, col: col}
 			for dr := 0; dr < cell.rowSpan; dr++ {
 				for dc := 0; dc < cell.colSpan; dc++ {
 					if owner[i+dr][col+dc] != nil {
-						return nil, fmt.Errorf("%s <%s>의 병합이 겹친다 (%d번째 열) — 값 층의 격자 검증과 갈라졌다",
+						return nil, fmt.Errorf("%s <%s> merge overlaps (column %d) — diverged from the value layer's grid validation",
 							cell.elem.Span, cell.elem.Name, col+dc+1)
 					}
 					owner[i+dr][col+dc] = here
@@ -277,7 +277,7 @@ func tableGridCells(slide *soml.Slide, rows []tableNode) ([][]tableCellInfo, err
 		for c := range grid[i] {
 			own := owner[i][c]
 			if own == nil {
-				return nil, fmt.Errorf("%s: 격자의 %d행 %d열이 비었다 — 값 층의 격자 검증과 갈라졌다",
+				return nil, fmt.Errorf("%s: grid row %d column %d is empty — diverged from the value layer's grid validation",
 					slide.Source, i+1, c+1)
 			}
 			if own.row == i && own.col == c {
@@ -341,13 +341,13 @@ func tableColWidths(g *geom.Geometry, frame geom.Rect, grid [][]tableCellInfo, r
 				continue
 			}
 			if at >= len(nodes) {
-				return nil, fmt.Errorf("격자의 %d행 셀 수가 잰 셀 수와 어긋난다", i+1)
+				return nil, fmt.Errorf("grid row %d cell count does not match the measured cell count", i+1)
 			}
 			node := nodes[at]
 			at++
 			box, ok := g.Box(node.id)
 			if !ok {
-				return nil, fmt.Errorf("%s <%s>의 측정된 좌표가 없다 (%s)", node.id, node.elem.Name, node.elem.Span)
+				return nil, fmt.Errorf("%s <%s> has no measured coordinates (%s)", node.id, node.elem.Name, node.elem.Span)
 			}
 			// 첫 행의 경계가 이긴다 (문서 순서) — 같은 경계를 여러 행이 말할 때 값이 미세하게
 			// 다를 수 있고, 한 행의 값으로 통일해야 열 너비가 흔들리지 않는다.
@@ -374,7 +374,7 @@ func tableRowHeights(g *geom.Geometry, frame geom.Rect, rows []tableNode) ([]int
 	for i, row := range rows {
 		box, ok := g.Box(row.id)
 		if !ok {
-			return nil, fmt.Errorf("%s <%s>의 측정된 좌표가 없다 (%s)", row.id, row.elem.Name, row.elem.Span)
+			return nil, fmt.Errorf("%s <%s> has no measured coordinates (%s)", row.id, row.elem.Name, row.elem.Span)
 		}
 		if i == 0 {
 			// 첫 행의 위 경계는 프레임의 위 변이다 — 잰 값을 쓰면 테두리 합침(border-collapse)의
@@ -468,7 +468,7 @@ func writeGraphicFrame(b *strings.Builder, spec tableInfo, theme soml.Theme, rel
 // writeTbl는 `a:tbl`을 쓴다 — 표 속성(스타일 없음 + 머리행 힌트) → 열 격자 → 행들.
 func writeTbl(w func(depth int, line string), depth int, spec tableInfo, theme soml.Theme, rels *slideRels) error {
 	if len(spec.cols) == 0 {
-		return fmt.Errorf("열이 없다 — a:tblGrid는 열 하나 이상을 요구한다")
+		return fmt.Errorf("no columns — a:tblGrid requires at least one column")
 	}
 	w(depth, "<a:tbl>")
 	// firstRow는 **힌트**다: 스타일이 없으므로 그림을 바꾸지 않고, PowerPoint의 "머리글 행"
@@ -538,7 +538,7 @@ func writeTc(w func(depth int, line string), depth int, cell tableCellInfo, them
 		return nil
 	}
 	if cell.style.Text == nil {
-		return fmt.Errorf("%s <%s>의 텍스트 외관이 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+		return fmt.Errorf("%s <%s> text appearance is unresolved — the deck did not go through core.Resolve",
 			cell.elem.Span, cell.elem.Name)
 	}
 	w(depth+1, "<a:txBody>")

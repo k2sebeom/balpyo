@@ -30,7 +30,7 @@ func Home() (string, error) {
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("홈 디렉토리를 알 수 없다 (%s로 정할 수 있다): %w", HomeEnv, err)
+		return "", fmt.Errorf("cannot determine the home directory (set it with %s): %w", HomeEnv, err)
 	}
 	return filepath.Join(home, ".balpyo"), nil
 }
@@ -115,7 +115,7 @@ func (s *Store) readIndex() (map[string]Record, error) {
 	}
 	var idx index
 	if err := json.Unmarshal(data, &idx); err != nil {
-		return nil, fmt.Errorf("%s 파싱 실패: %w", filepath.Join(s.Dir, indexFile), err)
+		return nil, fmt.Errorf("cannot parse %s: %w", filepath.Join(s.Dir, indexFile), err)
 	}
 	out := map[string]Record{}
 	for _, r := range idx.Themes {
@@ -227,10 +227,10 @@ func (s *Store) Update(ctx context.Context, names []string) ([]InstallResult, er
 	for _, name := range names {
 		r, ok := records[name]
 		if _, err := os.Stat(s.themePath(name)); err != nil {
-			return nil, fmt.Errorf("설치한 테마 %q가 없다", name)
+			return nil, fmt.Errorf("installed theme %q not found", name)
 		}
 		if !ok || !r.HasOrigin() {
-			return nil, fmt.Errorf("테마 %q는 출처 기록이 없어 다시 받을 수 없다 — balpyo theme install로 설치한다", name)
+			return nil, fmt.Errorf("theme %q has no recorded source and cannot be re-downloaded — install it with balpyo theme install", name)
 		}
 		src, err := r.source()
 		if err != nil {
@@ -263,7 +263,7 @@ func (s *Store) Remove(names []string) error {
 	removing := map[string]bool{}
 	for _, name := range names {
 		if _, err := os.Stat(s.themePath(name)); err != nil || !themeName.MatchString(name) {
-			return fmt.Errorf("설치한 테마 %q가 없다", name)
+			return fmt.Errorf("installed theme %q not found", name)
 		}
 		removing[name] = true
 	}
@@ -274,7 +274,7 @@ func (s *Store) Remove(names []string) error {
 		}
 		h, err := core.ReadThemeHeader(home, path.Join(themesDir, other))
 		if err == nil && removing[h.Extends] {
-			return fmt.Errorf("설치한 테마 %q가 %q를 상속한다 — 함께 지우거나 %q를 먼저 지운다", other, h.Extends, other)
+			return fmt.Errorf("installed theme %q extends %q — remove them together or remove %q first", other, h.Extends, other)
 		}
 	}
 	records, err := s.readIndex()
@@ -365,7 +365,7 @@ func (s *Store) install(ctx context.Context, src Source, force bool,
 		lint, err := core.CheckInstalledTheme(s.ThemesFS(), c.header.Name)
 		if err != nil {
 			rollback()
-			return res, fmt.Errorf("%s의 테마 %q를 로드할 수 없어 설치하지 않았다: %w",
+			return res, fmt.Errorf("%s: theme %q cannot be loaded, so nothing was installed: %w",
 				src.at(c.dir), c.header.Name, err)
 		}
 		res.Lint = append(res.Lint, lint...)
@@ -393,14 +393,14 @@ func (s *Store) checkInstallable(src Source, c candidate, links []string, record
 	name := c.header.Name
 	where := src.at(c.dir)
 	if !themeName.MatchString(name) {
-		return fmt.Errorf("%s의 테마 이름 %q는 디렉토리 이름으로 쓸 수 없다", where, name)
+		return fmt.Errorf("%s: theme name %q cannot be used as a directory name", where, name)
 	}
 	if core.IsBuiltinTheme(name) {
-		return fmt.Errorf("%s의 테마 %q는 내장 테마와 이름이 같아 설치할 수 없다 — 설치할 테마의 이름을 골라 다시 친다", where, name)
+		return fmt.Errorf("%s: theme %q has the same name as a built-in theme and cannot be installed — pick the themes to install by name and run again", where, name)
 	}
 	for _, l := range links {
 		if insideTheme(c.dir, l) {
-			return fmt.Errorf("%s의 테마 %q에 링크 %s가 있다 — 테마는 정규 파일만 담는다", where, name, l)
+			return fmt.Errorf("%s: theme %q contains link %s — themes contain regular files only", where, name, l)
 		}
 	}
 	if _, err := os.Stat(s.themePath(name)); err != nil || force {
@@ -409,9 +409,9 @@ func (s *Store) checkInstallable(src Source, c candidate, links []string, record
 	r, ok := records[name]
 	switch {
 	case !ok || !r.HasOrigin():
-		return fmt.Errorf("테마 %q가 이미 홈에 있다 (출처 기록 없음) — 갈아 끼우려면 --force", name)
+		return fmt.Errorf("theme %q is already in the home (no recorded source) — use --force to replace it", name)
 	case !sameOrigin(r, src, c.dir):
-		return fmt.Errorf("테마 %q는 이미 %s에서 설치했다 — 갈아 끼우려면 --force", name, r.Origin())
+		return fmt.Errorf("theme %q is already installed from %s — use --force to replace it", name, r.Origin())
 	}
 	return nil
 }
@@ -445,7 +445,7 @@ func discover(repo fs.FS, src Source) ([]candidate, error) {
 		root = "."
 	}
 	if info, err := fs.Stat(repo, root); err != nil || !info.IsDir() {
-		return nil, fmt.Errorf("%s에 디렉토리 %s가 없다", src.RepoID(), src.Path)
+		return nil, fmt.Errorf("%s has no directory %s", src.RepoID(), src.Path)
 	}
 	var cands []candidate
 	err := fs.WalkDir(repo, root, func(p string, d fs.DirEntry, err error) error {
@@ -469,7 +469,7 @@ func discover(repo fs.FS, src Source) ([]candidate, error) {
 		return nil, err
 	}
 	if len(cands) == 0 {
-		return nil, fmt.Errorf("%s에서 테마를 찾지 못했다 — theme.json이 있는 디렉토리가 없다", src)
+		return nil, fmt.Errorf("no theme found in %s — no directory contains theme.json", src)
 	}
 	return cands, nil
 }
@@ -492,7 +492,7 @@ func pickByName(src Source, cands []candidate, names []string) ([]candidate, err
 		list := byName[name]
 		switch len(list) {
 		case 0:
-			return candidate{}, fmt.Errorf("%s에 테마 %q가 없다 (있는 테마: %s)", src, name, strings.Join(available, ", "))
+			return candidate{}, fmt.Errorf("%s has no theme %q (themes found: %s)", src, name, strings.Join(available, ", "))
 		case 1:
 			return list[0], nil
 		}
@@ -500,7 +500,7 @@ func pickByName(src Source, cands []candidate, names []string) ([]candidate, err
 		for _, c := range list {
 			dirs = append(dirs, c.dir)
 		}
-		return candidate{}, fmt.Errorf("%s에 테마 %q가 여럿이다: %s — 하위 경로를 주소에 붙여 하나를 가리킨다",
+		return candidate{}, fmt.Errorf("%s has more than one theme %q: %s — append a subpath to the address to pick one",
 			src, name, strings.Join(dirs, ", "))
 	}
 
@@ -557,14 +557,14 @@ func pickByRecord(src Source, cands []candidate, records []Record) ([]candidate,
 				return nil, fmt.Errorf("%s: %w", src.at(c.dir), c.err)
 			}
 			if c.header.Name != r.Name {
-				return nil, fmt.Errorf("%s의 테마 이름이 %q에서 %q로 바뀌었다 — 새 이름으로 다시 설치한다",
+				return nil, fmt.Errorf("%s: theme name changed from %q to %q — reinstall it under the new name",
 					src.at(c.dir), r.Name, c.header.Name)
 			}
 			picked = append(picked, c)
 			found = true
 		}
 		if !found {
-			return nil, fmt.Errorf("%s에 테마 %q의 디렉토리 %s가 더 이상 없다", src, r.Name, r.Path)
+			return nil, fmt.Errorf("%s: theme %q's directory %s no longer exists", src, r.Name, r.Path)
 		}
 	}
 	return picked, nil

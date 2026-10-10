@@ -78,73 +78,73 @@ func TestLoadChromeRejectsBadDecls(t *testing.T) {
 		{
 			name: "알 수 없는 kind",
 			src:  `[{"kind":"watermark","align":"start","role":"caption"}]`,
-			want: `chrome[0]: 알 수 없는 kind "watermark" (쓸 수 있는 kind: footer, pageNumber, logo)`,
+			want: `chrome[0]: unknown kind "watermark" (available kinds: footer, pageNumber, logo)`,
 		},
 		{
 			name: "로고에 그림이 없다",
 			src:  `[{"kind":"logo","align":"end","height":28}]`,
-			want: `chrome[0]: logo에 image가 없다`,
+			want: `chrome[0]: logo has no image`,
 		},
 		{
 			name: "로고에 높이가 없다",
 			src:  `[{"kind":"logo","align":"end","image":"assets/logo.png"}]`,
-			want: `chrome[0]: logo의 height가 없거나 0 이하다`,
+			want: `chrome[0]: logo height is missing or not positive`,
 		},
 		{
 			name: "로고의 그림이 패키지에 없다",
 			src:  `[{"kind":"logo","align":"end","image":"assets/logo.png","height":28}]`,
-			want: `logo의 image가 가리키는 "assets/logo.png"가 테마 패키지에 없다`,
+			want: `logo image points to "assets/logo.png", which is not in the theme package`,
 		},
 		{
 			name: "로고의 그림이 assets 밖이다",
 			src:  `[{"kind":"logo","align":"end","image":"../logo.png","height":28}]`,
-			want: `logo의 image의 "../logo.png"는 테마의 assets/ 아래 경로여야 한다`,
+			want: `logo image "../logo.png" must be a path under the theme's assets/`,
 		},
 		{
 			name: "로고에 역할을 쓴다",
 			src:  `[{"kind":"logo","align":"end","role":"caption","image":"assets/logo.png","height":28}]`,
-			want: `chrome[0]: logo에는 role을 쓸 수 없다`,
+			want: `chrome[0]: logo cannot have a role`,
 		},
 		{
 			name: "글자 크롬에 그림 자리를 쓴다",
 			src:  `[{"kind":"footer","align":"start","role":"caption","height":20}]`,
-			want: `chrome[0]: footer에는 image · height · alt를 쓸 수 없다`,
+			want: `chrome[0]: footer cannot have image · height · alt`,
 		},
 		{
 			name: "알 수 없는 align",
 			src:  `[{"kind":"footer","align":"middle","role":"caption"}]`,
-			want: `chrome[0]: 알 수 없는 align "middle" (쓸 수 있는 align: start, center, end)`,
+			want: `chrome[0]: unknown align "middle" (available aligns: start, center, end)`,
 		},
 		{
 			name: "justify는 크롬의 align이 아니다",
 			src:  `[{"kind":"footer","align":"justify","role":"caption"}]`,
-			want: `chrome[0]: 알 수 없는 align "justify" (쓸 수 있는 align: start, center, end)`,
+			want: `chrome[0]: unknown align "justify" (available aligns: start, center, end)`,
 		},
 		{
 			name: "align이 없다",
 			src:  `[{"kind":"footer","role":"caption"}]`,
-			want: `chrome[0]: align이 없다 (쓸 수 있는 align: start, center, end)`,
+			want: `chrome[0]: missing align (available aligns: start, center, end)`,
 		},
 		{
 			name: "알 수 없는 role",
 			src:  `[{"kind":"footer","align":"start","role":"hero"}]`,
-			want: `chrome[0]: 알 수 없는 role "hero" (쓸 수 있는 role: title, heading, body, caption, code)`,
+			want: `chrome[0]: unknown role "hero" (available roles: title, heading, body, caption, code)`,
 		},
 		{
 			name: "role이 없다",
 			src:  `[{"kind":"footer","align":"start"}]`,
-			want: `chrome[0]: role이 없다`,
+			want: `chrome[0]: missing role`,
 		},
 		{
 			name: "제외 목록의 레이아웃이 이 테마에 없다",
 			src:  `[{"kind":"footer","align":"start","role":"caption","skipLayouts":["cover"]}]`,
-			want: `chrome[0]: skipLayouts의 "cover"는 이 테마의 레이아웃이 아니다`,
+			want: `chrome[0]: skipLayouts: "cover" is not a layout of this theme`,
 		},
 		{
 			name: "같은 kind를 두 번 선언한다",
 			src: `[{"kind":"footer","align":"start","role":"caption"},` +
 				`{"kind":"footer","align":"end","role":"caption"}]`,
-			want: `chrome[1]: kind footer가 두 번 선언되었다`,
+			want: `chrome[1]: kind footer is declared twice`,
 		},
 	}
 	for _, tc := range tests {
@@ -284,10 +284,10 @@ func TestResolveChromeWarnsWhenThemeIsSilent(t *testing.T) {
 			t.Errorf("진단 파일 = %q, want %q", diag.File, ConfigFile)
 		}
 	}
-	if want := `테마 "t"에 footer 크롬 선언이 없어`; !strings.Contains(diags[0].Message, want) {
+	if want := `theme "t" has no footer chrome declaration`; !strings.Contains(diags[0].Message, want) {
 		t.Errorf("푸터 경고 = %q, want substring %q", diags[0].Message, want)
 	}
-	if want := `테마 "t"에 pageNumber 크롬 선언이 없어`; !strings.Contains(diags[1].Message, want) {
+	if want := `theme "t" has no pageNumber chrome declaration`; !strings.Contains(diags[1].Message, want) {
 		t.Errorf("번호 경고 = %q, want substring %q", diags[1].Message, want)
 	}
 }

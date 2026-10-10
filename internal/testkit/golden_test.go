@@ -70,14 +70,14 @@ func TestStaleGoldensOnMissingDirectory(t *testing.T) {
 
 func TestDiffReport(t *testing.T) {
 	report := diffReport([]byte("a\nb\nc\n"), []byte("a\nB\nc\n"))
-	for _, want := range []string{"want 4줄", "-   2 | b", "+   2 | B"} {
+	for _, want := range []string{"want 4 lines", "-   2 | b", "+   2 | B"} {
 		if !strings.Contains(report, want) {
 			t.Errorf("diff 요약에 %q가 없다:\n%s", want, report)
 		}
 	}
 	// 바이너리는 줄 단위 diff가 의미 없다 — 크기와 첫 차이 위치만 알려준다.
 	binary := diffReport([]byte{0, 1, 2}, []byte{0, 9, 2})
-	if !strings.Contains(binary, "바이너리") || !strings.Contains(binary, "오프셋 1") {
+	if !strings.Contains(binary, "binary") || !strings.Contains(binary, "offset 1") {
 		t.Errorf("바이너리 요약 = %q", binary)
 	}
 }

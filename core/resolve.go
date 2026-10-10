@@ -165,7 +165,7 @@ func (r *resolver) slideLayout(slide *soml.Slide) {
 			return
 		}
 	}
-	r.errorf(slide.LayoutSpan, "알 수 없는 layout %q%s (쓸 수 있는 layout: %s)",
+	r.errorf(slide.LayoutSpan, "unknown layout %q%s (available layouts: %s)",
 		string(slide.Layout), didYouMean(string(slide.Layout), layoutList()), layoutList())
 	slide.Layout = soml.DefaultSlideLayout
 }
@@ -188,7 +188,7 @@ func (r *resolver) slideJustify(slide *soml.Slide) {
 	}
 	if slideUsesSlots(slide) {
 		r.errorf(slide.JustifySpan,
-			"슬롯 모드 슬라이드에는 justify를 쓸 수 없다 (세로 리듬은 테마의 %s.slots.css가 소유한다) — 슬롯을 쓰지 않는 슬라이드에서 쓴다",
+			"justify cannot be used on a slot-mode slide (the theme's %s.slots.css owns the vertical rhythm) — use it on slides without slots",
 			string(slide.Layout))
 		slide.Justify = ""
 		return
@@ -322,16 +322,16 @@ func (r *resolver) resolveSlot(elem *soml.Element, parent *soml.Element) {
 		return
 	}
 	if parent != nil {
-		r.errorf(attr.ValueSpan, "slot은 슬라이드 직계 자식에만 쓸 수 있다 (<%s>는 중첩되어 있다)", elem.Name)
+		r.errorf(attr.ValueSpan, "slot is only allowed on direct children of the slide (<%s> is nested)", elem.Name)
 		return
 	}
 	if _, ok := soml.LayoutSlot(r.layout, attr.Value); !ok {
-		r.errorf(attr.ValueSpan, "레이아웃 %q에 없는 슬롯 %q%s (쓸 수 있는 슬롯: %s)",
+		r.errorf(attr.ValueSpan, "layout %q has no slot %q%s (available slots: %s)",
 			string(r.layout), attr.Value, didYouMean(attr.Value, slotList(r.layout)), slotList(r.layout))
 		return
 	}
 	if _, ok := r.theme.SlotLayouts[string(r.layout)]; !ok {
-		r.warnf(attr.ValueSpan, "테마에 레이아웃 %q의 슬롯 영역이 없어 slot=%q을 쓸 수 없다 (layouts/%s.slots.css) — 이 슬라이드는 흐름 배치로 렌더된다",
+		r.warnf(attr.ValueSpan, "the theme has no slot areas for layout %q, so slot=%q cannot be used (layouts/%s.slots.css) — this slide renders with flow layout",
 			string(r.layout), attr.Value, string(r.layout))
 		return
 	}
@@ -467,9 +467,9 @@ func (r *resolver) warnUnknownVariant(attr soml.Attr, names []string) {
 	// 후보는 괄호로 단다 — 이 문장은 이미 대시로 "그래도 계속한다"를 잇고 있다.
 	hint := ""
 	if guess, ok := soml.Suggest(attr.Value, names); ok {
-		hint = " (혹시 " + strconv.Quote(guess) + "?)"
+		hint = " (did you mean " + strconv.Quote(guess) + "?)"
 	}
-	r.warnf(attr.ValueSpan, "variant %q가 테마에 없다%s — 기본 외관으로 계속한다 (이 테마의 variant: %s)",
+	r.warnf(attr.ValueSpan, "variant %q is not in the theme%s — continuing with the default appearance (variants in this theme: %s)",
 		attr.Value, hint, list)
 }
 
@@ -567,7 +567,7 @@ func (r *resolver) role(elem *soml.Element) soml.TextRole {
 			return role
 		}
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 role %q%s (쓸 수 있는 역할: %s)", attr.Value, didYouMean(attr.Value, roleList()), roleList())
+	r.errorf(attr.ValueSpan, "unknown role %q%s (available roles: %s)", attr.Value, didYouMean(attr.Value, roleList()), roleList())
 	return soml.DefaultTextRole
 }
 
@@ -582,23 +582,23 @@ func (r *resolver) size(attr soml.Attr) (float64, bool) {
 		// `rPr@sz`는 절대값(1/100 pt)이고 "부모 텍스트 크기"라는 상속 기준도 없어서, 웹에서만
 		// 동작하고 PPTX에서는 조용히 다른 크기가 되는 속성이 된다. 상대적 위계는 역할과
 		// variant로 표현한다 — 그 둘은 양 타깃에 모두 대응이 있다.
-		r.errorf(attr.ValueSpan, "size에 %%는 쓸 수 없다 (%q) — PPTX 폰트 크기는 절대값이라 상대 크기를 번역할 곳이 없다. 논리 px 수치나 role을 쓴다", raw)
+		r.errorf(attr.ValueSpan, "size cannot use %% (%q) — PPTX font sizes are absolute, so a relative size has nothing to translate to; use a number in logical px or a role", raw)
 		return 0, false
 	}
 	if unit := numberSuffix(raw); unit != "" {
 		// 수치 뒤에 붙은 것만 "단위"라고 부른다. 수치가 아예 없으면 아래의 수치 진단으로
 		// 내려보낸다 — `size="큼"`에 단위를 떼라고 하면 저자가 무엇을 고칠지 알 수 없다
 		// (numberSuffix가 그 판정을 소유한다).
-		r.errorf(attr.ValueSpan, "size는 단위 없는 논리 px 수치다 (%q의 %q를 뗀다) — px·pt·em 접미사는 쓸 수 없다", raw, unit)
+		r.errorf(attr.ValueSpan, "size is a unitless number in logical px (drop the %[2]q from %[1]q) — px, pt and em suffixes are not allowed", raw, unit)
 		return 0, false
 	}
 	px, err := strconv.ParseFloat(raw, 64)
 	if err != nil {
-		r.errorf(attr.ValueSpan, "size 값이 수치가 아니다 (%q)", raw)
+		r.errorf(attr.ValueSpan, "size value is not a number (%q)", raw)
 		return 0, false
 	}
 	if px <= 0 {
-		r.errorf(attr.ValueSpan, "size는 0보다 커야 한다 (%q)", raw)
+		r.errorf(attr.ValueSpan, "size must be greater than 0 (%q)", raw)
 		return 0, false
 	}
 	return px, true
@@ -639,14 +639,14 @@ func (r *resolver) simpleColor(name, raw string, span soml.Span) (soml.Color, bo
 	if strings.HasPrefix(raw, "#") {
 		rgb, ok := hexRGB(raw[1:])
 		if !ok {
-			r.errorf(span, "색 리터럴은 #RRGGBB 또는 #RGB 형태다 (%q)", raw)
+			r.errorf(span, "a color literal has the form #RRGGBB or #RGB (%q)", raw)
 			return soml.Color{}, false
 		}
 		return soml.LiteralColor(rgb), true
 	}
 	if _, known := r.theme.Color(raw); !known {
 		names := strings.Join(r.theme.ColorNames(), ", ")
-		r.errorf(span, "%s의 색 토큰 %q가 테마에 없다%s (쓸 수 있는 토큰: %s, 또는 #RRGGBB 리터럴)",
+		r.errorf(span, "%s: color token %q is not in the theme%s (available tokens: %s, or #RRGGBB)",
 			name, raw, didYouMean(raw, names), names)
 		return soml.Color{}, false
 	}
@@ -662,14 +662,14 @@ func (r *resolver) colorFunc(name, raw string, span soml.Span) (soml.Color, bool
 	open := strings.IndexByte(raw, '(')
 	fn := raw[:open]
 	if !strings.HasSuffix(raw, ")") {
-		r.errorf(span, "색 함수 %s(…)에 닫는 괄호 %q가 없다 (%q)", fn, ")", raw)
+		r.errorf(span, "color function %s(…) is missing the closing %q (%q)", fn, ")", raw)
 		return soml.Color{}, false
 	}
 	inner := strings.TrimSpace(raw[open+1 : len(raw)-1])
 	if strings.IndexByte(inner, '(') >= 0 {
 		// 중첩은 v1에서 불허한다 — `shade(gradient(…),…)`·
 		// `gradient(shade(…) …)` 둘 다 여기서 걸린다. 매핑을 1:1로 유지하려는 결정의 관문이다.
-		r.errorf(span, "색 함수는 중첩할 수 없다 (%q) — 인자는 토큰명이나 #리터럴 단색이다 (v1)", raw)
+		r.errorf(span, "color functions cannot be nested (%q) — arguments are token names or # literal solid colors (v1)", raw)
 		return soml.Color{}, false
 	}
 	switch fn {
@@ -680,7 +680,7 @@ func (r *resolver) colorFunc(name, raw string, span soml.Span) (soml.Color, bool
 	case string(soml.ModAlpha):
 		return r.alphaFunc(name, inner, span, raw)
 	}
-	r.errorf(span, "알 수 없는 색 함수 %q%s (쓸 수 있는 함수: gradient, shade, tint, alpha) — %q",
+	r.errorf(span, "unknown color function %q%s (available functions: gradient, shade, tint, alpha) — %q",
 		fn, didYouMean(fn, "gradient, shade, tint, alpha"), raw)
 	return soml.Color{}, false
 }
@@ -696,7 +696,7 @@ func (r *resolver) gradientFunc(name, inner string, span soml.Span, raw string) 
 	}
 	fields := strings.Fields(colorPart)
 	if len(fields) < 2 {
-		r.errorf(span, "gradient는 색이 둘 이상이어야 한다 (%q) — 예: gradient(accent1 surface), 각도는 gradient(accent1 surface, 45deg)", raw)
+		r.errorf(span, "gradient needs at least two colors (%q) — e.g. gradient(accent1 surface), or with an angle gradient(accent1 surface, 45deg)", raw)
 		return soml.Color{}, false
 	}
 	ok := true
@@ -730,12 +730,12 @@ const gradientDefaultAngle = 180.0
 // gradientAngle은 그라디언트의 각도 인자를 해석한다 — `<수치>deg` 형태다.
 func (r *resolver) gradientAngle(part string, span soml.Span, raw string) (float64, bool) {
 	if !strings.HasSuffix(part, "deg") {
-		r.errorf(span, "gradient 각도는 `<수치>deg` 형태다 (%q의 %q) — 예: 45deg", raw, part)
+		r.errorf(span, "a gradient angle has the form `<number>deg` (%[2]q in %[1]q) — e.g. 45deg", raw, part)
 		return 0, false
 	}
 	deg, err := strconv.ParseFloat(strings.TrimSpace(strings.TrimSuffix(part, "deg")), 64)
 	if err != nil {
-		r.errorf(span, "gradient 각도가 수치가 아니다 (%q의 %q)", raw, part)
+		r.errorf(span, "gradient angle is not a number (%[2]q in %[1]q)", raw, part)
 		return 0, false
 	}
 	return deg, true
@@ -745,7 +745,7 @@ func (r *resolver) gradientAngle(part string, span soml.Span, raw string) (float
 func (r *resolver) variantFunc(kind soml.ColorModKind, name, inner string, span soml.Span, raw string) (soml.Color, bool) {
 	comma := strings.IndexByte(inner, ',')
 	if comma < 0 {
-		r.errorf(span, "%s는 `%s(색, %%)` 두 인자다 (%q) — 예: %s(accent1, 40%%)", kind, kind, raw, kind)
+		r.errorf(span, "%s takes two arguments, `%s(color, %%)` (%q) — e.g. %s(accent1, 40%%)", kind, kind, raw, kind)
 		return soml.Color{}, false
 	}
 	base, bok := r.simpleColor(name, strings.TrimSpace(inner[:comma]), span)
@@ -760,16 +760,16 @@ func (r *resolver) variantFunc(kind soml.ColorModKind, name, inner string, span 
 // variantPercent는 shade/tint의 백분율 인자를 해석한다 (0~100, `%` 필수).
 func (r *resolver) variantPercent(kind soml.ColorModKind, part string, span soml.Span, raw string) (float64, bool) {
 	if !strings.HasSuffix(part, "%") {
-		r.errorf(span, "%s의 두 번째 인자는 백분율(`%%`)이다 (%q의 %q) — 예: %s(accent1, 40%%)", kind, raw, part, kind)
+		r.errorf(span, "the second argument of %s is a percentage (`%%`) (%[3]q in %[2]q) — e.g. %[4]s(accent1, 40%%)", kind, raw, part, kind)
 		return 0, false
 	}
 	pct, err := strconv.ParseFloat(strings.TrimSpace(strings.TrimSuffix(part, "%")), 64)
 	if err != nil {
-		r.errorf(span, "%s의 백분율이 수치가 아니다 (%q의 %q)", kind, raw, part)
+		r.errorf(span, "the percentage of %s is not a number (%[3]q in %[2]q)", kind, raw, part)
 		return 0, false
 	}
 	if pct <= 0 || pct > 100 {
-		r.errorf(span, "%s의 백분율은 0 초과 100 이하다 (%q) — 0%%는 밑색 그대로라 변형이 없다", kind, part)
+		r.errorf(span, "the percentage of %s must be greater than 0 and at most 100 (%q) — 0%% leaves the base color unchanged", kind, part)
 		return 0, false
 	}
 	return pct, true
@@ -779,18 +779,18 @@ func (r *resolver) variantPercent(kind soml.ColorModKind, part string, span soml
 func (r *resolver) alphaFunc(name, inner string, span soml.Span, raw string) (soml.Color, bool) {
 	comma := strings.IndexByte(inner, ',')
 	if comma < 0 {
-		r.errorf(span, "alpha는 `alpha(색, 0~1)` 두 인자다 (%q) — 예: alpha(fg, 0.6)", raw)
+		r.errorf(span, "alpha takes two arguments, `alpha(color, 0–1)` (%q) — e.g. alpha(fg, 0.6)", raw)
 		return soml.Color{}, false
 	}
 	base, bok := r.simpleColor(name, strings.TrimSpace(inner[:comma]), span)
 	aStr := strings.TrimSpace(inner[comma+1:])
 	a, err := strconv.ParseFloat(aStr, 64)
 	if err != nil {
-		r.errorf(span, "alpha의 불투명도가 수치가 아니다 (%q의 %q) — 0~1 실수다", raw, aStr)
+		r.errorf(span, "the alpha opacity is not a number (%[2]q in %[1]q) — it is a real number from 0 to 1", raw, aStr)
 		return soml.Color{}, false
 	}
 	if a < 0 || a > 1 {
-		r.errorf(span, "alpha의 불투명도는 0~1이다 (%q) — 백분율이 아니라 실수다 (예: 0.6)", aStr)
+		r.errorf(span, "the alpha opacity is between 0 and 1 (%q) — a real number, not a percentage (e.g. 0.6)", aStr)
 		return soml.Color{}, false
 	}
 	if !bok {
@@ -813,10 +813,10 @@ func (r *resolver) align(attr soml.Attr) (soml.TextAlign, bool) {
 	// 저자는 CSS 습관대로 left/right를 쓴다. 어휘 목록만 던지는 대신 대응하는 논리 이름을
 	// 짚어 준다 — 고치는 방법이 진단 안에 있어야 한 번에 끝난다.
 	if physical, ok := map[string]soml.TextAlign{"left": soml.AlignStart, "right": soml.AlignEnd}[raw]; ok {
-		r.errorf(attr.ValueSpan, "align은 논리 이름을 쓴다 — %q 대신 %q (RTL에서도 뜻이 유지된다)", raw, string(physical))
+		r.errorf(attr.ValueSpan, "align takes logical names — instead of %q, use %q (the meaning holds in RTL too)", raw, string(physical))
 		return "", false
 	}
-	r.errorf(attr.ValueSpan, "알 수 없는 align %q%s (쓸 수 있는 값: %s)", raw, didYouMean(raw, alignList()), alignList())
+	r.errorf(attr.ValueSpan, "unknown align %q%s (available values: %s)", raw, didYouMean(raw, alignList()), alignList())
 	return "", false
 }
 
@@ -825,10 +825,10 @@ func (r *resolver) align(attr soml.Attr) (soml.TextAlign, bool) {
 func (r *resolver) hasValue(attr soml.Attr) bool {
 	switch {
 	case !attr.HasValue:
-		r.errorf(attr.NameSpan, "%s 속성에는 값이 필요하다 (%s=%q)", attr.Name, attr.Name, attrExample(attr.Name))
+		r.errorf(attr.NameSpan, "the %s attribute needs a value (%s=%q)", attr.Name, attr.Name, attrExample(attr.Name))
 		return false
 	case attr.Value == "":
-		r.errorf(attr.ValueSpan, "%s 속성이 비어 있다 (지우면 기본값을 쓴다)", attr.Name)
+		r.errorf(attr.ValueSpan, "the %s attribute is empty (remove it to use the default)", attr.Name)
 		return false
 	}
 	return true
@@ -927,7 +927,7 @@ func attrExample(name string) string {
 	case "series":
 		return "accent1"
 	case "label":
-		return "5월"
+		return "May"
 	case "value":
 		return "22"
 	}
@@ -1008,7 +1008,7 @@ func didYouMean(raw, list string) string {
 		return ""
 	}
 	if guess, ok := soml.Suggest(raw, strings.Split(list, ", ")); ok {
-		return " — 혹시 " + strconv.Quote(guess) + "?"
+		return " — did you mean " + strconv.Quote(guess) + "?"
 	}
 	return ""
 }

@@ -121,8 +121,8 @@ func TestThemeImageSrcMissingFileListsTheChain(t *testing.T) {
 	child := localTheme("brand-dark", `{"name":"brand-dark","extends":"brand"}`, "", "", nil)
 	project := mergeFS(iconProject(t), child)
 	for _, tc := range []struct{ theme, want string }{
-		{"brand-dark", `theme:icons/x.png을 테마 "brand-dark"(→ "brand" → "minimal")의 assets/에서 찾을 수 없다`},
-		{"minimal", `theme:icons/a.png을 테마 "minimal"의 assets/에서 찾을 수 없다`},
+		{"brand-dark", `cannot find theme:icons/x.png in theme "brand-dark"(→ "brand" → "minimal") (under assets/)`},
+		{"minimal", `cannot find theme:icons/a.png in theme "minimal" (under assets/)`},
 	} {
 		src := "theme:icons/x.png"
 		if tc.theme == "minimal" {
@@ -152,14 +152,14 @@ func TestThemeImageSrcRejectsBadPaths(t *testing.T) {
 	project["themes/brand/assets/icons/fake.png"] = &fstest.MapFile{Data: jpeg}
 	project["themes/brand/assets/icons/a.gif"] = pngFile(t, "logo.png")
 	for _, tc := range []struct{ src, want string }{
-		{"theme:", "theme: 뒤에 경로가 없다"},
-		{"theme:../x.png", "src가 테마의 assets/ 밖을 가리킨다"},
-		{"theme:icons/../../x.png", "src가 테마의 assets/ 밖을 가리킨다"},
-		{"theme:/x.png", "theme: 경로는 테마의 assets/ 기준 상대 경로다"},
-		{`theme:icons\a.png`, "src의 경로 구분자는"},
-		{"theme:icons/a.gif", `src의 ".gif"는 v1이 그리지 못한다`},
-		{"theme:icons", "src에 확장자가 없다"},
-		{"theme:icons/fake.png", "확장자는 png를 말하는데 내용은 jpeg다"},
+		{"theme:", "no path after theme:"},
+		{"theme:../x.png", "src points outside the theme's assets/"},
+		{"theme:icons/../../x.png", "src points outside the theme's assets/"},
+		{"theme:/x.png", "a theme: path is relative to the theme's assets/"},
+		{`theme:icons\a.png`, "the path separator in src is"},
+		{"theme:icons/a.gif", `v1 cannot render ".gif" in src`},
+		{"theme:icons", "src has no extension"},
+		{"theme:icons/fake.png", "says png but the content is jpeg"},
 	} {
 		_, diags := themeImageDeck(t, project, "brand", `<slide><image src="`+tc.src+`" w="64"/></slide>`)
 		if len(diags) != 1 || !strings.Contains(diags[0].Message, tc.want) {
@@ -175,7 +175,7 @@ func TestProjectSrcDoesNotReachInstalledThemes(t *testing.T) {
 	deck, diags := themeDeckIn(t, project, "brand",
 		`<slide><image src="theme:icons/a.png" w="64"/><image src="themes/brand/assets/icons/a.png" w="64"/></slide>`)
 	diags = append(diags, ResolveAssets(deck, project)...)
-	if len(diags) != 1 || !strings.Contains(diags[0].Message, "src가 가리키는 파일이 없다") {
+	if len(diags) != 1 || !strings.Contains(diags[0].Message, "the file src points to does not exist") {
 		t.Errorf("진단 = %v, want 프로젝트에 파일이 없다 (같은 키가 theme:으로 먼저 실렸어도)", diags)
 	}
 	local := iconProject(t)

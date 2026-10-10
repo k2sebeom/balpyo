@@ -88,7 +88,7 @@ func formatVersion(b buildInfo) string {
 		if b.Dirty {
 			commit += "+dirty"
 		}
-		line := "커밋 " + commit
+		line := "commit " + commit
 		if b.Time != "" {
 			line += " (" + b.Time + ")"
 		}

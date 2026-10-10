@@ -25,7 +25,7 @@ func TestParseRejectsUnrenderedVocabulary(t *testing.T) {
 	if got := diags[0].Span.Start.String(); got != "1:9" {
 		t.Errorf("진단 위치 = %s, want 1:9 (<table> 태그 이름)", got)
 	}
-	for _, want := range []string{"<table>", "아직 구현되지 않은 어휘"} {
+	for _, want := range []string{"<table>", "not implemented yet"} {
 		if !strings.Contains(diags[0].Message, want) {
 			t.Errorf("메시지 = %q, want %q 포함", diags[0].Message, want)
 		}
@@ -43,7 +43,7 @@ func TestParseUnrenderedVocabularyKeepsPlacementRules(t *testing.T) {
 	if len(diags) != 2 {
 		t.Fatalf("진단 %d건, want 2건:\n%s", len(diags), diags.Err())
 	}
-	if !strings.Contains(diags[0].Message, "<tr>는 <table>의 자식으로만") {
+	if !strings.Contains(diags[0].Message, "<tr> can only be a child of <table>") {
 		t.Errorf("진단[0] = %q, want 배치 진단", diags[0].Message)
 	}
 	if !strings.Contains(diags[1].Message, UnrenderedVocabMessage) {

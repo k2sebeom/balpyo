@@ -91,7 +91,7 @@ func CheckCrossParts(parts map[string][]byte) []string {
 		}
 		f, err := readPartFacts(parts[name])
 		if err != nil {
-			fail("%s를 읽을 수 없다: %v", name, err)
+			fail("cannot read %s: %v", name, err)
 			continue
 		}
 		facts[name] = f
@@ -99,7 +99,7 @@ func CheckCrossParts(parts map[string][]byte) []string {
 		seen := map[string]bool{}
 		for _, id := range f.shapeIDs {
 			if seen[id] {
-				fail("%s에 cNvPr@id=%s가 두 번 있다 — PowerPoint가 복구를 묻는다", name, id)
+				fail("%s has cNvPr@id=%s twice — PowerPoint will offer to repair", name, id)
 			}
 			seen[id] = true
 		}
@@ -109,11 +109,11 @@ func CheckCrossParts(parts map[string][]byte) []string {
 			rel, ok := rels[ref.id]
 			switch {
 			case !known:
-				fail("%s의 %s가 관계를 참조한다 — relRefTypes에 그 종류가 없다", name, ref.element)
+				fail("%s: %s references a relationship — relRefTypes has no entry for it", name, ref.element)
 			case !ok:
-				fail("%s의 %s가 없는 관계 %s를 가리킨다", name, ref.element, ref.id)
+				fail("%s: %s points to missing relationship %s", name, ref.element, ref.id)
 			case rel.Type != want:
-				fail("%s의 %s가 %s 관계 %s를 가리킨다 — %s여야 한다", name, ref.element, rel.Type, ref.id, want)
+				fail("%s: %s points to %s relationship %s — must be %s", name, ref.element, rel.Type, ref.id, want)
 			}
 		}
 	}
@@ -123,28 +123,28 @@ func CheckCrossParts(parts map[string][]byte) []string {
 		seen := map[uint64]bool{}
 		for _, id := range pres.ids["sldId"] {
 			if id < minSlideID || id >= minMasterID {
-				fail("%s의 sldId@id=%d가 [%d, %d) 밖이다", presPart, id, minSlideID, uint64(minMasterID))
+				fail("%s: sldId@id=%d is outside [%d, %d)", presPart, id, minSlideID, uint64(minMasterID))
 			}
 			if seen[id] {
-				fail("%s에 sldId@id=%d가 두 번 있다", presPart, id)
+				fail("%s has sldId@id=%d twice", presPart, id)
 			}
 			seen[id] = true
 		}
 		if n, want := len(pres.ids["sldId"]), len(partsWithPrefix(parts, "ppt/slides/slide")); n != want {
-			fail("%s의 sldIdLst가 %d장, 슬라이드 파트는 %d개다", presPart, n, want)
+			fail("%s: sldIdLst has %d entries, but there are %d slide parts", presPart, n, want)
 		}
 	} else {
-		fail("%s가 없다", presPart)
+		fail("%s is missing", presPart)
 	}
 	masterIDs := map[uint64]string{}
 	for _, name := range sortedFacts(facts) {
 		for _, kind := range []string{"sldMasterId", "sldLayoutId"} {
 			for _, id := range facts[name].ids[kind] {
 				if id < minMasterID {
-					fail("%s의 %s@id=%d가 %d보다 작다", name, kind, id, uint64(minMasterID))
+					fail("%s: %s@id=%d is less than %d", name, kind, id, uint64(minMasterID))
 				}
 				if owner, dup := masterIDs[id]; dup {
-					fail("%s의 %s@id=%d가 %s의 id와 겹친다 — 마스터와 레이아웃은 한 id 공간이다", name, kind, id, owner)
+					fail("%s: %s@id=%d collides with an id in %s — masters and layouts share one id space", name, kind, id, owner)
 				}
 				masterIDs[id] = name
 			}
@@ -168,7 +168,7 @@ func CheckCrossParts(parts map[string][]byte) []string {
 		}
 		sort.Strings(listed)
 		if got, want := strings.Join(listed, ","), strings.Join(layoutsOf[master], ","); got != want {
-			fail("%s의 sldLayoutIdLst가 [%s]인데 이 마스터를 가리키는 레이아웃은 [%s]다", master, got, want)
+			fail("%s: sldLayoutIdLst is [%s], but the layouts pointing at this master are [%s]", master, got, want)
 		}
 	}
 	for _, slide := range partsWithPrefix(parts, "ppt/slides/slide") {
@@ -182,7 +182,7 @@ func CheckCrossParts(parts map[string][]byte) []string {
 		}
 		for _, ph := range facts[slide].ph {
 			if !have[ph.key()] {
-				fail("%s의 플레이스홀더 %s가 %s에 없다 — 상속할 자리가 없다", slide, ph, layout)
+				fail("%s: placeholder %s is missing from %s — nothing to inherit from", slide, ph, layout)
 			}
 		}
 	}
@@ -196,7 +196,7 @@ func CheckCrossParts(parts map[string][]byte) []string {
 				continue
 			}
 			if owner, dup := themeOwner[theme]; dup {
-				fail("%s와 %s가 테마 %s를 같이 쓴다 — 마스터마다 테마 파트가 따로 있어야 PowerPoint가 복구를 묻지 않는다", owner, master, theme)
+				fail("%s and %s share theme %s — each master needs its own theme part or PowerPoint will offer to repair", owner, master, theme)
 			}
 			themeOwner[theme] = master
 		}
@@ -210,7 +210,7 @@ func CheckCrossParts(parts map[string][]byte) []string {
 			continue
 		}
 		if back, ok := singleRel(parts, slide, "notesSlide", fail); ok && back != notes {
-			fail("%s는 %s를 가리키는데 %s의 노트는 %s다", notes, slide, slide, back)
+			fail("%s points to %s, but the notes of %s are %s", notes, slide, slide, back)
 		}
 	}
 	return problems
@@ -309,7 +309,7 @@ func singleRel(parts map[string][]byte, owner, typ string, fail func(string, ...
 	}
 	if len(targets) != 1 {
 		sort.Strings(targets)
-		fail("%s의 %s 관계가 %d개다 %v — 하나여야 한다", owner, typ, len(targets), targets)
+		fail("%s has %d %s relationships %v — must be exactly one", owner, len(targets), typ, targets)
 		return "", false
 	}
 	return targets[0], true

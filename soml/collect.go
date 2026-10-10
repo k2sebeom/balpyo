@@ -52,10 +52,10 @@ func Collect(fsys fs.FS, dir string) ([]SlideFile, error) {
 	}
 	info, err := fs.Stat(fsys, dir)
 	if err != nil {
-		return nil, fmt.Errorf("슬라이드 디렉토리 %q를 열 수 없다: %w", dir, err)
+		return nil, fmt.Errorf("cannot open slide directory %q: %w", dir, err)
 	}
 	if !info.IsDir() {
-		return nil, fmt.Errorf("슬라이드 디렉토리 %q가 디렉토리가 아니다", dir)
+		return nil, fmt.Errorf("slide directory %q is not a directory", dir)
 	}
 
 	var files []SlideFile
@@ -87,7 +87,7 @@ func Collect(fsys fs.FS, dir string) ([]SlideFile, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("슬라이드 디렉토리 %q 순회 실패: %w", dir, err)
+		return nil, fmt.Errorf("walking slide directory %q failed: %w", dir, err)
 	}
 
 	sort.Slice(files, func(i, j int) bool {
@@ -106,7 +106,7 @@ func relativeTo(base, p string) (string, error) {
 	}
 	prefix := base + "/"
 	if !strings.HasPrefix(p, prefix) {
-		return "", fmt.Errorf("경로 %q가 %q 아래가 아니다", p, base)
+		return "", fmt.Errorf("path %q is not under %q", p, base)
 	}
 	return strings.TrimPrefix(p, prefix), nil
 }

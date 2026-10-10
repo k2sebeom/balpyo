@@ -171,7 +171,7 @@ var unrenderedKinds []ElementKind
 // PlannedAttrMessage는 "이름은 맞는데 아직 구현되지 않은 속성" 진단의 핵 문구다.
 // UnrenderedVocabMessage와 같은 이유로 상수다 — 진단을 내는 곳과 걸러 보는 곳이 같은
 // 문자열을 써야 한다.
-const PlannedAttrMessage = "아직 구현되지 않은 속성이다"
+const PlannedAttrMessage = "is an attribute that is not implemented yet"
 
 // plannedAttr는 어휘 표에 **아직 없지만 이름이 이미 정해진** 속성 하나다. `Opens`는 어느
 // 항목이 그 속성을 여는지다 — 저자가 기다릴 곳을 알아야 진단이 끝난 문장이 된다.

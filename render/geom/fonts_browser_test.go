@@ -68,7 +68,7 @@ func TestMeasureWarnsAboutMissingThemeFont(t *testing.T) {
 	}
 	var warned bool
 	for _, d := range geom.Diagnose(deck, g) {
-		warned = warned || (d.Severity == soml.SeverityWarning && strings.Contains(d.Message, `"Balpyo No Such Font"(body.ea)`))
+		warned = warned || (d.Severity == soml.SeverityWarning && strings.Contains(d.Message, `"Balpyo No Such Font" (body.ea)`))
 	}
 	if !warned {
 		t.Errorf("배치 진단에 글꼴 경고가 없다: %v", geom.Diagnose(deck, g))

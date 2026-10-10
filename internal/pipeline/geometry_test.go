@@ -74,7 +74,7 @@ func TestBuildPPTXFailsWithoutBrowser(t *testing.T) {
 	if err == nil {
 		t.Fatal("브라우저 없이 pptx가 빌드되었다")
 	}
-	if !strings.Contains(err.Error(), "지오메트리") {
+	if !strings.Contains(err.Error(), "geometry") {
 		t.Errorf("에러가 지오메트리 패스를 가리키지 않는다: %v", err)
 	}
 }
@@ -187,9 +187,9 @@ func TestBuildCheckLayoutWarnsOnOverflow(t *testing.T) {
 		t.Error("경고만 있는 빌드가 산출물을 쓰지 않았다")
 	}
 	want := []string{
-		"<shape>가 콘텐츠 박스를 오른쪽으로 48px 넘친다",
-		"<p>가 부모 <shape>를 아래로",
-		"<shape>가 스테이지를 오른쪽으로",
+		"<shape> overflows the content box on the right by 48px",
+		"<p> overflows its parent <shape> at the bottom",
+		"<shape> leaves the stage on the right",
 	}
 	if len(result.Diagnostics) != len(want) {
 		t.Fatalf("진단 %d건, want %d건:\n%s", len(result.Diagnostics), len(want), result.Diagnostics)

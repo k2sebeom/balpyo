@@ -106,19 +106,19 @@ func TestDiagnose(t *testing.T) {
 			name:  "스테이지 이탈",
 			deck:  one,
 			rects: map[string]Rect{"s0.0": {X: 64, Y: 600, W: 1152, H: 180}},
-			want:  []string{"스테이지를 아래로 60px 벗어난다"},
+			want:  []string{"leaves the stage at the bottom by 60px"},
 		},
 		{
 			name:  "canvas의 Free 요소도 스테이지 이탈은 말한다",
 			deck:  canvasDeck,
 			rects: map[string]Rect{"s0.0": {X: 1200, Y: 64, W: 200, H: 100}},
-			want:  []string{"스테이지를 오른쪽으로 120px 벗어난다"},
+			want:  []string{"leaves the stage on the right by 120px"},
 		},
 		{
 			name:  "콘텐츠 박스 이탈 (잰 값이 없으면 기본 여백)",
 			deck:  one,
 			rects: map[string]Rect{"s0.0": {X: 64, Y: 64, W: 1152, H: 626}},
-			want:  []string{"콘텐츠 박스를 아래로 34px 넘친다"},
+			want:  []string{"overflows the content box at the bottom by 34px"},
 		},
 		{
 			name:  "좌표를 쓴 요소의 여백 침범은 저자의 선택이다",
@@ -129,7 +129,7 @@ func TestDiagnose(t *testing.T) {
 			name:  "요소 하나에 이탈 진단 하나",
 			deck:  one,
 			rects: map[string]Rect{"s0.0": {X: 64, Y: 64, W: 1152, H: 800}},
-			want:  []string{"스테이지를 아래로"},
+			want:  []string{"leaves the stage at the bottom"},
 		},
 		{
 			name: "1px 미만의 이탈·겹침은 허용 오차다",
@@ -144,7 +144,7 @@ func TestDiagnose(t *testing.T) {
 			deck:  one,
 			rects: map[string]Rect{"s0.0": {X: 64, Y: 64, W: 400, H: 40}},
 			lines: map[string][]Rect{"s0.0": {{X: 64, Y: 66, W: 520, H: 36}}},
-			want:  []string{"글줄이 박스를 오른쪽으로 120px 넘친다"},
+			want:  []string{"text overflows its box on the right by 120px"},
 		},
 		{
 			// 글자 상자가 CSS 줄 박스보다 커서 정상 텍스트도 세로로 몇 px 넘친다.
@@ -160,7 +160,7 @@ func TestDiagnose(t *testing.T) {
 				"s0.0": {X: 64, Y: 64, W: 600, H: 200},
 				"s0.1": {X: 500, Y: 200, W: 600, H: 200},
 			},
-			want: []string{"형제 <text>와 164px×64px 겹친다"},
+			want: []string{"overlaps its sibling <text> by 164px×64px"},
 		},
 		{
 			name: "좌표가 슬라이드 상대이므로 다른 슬라이드는 겹침이 아니다",
@@ -190,7 +190,7 @@ func TestDiagnose(t *testing.T) {
 			deck:    one,
 			rects:   map[string]Rect{"s0.0": {X: 64, Y: 96, W: 1152, H: 528}},
 			content: []Rect{{X: 96, Y: 96, W: 1088, H: 528}},
-			want:    []string{"콘텐츠 박스를 오른쪽으로 32px 넘친다"},
+			want:    []string{"overflows the content box on the right by 32px"},
 		},
 		{
 			name: "콘텐츠 박스는 슬라이드마다 다르다",
@@ -200,7 +200,7 @@ func TestDiagnose(t *testing.T) {
 				"s1.0": {X: 0, Y: 0, W: 1280, H: 720},
 			},
 			content: []Rect{{X: 0, Y: 0, W: 1280, H: 720}, ContentBox(soml.Stage{Width: 1280, Height: 720})},
-			want:    []string{"콘텐츠 박스를 아래로 64px 넘친다"},
+			want:    []string{"overflows the content box at the bottom by 64px"},
 		},
 	}
 	for _, tc := range tests {
@@ -239,7 +239,7 @@ func TestDiagnoseParentEscape(t *testing.T) {
 
 	deck := shapeDeck(t)
 	g := measured(t, deck, rects, nil)
-	wantDiags(t, Diagnose(deck, g), "부모 <shape>를 아래로 4px 넘친다")
+	wantDiags(t, Diagnose(deck, g), "overflows its parent <shape> at the bottom by 4px")
 
 	// 좌표로 비켜 앉은 도형의 **자손**은 부모 변을 넘어서는 것이 저작 수단이다 (배지·꼬리).
 	free := shapeDeck(t, soml.Attr{Name: "x", Value: "-16", HasValue: true})
@@ -306,7 +306,7 @@ func TestDiagnoseTableCellMayOutgrowItsRow(t *testing.T) {
 	rects[refs[4].ID] = Rect{X: 364, Y: 124, W: 300, H: 100}
 	rects[refs[5].ID] = Rect{X: 364, Y: 124, W: 300, H: 100}
 	g = measured(t, deck, rects, nil)
-	wantDiags(t, Diagnose(deck, g), "부모 <table>를 아래로 40px 넘친다")
+	wantDiags(t, Diagnose(deck, g), "overflows its parent <table> at the bottom by 40px")
 }
 
 // 잰 덱과 다른 덱이면 아무 말도 하지 않는다 — 그 어긋남은 이미 빌드를 멈추는 에러이고
@@ -357,8 +357,8 @@ func TestDiagnoseFoldsDescendantsIntoTheirAncestorsEscape(t *testing.T) {
 		"s0.0.3": {X: 64, Y: 740, W: 600, H: 100},
 	}
 	g := measured(t, deck, rects, nil)
-	wantDiags(t, Diagnose(deck, g), "<ul>가 스테이지를 아래로 120px 벗어난다")
-	if msg := Diagnose(deck, g)[0].Message; !strings.Contains(msg, "안의 <li> 2개도 함께 벗어난다") {
+	wantDiags(t, Diagnose(deck, g), "<ul> leaves the stage at the bottom by 120px")
+	if msg := Diagnose(deck, g)[0].Message; !strings.Contains(msg, "2 <li> inside escape too") {
 		t.Errorf("함께 벗어난 항목을 세지 않는다: %q", msg)
 	}
 }

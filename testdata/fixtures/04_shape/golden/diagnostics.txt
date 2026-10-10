@@ -1,2 +1,2 @@
-slides/008_variant_unknown.slide:12:21: warning: variant "card-heder"가 테마에 없다 (혹시 "card-header"?) — 기본 외관으로 계속한다 (이 테마의 variant: card, card-header, card-body, card-backdrop, stat-card, badge)
-slides/008_variant_unknown.slide:15:20: warning: variant "leed"가 테마에 없다 (혹시 "lead"?) — 기본 외관으로 계속한다 (이 테마의 variant: kicker, lead)
+slides/008_variant_unknown.slide:12:21: warning: variant "card-heder" is not in the theme (did you mean "card-header"?) — continuing with the default appearance (variants in this theme: card, card-header, card-body, card-backdrop, stat-card, badge)
+slides/008_variant_unknown.slide:15:20: warning: variant "leed" is not in the theme (did you mean "lead"?) — continuing with the default appearance (variants in this theme: kicker, lead)

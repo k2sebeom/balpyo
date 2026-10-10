@@ -67,14 +67,14 @@ type ThemeHeader struct {
 func ReadThemeHeader(fsys fs.FS, dir string) (ThemeHeader, error) {
 	data, err := fs.ReadFile(fsys, path.Join(dir, "theme.json"))
 	if err != nil {
-		return ThemeHeader{}, fmt.Errorf("theme.json을 읽을 수 없다: %w", err)
+		return ThemeHeader{}, fmt.Errorf("cannot read theme.json: %w", err)
 	}
 	var m themeManifest
 	if err := json.Unmarshal(data, &m); err != nil {
-		return ThemeHeader{}, fmt.Errorf("%s/theme.json 파싱 실패: %w", dir, err)
+		return ThemeHeader{}, fmt.Errorf("cannot parse %s/theme.json: %w", dir, err)
 	}
 	if m.Name == "" {
-		return ThemeHeader{}, errors.New(dir + "/theme.json에 name이 없다")
+		return ThemeHeader{}, errors.New(dir + "/theme.json has no name")
 	}
 	return ThemeHeader{Name: m.Name, Extends: m.Extends}, nil
 }
@@ -89,7 +89,7 @@ func CheckInstalledTheme(home fs.FS, name string) (soml.Diagnostics, error) {
 		return nil, err
 	}
 	if !ok || loc.origin != originInstalled {
-		return nil, fmt.Errorf("설치한 테마 %q가 없다", name)
+		return nil, fmt.Errorf("installed theme %q not found", name)
 	}
 	chain, err := readThemeChain(fsys, name)
 	if err != nil {
@@ -100,7 +100,7 @@ func CheckInstalledTheme(home fs.FS, name string) (soml.Diagnostics, error) {
 		merged = mergeRawTheme(merged, child)
 	}
 	if _, err := buildThemePackage(merged); err != nil {
-		return nil, fmt.Errorf("테마 %q: %w", name, err)
+		return nil, fmt.Errorf("theme %q: %w", name, err)
 	}
 	return lintThemeChain(chain, originInstalled), nil
 }

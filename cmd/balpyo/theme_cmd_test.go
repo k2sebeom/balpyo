@@ -72,7 +72,7 @@ func TestThemeInstallBuildListRemove(t *testing.T) {
 	if err := run([]string{"theme", "install", "github.com/acme/themes"}, &stdout, &stderr); err != nil {
 		t.Fatalf("%v\nstderr: %s", err, stderr.String())
 	}
-	for _, want := range []string{"테마 2개를 설치했다", "acme", "acme-dark", `"theme": "acme"`} {
+	for _, want := range []string{"installed 2 themes", "acme", "acme-dark", `"theme": "acme"`} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Errorf("설치 출력에 %q가 없다:\n%s", want, stdout.String())
 		}
@@ -100,7 +100,7 @@ func TestThemeInstallBuildListRemove(t *testing.T) {
 	if err := run([]string{"theme", "list", "--project", dir}, &stdout, &stderr); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"내장", "minimal", "설치한 테마", "acme-dark", "github.com/acme/themes/dark"} {
+	for _, want := range []string{"Built-in", "minimal", "Installed", "acme-dark", "github.com/acme/themes/dark"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Errorf("목록에 %q가 없다:\n%s", want, stdout.String())
 		}
@@ -111,8 +111,8 @@ func TestThemeInstallBuildListRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 	err := run([]string{"build", "--project", dir}, &stdout, &stderr)
-	if err == nil || !strings.Contains(err.Error(), `알 수 없는 테마 "acme-dark"`) ||
-		!strings.Contains(err.Error(), "설치한 테마도 아니다") {
+	if err == nil || !strings.Contains(err.Error(), `unknown theme "acme-dark"`) ||
+		!strings.Contains(err.Error(), "or an installed theme") {
 		t.Errorf("지운 테마의 이름은 알 수 없는 테마여야 한다: %v", err)
 	}
 }
@@ -141,7 +141,7 @@ func TestThemeListMarksClash(t *testing.T) {
 	if err := run([]string{"theme", "list", "--project", dir}, &stdout, &stderr); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(stdout.String(), "출처 기록 없음") || !strings.Contains(stdout.String(), "프로젝트 themes/와 겹친다") {
+	if !strings.Contains(stdout.String(), "no recorded source") || !strings.Contains(stdout.String(), "collides with project themes/") {
 		t.Errorf("목록이 출처 없음 · 겹침을 표시하지 않았다:\n%s", stdout.String())
 	}
 }
@@ -185,7 +185,7 @@ func TestThemeInstallFromLocalPath(t *testing.T) {
 	if err := run([]string{"theme", "install", src}, &stdout, &stderr); err != nil {
 		t.Fatalf("%v\nstderr: %s", err, stderr.String())
 	}
-	for _, want := range []string{"테마 1개를 복사해 설치했다", "acme", `"theme": "acme"`} {
+	for _, want := range []string{"copied and installed 1 theme", "acme", `"theme": "acme"`} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Errorf("설치 출력에 %q가 없다:\n%s", want, stdout.String())
 		}

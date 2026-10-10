@@ -20,7 +20,7 @@ func TestCheckCommandPassesAndWritesNothing(t *testing.T) {
 		t.Fatalf("%v\nstderr: %s", err, stderr.String())
 	}
 	out := stdout.String()
-	for _, want := range []string{"슬라이드 1장", "진단 없다", "--check-layout"} {
+	for _, want := range []string{"1 slide", "no diagnostics", "--check-layout"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("출력에 %q가 없다:\n%s", want, out)
 		}
@@ -48,7 +48,7 @@ func TestCheckCommandWarningsExitZeroAndStrictFails(t *testing.T) {
 	if !strings.Contains(stderr.String(), "warning: variant") {
 		t.Errorf("경고가 stderr에 없다:\n%s", stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "경고 1건") {
+	if !strings.Contains(stdout.String(), "1 warning") {
 		t.Errorf("요약에 경고 수가 없다:\n%s", stdout.String())
 	}
 
@@ -58,7 +58,7 @@ func TestCheckCommandWarningsExitZeroAndStrictFails(t *testing.T) {
 	if err == nil {
 		t.Fatal("--strict가 경고를 통과시켰다")
 	}
-	if !strings.Contains(err.Error(), "검사 실패: 에러 1건") {
+	if !strings.Contains(err.Error(), "check failed: 1 error") {
 		t.Errorf("에러 요약 = %v", err)
 	}
 	// 진단은 stderr에 **한 번** 나오고 요약이 그것을 다시 찍지 않는다 (build와 같은 규칙).
@@ -78,10 +78,10 @@ func TestCheckCommandReportsDiagnosticErrors(t *testing.T) {
 	if err == nil {
 		t.Fatal("알 수 없는 role을 통과시켰다")
 	}
-	if !strings.Contains(err.Error(), "검사 실패: 에러 1건") {
+	if !strings.Contains(err.Error(), "check failed: 1 error") {
 		t.Errorf("에러 요약 = %v", err)
 	}
-	if !strings.Contains(stderr.String(), "error: 알 수 없는 role") {
+	if !strings.Contains(stderr.String(), "error: unknown role") {
 		t.Errorf("진단이 stderr에 없다:\n%s", stderr.String())
 	}
 	if stdout.Len() != 0 {
@@ -103,10 +103,10 @@ func TestCheckCommandLayoutWarnings(t *testing.T) {
 	if err := run([]string{"check", "--project", dir, "--check-layout"}, &stdout, &stderr); err != nil {
 		t.Fatalf("배치 경고가 검사를 실패시켰다: %v", err)
 	}
-	if !strings.Contains(stderr.String(), "48px 넘친다") {
+	if !strings.Contains(stderr.String(), "by 48px") {
 		t.Errorf("배치 경고가 없다:\n%s", stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "배치까지 봤다") {
+	if !strings.Contains(stdout.String(), "layout checked") {
 		t.Errorf("무엇을 봤는지 말하지 않는다:\n%s", stdout.String())
 	}
 	if _, err := os.Stat(filepath.Join(dir, "dist")); !os.IsNotExist(err) {

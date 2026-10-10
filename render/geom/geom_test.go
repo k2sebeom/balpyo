@@ -238,9 +238,9 @@ func TestNewGeometryRejectsMismatch(t *testing.T) {
 		wantMsg string
 	}{
 		{"픽셀 비율이 1이 아니다", func(m *measurement) { m.DPR = 2 }, "devicePixelRatio"},
-		{"슬라이드 수가 다르다", func(m *measurement) { m.Slides = m.Slides[:1] }, "슬라이드 수"},
+		{"슬라이드 수가 다르다", func(m *measurement) { m.Slides = m.Slides[:1] }, "slides in the HTML"},
 		{"슬라이드 순서가 어긋났다", func(m *measurement) { m.Slides[1].Index = 7 }, "data-slide-index"},
-		{"페이지가 스케일되어 있다", func(m *measurement) { m.Slides[0].W = 640; m.Slides[0].H = 360 }, "스케일"},
+		{"페이지가 스케일되어 있다", func(m *measurement) { m.Slides[0].W = 640; m.Slides[0].H = 360 }, "scaled"},
 		{"요소가 덜 나왔다", func(m *measurement) { m.Slides[0].Boxes = m.Slides[0].Boxes[:1] }, "s0.1"},
 		{
 			name: "요소가 더 나왔다",
@@ -251,8 +251,8 @@ func TestNewGeometryRejectsMismatch(t *testing.T) {
 		},
 		{"식별자가 다르다", func(m *measurement) { m.Slides[0].Boxes[1].ID = "s0.9" }, "s0.9"},
 		{"태그 이름이 다르다", func(m *measurement) { m.Slides[0].Boxes[0].El = "shape" }, "shape"},
-		{"rect가 수치가 아니다", func(m *measurement) { m.Slides[0].Boxes[0].Rect.W = math.NaN() }, "유효하지 않다"},
-		{"줄 박스가 무한대다", func(m *measurement) { m.Slides[0].Boxes[0].Lines[0].H = math.Inf(1) }, "유효하지 않다"},
+		{"rect가 수치가 아니다", func(m *measurement) { m.Slides[0].Boxes[0].Rect.W = math.NaN() }, "invalid"},
+		{"줄 박스가 무한대다", func(m *measurement) { m.Slides[0].Boxes[0].Lines[0].H = math.Inf(1) }, "invalid"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

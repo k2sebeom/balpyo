@@ -24,17 +24,17 @@ func TestCrossPartsRejectsMutations(t *testing.T) {
 	for _, m := range []struct {
 		name, part, pattern, replace, want string
 	}{
-		{"도형 id 중복", slide, `<p:cNvPr id="3"`, `<p:cNvPr id="2"`, "cNvPr@id=2가 두 번"},
+		{"도형 id 중복", slide, `<p:cNvPr id="3"`, `<p:cNvPr id="2"`, "cNvPr@id=2 twice"},
 		{"sldId 범위", presPart, `<p:sldId id="256"`, `<p:sldId id="255"`, "sldId@id=255"},
-		{"관계 종류", presPart, `(<p:sldId [^>]*r:id=")rId2"`, `${1}rId3"`, "theme 관계 rId3"},
-		{"없는 관계", presPart, `(<p:sldId [^>]*r:id=")rId2"`, `${1}rId9"`, "없는 관계 rId9"},
+		{"관계 종류", presPart, `(<p:sldId [^>]*r:id=")rId2"`, `${1}rId3"`, "theme relationship rId3"},
+		{"없는 관계", presPart, `(<p:sldId [^>]*r:id=")rId2"`, `${1}rId9"`, "missing relationship rId9"},
 		{"모르는 참조", slide, `<p:cNvPr id="3"`, `<p:cNvPr r:id="rId1" id="3"`, "relRefTypes"},
-		{"레이아웃 없음", slideRels, strings.Replace(relPattern, "%s", "slideLayout", 1), "", "slideLayout 관계가 0개"},
+		{"레이아웃 없음", slideRels, strings.Replace(relPattern, "%s", "slideLayout", 1), "", "0 slideLayout relationships"},
 		{"플레이스홀더", slide, `<p:ph type="title"/>`, `<p:ph type="body" idx="9"/>`, "idx=9(body)"},
 		{"마스터의 레이아웃 목록", master, `<p:sldLayoutId [^>]*/>`, "", "sldLayoutIdLst"},
-		{"마스터 id 공간", master, `(<p:sldLayoutId id=")\d+`, "${1}2147483648", "한 id 공간"},
-		{"마스터끼리 테마 공유", nmRels, `theme2\.xml`, "theme1.xml", "테마 ppt/theme/theme1.xml를 같이 쓴다"},
-		{"노트의 슬라이드", notesRels, strings.Replace(relPattern, "%s", "slide", 1), "", "slide 관계가 0개"},
+		{"마스터 id 공간", master, `(<p:sldLayoutId id=")\d+`, "${1}2147483648", "one id space"},
+		{"마스터끼리 테마 공유", nmRels, `theme2\.xml`, "theme1.xml", "share theme ppt/theme/theme1.xml"},
+		{"노트의 슬라이드", notesRels, strings.Replace(relPattern, "%s", "slide", 1), "", "0 slide relationships"},
 	} {
 		t.Run(m.name, func(t *testing.T) {
 			mutated := maps.Clone(parts)

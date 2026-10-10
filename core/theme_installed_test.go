@@ -57,7 +57,7 @@ func TestInstalledLocalClashOnlyWhenRequested(t *testing.T) {
 		t.Fatalf("겹친 이름을 요청하지 않았는데 진단이 났다: %v", diags)
 	}
 	_, diags := themeDeckIn(t, fsys, "corp", themeProbe)
-	if len(diags) != 1 || !strings.Contains(diags[0].Message, "설치한 테마에도 있다") ||
+	if len(diags) != 1 || !strings.Contains(diags[0].Message, "and among installed themes") ||
 		!strings.Contains(diags[0].Message, "balpyo theme remove corp") {
 		t.Fatalf("겹친 이름을 요청하면 고치는 길을 적은 에러 하나여야 한다: %v", diags)
 	}
@@ -71,7 +71,7 @@ func TestInstalledClashThroughExtends(t *testing.T) {
 	project := mergeFS(standaloneLocal("corp"),
 		localTheme("corp-dark", `{"name":"corp-dark","extends":"corp"}`, "", "", nil))
 	_, diags := themeDeckIn(t, WithInstalledThemes(project, standaloneLocal("corp")), "corp-dark", themeProbe)
-	if len(diags) != 1 || !strings.Contains(diags[0].Message, "설치한 테마에도 있다") {
+	if len(diags) != 1 || !strings.Contains(diags[0].Message, "and among installed themes") {
 		t.Fatalf("extends가 겹친 이름에 닿으면 에러여야 한다: %v", diags)
 	}
 }
@@ -82,7 +82,7 @@ func TestInstalledBuiltinClashWhenRequested(t *testing.T) {
 		t.Fatalf("겹치지 않은 이름을 요청했는데 진단이 났다: %v", diags)
 	}
 	_, diags := themeDeckIn(t, fsys, "ink", themeProbe)
-	if len(diags) != 1 || !strings.Contains(diags[0].Message, "내장 테마와 이름이 같다") {
+	if len(diags) != 1 || !strings.Contains(diags[0].Message, "has the same name as a built-in theme") {
 		t.Fatalf("내장 이름의 설치한 테마를 요청하면 에러여야 한다: %v", diags)
 	}
 }
@@ -106,7 +106,7 @@ func TestUnknownThemeSaysNotInstalled(t *testing.T) {
 	if err == nil {
 		t.Fatal("없는 이름을 받았다")
 	}
-	for _, want := range []string{`알 수 없는 테마 "acmee"`, "설치한 테마도 아니다", "acme, editorial, ink, minimal"} {
+	for _, want := range []string{`unknown theme "acmee"`, "or an installed theme", "acme, editorial, ink, minimal"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("에러에 %q가 없다: %v", want, err)
 		}

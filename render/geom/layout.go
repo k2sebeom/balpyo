@@ -108,7 +108,7 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 		switch dir, over := escape(box.Rect, stage); {
 		case over > overflowTolerance:
 			d := soml.Warningf(ref.Source, ref.Span,
-				"<%s>가 스테이지를 %s %s 벗어난다 — 스테이지 밖은 화면에서 잘리고 PPTX에서는 슬라이드 밖에 놓인다",
+				"<%s> leaves the stage %s by %s — off-stage content is clipped on screen and placed off the slide in PPTX",
 				ref.El, dir, px(over))
 			warning = &d
 		case ref.Free:
@@ -125,7 +125,7 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 		case hasParent:
 			if dir, over := escape(box.Rect, g.Boxes[parent].Rect); over > overflowTolerance {
 				d := soml.Warningf(ref.Source, ref.Span,
-					"<%s>가 부모 <%s>를 %s %s 넘친다 — 부모 박스 크기가 내용을 담기에 모자란다",
+					"<%s> overflows its parent <%s> %s by %s — the parent box is too small for its content",
 					ref.El, refs[parent].El, dir, px(over))
 				warning = &d
 			}
@@ -136,7 +136,7 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 			content := g.ContentBox(ref.Slide)
 			if dir, over := escape(box.Rect, content); over > overflowTolerance {
 				d := soml.Warningf(ref.Source, ref.Span,
-					"<%s>가 콘텐츠 박스를 %s %s 넘친다 — 이 레이아웃의 콘텐츠 박스는 %s다 (여백은 테마가 정한다)",
+					"<%s> overflows the content box %s by %s — this layout's content box is %s (the theme sets the margins)",
 					ref.El, dir, px(over), content)
 				warning = &d
 			}
@@ -153,7 +153,7 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 
 		if dir, over := textEscape(box); over > overflowTolerance {
 			diags = append(diags, soml.Warningf(ref.Source, ref.Span,
-				"<%s>의 글줄이 박스를 %s %s 넘친다 — 줄바꿈 없이 흐르는 글자다 (긴 단어·URL·`pre`)",
+				"<%s> text overflows its box %s by %s — text that cannot wrap (a long word, URL or `pre`)",
 				ref.El, dir, px(over)))
 		}
 
@@ -166,7 +166,7 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 				}
 				if w, h, ok := overlap(g.Boxes[j].Rect, box.Rect); ok {
 					diags = append(diags, soml.Warningf(ref.Source, ref.Span,
-						"<%s>가 형제 <%s>와 %s×%s 겹친다 — 겹침이 의도라면 <%s>이나 x·y로 쓴다",
+						"<%s> overlaps its sibling <%s> by %s×%s — if the overlap is intended, use <%s> or x/y",
 						ref.El, other.El, px(w), px(h), soml.StackElement))
 				}
 			}
@@ -222,9 +222,9 @@ func (f *escapeFold) suffix() string {
 	}
 	parts := make([]string, 0, len(f.tags))
 	for _, tag := range f.tags {
-		parts = append(parts, fmt.Sprintf("<%s> %d개", tag, f.counts[tag]))
+		parts = append(parts, fmt.Sprintf("%d <%s>", f.counts[tag], tag))
 	}
-	return " (안의 " + strings.Join(parts, " · ") + "도 함께 벗어난다)"
+	return " (" + strings.Join(parts, " · ") + " inside escape too)"
 }
 
 // diagnoseChrome은 덱 크롬의 배치 사고를 찾는다. 질문은 둘뿐이다:
@@ -257,13 +257,13 @@ func diagnoseChrome(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 			}
 			if dir, over := escape(rect, stage); over > overflowTolerance {
 				diags = append(diags, soml.Warningf(slide.Source, soml.Span{},
-					"덱 크롬(%s)이 슬라이드를 %s %s 벗어난다 — 글자가 길어 바닥 띠를 넘쳤다 (%s의 footer를 줄이거나 테마가 역할을 작은 것으로 바꾼다)",
+					"deck chrome (%s) leaves the slide %s by %s — the text is too long for the bottom band (shorten the footer in %s, or have the theme use a smaller role)",
 					item.Kind, dir, px(over), configFileName))
 			}
 			for _, other := range seen {
 				if w, h, ok := overlap(other.Rect, rect); ok {
 					diags = append(diags, soml.Warningf(slide.Source, soml.Span{},
-						"덱 크롬(%s)이 크롬(%s)과 %s×%s 겹친다 — 둘 다 읽히지 않는다 (%s의 footer를 줄인다)",
+						"deck chrome (%s) overlaps chrome (%s) by %s×%s — neither is readable (shorten the footer in %s)",
 						item.Kind, other.Kind, px(w), px(h), configFileName))
 				}
 			}
@@ -296,10 +296,10 @@ func escape(inner, outer Rect) (string, float64) {
 		dir  string
 		over float64
 	}{
-		{"아래로", inner.Bottom() - outer.Bottom()},
-		{"오른쪽으로", inner.Right() - outer.Right()},
-		{"위로", outer.Y - inner.Y},
-		{"왼쪽으로", outer.X - inner.X},
+		{"at the bottom", inner.Bottom() - outer.Bottom()},
+		{"on the right", inner.Right() - outer.Right()},
+		{"at the top", outer.Y - inner.Y},
+		{"on the left", outer.X - inner.X},
 	}
 	dir, max := "", 0.0
 	for _, side := range sides {
@@ -321,10 +321,10 @@ func textEscape(b Box) (string, float64) {
 	dir, max := "", 0.0
 	for _, line := range b.Lines {
 		if over := line.Right() - b.Rect.Right(); over > max {
-			dir, max = "오른쪽으로", over
+			dir, max = "on the right", over
 		}
 		if over := b.Rect.X - line.X; over > max {
-			dir, max = "왼쪽으로", over
+			dir, max = "on the left", over
 		}
 	}
 	return dir, max

@@ -27,13 +27,13 @@ func runInit(args []string, stdout, stderr io.Writer) error {
 
 	fs := flag.NewFlagSet("init", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	projectDir := fs.String("project", "", "만들 프로젝트 루트 (위치 인자와 같은 뜻)")
-	title := fs.String("title", "", "덱 제목 (기본: 디렉토리 이름)")
-	author := fs.String("author", "", "발표자")
-	theme := fs.String("theme", "", "테마 (기본 "+core.DefaultConfig().Theme+
-		", 쓸 수 있는 테마: "+strings.Join(core.BuiltinThemes(), ", ")+")")
-	aspect := fs.String("aspect", "", "종횡비 (기본 "+string(soml.DefaultAspect)+")")
-	lang := fs.String("lang", "", "덱 언어 (기본 "+scaffold.DefaultLang+")")
+	projectDir := fs.String("project", "", "root of the project to create (same as the positional argument)")
+	title := fs.String("title", "", "deck title (default: directory name)")
+	author := fs.String("author", "", "presenter")
+	theme := fs.String("theme", "", "theme (default "+core.DefaultConfig().Theme+
+		", available themes: "+strings.Join(core.BuiltinThemes(), ", ")+")")
+	aspect := fs.String("aspect", "", "aspect ratio (default "+string(soml.DefaultAspect)+")")
+	lang := fs.String("lang", "", "deck language (default "+scaffold.DefaultLang+")")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -45,9 +45,9 @@ func runInit(args []string, stdout, stderr io.Writer) error {
 	dir := *projectDir
 	switch {
 	case len(positional) > 1:
-		return fmt.Errorf("init은 디렉토리 하나만 받는다: %v", positional)
+		return fmt.Errorf("init takes a single directory: %v", positional)
 	case len(positional) == 1 && dir != "":
-		return fmt.Errorf("디렉토리를 두 번 줬다: %q와 --project %q", positional[0], dir)
+		return fmt.Errorf("directory given twice: %q and --project %q", positional[0], dir)
 	case len(positional) == 1:
 		dir = positional[0]
 	case dir == "":
@@ -66,16 +66,16 @@ func runInit(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 
-	fmt.Fprintf(stdout, "프로젝트를 만들었다: %s\n", result.Dir)
+	fmt.Fprintf(stdout, "created project: %s\n", result.Dir)
 	for _, name := range result.Written {
 		fmt.Fprintf(stdout, "  %s\n", name)
 	}
 	// 다음 명령을 **그대로 복사할 수 있게** 찍는다. 첫 덱까지의 거리가 채택을 정하므로, 여기서
 	// 문서를 찾아가게 만들지 않는다.
-	fmt.Fprintln(stdout, "\n다음:")
+	fmt.Fprintln(stdout, "\nNext:")
 	if dir == "." {
-		fmt.Fprintln(stdout, "  balpyo watch                     고치면 브라우저 탭이 새로고침된다")
-		fmt.Fprintln(stdout, "  balpyo build --target html,pptx  index.html과 .pptx를 낸다")
+		fmt.Fprintln(stdout, "  balpyo watch                     reloads the browser tab on every edit")
+		fmt.Fprintln(stdout, "  balpyo build --target html,pptx  writes index.html and a .pptx")
 		return nil
 	}
 	fmt.Fprintf(stdout, "  balpyo watch --project %s\n", dir)

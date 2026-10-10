@@ -114,7 +114,7 @@ func (r *resolver) codeLexer(attr soml.Attr) (string, bool) {
 		}
 	}
 	langs := strings.Join(codeLangNames(), ", ")
-	r.errorf(attr.ValueSpan, "알 수 없는 %s %q%s (쓸 수 있는 값: %s)",
+	r.errorf(attr.ValueSpan, "unknown %s %q%s (available values: %s)",
 		soml.LangAttr, attr.Value, didYouMean(attr.Value, langs), langs)
 	return "", false
 }
@@ -195,7 +195,7 @@ func (r *resolver) compileCodeRuns(elem *soml.Element, attr soml.Attr, lexerName
 	lexer := lexers.Get(lexerName)
 	if lexer == nil {
 		// 내장 렉서가 사라졌다 — 어휘 표와 Chroma 버전이 갈라진 것이므로 조용히 넘기지 않는다.
-		r.errorf(attr.ValueSpan, "%s=%q의 토크나이저를 찾을 수 없다", soml.LangAttr, attr.Value)
+		r.errorf(attr.ValueSpan, "no tokenizer found for %s=%q", soml.LangAttr, attr.Value)
 		return
 	}
 	// EnsureLF를 끈다: 켜면 CRLF가 LF로 바뀌어 **토큰 값을 이어 붙인 것이 원문과 달라진다**.
@@ -203,7 +203,7 @@ func (r *resolver) compileCodeRuns(elem *soml.Element, attr soml.Attr, lexerName
 	// PPTX의 a:br), 토크나이저가 글자를 바꾸면 그 둘이 서로를 못 믿게 된다.
 	iter, err := lexer.Tokenise(&chroma.TokeniseOptions{State: "root"}, source)
 	if err != nil {
-		r.errorf(attr.ValueSpan, "%s=%q 토큰화 실패: %v", soml.LangAttr, attr.Value, err)
+		r.errorf(attr.ValueSpan, "tokenizing %s=%q failed: %v", soml.LangAttr, attr.Value, err)
 		return
 	}
 	runs := coalesceRuns(iter.Tokens(), r.comps.code.colors)
@@ -215,7 +215,7 @@ func (r *resolver) compileCodeRuns(elem *soml.Element, attr soml.Attr, lexerName
 		joined.WriteString(run.text)
 	}
 	if joined.String() != source {
-		r.errorf(attr.ValueSpan, "%s=%q 토큰화가 원문을 보존하지 못했다 — 하이라이팅 없이 렌더한다",
+		r.errorf(attr.ValueSpan, "tokenizing %s=%q did not preserve the source text — rendering without highlighting",
 			soml.LangAttr, attr.Value)
 		return
 	}
@@ -332,24 +332,24 @@ const defaultCodeTabSize = 2
 func codeComponentsFromFile(file codeComponentsFile, theme soml.Theme) (codeComponents, error) {
 	code := codeComponents{tabSize: file.TabSize, colors: map[codeClass]soml.ColorToken{}}
 	if file.TabSize < 1 {
-		return code, fmt.Errorf("tabSize는 1 이상이어야 한다 (탭은 값 층이 칼럼을 세어 편다)")
+		return code, fmt.Errorf("tabSize must be at least 1 (the value layer expands tabs by counting columns)")
 	}
 	for _, token := range file.Tokens {
 		class := codeClass(token.Class)
 		if !knownCodeClass(class) {
-			return code, fmt.Errorf("알 수 없는 코드 토큰 종류 %q (쓸 수 있는 종류: %s)",
+			return code, fmt.Errorf("unknown code token class %q (available types: %s)",
 				token.Class, strings.Join(codeClassNames(), ", "))
 		}
 		if _, dup := code.colors[class]; dup {
-			return code, fmt.Errorf("코드 토큰 종류 %q가 두 번 적혀 있다", token.Class)
+			return code, fmt.Errorf("code token class %q is listed twice", token.Class)
 		}
 		if !isColorTokenName(token.Color) {
-			return code, fmt.Errorf("코드 토큰 %q의 색은 색 토큰 이름이어야 한다 (받은 값: %q) — 리터럴 색은 참조를 끊는다",
+			return code, fmt.Errorf("the color of code token %q must be a color token name (got %q) — a literal color breaks the reference",
 				token.Class, token.Color)
 		}
 		tok, known := theme.Color(token.Color)
 		if !known {
-			return code, fmt.Errorf("코드 토큰 %q의 색 토큰 %q를 테마에서 찾을 수 없다 (쓸 수 있는 이름: %s)",
+			return code, fmt.Errorf("code token %q: color token %q is not in the theme (available names: %s)",
 				token.Class, token.Color, strings.Join(theme.ColorNames(), ", "))
 		}
 		code.colors[class] = tok

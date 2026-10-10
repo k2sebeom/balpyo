@@ -64,19 +64,19 @@ func (c Client) fetch(ctx context.Context, src Source, dest string) (snapshot, e
 	}
 	resp, err := httpc.Do(req)
 	if err != nil {
-		return snapshot{}, fmt.Errorf("%s를 받을 수 없다: %w", src.RepoID(), err)
+		return snapshot{}, fmt.Errorf("cannot download %s: %w", src.RepoID(), err)
 	}
 	defer resp.Body.Close()
 	switch {
 	case resp.StatusCode == http.StatusNotFound:
-		return snapshot{}, fmt.Errorf("GitHub에서 %s@%s를 찾을 수 없다 — 저장소 이름과 ref를 확인한다 (비공개 저장소는 받지 않는다)",
+		return snapshot{}, fmt.Errorf("%s@%s not found on GitHub — check the repository name and ref (private repositories are not supported)",
 			src.RepoID(), ref)
 	case resp.StatusCode != http.StatusOK:
-		return snapshot{}, fmt.Errorf("%s를 받을 수 없다: HTTP %s", src.RepoID(), resp.Status)
+		return snapshot{}, fmt.Errorf("cannot download %s: HTTP %s", src.RepoID(), resp.Status)
 	}
 	snap, err := extract(resp.Body, dest)
 	if err != nil {
-		return snapshot{}, fmt.Errorf("%s의 압축을 풀 수 없다: %w", src.RepoID(), err)
+		return snapshot{}, fmt.Errorf("cannot extract %s: %w", src.RepoID(), err)
 	}
 	return snap, nil
 }
@@ -120,7 +120,7 @@ func extract(r io.Reader, dest string) (snapshot, error) {
 		}
 		rel = path.Clean(rel)
 		if !fs.ValidPath(rel) {
-			return snap, fmt.Errorf("압축 안의 경로 %q가 저장소 밖을 가리킨다", hdr.Name)
+			return snap, fmt.Errorf("archive path %q points outside the repository", hdr.Name)
 		}
 		target := filepath.Join(dest, filepath.FromSlash(rel))
 		switch hdr.Typeflag {
@@ -132,7 +132,7 @@ func extract(r io.Reader, dest string) (snapshot, error) {
 			files++
 			total += hdr.Size
 			if files > maxArchiveFiles || total > maxArchiveBytes {
-				return snap, fmt.Errorf("저장소가 너무 크다 (파일 %d개 · %d바이트를 넘는다)", maxArchiveFiles, maxArchiveBytes)
+				return snap, fmt.Errorf("repository is too large (over %d files · %d bytes)", maxArchiveFiles, maxArchiveBytes)
 			}
 			if err := writeFile(target, tr, hdr.Size); err != nil {
 				return snap, err

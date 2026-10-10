@@ -222,17 +222,17 @@ func TestResolveTableGridIsRectangular(t *testing.T) {
 		name, inner string
 		want        []string
 	}{
-		{"colspan 0", `<tr><td colspan="0">x</td></tr>`, []string{"1 이상 정수"}},
-		{"rowspan 음수", `<tr><td rowspan="-1">x</td></tr>`, []string{"1 이상 정수"}},
-		{"span 에러면 격자 진단 없음", `<tr><td colspan="0">a</td></tr><tr><td>b</td><td>c</td></tr>`, []string{"1 이상 정수"}},
-		{"행이 좁다", "<tr><td>a</td><td>b</td></tr><tr><td>c</td></tr>", []string{"1칸", "열은 2칸"}},
-		{"행이 넓다", "<tr><td>a</td></tr><tr><td>b</td><td>c</td></tr>", []string{"2칸", "열은 1칸"}},
-		{"rowspan이 마지막 행을 넘는다", `<tr><td rowspan="2">a</td></tr>`, []string{"rowspan 2", "마지막 행"}},
+		{"colspan 0", `<tr><td colspan="0">x</td></tr>`, []string{"integer of at least 1"}},
+		{"rowspan 음수", `<tr><td rowspan="-1">x</td></tr>`, []string{"integer of at least 1"}},
+		{"span 에러면 격자 진단 없음", `<tr><td colspan="0">a</td></tr><tr><td>b</td><td>c</td></tr>`, []string{"integer of at least 1"}},
+		{"행이 좁다", "<tr><td>a</td><td>b</td></tr><tr><td>c</td></tr>", []string{"has 1 cell(s)", "has 2 column(s)"}},
+		{"행이 넓다", "<tr><td>a</td></tr><tr><td>b</td><td>c</td></tr>", []string{"has 2 cell(s)", "has 1 column(s)"}},
+		{"rowspan이 마지막 행을 넘는다", `<tr><td rowspan="2">a</td></tr>`, []string{"rowspan 2", "last row"}},
 		// 칸 수(1+2+1=4)는 맞고 자리만 겹친다.
 		{"병합이 겹친다", "<tr><td>a</td><td>b</td><td>c</td><td>d</td></tr>" +
 			`<tr><td>e</td><td rowspan="2">f</td><td>g</td><td>h</td></tr>` +
-			`<tr><td colspan="2">i</td><td>j</td></tr>`, []string{"겹친다", "2번째 열"}},
-		{"첫 행이 비었다", "<tr></tr><tr><td>a</td></tr>", []string{"첫 행", "열 수"}},
+			`<tr><td colspan="2">i</td><td>j</td></tr>`, []string{"overlap", "column 2"}},
+		{"첫 행이 비었다", "<tr></tr><tr><td>a</td></tr>", []string{"first row", "column count"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, diags := resolveSlide(t, tableSlide("", tc.inner))

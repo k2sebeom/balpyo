@@ -24,7 +24,7 @@ func TestRenderRequiresGeometryForContent(t *testing.T) {
 	if err == nil {
 		t.Fatal("지오메트리 없이 렌더되었다")
 	}
-	if !strings.Contains(err.Error(), "지오메트리") {
+	if !strings.Contains(err.Error(), "geometry") {
 		t.Errorf("에러가 지오메트리를 가리키지 않는다: %v", err)
 	}
 }

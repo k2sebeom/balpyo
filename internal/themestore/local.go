@@ -51,7 +51,7 @@ func copyDir(src Source, dest, home string) (snapshot, error) {
 		files++
 		total += info.Size()
 		if files > maxArchiveFiles || total > maxArchiveBytes {
-			return fmt.Errorf("디렉토리가 너무 크다 (파일 %d개 · %d바이트를 넘는다) — 테마 디렉토리를 직접 가리킨다",
+			return fmt.Errorf("directory is too large (over %d files · %d bytes) — point directly at the theme directory",
 				maxArchiveFiles, maxArchiveBytes)
 		}
 		f, err := os.Open(p)
@@ -62,7 +62,7 @@ func copyDir(src Source, dest, home string) (snapshot, error) {
 		return writeFile(filepath.Join(dest, rel), f, info.Size())
 	})
 	if err != nil {
-		return snapshot{}, fmt.Errorf("%s를 복사할 수 없다: %w", src.Dir, err)
+		return snapshot{}, fmt.Errorf("cannot copy %s: %w", src.Dir, err)
 	}
 	return snap, nil
 }

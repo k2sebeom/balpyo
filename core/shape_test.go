@@ -192,76 +192,76 @@ func TestResolveShapeDiagnostics(t *testing.T) {
 		dropped                       func(*soml.ShapeStyle) bool
 	}{
 		// type은 생략할 수 없다 — 조용히 사각형이 되면 저자의 오타와 구별되지 않는다.
-		{name: "type 없음", attrs: `w="120"`, contains: []string{"type이 필요하다", "rect", "cloud"}, dropped: noType},
+		{name: "type 없음", attrs: `w="120"`, contains: []string{"needs a type", "rect", "cloud"}, dropped: noType},
 		{name: "type 어휘 밖", attrs: `type="elipse"`, needle: "elipse",
-			contains: []string{"알 수 없는 도형 type", "ellipse"}, dropped: noType},
-		{name: "type 값 없음", attrs: `type`, needle: "type", contains: []string{"type 속성에는 값이 필요하다"}, dropped: noType},
+			contains: []string{"unknown shape type", "ellipse"}, dropped: noType},
+		{name: "type 값 없음", attrs: `type`, needle: "type", contains: []string{"the type attribute needs a value"}, dropped: noType},
 		{name: "type 빈 값", attrs: `type=""`, col: shapeCol(`type=""`, `""`) + 1,
-			contains: []string{"type 속성이 비어 있다"}, dropped: noType},
+			contains: []string{"the type attribute is empty"}, dropped: noType},
 
 		// 색 문법은 텍스트 color와 같은 코드(colorValue)를 지난다.
 		{name: "fill 모르는 토큰", attrs: `type="rect" fill="brand"`, needle: "brand",
-			contains: []string{"fill의 색 토큰", "테마에 없다", "surface", "#RRGGBB"}},
+			contains: []string{"fill: color token", "is not in the theme", "surface", "#RRGGBB"}},
 		{name: "fill 그라디언트 색 하나", attrs: `type="rect" fill="gradient(accent1)"`, needle: "gradient",
-			contains: []string{"gradient는 색이 둘 이상"}},
+			contains: []string{"gradient needs at least two colors"}},
 		{name: "fill 잘못된 리터럴", attrs: `type="rect" fill="#12345"`, needle: "#12345",
-			contains: []string{"#RRGGBB 또는 #RGB"}},
+			contains: []string{"#RRGGBB or #RGB"}},
 		{name: "border 모르는 토큰", attrs: `type="rect" border="1 solid brand"`, needle: "brand",
-			contains: []string{"border의 색 토큰", "테마에 없다"}},
+			contains: []string{"border: color token", "is not in the theme"}},
 		{name: "border shade 백분율 없음", attrs: `type="rect" border="3 solid shade(accent1, 20)"`, needle: "shade",
-			contains: []string{"shade의 두 번째 인자는 백분율"}},
+			contains: []string{"the second argument of shade is a percentage"}},
 		// 그라디언트는 스타일과 색을 함께 대신하므로 축약이 2조각이다.
 		{name: "border 그라디언트 스타일 끼움", attrs: `type="rect" border="3 dashed gradient(accent1 muted)"`, needle: "3 dashed",
-			contains: []string{"2조각", "스타일과 색을 함께 대신"}},
+			contains: []string{"has 2 parts", "stands in for both style and color"}},
 
 		// border 축약 — 조각 수 진단은 값 전체를, 나머지는 조각을 가리킨다. 틀린 인라인 값 대신
 		// 컴포넌트 기본 테두리가 남는다.
 		{name: "border 조각 부족", attrs: `type="rect" border="solid 3"`, needle: "solid 3",
-			contains: []string{"3조각이다", "2조각", "1 solid muted"}, dropped: keepsBorder},
+			contains: []string{"has 3 parts", "has 2)", "1 solid muted"}, dropped: keepsBorder},
 		{name: "border 조각 초과", attrs: `type="rect" border="1 solid muted inset"`, needle: "1 solid",
-			contains: []string{"3조각이다", "4조각"}, dropped: keepsBorder},
+			contains: []string{"has 3 parts", "has 4)"}, dropped: keepsBorder},
 		{name: "border 굵기 0", attrs: `type="rect" border="0 solid muted"`, needle: "0 solid",
-			contains: []string{"0보다 커야 한다", `border="none"`}, dropped: keepsBorder},
+			contains: []string{"must be greater than 0", `border="none"`}, dropped: keepsBorder},
 		{name: "border 굵기 음수", attrs: `type="rect" border="-1 solid muted"`, needle: "-1",
-			contains: []string{"0보다 커야 한다"}, dropped: keepsBorder},
+			contains: []string{"must be greater than 0"}, dropped: keepsBorder},
 		{name: "border 굵기 단위", attrs: `type="rect" border="1px solid muted"`, needle: "1px",
-			contains: []string{"단위 없는 논리 px 수치", `"px"`}, dropped: keepsBorder},
+			contains: []string{"unitless number in logical px", `"px"`}, dropped: keepsBorder},
 		{name: "border 모르는 스타일", attrs: `type="rect" border="1 dashdot muted"`, needle: "dashdot",
-			contains: []string{"알 수 없는 border 스타일", "solid, dashed, dotted"}, dropped: keepsBorder},
+			contains: []string{"unknown border style", "solid, dashed, dotted"}, dropped: keepsBorder},
 
 		// radius는 형제 type을 본다 — 다른 프리셋엔 반경 조정값이 없어 웹만 둥글어진다. 진단은
 		// 고칠 것이 형제 속성이라 속성 이름을 가리킨다.
 		{name: "radius는 rounded-rect 전용", attrs: `type="rect" radius="lg"`, needle: "radius",
-			contains: []string{"radius는 type=\"rounded-rect\"에서만 쓴다", "지금은 \"rect\""},
+			contains: []string{"radius is only for type=\"rounded-rect\"", "this is \"rect\""},
 			dropped:  func(s *soml.ShapeStyle) bool { return s.Radius == nil }},
 		{name: "radius 모르는 토큰", attrs: `type="rounded-rect" radius="huge"`, needle: "huge",
-			contains: []string{"알 수 없는 radius 토큰", "sm, md, lg", "수치"}},
-		{name: "radius 단위", attrs: `type="rounded-rect" radius="8px"`, needle: "8px", contains: []string{"단위 없는 논리 px 수치"}},
-		{name: "radius 음수", attrs: `type="rounded-rect" radius="-4"`, needle: "-4", contains: []string{"0보다 작을 수 없다"}},
+			contains: []string{"unknown radius token", "sm, md, lg", "a number"}},
+		{name: "radius 단위", attrs: `type="rounded-rect" radius="8px"`, needle: "8px", contains: []string{"unitless number in logical px"}},
+		{name: "radius 음수", attrs: `type="rounded-rect" radius="-4"`, needle: "-4", contains: []string{"cannot be negative"}},
 		{name: "shadow 모르는 토큰", attrs: `type="rect" shadow="hard"`, needle: "hard",
-			contains: []string{"알 수 없는 shadow 토큰", "soft", "수치가 아니라 토큰"}},
+			contains: []string{"unknown shadow token", "soft", "as tokens, not numbers"}},
 		{name: "shadow 수치 축약", attrs: `type="rect" shadow="0 2 8 #000000"`, needle: "0 2 8",
-			contains: []string{"알 수 없는 shadow 토큰"}},
+			contains: []string{"unknown shadow token"}},
 		{name: "opacity 백분율", attrs: `type="rect" opacity="50%"`, needle: "50%",
-			contains: []string{"opacity에 %는 쓸 수 없다", "0~1"}},
-		{name: "opacity 범위 초과", attrs: `type="rect" opacity="1.5"`, needle: "1.5", contains: []string{"0~1 사이다"}},
-		{name: "opacity 음수", attrs: `type="rect" opacity="-0.2"`, needle: "-0.2", contains: []string{"0~1 사이다"}},
-		{name: "opacity 수치 아님", attrs: `type="rect" opacity="반쯤"`, needle: "반쯤", contains: []string{"수치가 아니다"}},
+			contains: []string{"opacity cannot use %", "from 0 to 1"}},
+		{name: "opacity 범위 초과", attrs: `type="rect" opacity="1.5"`, needle: "1.5", contains: []string{"between 0 and 1"}},
+		{name: "opacity 음수", attrs: `type="rect" opacity="-0.2"`, needle: "-0.2", contains: []string{"between 0 and 1"}},
+		{name: "opacity 수치 아님", attrs: `type="rect" opacity="반쯤"`, needle: "반쯤", contains: []string{"is not a number"}},
 		{name: "rotate 단위", attrs: `type="rect" rotate="45deg"`, needle: "45deg",
-			contains: []string{"단위 없는 각도 수치", `"deg"`}},
+			contains: []string{"unitless angle", `"deg"`}},
 		{name: "rotate 수치 아님", attrs: `type="rect" rotate="비스듬히"`, needle: "비스듬히",
-			contains: []string{"수치가 아니다", "음수 가능"}},
-		{name: "flip 어휘 밖", attrs: `type="chevron" flip="both"`, needle: "both", contains: []string{"알 수 없는 flip", "h, v, hv"}},
-		{name: "flip 공백 표기", attrs: `type="chevron" flip="h v"`, needle: "h v", contains: []string{"알 수 없는 flip"}},
+			contains: []string{"is not a number", "negative allowed"}},
+		{name: "flip 어휘 밖", attrs: `type="chevron" flip="both"`, needle: "both", contains: []string{"unknown flip", "h, v, hv"}},
+		{name: "flip 공백 표기", attrs: `type="chevron" flip="h v"`, needle: "h v", contains: []string{"unknown flip"}},
 
 		// 배경 모드(배치 자식) 도형의 rotate는 에러다 — PPTX의 형제 도형은 남의
 		// 회전을 물려받지 않아 두 타깃이 다른 그림이 된다.
 		{name: "배치를 담은 도형의 rotate", attrs: `type="rect" rotate="12"`, children: `<col gap="sm"><p>본문</p></col>`,
-			needle: "rotate", contains: []string{"배치를 담은 도형은 rotate를 쓸 수 없다", "자식은 형제 도형이 되어"},
+			needle: "rotate", contains: []string{"a shape that holds layout cannot use rotate", "the children become sibling shapes"},
 			dropped: func(s *soml.ShapeStyle) bool { return s.Rotate == nil }},
 		// 텍스트 영역이 박스보다 좁은 프리셋은 내용이 컨테이너여도 확정 높이를 요구한다.
 		{name: "inset 프리셋의 컨테이너 내용", attrs: `type="ellipse"`, children: `<col gap="sm"><p>라벨</p></col>`,
-			contains: []string{"h나 ratio가 필요하다", "ellipse"}},
+			contains: []string{"needs h or ratio", "ellipse"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -295,7 +295,7 @@ func TestResolveShapeReportsEveryBadPiece(t *testing.T) {
 	if len(diags) != 2 {
 		t.Fatalf("진단 %d개, want 2개: %v", len(diags), diags)
 	}
-	assertDiag(t, diags[0], 2, shapeCol(`type="rect" border="solid 3 muted"`, "solid"), "굵기가 수치가 아니다", "조각 순서")
+	assertDiag(t, diags[0], 2, shapeCol(`type="rect" border="solid 3 muted"`, "solid"), "border width is not a number", "the part order")
 
 	_, diags = resolveSlide(t, shapeSlide(`type="rect" border="0 dashdot brand"`))
 	if len(diags) != 3 {
@@ -363,7 +363,7 @@ func TestResolveShapeInsetTextNeedsDefiniteHeight(t *testing.T) {
 			if len(diags) != 1 {
 				t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
 			}
-			assertDiag(t, diags[0], 2, 4, "h나 ratio가 필요하다", shapeType, "기준이 순환한다")
+			assertDiag(t, diags[0], 2, 4, "needs h or ratio", shapeType, "would be circular")
 			// 높이가 확정이거나 내용이 없으면 조용하다.
 			for _, quiet := range []string{
 				shapeWith(attrs+` h="120"`, "<p>라벨</p>"),
@@ -420,7 +420,7 @@ func TestResolveShapeBoxSharesContainerSyntax(t *testing.T) {
 func TestResolveShapeDuplicateID(t *testing.T) {
 	src := "<slide id=\"shape\">\n  <shape type=\"rect\" id=\"db\"/>\n  <shape type=\"ellipse\" id=\"db\"/>\n</slide>\n"
 	deck, diag := oneDiag(t, src)
-	assertDiag(t, diag, 3, 29, `id "db"가 이 슬라이드에 이미 있다`, "2:", "참조가 어느 도형인지")
+	assertDiag(t, diag, 3, 29, `id "db" already exists on this slide`, "2:", "which shape it means")
 	shapes := shapeStyles(t, deck)
 	if len(shapes) != 2 || shapes[0].ID != "db" || shapes[1].ID != "" {
 		t.Errorf("id = %q, %q, want \"db\", \"\"", shapes[0].ID, shapes[1].ID)
@@ -448,9 +448,9 @@ func TestResolveTextAnchor(t *testing.T) {
 		value    string
 		contains []string
 	}{
-		{"start", []string{"anchor는 세로 이름을 쓴다", `"top"`}},
-		{"end", []string{"anchor는 세로 이름을 쓴다", `"bottom"`}},
-		{"middle", []string{"알 수 없는 anchor", "top, center, bottom"}},
+		{"start", []string{"anchor takes vertical names", `"top"`}},
+		{"end", []string{"anchor takes vertical names", `"bottom"`}},
+		{"middle", []string{"unknown anchor", "top, center, bottom"}},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
 			deck, diag := oneDiag(t, "<slide id=\"t\">\n  <text anchor=\""+tc.value+"\">내용</text>\n</slide>\n")

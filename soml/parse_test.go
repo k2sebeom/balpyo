@@ -293,183 +293,183 @@ func TestParseErrors(t *testing.T) {
 		{
 			name: "오타 태그",
 			src:  "<slide>\n  <txt>제목</txt>\n</slide>",
-			want: []string{"2:4 알 수 없는 태그 <txt>"},
+			want: []string{"2:4 unknown tag <txt>"},
 		},
 		{
 			// 닫힌 어휘 위반이면 **그 자리에** 쓸 수 있는 태그를 낸다 — 어휘 전체가 아니다.
 			// 가까운 이름이 있으면 후보를 하나 말한다.
 			name: "어휘 밖 태그는 부모의 자식 어휘를 싣는다",
 			src:  "<slide><h6>제목</h6></slide>",
-			want: []string{"1:9 알 수 없는 태그 <h6> — 혹시 <h3>? (<slide> 안에 쓸 수 있는 태그: <text>, <shape>, <image>, <table>, <chart>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
+			want: []string{"1:9 unknown tag <h6> — did you mean <h3>? (tags available inside <slide>: <text>, <shape>, <image>, <table>, <chart>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
 		},
 		{
 			// `<ul>` 안의 오타에 답은 `<li>` 하나다.
 			name: "리스트 안의 어휘 밖 태그",
 			src:  "<slide><ul><il>항목</il></ul></slide>",
-			want: []string{"1:13 알 수 없는 태그 <il> — 혹시 <li>? (<ul> 안에 쓸 수 있는 태그: <li>)"},
+			want: []string{"1:13 unknown tag <il> — did you mean <li>? (tags available inside <ul>: <li>)"},
 		},
 		{
 			// 자리 목록에 후보가 없으면 어휘 전체에서 찾는다 — 리스트 안의 그림은 자리가 틀렸지만
 			// 이름의 답은 있다.
 			name: "실제 오타 img — 자리 밖 후보",
 			src:  `<slide><row><img src="a.png"/></row></slide>`,
-			want: []string{"1:14 알 수 없는 태그 <img> — 혹시 <image>? (<row> 안에 쓸 수 있는 태그: <text>, <shape>, <image>, <table>, <chart>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
+			want: []string{"1:14 unknown tag <img> — did you mean <image>? (tags available inside <row>: <text>, <shape>, <image>, <table>, <chart>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
 		},
 		{
 			// 인라인을 담는 블록 안에서는 인라인 태그가 목록이다. `<bold>`는 오타가 아니라 HTML
 			// 습관이라 편집 거리 대신 별칭이 답한다 (거리로는 `<col>`에 닿는다).
 			name: "문단 안의 어휘 밖 태그",
 			src:  "<slide><p>a <bold>b</bold></p></slide>",
-			want: []string{"1:14 알 수 없는 태그 <bold> — 혹시 <strong>? (<p> 안에 쓸 수 있는 태그: <strong>, <em>, <code>, <a>, <br>, <span>)"},
+			want: []string{"1:14 unknown tag <bold> — did you mean <strong>? (tags available inside <p>: <strong>, <em>, <code>, <a>, <br>, <span>)"},
 		},
 		{
 			// 자리 밖 후보는 거리 1까지만 — 멀리 있는 자리 밖 이름은 엉뚱한 답이 되기 쉽다.
 			name: "자리 밖의 먼 이름은 후보가 아니다",
 			src:  "<slide><ul><imgs/></ul></slide>",
-			want: []string{"1:13 알 수 없는 태그 <imgs> (<ul> 안에 쓸 수 있는 태그: <li>)"},
+			want: []string{"1:13 unknown tag <imgs> (tags available inside <ul>: <li>)"},
 		},
 		{
 			name: "루트의 어휘 밖 태그",
 			src:  "<slid></slid>",
-			want: []string{"1:2 알 수 없는 태그 <slid> — 혹시 <slide>? (루트에 쓸 수 있는 태그: <slide>)"},
+			want: []string{"1:2 unknown tag <slid> — did you mean <slide>? (tags available at the root: <slide>)"},
 		},
 		{
 			name: "문자 데이터만 담는 부모",
 			src:  "<slide><note>a <b>b</b></note></slide>",
-			want: []string{"1:17 알 수 없는 태그 <b> (<note> 안에는 문자 데이터만 올 수 있다)"},
+			want: []string{"1:17 unknown tag <b> (only character data is allowed inside <note>)"},
 		},
 		{
 			// 속성 이름의 오타도 후보를 얻는다 — 목록은 그 태그의 속성이다.
 			name: "속성 이름의 오타",
 			src:  `<slide layot="title"></slide>`,
-			want: []string{"1:8 알 수 없는 속성 layot — 혹시 layout? (쓸 수 있는 속성: layout, id, skip, justify)"},
+			want: []string{"1:8 unknown attribute layot on <slide> — did you mean layout? (available attributes: layout, id, skip, justify)"},
 		},
 		{
 			name: "알 수 없는 속성",
 			src:  `<slide reveal="fade"></slide>`,
-			want: []string{"1:8 알 수 없는 속성 reveal (쓸 수 있는 속성: layout, id, skip, justify)"},
+			want: []string{"1:8 unknown attribute reveal on <slide> (available attributes: layout, id, skip, justify)"},
 		},
 		{
 			name: "<note>에는 속성이 없다",
 			src:  `<slide><note role="body">a</note></slide>`,
-			want: []string{"1:14 <note>에는 속성을 쓸 수 없다"},
+			want: []string{"1:14 <note> takes no attributes"},
 		},
 		{
 			name: "루트가 <slide>가 아니다",
 			src:  "<text>제목</text>",
-			want: []string{"1:2 루트 요소는 <slide>여야 한다"},
+			want: []string{"1:2 the root element must be <slide>"},
 		},
 		{
 			name: "루트 요소가 없다",
 			src:  "<!-- 빈 파일 -->\n",
-			want: []string{"1:1 루트 요소 <slide>가 없다"},
+			want: []string{"1:1 missing root element <slide>"},
 		},
 		{
 			name: "루트 요소가 둘",
 			src:  "<slide></slide>\n<slide></slide>",
-			want: []string{"2:2 루트 요소 <slide>는 파일에 하나여야 한다"},
+			want: []string{"2:2 a file must have exactly one root element <slide>"},
 		},
 		{
 			name: "닫히지 않은 태그",
 			src:  "<slide>\n  <text>제목\n</slide>",
-			want: []string{"2:4 <text> 태그가 </slide>보다 먼저 닫혀야 한다"},
+			want: []string{"2:4 tag <text> must be closed before </slide>"},
 		},
 		{
 			name: "파일 끝까지 닫히지 않았다",
 			src:  "<slide>\n  <text>제목</text>\n",
-			want: []string{"1:2 <slide> 태그가 닫히지 않았다"},
+			want: []string{"1:2 tag <slide> is not closed"},
 		},
 		{
 			name: "짝이 맞지 않는 닫는 태그",
 			src:  "<slide></text></slide>",
-			want: []string{"1:8 </text>와 짝이 맞는 여는 태그가 없다"},
+			want: []string{"1:8 no matching opening tag for </text>"},
 		},
 		{
 			name: "중복 <note>",
 			src:  "<slide>\n  <note>첫</note>\n  <note>둘</note>\n</slide>",
-			want: []string{"3:4 <note>는 슬라이드당 하나만"},
+			want: []string{"3:4 only one <note> is allowed per slide"},
 		},
 		{
 			name: "루트 레벨 문자 데이터",
 			src:  "안녕\n<slide></slide>",
-			want: []string{"1:1 요소 밖에 문자 데이터가 있다"},
+			want: []string{"1:1 character data outside any element"},
 		},
 		{
 			name: "<slide> 안의 문자 데이터",
 			src:  "<slide>\n  제목\n</slide>",
-			want: []string{"2:3 <slide> 안에 문자 데이터를 직접 쓸 수 없다"},
+			want: []string{"2:3 character data cannot appear directly inside <slide>"},
 		},
 		{
 			name: "인용 부호 미닫힘",
 			src:  "<slide id=\"a>\n</slide>",
 			want: []string{
-				"1:2 <slide> 태그가 `>`로 닫히지 않았다",
-				"1:11 속성 id의 값에 닫는 인용 부호가 없다",
+				"1:2 tag <slide> is not closed with `>`",
+				"1:11 value of attribute id has no closing quote",
 			},
 		},
 		{
 			name: "인용 부호 없는 값",
 			src:  `<slide id=a></slide>`,
-			want: []string{`1:11 속성 값은 인용 부호로 감싼다`},
+			want: []string{`1:11 attribute values must be quoted`},
 		},
 		{
 			name: "값이 없다",
 			src:  `<slide id=></slide>`,
-			want: []string{"1:8 속성 id에 `=`만 있고 값이 없다"},
+			want: []string{"1:8 attribute id has `=` but no value"},
 		},
-		{name: "값 없는 id", src: `<slide id></slide>`, want: []string{"1:8 id 속성에는 값이 필요하다"}},
-		{name: "id가 비었다", src: `<slide id=""></slide>`, want: []string{"1:12 id 속성이 비어 있다"}},
-		{name: "skip 값이 어휘 밖", src: `<slide skip="maybe"></slide>`, want: []string{"1:14 skip 값은 true 또는 false다"}},
-		{name: "값 없는 layout", src: `<slide layout></slide>`, want: []string{"1:8 layout 속성에는 값이 필요하다"}},
-		{name: "layout이 비었다", src: `<slide layout=""></slide>`, want: []string{"1:16 layout 속성이 비어 있다"}},
-		{name: "값 없는 justify", src: `<slide justify></slide>`, want: []string{"1:8 justify 속성에는 값이 필요하다"}},
-		{name: "justify가 비었다", src: `<slide justify=""></slide>`, want: []string{"1:17 justify 속성이 비어 있다"}},
+		{name: "값 없는 id", src: `<slide id></slide>`, want: []string{"1:8 the id attribute needs a value"}},
+		{name: "id가 비었다", src: `<slide id=""></slide>`, want: []string{"1:12 the id attribute is empty"}},
+		{name: "skip 값이 어휘 밖", src: `<slide skip="maybe"></slide>`, want: []string{"1:14 skip must be true or false"}},
+		{name: "값 없는 layout", src: `<slide layout></slide>`, want: []string{"1:8 the layout attribute needs a value"}},
+		{name: "layout이 비었다", src: `<slide layout=""></slide>`, want: []string{"1:16 the layout attribute is empty"}},
+		{name: "값 없는 justify", src: `<slide justify></slide>`, want: []string{"1:8 the justify attribute needs a value"}},
+		{name: "justify가 비었다", src: `<slide justify=""></slide>`, want: []string{"1:17 the justify attribute is empty"}},
 		{
 			name: "속성 중복",
 			src:  `<slide id="a" id="b"></slide>`,
-			want: []string{"1:15 속성 id가 중복됐다 (앞의 것만 쓴다)"},
+			want: []string{"1:15 duplicate attribute id (only the first one is used)"},
 		},
 		{
 			name: "쓸 수 없는 문자",
 			src:  `<slide @></slide>`,
-			want: []string{`1:8 태그 안에 쓸 수 없는 문자 "@"`},
+			want: []string{`1:8 invalid character "@" inside a tag`},
 		},
 		{
 			name: "잘못된 중첩 — 텍스트 안의 텍스트",
 			src:  `<slide><text><text>a</text></text></slide>`,
-			want: []string{"1:15 <text> 안에는 문자 데이터와 인라인 태그만 올 수 있다"},
+			want: []string{"1:15 only character data and inline tags are allowed inside <text>"},
 		},
 		{
 			name: "잘못된 중첩 — 슬라이드 안의 슬라이드",
 			src:  `<slide><slide></slide></slide>`,
-			want: []string{"1:9 <slide>의 자식으로 <slide>는 올 수 없다"},
+			want: []string{"1:9 <slide> cannot contain <slide>"},
 		},
 		{
 			// `<` + 공백은 마크업이 아니므로 문자 데이터다.
 			name: "마크업이 아닌 <는 문자 데이터다",
 			src:  `<slide>< ></slide>`,
-			want: []string{"1:8 <slide> 안에 문자 데이터를 직접 쓸 수 없다"},
+			want: []string{"1:8 character data cannot appear directly inside <slide>"},
 		},
 		{
 			name: "닫는 태그에 이름이 없다",
 			src:  `<slide></ ></slide>`,
-			want: []string{"1:8 `</` 뒤에 태그 이름이 없다"},
+			want: []string{"1:8 missing tag name after `</`"},
 		},
 		{
 			name: "닫히지 않은 주석",
 			src:  "<slide>\n<!-- 메모\n</slide>",
 			want: []string{
-				"1:2 <slide> 태그가 닫히지 않았다",
-				"2:1 주석이 `-->`로 닫히지 않았다",
+				"1:2 tag <slide> is not closed",
+				"2:1 comment is not closed with `-->`",
 			},
 		},
 		{
 			name: "한 파일의 진단을 모아 낸다",
 			src:  "<slide reveal=\"a\">\n  <txt>제목</txt>\n  <text badattr=\"1\">본문</text>\n</slide>",
 			want: []string{
-				"1:8 알 수 없는 속성 reveal",
-				"2:4 알 수 없는 태그 <txt>",
-				"3:9 알 수 없는 속성 badattr",
+				"1:8 unknown attribute reveal on <slide>",
+				"2:4 unknown tag <txt>",
+				"3:9 unknown attribute badattr on <text>",
 			},
 		},
 	})

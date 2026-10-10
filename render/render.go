@@ -39,7 +39,7 @@ func ParseTargets(list string) ([]Target, error) {
 		switch name {
 		case TargetHTML, TargetPPTX:
 		default:
-			return nil, fmt.Errorf("알 수 없는 타깃 %q (%q, %q)", string(name), TargetHTML, TargetPPTX)
+			return nil, fmt.Errorf("unknown target %q (%q, %q)", string(name), TargetHTML, TargetPPTX)
 		}
 		if !seen[name] {
 			seen[name] = true
@@ -47,7 +47,7 @@ func ParseTargets(list string) ([]Target, error) {
 		}
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("타깃이 비어 있다")
+		return nil, fmt.Errorf("no target given")
 	}
 	return out, nil
 }

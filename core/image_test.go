@@ -159,26 +159,26 @@ func TestResolveImageDiagnostics(t *testing.T) {
 		col                 int // needle로 셀 수 없는 위치
 		contains            []string
 	}{
-		{name: "src 없음", attrs: `fit="cover"`, contains: []string{"src가 필요하다", "추측할 수 없다"}},
-		{name: "src 값 없음", attrs: `src`, needle: "src", contains: []string{"src 속성에는 값이 필요하다"}},
-		{name: "src 빈 값", attrs: `src=""`, col: imageCol(`src=""`, `""`) + 1, contains: []string{"src가 비어 있다"}},
-		{name: "절대 경로", attrs: `src="/Users/me/assets/a.png"`, needle: "/Users", contains: []string{"절대 경로", "프로젝트 루트 기준"}},
-		{name: "프로젝트 밖", attrs: `src="../shared/a.png"`, needle: "..", contains: []string{"프로젝트 밖을 가리킨다"}},
-		{name: "http", attrs: `src="http://example.com/a.png"`, needle: "http", contains: []string{"URL은 쓸 수 없다", "오프라인"}},
-		{name: "https", attrs: `src="https://example.com/a.png"`, needle: "https", contains: []string{"URL은 쓸 수 없다"}},
+		{name: "src 없음", attrs: `fit="cover"`, contains: []string{"needs a src", "cannot be guessed"}},
+		{name: "src 값 없음", attrs: `src`, needle: "src", contains: []string{"the src attribute needs a value"}},
+		{name: "src 빈 값", attrs: `src=""`, col: imageCol(`src=""`, `""`) + 1, contains: []string{"src is empty"}},
+		{name: "절대 경로", attrs: `src="/Users/me/assets/a.png"`, needle: "/Users", contains: []string{"is absolute", "relative to the project root"}},
+		{name: "프로젝트 밖", attrs: `src="../shared/a.png"`, needle: "..", contains: []string{"points outside the project"}},
+		{name: "http", attrs: `src="http://example.com/a.png"`, needle: "http", contains: []string{"cannot be a URL", "offline"}},
+		{name: "https", attrs: `src="https://example.com/a.png"`, needle: "https", contains: []string{"cannot be a URL"}},
 		{name: "data URL", attrs: `src="data:image/png;base64,iVBORw0KGgo="`, needle: "data:",
-			contains: []string{"data: URL은 쓸 수 없다", "파일로 커밋한다"}},
-		{name: "확장자 없음", attrs: `src="assets/photo"`, needle: "assets/photo", contains: []string{"확장자가 없다", ".png"}},
-		{name: "svg", attrs: `src="assets/logo.svg"`, needle: "assets/logo.svg", contains: []string{"v1이 그리지 못한다", "png", "jpeg"}},
-		{name: "gif", attrs: `src="assets/anim.gif"`, needle: "assets/anim.gif", contains: []string{"v1이 그리지 못한다"}},
-		{name: "webp", attrs: `src="assets/photo.webp"`, needle: "assets/photo.webp", contains: []string{"v1이 그리지 못한다"}},
+			contains: []string{"cannot be a data: URL", "commit the image as a file"}},
+		{name: "확장자 없음", attrs: `src="assets/photo"`, needle: "assets/photo", contains: []string{"has no extension", ".png"}},
+		{name: "svg", attrs: `src="assets/logo.svg"`, needle: "assets/logo.svg", contains: []string{"v1 cannot render", "png", "jpeg"}},
+		{name: "gif", attrs: `src="assets/anim.gif"`, needle: "assets/anim.gif", contains: []string{"v1 cannot render"}},
+		{name: "webp", attrs: `src="assets/photo.webp"`, needle: "assets/photo.webp", contains: []string{"v1 cannot render"}},
 		// CSS object-fit의 나머지 값은 PPTX에 대응이 없다는 사실까지 진단이 말한다.
 		{name: "fit fill", attrs: src + `fit="fill"`, needle: "fill", contains: []string{"object-fit", "cover, contain", "ratio"}},
 		{name: "fit none", attrs: src + `fit="none"`, needle: "none", contains: []string{"object-fit", "cover, contain"}},
 		{name: "fit scale-down", attrs: src + `fit="scale-down"`, needle: "scale-down", contains: []string{"object-fit", "cover, contain"}},
-		{name: "fit 어휘 밖", attrs: src + `fit="crop"`, needle: "crop", contains: []string{"알 수 없는 fit", "cover, contain"}},
+		{name: "fit 어휘 밖", attrs: src + `fit="crop"`, needle: "crop", contains: []string{"unknown fit", "cover, contain"}},
 		// 빈 alt는 장식 이미지의 표기라 받지만, 값 없는 alt는 뜻을 정할 수 없다.
-		{name: "값 없는 alt", attrs: src + `alt`, needle: "alt", contains: []string{"alt 속성에는 값이 필요하다", `alt=""`}},
+		{name: "값 없는 alt", attrs: src + `alt`, needle: "alt", contains: []string{"the alt attribute needs a value", `alt=""`}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -282,15 +282,15 @@ func TestResolveImageAppearanceSharesShapeSyntax(t *testing.T) {
 		needle   string
 		contains []string
 	}{
-		{`border="solid 3"`, "solid 3", []string{"3조각이다", "1 solid muted"}},
-		{`border="1 dashdot muted"`, "dashdot", []string{"알 수 없는 border 스타일"}},
-		{`border="1 solid brand"`, "brand", []string{"border의 색 토큰", "테마에 없다"}},
-		{`shadow="hard"`, "hard", []string{"알 수 없는 shadow 토큰", "soft"}},
-		{`opacity="50%"`, "50%", []string{"opacity에 %는 쓸 수 없다"}},
-		{`rotate="45deg"`, "45deg", []string{"단위 없는 각도 수치"}},
-		{`flip="both"`, "both", []string{"알 수 없는 flip", "h, v, hv"}},
-		{`radius="huge"`, "huge", []string{"알 수 없는 radius 토큰", "sm, md, lg"}},
-		{`radius="-4"`, "-4", []string{"0보다 작을 수 없다"}},
+		{`border="solid 3"`, "solid 3", []string{"has 3 parts", "1 solid muted"}},
+		{`border="1 dashdot muted"`, "dashdot", []string{"unknown border style"}},
+		{`border="1 solid brand"`, "brand", []string{"border: color token", "is not in the theme"}},
+		{`shadow="hard"`, "hard", []string{"unknown shadow token", "soft"}},
+		{`opacity="50%"`, "50%", []string{"opacity cannot use %"}},
+		{`rotate="45deg"`, "45deg", []string{"unitless angle"}},
+		{`flip="both"`, "both", []string{"unknown flip", "h, v, hv"}},
+		{`radius="huge"`, "huge", []string{"unknown radius token", "sm, md, lg"}},
+		{`radius="-4"`, "-4", []string{"cannot be negative"}},
 	}
 	for _, tc := range errCases {
 		t.Run(tc.decl, func(t *testing.T) {
@@ -320,7 +320,7 @@ func TestResolveImageUnknownVariantWarns(t *testing.T) {
 	if diags[0].Span.Start.Col != imageCol(attrs, "framd") {
 		t.Errorf("위치 = %s, want 2:%d", diags[0].Span.Start, imageCol(attrs, "framd"))
 	}
-	for _, want := range []string{"테마에 없다", "기본 외관으로 계속한다", "framed"} {
+	for _, want := range []string{"is not in the theme", "continuing with the default appearance", "framed"} {
 		if !strings.Contains(diags[0].Message, want) {
 			t.Errorf("진단 = %q, want %q 포함", diags[0].String(), want)
 		}

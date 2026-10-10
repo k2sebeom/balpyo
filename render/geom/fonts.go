@@ -108,7 +108,7 @@ func (s *Session) platformFonts(specs []fontSpec) ([][]*css.PlatformFontUsage, e
 	remove := fmt.Sprintf(`document.querySelectorAll(%q).forEach((el) => el.remove())`, "."+fontProbeClass)
 
 	if err := s.run(chromedp.Evaluate(inject, nil, withAwaitPromise)); err != nil {
-		return nil, fmt.Errorf("글꼴 탐침을 붙일 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot attach the font probes: %w", err)
 	}
 	defer s.Eval(remove, nil)
 
@@ -128,7 +128,7 @@ func (s *Session) platformFonts(specs []fontSpec) ([][]*css.PlatformFontUsage, e
 		}
 		texts := probeTextNodes(root)
 		if len(texts) != len(specs) {
-			return fmt.Errorf("글꼴 탐침 %d개를 붙였는데 %d개를 찾았다", len(specs), len(texts))
+			return fmt.Errorf("attached %d font probes but found %d", len(specs), len(texts))
 		}
 		for _, id := range texts {
 			fonts, err := css.GetPlatformFontsForNode(id).Do(ctx)
@@ -140,7 +140,7 @@ func (s *Session) platformFonts(specs []fontSpec) ([][]*css.PlatformFontUsage, e
 		return nil
 	}))
 	if err != nil {
-		return nil, fmt.Errorf("측정 브라우저에 글꼴을 물을 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot query fonts in the measuring browser: %w", err)
 	}
 	return usages, nil
 }
@@ -209,8 +209,8 @@ func FontDiagnostics(theme soml.Theme, missing []string) soml.Diagnostics {
 			}
 		}
 		diags = append(diags, soml.Warningf("", soml.Span{},
-			"테마 %q의 글꼴 %q(%s)가 측정 브라우저에 없다 — 대체 글꼴로 잰 배치라 PowerPoint가 이 글꼴로 그리면 "+
-				"텍스트 박스가 어긋난다. 빌드하는 기계에 글꼴을 설치하거나, 설치된 글꼴로 테마의 font 토큰을 바꾼다",
+			"theme %q font %q (%s) is missing from the measuring browser — the layout was measured with a fallback font, so "+
+				"text boxes will be off when PowerPoint draws with this font. Install the font on the build machine, or change the theme's font token to an installed font",
 			theme.Name, family, strings.Join(slots, ", ")))
 	}
 	return diags

@@ -39,26 +39,26 @@ func TestParseResolvesCharRefs(t *testing.T) {
 // 드러난다. 진단은 참조(속성이면 값 안의 참조)를 가리킨다.
 func TestParseCharRefAndCDataErrors(t *testing.T) {
 	runDiagCases(t, []diagCase{
-		{name: "알 수 없는 이름", src: `<slide><p>공백&nbsp;하나</p></slide>`, want: []string{"1:13 쓸 수 없는 문자 참조 &nbsp;"}},
+		{name: "알 수 없는 이름", src: `<slide><p>공백&nbsp;하나</p></slide>`, want: []string{"1:13 unsupported character reference &nbsp;"}},
 		{name: "수치가 비었다", src: `<slide><p>&#;</p></slide>`, want: []string{"1:11 &#;"}},
 		{name: "XML이 금지한 문자", src: `<slide><p>&#0;</p></slide>`, want: []string{"1:11 &#0;"}},
 		{name: "서로게이트", src: `<slide><p>&#xD800;</p></slide>`, want: []string{"1:11 &#xD800;"}},
 		{name: "범위를 넘는 코드포인트", src: `<slide><p>&#x110000;</p></slide>`, want: []string{"1:11 &#x110000;"}},
-		{name: "속성 값 안의 참조", src: `<slide><image src="a.png" alt="&nbsp;"/></slide>`, want: []string{"1:32 쓸 수 없는 문자 참조 &nbsp;"}},
+		{name: "속성 값 안의 참조", src: `<slide><image src="a.png" alt="&nbsp;"/></slide>`, want: []string{"1:32 unsupported character reference &nbsp;"}},
 		// 글자가 뒤따르는 `<`는 여전히 태그다 — 오타를 리터럴로 흘리지 않는다.
-		{name: "글자가 뒤따르는 <는 태그다", src: `<slide><p>a <txt>b</txt></p></slide>`, want: []string{"1:14 알 수 없는 태그 <txt>"}},
+		{name: "글자가 뒤따르는 <는 태그다", src: `<slide><p>a <txt>b</txt></p></slide>`, want: []string{"1:14 unknown tag <txt>"}},
 		{
 			// 닫히지 않은 CDATA는 파일의 나머지를 삼키므로 열린 태그 진단이 함께 난다.
 			name: "닫히지 않은 CDATA",
 			src:  "<slide><pre><![CDATA[<slide>\n</pre></slide>",
 			want: []string{
-				"1:2 <slide> 태그가 닫히지 않았다",
-				"1:9 <pre> 태그가 닫히지 않았다",
-				"1:13 CDATA 섹션이 `]]>`로 닫히지 않았다",
+				"1:2 tag <slide> is not closed",
+				"1:9 tag <pre> is not closed",
+				"1:13 CDATA section is not closed with `]]>`",
 			},
 		},
 		// 요소만 담는 모델에서 CDATA는 문자 데이터와 같은 진단을 받는다.
-		{name: "슬라이드 직속 CDATA", src: `<slide><![CDATA[본문]]></slide>`, want: []string{"1:8 <slide> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)"}},
+		{name: "슬라이드 직속 CDATA", src: `<slide><![CDATA[본문]]></slide>`, want: []string{"1:8 character data cannot appear directly inside <slide> (wrap it in <text>)"}},
 	})
 }
 

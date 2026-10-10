@@ -56,17 +56,17 @@ type galleryGroup struct {
 // 판단한다.
 func NewGallery(dir string) (*Gallery, error) {
 	if dir == "" {
-		return nil, fmt.Errorf("갤러리 디렉토리가 비었다")
+		return nil, fmt.Errorf("gallery directory is empty")
 	}
 	if err := os.RemoveAll(dir); err != nil {
-		return nil, fmt.Errorf("갤러리 디렉토리를 비울 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot clear gallery directory: %w", err)
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, fmt.Errorf("갤러리 디렉토리를 만들 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot create gallery directory: %w", err)
 	}
 	return &Gallery{
-		Title: "balpyo 리뷰 — 웹 vs PPTX",
-		Lede:  "왼쪽이 웹 스크린샷, 오른쪽이 PPTX 렌더다.",
+		Title: "balpyo review — web vs PPTX",
+		Lede:  "Left: web screenshot. Right: PPTX render.",
 		dir:   dir,
 	}, nil
 }
@@ -104,15 +104,15 @@ func (g *Gallery) AddSlide(group string, slide Slide) error {
 func (g *Gallery) AddArtifact(group, srcPath string) error {
 	data, err := os.ReadFile(srcPath)
 	if err != nil {
-		return fmt.Errorf("검수 산출물을 읽을 수 없다: %w", err)
+		return fmt.Errorf("cannot read review output: %w", err)
 	}
 	rel := filepath.Join(group, filepath.Base(srcPath))
 	dest := filepath.Join(g.dir, rel)
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
-		return fmt.Errorf("갤러리 디렉토리를 만들 수 없다: %w", err)
+		return fmt.Errorf("cannot create gallery directory: %w", err)
 	}
 	if err := os.WriteFile(dest, data, 0o644); err != nil {
-		return fmt.Errorf("검수 산출물을 쓸 수 없다: %w", err)
+		return fmt.Errorf("cannot write review output: %w", err)
 	}
 	target := g.group(group)
 	target.artifacts = append(target.artifacts, rel)
@@ -135,7 +135,7 @@ func (g *Gallery) group(name string) *galleryGroup {
 func (g *Gallery) Write() (string, error) {
 	indexPath := filepath.Join(g.dir, IndexFile)
 	if err := os.WriteFile(indexPath, []byte(g.indexHTML()), 0o644); err != nil {
-		return "", fmt.Errorf("갤러리를 쓸 수 없다: %w", err)
+		return "", fmt.Errorf("cannot write gallery: %w", err)
 	}
 	return indexPath, nil
 }

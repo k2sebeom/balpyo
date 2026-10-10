@@ -46,24 +46,24 @@ func TestParseShapeErrors(t *testing.T) {
 		{
 			name: "도형 안의 문자 데이터",
 			src:  `<slide><shape type="rect">배지</shape></slide>`,
-			want: []string{"1:27 <shape> 안에 문자 데이터를 직접 쓸 수 없다 (<text>로 감싼다)"},
+			want: []string{"1:27 character data cannot appear directly inside <shape> (wrap it in <text>)"},
 		},
 		{
 			// 진단의 태그 목록에 컨테이너 넷이 실려 고칠 방법이 보인다.
 			name: "도형 안의 리스트",
 			src:  `<slide><shape type="rect"><ul><li>항목</li></ul></shape></slide>`,
-			want: []string{"1:28 <shape>의 자식으로 <ul>는 올 수 없다 (쓸 수 있는 태그: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)"},
+			want: []string{"1:28 <shape> cannot contain <ul> (available tags: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)"},
 		},
-		{name: "도형 안의 spacer", src: `<slide><shape type="rect"><spacer/></shape></slide>`, want: []string{"1:28 <shape>의 자식으로 <spacer>는 올 수 없다"}},
-		{name: "도형 안의 도형", src: `<slide><shape type="rect"><shape type="ellipse"/></shape></slide>`, want: []string{"1:28 <shape>의 자식으로 <shape>는 올 수 없다"}},
-		{name: "도형 안의 note", src: `<slide><shape type="rect"><note>메모</note></shape></slide>`, want: []string{"1:28 <shape>의 자식으로 <note>는 올 수 없다"}},
-		{name: "도형 안의 li", src: `<slide><shape type="rect"><li>항목</li></shape></slide>`, want: []string{"1:28 <li>는 <ul>/<ol>의 자식으로만 쓸 수 있다"}},
-		{name: "도형 안의 인라인", src: `<slide><shape type="rect"><strong>굵게</strong></shape></slide>`, want: []string{"1:28 <shape>의 자식으로 <strong>는 올 수 없다"}},
+		{name: "도형 안의 spacer", src: `<slide><shape type="rect"><spacer/></shape></slide>`, want: []string{"1:28 <shape> cannot contain <spacer>"}},
+		{name: "도형 안의 도형", src: `<slide><shape type="rect"><shape type="ellipse"/></shape></slide>`, want: []string{"1:28 <shape> cannot contain <shape>"}},
+		{name: "도형 안의 note", src: `<slide><shape type="rect"><note>메모</note></shape></slide>`, want: []string{"1:28 <shape> cannot contain <note>"}},
+		{name: "도형 안의 li", src: `<slide><shape type="rect"><li>항목</li></shape></slide>`, want: []string{"1:28 <li> can only be a child of <ul>/<ol>"}},
+		{name: "도형 안의 인라인", src: `<slide><shape type="rect"><strong>굵게</strong></shape></slide>`, want: []string{"1:28 <shape> cannot contain <strong>"}},
 		{
 			// stroke/cap/dash는 선의 것이다 — 도형에 받아 놓고 버리지 않는다.
 			name: "도형에 stroke는 없다",
 			src:  `<slide><shape type="rect" stroke="2 accent1"/></slide>`,
-			want: []string{`1:27 <shape>에 알 수 없는 속성 stroke (쓸 수 있는 속성: type, id, alt, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)`},
+			want: []string{`1:27 unknown attribute stroke on <shape> (available attributes: type, id, alt, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)`},
 		},
 	})
 }

@@ -76,7 +76,7 @@ func containerClass(flow soml.ContainerFlow) (string, error) {
 	case soml.FlowStack:
 		return stackClass, nil
 	}
-	return "", fmt.Errorf("배치 흐름 %d를 CSS로 낼 매핑이 없다", int(flow))
+	return "", fmt.Errorf("no CSS mapping for layout flow %d", int(flow))
 }
 
 // writeContainer는 레이아웃 컨테이너(`<row>`/`<col>`/`<grid>`)를 div로 쓴다.
@@ -88,7 +88,7 @@ func writeContainer(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem
 	container := elem.Container()
 	if container == nil {
 		// 해석되지 않은 배치를 기본값으로 그리면 웹만 그럴듯하게 나오고 좌표가 PPTX까지 간다.
-		return fmt.Errorf("%s:%s <%s>의 배치가 해석되지 않았다 — core.Resolve를 거치지 않은 덱이다",
+		return fmt.Errorf("%s:%s <%s> layout is unresolved — the deck did not go through core.Resolve",
 			slide.Source, elem.Span, elem.Name)
 	}
 	class, err := containerClass(container.Flow)
@@ -211,7 +211,7 @@ func boxSizeCSS(box soml.Box) ([]string, error) {
 		if ratio.W <= 0 || ratio.H <= 0 {
 			// core가 이미 막았지만(0·음수는 에러) 확정 값이 CSS로 나가기 전 마지막 자리다 —
 			// 무효 aspect-ratio는 브라우저가 조용히 버린다.
-			return nil, fmt.Errorf("비율 %d:%d이 해석되지 않았다", ratio.W, ratio.H)
+			return nil, fmt.Errorf("ratio %d:%d is unresolved", ratio.W, ratio.H)
 		}
 		decls = append(decls, fmt.Sprintf("aspect-ratio: %d / %d", ratio.W, ratio.H))
 	}
@@ -403,7 +403,7 @@ func boxAlignValue(align soml.BoxAlign, attr string) (string, error) {
 			return string(align), nil
 		}
 	}
-	return "", fmt.Errorf("%s %q는 교차축 정렬 어휘 밖이다", attr, string(align))
+	return "", fmt.Errorf("%s %q is not a known cross-axis alignment", attr, string(align))
 }
 
 // stackAnchorValue는 stack 셀 안 9지점 앵커를 `place-self` 값으로 만든다.
@@ -416,7 +416,7 @@ func boxAlignValue(align soml.BoxAlign, attr string) (string, error) {
 func stackAnchorValue(anchor soml.StackAnchor) (string, error) {
 	block, inline, ok := anchorAxes(anchor)
 	if !ok {
-		return "", fmt.Errorf("at %q는 9지점 앵커 어휘 밖이다", string(anchor))
+		return "", fmt.Errorf("at %q is not one of the 9 anchor points", string(anchor))
 	}
 	return block + " " + inline, nil
 }
@@ -460,7 +460,7 @@ func boxJustifyValue(justify soml.BoxJustify) (string, error) {
 	case soml.BoxJustifyBetween, soml.BoxJustifyAround, soml.BoxJustifyEvenly:
 		return "space-" + string(justify), nil
 	}
-	return "", fmt.Errorf("justify %q는 주축 분배 어휘 밖이다", string(justify))
+	return "", fmt.Errorf("justify %q is not a known main-axis distribution", string(justify))
 }
 
 // layoutCSS는 레이아웃 태그의 엔진 CSS다 — **태그마다 고정인 선언만** 있다 (파일 머리
@@ -471,24 +471,25 @@ func boxJustifyValue(justify soml.BoxJustify) (string, error) {
 // 레이아웃 렌더가 붙었다는 이유로 달라지면 골든 diff가 무엇이 움직였는지 말해 주지 못한다.
 func layoutCSS() string {
 	return `
-  /* 레이아웃 태그 = CSS flex/grid의 이름 바꾸기 층. 여기 있는 것은 태그의
-     정의 그 자체이고, 요소마다 다른 값(gap·align·pad·cols…)은 인라인 style로 나간다. */
+  /* Layout tags = a renaming layer over CSS flex/grid. What is here is the definition of the
+     tags itself; per-element values (gap, align, pad, cols…) go out as inline style. */
   .balpyo-row { display: flex; flex-direction: row; }
   .balpyo-col { display: flex; flex-direction: column; }
   .balpyo-grid { display: grid; }
 
-  /* <spacer>는 밀어내기가 내용인 빈 박스다. flex: 1은 남은 공간을 전부 받는다는 뜻이고,
-     저자가 적은 배치 속성(<spacer grow="2">)은 인라인 style로 이 값을 덮는다. */
+  /* <spacer> is an empty box whose content is pushing. flex: 1 means it takes all remaining
+     space, and layout attributes the author writes (<spacer grow="2">) override it via inline
+     style. */
   .balpyo-spacer { flex: 1; }
 
-  /* 레이아웃 컨테이너의 자식은 **브라우저 기본값**으로 돌아간다.
-     스테이지의 세로 스택은 텍스트·리스트에 확정 폭(width: 100%)과 눌리지 않는
-     flex(0 0 auto)를 준다 (contentCSS) — 스택 안에서 줄바꿈을 결정적으로 만들기 위한
-     규칙이다. 그 규칙이 컨테이너 안까지 따라오면 자식마다 부모 폭 전체를 요구하는 셈이 되어
-     가로 컨테이너를 넘치고, <spacer>가 받을 "남은 공간"이 사라진다 (실측으로 드러났다 —
-     render/geom의 spacer 테스트). 컨테이너 안에서 폭을 정하는 것은 컨테이너다: 트랙,
-     교차축 정렬(stretch), 그리고 자식이 적은 basis/grow가 그 값을 만든다.
-     폭이 확정된다는 사실은 그대로다 — 브라우저가 정하고 지오메트리 패스가 그 값을 잰다. */
+  /* Children of layout containers go back to **browser defaults**. The stage's vertical stack
+     gives text and lists a fixed width (width: 100%) and a non-shrinking flex (0 0 auto)
+     (contentCSS) — a rule that makes wrapping inside the stack deterministic. If that rule
+     followed into containers, every child would demand the parent's full width, overflowing
+     horizontal containers and leaving no "remaining space" for <spacer> (found by measurement —
+     the spacer test in render/geom). Inside a container the container decides widths: tracks,
+     cross-axis alignment (stretch), and the basis/grow the children set produce the value.
+     Widths are still fixed — the browser decides them and the geometry pass measures them. */
   :is(.balpyo-row, .balpyo-col, .balpyo-grid) > :is(.balpyo-text, .balpyo-list) {
     width: auto;
     flex: 0 1 auto;
@@ -535,10 +536,11 @@ func layoutCSS() string {
 //     골든이 움직이는 자리이기 때문이다.
 func stackCSS() string {
 	return `
-  /* <stack>·캔버스 스테이지 = 단일 셀 grid 겹침. 자식이 grid-area 1/1에
-     겹치되 in-flow로 남아 stack 크기가 가장 큰 자식에 맞춰 자동 결정된다. position:relative는
-     x/y 자식의 포함 블록을 만들고(패딩 박스 기준), 자식의 position:relative는 칠 순서를
-     문서 순서로 되돌린다 (위치 지정 형제는 문서 순서로 칠해진다 — 별도 z-index 없음). */
+  /* <stack> and the canvas stage = single-cell grid overlap. Children overlap in grid-area 1/1
+     but stay in flow, so the stack sizes itself to its largest child. position:relative creates
+     the containing block for x/y children (relative to the padding box), and position:relative
+     on the children restores painting to document order (positioned siblings paint in document
+     order — no separate z-index). */
   .balpyo-stack { display: grid; position: relative; }
   .balpyo-stage-canvas { display: grid; }
   :is(.balpyo-stack, .balpyo-stage-canvas) > * {
@@ -546,9 +548,10 @@ func stackCSS() string {
     position: relative;
   }
 
-  /* stack 자식의 텍스트·리스트는 확정 폭에서 벗어나 auto로 돌아간다 — 폭이 칸을 다 먹으면
-     at의 justify-self가 자식을 움직이지 못한다. 기존 row/col/grid 초기화와 별도 규칙이다
-     (그 규칙은 stack 없는 골든에도 나가므로 stack을 끼워 넣으면 골든이 움직인다). */
+  /* Text and lists inside a stack leave the fixed width and go back to auto — if the width
+     filled the cell, at's justify-self could not move the child. This is a separate rule from
+     the existing row/col/grid reset (that rule is also emitted in goldens without a stack, so
+     folding stack into it would move those goldens). */
   :is(.balpyo-stack, .balpyo-stage-canvas) > :is(.balpyo-text, .balpyo-list) {
     width: auto;
   }

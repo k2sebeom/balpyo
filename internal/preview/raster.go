@@ -68,11 +68,11 @@ func NewRasterizer() (Rasterizer, error) {
 // 두 엔진의 탐색 결과를 모두 말한다: OnlyOffice가 없다는 사실을 빼면 사람은 LibreOffice만
 // 설치하면 된다고 읽고 더 나은 쪽을 모른 채 지난다.
 func toolError(onlyOffice error, name, env string, err error) error {
-	return fmt.Errorf("PPTX를 그림으로 되돌릴 엔진이 없다 — OnlyOffice: %v; %s: %v\n"+
-		"PPTX를 그림으로 되돌리는 데만 쓰는 도구다. OnlyOffice Document Builder를 설치하거나"+
-		"(%s로 설치 디렉토리를 준다), LibreOffice와 poppler를 설치하거나(macOS: brew install --cask libreoffice; "+
-		"brew install poppler — %s로 경로를 준다), `--target html`로 웹만 본다. "+
-		"PowerPoint·Keynote가 있으면 산출물을 직접 여는 쪽이 더 정확하다",
+	return fmt.Errorf("no engine to render the PPTX as images — OnlyOffice: %v; %s: %v\n"+
+		"these tools are only used to render the PPTX as images. Install OnlyOffice Document Builder "+
+		"(set its install directory with %s), install LibreOffice and poppler (macOS: brew install --cask libreoffice; "+
+		"brew install poppler — set the path with %s), or use `--target html` to preview the web only. "+
+		"If you have PowerPoint or Keynote, opening the output directly is more accurate",
 		onlyOffice, name, err, EnvOnlyOffice, env)
 }
 
@@ -84,7 +84,7 @@ func toolError(onlyOffice error, name, env string, err error) error {
 func (r *LibreOffice) PDF(pptxPath, workDir string) (pdfPath, noise string, err error) {
 	outDir := filepath.Join(workDir, "pdf")
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
-		return "", "", fmt.Errorf("변환 디렉토리를 만들 수 없다: %w", err)
+		return "", "", fmt.Errorf("cannot create conversion directory: %w", err)
 	}
 	// 사용자 프로필을 실행마다 새로 만든다. 공유 프로필은 잠금 파일 때문에 병렬 실행에서
 	// 서로를 막고, 앞선 실행이 남긴 상태가 결과를 바꾼다.
@@ -97,11 +97,11 @@ func (r *LibreOffice) PDF(pptxPath, workDir string) (pdfPath, noise string, err 
 		pptxPath,
 	)
 	if err != nil {
-		return "", "", fmt.Errorf("LibreOffice 변환 실패: %w\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return "", "", fmt.Errorf("LibreOffice conversion failed: %w\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 	pdfPath = filepath.Join(outDir, replaceExt(filepath.Base(pptxPath), ".pdf"))
 	if _, err := os.Stat(pdfPath); err != nil {
-		return "", "", fmt.Errorf("PDF가 나오지 않았다: %w\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return "", "", fmt.Errorf("no PDF was produced: %w\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 	return pdfPath, SofficeNoise(stderr), nil
 }
@@ -112,7 +112,7 @@ func (r *LibreOffice) PDF(pptxPath, workDir string) (pdfPath, noise string, err 
 // 목표 크기를 직접 준다 — DPI로 맞추면 페이지 크기 반올림 때문에 한두 px씩 어긋난다.
 func (r *LibreOffice) Pages(pdfPath string, size image.Point, workDir string) ([]image.Image, error) {
 	if size.X <= 0 || size.Y <= 0 {
-		return nil, fmt.Errorf("렌더 크기가 유효하지 않다: %dx%d", size.X, size.Y)
+		return nil, fmt.Errorf("invalid render size: %dx%d", size.X, size.Y)
 	}
 	return r.render(pdfPath, filepath.Join(workDir, "png"),
 		"-scale-to-x", fmt.Sprint(size.X), "-scale-to-y", fmt.Sprint(size.Y))
@@ -131,23 +131,23 @@ func (r *LibreOffice) PagesAtPointScale(pdfPath, workDir string) ([]image.Image,
 // render는 pdftoppm을 돌리고 나온 PNG를 페이지 순서로 읽는다 (크기 인자는 호출자가 준다).
 func (r *LibreOffice) render(pdfPath, outDir string, scale ...string) ([]image.Image, error) {
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
-		return nil, fmt.Errorf("렌더 디렉토리를 만들 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot create render directory: %w", err)
 	}
 	prefix := filepath.Join(outDir, "page")
 	args := append([]string{"-png"}, scale...)
 	stdout, stderr, err := runTool(r.Pdftoppm, append(args, pdfPath, prefix)...)
 	if err != nil {
-		return nil, fmt.Errorf("pdftoppm 실패: %w\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return nil, fmt.Errorf("pdftoppm failed: %w\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
 	// pdftoppm은 페이지 수에 따라 자리수를 채운다 (page-1.png 또는 page-01.png). 한 번의 실행
 	// 안에서는 자리수가 같으므로 사전순 정렬이 곧 페이지 순서다.
 	matches, err := filepath.Glob(prefix + "-*.png")
 	if err != nil {
-		return nil, fmt.Errorf("렌더 결과를 찾을 수 없다: %w", err)
+		return nil, fmt.Errorf("cannot find render output: %w", err)
 	}
 	if len(matches) == 0 {
-		return nil, fmt.Errorf("pdftoppm이 PNG를 내지 않았다\nstdout: %s\nstderr: %s", stdout, stderr)
+		return nil, fmt.Errorf("pdftoppm produced no PNG\nstdout: %s\nstderr: %s", stdout, stderr)
 	}
 	sort.Strings(matches)
 
@@ -224,7 +224,7 @@ func runToolIn(dir string, env []string, bin string, args ...string) (stdout, st
 	cmd.Stderr = &errBuf
 	err = cmd.Run()
 	if ctxErr := ctx.Err(); ctxErr != nil {
-		err = fmt.Errorf("%s 시간 초과(%s): %w", filepath.Base(bin), toolTimeout, ctxErr)
+		err = fmt.Errorf("%s timed out (%s): %w", filepath.Base(bin), toolTimeout, ctxErr)
 	}
 	return outBuf.String(), errBuf.String(), err
 }

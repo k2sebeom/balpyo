@@ -69,10 +69,10 @@ func TestResolveSource(t *testing.T) {
 		t.Errorf("./로 시작하면 경로여야 한다: %+v %v", src, err)
 	}
 	for raw, want := range map[string]string{
-		"./nope":                 "없다",
-		"file.txt":               "GitHub 저장소 주소가 아니다", // 디렉토리가 아니면 경로로 보지 않는다
-		"./file.txt":             "디렉토리가 아니다",
-		"gitlab.com/acme/themes": "./gitlab.com/acme/themes처럼 경로로",
+		"./nope":                 "does not exist",
+		"file.txt":               "not a GitHub repository address", // 디렉토리가 아니면 경로로 보지 않는다
+		"./file.txt":             "is not a directory",
+		"gitlab.com/acme/themes": "path like ./gitlab.com/acme/themes",
 	} {
 		if _, err := ResolveSource(raw); err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%s: %q를 담은 에러여야 한다: %v", raw, want, err)
@@ -176,7 +176,7 @@ func TestInstallLocalConflictsWithGitHub(t *testing.T) {
 	writeTree(t, dir, files)
 	local := mustLocal(t, dir)
 	_, err := s.Install(context.Background(), local, InstallOptions{})
-	if err == nil || !strings.Contains(err.Error(), "github.com/acme/theme에서 설치했다") {
+	if err == nil || !strings.Contains(err.Error(), "installed from github.com/acme/theme") {
 		t.Fatalf("다른 출처의 같은 이름은 에러여야 한다: %v", err)
 	}
 	if _, err := s.Install(context.Background(), local, InstallOptions{Force: true}); err != nil {
@@ -188,7 +188,7 @@ func TestInstallLocalConflictsWithGitHub(t *testing.T) {
 	}
 	// 거꾸로도 같다.
 	if _, err := s.Install(context.Background(), mustSource(t, "github.com/acme/theme"), InstallOptions{}); err == nil ||
-		!strings.Contains(err.Error(), local.Dir+"에서 설치했다") {
+		!strings.Contains(err.Error(), "installed from "+local.Dir) {
 		t.Errorf("로컬에서 설치한 이름을 GitHub이 --force 없이 갈아 끼웠다: %v", err)
 	}
 }
@@ -204,7 +204,7 @@ func TestInstallLocalRejectsLinks(t *testing.T) {
 		t.Skipf("심볼릭 링크를 만들 수 없다: %v", err)
 	}
 	src := mustLocal(t, dir)
-	if _, err := s.Install(context.Background(), src, InstallOptions{}); err == nil || !strings.Contains(err.Error(), "링크") {
+	if _, err := s.Install(context.Background(), src, InstallOptions{}); err == nil || !strings.Contains(err.Error(), "link") {
 		t.Errorf("테마 안의 링크는 에러여야 한다: %v", err)
 	}
 	if names := installedNames(t, s); len(names) != 0 {

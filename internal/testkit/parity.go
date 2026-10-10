@@ -119,7 +119,7 @@ func (f Fixture) Layouts(t testing.TB, result *pipeline.Result) (webTree, pptxTr
 	t.Helper()
 	webTree, err := WebLayout(result.Deck, result.Geometry)
 	if err != nil {
-		t.Fatalf("%s: 웹 트리: %v", f.Name, err)
+		t.Fatalf("%s: web tree: %v", f.Name, err)
 	}
 	data, err := os.ReadFile(f.Output(t, result, ".pptx"))
 	if err != nil {
@@ -127,7 +127,7 @@ func (f Fixture) Layouts(t testing.TB, result *pipeline.Result) (webTree, pptxTr
 	}
 	pptxTree, err = PPTXLayout(PPTXParts(t, data), len(result.Deck.Slides), result.Deck.Theme)
 	if err != nil {
-		t.Fatalf("%s: PPTX 트리: %v", f.Name, err)
+		t.Fatalf("%s: PPTX tree: %v", f.Name, err)
 	}
 	return webTree, pptxTree
 }
@@ -138,7 +138,7 @@ func (f Fixture) AssertParity(t testing.TB, result *pipeline.Result) {
 	webTree, pptxTree := f.Layouts(t, result)
 	want, got := FormatLayout(webTree, true), FormatLayout(pptxTree, true)
 	if want != got {
-		t.Errorf("%s: 웹 트리와 PPTX 트리가 다르다 (want = 웹, got = PPTX)\n%s",
+		t.Errorf("%s: web tree and PPTX tree differ (want = web, got = PPTX)\n%s",
 			f.Name, diffReport([]byte(want), []byte(got)))
 	}
 }
@@ -185,7 +185,7 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 			}
 			box, ok := g.Box(id)
 			if !ok {
-				return fmt.Errorf("%s: %s <%s>의 잰 박스가 없다", slide.Source, id, elem.Name)
+				return fmt.Errorf("%s: %s <%s> has no measured box", slide.Source, id, elem.Name)
 			}
 			n := LayoutNode{Name: elem.Name + " " + id, Ph: webPlaceholder(slide, elem)}
 			rect := box.Rect
@@ -193,7 +193,7 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 			case soml.KindBlock:
 				style := elem.TextStyle()
 				if style == nil {
-					return fmt.Errorf("%s: %s <%s>의 외관이 해석되지 않았다", slide.Source, id, elem.Name)
+					return fmt.Errorf("%s: %s <%s> appearance is not resolved", slide.Source, id, elem.Name)
 				}
 				n.Kind = "textbox"
 				n.Paras = webParas(n.Paras, elem, *style, deck.Theme, "", "")
@@ -203,7 +203,7 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 			case soml.KindShape:
 				style := elem.ShapeStyle()
 				if style == nil {
-					return fmt.Errorf("%s: %s <%s>의 도형 외관이 해석되지 않았다", slide.Source, id, elem.Name)
+					return fmt.Errorf("%s: %s <%s> shape appearance is not resolved", slide.Source, id, elem.Name)
 				}
 				preset, _ := web.ShapePreset(style.Type)
 				n.Kind = "shape:" + preset
@@ -234,7 +234,7 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 				}
 				n.Paras = webTableParas(elem, deck.Theme)
 			default:
-				return fmt.Errorf("%s: %s <%s>는 객체가 되는 매핑이 없다", slide.Source, id, elem.Name)
+				return fmt.Errorf("%s: %s <%s> has no mapping to an object", slide.Source, id, elem.Name)
 			}
 			n.X, n.Y, n.W, n.H = rectEMU(rect)
 			s.Nodes = append(s.Nodes, n)
@@ -257,7 +257,7 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 		for _, item := range slide.Chrome {
 			rect, ok := g.ChromeRect(slide.Index, item.Kind)
 			if !ok {
-				return nil, fmt.Errorf("%s: 크롬 %s의 잰 박스가 없다", slide.Source, item.Kind)
+				return nil, fmt.Errorf("%s: chrome %s has no measured box", slide.Source, item.Kind)
 			}
 			n := LayoutNode{Kind: "textbox", Name: "chrome " + string(item.Kind)}
 			if item.Kind == soml.ChromeLogo {
@@ -589,7 +589,7 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 		name := fmt.Sprintf("ppt/slides/slide%d.xml", i)
 		data, ok := parts[name]
 		if !ok {
-			return nil, fmt.Errorf("%s 파트가 없다", name)
+			return nil, fmt.Errorf("part %s is missing", name)
 		}
 		var x xSlide
 		if err := xml.Unmarshal(data, &x); err != nil {

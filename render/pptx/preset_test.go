@@ -377,7 +377,7 @@ func TestRenderShapeGuards(t *testing.T) {
 	t.Run("어휘 밖 type", func(t *testing.T) {
 		deck := resolvedDeck(t, src)
 		shapeStyleOf(t, deck).Type = "triangle"
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "prstGeom 매핑이 없다") {
+		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "no prstGeom mapping") {
 			t.Errorf("에러가 프리셋 매핑 부재를 가리키지 않는다: %s", got)
 		}
 	})
@@ -385,7 +385,7 @@ func TestRenderShapeGuards(t *testing.T) {
 		deck := resolvedDeck(t, src)
 		radius := soml.PxRadius(8)
 		shapeStyleOf(t, deck).Radius = &radius
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "반경을 실을 자리가 없다") {
+		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "has no place for a radius") {
 			t.Errorf("에러가 반경 불일치를 가리키지 않는다: %s", got)
 		}
 	})
@@ -394,7 +394,7 @@ func TestRenderShapeGuards(t *testing.T) {
   <shape type="rounded-rect" fill="accent1" w="200" h="100"/>
 </slide>`)
 		shapeStyleOf(t, deck).Radius = nil
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "반경이 해석되지 않았다") {
+		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "the radius is unresolved") {
 			t.Errorf("에러가 반경 누락을 가리키지 않는다: %s", got)
 		}
 	})
@@ -404,14 +404,14 @@ func TestRenderShapeGuards(t *testing.T) {
 			Top: soml.Percent(10), Right: soml.Percent(10),
 			Bottom: soml.Percent(10), Left: soml.Percent(10),
 		}
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "백분율") {
+		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "percentage") {
 			t.Errorf("에러가 백분율 pad를 가리키지 않는다: %s", got)
 		}
 	})
 	t.Run("어휘 밖 flip", func(t *testing.T) {
 		deck := resolvedDeck(t, src)
 		shapeStyleOf(t, deck).Flip = "d"
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "대칭 어휘 밖") {
+		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "is not a known flip value") {
 			t.Errorf("에러가 대칭 어휘를 가리키지 않는다: %s", got)
 		}
 	})
@@ -420,7 +420,7 @@ func TestRenderShapeGuards(t *testing.T) {
   <shape type="rect" border="2 solid muted" w="200" h="100"/>
 </slide>`)
 		shapeStyleOf(t, deck).Border.Style = "double"
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "테두리 스타일") {
+		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "border style") {
 			t.Errorf("에러가 테두리 스타일 어휘를 가리키지 않는다: %s", got)
 		}
 	})
@@ -428,7 +428,7 @@ func TestRenderShapeGuards(t *testing.T) {
 		deck := resolvedDeck(t, src)
 		opacity := 1.5
 		shapeStyleOf(t, deck).Opacity = &opacity
-		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "0~1 밖") {
+		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "outside 0–1") {
 			t.Errorf("에러가 불투명도 범위를 가리키지 않는다: %s", got)
 		}
 	})
@@ -437,7 +437,7 @@ func TestRenderShapeGuards(t *testing.T) {
 		shape := deck.Slides[0].Content[0].(*soml.Element)
 		shape.Children = append(shape.Children, &soml.Element{Name: "ul"})
 		// 자식이 늘면 측정 대상도 늘어난다 (리스트 컨테이너는 잰다 — geom.collect).
-		if got := renderShapeError(t, deck, rect, rect); !strings.Contains(got, "매핑이 없다") {
+		if got := renderShapeError(t, deck, rect, rect); !strings.Contains(got, "no PPTX mapping") {
 			t.Errorf("에러가 매핑 부재를 가리키지 않는다: %s", got)
 		}
 	})

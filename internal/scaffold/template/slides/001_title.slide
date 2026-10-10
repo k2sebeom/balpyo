@@ -1,8 +1,8 @@
-<!-- 표지. 자리는 **테마의 title 슬롯**이 정한다 — 그래서 자식에 align이 하나도 없다. -->
+<!-- The cover. Placement comes from the theme's title slots — which is why no child sets align. -->
 <slide id="cover" layout="title">
-  <text slot="kicker" variant="kicker">새 덱</text>
+  <text slot="kicker" variant="kicker">NEW DECK</text>
   <text slot="title" role="title">{{.Title}}</text>
-  <text slot="subtitle" role="body" color="muted">한 줄로 요약하면 무엇인가</text>
+  <text slot="subtitle" role="body" color="muted">What is it, in one line?</text>
   <text slot="author" role="caption">{{.Author}}</text>
-  <note>이 줄은 발표자만 본다 — 산출물의 Notes 패널에서 열린다.</note>
+  <note>Only the presenter sees this line — it opens in the Notes panel of the output.</note>
 </slide>

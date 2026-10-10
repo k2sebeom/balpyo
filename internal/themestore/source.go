@@ -89,46 +89,46 @@ func ParseSource(raw string) (Source, error) {
 	s = strings.TrimPrefix(s, "www.")
 	rest, ok := strings.CutPrefix(s, "github.com/")
 	if !ok {
-		return Source{}, fmt.Errorf("GitHub 저장소 주소가 아니다: %q (예: github.com/<owner>/<repo>)", raw)
+		return Source{}, fmt.Errorf("not a GitHub repository address: %q (e.g. github.com/<owner>/<repo>)", raw)
 	}
 
 	var src Source
 	if i := strings.LastIndex(rest, "@"); i >= 0 {
 		src.Ref, rest = rest[i+1:], rest[:i]
 		if src.Ref == "" {
-			return Source{}, fmt.Errorf("%q: @ 뒤에 ref가 없다", raw)
+			return Source{}, fmt.Errorf("%q: no ref after @", raw)
 		}
 	}
 	parts := strings.Split(strings.Trim(rest, "/"), "/")
 	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
-		return Source{}, fmt.Errorf("%q: 저장소 주소에 owner와 repo가 둘 다 있어야 한다", raw)
+		return Source{}, fmt.Errorf("%q: the repository address must have both owner and repo", raw)
 	}
 	src.Owner, src.Repo = parts[0], strings.TrimSuffix(parts[1], ".git")
 	if !namePart.MatchString(src.Owner) || !namePart.MatchString(src.Repo) {
-		return Source{}, fmt.Errorf("%q: owner·repo 이름에 쓸 수 없는 글자가 있다", raw)
+		return Source{}, fmt.Errorf("%q: owner or repo name contains invalid characters", raw)
 	}
 
 	tail := parts[2:]
 	if len(tail) > 0 && tail[0] == "blob" {
-		return Source{}, fmt.Errorf("%q는 파일을 가리킨다 — 테마 디렉토리나 저장소를 가리켜야 한다", raw)
+		return Source{}, fmt.Errorf("%q points to a file — it must point to a theme directory or a repository", raw)
 	}
 	if len(tail) > 0 && tail[0] == "tree" {
 		if len(tail) < 2 {
-			return Source{}, fmt.Errorf("%q: /tree/ 뒤에 ref가 없다", raw)
+			return Source{}, fmt.Errorf("%q: no ref after /tree/", raw)
 		}
 		if src.Ref != "" {
-			return Source{}, fmt.Errorf("%q: ref를 /tree/와 @로 두 번 줬다", raw)
+			return Source{}, fmt.Errorf("%q: ref given twice, with /tree/ and @", raw)
 		}
 		src.Ref, tail = tail[1], tail[2:]
 	}
 	for _, seg := range tail {
 		if seg == "" || seg == "." || seg == ".." {
-			return Source{}, fmt.Errorf("%q: 하위 경로에 빈 이름이나 .·..이 있다", raw)
+			return Source{}, fmt.Errorf("%q: subpath contains an empty name or . or ..", raw)
 		}
 	}
 	src.Path = strings.Join(tail, "/")
 	if src.Ref != "" && (!refChars.MatchString(src.Ref) || strings.Contains(src.Ref, "..")) {
-		return Source{}, fmt.Errorf("%q: ref %q에 쓸 수 없는 글자가 있다", raw, src.Ref)
+		return Source{}, fmt.Errorf("%q: ref %q contains invalid characters", raw, src.Ref)
 	}
 	return src, nil
 }
@@ -152,7 +152,7 @@ func ResolveSource(raw string) (Source, error) {
 	if info, serr := os.Stat(s); serr == nil && info.IsDir() {
 		return LocalSource(s)
 	}
-	return Source{}, fmt.Errorf("%w — 로컬 디렉토리라면 ./%s처럼 경로로 적는다", err, s)
+	return Source{}, fmt.Errorf("%w — for a local directory, write it as a path like ./%s", err, s)
 }
 
 func looksLikePath(s string) bool {
@@ -182,7 +182,7 @@ func LocalSource(dir string) (Source, error) {
 	if p == "~" || strings.HasPrefix(p, "~/") || strings.HasPrefix(p, `~\`) {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return Source{}, fmt.Errorf("%q: 홈 디렉토리를 알 수 없다: %w", dir, err)
+			return Source{}, fmt.Errorf("%q: cannot determine the home directory: %w", dir, err)
 		}
 		p = filepath.Join(home, p[1:])
 	}
@@ -193,11 +193,11 @@ func LocalSource(dir string) (Source, error) {
 	info, err := os.Stat(abs)
 	switch {
 	case errors.Is(err, os.ErrNotExist):
-		return Source{}, fmt.Errorf("디렉토리 %s가 없다", abs)
+		return Source{}, fmt.Errorf("directory %s does not exist", abs)
 	case err != nil:
 		return Source{}, err
 	case !info.IsDir():
-		return Source{}, fmt.Errorf("%s는 디렉토리가 아니다 — 테마 디렉토리(theme.json이 있는 곳)나 그것을 담은 디렉토리를 가리킨다", abs)
+		return Source{}, fmt.Errorf("%s is not a directory — point at a theme directory (where theme.json is) or a directory containing one", abs)
 	}
 	if real, err := filepath.EvalSymlinks(abs); err == nil {
 		abs = real
