@@ -17,6 +17,7 @@ import (
 // (작업 중 관례라 수집에서 빠진다)과 파일을 지우는 것. 숫자 하나가 그 둘을 빨간불로 만든다.
 var exampleSlideCounts = map[string]int{
 	"balpyo-intro":        12,
+	"ec2-intro":           13,
 	"incident-postmortem": 10,
 	"quarterly-review":    7,
 }

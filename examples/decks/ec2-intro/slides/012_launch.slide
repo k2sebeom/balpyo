@@ -1,0 +1,34 @@
+<!-- First launch — five decisions as round steps joined by dashed connectors, then the one CLI
+     command that makes them, in a dark window-style card with three title-bar dots. -->
+<slide id="launch" enter="rise">
+  <text variant="kicker">05 · Your first launch</text>
+  <h2>Five decisions, one command</h2>
+  <grid cols="5" gap="md">
+    <col gap="xs" align="center"><shape type="ellipse" id="s1" fill="bg" border="1 solid surface" shadow="soft" w="76" h="76"><p align="center" anchor="center" size="28" color="accent1"><strong>1</strong></p></shape><h3 size="20" align="center">Choose an AMI</h3><text role="caption" align="center">Amazon Linux, Ubuntu, Windows</text></col>
+    <col gap="xs" align="center"><shape type="ellipse" id="s2" fill="bg" border="1 solid surface" shadow="soft" w="76" h="76"><p align="center" anchor="center" size="28" color="accent2"><strong>2</strong></p></shape><h3 size="20" align="center">Pick a type</h3><text role="caption" align="center">Start small; right-size later</text></col>
+    <col gap="xs" align="center"><shape type="ellipse" id="s3" fill="bg" border="1 solid surface" shadow="soft" w="76" h="76"><p align="center" anchor="center" size="28" color="accent4"><strong>3</strong></p></shape><h3 size="20" align="center">Network &amp; security</h3><text role="caption" align="center">Subnet + least-privilege SG</text></col>
+    <col gap="xs" align="center"><shape type="ellipse" id="s4" fill="bg" border="1 solid surface" shadow="soft" w="76" h="76"><p align="center" anchor="center" size="28" color="accent3"><strong>4</strong></p></shape><h3 size="20" align="center">Add storage</h3><text role="caption" align="center">gp3 root volume, encrypted</text></col>
+    <col gap="xs" align="center"><shape type="ellipse" id="s5" fill="bg" border="1 solid surface" shadow="soft" w="76" h="76"><p align="center" anchor="center" size="28" color="accent5"><strong>5</strong></p></shape><h3 size="20" align="center">Launch &amp; connect</h3><text role="caption" align="center">Tag it; connect via SSM</text></col>
+  </grid>
+  <connector from="s1" to="s2" variant="dashed" end="none" enter="draw"/>
+  <connector from="s2" to="s3" variant="dashed" end="none" enter="draw"/>
+  <connector from="s3" to="s4" variant="dashed" end="none" enter="draw"/>
+  <connector from="s4" to="s5" variant="dashed" end="none" enter="draw"/>
+  <shape type="rounded-rect" fill="fg" border="none" radius="md" shadow="soft" w="fill" grow="1" pad="md">
+    <col gap="sm" h="fill">
+      <row gap="xs" align="center">
+        <shape type="ellipse" fill="accent5" border="none" w="12" h="12"/>
+        <shape type="ellipse" fill="accent1" border="none" w="12" h="12"/>
+        <shape type="ellipse" fill="accent3" border="none" w="12" h="12"/>
+        <text role="code" size="14" color="muted">  ~/ — aws cli v2</text>
+      </row>
+      <pre lang="bash" size="17" color="bg">aws ec2 run-instances \
+  --image-id resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64 \
+  --instance-type m7g.large \
+  --subnet-id subnet-0abc1234 --security-group-ids sg-0abc1234 \
+  --block-device-mappings 'DeviceName=/dev/xvda,Ebs={VolumeSize=20,VolumeType=gp3}' \
+  --iam-instance-profile Name=SSMInstanceProfile</pre>
+    </col>
+  </shape>
+  <note>Every choice on the console maps to one flag on the CLI. Once you know the five decisions you can script, template and review them.</note>
+</slide>

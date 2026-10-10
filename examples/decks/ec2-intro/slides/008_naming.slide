@@ -1,0 +1,54 @@
+<!-- Reading a name — the instance type split into its parts, each in its family color, with an
+     under-brace (a path shape) and a label below. The size ladder doubles the square at each step;
+     the highlighted step is the size in the name. -->
+<slide id="naming" enter="rise">
+  <text variant="kicker">03 · Reading an instance name</text>
+  <h2>Every instance type name is a spec sheet</h2>
+  <row gap="lg" align="end">
+    <col gap="xs" w="150" align="center">
+      <text role="code" size="76" color="accent1" align="center">m</text>
+      <shape type="path" fill="none" border="2 solid accent1" w="fill" h="22" d="M0,0 Q0,50 12,50 H38 Q50,50 50,100 Q50,50 62,50 H88 Q100,50 100,0"/>
+      <text role="heading" size="22" color="accent1" align="center">Family</text>
+      <text role="caption" align="center">General purpose</text>
+    </col>
+    <col gap="xs" w="150" align="center">
+      <text role="code" size="76" color="accent2" align="center">7</text>
+      <shape type="path" fill="none" border="2 solid accent2" w="fill" h="22" d="M0,0 Q0,50 12,50 H38 Q50,50 50,100 Q50,50 62,50 H88 Q100,50 100,0"/>
+      <text role="heading" size="22" color="accent2" align="center">Generation</text>
+      <text role="caption" align="center">Higher = newer</text>
+    </col>
+    <col gap="xs" w="150" align="center">
+      <text role="code" size="76" color="accent4" align="center">g</text>
+      <shape type="path" fill="none" border="2 solid accent4" w="fill" h="22" d="M0,0 Q0,50 12,50 H38 Q50,50 50,100 Q50,50 62,50 H88 Q100,50 100,0"/>
+      <text role="heading" size="22" color="accent4" align="center">Options</text>
+      <text role="caption" align="center">Graviton (Arm)</text>
+    </col>
+    <col gap="xs" w="64" align="center">
+      <text role="code" size="76" color="muted" align="center">.</text>
+      <shape type="rect" fill="none" border="none" w="fill" h="22"/>
+      <text role="heading" size="22" align="center"> </text>
+      <text role="caption" align="center"> </text>
+    </col>
+    <col gap="xs" grow="1" basis="0" align="center">
+      <text role="code" size="76" color="accent3" align="center">2xlarge</text>
+      <shape type="path" fill="none" border="2 solid accent3" w="fill" h="22" d="M0,0 Q0,50 12,50 H38 Q50,50 50,100 Q50,50 62,50 H88 Q100,50 100,0"/>
+      <text role="heading" size="22" color="accent3" align="center">Size</text>
+      <text role="caption" align="center">8 vCPU · 32 GiB memory</text>
+    </col>
+  </row>
+  <spacer grow="1"/>
+  <shape type="rounded-rect" variant="card" w="fill" pad="md">
+    <col gap="sm">
+      <text variant="kicker" color="muted">Sizes double as you go up — same ratio, more capacity</text>
+      <row gap="lg" align="end" justify="between">
+        <col gap="xs" align="center"><shape type="rounded-rect" fill="gradient(accent1/55 accent1, 135deg)" border="none" radius="sm" w="16" h="16"/><text role="code" size="15" align="center">large</text></col>
+        <col gap="xs" align="center"><shape type="rounded-rect" fill="gradient(accent1/55 accent1, 135deg)" border="none" radius="sm" w="22" h="22"/><text role="code" size="15" align="center">xlarge</text></col>
+        <col gap="xs" align="center"><shape type="rounded-rect" fill="gradient(accent1/55 accent1, 135deg)" border="2 solid accent3" radius="sm" w="32" h="32"/><text role="code" size="15" align="center"><strong>2xlarge</strong></text></col>
+        <col gap="xs" align="center"><shape type="rounded-rect" fill="gradient(accent1/55 accent1, 135deg)" border="none" radius="sm" w="44" h="44"/><text role="code" size="15" align="center">4xlarge</text></col>
+        <col gap="xs" align="center"><shape type="rounded-rect" fill="gradient(accent1/55 accent1, 135deg)" border="none" radius="sm" w="62" h="62"/><text role="code" size="15" align="center">8xlarge</text></col>
+        <col gap="xs" align="center"><shape type="rounded-rect" fill="gradient(accent1/55 accent1, 135deg)" border="none" radius="sm" w="80" h="80"/><text role="code" size="15" align="center">16xlarge</text></col>
+      </row>
+    </col>
+  </shape>
+  <note>m is the family, 7 the generation, g the Graviton processor, and 2xlarge the size — each size step doubles vCPU and memory.</note>
+</slide>

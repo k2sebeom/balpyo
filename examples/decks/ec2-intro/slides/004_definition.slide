@@ -1,0 +1,43 @@
+<!-- Definition — one large statement with highlighted phrases (<mark>), then four stats whose
+     units are smaller runs (<span size>). A top rule over each stat is a 3px rect. -->
+<slide id="definition" enter="rise">
+  <text variant="kicker">01 · Definition</text>
+  <row gap="xl" align="center" grow="1">
+    <col gap="md" grow="1" basis="0">
+      <h1 size="44">Amazon EC2 provides <mark>secure, resizable compute capacity</mark> in the cloud — virtual servers you launch in minutes and <mark>pay for by the second</mark>.</h1>
+      <text role="caption" color="muted">Elastic Compute Cloud · generally available since 2006 · runs in every AWS Region</text>
+    </col>
+    <stack w="300" h="300" enter="zoom">
+      <shape type="ellipse" fill="none" border="2 dashed tint(accent1, 60%)" w="300" h="300" at="center"/>
+      <shape type="ellipse" fill="none" border="1 solid tint(accent1, 80%)" w="200" h="200" at="center"/>
+      <shape type="rounded-rect" fill="bg" border="1 solid surface" shadow="soft" radius="lg" w="120" h="120" at="center"><text role="heading" size="30" align="center" anchor="center" color="accent1">EC2</text></shape>
+      <shape type="ellipse" fill="bg" border="1 solid surface" shadow="soft" w="52" h="52" at="top-center"><p align="center" anchor="center" size="18" color="accent2"><strong>VPC</strong></p></shape>
+      <shape type="ellipse" fill="bg" border="1 solid surface" shadow="soft" w="52" h="52" at="center-right"><p align="center" anchor="center" size="18" color="accent3"><strong>EBS</strong></p></shape>
+      <shape type="ellipse" fill="bg" border="1 solid surface" shadow="soft" w="52" h="52" at="bottom-center"><p align="center" anchor="center" size="18" color="accent4"><strong>IAM</strong></p></shape>
+      <shape type="ellipse" fill="bg" border="1 solid surface" shadow="soft" w="52" h="52" at="center-left"><p align="center" anchor="center" size="18" color="accent5"><strong>ELB</strong></p></shape>
+    </stack>
+  </row>
+  <grid cols="4" gap="lg">
+    <col gap="xs">
+      <shape type="rect" fill="fg" border="none" w="fill" h="3"/>
+      <text role="title" size="56">750<span size="28">+</span></text>
+      <text role="caption" color="muted">instance types across x86, Arm, GPU and custom silicon</text>
+    </col>
+    <col gap="xs">
+      <shape type="rect" fill="fg" border="none" w="fill" h="3"/>
+      <text role="title" size="56">1<span size="28"> s</span></text>
+      <text role="caption" color="muted">billing granularity for Linux and Windows</text>
+    </col>
+    <col gap="xs">
+      <shape type="rect" fill="fg" border="none" w="fill" h="3"/>
+      <text role="title" size="56">99.99<span size="28">%</span></text>
+      <text role="caption" color="muted">Region-level availability SLA across AZs</text>
+    </col>
+    <col gap="xs">
+      <shape type="rect" fill="accent1" border="none" w="fill" h="3"/>
+      <text role="title" size="56" color="accent1">90<span size="28">%</span></text>
+      <text role="caption" color="muted">maximum discount vs. On-Demand with Spot</text>
+    </col>
+  </grid>
+  <note>The one-sentence definition. Then four numbers to remember: breadth of instance types, per-second billing, the SLA, and the Spot discount.</note>
+</slide>

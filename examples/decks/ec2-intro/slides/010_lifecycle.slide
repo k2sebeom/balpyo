@@ -1,0 +1,28 @@
+<!-- Lifecycle — a state machine on the canvas: states are rounded rects, transitions are
+     connectors (straight, elbow, and a curved U-turn from stopped back to pending), labeled where
+     the event name matters. Billing states carry a small $ badge. -->
+<slide id="lifecycle" layout="canvas">
+  <text variant="kicker" x="0" y="0">05 · Instance lifecycle</text>
+  <h2 x="0" y="28">Know the states — they decide what you are billed for</h2>
+  <shape type="rounded-rect" id="pending" fill="bg" border="2 solid accent2" radius="sm" w="180" h="62" x="40" y="400" enter="rise"><p align="center" anchor="center" color="accent2"><strong>pending</strong></p></shape>
+  <shape type="rounded-rect" id="running" fill="accent3" border="none" radius="sm" w="180" h="62" x="320" y="400" enter="rise"><p align="center" anchor="center" color="bg"><strong>running</strong></p></shape>
+  <shape type="rounded-rect" id="rebooting" fill="bg" border="2 solid accent3" radius="sm" w="180" h="62" x="320" y="262" enter="rise"><p align="center" anchor="center" color="accent3"><strong>rebooting</strong></p></shape>
+  <shape type="rounded-rect" id="stopping" fill="bg" border="2 solid muted" radius="sm" w="190" h="62" x="650" y="400" enter="rise"><p align="center" anchor="center" color="muted"><strong>stopping</strong></p></shape>
+  <shape type="rounded-rect" id="stopped" fill="muted" border="none" radius="sm" w="180" h="62" x="960" y="400" enter="rise"><p align="center" anchor="center" color="bg"><strong>stopped</strong></p></shape>
+  <shape type="rounded-rect" id="shutting" fill="bg" border="2 solid accent5" radius="sm" w="190" h="62" x="650" y="522" enter="rise"><p align="center" anchor="center" color="accent5"><strong>shutting-down</strong></p></shape>
+  <shape type="rounded-rect" id="terminated" fill="accent5" border="none" radius="sm" w="180" h="62" x="960" y="522" enter="rise"><p align="center" anchor="center" color="bg"><strong>terminated</strong></p></shape>
+  <shape type="ellipse" fill="accent1" border="none" w="26" h="26" x="307" y="386" enter="zoom"><p align="center" anchor="center" size="14" color="bg"><strong>$</strong></p></shape>
+  <shape type="ellipse" fill="accent1" border="none" w="26" h="26" x="487" y="248" enter="zoom"><p align="center" anchor="center" size="14" color="bg"><strong>$</strong></p></shape>
+  <connector from="pending" to="running" enter="draw"/>
+  <connector from="running" to="stopping" label="stop / hibernate" enter="draw"/>
+  <connector from="stopping" to="stopped" enter="draw"/>
+  <connector from="running" to="rebooting" label="reboot" enter="draw"/>
+  <connector from="running" to="shutting" route="elbow" from-side="bottom" to-side="left" label="terminate" enter="draw"/>
+  <connector from="stopped" to="terminated" label="terminate" enter="draw"/>
+  <connector from="shutting" to="terminated" enter="draw"/>
+  <connector from="stopped" to="pending" route="curved" from-side="top" to-side="top" variant="dashed" label="start — new host, same EBS volumes" enter="draw"/>
+  <shape type="rounded-rect" fill="surface" border="none" radius="md" w="400" h="76" pad="sm" x="0" y="512">
+    <col gap="xs"><text role="caption"><span color="accent1"><strong>$</strong></span> instance usage billed per second</text><text role="caption"><span color="accent1"><strong>- -</strong></span> EBS-backed instances only</text></col>
+  </shape>
+  <note>You pay for compute only while the instance is running. A stopped instance costs you its EBS volumes, not its compute; terminate deletes the root volume by default.</note>
+</slide>

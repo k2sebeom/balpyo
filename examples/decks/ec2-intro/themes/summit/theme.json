@@ -1,0 +1,12 @@
+{
+  "$comment": "summit extends minimal into a cloud-keynote look: squid-ink text on white, an orange accent, tracked uppercase kickers, a soft orange glow behind title and end slides, a fade between slides and a 'n / total' page number. It only renames colors and sets rhythm — the layouts, roles and variant names are minimal's, so any deck that builds with minimal builds with summit.",
+  "name": "summit",
+  "extends": "minimal",
+  "backgrounds": [
+    { "layouts": ["title", "end", "section-divider"], "fill": "bg", "overlay": "radial(accent1/35 bg/0, at 0% 100%)" }
+  ],
+  "chrome": [
+    { "kind": "footer", "align": "start", "role": "caption", "skipLayouts": ["title", "section-divider", "end"] },
+    { "kind": "pageNumber", "align": "end", "role": "caption", "format": "{n} / {total}", "skipLayouts": ["title", "section-divider", "end"] }
+  ]
+}

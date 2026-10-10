@@ -1,0 +1,75 @@
+<!-- Families — a 3×2 grid of cards; each has a colored top strip (a thin rect on the card's
+     backdrop column), the family letters as chips, a sample size in mono and the use cases. -->
+<slide id="families" enter="rise">
+  <text variant="kicker">03 · Choosing an instance</text>
+  <h2>Pick a family by your workload's bottleneck</h2>
+  <grid cols="3" gap="md" grow="1">
+    <shape type="rounded-rect" variant="card" w="fill" h="fill">
+      <col gap="xs" h="fill">
+        <shape type="rect" fill="accent1" border="none" w="fill" h="4"/>
+        <col gap="xs" pad="md">
+          <h3 size="22">General purpose</h3>
+          <row gap="xs"><shape type="rounded-rect" fill="tint(accent1, 88%)" border="1 solid tint(accent1, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent1">M</text></shape><shape type="rounded-rect" fill="tint(accent1, 88%)" border="1 solid tint(accent1, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent1">T</text></shape><shape type="rounded-rect" fill="tint(accent1, 88%)" border="1 solid tint(accent1, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent1">Mac</text></shape></row>
+          <text role="code" size="16" color="accent1">m7i.xlarge · 4 vCPU · 16 GiB</text>
+          <p size="17" color="muted">Web and app servers, microservices, dev/test</p>
+        </col>
+      </col>
+    </shape>
+    <shape type="rounded-rect" variant="card" w="fill" h="fill">
+      <col gap="xs" h="fill">
+        <shape type="rect" fill="accent2" border="none" w="fill" h="4"/>
+        <col gap="xs" pad="md">
+          <h3 size="22">Compute optimized</h3>
+          <row gap="xs"><shape type="rounded-rect" fill="tint(accent2, 88%)" border="1 solid tint(accent2, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent2">C</text></shape></row>
+          <text role="code" size="16" color="accent2">c7g.xlarge · 4 vCPU · 8 GiB</text>
+          <p size="17" color="muted">Batch processing, game servers, media transcoding</p>
+        </col>
+      </col>
+    </shape>
+    <shape type="rounded-rect" variant="card" w="fill" h="fill">
+      <col gap="xs" h="fill">
+        <shape type="rect" fill="accent4" border="none" w="fill" h="4"/>
+        <col gap="xs" pad="md">
+          <h3 size="22">Memory optimized</h3>
+          <row gap="xs"><shape type="rounded-rect" fill="tint(accent4, 88%)" border="1 solid tint(accent4, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent4">R</text></shape><shape type="rounded-rect" fill="tint(accent4, 88%)" border="1 solid tint(accent4, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent4">X</text></shape><shape type="rounded-rect" fill="tint(accent4, 88%)" border="1 solid tint(accent4, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent4">z</text></shape><shape type="rounded-rect" fill="tint(accent4, 88%)" border="1 solid tint(accent4, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent4">U</text></shape></row>
+          <text role="code" size="16" color="accent4">r7g.xlarge · 4 vCPU · 32 GiB</text>
+          <p size="17" color="muted">In-memory databases and caches, real-time analytics</p>
+        </col>
+      </col>
+    </shape>
+    <shape type="rounded-rect" variant="card" w="fill" h="fill">
+      <col gap="xs" h="fill">
+        <shape type="rect" fill="accent5" border="none" w="fill" h="4"/>
+        <col gap="xs" pad="md">
+          <h3 size="22">Accelerated computing</h3>
+          <row gap="xs"><shape type="rounded-rect" fill="tint(accent5, 88%)" border="1 solid tint(accent5, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent5">P</text></shape><shape type="rounded-rect" fill="tint(accent5, 88%)" border="1 solid tint(accent5, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent5">G</text></shape><shape type="rounded-rect" fill="tint(accent5, 88%)" border="1 solid tint(accent5, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent5">Trn</text></shape><shape type="rounded-rect" fill="tint(accent5, 88%)" border="1 solid tint(accent5, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent5">Inf</text></shape><shape type="rounded-rect" fill="tint(accent5, 88%)" border="1 solid tint(accent5, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent5">F</text></shape></row>
+          <text role="code" size="16" color="accent5">p5.48xlarge · 8× NVIDIA H100</text>
+          <p size="17" color="muted">Generative AI training and inference, graphics</p>
+        </col>
+      </col>
+    </shape>
+    <shape type="rounded-rect" variant="card" w="fill" h="fill">
+      <col gap="xs" h="fill">
+        <shape type="rect" fill="accent3" border="none" w="fill" h="4"/>
+        <col gap="xs" pad="md">
+          <h3 size="22">Storage optimized</h3>
+          <row gap="xs"><shape type="rounded-rect" fill="tint(accent3, 88%)" border="1 solid tint(accent3, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent3">I</text></shape><shape type="rounded-rect" fill="tint(accent3, 88%)" border="1 solid tint(accent3, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent3">D</text></shape><shape type="rounded-rect" fill="tint(accent3, 88%)" border="1 solid tint(accent3, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent3">H</text></shape></row>
+          <text role="code" size="16" color="accent3">i4i.xlarge · 937 GB NVMe</text>
+          <p size="17" color="muted">NoSQL databases, data warehousing</p>
+        </col>
+      </col>
+    </shape>
+    <shape type="rounded-rect" variant="card" w="fill" h="fill">
+      <col gap="xs" h="fill">
+        <shape type="rect" fill="accent6" border="none" w="fill" h="4"/>
+        <col gap="xs" pad="md">
+          <h3 size="22">HPC optimized</h3>
+          <row gap="xs"><shape type="rounded-rect" fill="tint(accent6, 88%)" border="1 solid tint(accent6, 70%)" radius="sm" pad="xs"><text role="code" size="15" color="accent6">Hpc</text></shape></row>
+          <text role="code" size="16" color="accent6">hpc7g.16xlarge · 200 Gbps EFA</text>
+          <p size="17" color="muted">Tightly coupled simulations, weather, CFD</p>
+        </col>
+      </col>
+    </shape>
+  </grid>
+  <note>Start from the bottleneck: CPU, memory, accelerators, local storage or network. The family letter in the name tells you which one you picked.</note>
+</slide>
