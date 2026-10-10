@@ -88,3 +88,59 @@ textbox "text s2.0.2.0.2.1"
   ¶ center | "noon"{body 13.5pt muted}
 textbox "text s2.0.2.0.2.2"
   ¶ center | "6pm"{body 13.5pt muted}
+# slide 4 series
+shape:rect "shape s3.0.0" alt="Revenue by quarter" fill=none line=none
+textbox "text s3.0.0.0.0.0.0.0.0"
+  ¶ center | "12M"{body 13.5pt muted}
+shape:rect "shape s3.0.0.0.0.0.0.0.1" fill=accent1 line=none
+textbox "text s3.0.0.0.0.0.0.1.0"
+  ¶ center | "16M"{body 13.5pt muted}
+shape:rect "shape s3.0.0.0.0.0.0.1.1" fill=accent4 line=none
+shape:rect "shape s3.0.0.0.0.0.1" fill=muted line=none
+textbox "text s3.0.0.0.0.0.2"
+  ¶ center | "Q1"{body 13.5pt muted}
+textbox "text s3.0.0.0.0.1.0.0.0"
+  ¶ center | "18M"{body 13.5pt muted}
+shape:rect "shape s3.0.0.0.0.1.0.0.1" fill=accent1 line=none
+textbox "text s3.0.0.0.0.1.0.1.0"
+  ¶ center | "21M"{body 13.5pt muted}
+shape:rect "shape s3.0.0.0.0.1.0.1.1" fill=accent4 line=none
+shape:rect "shape s3.0.0.0.0.1.1" fill=muted line=none
+textbox "text s3.0.0.0.0.1.2"
+  ¶ center | "Q2"{body 13.5pt muted}
+textbox "text s3.0.0.0.0.2.0.0.0"
+  ¶ center | "15M"{body 13.5pt muted}
+shape:rect "shape s3.0.0.0.0.2.0.0.1" fill=accent1 line=none
+textbox "text s3.0.0.0.0.2.0.1.0"
+  ¶ center | "24M"{body 13.5pt accent5}
+shape:rect "shape s3.0.0.0.0.2.0.1.1" fill=accent5 line=none
+shape:rect "shape s3.0.0.0.0.2.1" fill=muted line=none
+textbox "text s3.0.0.0.0.2.2"
+  ¶ center | "Q3"{body 13.5pt muted}
+shape:rect "shape s3.0.0.0.1.0.0" fill=accent1 line=none
+textbox "text s3.0.0.0.1.0.1"
+  ¶ start | "2025"{body 13.5pt muted}
+shape:rect "shape s3.0.0.0.1.1.0" fill=accent4 line=none
+textbox "text s3.0.0.0.1.1.1"
+  ¶ start | "2026"{body 13.5pt muted}
+shape:rect "shape s3.0.1" alt="Demand and capacity" fill=none line=none
+shape:custGeom "shape s3.0.1.0.0.0.0" fill=accent2 line=none
+shape:custGeom "shape s3.0.1.0.0.0.1" fill=none line=accent2
+shape:custGeom "shape s3.0.1.0.0.0.2" fill=none line=accent5
+shape:rect "shape s3.0.1.0.0.1" fill=muted line=none
+textbox "text s3.0.1.0.0.2.0"
+  ¶ center | "6am"{body 13.5pt muted}
+textbox "text s3.0.1.0.0.2.1"
+  ¶ center | "9am"{body 13.5pt muted}
+textbox "text s3.0.1.0.0.2.2"
+  ¶ center | "noon"{body 13.5pt muted}
+textbox "text s3.0.1.0.0.2.3"
+  ¶ center | "6pm"{body 13.5pt muted}
+textbox "text s3.0.1.0.0.2.4"
+  ¶ center | "9pm"{body 13.5pt muted}
+shape:rect "shape s3.0.1.0.1.0.0" fill=accent2 line=none
+textbox "text s3.0.1.0.1.0.1"
+  ¶ start | "Demand"{body 13.5pt muted}
+shape:rect "shape s3.0.1.0.1.1.0" fill=accent5 line=none
+textbox "text s3.0.1.0.1.1.1"
+  ¶ start | "Capacity"{body 13.5pt muted}
