@@ -696,6 +696,11 @@ func (r *resolver) colorFunc(name, raw string, span soml.Span) (soml.Color, bool
 		return r.variantFunc(soml.ColorModKind(fn), name, inner, span, raw)
 	case string(soml.ModAlpha):
 		return r.alphaFunc(name, inner, span, raw)
+	case patternFunc:
+		// 무늬는 색이 아니라 두 색을 가진 채움이다 — 도형 fill이 colorValue보다 먼저 가로챈다 (shapeFill).
+		// 여기까지 왔다면 무늬를 받지 않는 자리다.
+		r.errorf(span, "%s cannot be a pattern (%q) — pattern(…) is only a shape fill", name, raw)
+		return soml.Color{}, false
 	}
 	r.errorf(span, "unknown color function %q%s (available functions: gradient, radial, shade, tint, alpha) — %q",
 		fn, didYouMean(fn, "gradient, radial, shade, tint, alpha"), raw)

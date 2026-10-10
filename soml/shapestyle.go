@@ -64,6 +64,38 @@ type ShapeStyle struct {
 type Fill struct {
 	None  bool
 	Color Color
+	// Pattern은 무늬 채움이다 (`pattern(…)`). nil이 아니면 Color는 쓰지 않는다 — 무늬는 두 색(앞 · 뒤)을 갖는
+	// 채움이라 한 색 자리에 담을 수 없다. 도형 채움에만 생긴다 (값 층이 다른 자리를 막는다).
+	Pattern *Pattern
+}
+
+// Pattern은 확정된 무늬 채움이다 — 프리셋 무늬 하나와 앞색(선 · 점) · 뒷색(바탕)이다. 두 색은 단색이고
+// 불투명도(alpha 변형)를 가질 수 있다.
+type Pattern struct {
+	Kind PatternKind
+	Fg   Color
+	Bg   Color
+}
+
+// PatternKind는 무늬 이름이다 — 닫힌 어휘 (PatternKinds).
+type PatternKind string
+
+const (
+	PatternHorizontal       PatternKind = "horizontal"
+	PatternVertical         PatternKind = "vertical"
+	PatternDiagonalUp       PatternKind = "diagonal-up"
+	PatternDiagonalDown     PatternKind = "diagonal-down"
+	PatternWideDiagonalUp   PatternKind = "wide-diagonal-up"
+	PatternWideDiagonalDown PatternKind = "wide-diagonal-down"
+	PatternCross            PatternKind = "cross"
+	PatternDiagonalCross    PatternKind = "diagonal-cross"
+	PatternDots             PatternKind = "dots"
+)
+
+// PatternKinds는 무늬 어휘 전체다 (순서 = 진단 메시지 순서).
+func PatternKinds() []PatternKind {
+	return []PatternKind{PatternHorizontal, PatternVertical, PatternDiagonalUp, PatternDiagonalDown,
+		PatternWideDiagonalUp, PatternWideDiagonalDown, PatternCross, PatternDiagonalCross, PatternDots}
 }
 
 // ColorFill은 색 채움이다.

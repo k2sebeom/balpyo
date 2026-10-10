@@ -172,7 +172,7 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 			// 캐스케이드 둘째 단이라 shapeVariant가 소유한다 — 여기서 또 보면 모르는 variant
 			// 경고가 두 번 난다.
 		case "fill":
-			if fill, ok := r.fill(attr); ok {
+			if fill, ok := r.shapeFill(attr); ok {
 				patch.fill = &fill
 			}
 		case "border":
@@ -301,6 +301,50 @@ func (r *resolver) fill(attr soml.Attr) (soml.Fill, bool) {
 		return soml.Fill{}, false
 	}
 	return soml.ColorFill(color), true
+}
+
+// patternFunc는 무늬 채움의 함수 이름이다.
+const patternFunc = "pattern"
+
+// shapeFill은 도형의 채움이다 — fill의 모든 값에 더해 무늬(`pattern(<무늬> <앞색> <뒷색>)`)를 받는다.
+// 무늬를 도형에만 여는 이유: 글자 · 선 · 표 칸 · 배경에는 두 타깃에 같은 원어가 없거나 길이 하나 더 생긴다.
+func (r *resolver) shapeFill(attr soml.Attr) (soml.Fill, bool) {
+	if r.hasValue(attr) && strings.HasPrefix(attr.Value, patternFunc+"(") {
+		return r.patternFill(attr.Value, attr.ValueSpan)
+	}
+	return r.fill(attr)
+}
+
+// patternFill은 `pattern(<무늬> <앞색> <뒷색>)`을 해석한다. 두 색은 그라디언트 스톱과 같은 문법이다 (`bg/0`).
+func (r *resolver) patternFill(raw string, span soml.Span) (soml.Fill, bool) {
+	if !strings.HasSuffix(raw, ")") {
+		r.errorf(span, "color function %s(…) is missing the closing %q (%q)", patternFunc, ")", raw)
+		return soml.Fill{}, false
+	}
+	inner := raw[len(patternFunc)+1 : len(raw)-1]
+	fields := strings.Fields(inner)
+	if len(fields) != 3 || strings.ContainsAny(inner, "(,") {
+		r.errorf(span, "pattern takes a pattern name and two colors, `pattern(<pattern> <foreground> <background>)` (%q) — e.g. pattern(diagonal-up accent5 bg/0)", raw)
+		return soml.Fill{}, false
+	}
+	kinds := soml.PatternKinds()
+	names := make([]string, len(kinds))
+	known := false
+	for i, k := range kinds {
+		names[i] = string(k)
+		known = known || string(k) == fields[0]
+	}
+	ok := true
+	if !known {
+		list := strings.Join(names, ", ")
+		r.errorf(span, "unknown pattern %q%s (available values: %s)", fields[0], didYouMean(fields[0], list), list)
+		ok = false
+	}
+	colors, cok := r.gradientStops("fill", fields[1:], span)
+	if !ok || !cok {
+		return soml.Fill{}, false
+	}
+	return soml.Fill{Pattern: &soml.Pattern{Kind: soml.PatternKind(fields[0]), Fg: colors[0], Bg: colors[1]}}, true
 }
 
 // noneValue는 "그리지 않음"이다 — `fill`·`border`가 공유한다. 상수로 두는 이유는 두 곳의

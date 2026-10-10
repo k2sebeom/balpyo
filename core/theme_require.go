@@ -213,6 +213,13 @@ func requireComponentColors(theme soml.Theme, comps components) error {
 		if f == nil || f.None {
 			return nil
 		}
+		if p := f.Pattern; p != nil {
+			// 무늬의 두 색도 토큰 참조여야 한다 — PPTX의 fgClr · bgClr가 schemeClr로 남는다.
+			if err := check(where+" fill pattern foreground", &p.Fg); err != nil {
+				return err
+			}
+			return check(where+" fill pattern background", &p.Bg)
+		}
 		return check(where+" fill", &f.Color)
 	}
 	border := func(where string, b *soml.Border) error {

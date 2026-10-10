@@ -1061,7 +1061,7 @@ func shadowToken(theme soml.Theme, name string) *soml.ShadowToken {
 func shapePatchFromFile(theme soml.Theme, fill, border, radius, shadow string) (shapePatch, error) {
 	var patch shapePatch
 	if fill != "" {
-		f, err := themeFill(theme, fill)
+		f, err := themeShapeFill(theme, fill)
 		if err != nil {
 			return patch, err
 		}
@@ -1129,6 +1129,16 @@ func imageVariantPatchFromFile(theme soml.Theme, v imageVariantFile) (imagePatch
 func themeFill(theme soml.Theme, raw string) (*soml.Fill, error) {
 	r := &resolver{theme: theme}
 	f, ok := r.fill(soml.Attr{Name: "fill", Value: raw, HasValue: true})
+	if err := themeValueErr(r, ok); err != nil {
+		return nil, err
+	}
+	return &f, nil
+}
+
+// themeShapeFill은 테마의 도형 채움이다 — 도형 자리라 무늬를 받는다 (shapeFill).
+func themeShapeFill(theme soml.Theme, raw string) (*soml.Fill, error) {
+	r := &resolver{theme: theme}
+	f, ok := r.shapeFill(soml.Attr{Name: "fill", Value: raw, HasValue: true})
 	if err := themeValueErr(r, ok); err != nil {
 		return nil, err
 	}

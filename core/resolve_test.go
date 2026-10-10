@@ -429,3 +429,29 @@ func TestResolveGradientStopsAndRadial(t *testing.T) {
 		}
 	}
 }
+
+// 무늬는 도형 채움에만 열린다 — 무늬 이름 하나와 두 색(스톱 문법)이다. 다른 색 자리는 진단이다.
+func TestResolvePatternFill(t *testing.T) {
+	r := &resolver{theme: loadBuiltinTheme("minimal").tokens}
+	f, ok := r.shapeFill(soml.Attr{Name: "fill", Value: "pattern(diagonal-up accent1 bg/0)", HasValue: true})
+	if !ok || f.Pattern == nil || f.Pattern.Kind != soml.PatternDiagonalUp || f.Pattern.Fg.Token != "accent1" ||
+		f.Pattern.Bg.Token != "bg" || f.Pattern.Bg.Mod == nil || f.Pattern.Bg.Mod.Amount != 0 {
+		t.Fatalf("무늬 = %+v (진단 %v)", f.Pattern, r.diags)
+	}
+	for _, tc := range []struct{ raw, want string }{
+		{"pattern(zigzag fg bg)", `unknown pattern "zigzag" (available values: horizontal, vertical, diagonal-up, diagonal-down, wide-diagonal-up, wide-diagonal-down, cross, diagonal-cross, dots)`},
+		{"pattern(dots fg)", "pattern takes a pattern name and two colors"},
+		{"pattern(dots fg, bg)", "pattern takes a pattern name and two colors"},
+		{"pattern(dots fg nope)", `color token "nope" is not in the theme`},
+	} {
+		r := &resolver{theme: loadBuiltinTheme("minimal").tokens}
+		if _, ok := r.shapeFill(soml.Attr{Name: "fill", Value: tc.raw, HasValue: true}); ok || len(r.diags) == 0 || !strings.Contains(r.diags[0].Message, tc.want) {
+			t.Errorf("%s: 진단 = %v, want %q", tc.raw, r.diags, tc.want)
+		}
+	}
+	r = &resolver{theme: loadBuiltinTheme("minimal").tokens}
+	if _, ok := r.colorValue("color", "pattern(dots fg bg)", soml.Span{}); ok || len(r.diags) == 0 ||
+		!strings.Contains(r.diags[0].Message, "color cannot be a pattern") {
+		t.Errorf("글자 색의 무늬: 진단 = %v", r.diags)
+	}
+}
