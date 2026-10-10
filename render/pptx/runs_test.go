@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/k2sebeom/balpyo/render/geom"
+	"github.com/k2sebeom/balpyo/soml"
 )
 
 // bodyRect는 이 파일의 테스트가 공유하는 rect다 — 관심은 txBody 안이라 좌표는 아무 값이어도 된다.
@@ -118,5 +119,23 @@ func TestRunPreNewlines(t *testing.T) {
 	}
 	if got := strings.Count(xml, "<a:p>"); got != 1 {
 		t.Errorf("문단 %d개, want 1 — pre는 한 문단의 여러 줄이다\n%s", got, xml)
+	}
+}
+
+// 자간은 em × 런 크기(pt) × 100 = `spc`(1/100pt)이고 대문자는 `cap="all"`이다. 원문은 저자가 쓴
+// 대소문자 그대로 `a:t`에 남는다 — 대문자는 표시 속성이다.
+func TestRunTrackingAndCase(t *testing.T) {
+	deck := resolvedDeck(t, `<slide>
+  <p>Kicker</p>
+</slide>`)
+	p := deck.Slides[0].Content[0].(*soml.Element)
+	p.Appearance.Text.Tracking = 0.16
+	p.Appearance.Text.Case = soml.CaseUpper
+	xml := slideXML(t, deck, measuredGeometry(t, deck, bodyRect))
+	// 본문 24px = 18pt → 0.16 × 18 × 100 = 288.
+	for _, want := range []string{`spc="288"`, `cap="all"`, "<a:t>Kicker</a:t>"} {
+		if !strings.Contains(xml, want) {
+			t.Errorf("런에 %q가 없다\n%s", want, xml)
+		}
 	}
 }

@@ -81,6 +81,15 @@ func TestTextStyleCSS(t *testing.T) {
 				"line-height: 1.5; color: #FF00AA; text-align: justify",
 		},
 		{
+			name: "자간·대문자는 정했을 때만 꼬리에 붙는다",
+			style: soml.TextStyle{Role: soml.RoleBody, Font: soml.FontBody, Size: 18, Weight: 700,
+				LineHeight: 1.5, Color: soml.TokenColor("accent1"), Align: soml.AlignStart,
+				Tracking: 0.16, Case: soml.CaseUpper},
+			want: "font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; " +
+				"line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; " +
+				"letter-spacing: 0.16em; text-transform: uppercase",
+		},
+		{
 			name: "소수 크기는 자릿수를 늘리지 않는다",
 			style: soml.TextStyle{Role: soml.RoleBody, Font: soml.FontBody, Size: 20.5, Weight: 400,
 				LineHeight: 1.45, Color: soml.TokenColor("fg"), Align: soml.AlignStart},

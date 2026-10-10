@@ -92,7 +92,7 @@ SOML에는 선언 채널이 **둘**이다: 이 페이지가 담는 **외관 채�
 
 | 요소 | variant | 담는 것 |
 |---|---|---|
-| 텍스트 | `kicker` | 크기 18 + 굵기 700 + `accent1` |
+| 텍스트 | `kicker` | 크기 18 + 굵기 700 + `accent1` + 자간 0.1em + 대문자 |
 | 텍스트 | `lead` | 크기 32 |
 | 도형 | `card` | `fill: bg` · `radius: lg` |
 | 도형 | `card-header` | `border: none` · `radius: sm` (채움은 정하지 않는 **부분 패치**) |
@@ -187,6 +187,28 @@ slides/006_variant.slide:6:16: warning: variant "hero" is not in the theme — c
 | `heading` | 36px / 700 | 32px / 700 / **세리프** | 34px / 600 |
 | `body`·`caption`·`code` | 24 · 18 · 20px | 같다 | 같다 |
 
+### 자간과 대소문자 — 테마의 타이포그래피
+
+`components.json`의 역할 · 컴포넌트 기본값 · variant는 크기 · 굵기 · 색과 함께 두 필드를 더 받는다.
+**저자 속성은 없다** — 덱의 모든 키커가 같은 자간 · 같은 대소문자여야 키커로 읽히므로, 원고에는
+`variant` 이름만 남는다.
+
+| 필드 | 값 | 뜻 |
+|---|---|---|
+| `tracking` | −0.1 ~ 0.5 (글자 크기의 배수, em) | 자간 — 정하지 않으면 0 |
+| `case` | `upper` · `none` | 표시 대소문자 — `none`은 아래 단의 `upper`를 끈다 |
+
+```json
+{ "name": "kicker", "size": 18, "weight": 700, "color": "accent1", "tracking": 0.1, "case": "upper" }
+```
+
+- **대문자는 표시 속성이다.** 두 산출물의 글자 데이터는 저자가 쓴 대소문자 그대로이고, 대문자는
+  웹의 `text-transform`과 PPTX의 `cap="all"`이 보여 준다. 그래서 PowerPoint에서 글을 고치면 원문
+  대소문자로 편집되고, `case`가 없는 테마로 갈면 대문자가 사라진다.
+- 범위 밖의 자간과 모르는 대소문자는 테마 로드 에러다:
+  `text variant "kicker" tracking 0.8 is out of range — tracking is a multiple of the font size (em) between -0.1 and 0.5` ·
+  `text variant "kicker" case "lower" is unknown (available values: upper, none)`.
+
 ## 토큰 색은 참조로 남는다 — 제품의 핵심 계약
 
 `color="accent1"`·`fill="surface"` 같은 토큰 색은 해석 후에도 **토큰 이름으로** 남고,
@@ -227,6 +249,8 @@ PowerPoint에서 확인한다**.
 | (역할에서) 굵기 | CSS font-weight 수치 | `font-weight: <n>` | `a:rPr@b` — 600 이상이면 `1` |
 | (역할에서) 줄높이 | 폰트 크기 배수 | `line-height: <배수>` | `a:lnSpc/a:spcPts@val` = 배수 × px × 0.75 × 100 — 배수(`spcPct`)는 폰트 메트릭을 타서 CSS `line-height`와 다르게 풀리므로 절대값으로 낸다 |
 | (역할에서) 폰트 | 폰트 토큰 이름 | `font-family: var(--balpyo-font-<토큰>)` | `a:latin`/`a:ea` 테마 참조 (`+mj-lt`·`+mj-ea` / `+mn-lt`·`+mn-ea`), mono는 리터럴 typeface |
+| (테마에서) 자간 | 글자 크기 배수 (em) | `letter-spacing: <배수>em` | `a:rPr@spc` = 배수 × px × 0.75 × 100 (1/100 pt — 런의 크기 기준) |
+| (테마에서) 대소문자 | `upper` | `text-transform: uppercase` | `a:rPr@cap="all"` — 원문은 그대로 |
 | `color` (토큰) | 토큰 이름 | `color: var(--balpyo-color-<토큰>)` | `a:solidFill/a:schemeClr@val` = 토큰의 Ref |
 | `color` (리터럴) | 대문자 6자리 hex | `color: #RRGGBB` | `a:solidFill/a:srgbClr@val="RRGGBB"` |
 | `color` (변형) | 밑색 + shade/tint/alpha | `color: hsl(from …)` · alpha는 `color-mix(…)` (밑색 var()/#hex 유지) | `a:solidFill/…Clr` + `a:lumMod`/`a:lumOff`/`a:alpha` |

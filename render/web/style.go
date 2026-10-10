@@ -221,6 +221,15 @@ func textStyleCSS(style soml.TextStyle, theme soml.Theme) (string, error) {
 	fmt.Fprintf(&b, "line-height: %s; ", formatNumber(style.LineHeight))
 	fmt.Fprintf(&b, "%s; ", colorDecl)
 	fmt.Fprintf(&b, "text-align: %s", align)
+	// 자간·대소문자는 정했을 때만 낸다 — 이 필드를 쓰지 않는 테마의 산출물이 바이트 그대로
+	// 남는다. 자간은 em 그대로다: 런의 글자 크기가 기준이므로 PPTX가 런마다 크기 × 배수로
+	// spc를 환산하는 것과 같은 값이다.
+	if style.Tracking != 0 {
+		fmt.Fprintf(&b, "; letter-spacing: %sem", formatNumber(style.Tracking))
+	}
+	if style.Case == soml.CaseUpper {
+		b.WriteString("; text-transform: uppercase")
+	}
 	return b.String(), nil
 }
 

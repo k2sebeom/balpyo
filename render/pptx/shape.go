@@ -1281,7 +1281,7 @@ func writeTextRuns(w func(depth int, line string), text string, style soml.TextS
 		if line == "" {
 			continue
 		}
-		attrs := fmt.Sprintf(`sz="%d" b="%s"`, FontSize(style.Size), boldValue(style.Weight))
+		attrs := fmt.Sprintf(`sz="%d" b="%s"`, FontSize(style.Size), boldValue(style.Weight)) + typographyAttrs(style)
 		if ctx.inline {
 			// 인라인 런은 i/u까지 전부 명시한다 — hlinkClick의 자동 밑줄·자동 색 같은 뷰어
 			// 기본값에 기대는 값은 뷰어가 바뀌면 움직이고, 그 움직임은 두 산출물을 나란히
@@ -1326,6 +1326,20 @@ func algnValue(align soml.TextAlign) (string, error) {
 		return "just", nil
 	}
 	return "", fmt.Errorf("align %q is not a known logical alignment", string(align))
+}
+
+// typographyAttrs는 자간·대소문자를 rPr 속성으로 만든다 — 정하지 않았으면 빈 문자열이라
+// 이 필드를 쓰지 않는 테마의 산출물이 그대로다. 자간은 em 배수 × 런의 크기(pt) × 100
+// (`spc`는 1/100pt)이고, 대문자는 `cap="all"`이다 (원문은 그대로 남는다).
+func typographyAttrs(style soml.TextStyle) string {
+	var attrs string
+	if style.Tracking != 0 {
+		attrs += fmt.Sprintf(` spc="%d"`, Tracking(style.Tracking, style.Size))
+	}
+	if style.Case == soml.CaseUpper {
+		attrs += ` cap="all"`
+	}
+	return attrs
 }
 
 // boldValue는 font-weight 수치를 rPr@b로 눕힌다.

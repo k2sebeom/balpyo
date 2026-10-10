@@ -117,7 +117,29 @@ type TextStyle struct {
 	// `bodyPr@anchor`·flex 정렬 선언을 하나 더 싣게 되고, 그 선언은 뜻이 없는 자리에서도
 	// 산출물을 흔든다.
 	Anchor TextAnchor
+	// Tracking은 **자간**이다 — 글자 크기의 배수(em). 0은 "자간 없음"이고 아무 선언도 나가지
+	// 않는다. 웹은 `letter-spacing: <n>em`, PPTX는 `a:rPr@spc`(1/100pt)로 환산한다 — 배수로
+	// 들고 있는 이유는 LineHeight와 같다: "크기의 몇 배"가 테마의 의도이고, 절대값은 크기가
+	// 확정된 뒤 타깃 경계에서만 정해진다. 저자 속성이 아니라 테마 필드다 (역할·variant).
+	Tracking float64
+	// Case는 **표시 대소문자**다 — 빈 값은 원문 그대로, CaseUpper는 대문자로 보인다. 원문은
+	// 바뀌지 않는다: 웹 `text-transform`과 PPTX `a:rPr@cap="all"`이 둘 다 표시 속성이라
+	// PowerPoint에서 글을 고치면 저자가 쓴 대소문자로 편집되고, 테마를 갈면 대문자가 사라진다.
+	Case TextCase
+	// Highlight는 런 뒤에 칠하는 **형광펜 색**이다 (`<mark>`의 런 델타 — 테마의
+	// `text.mark.highlight`). nil은 형광펜 없음이다. 웹은 `background-color`, PPTX는
+	// `a:rPr/a:highlight`다.
+	Highlight *Color
 }
+
+// TextCase는 표시 대소문자다. 어휘는 둘이고, 원문 그대로가 빈 값이다 — 테마 파일의 `"none"`은
+// 아래 단의 `upper`를 끄는 패치이고 확정 값으로는 빈 값이 된다.
+type TextCase string
+
+const (
+	// CaseUpper는 대문자 표시다.
+	CaseUpper TextCase = "upper"
+)
 
 // TextRole은 텍스트 역할이다 — 1층의 HTML 서브셋(`<p>`, `<h2>` …)과 2층의 `<text role>`이
 // 공유하는 타이포그래피 계약이다. 어휘는 5종으로 닫혀 있다.

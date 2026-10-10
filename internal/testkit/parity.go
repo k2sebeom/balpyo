@@ -379,6 +379,9 @@ func webRunStyle(style soml.TextStyle, theme soml.Theme, link string) runStyle {
 		underline: style.Underline,
 		color:     webColor(style.Color),
 		link:      link,
+		// 자간은 렌더러와 따로 환산한다 — em × 크기(px) × 0.75 × 100 = 1/100pt.
+		tracking: int64(math.Round(style.Tracking * style.Size * 0.75 * 100)),
+		upper:    style.Case == soml.CaseUpper,
 	}
 }
 
@@ -428,6 +431,9 @@ type runStyle struct {
 	bold, italic, underline bool
 	color                   string
 	link                    string
+	// tracking은 자간(1/100pt)이고 upper는 대문자 표시다 — 정했을 때만 줄에 나온다.
+	tracking int64
+	upper    bool
 }
 
 func formatRun(text string, s runStyle) string {
@@ -444,6 +450,12 @@ func formatRun(text string, s runStyle) string {
 	}
 	if s.underline {
 		attrs = append(attrs, "u")
+	}
+	if s.tracking != 0 {
+		attrs = append(attrs, "tracking="+strconv.FormatFloat(float64(s.tracking)/100, 'f', -1, 64)+"pt")
+	}
+	if s.upper {
+		attrs = append(attrs, "upper")
 	}
 	attrs = append(attrs, s.color)
 	if s.link != "" {
@@ -531,6 +543,9 @@ type xRunItem struct {
 		B  string `xml:"b,attr"`
 		I  string `xml:"i,attr"`
 		U  string `xml:"u,attr"`
+		// Spc는 자간(1/100pt), Cap은 대문자 표시다.
+		Spc int64  `xml:"spc,attr"`
+		Cap string `xml:"cap,attr"`
 		xFills
 		Latin struct {
 			Typeface string `xml:"typeface,attr"`
@@ -711,6 +726,8 @@ func pptxParas(paras []LayoutPara, body xTxBody, prefix string, theme soml.Theme
 					underline: item.RPr.U != "" && item.RPr.U != "none",
 					color:     pptxColor(item.RPr.xFills, theme),
 					link:      link,
+					tracking:  item.RPr.Spc,
+					upper:     item.RPr.Cap == "all",
 				}))
 			}
 		}

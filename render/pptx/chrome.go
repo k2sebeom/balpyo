@@ -127,7 +127,7 @@ func writeChromeRun(w func(depth int, line string), item soml.ChromeItem, theme 
 		open = fmt.Sprintf(`<a:fld id="%s" type="slidenum">`, chromeFieldID)
 	}
 	w(3, open)
-	w(4, fmt.Sprintf(`<a:rPr sz="%d" b="%s">`, FontSize(style.Size), boldValue(style.Weight)))
+	w(4, fmt.Sprintf(`<a:rPr sz="%d" b="%s"%s>`, FontSize(style.Size), boldValue(style.Weight), typographyAttrs(style)))
 	if err := writeTextFill(w, 5, style.Color, theme); err != nil {
 		return err
 	}

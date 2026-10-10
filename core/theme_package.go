@@ -296,6 +296,10 @@ type textRoleFile struct {
 	LineHeight float64 `json:"lineHeight"`
 	Color      string  `json:"color"`
 	Align      string  `json:"align"`
+	// Tracking·Case는 역할에서도 선택이다 — 정하지 않으면 자간 0 · 원문 대소문자다 (역할이
+	// "완전한 바닥"이어야 하는 필드는 크기·줄높이·색·정렬·폰트이고, 이 둘은 0이 곧 뜻이다).
+	Tracking *float64 `json:"tracking"`
+	Case     *string  `json:"case"`
 }
 
 // textComponentDefaultFile은 컴포넌트 기본값 한 줄이다 — 주인은 **태그**(`tag`)이거나 레이아웃의
@@ -306,12 +310,14 @@ type textRoleFile struct {
 // 인용이라 본문 크기여야 한다 — 태그 기본값으로는 둘을 가를 수 없다. 키에 레이아웃이 들어가는
 // 이유는 슬롯 이름이 레이아웃마다 겹치기 때문이다 (`body`는 content · image-text · stat에 있다).
 type textComponentDefaultFile struct {
-	Tag    string   `json:"tag"`
-	Layout string   `json:"layout"`
-	Slot   string   `json:"slot"`
-	Size   *float64 `json:"size"`
-	Weight *int     `json:"weight"`
-	Color  *string  `json:"color"`
+	Tag      string   `json:"tag"`
+	Layout   string   `json:"layout"`
+	Slot     string   `json:"slot"`
+	Size     *float64 `json:"size"`
+	Weight   *int     `json:"weight"`
+	Color    *string  `json:"color"`
+	Tracking *float64 `json:"tracking"`
+	Case     *string  `json:"case"`
 }
 
 // key는 기본값 한 줄의 주인 이름이다 — 상속 병합과 로드가 같은 열쇠를 쓴다.
@@ -328,10 +334,12 @@ func slotDefaultKey(layout soml.SlideLayout, slot string) string {
 }
 
 type textVariantFile struct {
-	Name   string   `json:"name"`
-	Size   *float64 `json:"size"`
-	Weight *int     `json:"weight"`
-	Color  *string  `json:"color"`
+	Name     string   `json:"name"`
+	Size     *float64 `json:"size"`
+	Weight   *int     `json:"weight"`
+	Color    *string  `json:"color"`
+	Tracking *float64 `json:"tracking"`
+	Case     *string  `json:"case"`
 }
 
 type shapeComponentsFile struct {
@@ -774,11 +782,17 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 	var comps components
 	comps.textRoles = map[soml.TextRole]soml.TextStyle{}
 	for _, r := range file.Text.Roles {
-		comps.textRoles[soml.TextRole(r.Name)] = soml.TextStyle{
+		style := soml.TextStyle{
 			Role: soml.TextRole(r.Name), Font: soml.FontRole(r.Font), Size: r.Size,
 			Weight: r.Weight, LineHeight: r.LineHeight,
 			Color: soml.TokenColor(r.Color), Align: soml.TextAlign(r.Align),
 		}
+		var typo textPatch
+		if err := typographyPatch(&typo, fmt.Sprintf("text role %q", r.Name), r.Tracking, r.Case); err != nil {
+			return comps, err
+		}
+		mergeText(&style, typo)
+		comps.textRoles[soml.TextRole(r.Name)] = style
 	}
 
 	comps.textComponentDefaults = map[string]textPatch{}
@@ -790,6 +804,9 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 		}
 		if d.Weight != nil {
 			patch.weight = d.Weight
+		}
+		if err := typographyPatch(&patch, fmt.Sprintf("text.componentDefaults %q", d.key()), d.Tracking, d.Case); err != nil {
+			return comps, err
 		}
 		if d.Color != nil {
 			c, err := themeColor(theme, fmt.Sprintf("text.componentDefaults %q color", d.key()), *d.Color)
@@ -823,6 +840,9 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 		}
 		if v.Weight != nil {
 			patch.weight = v.Weight
+		}
+		if err := typographyPatch(&patch, fmt.Sprintf("text variant %q", v.Name), v.Tracking, v.Case); err != nil {
+			return comps, err
 		}
 		if v.Color != nil {
 			c, err := themeColor(theme, fmt.Sprintf("text variant %q color", v.Name), *v.Color)
@@ -1196,4 +1216,35 @@ func loadBuiltinTheme(name string) themePackage {
 		panic(fmt.Sprintf("cannot load built-in theme %q: %v", name, err))
 	}
 	return pkg
+}
+
+// 자간의 범위다 (em). 음수 쪽은 큰 제목을 조이는 자리(−0.02em 안팎)를 넉넉히 덮고, 양수 쪽은
+// 키커·라벨의 벌린 글자(0.1~0.2em)를 덮는다. 그 밖은 글자가 겹치거나 단어가 흩어져 읽히지 않는다.
+const (
+	minTracking = -0.1
+	maxTracking = 0.5
+)
+
+// typographyPatch는 테마 파일의 `tracking`·`case`를 패치에 얹는다 — 역할·컴포넌트 기본값·
+// variant가 같은 함수를 지나 진단이 한 벌이다. owner는 진단의 주어다.
+func typographyPatch(patch *textPatch, owner string, tracking *float64, textCase *string) error {
+	if tracking != nil {
+		if *tracking < minTracking || *tracking > maxTracking {
+			return fmt.Errorf("%s tracking %g is out of range — tracking is a multiple of the font size (em) between %g and %g",
+				owner, *tracking, minTracking, maxTracking)
+		}
+		patch.tracking = ptr(*tracking)
+	}
+	if textCase != nil {
+		switch *textCase {
+		case string(soml.CaseUpper):
+			patch.textCase = ptr(soml.CaseUpper)
+		case "none":
+			// "none"은 아래 단의 upper를 끈다 — 확정 값으로는 원문 그대로(빈 값)다.
+			patch.textCase = ptr(soml.TextCase(""))
+		default:
+			return fmt.Errorf("%s case %q is unknown (available values: upper, none)", owner, *textCase)
+		}
+	}
+	return nil
 }

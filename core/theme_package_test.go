@@ -102,7 +102,7 @@ func TestLoadBuiltinComponents(t *testing.T) {
 
 	wantTextVariants := []textVariant{
 		{name: "kicker", patch: textPatch{size: ptr(18.0), weight: ptr(700),
-			color: ptr(soml.TokenColor("accent1"))}},
+			color: ptr(soml.TokenColor("accent1")), tracking: ptr(0.1), textCase: ptr(soml.CaseUpper)}},
 		{name: "lead", patch: textPatch{size: ptr(32.0)}},
 	}
 	if !reflect.DeepEqual(comps.textVariants, wantTextVariants) {
@@ -332,6 +332,37 @@ func TestLoadComponentsSlotDefaults(t *testing.T) {
 		{"없는 슬롯", `{"layout":"quote","slot":"qoute","size":40}`, `"quote"/"qoute" is not in the layout vocabulary`},
 		{"태그와 슬롯을 함께", `{"tag":"p","layout":"quote","slot":"quote","size":40}`, "tag \"p\" cannot be combined with slot"},
 		{"주인 없음", `{"size":40}`, "has no owner"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := loadTheme(memTheme(fullTokens, withDefaults(tc.defaults)), "t")
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("에러 = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// 자간·대소문자는 역할·컴포넌트 기본값·variant가 같은 진단으로 받는다. `none`은 아래 단의 upper를
+// 끄는 패치이고 확정 값으로는 원문 그대로(빈 값)다.
+func TestLoadComponentsTypography(t *testing.T) {
+	withDefaults := func(defaults string) string {
+		return strings.Replace(fullComponents, `"text": { "roles": [`,
+			`"text": { "componentDefaults": [`+defaults+`], "roles": [`, 1)
+	}
+	theme, err := loadTheme(memTheme(fullTokens, withDefaults(`{"tag":"h3","tracking":0.2,"case":"upper"},{"tag":"p","case":"none"}`)), "t")
+	if err != nil {
+		t.Fatalf("유효한 자간·대소문자가 실패했다: %v", err)
+	}
+	comps := theme.components
+	if got := comps.textComponentDefaults["h3"]; got.tracking == nil || *got.tracking != 0.2 || got.textCase == nil || *got.textCase != soml.CaseUpper {
+		t.Errorf("h3 기본값 = %+v, want tracking 0.2 · upper", got)
+	}
+	if got := comps.textComponentDefaults["p"]; got.textCase == nil || *got.textCase != "" {
+		t.Errorf("p 기본값 = %+v, want case none → 빈 값", got)
+	}
+	for _, tc := range []struct{ name, defaults, want string }{
+		{"자간 범위 밖", `{"tag":"h3","tracking":0.8}`, "tracking 0.8 is out of range"},
+		{"모르는 대소문자", `{"tag":"h3","case":"lower"}`, `case "lower" is unknown (available values: upper, none)`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := loadTheme(memTheme(fullTokens, withDefaults(tc.defaults)), "t")

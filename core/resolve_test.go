@@ -165,7 +165,7 @@ func TestResolveBlockRoleEquivalence(t *testing.T) {
 
 // 텍스트 캐스케이드 우선순위: 인라인 > variant > 태그 기본값 > 역할 기본값. 각 단은 부분 패치라
 // 기대값은 역할 기본값에 그 단이 정한 필드만 얹은 전체 외관이다 (말하지 않은 필드는 아래 단).
-// 값은 단마다 구별된다: kicker(18/700/accent1)·lead(32)·h3(28)·blockquote(muted).
+// 값은 단마다 구별된다: kicker(18/700/accent1, 자간 0.1 · 대문자)·lead(32)·h3(28)·blockquote(muted).
 func TestResolveTextCascadePrecedence(t *testing.T) {
 	cases := []struct {
 		name, src, tag string
@@ -178,13 +178,14 @@ func TestResolveTextCascadePrecedence(t *testing.T) {
 			func(s *soml.TextStyle) { s.Color = soml.TokenColor("muted") }},
 		{"variant > 역할", `<text variant="kicker">x</text>`, "text", soml.RoleBody, func(s *soml.TextStyle) {
 			s.Size, s.Weight, s.Color = 18, 700, soml.TokenColor("accent1")
+			s.Tracking, s.Case = 0.1, soml.CaseUpper
 		}},
 		{"variant는 부분 패치", `<text role="title" variant="lead">x</text>`, "text", soml.RoleTitle,
 			func(s *soml.TextStyle) { s.Size = 32 }},
 		{"variant > 역할 (블록)", `<p variant="lead">x</p>`, "p", soml.RoleBody, func(s *soml.TextStyle) { s.Size = 32 }},
 		{"variant > 태그 기본값", `<h3 variant="lead">x</h3>`, "h3", soml.RoleHeading, func(s *soml.TextStyle) { s.Size = 32 }},
 		{"인라인 > variant", `<text variant="kicker" size="40" color="fg">x</text>`, "text", soml.RoleBody,
-			func(s *soml.TextStyle) { s.Size, s.Weight = 40, 700 }},
+			func(s *soml.TextStyle) { s.Size, s.Weight, s.Tracking, s.Case = 40, 700, 0.1, soml.CaseUpper }},
 		{"인라인 > variant > 태그 기본값", `<h3 variant="lead" size="40">x</h3>`, "h3", soml.RoleHeading,
 			func(s *soml.TextStyle) { s.Size = 40 }},
 		{"인라인 > 역할", `<text role="caption" size="40" color="accent1" align="center">x</text>`, "text", soml.RoleCaption,

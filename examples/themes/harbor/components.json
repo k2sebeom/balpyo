@@ -17,7 +17,7 @@
       { "layout": "stat",  "slot": "label", "size": 28, "weight": 700 }
     ],
     "variants": [
-      { "name": "kicker", "size": 18, "weight": 800, "color": "accent5" },
+      { "name": "kicker", "size": 18, "weight": 800, "color": "accent5", "tracking": 0.1, "case": "upper" },
       { "name": "lead",   "size": 30, "color": "muted" }
     ]
   },

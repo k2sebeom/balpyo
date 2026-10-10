@@ -1,6 +1,6 @@
 # slide 1 theme-title
 textbox "text s0.0" ph=body/2
-  ¶ start | "P4.2"{body 13.5pt b accent1}
+  ¶ start | "P4.2"{body 13.5pt b tracking=1.35pt upper accent1}
 textbox "text s0.1" ph=ctrTitle/0
   ¶ start | "어두운 테마"{heading 39pt b fg}
 textbox "text s0.2" ph=subTitle/1
@@ -21,7 +21,7 @@ textbox "h3 s1.1.2"
 textbox "blockquote s1.1.3"
   ¶ start | "인용은 색만 물러난다."{body 18pt muted}
 textbox "text s1.1.4"
-  ¶ start | "variant는 테마의 어휘다"{body 13.5pt b accent1}
+  ¶ start | "variant는 테마의 어휘다"{body 13.5pt b tracking=1.35pt upper accent1}
 textbox "text s1.1.5"
   ¶ start | "캡션은 muted로 물러난다."{body 13.5pt muted}
 # slide 3 theme-code
