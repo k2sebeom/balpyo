@@ -353,6 +353,31 @@ PowerPoint에서 확인한다**.
   모든 스톱을 그대로 그린다 — 이 갈라짐은 산출물 결함이 아니라 뷰어 소관이다. 그림은
   PowerPoint로 확인한다.
 
+**무늬 채움** — 도형의 `fill`은 `pattern(<무늬> <앞색> <뒷색>)`도 받는다. 빗금 · 격자 · 점 같은 질감을 칠하는 채움이다.
+앞색이 선 · 점, 뒷색이 바탕이다. 두 색은 그라디언트 스톱과 같은 문법이라 `/퍼센트`로 불투명도를 받는다.
+`pattern(wide-diagonal-up accent5/60 bg/0)`은 바탕이 비치는 붉은 빗금이다.
+
+| 무늬 | 모양 | PPTX `a:pattFill@prst` |
+|---|---|---|
+| `horizontal` | 가는 가로줄 | `horz` |
+| `vertical` | 가는 세로줄 | `vert` |
+| `diagonal-up` | 가는 사선 (`/`) | `upDiag` |
+| `diagonal-down` | 가는 사선 (`\`) | `dnDiag` |
+| `wide-diagonal-up` | 굵은 사선 (`/`) | `wdUpDiag` |
+| `wide-diagonal-down` | 굵은 사선 (`\`) | `wdDnDiag` |
+| `cross` | 가로세로 격자 | `cross` |
+| `diagonal-cross` | 사선 격자 | `diagCross` |
+| `dots` | 점 | `pct20` |
+
+- 웹은 SVG `<pattern>`(8×8 px 타일)이고, PPTX는 `a:pattFill`이다. 토큰 색은 `fgClr` · `bgClr`의 `schemeClr`로 남는다.
+  PowerPoint의 "패턴 채우기"에서 그대로 고칠 수 있다.
+- 도형 `opacity`는 두 색에 함께 걸린다.
+- **도형 채움에만 쓴다.** 도형의 `fill`, 테마의 도형 기본값 · variant에 쓸 수 있다. 글자 색 · 테두리 · 연결선 · 표 칸 · 배경에
+  쓰면 `color cannot be a pattern ("pattern(dots fg bg)") — pattern(…) is only a shape fill`처럼 그 자리의 이름으로
+  진단이 난다.
+- 모르는 무늬는 `unknown pattern "zigzag" (available values: horizontal, vertical, diagonal-up, diagonal-down, wide-diagonal-up, wide-diagonal-down, cross, diagonal-cross, dots)`다.
+- 무늬의 촘촘함은 엔진마다 다르다. 웹 타일은 무대와 함께 커지고, PowerPoint는 무늬를 화면 픽셀로 그린다.
+
 **색 변형** — `shade`/`tint`/`alpha`는 밑색 하나에 얹혀 참조를 보존한다.
 
 | 변형 | 웹 (CSS) | PPTX (색 요소 자식) |
