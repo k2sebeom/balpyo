@@ -280,3 +280,61 @@ func presetPath(preset string, w, h, adj float64) ([]Point, []byte) {
 		return []Point{{0, 0}, {w, h}}, []byte("L")
 	}
 }
+
+// LabelGap은 선 라벨과 선 사이의 거리(px)다.
+const LabelGap = 6
+
+// flatten은 경로를 꺾은선으로 편다 — 곡선 조각은 같은 간격의 매개변수로 32번 잘라 잇는다. 라벨 자리를
+// 정하는 데만 쓴다 (그리는 경로는 Points 그대로다).
+func (p Path) flatten() []Point {
+	out := []Point{p.Points[0]}
+	i := 1
+	for _, seg := range p.Segments {
+		switch seg {
+		case 'L':
+			out = append(out, p.Points[i])
+			i++
+		case 'C':
+			p0, c1, c2, p3 := p.Points[i-1], p.Points[i], p.Points[i+1], p.Points[i+2]
+			for k := 1; k <= 32; k++ {
+				t := float64(k) / 32
+				u := 1 - t
+				out = append(out, Point{
+					X: u*u*u*p0.X + 3*u*u*t*c1.X + 3*u*t*t*c2.X + t*t*t*p3.X,
+					Y: u*u*u*p0.Y + 3*u*u*t*c1.Y + 3*u*t*t*c2.Y + t*t*t*p3.Y,
+				})
+			}
+			i += 3
+		}
+	}
+	return out
+}
+
+// LabelRect는 크기 w×h인 선 라벨의 자리다 — 경로 길이의 가운데 점에서, 그 자리의 선이 가로에 가까우면
+// 선 **위**에, 세로에 가까우면 선 **오른쪽**에 LabelGap만큼 띄운다. 두 렌더러가 이 자리를 같이 쓴다.
+func (p Path) LabelRect(w, h float64) Rect {
+	pts := p.flatten()
+	total := 0.0
+	for k := 1; k < len(pts); k++ {
+		total += math.Hypot(pts[k].X-pts[k-1].X, pts[k].Y-pts[k-1].Y)
+	}
+	mid, dir := pts[0], Point{1, 0}
+	walked := 0.0
+	for k := 1; k < len(pts); k++ {
+		seg := math.Hypot(pts[k].X-pts[k-1].X, pts[k].Y-pts[k-1].Y)
+		if seg == 0 {
+			continue
+		}
+		if walked+seg >= total/2 {
+			t := (total/2 - walked) / seg
+			mid = Point{pts[k-1].X + (pts[k].X-pts[k-1].X)*t, pts[k-1].Y + (pts[k].Y-pts[k-1].Y)*t}
+			dir = Point{pts[k].X - pts[k-1].X, pts[k].Y - pts[k-1].Y}
+			break
+		}
+		walked += seg
+	}
+	if math.Abs(dir.X) >= math.Abs(dir.Y) {
+		return Rect{X: mid.X - w/2, Y: mid.Y - LabelGap - h, W: w, H: h}
+	}
+	return Rect{X: mid.X + LabelGap, Y: mid.Y - h/2, W: w, H: h}
+}

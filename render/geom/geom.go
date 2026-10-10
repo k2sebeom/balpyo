@@ -117,6 +117,18 @@ func Refs(deck *soml.Deck) []Ref {
 		for i, node := range slide.Content {
 			refs = collect(refs, slide, node, []int{i}, ctx)
 		}
+		// 연결선 라벨은 슬라이드의 마지막 박스들이다 — 웹이 라벨을 스테이지 **뒤**(오버레이 옆)에 두므로
+		// 문서 순서 맞대기가 이 자리를 기대한다. 라벨의 rect는 크기만 뜻이 있다: 측정용 HTML에서는
+		// 슬라이드 원점에 놓이고, 자리는 두 렌더러가 경로에서 정한다 (route.Path.LabelRect). 그래서
+		// 좌표로 놓인 요소처럼 배치 판정에서 빠진다 (Free · Overlap).
+		for i, node := range slide.Content {
+			if elem, ok := node.(*soml.Element); ok && soml.HasConnectorLabel(elem) {
+				refs = append(refs, Ref{
+					ID: web.ElementID(slide.Index, []int{i}), El: elem.Name, Slide: slide.Index,
+					Source: slide.Source, Span: elem.NameSpan, Free: true, Overlap: true,
+				})
+			}
+		}
 	}
 	return refs
 }

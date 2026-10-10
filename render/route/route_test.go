@@ -142,3 +142,15 @@ func TestRouteUTurn(t *testing.T) {
 		t.Errorf("오른쪽 → 오른쪽: 꺾는 x = %g, want %g", got, want)
 	}
 }
+
+// 라벨은 경로 길이의 가운데에 앉는다 — 가로 선이면 위, 세로 선이면 오른쪽이다.
+func TestRouteLabelRect(t *testing.T) {
+	p, _ := Route(Rect{X: 0, Y: 0, W: 100, H: 100}, Rect{X: 400, Y: 0, W: 100, H: 100}, Auto, Auto, Straight)
+	if got := p.LabelRect(80, 20); got != (Rect{X: 210, Y: 50 - LabelGap - 20, W: 80, H: 20}) {
+		t.Errorf("가로 선의 라벨 = %+v", got)
+	}
+	p, _ = Route(Rect{X: 0, Y: 0, W: 100, H: 100}, Rect{X: 0, Y: 400, W: 100, H: 100}, Auto, Auto, Straight)
+	if got := p.LabelRect(80, 20); got != (Rect{X: 50 + LabelGap, Y: 240, W: 80, H: 20}) {
+		t.Errorf("세로 선의 라벨 = %+v", got)
+	}
+}

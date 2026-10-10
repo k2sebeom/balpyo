@@ -68,6 +68,29 @@ func writeConnectorShapes(b *strings.Builder, deck *soml.Deck, slide *soml.Slide
 		}
 		*shapeID++
 	}
+	// 라벨은 모든 선 **뒤**다 — 웹이 라벨을 오버레이 뒤에 두는 것과 같은 칠 순서다 (글자가 선 위에 온다).
+	for _, node := range slide.Content {
+		elem, ok := node.(*soml.Element)
+		if !ok || !soml.HasConnectorLabel(elem) {
+			continue
+		}
+		rect, err := web.ConnectorLabelRect(slide, ids, elem, g.RouteBox)
+		if err != nil {
+			return err
+		}
+		conn := elem.Appearance.Connector
+		// 몸체는 크롬 푸터와 같은 한 줄 글상자다 (wrap none · 여백 0 · 가운데 앵커): 잰 rect가 곧 글자 크기다.
+		body, err := chromeBodyXML(soml.ChromeItem{Kind: soml.ChromeFooter, Text: conn.Label, Style: *conn.LabelStyle,
+			Align: soml.AlignCenter}, deck.Theme)
+		if err != nil {
+			return fmt.Errorf("%s:%s <connector> label: %w", slide.Source, elem.Span, err)
+		}
+		spec := textBoxSp(*shapeID, "connector-label "+ids[elem], geom.Rect{X: rect.X, Y: rect.Y, W: rect.W, H: rect.H}, body)
+		if err := writeSp(b, spec, deck.Theme); err != nil {
+			return err
+		}
+		*shapeID++
+	}
 	return nil
 }
 

@@ -92,8 +92,12 @@ func ElementIDs(slide *soml.Slide) map[*soml.Element]string { return elementIDs(
 // writeConnectors는 슬라이드의 연결선 오버레이를 쓴다 (연결선이 없으면 아무것도 쓰지 않는다).
 func writeConnectors(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, mode connectorMode, boxes BoxLookup) error {
 	conns := slideConnectors(slide)
-	if len(conns) == 0 || mode == connectorsOmitted {
+	if len(conns) == 0 {
 		return nil
+	}
+	if mode == connectorsOmitted {
+		// 측정용 HTML에는 선이 없고 라벨만 있다 — 라벨의 크기를 재야 자리를 정할 수 있다. 원점에 둔다.
+		return writeConnectorLabels(b, deck, slide, conns, nil)
 	}
 	if mode != connectorsDrawn {
 		return fmt.Errorf("%s: the slide has connectors but the web renderer has no measured boxes — connectors are drawn after the geometry pass", slide.Source)
@@ -115,7 +119,59 @@ func writeConnectors(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, mod
 		}
 	}
 	b.WriteString("</svg>\n")
+	return writeConnectorLabels(b, deck, slide, conns, boxes)
+}
+
+// ConnectorLabelClass는 연결선 라벨의 클래스다.
+const ConnectorLabelClass = "balpyo-connector-label"
+
+// writeConnectorLabels는 라벨 있는 연결선의 라벨 글상자를 문서 순서로 쓴다. boxes가 nil이면 측정용이다 —
+// 라벨을 슬라이드 원점에 두고 크기만 재게 한다. 아니면 잰 크기로 경로 옆 자리를 정한다
+// (route.Path.LabelRect — PPTX도 같은 자리에 글상자를 놓는다). 식별자는 연결선의 것이다: 라벨이
+// 연결선 하나의 유일한 잰 박스다.
+func writeConnectorLabels(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, conns []*soml.Element, boxes BoxLookup) error {
+	var ids map[*soml.Element]string
+	for _, elem := range conns {
+		if !soml.HasConnectorLabel(elem) {
+			continue
+		}
+		if ids == nil {
+			ids = elementIDs(slide)
+		}
+		conn := elem.Appearance.Connector
+		text, err := textStyleCSS(*conn.LabelStyle, deck.Theme)
+		if err != nil {
+			return fmt.Errorf("%s:%s <connector> label: %w", slide.Source, elem.Span, err)
+		}
+		x, y := 0.0, 0.0
+		if boxes != nil {
+			rect, err := ConnectorLabelRect(slide, ids, elem, boxes)
+			if err != nil {
+				return err
+			}
+			x, y = rect.X, rect.Y
+		}
+		decls := []string{text, "position: absolute", fmt.Sprintf("left: %spx", formatNumber(round4(x))),
+			fmt.Sprintf("top: %spx", formatNumber(round4(y))), "white-space: nowrap", "margin: 0"}
+		fmt.Fprintf(b, "<div class=%q %s=%q %s=%q%s>%s</div>\n", ConnectorLabelClass, IDAttr, ids[elem], ElAttr, elem.Name,
+			styleAttr(decls), html.EscapeString(conn.Label))
+	}
 	return nil
+}
+
+// ConnectorLabelRect는 라벨의 최종 자리다 — 잰 라벨 크기(연결선의 식별자)를 경로 옆에 놓는다. 두 렌더러와
+// 테스트 하네스가 같은 계산을 부른다.
+func ConnectorLabelRect(slide *soml.Slide, ids map[*soml.Element]string, elem *soml.Element, boxes BoxLookup) (route.Rect, error) {
+	conn := elem.Appearance.Connector
+	p, err := RouteConnector(slide, ids, conn, boxes)
+	if err != nil {
+		return route.Rect{}, err
+	}
+	size, ok := boxes(ids[elem])
+	if !ok {
+		return route.Rect{}, fmt.Errorf("%s: connector %s label has no measured box", slide.Source, ids[elem])
+	}
+	return p.LabelRect(size.W, size.H), nil
 }
 
 // 끝 표식의 크기는 선 굵기의 배수다 — PPTX `headEnd`/`tailEnd`의 `w="lg" len="lg"`(굵기의 5배)와

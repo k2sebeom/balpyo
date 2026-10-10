@@ -26,9 +26,10 @@ var (
 //   - `route`: 경로 종류. `from-side`·`to-side`: 붙는 면.
 //   - `line`: 선 — 도형 `border`와 같은 문법(`<굵기> <스타일> <색>`). `start`·`end`: 양 끝 표식.
 //   - `variant`: 테마가 이름 붙인 선 번들.
+//   - `label`: 선 옆의 짧은 글 (`reboot`). 한 줄이고, 경로 길이의 가운데에 앉는다.
 //
 // 박스 · 배치 속성이 없다: 연결선의 자리는 두 상자가 정한다.
-var connectorAttrs = []string{"from", "to", "route", "from-side", "to-side", "line", "start", "end", "variant"}
+var connectorAttrs = []string{"from", "to", "route", "from-side", "to-side", "line", "start", "end", "variant", "label"}
 
 // ConnectorAttrs는 `<connector>`의 속성이다. 값 층이 이 목록을 소비한다 (ShapeAttrs와 같은 이유).
 func ConnectorAttrs() []string {
@@ -63,4 +64,15 @@ type ConnectorStyle struct {
 	Line Border
 	// Start · End는 양 끝 표식이다.
 	Start, End ConnectorEnd
+	// Label은 선 라벨의 글이다 (빈 값은 라벨 없음). LabelStyle은 그 글의 확정 외관이다 — caption 역할
+	// 위에 테마의 `connector` 태그 기본값이 얹힌 것. 라벨은 한 줄이고, 지오메트리 패스가 그 크기를
+	// 재고(연결선의 요소 식별자로) 두 렌더러가 경로 옆 같은 자리에 놓는다 (route.Path.LabelRect).
+	Label      string
+	LabelStyle *TextStyle
+}
+
+// HasConnectorLabel은 요소가 라벨 있는 확정 연결선인지다 — 지오메트리 패스가 그 라벨을 잰다.
+func HasConnectorLabel(elem *Element) bool {
+	return elem.Name == ConnectorElement && elem.Appearance != nil && elem.Appearance.Connector != nil &&
+		elem.Appearance.Connector.Label != ""
 }

@@ -133,7 +133,7 @@ func TestElementAttrs(t *testing.T) {
 		"td":         "colspan rowspan fill border color align anchor",
 		"chart":      "type unit max series alt " + box + " " + place,
 		"point":      "label value fill",
-		"connector":  "from to route from-side to-side line start end variant",
+		"connector":  "from to route from-side to-side line start end variant label",
 	}
 	if len(want) != len(elementSpecs) {
 		t.Errorf("표의 태그 %d개, elementSpecs %d개", len(want), len(elementSpecs))

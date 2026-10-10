@@ -101,6 +101,15 @@ func (r *resolver) resolveConnector(elem *soml.Element) {
 			}
 		case "variant":
 			// 위에서 해석했다 — 여기서 또 보면 모르는 variant 경고가 두 번 난다.
+		case "label":
+			if r.hasValue(attr) {
+				style.Label = attr.Value
+				// 라벨은 caption 역할 위에 테마의 `connector` 태그 기본값이 얹힌다 — 선 옆 글자의
+				// 크기 · 색은 테마의 것이다 (저자 속성이 없다).
+				label := r.textRoleDefaults(soml.RoleCaption)
+				mergeText(&label, r.textComponentDefault(soml.ConnectorElement))
+				style.LabelStyle = &label
+			}
 		}
 	}
 	mergeConnector(&style, inline)

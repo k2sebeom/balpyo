@@ -1,6 +1,7 @@
 <!-- A state machine: three route kinds between flow-laid boxes. The connector takes no room in the
-     flow — its ends come from the measured rects of the boxes it names. -->
-<slide id="lifecycle">
+     flow — its ends come from the measured rects of the boxes it names. A label is measured as one
+     line and sits beside the middle of the path (above a horizontal run, right of a vertical one). -->
+<slide id="lifecycle" justify="center">
   <h2>Instance lifecycle</h2>
   <row gap="xl" align="center">
     <shape type="rounded-rect" id="pending" w="200" h="72"><p align="center">pending</p></shape>
@@ -10,8 +11,8 @@
   <row gap="xl" justify="end">
     <shape type="ellipse" id="terminated" w="200" h="72"><p align="center">terminated</p></shape>
   </row>
-  <connector from="pending" to="running"/>
-  <connector from="running" to="stopped" variant="accent"/>
-  <connector from="stopped" to="pending" route="curved" from-side="top" to-side="top" variant="dashed"/>
-  <connector from="running" to="terminated" route="elbow" from-side="bottom" to-side="left"/>
+  <connector from="pending" to="running" label="boot"/>
+  <connector from="running" to="stopped" variant="accent" label="stop"/>
+  <connector from="stopped" to="pending" route="curved" from-side="top" to-side="top" variant="dashed" label="start"/>
+  <connector from="running" to="terminated" route="elbow" from-side="bottom" to-side="left" label="terminate"/>
 </slide>

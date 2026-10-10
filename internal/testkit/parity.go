@@ -304,7 +304,7 @@ var parityConnectionSites = map[string]map[route.Side]int{
 // 거쳐 프레임을 만든다. 렌더러의 조립(xfrm · 붙은 끝 · 선)을 판정하는 쪽이다: 경로 계산 자체는 두
 // 렌더러가 공유하는 계약이고, route의 단위 테스트가 프리셋 평가와 끝점의 일치를 본다.
 func webConnectors(slide *soml.Slide, g *geom.Geometry, theme soml.Theme) ([]LayoutNode, error) {
-	var nodes []LayoutNode
+	var nodes, labels []LayoutNode
 	ids := web.ElementIDs(slide)
 	for _, node := range slide.Content {
 		elem, ok := node.(*soml.Element)
@@ -362,8 +362,21 @@ func webConnectors(slide *soml.Slide, g *geom.Geometry, theme soml.Theme) ([]Lay
 			"dash="+dash, "ends="+end[conn.Start]+"/"+end[conn.End])
 		n.Extra = strings.Join(extra, " ")
 		nodes = append(nodes, n)
+		if conn.Label != "" {
+			// 라벨은 모든 선 뒤의 한 줄 글상자다 — 잰 크기(연결선의 식별자)를 경로 옆에 놓는다.
+			size, ok := g.Box(ids[elem])
+			if !ok {
+				return nil, fmt.Errorf("%s: connector %s label has no measured box", slide.Source, ids[elem])
+			}
+			rect := p.LabelRect(size.Rect.W, size.Rect.H)
+			label := LayoutNode{Kind: "textbox", Name: "connector-label " + ids[elem]}
+			label.X, label.Y, label.W, label.H = rectEMU(geom.Rect{X: rect.X, Y: rect.Y, W: rect.W, H: rect.H})
+			label.Paras = []LayoutPara{{Align: string(soml.AlignCenter),
+				Runs: []string{formatRun(conn.Label, webRunStyle(*conn.LabelStyle, theme, ""))}}}
+			labels = append(labels, label)
+		}
 	}
-	return nodes, nil
+	return append(nodes, labels...), nil
 }
 
 // rectEMU는 잰 rect의 EMU다 — 렌더러의 pptx.Offset/Extent를 부르지 않고 **따로** 계산한다
