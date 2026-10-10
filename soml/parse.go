@@ -99,6 +99,12 @@ func buildElementSpecs() map[string]elementSpec {
 			model:    modelElements,
 			children: chartChildren(),
 		},
+		ChartSeriesElement: {
+			// 계열은 점만 담는다 — 차트 프레임의 자식 어휘를 한 겹 안으로 옮긴 것이다. 배치 · 슬롯은 없다 (점과 같은 근거).
+			attrs:    ChartSeriesAttrs(),
+			model:    modelElements,
+			children: chartSeriesChildren(),
+		},
 		ChartPointElement: {
 			// 점은 void다 — 라벨·값·강조색이 전부 속성이고 담을 것이 없다 (`<image>`와 같은
 			// 근거). 자식 배치·슬롯도 없다: 점은 flex 항목이 아니라 데이터 한 칸이고, 막대의
@@ -490,7 +496,7 @@ func (p *parser) charData(tok Token, parent *Element) {
 		p.errorf(dataSpan(tok), "character data cannot appear directly inside <%s> (wrap it in <%s>)", parent.Name, TableRowElement)
 	case KindTableRow:
 		p.errorf(dataSpan(tok), "character data cannot appear directly inside <%s> (wrap it in <%s>)", parent.Name, TableDataCellElement)
-	case KindChart:
+	case KindChart, KindChartSeries:
 		// 차트 안의 글자는 라벨이고 라벨은 점의 속성이다 — `<text>로 감싼다`고 말하면 저자가
 		// 차트 안에 텍스트를 놓을 수 있다고 듣는다 (자식은 점뿐이다).
 		p.errorf(dataSpan(tok), "character data cannot appear directly inside <%s> (wrap it in <%s>)", parent.Name, ChartPointElement)
@@ -701,8 +707,12 @@ func (p *parser) checkPlacement(elem *Element, stack []*Element, root *Element) 
 	}
 	// <point>도 같은 규칙이다 — 어디에 있든 차트의 자식이어야 한다. 자리별 일반 메시지
 	// ("<slide>의 자식으로 <point>는 올 수 없다")는 저자가 붙여 놓을 곳을 말하지 않는다.
-	if KindOf(elem.Name) == KindChartPoint && KindOf(parent.Name) != KindChart {
-		p.errorf(elem.NameSpan, "<%s> can only be a child of <%s>", ChartPointElement, ChartElement)
+	if KindOf(elem.Name) == KindChartPoint && KindOf(parent.Name) != KindChart && KindOf(parent.Name) != KindChartSeries {
+		p.errorf(elem.NameSpan, "<%s> can only be a child of <%s> or <%s>", ChartPointElement, ChartElement, ChartSeriesElement)
+		return
+	}
+	if KindOf(elem.Name) == KindChartSeries && KindOf(parent.Name) != KindChart {
+		p.errorf(elem.NameSpan, "<%s> can only be a child of <%s>", ChartSeriesElement, ChartElement)
 		return
 	}
 	if KindOf(elem.Name) == KindTableCell && KindOf(parent.Name) != KindTableRow {

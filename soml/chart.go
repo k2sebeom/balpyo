@@ -21,6 +21,9 @@ const (
 	// ChartPointElement는 데이터 한 점이다 (KindChartPoint) — void다. `<chart>`의 직계
 	// 자식으로만 오고, 라벨·값·강조색이 전부 속성이다.
 	ChartPointElement = "point"
+	// ChartSeriesElement는 계열 하나다 (KindChartSeries) — `<chart>`의 직계 자식이고 점들을 담는다. 이름 · 색 ·
+	// (선 계열 차트에서) 종류를 갖는다. 계열을 쓰면 차트의 점은 전부 계열 안에 있다.
+	ChartSeriesElement = "series"
 )
 
 // 차트 종류 — 모두 단일 계열이다. bar는 세로 막대, line은 점을 잇는 꺾은선, area는 꺾은선 아래를 칠한 영역,
@@ -71,6 +74,9 @@ var (
 	// 배치·크기·슬롯은 붙지 않는다 — 점은 flex 항목이 아니라 데이터 한 칸이고, 막대의 폭과
 	// 자리는 차트가 정한다 (`<li>`·셀이 childPlacement를 받지 않는 것과 같은 근거).
 	chartPointAttrs = []string{"label", "value", "fill"}
+	// chartSeriesAttrs는 계열의 속성이다 (순서 = 진단 · 문서 순서). `name`은 필수다 (범례), `fill`은 계열색,
+	// `type`은 선 계열 차트에서 이 계열만의 종류다 (line · area · step).
+	chartSeriesAttrs = []string{"name", "fill", "type"}
 )
 
 // ChartAttrs는 `<chart>`의 고유 속성 + 자기 박스다 (자식 배치·슬롯은 withChildPlacement가
@@ -90,6 +96,13 @@ func ChartPointAttrs() []string {
 	return attrs
 }
 
+// ChartSeriesAttrs는 `<series>`의 속성이다 (순서 = 진단·문서 순서).
+func ChartSeriesAttrs() []string {
+	attrs := make([]string, len(chartSeriesAttrs))
+	copy(attrs, chartSeriesAttrs)
+	return attrs
+}
+
 // ChartTypes는 차트 종류 어휘다 (순서 = 진단·문서 순서). ShapeTypes와 같은 이유로
 // 내보낸다 — 값 층의 진단과 문서 게이트가 같은 목록을 읽는다.
 func ChartTypes() []string {
@@ -102,5 +115,10 @@ func ChartTypes() []string {
 // 데이터가 자식 요소인 근거: 속성 CSV에는 값마다 색을 줄 자리가 없고
 // 진단이 "다섯 값 중 셋째"를 가리킬 방법이 없다.
 func chartChildren() []string {
+	return []string{ChartPointElement, ChartSeriesElement}
+}
+
+// chartSeriesChildren은 `<series>`의 자식 어휘다 — 점뿐이다.
+func chartSeriesChildren() []string {
 	return []string{ChartPointElement}
 }

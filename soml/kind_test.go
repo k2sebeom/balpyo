@@ -62,6 +62,7 @@ func TestElementKindCatalog(t *testing.T) {
 		{KindTableCell, "th td", false},
 		{KindChart, "chart", false},
 		{KindChartPoint, "point", true},
+		{KindChartSeries, "series", false},
 		{KindConnector, "connector", true},
 	}
 	if len(tests) != len(ElementKinds()) {
@@ -133,6 +134,7 @@ func TestElementAttrs(t *testing.T) {
 		"td":         "colspan rowspan fill border color align anchor",
 		"chart":      "type unit max series alt " + box + " " + place,
 		"point":      "label value fill",
+		"series":     "name fill type",
 		"connector":  "from to route from-side to-side line start end variant label enter flow",
 	}
 	if len(want) != len(elementSpecs) {
@@ -200,13 +202,13 @@ func TestKindRendered(t *testing.T) {
 // **셋째 범주**다: 카탈로그에 있고 파서가 통과시키지만 값 층이 도형·텍스트로
 // 펼치므로 렌더러가 **영원히** 보지 않는다. unrenderedKinds(갚을 빚)와 한 목록으로 묶지 않는다.
 func TestChartKindsAreDesugared(t *testing.T) {
-	desugared := map[ElementKind]bool{KindChart: true, KindChartPoint: true}
+	desugared := map[ElementKind]bool{KindChart: true, KindChartPoint: true, KindChartSeries: true}
 	for _, kind := range append(ElementKinds(), KindNone) {
 		if got := KindDesugared(kind); got != desugared[kind] {
 			t.Errorf("KindDesugared(%v) = %v, want %v", kind, got, desugared[kind])
 		}
 	}
-	if got := DesugaredKinds(); len(got) != len(desugared) || !desugared[got[0]] || !desugared[got[1]] {
-		t.Errorf("DesugaredKinds() = %v, want 차트 두 종류", got)
+	if got := DesugaredKinds(); len(got) != len(desugared) || !desugared[got[0]] || !desugared[got[1]] || !desugared[got[2]] {
+		t.Errorf("DesugaredKinds() = %v, want 차트 세 종류", got)
 	}
 }
