@@ -68,6 +68,22 @@
     opacity: 1;
     clip-path: inset(0 100% 0 0);
   }
+  /* Drawn connectors: a solid line has pathLength="1" and its dash offset runs from 1 to 0; a
+     dashed line (its dash pattern is taken) is wiped in from the side it starts at. Their arrow
+     and dot markers fade in as the line arrives (they carry their own delay). */
+  html[data-balpyo-view="presenter"] [data-balpyo-enter^="draw"] {
+    opacity: 1;
+    transition-property: stroke-dashoffset, clip-path;
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide [data-balpyo-enter="draw"] { stroke-dasharray: 1; }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw"] {
+    opacity: 1;
+    stroke-dashoffset: 1;
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw-left"] { opacity: 1; clip-path: inset(0 100% 0 0); }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw-right"] { opacity: 1; clip-path: inset(0 0 0 100%); }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw-top"] { opacity: 1; clip-path: inset(0 0 100% 0); }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw-bottom"] { opacity: 1; clip-path: inset(100% 0 0 0); }
   html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-instant [data-balpyo-enter] { transition: none; }
   @media (prefers-reduced-motion: reduce) {
     html[data-balpyo-view="presenter"] .balpyo-slide [data-balpyo-enter] {
@@ -75,6 +91,7 @@
       translate: none;
       scale: none;
       clip-path: none;
+      stroke-dashoffset: 0;
       transition: none;
     }
   }
@@ -229,6 +246,7 @@
       translate: none;
       scale: none;
       clip-path: none;
+      stroke-dashoffset: 0;
     }
     /* Do not create an extra blank page after the last slide. */
     .balpyo-slide:last-child, html[data-balpyo-view] .balpyo-slide:last-child { break-after: auto; }

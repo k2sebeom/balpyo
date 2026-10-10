@@ -281,6 +281,22 @@ func presetPath(preset string, w, h, adj float64) ([]Point, []byte) {
 	}
 }
 
+// DrawFrom은 선이 그려지기 시작하는 쪽이다 — 시작점에서 끝점으로 가는 주된 방향의 반대편 변이다 (가로
+// 차가 세로 차 이상이면 왼쪽 · 오른쪽, 아니면 위 · 아래). 웹의 닦아내기와 PPTX 닦아내기 효과의 방향이다.
+func (p Path) DrawFrom() Side {
+	dx, dy := p.End.X-p.Start.X, p.End.Y-p.Start.Y
+	if math.Abs(dx) >= math.Abs(dy) {
+		if dx >= 0 {
+			return Left
+		}
+		return Right
+	}
+	if dy >= 0 {
+		return Top
+	}
+	return Bottom
+}
+
 // LabelGap은 선 라벨과 선 사이의 거리(px)다.
 const LabelGap = 6
 

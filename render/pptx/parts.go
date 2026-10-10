@@ -200,7 +200,7 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 			return nil, err
 		}
 		// 등장은 도형 번호가 다 정해진 뒤에 쓴다 — 효과는 도형 번호로 대상을 가리킨다.
-		timing, err := timingXML(slide, rels.shapeIDs)
+		timing, err := timingXML(slide, rels)
 		if err != nil {
 			return nil, fmt.Errorf("%s: timing: %w", slide.Source, err)
 		}

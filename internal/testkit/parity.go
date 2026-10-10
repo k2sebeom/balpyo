@@ -383,6 +383,15 @@ func webConnectors(slide *soml.Slide, g *geom.Geometry, theme soml.Theme) ([]Lay
 		end := map[soml.ConnectorEnd]string{soml.EndNone: "none", soml.EndArrow: "triangle", soml.EndDot: "oval"}
 		extra = append(extra, glue("from", conn.From, p.StartSide), glue("to", conn.To, p.EndSide),
 			"dash="+dash, "ends="+end[conn.Start]+"/"+end[conn.End])
+		enter := elem.EnterOf()
+		if enter != nil {
+			// 선 그리기는 PPTX에서 닦아내기다 — 트리에는 PPTX가 되읽는 이름으로 적는다.
+			effect := string(enter.Effect)
+			if enter.Effect == soml.EnterDraw {
+				effect = "wipe"
+			}
+			extra = append(extra, fmt.Sprintf("enter=%s@%d+%d", effect, enter.Delay, enter.Duration))
+		}
 		n.Extra = strings.Join(extra, " ")
 		nodes = append(nodes, n)
 		if conn.Label != "" {
@@ -396,6 +405,9 @@ func webConnectors(slide *soml.Slide, g *geom.Geometry, theme soml.Theme) ([]Lay
 			label.X, label.Y, label.W, label.H = rectEMU(geom.Rect{X: rect.X, Y: rect.Y, W: rect.W, H: rect.H})
 			label.Paras = []LayoutPara{{Align: string(soml.AlignCenter),
 				Runs: []string{formatRun(conn.Label, webRunStyle(*conn.LabelStyle, theme, ""))}}}
+			if enter != nil {
+				label.Extra = fmt.Sprintf("enter=fade@%d+%d", enter.Delay, enter.Duration)
+			}
 			labels = append(labels, label)
 		}
 	}
@@ -869,7 +881,7 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 		for _, obj := range x.CSld.SpTree.Items {
 			n, ok := pptxNode(obj, theme, links, names)
 			if ok {
-				for _, nv := range []*xNv{obj.NvSpPr, obj.NvPicPr, obj.NvGraphicFramePr} {
+				for _, nv := range []*xNv{obj.NvSpPr, obj.NvPicPr, obj.NvGraphicFramePr, obj.NvCxnSpPr} {
 					if nv == nil {
 						continue
 					}

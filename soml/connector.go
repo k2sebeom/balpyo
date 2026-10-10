@@ -29,7 +29,9 @@ var (
 //   - `label`: 선 옆의 짧은 글 (`reboot`). 한 줄이고, 경로 길이의 가운데에 앉는다.
 //
 // 박스 · 배치 속성이 없다: 연결선의 자리는 두 상자가 정한다.
-var connectorAttrs = []string{"from", "to", "route", "from-side", "to-side", "line", "start", "end", "variant", "label"}
+//   - `enter`: 등장 — `draw`(시작점에서 끝점으로 그려진다) · `fade` · `none`. `<slide enter>`는 연결선에
+//     닿지 않는다 (상자의 효과는 선에 뜻이 없다).
+var connectorAttrs = []string{"from", "to", "route", "from-side", "to-side", "line", "start", "end", "variant", "label", EnterAttr}
 
 // ConnectorAttrs는 `<connector>`의 속성이다. 값 층이 이 목록을 소비한다 (ShapeAttrs와 같은 이유).
 func ConnectorAttrs() []string {

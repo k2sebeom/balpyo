@@ -66,6 +66,14 @@ func writeConnectorShapes(b *strings.Builder, deck *soml.Deck, slide *soml.Slide
 		if err := writeCxnSp(b, deck, ids[elem], *shapeID, conn, p, rels); err != nil {
 			return fmt.Errorf("%s:%s <connector>: %w", slide.Source, elem.Span, err)
 		}
+		if rels.shapeIDs == nil {
+			rels.shapeIDs = map[*soml.Element]int{}
+		}
+		if rels.drawFrom == nil {
+			rels.drawFrom = map[*soml.Element]route.Side{}
+		}
+		rels.shapeIDs[elem] = *shapeID
+		rels.drawFrom[elem] = p.DrawFrom()
 		*shapeID++
 	}
 	// 라벨은 모든 선 **뒤**다 — 웹이 라벨을 오버레이 뒤에 두는 것과 같은 칠 순서다 (글자가 선 위에 온다).
@@ -89,6 +97,10 @@ func writeConnectorShapes(b *strings.Builder, deck *soml.Deck, slide *soml.Slide
 		if err := writeSp(b, spec, deck.Theme); err != nil {
 			return err
 		}
+		if rels.labelIDs == nil {
+			rels.labelIDs = map[*soml.Element]int{}
+		}
+		rels.labelIDs[elem] = *shapeID
 		*shapeID++
 	}
 	return nil

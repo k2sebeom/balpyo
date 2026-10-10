@@ -116,3 +116,30 @@ func TestResolveTransition(t *testing.T) {
 		t.Errorf("진단 = %v", r.diags)
 	}
 }
+
+// 연결선은 자기 enter만 받는다 — `<slide enter>`의 상자 효과는 닿지 않고, 어휘는 draw · fade · none이다.
+func TestResolveConnectorEntrance(t *testing.T) {
+	deck, diags := enterDeck(t, ` enter="rise"`, `  <shape type="rect" id="a"/>
+  <shape type="rect" id="b"/>
+  <connector from="a" to="b" enter="draw"/>
+  <connector from="b" to="a"/>`)
+	if len(diags) != 0 {
+		t.Fatalf("진단: %v", diags)
+	}
+	var conns []*soml.Element
+	for _, n := range deck.Slides[0].Content {
+		if e, ok := n.(*soml.Element); ok && e.Name == soml.ConnectorElement {
+			conns = append(conns, e)
+		}
+	}
+	if e := conns[0].EnterOf(); e == nil || e.Effect != soml.EnterDraw || e.Order != 2 {
+		t.Errorf("그리는 연결선의 등장 = %+v, want draw · 순서 2", e)
+	}
+	if e := conns[1].EnterOf(); e != nil {
+		t.Errorf("enter 없는 연결선이 슬라이드의 등장을 받았다: %+v", e)
+	}
+	_, diags = enterDeck(t, "", "  <shape type=\"rect\" id=\"a\"/>\n  <shape type=\"rect\" id=\"b\"/>\n  <connector from=\"a\" to=\"b\" enter=\"rise\"/>")
+	if len(diags) != 1 || !strings.Contains(diags[0].Message, `unknown enter "rise" (available values: draw, fade, none)`) {
+		t.Errorf("진단 = %v", diags)
+	}
+}

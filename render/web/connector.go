@@ -114,7 +114,7 @@ func writeConnectors(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, mod
 			return err
 		}
 		id := ids[elem]
-		if err := writeConnectorPath(b, deck, id, conn, p); err != nil {
+		if err := writeConnectorPath(b, deck, id, conn, p, elem.EnterOf()); err != nil {
 			return fmt.Errorf("%s:%s <connector>: %w", slide.Source, elem.Span, err)
 		}
 	}
@@ -153,8 +153,13 @@ func writeConnectorLabels(b *strings.Builder, deck *soml.Deck, slide *soml.Slide
 		}
 		decls := []string{text, "position: absolute", fmt.Sprintf("left: %spx", formatNumber(round4(x))),
 			fmt.Sprintf("top: %spx", formatNumber(round4(y))), "white-space: nowrap", "margin: 0"}
-		fmt.Fprintf(b, "<div class=%q %s=%q %s=%q%s>%s</div>\n", ConnectorLabelClass, IDAttr, ids[elem], ElAttr, elem.Name,
-			styleAttr(decls), html.EscapeString(conn.Label))
+		// 등장하는 선의 라벨은 그 선과 함께 나타난다 (PPTX도 라벨 글상자에 같은 지연의 페이드를 건다).
+		enter := ""
+		if e := elem.EnterOf(); e != nil {
+			enter = fmt.Sprintf(` %s="fade" %s="%d"`, EnterAttr, EnterDelayAttr, e.Delay)
+		}
+		fmt.Fprintf(b, "<div class=%q %s=%q %s=%q%s%s>%s</div>\n", ConnectorLabelClass, IDAttr, ids[elem], ElAttr, elem.Name,
+			enter, styleAttr(decls), html.EscapeString(conn.Label))
 	}
 	return nil
 }
@@ -180,7 +185,7 @@ const markerScale = 5
 
 // writeConnectorPath는 연결선 하나를 쓴다 — 표식이 있으면 그 연결선만의 `<marker>`가 앞에 온다
 // (색이 선마다 다르다).
-func writeConnectorPath(b *strings.Builder, deck *soml.Deck, id string, conn *soml.ConnectorStyle, p route.Path) error {
+func writeConnectorPath(b *strings.Builder, deck *soml.Deck, id string, conn *soml.ConnectorStyle, p route.Path, enter *soml.Entrance) error {
 	stroke, err := colorValue(conn.Line.Color, deck.Theme)
 	if err != nil {
 		return err
@@ -202,6 +207,23 @@ func writeConnectorPath(b *strings.Builder, deck *soml.Deck, id string, conn *so
 	p.Points = points
 
 	attrs := []string{fmt.Sprintf("%s=%q", ConnectorAttr, id), fmt.Sprintf("d=%q", p.SVG())}
+	// 등장: fade는 선(표식 포함)이 나타나고, draw는 시작점에서 끝점으로 그려진다 — 실선은 경로 길이를 1로
+	// 놓고 대시 오프셋을 줄이고, 파선은 대시가 이미 무늬라 주된 방향으로 닦아낸다 (PPTX 닦아내기와 같은
+	// 방향 — route.Path.DrawFrom). 그려지는 선의 표식은 선이 닿을 무렵 나타난다.
+	markerEnter := ""
+	if e := enter; e != nil {
+		switch e.Effect {
+		case soml.EnterDraw:
+			if conn.Line.Style == soml.BorderSolid {
+				attrs = append(attrs, `pathLength="1"`, fmt.Sprintf(`%s="draw" %s="%d"`, EnterAttr, EnterDelayAttr, e.Delay))
+			} else {
+				attrs = append(attrs, fmt.Sprintf(`%s="draw-%s" %s="%d"`, EnterAttr, p.DrawFrom(), EnterDelayAttr, e.Delay))
+			}
+			markerEnter = fmt.Sprintf(` %s="fade" %s="%d"`, EnterAttr, EnterDelayAttr, e.Delay+e.Duration*3/4)
+		default:
+			attrs = append(attrs, fmt.Sprintf(`%s=%q %s="%d"`, EnterAttr, string(e.Effect), EnterDelayAttr, e.Delay))
+		}
+	}
 	for _, end := range []struct {
 		which  string
 		marker soml.ConnectorEnd
@@ -210,7 +232,7 @@ func writeConnectorPath(b *strings.Builder, deck *soml.Deck, id string, conn *so
 			continue
 		}
 		markerID := "balpyo-" + strings.ReplaceAll(id, ".", "-") + "-" + end.which
-		writeMarker(b, markerID, end.marker, end.which, stroke)
+		writeMarker(b, markerID, end.marker, end.which, stroke, markerEnter)
 		attrs = append(attrs, fmt.Sprintf("marker-%s=\"url(#%s)\"", end.which, markerID))
 	}
 	decls := []string{"fill: none", "stroke: " + stroke, "stroke-width: " + formatNumber(conn.Line.Width) + "px"}
@@ -223,7 +245,7 @@ func writeConnectorPath(b *strings.Builder, deck *soml.Deck, id string, conn *so
 
 // writeMarker는 끝 표식 하나를 쓴다 — 화살은 끝점을 향한 삼각형, 점은 끝점에 중심을 둔 원이다.
 // markerUnits가 선 굵기라 굵은 선의 표식이 함께 커진다 (PPTX의 크기 규칙과 같다).
-func writeMarker(b *strings.Builder, id string, end soml.ConnectorEnd, which, color string) {
+func writeMarker(b *strings.Builder, id string, end soml.ConnectorEnd, which, color, enter string) {
 	orient := "auto"
 	if which == "start" {
 		orient = "auto-start-reverse"
@@ -231,11 +253,11 @@ func writeMarker(b *strings.Builder, id string, end soml.ConnectorEnd, which, co
 	fill := html.EscapeString("fill: " + color)
 	switch end {
 	case soml.EndArrow:
-		fmt.Fprintf(b, "<marker id=%q viewBox=\"0 0 10 10\" refX=\"5\" refY=\"5\" markerUnits=\"strokeWidth\" markerWidth=\"%d\" markerHeight=\"%d\" orient=%q><path d=\"M0,0 L10,5 L0,10 Z\" style=\"%s\"/></marker>\n",
-			id, markerScale, markerScale, orient, fill)
+		fmt.Fprintf(b, "<marker id=%q viewBox=\"0 0 10 10\" refX=\"5\" refY=\"5\" markerUnits=\"strokeWidth\" markerWidth=\"%d\" markerHeight=\"%d\" orient=%q><path d=\"M0,0 L10,5 L0,10 Z\"%s style=\"%s\"/></marker>\n",
+			id, markerScale, markerScale, orient, enter, fill)
 	case soml.EndDot:
-		fmt.Fprintf(b, "<marker id=%q viewBox=\"0 0 10 10\" refX=\"5\" refY=\"5\" markerUnits=\"strokeWidth\" markerWidth=\"%d\" markerHeight=\"%d\" orient=%q><circle cx=\"5\" cy=\"5\" r=\"5\" style=\"%s\"/></marker>\n",
-			id, markerScale, markerScale, orient, fill)
+		fmt.Fprintf(b, "<marker id=%q viewBox=\"0 0 10 10\" refX=\"5\" refY=\"5\" markerUnits=\"strokeWidth\" markerWidth=\"%d\" markerHeight=\"%d\" orient=%q><circle cx=\"5\" cy=\"5\" r=\"5\"%s style=\"%s\"/></marker>\n",
+			id, markerScale, markerScale, orient, enter, fill)
 	}
 }
 

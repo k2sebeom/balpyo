@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/k2sebeom/balpyo/render/geom"
+	"github.com/k2sebeom/balpyo/render/route"
 	"github.com/k2sebeom/balpyo/render/web"
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -86,6 +87,10 @@ type slideRels struct {
 	// (연결선은 콘텐츠 뒤에 쓰므로 그때 이미 다 차 있다). 관계 목록과 같은 슬라이드 순회 상태라 같은
 	// 값에 둔다: 순회가 한 번이어야 번호와 붙는 대상이 어긋나지 않는다.
 	shapeIDs map[*soml.Element]int
+	// labelIDs는 연결선 라벨 글상자의 도형 번호이고, drawFrom은 그려지는 연결선이 시작하는 쪽이다 (등장 효과가
+	// 대상과 방향을 여기서 찾는다 — timing.go).
+	labelIDs map[*soml.Element]int
+	drawFrom map[*soml.Element]route.Side
 }
 
 // slideRel은 슬라이드 rels 파트에 실리는 관계 하나다 — 템플릿이 이 값을 그대로 쓴다

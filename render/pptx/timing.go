@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/k2sebeom/balpyo/render/route"
 	"github.com/k2sebeom/balpyo/soml"
 )
 
@@ -23,6 +24,13 @@ var enterPreset = map[soml.EnterEffect][2]int{
 	soml.EnterWipe: {22, 8},  // 닦아내기 (Wipe — 왼쪽에서)
 }
 
+// wipeFilter · wipeSubtype은 닦아내기가 시작하는 변 → PowerPoint의 필터 · 하위 종류다 (위 1 · 오른쪽 2 ·
+// 아래 4 · 왼쪽 8).
+var (
+	wipeFilter  = map[route.Side]string{route.Left: "wipe(left)", route.Right: "wipe(right)", route.Top: "wipe(up)", route.Bottom: "wipe(down)"}
+	wipeSubtype = map[route.Side]int{route.Top: 1, route.Right: 2, route.Bottom: 4, route.Left: 8}
+)
+
 // riseOffset은 떠오르기가 출발하는 거리다 — 슬라이드 높이의 비율(`#ppt_y+…`). 웹의 24px(720px 스테이지)과
 // 같은 길이다.
 const riseOffset = "0.0333"
@@ -35,11 +43,14 @@ type entranceObject struct {
 	entrance *soml.Entrance
 	shapeID  int
 	kind     soml.ElementKind
+	// from은 그려지는 연결선의 닦아내기가 시작하는 쪽이다 (draw만).
+	from route.Side
 }
 
 // entranceObjects는 슬라이드의 객체를 등장 순서 · 문서 순서로 모은다 — 객체(도형 번호를 받은 요소)마다
 // 가장 가까운 `enter` 조상의 등장을 붙인다.
-func entranceObjects(slide *soml.Slide, shapeIDs map[*soml.Element]int) []entranceObject {
+func entranceObjects(slide *soml.Slide, rels *slideRels) []entranceObject {
+	shapeIDs := rels.shapeIDs
 	var out []entranceObject
 	var walk func(node soml.Node, current *soml.Entrance)
 	walk = func(node soml.Node, current *soml.Entrance) {
@@ -52,7 +63,13 @@ func entranceObjects(slide *soml.Slide, shapeIDs map[*soml.Element]int) []entran
 		}
 		if id, ok := shapeIDs[elem]; ok && current != nil {
 			kind := soml.KindOf(elem.Name)
-			out = append(out, entranceObject{entrance: current, shapeID: id, kind: kind})
+			out = append(out, entranceObject{entrance: current, shapeID: id, kind: kind, from: rels.drawFrom[elem]})
+			if id, ok := rels.labelIDs[elem]; ok {
+				// 연결선의 라벨은 그 선과 같은 시각에 페이드로 나타난다 (웹의 라벨과 같다).
+				fade := *current
+				fade.Effect = soml.EnterFade
+				out = append(out, entranceObject{entrance: &fade, shapeID: id, kind: soml.KindBlock})
+			}
 		}
 		for _, child := range elem.Children {
 			walk(child, current)
@@ -80,8 +97,8 @@ func entranceObjects(slide *soml.Slide, shapeIDs map[*soml.Element]int) []entran
 }
 
 // timingXML은 슬라이드의 `p:timing`이다 — 등장이 없으면 빈 문자열이다 (슬라이드 바이트가 그대로다).
-func timingXML(slide *soml.Slide, shapeIDs map[*soml.Element]int) (string, error) {
-	objects := entranceObjects(slide, shapeIDs)
+func timingXML(slide *soml.Slide, rels *slideRels) (string, error) {
+	objects := entranceObjects(slide, rels)
 	if len(objects) == 0 {
 		return "", nil
 	}
@@ -140,7 +157,7 @@ func timingXML(slide *soml.Slide, shapeIDs map[*soml.Element]int) (string, error
 	var builds []string
 	for _, o := range objects {
 		switch o.kind {
-		case soml.KindImage:
+		case soml.KindImage, soml.KindConnector:
 		case soml.KindTable:
 			builds = append(builds, fmt.Sprintf(`<p:bldGraphic spid="%d" grpId="0"><p:bldAsOne/></p:bldGraphic>`, o.shapeID))
 		default:
@@ -160,15 +177,27 @@ func timingXML(slide *soml.Slide, shapeIDs map[*soml.Element]int) (string, error
 
 // writeEntranceEffect는 객체 하나의 등장 효과다 — 보이게 하기(`set style.visibility`) + 효과의 동작들.
 func writeEntranceEffect(w func(int, string), depth int, o entranceObject, node string, next func() int) error {
-	preset, ok := enterPreset[o.entrance.Effect]
+	effect := o.entrance.Effect
+	wipe := "wipe(left)"
+	if effect == soml.EnterDraw {
+		// 선 그리기는 선이 시작하는 쪽에서 닦아내는 것이다 (PowerPoint에 경로를 따라 그리는 등장이 없다 —
+		// 가장 가까운 원어다).
+		effect = soml.EnterWipe
+		wipe = wipeFilter[o.from]
+	}
+	preset, ok := enterPreset[effect]
 	if !ok {
 		return fmt.Errorf("enter %q has no PowerPoint effect", string(o.entrance.Effect))
 	}
 	dur := o.entrance.Duration
 	tgt := fmt.Sprintf(`<p:tgtEl><p:spTgt spid="%d"/></p:tgtEl>`, o.shapeID)
 	w(depth, "<p:par>")
+	subtype := preset[1]
+	if o.entrance.Effect == soml.EnterDraw {
+		subtype = wipeSubtype[o.from]
+	}
 	w(depth+1, fmt.Sprintf(`<p:cTn id="%d" presetID="%d" presetClass="entr" presetSubtype="%d" fill="hold" grpId="0" nodeType="%s">`,
-		next(), preset[0], preset[1], node))
+		next(), preset[0], subtype, node))
 	w(depth+2, fmt.Sprintf(`<p:stCondLst><p:cond delay="%d"/></p:stCondLst>`, o.entrance.Delay))
 	w(depth+2, "<p:childTnLst>")
 	w(depth+3, "<p:set>")
@@ -184,7 +213,7 @@ func writeEntranceEffect(w func(int, string), depth int, o entranceObject, node 
 		w(depth+4, fmt.Sprintf(`<p:tavLst><p:tav tm="0"><p:val><p:strVal val="%s"/></p:val></p:tav><p:tav tm="100000"><p:val><p:strVal val="%s"/></p:val></p:tav></p:tavLst>`, from, to))
 		w(depth+3, "</p:anim>")
 	}
-	switch o.entrance.Effect {
+	switch effect {
 	case soml.EnterFade:
 		fade()
 	case soml.EnterRise:
@@ -196,7 +225,7 @@ func writeEntranceEffect(w func(int, string), depth int, o entranceObject, node 
 		anim("ppt_w", "#ppt_w*"+zoomFrom, "#ppt_w")
 		anim("ppt_h", "#ppt_h*"+zoomFrom, "#ppt_h")
 	case soml.EnterWipe:
-		w(depth+3, fmt.Sprintf(`<p:animEffect transition="in" filter="wipe(left)"><p:cBhvr><p:cTn id="%d" dur="%d"/>%s</p:cBhvr></p:animEffect>`, next(), dur, tgt))
+		w(depth+3, fmt.Sprintf(`<p:animEffect transition="in" filter="%s"><p:cBhvr><p:cTn id="%d" dur="%d"/>%s</p:cBhvr></p:animEffect>`, wipe, next(), dur, tgt))
 	}
 	w(depth+2, "</p:childTnLst>")
 	w(depth+1, "</p:cTn>")

@@ -17,13 +17,20 @@ const (
 	EnterRise EnterEffect = "rise"
 	EnterZoom EnterEffect = "zoom"
 	EnterWipe EnterEffect = "wipe"
+	// EnterDraw는 선이 시작점에서 끝점으로 그려지는 등장이다 — 연결선만 받는다.
+	EnterDraw EnterEffect = "draw"
 	// EnterNone은 등장 없음이다 — `<slide enter>`가 준 등장을 자식이 끄는 값이다.
 	EnterNone EnterEffect = "none"
 )
 
-// EnterEffects는 등장 어휘다 (순서 = 진단 · 문서 순서).
+// EnterEffects는 상자의 등장 어휘다 (순서 = 진단 · 문서 순서).
 func EnterEffects() []string {
 	return []string{string(EnterFade), string(EnterRise), string(EnterZoom), string(EnterWipe), string(EnterNone)}
+}
+
+// ConnectorEnterEffects는 연결선의 등장 어휘다 — 선은 그려지거나 나타난다.
+func ConnectorEnterEffects() []string {
+	return []string{string(EnterDraw), string(EnterFade), string(EnterNone)}
 }
 
 // Entrance는 확정된 등장 하나다 — `enter`를 가진 요소에 실린다. 그 요소의 객체 전부(자손 포함 — 더 가까운

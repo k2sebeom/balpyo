@@ -25,20 +25,30 @@ func (r *resolver) resolveEntrances(slide *soml.Slide) {
 	var walk func(node soml.Node, direct bool)
 	walk = func(node soml.Node, direct bool) {
 		elem, ok := node.(*soml.Element)
-		if !ok || elem.Name == soml.ConnectorElement {
+		if !ok {
 			return
 		}
+		connector := elem.Name == soml.ConnectorElement
 		effect := soml.EnterEffect("")
-		if direct {
+		if direct && !connector {
+			// 슬라이드의 기본 등장은 상자의 것이다 — 연결선은 자기 `enter`만 받는다.
 			effect = inherited
 		}
 		if attr, ok := elem.Attr(soml.EnterAttr); ok {
 			effect = ""
 			if r.hasValue(attr) {
-				if v, ok := r.enterValue(attr.Value, attr.ValueSpan); ok {
+				vocab := soml.EnterEffects()
+				if connector {
+					vocab = soml.ConnectorEnterEffects()
+				}
+				if v, ok := r.enterValueIn(attr.Value, attr.ValueSpan, vocab); ok {
 					effect = v
 				}
 			}
+		}
+		if connector && (elem.Appearance == nil || elem.Appearance.Connector == nil) {
+			// 풀리지 않은 연결선(진단이 이미 났다)은 그려지지 않으므로 등장도 없다.
+			effect = ""
 		}
 		if effect != "" && effect != soml.EnterNone {
 			motion := r.theme.Motion
@@ -62,14 +72,19 @@ func (r *resolver) resolveEntrances(slide *soml.Slide) {
 	}
 }
 
-// enterValue는 등장 효과 이름을 본다 (닫힌 어휘).
+// enterValue는 상자의 등장 효과 이름을 본다 (닫힌 어휘).
 func (r *resolver) enterValue(raw string, span soml.Span) (soml.EnterEffect, bool) {
-	for _, v := range soml.EnterEffects() {
+	return r.enterValueIn(raw, span, soml.EnterEffects())
+}
+
+// enterValueIn은 등장 효과 이름을 주어진 어휘에서 본다 (상자와 연결선의 어휘가 다르다).
+func (r *resolver) enterValueIn(raw string, span soml.Span, vocab []string) (soml.EnterEffect, bool) {
+	for _, v := range vocab {
 		if raw == v {
 			return soml.EnterEffect(v), true
 		}
 	}
-	list := strings.Join(soml.EnterEffects(), ", ")
+	list := strings.Join(vocab, ", ")
 	r.errorf(span, "unknown enter %q%s (available values: %s)", raw, didYouMean(raw, list), list)
 	return "", false
 }

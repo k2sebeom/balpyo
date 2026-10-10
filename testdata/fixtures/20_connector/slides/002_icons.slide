@@ -1,11 +1,12 @@
 <!-- Connectors join pictures too, and a preset whose connection sites are not known (chevron) is
-     drawn in place but not glued. Ends: dot at the start, none at the end. -->
+     drawn in place but not glued. Ends: dot at the start, none at the end. Connectors can enter:
+     draw wipes the line in from where it starts (PPTX Wipe), fade shows it whole. -->
 <slide id="icons" layout="canvas">
   <image src="assets/dot.png" id="user" w="64" h="64" x="40" y="200"/>
   <shape type="chevron" id="edge" w="160" h="80" x="360" y="190"/>
   <shape type="rect" id="app" w="200" h="120" x="760" y="80"/>
   <shape type="diamond" id="db" w="140" h="140" x="760" y="360"/>
-  <connector from="user" to="edge" start="dot" end="none"/>
-  <connector from="edge" to="app" route="elbow" line="3 solid accent1"/>
-  <connector from="edge" to="db" route="elbow" variant="dashed" start="arrow"/>
+  <connector from="user" to="edge" start="dot" end="none" enter="draw"/>
+  <connector from="edge" to="app" route="elbow" line="3 solid accent1" enter="draw" label="https"/>
+  <connector from="edge" to="db" route="elbow" variant="dashed" start="arrow" enter="fade"/>
 </slide>

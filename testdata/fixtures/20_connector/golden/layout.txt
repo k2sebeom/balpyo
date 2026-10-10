@@ -26,6 +26,8 @@ pic "image s1.0"
 shape:chevron "shape s1.1" fill=surface line=muted
 shape:rect "shape s1.2" fill=surface line=muted
 shape:diamond "shape s1.3" fill=surface line=muted
-connector:straightConnector1 "connector s1.4" line=muted rot=0 flipV adj=50000 from="image s1.0":3 to=- dash=solid ends=oval/none
-connector:bentConnector3 "connector s1.5" line=accent1 rot=0 flipV adj=50000 from=- to="shape s1.2":1 dash=solid ends=none/triangle
-connector:bentConnector3 "connector s1.6" line=muted rot=0 adj=50000 from=- to="shape s1.3":1 dash=dash ends=triangle/triangle
+connector:straightConnector1 "connector s1.4" line=muted rot=0 flipV adj=50000 from="image s1.0":3 to=- dash=solid ends=oval/none enter=wipe@150+600
+connector:bentConnector3 "connector s1.5" line=accent1 rot=0 flipV adj=50000 from=- to="shape s1.2":1 dash=solid ends=none/triangle enter=wipe@240+600
+connector:bentConnector3 "connector s1.6" line=muted rot=0 adj=50000 from=- to="shape s1.3":1 dash=dash ends=triangle/triangle enter=fade@330+600
+textbox "connector-label s1.5" enter=fade@240+600
+  ¶ center | "https"{body 13.5pt muted}
