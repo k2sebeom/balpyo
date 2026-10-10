@@ -178,3 +178,11 @@ shape:star5 "shape s9.1.10" fill=surface line=none
   ¶ start | "star"{body 13.5pt fg}
 shape:cloud "shape s9.1.11" fill=surface line=none
   ¶ start | "cloud"{body 13.5pt fg}
+# slide 11 measured-presets
+shape:triangle "shape s10.0" fill=accent3 line=none
+shape:cube "shape s10.1" fill=accent1 line=muted
+  ¶ start | "Nitro Hypervisor"{body 18pt bg}
+shape:cube "shape s10.2" fill=accent5 line=muted
+  ¶ start | "Nitro Security Chip"{body 18pt bg}
+shape:leftBrace "shape s10.3" fill=none line=muted
+shape:rightBrace "shape s10.4" fill=none line=muted

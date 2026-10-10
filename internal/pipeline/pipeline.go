@@ -285,8 +285,9 @@ func needsGeometry(deck *soml.Deck, targets []render.Target, checkLayout bool) b
 	if len(geom.Refs(deck)) == 0 && !deckHasChrome(deck) {
 		return false
 	}
-	if checkLayout || deckHasConnectors(deck) {
-		// 연결선의 끝점은 잰 rect에서 나오므로 HTML만 내는 빌드도 잰다.
+	if checkLayout || deckHasConnectors(deck) || deckHasMeasuredInk(deck) {
+		// 연결선의 끝점과 잰 박스로 그리는 도형(cube · 괄호)의 그림은 잰 rect에서 나오므로 HTML만 내는
+		// 빌드도 잰다.
 		return true
 	}
 	for _, target := range targets {
@@ -304,6 +305,32 @@ func deckHasConnectors(deck *soml.Deck) bool {
 			if elem, ok := node.(*soml.Element); ok && elem.Name == soml.ConnectorElement {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+// deckHasMeasuredInk는 잰 박스로 그림을 그리는 도형이 있는지다 (web.ShapeDrawnFromMeasuredBox).
+func deckHasMeasuredInk(deck *soml.Deck) bool {
+	var walk func(nodes []soml.Node) bool
+	walk = func(nodes []soml.Node) bool {
+		for _, node := range nodes {
+			elem, ok := node.(*soml.Element)
+			if !ok {
+				continue
+			}
+			if s := elem.ShapeStyle(); s != nil && web.ShapeDrawnFromMeasuredBox(s.Type) {
+				return true
+			}
+			if walk(elem.Children) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, slide := range deck.Slides {
+		if walk(slide.Content) {
+			return true
 		}
 	}
 	return false

@@ -26,6 +26,7 @@ const ShapeElement = "shape"
 var shapeTypes = []string{
 	"rect", "rounded-rect", "ellipse", "diamond", "cylinder", "chevron",
 	"arrow-right", "hexagon", "parallelogram", "callout", "star", "cloud",
+	"triangle", "cube", "left-brace", "right-brace",
 }
 
 // ShapeTypes는 도형 프리셋 이름 목록이다 (순서 = 진단·문서 순서). 값 층과 렌더러가
@@ -49,6 +50,7 @@ func ShapeTypes() []string {
 // `TextRect.HasPercent()`가 같은지 단정한다 (프리셋을 더할 때 한쪽만 고치면 멈춘다).
 var shapeInsetTextTypes = []string{
 	"ellipse", "diamond", "cylinder", "arrow-right", "hexagon", "parallelogram", "star", "cloud",
+	"triangle", "cube",
 }
 
 // ShapeInsetText는 이 프리셋의 텍스트 영역이 박스보다 좁은지다 (shapeInsetTextTypes).

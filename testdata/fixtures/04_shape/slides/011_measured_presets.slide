@@ -1,0 +1,10 @@
+<!-- triangle lives in the normalized space; cube and the two braces are tied to the short side, so
+     the web draws them from the measured box with the preset formula (PPTX writes the preset with
+     its default adjust). A wide, thin cube keeps the same depth on both axes. -->
+<slide id="measured-presets" layout="canvas">
+  <shape type="triangle" fill="accent3" border="none" w="160" h="140" x="0" y="0"/>
+  <shape type="cube" fill="accent1" w="720" h="96" x="220" y="0"><p color="bg">Nitro Hypervisor</p></shape>
+  <shape type="cube" fill="accent5" w="720" h="96" x="220" y="110"><p color="bg">Nitro Security Chip</p></shape>
+  <shape type="left-brace" fill="none" border="2 solid muted" w="40" h="240" x="0" y="260"/>
+  <shape type="right-brace" fill="none" border="2 solid muted" w="40" h="240" x="1000" y="260" rotate="90"/>
+</slide>

@@ -164,7 +164,7 @@ func TestCatalogAccessors(t *testing.T) {
 		{"ChildPlacementAttrs", ChildPlacementAttrs, "grow shrink basis span self order at x y style"},
 		{"ContainerAttrs(row)", func() []string { return ContainerAttrs(RowElement) }, "gap align justify wrap pad w h min-w min-h max-w max-h ratio"},
 		{"ContainerAttrs(stack)", func() []string { return ContainerAttrs(StackElement) }, "align justify pad w h min-w min-h max-w max-h ratio"},
-		{"ShapeTypes", ShapeTypes, "rect rounded-rect ellipse diamond cylinder chevron arrow-right hexagon parallelogram callout star cloud"},
+		{"ShapeTypes", ShapeTypes, "rect rounded-rect ellipse diamond cylinder chevron arrow-right hexagon parallelogram callout star cloud triangle cube left-brace right-brace"},
 		{"ShapeAttrs", ShapeAttrs, "type id alt variant fill border radius shadow opacity rotate flip pad w h min-w min-h max-w max-h ratio"},
 		{"ShapeAppearanceAttrs", ShapeAppearanceAttrs, "variant fill border radius shadow opacity rotate flip"},
 		{"ImageAttrs", ImageAttrs, "src id fit alt variant border radius shadow opacity rotate flip pad w h min-w min-h max-w max-h ratio"},

@@ -23,7 +23,7 @@
   `pre`, `strong`, `em`, `code`, `a`, `br`, `span`, `mark`),
   [레이아웃 태그](soml/layout.md) (`row`/`col`/`grid`/`spacer` + 컨테이너·자식 속성과
   `style` 탈출구), [`<stack>`](soml/stack.md) (겹침 컨테이너 + 자식 배치 `at`·`x`/`y`),
-  [`<shape>`](soml/shape.md) (`type` 12종 + 외관 8종 + 박스 속성),
+  [`<shape>`](soml/shape.md) (`type` 16종 + 외관 8종 + 박스 속성),
   [`<image>`](soml/image.md) (`src`·`id`·`fit`·`alt` + 외관 7종 + 박스 속성),
   [`<table>`](soml/table.md) (`table`/`tr`/`th`/`td` + 프레임 `variant` + 셀 병합 2종·외관 5종),
   [`<chart>`](soml/chart.md) (`chart`/`point` + `type`·`unit`·`max`·`series`·`alt` — 값 층이

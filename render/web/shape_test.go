@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k2sebeom/balpyo/render/route"
 	"github.com/k2sebeom/balpyo/soml"
 )
 
@@ -166,7 +167,7 @@ func TestShapeGeometryTableCoversVocabularyInOrder(t *testing.T) {
 			}
 		}
 	}
-	if _, ok := ShapePreset("triangle"); ok {
+	if _, ok := ShapePreset("trapezoid"); ok {
 		t.Error("어휘 밖 type에 프리셋이 있다")
 	}
 }
@@ -218,7 +219,7 @@ func TestShapeAdjustSpecsMatchStretchedGeometry(t *testing.T) {
 			t.Errorf("%q: 반경 조정값 = %v인데 기하의 Rounded = %v", geom.Type, radiusAxis, geom.Rounded)
 		}
 	}
-	if _, ok := ShapeAdjusts("triangle"); ok {
+	if _, ok := ShapeAdjusts("trapezoid"); ok {
 		// 빈 목록(조정값 없는 프리셋)과 구별되어야 PPTX가 "어휘에 있는데 표에 없는 프리셋"에서
 		// 멈출 수 있다.
 		t.Error("어휘 밖 type에 조정값 명세가 있다")
@@ -245,6 +246,10 @@ func TestShapeAdjustsListEveryPresetGuide(t *testing.T) {
 		"wedgeRectCallout": {"adj1", "adj2"},
 		"star5":            {"adj", "hf", "vf"},
 		"cloud":            nil,
+		"triangle":         {"adj"},
+		"cube":             {"adj"},
+		"leftBrace":        {"adj1", "adj2"},
+		"rightBrace":       {"adj1", "adj2"},
 	}
 	for _, geom := range shapeGeometries() {
 		guides, known := presetGuides[geom.Preset]
@@ -284,6 +289,11 @@ func TestShapeTextRectsMatchPresetDefinitions(t *testing.T) {
 		"callout":       {},
 		"star":          {L: 30.902, T: 38.1968, R: 30.902, B: 23.6073},
 		"cloud":         {L: 13.7824, T: 15.1019, R: 20.8935, B: 19.7361},
+		"triangle":      {L: 25, T: 50, R: 25},
+		// 잰 박스로 그리는 프리셋의 대체 비율이다 — 정사각형에서 깊이 25%가 위 · 오른쪽에서 들어온다.
+		"cube":        {T: 25, R: 25},
+		"left-brace":  {},
+		"right-brace": {},
 	}
 	for _, geom := range shapeGeometries() {
 		insets, ok := ShapeTextRect(geom.Type)
@@ -305,7 +315,7 @@ func TestShapeTextRectsMatchPresetDefinitions(t *testing.T) {
 			t.Errorf("%q: HasPercent가 백분율 인셋과 어긋난다 (%+v)", geom.Type, insets)
 		}
 	}
-	if _, ok := ShapeTextRect("triangle"); ok {
+	if _, ok := ShapeTextRect("trapezoid"); ok {
 		t.Error("어휘 밖 type에 텍스트 영역이 있다")
 	}
 }
@@ -325,7 +335,7 @@ func TestShapeInsetTextVocabularyMatchesTheTable(t *testing.T) {
 				shapeType, got, want, insets)
 		}
 	}
-	if soml.ShapeInsetText("triangle") {
+	if soml.ShapeInsetText("trapezoid") {
 		t.Error("어휘 밖 type이 백분율 인셋 프리셋이라고 한다")
 	}
 }
@@ -578,7 +588,7 @@ func TestShapeRenderRejectsUnresolvedOrUnknown(t *testing.T) {
 	}{
 		{"외관 없음", `<shape type="rect"/>`, func(shape *soml.Element) { shape.Appearance.Shape = nil }},
 		{"모르는 type", `<shape type="rect"/>`, func(shape *soml.Element) {
-			shape.Appearance.Shape.Type = "triangle"
+			shape.Appearance.Shape.Type = "trapezoid"
 		}},
 		{"채움 없음", `<shape type="rect"/>`, func(shape *soml.Element) { shape.Appearance.Shape.Fill = nil }},
 		{"테두리 없음", `<shape type="rect"/>`, func(shape *soml.Element) { shape.Appearance.Shape.Border = nil }},
@@ -642,4 +652,33 @@ func inkOf(t *testing.T, out, id string) string {
 		t.Fatalf("%s의 그림 svg를 찾을 수 없다:\n%s", id, rest)
 	}
 	return rest[start : end+len("</svg>")]
+}
+
+// 잰 박스로 그리는 프리셋은 잰 rect로 공식을 그대로 평가한다 — 790×90 cube의 깊이는 두 축 모두
+// `ss × 25%` = 22.5px이다 (늘린 대체 그림은 가로 197.5px이 된다). 잰 박스가 없는 렌더는 대체 그림이다.
+func TestMeasuredPresetsEvaluateTheFormulaOnTheBox(t *testing.T) {
+	deck := subsetDeck(t, `<shape type="cube" w="790" h="90"><p>Nitro Cards</p></shape>`)
+	boxes := map[string]route.Rect{"s0.0": {X: 64, Y: 64, W: 790, H: 90}}
+	files, err := NewWithBoxes(func(id string) (route.Rect, bool) { r, ok := boxes[id]; return r, ok }).Render(deck)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ink := inkOf(t, string(files[IndexFile]), "s0.0")
+	for _, want := range []string{
+		`viewBox="0 0 790 90"`,
+		`d="M0,22.5 L767.5,22.5 L767.5,90 L0,90 Z"`, // 앞면
+		`style="fill: rgb(0 0 0 / 0.2); stroke: none"`, // 오른쪽 면의 darkenLess
+	} {
+		if !strings.Contains(ink, want) {
+			t.Errorf("잰 박스의 그림에 %q가 없다: %s", want, ink)
+		}
+	}
+	// 텍스트 영역은 앞면이다 — 위 22.5/90 = 25%, 오른쪽 22.5/790 ≈ 2.8481%.
+	out := string(files[IndexFile])
+	if !strings.Contains(out, "top: 25%") || !strings.Contains(out, "right: 2.8481%") {
+		t.Errorf("앞면 텍스트 영역이 잰 박스의 비율이 아니다:\n%s", stageOf(t, out))
+	}
+	if fallback := inkOf(t, renderString(t, deck), "s0.0"); !strings.Contains(fallback, `viewBox="0 0 100 100"`) {
+		t.Errorf("잰 박스 없는 렌더가 대체 그림이 아니다: %s", fallback)
+	}
 }

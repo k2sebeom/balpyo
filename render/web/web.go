@@ -71,10 +71,27 @@ import (
 	"fmt"
 	"html"
 	"strings"
+	"sync"
 
 	"github.com/k2sebeom/balpyo/render"
+	"github.com/k2sebeom/balpyo/render/route"
 	"github.com/k2sebeom/balpyo/soml"
 )
+
+// inkBoxes는 지금 렌더 중인 덱 → 잰 박스 조회다. 잰 박스로 그리는 프리셋(spaceMeasured)이 도형 writer
+// 깊숙한 곳에서 자기 rect를 찾는 자리다 — writer 스물다섯 개의 서명에 조회를 실어 나르는 대신 렌더 한 번 동안만
+// 덱에 묶어 둔다 (Render가 넣고 끝나면 지운다). 같은 덱을 두 렌더가 동시에 그리지 않는다는 것이 전제다 —
+// 파이프라인은 측정용 렌더와 최종 렌더를 차례로 돈다.
+var inkBoxes sync.Map
+
+// measuredBox는 이 렌더에서 요소의 잰 rect다 (잰 박스가 없는 렌더 · 모르는 요소면 false).
+func measuredBox(deck *soml.Deck, id string) (route.Rect, bool) {
+	v, ok := inkBoxes.Load(deck)
+	if !ok {
+		return route.Rect{}, false
+	}
+	return v.(BoxLookup)(id)
+}
 
 // IndexFile은 웹 타깃의 산출 파일 이름이다.
 const IndexFile = "index.html"
@@ -110,6 +127,11 @@ func (*Renderer) Target() render.Target { return render.TargetHTML }
 func (r *Renderer) Render(deck *soml.Deck) (render.Files, error) {
 	if deck == nil {
 		return nil, fmt.Errorf("deck is nil")
+	}
+	if r.boxes != nil {
+		// 잰 박스로 그리는 도형(cube · 괄호)이 이 렌더의 박스를 읽는다 — 렌더 한 번 동안만 산다.
+		inkBoxes.Store(deck, r.boxes)
+		defer inkBoxes.Delete(deck)
 	}
 	stage := deck.Stage
 	if stage.Width <= 0 || stage.Height <= 0 {
