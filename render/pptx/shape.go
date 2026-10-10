@@ -772,6 +772,9 @@ func writeFill(w func(depth int, line string), depth int, fill soml.Fill, alpha 
 		w(depth, "<a:noFill/>")
 		return nil
 	}
+	if fill.Pattern != nil {
+		return writePattFill(w, depth, *fill.Pattern, alpha, theme)
+	}
 	if fill.Color.IsGradient() {
 		// 그라디언트 채움은 solidFill이 아니라 gradFill이다. 도형 불투명도는
 		// 스톱 색마다 알파로 실린다 (writeGradFill).
@@ -1601,6 +1604,45 @@ func writeGradFill(w func(depth int, line string), depth int, grad soml.Gradient
 		w(depth+1, fmt.Sprintf(`<a:lin ang="%d" scaled="1"/>`, GradientAngle(grad.Angle)))
 	}
 	w(depth, "</a:gradFill>")
+	return nil
+}
+
+// PatternPreset은 SOML 무늬 이름 → OOXML `a:pattFill@prst`다. 내보내는 이유는 ShapePreset과 같다 — 패리티
+// 읽기가 같은 표로 되돌린다.
+func PatternPreset(kind soml.PatternKind) (string, bool) {
+	prst, ok := map[soml.PatternKind]string{
+		soml.PatternHorizontal:       "horz",
+		soml.PatternVertical:         "vert",
+		soml.PatternDiagonalUp:       "upDiag",
+		soml.PatternDiagonalDown:     "dnDiag",
+		soml.PatternWideDiagonalUp:   "wdUpDiag",
+		soml.PatternWideDiagonalDown: "wdDnDiag",
+		soml.PatternCross:            "cross",
+		soml.PatternDiagonalCross:    "diagCross",
+		soml.PatternDots:             "pct20",
+	}[kind]
+	return prst, ok
+}
+
+// writePattFill은 무늬 채움을 `a:pattFill`로 쓴다 — 앞색이 fgClr, 뒷색이 bgClr이고 토큰은 schemeClr로 남는다.
+// 도형 불투명도는 두 색에 나눠 싣는다 (writeGradFill의 스톱과 같은 이유 — 알파는 색의 성질이다).
+func writePattFill(w func(depth int, line string), depth int, pat soml.Pattern, alpha *float64, theme soml.Theme) error {
+	prst, ok := PatternPreset(pat.Kind)
+	if !ok {
+		return fmt.Errorf("pattern %q has no OOXML preset", pat.Kind)
+	}
+	w(depth, fmt.Sprintf(`<a:pattFill prst="%s">`, prst))
+	for _, part := range []struct {
+		elem  string
+		color soml.Color
+	}{{"a:fgClr", pat.Fg}, {"a:bgClr", pat.Bg}} {
+		w(depth+1, "<"+part.elem+">")
+		if err := writeColor(w, depth+2, part.color, alpha, theme); err != nil {
+			return err
+		}
+		w(depth+1, "</"+part.elem+">")
+	}
+	w(depth, "</a:pattFill>")
 	return nil
 }
 

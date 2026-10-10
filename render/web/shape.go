@@ -624,9 +624,12 @@ func shapeGeometryOf(shapeType string) (shapeGeometry, error) {
 
 // ShapeDrawnFromMeasuredBox는 이 프리셋의 그림이 잰 박스로 그려지는지다 (spaceMeasured) — 파이프라인이
 // HTML만 내는 빌드에서도 재야 하는지 묻는다.
-func ShapeDrawnFromMeasuredBox(shapeType string) bool {
-	geom, err := shapeGeometryOf(shapeType)
-	return err == nil && geom.Space == spaceMeasured
+func ShapeDrawnFromMeasuredBox(style soml.ShapeStyle) bool {
+	geom, err := shapeGeometryOf(style.Type)
+	if err != nil {
+		return false
+	}
+	return geom.Space == spaceMeasured || (geom.Space == spaceNormalized && style.Fill != nil && style.Fill.Pattern != nil)
 }
 
 // ShapePreset은 SOML `type` → OOXML `prstGeom@prst` 이름이다.
@@ -744,6 +747,13 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 			text = ShapeInsets{L: m.L / box.W * 100, T: m.T / box.H * 100, R: m.R / box.W * 100, B: m.B / box.H * 100}
 		}
 	}
+	// 늘린 공간(정규 100×100)의 무늬는 타일까지 늘어난다 — 잰 박스를 알면 무늬를 그 늘림의 역으로 되돌린다.
+	patternScale := [2]float64{1, 1}
+	if geom.Space == spaceNormalized && style.Fill != nil && style.Fill.Pattern != nil {
+		if box, ok := measuredBox(deck, ElementID(slide.Index, path)); ok && box.W > 0 && box.H > 0 {
+			patternScale = [2]float64{100 / box.W, 100 / box.H}
+		}
+	}
 	if !shapeHasContent(elem) {
 		text = ShapeInsets{}
 	}
@@ -762,7 +772,7 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	}
 	fmt.Fprintf(b, "<div class=%q %s=%q %s=%q%s%s>\n",
 		class, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, enterAttr(elem), styleAttr(decls))
-	if err := writeShapeInk(b, geom, ink, *style, deck.Theme, ElementID(slide.Index, path)); err != nil {
+	if err := writeShapeInk(b, geom, ink, patternScale, *style, deck.Theme, ElementID(slide.Index, path)); err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
 	// 백분율 인셋 프리셋은 텍스트를 그 사각형에 담는 래퍼를 하나 더 갖는다 —
@@ -792,8 +802,8 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 // 기본이 `aria-hidden`인 이유: 그림은 장식이고 내용은 안의 텍스트다. 스크린 리더가 읽을 것이
 // 없는 요소를 접근성 트리에 남기면 도형마다 빈 그래픽이 읽힌다. **저자의 `alt`이 그 판단의
 // 예외를 선언한다** — 그러면 같은 자리가 `role="img" aria-label`이 된다 (inkAccessAttrs).
-func writeShapeInk(b *strings.Builder, geom shapeGeometry, ink *measuredInk, style soml.ShapeStyle, theme soml.Theme, id string) error {
-	decls, defs, err := shapeInkCSS(style, theme, id)
+func writeShapeInk(b *strings.Builder, geom shapeGeometry, ink *measuredInk, patternScale [2]float64, style soml.ShapeStyle, theme soml.Theme, id string) error {
+	decls, defs, err := shapeInkCSS(style, theme, id, patternScale)
 	if err != nil {
 		return err
 	}
@@ -999,7 +1009,7 @@ func anchorValue(anchor soml.TextAnchor) (string, error) {
 //
 // 정하지 않은 속성은 선언을 **하나도** 내지 않는다 — `shadow`·`opacity`·`flip`의 nil은
 // "선언 없음"이고 두 타깃의 암묵 기본값이 같다 (soml.ShapeStyle의 계약).
-func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, string, error) {
+func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string, patternScale [2]float64) ([]string, string, error) {
 	var decls []string
 	var defs []string
 	// fill: 토큰은 변수 참조, 리터럴은 #RRGGBB, `none`은 SVG의 `none`이다 (투명한 채움을
@@ -1012,6 +1022,14 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, 
 	}
 	if style.Fill.None {
 		decls = append(decls, "fill: none")
+	} else if style.Fill.Pattern != nil {
+		patID := id + "-fill-pattern"
+		def, err := patternDef(patID, *style.Fill.Pattern, patternScale, theme)
+		if err != nil {
+			return nil, "", err
+		}
+		defs = append(defs, def)
+		decls = append(decls, fmt.Sprintf("fill: url(#%s)", patID))
 	} else if style.Fill.Color.IsGradient() {
 		gradID := id + "-fill-grad"
 		def, err := linearGradientDef(gradID, *style.Fill.Color.Gradient, theme)
@@ -1155,6 +1173,63 @@ func linearGradientDef(id string, grad soml.Gradient, theme soml.Theme) (string,
 		fmt.Fprintf(&b, `<stop offset=%q style="stop-color: %s%s"/>`, offset, color, opacity)
 	}
 	b.WriteString("</" + tag + ">")
+	return b.String(), nil
+}
+
+// patternTile은 무늬 타일 한 변의 논리 px다 — OOXML 프리셋 무늬가 8×8 비트맵이라 같은 주기를 쓴다.
+const patternTile = 8
+
+// patternInk는 무늬 하나의 타일 그림이다 — 앞색으로 긋는 경로와 그 굵기, 또는 앞색 점들이다. 사선은 타일 모서리에
+// 걸친 토막을 함께 그어 이웃 타일과 이어지게 한다. 가는 선 무늬(가로 · 세로 · 사선 · 격자)는 OOXML 프리셋처럼 4px마다
+// 한 줄이고, 굵은 사선과 사선 격자는 8px마다다.
+type patternInk struct {
+	d      string
+	stroke float64
+	dots   [][2]float64
+}
+
+var patternInks = map[soml.PatternKind]patternInk{
+	soml.PatternHorizontal:       {d: "M0,0.5 H8 M0,4.5 H8", stroke: 1},
+	soml.PatternVertical:         {d: "M0.5,0 V8 M4.5,0 V8", stroke: 1},
+	soml.PatternDiagonalUp:       {d: "M0,4 L4,0 M0,8 L8,0 M4,8 L8,4 M-1,1 L1,-1 M7,9 L9,7", stroke: 1},
+	soml.PatternDiagonalDown:     {d: "M0,0 L8,8 M4,0 L8,4 M0,4 L4,8 M-1,7 L1,9 M7,-1 L9,1", stroke: 1},
+	soml.PatternWideDiagonalUp:   {d: "M0,8 L8,0 M-1,1 L1,-1 M7,9 L9,7", stroke: 3},
+	soml.PatternWideDiagonalDown: {d: "M0,0 L8,8 M-1,7 L1,9 M7,-1 L9,1", stroke: 3},
+	soml.PatternCross:            {d: "M0,0.5 H8 M0,4.5 H8 M0.5,0 V8 M4.5,0 V8", stroke: 1},
+	soml.PatternDiagonalCross:    {d: "M0,8 L8,0 M-1,1 L1,-1 M7,9 L9,7 M0,0 L8,8 M-1,7 L1,9 M7,-1 L9,1", stroke: 1},
+	soml.PatternDots:             {dots: [][2]float64{{2, 2}, {6, 6}}},
+}
+
+// patternDef는 무늬 채움의 SVG `<pattern>` def다 — 8×8 px 타일에 뒷색 사각형을 깔고 앞색 선 · 점을 얹는다.
+// 타일은 사용자 공간(userSpaceOnUse)이라 도형 크기와 무관한 주기를 갖는다. scale은 늘린 공간(정규 100×100)의
+// 늘림을 되돌리는 배율이다 (px 공간이면 1). 색은 CSS 프로퍼티로 내어 토큰 변수가 풀린다 (그라디언트 스톱과 같다).
+func patternDef(id string, pat soml.Pattern, scale [2]float64, theme soml.Theme) (string, error) {
+	ink, ok := patternInks[pat.Kind]
+	if !ok {
+		return "", fmt.Errorf("pattern %q has no web tile", pat.Kind)
+	}
+	fg, err := colorValue(pat.Fg, theme)
+	if err != nil {
+		return "", err
+	}
+	bg, err := colorValue(pat.Bg, theme)
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, `<pattern id=%q patternUnits="userSpaceOnUse" width="%d" height="%d"`, id, patternTile, patternTile)
+	if scale != [2]float64{1, 1} {
+		fmt.Fprintf(&b, ` patternTransform="scale(%s %s)"`, formatNumber(round4(scale[0])), formatNumber(round4(scale[1])))
+	}
+	fmt.Fprintf(&b, `><rect width="%d" height="%d" style="fill: %s; stroke: none"/>`, patternTile, patternTile, bg)
+	if ink.d != "" {
+		fmt.Fprintf(&b, `<path d=%q style="fill: none; stroke: %s; stroke-width: %spx"/>`, ink.d, fg, formatNumber(ink.stroke))
+	}
+	for _, dot := range ink.dots {
+		fmt.Fprintf(&b, `<circle cx="%s" cy="%s" r="1.2" style="fill: %s; stroke: none"/>`,
+			formatNumber(dot[0]), formatNumber(dot[1]), fg)
+	}
+	b.WriteString("</pattern>")
 	return b.String(), nil
 }
 

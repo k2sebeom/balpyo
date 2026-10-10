@@ -191,3 +191,23 @@ shape:custGeom "shape s11.0" fill=accent4 line=none
 shape:custGeom "shape s11.1" fill=none line=accent1
 shape:custGeom "shape s11.2" fill=accent2 line=muted
   ¶ center | "bump"{body 18pt bg}
+# slide 13 patterns
+shape:rect "shape s12.0.0" fill=pattern(horizontal,accent1,bg) line=accent1
+  ¶ start | "horizontal"{body 18pt fg}
+shape:rect "shape s12.0.1" fill=pattern(vertical,accent1,bg) line=accent1
+  ¶ start | "vertical"{body 18pt fg}
+shape:rect "shape s12.0.2" fill=pattern(diagonal-up,accent2,bg) line=accent2
+  ¶ start | "diagonal-up"{body 18pt fg}
+shape:rect "shape s12.0.3" fill=pattern(diagonal-down,accent2,bg) line=accent2
+  ¶ start | "diagonal-down"{body 18pt fg}
+shape:roundRect "shape s12.0.4" fill=pattern(wide-diagonal-up,accent3,surface) line=none
+  ¶ start | "wide-diagonal-up"{body 18pt fg}
+shape:roundRect "shape s12.0.5" fill=pattern(wide-diagonal-down,accent3,surface) line=none
+  ¶ start | "wide-diagonal-down"{body 18pt fg}
+shape:ellipse "shape s12.0.6" fill=pattern(cross,muted,bg) line=muted
+  ¶ start | "cross"{body 18pt fg}
+shape:ellipse "shape s12.0.7" fill=pattern(diagonal-cross,muted,bg) line=muted
+  ¶ start | "diagonal-cross"{body 18pt fg}
+shape:rect "shape s12.0.8" fill=pattern(dots,fg,bg) line=none
+  ¶ start | "dots"{body 18pt fg}
+shape:custGeom "shape s12.0.9" fill=pattern(wide-diagonal-up,accent5,bg) line=accent5

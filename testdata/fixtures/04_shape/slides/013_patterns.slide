@@ -1,0 +1,17 @@
+<!-- pattern(<pattern> <foreground> <background>) is a hatch fill (web: an SVG <pattern> tile, PPTX:
+     a:pattFill with schemeClr colors). All nine patterns, one on a transparent background, one on a
+     stretched path shape (the tile keeps its size), and one under shape opacity. -->
+<slide id="patterns" layout="canvas">
+  <grid cols="5" gap="md" w="fill">
+    <shape type="rect" fill="pattern(horizontal accent1 bg)" border="1 solid accent1" h="120"><p>horizontal</p></shape>
+    <shape type="rect" fill="pattern(vertical accent1 bg)" border="1 solid accent1" h="120"><p>vertical</p></shape>
+    <shape type="rect" fill="pattern(diagonal-up accent2 bg)" border="1 solid accent2" h="120"><p>diagonal-up</p></shape>
+    <shape type="rect" fill="pattern(diagonal-down accent2 bg)" border="1 solid accent2" h="120"><p>diagonal-down</p></shape>
+    <shape type="rounded-rect" fill="pattern(wide-diagonal-up accent3 surface)" border="none" h="120"><p>wide-diagonal-up</p></shape>
+    <shape type="rounded-rect" fill="pattern(wide-diagonal-down accent3 surface)" border="none" h="120"><p>wide-diagonal-down</p></shape>
+    <shape type="ellipse" fill="pattern(cross muted bg)" border="1 solid muted" h="120"><p>cross</p></shape>
+    <shape type="ellipse" fill="pattern(diagonal-cross muted bg/0)" border="1 solid muted" h="120"><p>diagonal-cross</p></shape>
+    <shape type="rect" fill="pattern(dots fg bg)" border="none" opacity="0.5" h="120"><p>dots</p></shape>
+    <shape type="path" fill="pattern(wide-diagonal-up accent5/60 bg/0)" border="2 solid accent5" h="120" d="M0,100 L0,40 C30,0 70,80 100,20 L100,100 Z"/>
+  </grid>
+</slide>

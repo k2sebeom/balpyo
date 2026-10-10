@@ -577,6 +577,9 @@ func webFill(f *soml.Fill, theme soml.Theme) string {
 	if f.None {
 		return "none"
 	}
+	if p := f.Pattern; p != nil {
+		return "pattern(" + string(p.Kind) + "," + webColor(p.Fg) + "," + webColor(p.Bg) + ")"
+	}
 	return webColor(f.Color)
 }
 
@@ -757,6 +760,11 @@ type xFills struct {
 		Path *struct{} `xml:"path"`
 	} `xml:"gradFill"`
 	SolidFill *xColor `xml:"solidFill"`
+	PattFill  *struct {
+		Prst  string `xml:"prst,attr"`
+		FgClr xColor `xml:"fgClr"`
+		BgClr xColor `xml:"bgClr"`
+	} `xml:"pattFill"`
 }
 
 type xTxBody struct {
@@ -1145,6 +1153,18 @@ func pptxSolid(c *xColor, theme soml.Theme) string {
 func pptxFill(f xFills, theme soml.Theme) string {
 	if f.NoFill != nil {
 		return "none"
+	}
+	if p := f.PattFill; p != nil {
+		// 되돌림 표는 렌더러의 표를 빌리지 않는다 — 같은 표로 쓰고 읽으면 틀린 짝도 맞아 보인다.
+		kind, ok := map[string]string{
+			"horz": "horizontal", "vert": "vertical", "upDiag": "diagonal-up", "dnDiag": "diagonal-down",
+			"wdUpDiag": "wide-diagonal-up", "wdDnDiag": "wide-diagonal-down", "cross": "cross",
+			"diagCross": "diagonal-cross", "pct20": "dots",
+		}[p.Prst]
+		if !ok {
+			kind = "prst=" + p.Prst
+		}
+		return "pattern(" + kind + "," + pptxSolid(&p.FgClr, theme) + "," + pptxSolid(&p.BgClr, theme) + ")"
 	}
 	return pptxColor(f, theme)
 }

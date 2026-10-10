@@ -319,7 +319,7 @@ func deckHasMeasuredInk(deck *soml.Deck) bool {
 			if !ok {
 				continue
 			}
-			if s := elem.ShapeStyle(); s != nil && web.ShapeDrawnFromMeasuredBox(s.Type) {
+			if s := elem.ShapeStyle(); s != nil && web.ShapeDrawnFromMeasuredBox(*s) {
 				return true
 			}
 			if walk(elem.Children) {
