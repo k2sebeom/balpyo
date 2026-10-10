@@ -15,16 +15,17 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 
 | 태그 | 담는 것 | 산출물 |
 |---|---|---|
-| `<chart>` | `<point>`**만** | 배경 도형 1개 + 범주마다 도형 2개·텍스트 2개 (웹 `<div>`+`<svg>` · PPTX `p:sp`) |
+| `<chart>` | `<point>`**만** 또는 `<series>`**만** | 배경 도형 1개 + 범주마다 도형 2개·텍스트 2개 (웹 `<div>`+`<svg>` · PPTX `p:sp`) |
+| `<series>` | `<point>`**만** | 계열 하나 — 계열마다의 막대 · 선과 범례 항목 하나 |
 | `<point>` | 없다 (**void**) | 막대 도형 1개 + 값 라벨·범주 라벨 2개 + 기준선 1개 |
 
-- **`<point>`는 `<chart>` 밖에 올 수 없다** — `<li>`가 `<ul>` 밖에 못 오는 것과 같은 규칙이다.
+- **`<point>`는 `<chart>` · `<series>` 밖에 올 수 없다** — `<li>`가 `<ul>` 밖에 못 오는 것과 같은 규칙이다.
   데이터가 자식 요소인 이유는 속성 CSV(`values="22,19,15"`)에는 값마다 색을 줄 자리가 없고
   진단이 "다섯 값 중 셋째"를 가리킬 방법이 없다는 것이다.
 - `<chart>`는 슬라이드 직계 자식, [레이아웃 컨테이너](layout.md)의 자식(`<row><chart>`),
   그리고 [슬롯](../layouts.md)을 채우는 요소 셋 다 될 수 있다. [`<shape>`](shape.md)의 직속
   자식은 아니다 (표와 같은 규칙 — 컨테이너로 감싼다).
-- 종류는 넷이다 — 모두 **단일 계열**: `bar`(세로 막대), `line`(점을 잇는 꺾은선), `area`(꺾은선 아래를 칠한
+- 종류는 넷이다 — 점을 직접 담으면 **단일 계열**, `<series>`를 담으면 여러 계열이다 (아래 "여러 계열" 절): `bar`(세로 막대), `line`(점을 잇는 꺾은선), `area`(꺾은선 아래를 칠한
   영역), `step`(범주 칸마다 수평인 계단). 선 · 영역 · 계단은 [경로 도형](shape.md)(`type="path"`) 하나로 펼쳐진다
   (아래 "선 · 영역 · 계단" 절).
 
@@ -95,6 +96,41 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
   차트다.
 - 점의 강조색(`<point fill>`)은 막대 하나를 칠하는 채널이라 선 · 영역 · 계단에서는 에러다.
 - PPTX에서는 사용자 지오메트리 도형(`a:custGeom`)이다 — PowerPoint의 점 편집으로 고칠 수 있다.
+
+## 여러 계열 — `<series>`
+
+`<series>`는 계열 하나다. 점들을 담고 이름 · 색을 갖는다. 계열이 여럿이면 축 하나를 함께 쓰고, 범주 라벨 아래에
+범례가 선다.
+
+```html
+<chart type="bar" unit="M" alt="Revenue by quarter" w="fill" h="360">
+  <series name="2025">
+    <point label="Q1" value="12"/>
+    <point label="Q2" value="18"/>
+  </series>
+  <series name="2026" fill="accent4">
+    <point label="Q1" value="16"/>
+    <point label="Q2" value="21"/>
+  </series>
+</chart>
+```
+
+| 속성 | 허용 값 | 하는 일 |
+|---|---|---|
+| `name` | 문자열 (**필수**) | 범례에 실리는 계열 이름 |
+| `fill` | 색 토큰 · `#rrggbb` | 계열색. 생략하면 순서대로 `accent1` … `accent6`이다 (일곱째 계열부터 되돌아간다) |
+| `type` | `line` · `area` · `step` | 선 계열 차트에서 이 계열만의 종류 — 수요 선(`area`) 위에 용량 계단(`step`) |
+
+- **한 차트는 점 아니면 계열이다.** 직계 `<point>`와 `<series>`를 섞으면 에러다. 계열 형식에서는 프레임의
+  `series`도 에러다 — 색은 계열마다 있다.
+- **범주는 모든 계열이 같다.** 첫 계열의 라벨이 범주이고, 다른 계열도 같은 라벨을 같은 순서로 적는다.
+- **축**은 모든 계열의 값 중 최대에서 정한다 (`max`가 있으면 그 축).
+- **막대 차트는 묶음 막대다** — 범주 칸마다 계열 수만큼의 막대가 칸의 70% 폭을 나눠 붙어 선다. 값 라벨은 막대마다
+  있다. `<point fill>` 강조는 그 막대 하나와 그 값 라벨이다.
+- **선 · 영역 · 계단 차트는 계열마다 경로 하나다** — 같은 플롯 밴드에 겹친다. 영역의 면을 먼저 다 칠하고 선을 그
+  위에 긋는다. 막대 차트의 계열에는 `type`을 쓸 수 없다.
+- **범례**는 계열마다 색 견본과 이름 캡션이고, 가운데 정렬된 한 줄이다. 견본은 막대 · 영역 계열이면 사각형, 선 · 계단
+  계열이면 굵은 선이다.
 
 ## 색 — 계열은 프레임이, 강조는 점이 갖는다
 
@@ -292,8 +328,9 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 
 | 조건 | 진단 메시지 |
 |---|---|
-| `<point>`를 차트 밖에 썼다 | `<point> can only be a child of <chart>` |
-| `<chart>`에 점이 아닌 자식을 썼다 | `<chart> cannot contain <p> (available tags: <point>)` |
+| `<point>`를 차트 밖에 썼다 | `<point> can only be a child of <chart> or <series>` |
+| `<series>`를 차트 밖에 썼다 | `<series> can only be a child of <chart>` |
+| `<chart>`에 점이 아닌 자식을 썼다 | `<chart> cannot contain <p> (available tags: <point>, <series>)` |
 | `<chart>` 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <chart> (wrap it in <point>)` |
 | `<point>`에 내용을 담았다 | `void tag <point> cannot have content (write <point/>)` |
 | `<chart>`를 도형의 직속 자식으로 썼다 | `<shape> cannot contain <chart> (available tags: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)` |
@@ -319,6 +356,14 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 | `max`가 수치가 아니다 | `max is not a number ("스물") — write the value axis maximum as a number` |
 | `max`가 0 이하다 | `max must be greater than 0 ("0") — a zero axis leaves bar heights without a denominator` |
 | `series`/`fill`이 `none`이다 | `series cannot be none — a bar that is not drawn is not data (an empty bar is value="0")` |
+| 점과 계열을 섞었다 | `<chart> holds either <point>s or <series>, not both — put every point inside a <series>` |
+| 계열 형식에 프레임 `series`를 썼다 | `<chart series> colors the only series — with <series> each series takes its own fill` |
+| 계열에 `name`이 없다 | `<series> needs a name — it is the legend entry` |
+| 계열에 점이 없다 | `<series> has no <point> — there is no data to draw (<point label="May" value="22"/>)` |
+| 계열의 점 수가 첫 계열과 다르다 | `<series name="B"> has 1 points but the first series has 2 — every series lists the same categories` |
+| 계열의 범주 라벨이 첫 계열과 다르다 | `<point label="Q3"> is category 2 — the first series has "Q2" there (every series lists the same categories in the same order)` |
+| 막대 차트의 계열에 `type`을 썼다 | `<series type> is for line, area and step charts — every series of a bar chart is bars` |
+| 어휘 밖 계열 `type` | `unknown series type "bar" (available series types: line, area, step)` |
 | `alt=""` | `alt cannot be empty — no name is the default, so remove the attribute (…)` |
 
 `series`·`fill`의 색 값 진단은 [외관 속성](../appearance.md)·[`<shape>`](shape.md)와 **같은
