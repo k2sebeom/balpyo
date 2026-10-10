@@ -63,3 +63,8 @@ textbox "ul s6.1.1"
 textbox "ol s6.2"
   ¶ center ol | "정렬도 목록 단위다"{body 18pt fg}
   ¶ center ol | "번호는 엔진이 그린다"{body 18pt fg}
+# slide 8 run-size
+textbox "h1 s7.0"
+  ¶ start | "750"{heading 42pt b fg} · "+"{heading 24pt b fg}
+textbox "p s7.1"
+  ¶ start | "청구 단위 1"{body 18pt fg} · "초"{body 12pt muted}

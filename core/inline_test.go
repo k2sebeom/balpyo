@@ -39,6 +39,11 @@ func TestResolveInlineDeltas(t *testing.T) {
 			func(s soml.TextStyle) soml.TextStyle { s.Color = soml.LiteralColor("0F65F9"); return s }},
 		{"span weight", "<slide>\n  <p><span weight=\"bold\">굵게</span></p>\n</slide>\n", "span",
 			func(s soml.TextStyle) soml.TextStyle { s.Weight = 700; return s }},
+		// 작은 런 — 큰 수 뒤의 작은 단위. 감싼 텍스트와 같은 크기도 받는다.
+		{"span size (작게)", "<slide>\n  <p><span size=\"16\">+</span></p>\n</slide>\n", "span",
+			func(s soml.TextStyle) soml.TextStyle { s.Size = 16; return s }},
+		{"span size (같게)", "<slide>\n  <p><span size=\"24\">+</span></p>\n</slide>\n", "span",
+			func(s soml.TextStyle) soml.TextStyle { return s }},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -150,6 +155,8 @@ func TestResolveInlineDiagnostics(t *testing.T) {
 		{"값 없는 weight", `<span weight>x</span>`, 12, "needs a value"},
 		{"빈 weight", `<span weight="">x</span>`, 20, "is empty"},
 		{"span color", `<span color="brand">x</span>`, 19, "is not in the theme"},
+		{"감싼 텍스트보다 큰 span", `<span size="40">x</span>`, 18, "<span> size 40 is larger than the surrounding text (24)"},
+		{"span size 단위", `<span size="12px">x</span>`, 18, "unitless number"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -65,7 +65,7 @@ func (r *resolver) resolveInlines(parent *soml.Element, parentStyle *soml.TextSt
 				appearance.Link = href
 			}
 		case "span":
-			// span은 자기 인라인 속성(color·weight — 파서 allowlist)만 적용한다. 속성 없는
+			// span은 자기 인라인 속성(color·weight·size — 파서 allowlist)만 적용한다. 속성 없는
 			// span은 부모 그대로다 — 해석 흔적만 남는 무해한 요소. 값 어휘와 진단은
 			// <text color>와 같은 해석 함수를 공유한다 — 두 벌이 되면 진단이 갈라진다.
 			for _, attr := range inline.Attrs {
@@ -77,6 +77,17 @@ func (r *resolver) resolveInlines(parent *soml.Element, parentStyle *soml.TextSt
 				case "weight":
 					if weight, ok := r.weight(attr); ok {
 						style.Weight = weight
+					}
+				case "size":
+					// 감싼 텍스트보다 큰 런은 막는다 — 웹 줄 박스가 커지는데 PPTX 줄간격은 문단의
+					// 절대값이라 글줄이 갈라진다. 작거나 같은 런은 블록의 줄 박스 안에 앉는다.
+					if px, ok := r.size(attr); ok {
+						if px > parentStyle.Size {
+							r.errorf(attr.ValueSpan, "<span> size %s is larger than the surrounding text (%s) — a larger run would push the line apart on the web while PPTX line spacing stays fixed; make the block larger and shrink the rest instead",
+								formatPx(px), formatPx(parentStyle.Size))
+						} else {
+							style.Size = px
+						}
 					}
 				}
 			}
@@ -134,4 +145,9 @@ func (r *resolver) weight(attr soml.Attr) (int, bool) {
 	}
 	r.errorf(attr.ValueSpan, "unknown weight %q%s (available values: normal, bold)", raw, didYouMean(raw, "normal, bold"))
 	return 0, false
+}
+
+// formatPx는 진단에 싣는 px 수치다 — 소수점 뒤 0을 늘리지 않는다.
+func formatPx(px float64) string {
+	return strconv.FormatFloat(px, 'f', -1, 64)
 }

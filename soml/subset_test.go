@@ -146,8 +146,8 @@ func TestParseTextSubsetErrors(t *testing.T) {
 		},
 		{
 			name: "span의 속성 목록",
-			src:  `<slide><p><span size="20">x</span></p></slide>`,
-			want: []string{"1:17 unknown attribute size on <span> (available attributes: color, weight)"},
+			src:  `<slide><p><span align="center">x</span></p></slide>`,
+			want: []string{"1:17 unknown attribute align on <span> (available attributes: color, weight, size)"},
 		},
 		{
 			// 블록은 역할을 표에서만 얻는다 — role 속성을 열면 <p role="title">이 두 표기의

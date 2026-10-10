@@ -186,10 +186,11 @@ func buildElementSpecs() map[string]elementSpec {
 			// 이름 allowlist만 보고, "속성이 있어야 한다"는 값의 요구이기 때문이다.
 			spec.attrs = []string{"href"}
 		case "span":
-			// color·weight만 연다. size를 막는 이유: 런 하나가 커지면 웹의 줄 박스 높이가
-			// 변하는데 PPTX 줄간격은 문단 절대값(spcPts)이라 두 타깃의 글줄이 갈라진다 —
-			// core가 size="%"를 막은 것과 같은 종류의 근거다 (core/resolve.go).
-			spec.attrs = []string{"color", "weight"}
+			// color·weight·size를 연다. size는 **감싼 텍스트보다 작거나 같은 값만** 뜻이 있고
+			// 그 판정은 값 층(core)의 것이다: 런 하나가 커지면 웹의 줄 박스가 커지는데 PPTX
+			// 줄간격은 문단 절대값(spcPts)이라 두 타깃의 글줄이 갈라진다. 작은 런은 블록의 줄
+			// 박스 안에 앉으므로 그 근거가 성립하지 않는다 (`750+`의 작은 `+`).
+			spec.attrs = []string{"color", "weight", "size"}
 		case BreakElement:
 			spec.model = modelVoid
 		}

@@ -15,7 +15,7 @@ HTML의 익숙한 텍스트 태그를 그대로 쓰는 서브셋이다. 블록 �
 | `li` | 리스트 항목 | **`reveal`** — 외관은 컨테이너에서 **상속한다** | `<ul>`/`<ol>` 안에서만. 내용은 문자 데이터 + 인라인 태그 |
 | `strong` `em` `code` | 인라인 | 없음 | 블록·`<text>`·`<li>` 안. 인라인끼리 중첩 가능 |
 | `a` | 인라인 | `href` (필수) | `<a>` 안에 `<a>` 불가 |
-| `span` | 인라인 | `color` `weight` | — |
+| `span` | 인라인 | `color` `weight` `size` | `size`는 감싼 텍스트 이하만 |
 | `br` | void | 없음 | 자기 닫힘 `<br/>`만 — 내용을 가질 수 없다 |
 
 배치 규칙에는 각각 이유가 있다:
@@ -28,9 +28,10 @@ HTML의 익숙한 텍스트 태그를 그대로 쓰는 서브셋이다. 블록 �
   두 타깃 어디에도 대응하는 구조가 없다.
 - **`<a>` 안에 `<a>` 불가**: 겹친 링크는 "무엇을 클릭했는가"가 정의되지 않고, PPTX
   `hlinkClick`은 런 하나에 링크 하나다. 사이에 다른 인라인이 끼어도 잡힌다.
-- **`<span>`에 `size` 불가** (`color`·`weight`만): 런 하나가 커지면 웹의 줄 박스 높이가
-  변하는데 PPTX 줄간격은 문단 절대값(`spcPts`)이라 두 타깃의 글줄이 갈라진다. 같은
-  이유로 `<code>`도 code 역할의 크기(20px)를 끌어오지 않고 부모 크기를 따른다.
+- **`<span size>`는 감싼 텍스트보다 작거나 같을 때만**: 런 하나가 커지면 웹의 줄 박스 높이가
+  변하는데 PPTX 줄간격은 문단 절대값(`spcPts`)이라 두 타깃의 글줄이 갈라진다. 작은 런은 블록의
+  줄 박스 안에 앉으므로 그 문제가 없다 — 큰 수 뒤의 작은 단위(`<h1>750<span size="40">+</span></h1>`)가
+  그 자리다. 같은 이유로 `<code>`는 code 역할의 크기(20px)를 끌어오지 않고 부모 크기를 따른다.
 - **인라인은 슬라이드 직속이 될 수 없다**: 문단 없는 런은 두 타깃 어디에도 대응하는
   구조가 없다.
 - **`<li>`와 인라인 태그에는 자식 배치 속성이 없다**: `<li>`는 리스트 컨테이너의 자식이지
@@ -405,7 +406,7 @@ CSS가 0으로 명시하므로 **브라우저 기본 스타일에 기대는 값�
 | CDATA가 닫히지 않았다 | ``CDATA section is not closed with `]]>` `` |
 | 요소만 담는 자리에 CDATA를 썼다 | `character data cannot appear directly inside <slide> (wrap it in <text>)` — 표기가 달라도 내용이다 |
 | 블록에 `role`을 썼다 | `unknown attribute role on <h1> (available attributes: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
-| `<span size>` | `unknown attribute size on <span> (available attributes: color, weight)` |
+| `<span>`에 어휘 밖 속성 | `unknown attribute align on <span> (available attributes: color, weight, size)` |
 | `<li>`에 외관 속성을 썼다 | `unknown attribute size on <li> (available attributes: reveal)` — 외관은 `<ul>`/`<ol>`에 쓴다 |
 | `<ul variant>` | `unknown attribute variant on <ul> (available attributes: size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
 
@@ -425,6 +426,7 @@ CSS가 0으로 명시하므로 **브라우저 기본 스타일에 기대는 값�
 | `weight`에 400/700 수치를 썼다 | `weight takes a name — instead of "700", use "bold"` |
 | `weight`에 그 외 수치를 썼다 | `weight "600" is not allowed — there are two weights, normal (400) and bold (700) (OOXML bold is on/off, so intermediate weights would only work on the web)` |
 | 어휘 밖의 `weight` | `unknown weight "…" (available values: normal, bold)` |
+| `<span size>`가 감싼 텍스트보다 크다 | `<span> size 40 is larger than the surrounding text (24) — a larger run would push the line apart on the web while PPTX line spacing stays fixed; make the block larger and shrink the rest instead` |
 
 모르는 `variant`는 에러가 아니라 **경고 + 기본 외관 폴백**이다 — 규칙은
 [외관 속성](../appearance.md)의 캐스케이드 절에 있다.

@@ -117,7 +117,7 @@ func TestElementAttrs(t *testing.T) {
 		"code":       "",
 		"a":          "href",
 		"br":         "",
-		"span":       "color weight",
+		"span":       "color weight size",
 		"row":        "gap align justify wrap " + box + " " + place,
 		"col":        "gap align justify wrap " + box + " " + place,
 		"grid":       "gap align justify wrap pad cols rows w h min-w min-h max-w max-h ratio " + place,
