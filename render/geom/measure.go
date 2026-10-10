@@ -248,6 +248,12 @@ func (s *Session) Measure(deck *soml.Deck, htmlPath string) (*Geometry, error) {
 		return nil, fmt.Errorf("%s: %w", htmlPath, err)
 	}
 	g.MissingFonts = missing
+	// 대체 그림은 좌표를 다 읽은 **뒤에** 그린다 — 그리는 동안 문서가 바뀐다.
+	fallbacks, err := s.svgFallbacks(deck)
+	if err != nil {
+		return nil, err
+	}
+	g.Fallbacks = fallbacks
 	return g, nil
 }
 

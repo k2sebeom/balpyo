@@ -235,6 +235,30 @@ type Box struct {
 	Lines []Rect `json:"lines,omitempty"`
 }
 
+// Fallback은 SVG 에셋 하나의 래스터 대체 그림이다.
+type Fallback struct {
+	// Key는 에셋 키다 (soml.Asset.Key).
+	Key string `json:"key"`
+	// PNG는 고유 크기 × FallbackScale 해상도의 투명 바탕 PNG다.
+	PNG []byte `json:"png"`
+}
+
+// FallbackScale은 SVG 대체 그림의 해상도 배율이다 — 1280 무대를 1920 · 2560 화면에 띄워도 흐려지지 않는 최소 배율이다.
+const FallbackScale = 2
+
+// Fallback은 이 키의 대체 그림이다.
+func (g *Geometry) Fallback(key string) ([]byte, bool) {
+	if g == nil {
+		return nil, false
+	}
+	for _, f := range g.Fallbacks {
+		if f.Key == key {
+			return f.PNG, true
+		}
+	}
+	return nil, false
+}
+
 // Geometry는 지오메트리 패스의 산출이다 — 식별자에서 슬라이드 상대 좌표로.
 //
 // 생성 시점에 덱과 대조가 끝나 있다 (newGeometry). 만든 뒤에는 읽기 전용이다.
@@ -265,6 +289,9 @@ type Geometry struct {
 	// PowerPoint는 테마에 적힌 글꼴로 그리므로 텍스트 박스가 그 차이만큼 어긋난다. 비어 있으면
 	// 다 있었거나 묻지 않은 측정이다 (Synthetic · JSON에서 되읽은 값).
 	MissingFonts []string `json:"missingFonts,omitempty"`
+	// Fallbacks는 SVG 에셋의 래스터 대체 그림이다 (에셋 표 순서 — SVG 에셋만). PPTX가 `svgBlip`과 함께 싣는 PNG다.
+	// 좌표와 같은 처지다: 덱에 없는 파생 값이고, 웹을 그린 같은 브라우저가 만든다 (RasterizeSVG).
+	Fallbacks []Fallback `json:"fallbacks,omitempty"`
 
 	// index는 식별자 → Boxes 위치다. 생성자가 채우고 그 뒤로는 읽기만 한다 — Box에서
 	// 지연 생성하면 지오메트리를 여러 goroutine이 읽는 순간(픽스처 병렬 실행) 경쟁이 된다.
