@@ -6,8 +6,9 @@ A guide for coding agents working in this repository. Two audiences, two directo
 - `contributing/` — for people changing balpyo: `internals/` (architecture, geometry pass,
   testing, release), `decisions/` (ADRs), `backlog.md` (open work).
 
-Docs, ADRs and diagnostics are written in **Korean** — keep new ones in Korean too. Commit
-messages are written in **English**.
+Docs, ADRs and code comments are written in **Korean** — keep new ones in Korean too. Everything
+the program outputs (diagnostics, error messages, CLI text, the `init` template, comments emitted
+into generated files) and commit messages are written in **English**.
 
 ## What balpyo is
 
