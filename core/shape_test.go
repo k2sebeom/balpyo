@@ -43,7 +43,7 @@ func wantShapeStyle(delta soml.ShapeStyle) soml.ShapeStyle {
 	}
 	mergeShape(&style, shapePatch{fill: delta.Fill, border: delta.Border, radius: delta.Radius,
 		shadow: delta.Shadow, opacity: delta.Opacity, rotate: delta.Rotate, flip: flip})
-	style.ID, style.Alt, style.Box = delta.ID, delta.Alt, delta.Box
+	style.ID, style.Alt, style.Box, style.Path = delta.ID, delta.Alt, delta.Box, delta.Path
 	return style
 }
 
@@ -59,6 +59,13 @@ func TestResolveShapeStyle(t *testing.T) {
 	}{
 		{"type", "type", `type="ellipse"`, soml.ShapeStyle{Type: "ellipse"}},
 		{"id", "id", `type="rect" id="db"`, soml.ShapeStyle{Type: "rect", ID: "db"}},
+		// 경로는 절대 좌표 명령으로 정규화된다 — H · V는 현재 점에서 L이 되고, M 뒤에 이어진 수는 L이다.
+		{"d", "d", `type="path" d="M0,100 H50 V0 L100,0 100,100 C80,90 60,90 50,100 Q25,110 0,100 Z"`,
+			soml.ShapeStyle{Type: "path", Path: []soml.PathCmd{
+				{Op: 'M', Pts: []float64{0, 100}}, {Op: 'L', Pts: []float64{50, 100}}, {Op: 'L', Pts: []float64{50, 0}},
+				{Op: 'L', Pts: []float64{100, 0}}, {Op: 'L', Pts: []float64{100, 100}},
+				{Op: 'C', Pts: []float64{80, 90, 60, 90, 50, 100}}, {Op: 'Q', Pts: []float64{25, 110, 0, 100}}, {Op: 'Z'},
+			}}},
 		{"alt", "alt", `type="arrow-right" alt="배포 흐름의 마지막 단계"`,
 			soml.ShapeStyle{Type: "arrow-right", Alt: "배포 흐름의 마지막 단계"}},
 
@@ -166,7 +173,7 @@ func TestResolveShapeStyle(t *testing.T) {
 func TestResolveShapeTypeVocabulary(t *testing.T) {
 	for _, name := range soml.ShapeTypes() {
 		t.Run(name, func(t *testing.T) {
-			if got := resolvedShape(t, `type="`+name+`"`).Type; got != name {
+			if got := resolvedShape(t, `type="`+name+`"`+pathAttr(name)).Type; got != name {
 				t.Errorf("type = %q, want %q", got, name)
 			}
 		})
@@ -352,7 +359,7 @@ func TestResolveColorFunctions(t *testing.T) {
 func TestResolveShapeInsetTextNeedsDefiniteHeight(t *testing.T) {
 	for _, shapeType := range soml.ShapeTypes() {
 		t.Run(shapeType, func(t *testing.T) {
-			attrs := `type="` + shapeType + `"`
+			attrs := `type="` + shapeType + `"` + pathAttr(shapeType)
 			_, diags := resolveSlide(t, shapeWith(attrs, "<p>라벨</p>"))
 			if !soml.ShapeInsetText(shapeType) {
 				if len(diags) != 0 {
@@ -542,4 +549,35 @@ func showColor(color soml.Color) string {
 		return fmt.Sprintf("%s(%s,%g)", color.Mod.Kind, base, color.Mod.Amount)
 	}
 	return base
+}
+
+// 경로 문법은 닫힌 부분집합이다 — 상대 명령 · 호 · 축약 곡선은 진단이고, d는 type="path"의 것이다.
+func TestResolvePathDiagnostics(t *testing.T) {
+	for _, tc := range []struct{ name, attrs, want string }{
+		{"상대 명령", `type="path" d="M0,0 l10,10"`, `relative command "l" is not supported`},
+		{"호", `type="path" d="M0,0 A10,10 0 0 1 20,20"`, `command "A" is not supported (available commands: M, L, H, V, C, Q, Z)`},
+		{"수가 모자란다", `type="path" d="M0,0 C1,2,3"`, "C needs 6 numbers"},
+		{"M으로 시작하지 않는다", `type="path" d="L10,10"`, "path d must start with M"},
+		{"d 없음", `type="path"`, `a type="path" shape needs d`},
+		{"다른 종류의 d", `type="rect" d="M0,0 L1,1"`, `d is the outline of type="path" shapes — this shape is type="rect"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, diags := resolveSlide(t, "<slide>\n  <shape "+tc.attrs+" w=\"100\" h=\"100\"/>\n</slide>\n")
+			found := false
+			for _, d := range diags {
+				found = found || strings.Contains(d.Message, tc.want)
+			}
+			if !found {
+				t.Errorf("진단 = %v, want %q", diags, tc.want)
+			}
+		})
+	}
+}
+
+// pathAttr는 경로 도형이 요구하는 `d`다 — 어휘 전수 테스트가 모든 종류를 같은 모양으로 만든다.
+func pathAttr(shapeType string) string {
+	if shapeType == soml.PathShapeType {
+		return ` d="M0,100 L50,0 L100,100 Z"`
+	}
+	return ""
 }

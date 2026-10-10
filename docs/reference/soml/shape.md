@@ -1,4 +1,4 @@
-# `<shape>` — 프리셋 도형 16종
+# `<shape>` — 프리셋 도형 16종과 경로
 
 도형 하나다. `type`이 **어떤 프리셋 지오메트리인가**를 정하고, 외관 속성이 채움·테두리·
 모서리·그림자·투명도·변형을 정하며, 자식으로 텍스트나 **레이아웃 컨테이너**를 담을 수 있다.
@@ -27,6 +27,7 @@
 | `cube` | SVG `<path>` (**잰 박스** — 아래) | `cube` |
 | `left-brace` | SVG `<path>` (**잰 박스**) | **`leftBrace`** |
 | `right-brace` | SVG `<path>` (**잰 박스**) | **`rightBrace`** |
+| `path` | SVG `<path>` (정규 공간 — 저자의 `d`) | **`a:custGeom`** (프리셋이 아니다 — 아래) |
 
 굵게 표시한 여섯은 **이름이 갈라지는 행**이다 — SOML 이름은 저자가 찾을 만한 말이고
 (`cylinder`·`arrow-right`), OOXML 이름은 규격이 정한 것이다 (`can`·`rightArrow`).
@@ -51,15 +52,46 @@
 - 괄호 둘은 선의 모양이다 — 흔히 `fill="none"`으로 쓴다. 회전(`rotate="90"`)하면 아래 괄호가 된다. 안에 글을 담는
   자리로는 쓰지 않는다 (텍스트 영역을 박스 전체로 둔다).
 
+## 경로 — `type="path"`
+
+프리셋에 없는 모양(수요 곡선 · 계단 · 채움 영역)은 경로로 그린다. `d`는 **0~100 상자**의 윤곽이고, 그 상자가
+도형 박스로 늘어난다 — 가로 · 세로가 따로 늘어나므로 같은 `d`가 박스의 비율대로 그려진다. 자리와 크기는 다른
+도형처럼 배치가 정한다.
+
+```html
+<shape type="path" fill="tint(accent4, 70%)" border="none" w="560" h="280"
+       d="M0,100 L0,80 C20,60 30,90 50,55 C65,30 80,40 100,5 L100,100 Z"/>
+<shape type="path" fill="none" border="3 solid accent1" w="560" h="280"
+       d="M0,85 H25 V60 H50 V35 H75 V10 H100"/>
+```
+
+- **명령은 절대 좌표 일곱**이다: `M` · `L` · `H` · `V` · `C`(3차 곡선) · `Q`(2차 곡선) · `Z`. 상대 명령(소문자) ·
+  호(`A`) · 축약 곡선(`S` · `T`)은 진단이다 — PowerPoint의 경로에 1:1로 옮겨지는 명령만 받는다. 수는 쉼표나 공백으로
+  나누고, 같은 명령의 수를 이어 쓰면 그 명령을 되풀이한다 (`M` 뒤의 수는 `L`이 된다).
+- 좌표는 0~100을 벗어나도 된다 — 박스 밖으로 그린다 (`Q50,-60`).
+- 웹은 늘어나는 정규 SVG(선 굵기는 늘리지 않는다), PPTX는 경로 상자 100000 × 100000의 **사용자 지오메트리**
+  (`a:custGeom`)다. PowerPoint에서 "점 편집"으로 고칠 수 있는 진짜 도형이다.
+- 열린 경로(`Z` 없음)도 채움을 받는다 — 두 타깃 모두 안쪽을 칠한다. 선만 원하면 `fill="none"`이다.
+- 텍스트 영역은 박스 전체다.
+
+| 조건 | 진단 메시지 |
+|---|---|
+| `type="path"`에 `d`가 없다 | `a type="path" shape needs d — its outline in a 0–100 box (e.g. d="M0,100 L50,0 L100,100 Z")` |
+| 상대 명령 | `path d: relative command "l" is not supported — write absolute coordinates with the uppercase command ("L")` |
+| 어휘 밖의 명령 | `path d: command "A" is not supported (available commands: M, L, H, V, C, Q, Z) — arcs and shorthand curves have no one-to-one PPTX form` |
+| 수가 모자란다 | `path d: C needs 6 numbers` |
+| 다른 종류에 `d` | `d is the outline of type="path" shapes — this shape is type="rect" (use type="path" to draw a custom outline)` |
+
 ## 속성
 
 ### 고유 속성
 
 | 속성 | 값 | 기본값 | 뜻 |
 |---|---|---|---|
-| `type` | 위 표의 16종 | **필수** | 프리셋 지오메트리 |
+| `type` | 위 표의 16종 · `path` | **필수** | 프리셋 지오메트리 (또는 저자의 경로) |
 | `id` | 임의 이름 | 없음 | 도형 이름 — **아직 아무것도 그리지 않는다** (아래) |
 | `alt` | 문자열 (빈 값은 **에러**) | 없음 | 그림의 **접근성 이름** — 안의 글을 대체하지 않는다 (아래) |
+| `d` | 경로 (`type="path"` 전용) | 없음 | 0~100 상자의 윤곽 — 아래 |
 
 `id`는 [연결선](connector.md)이 가리키는 이름이다 (`<connector from="db">`). 이름 자체는 **산출물에
 나가지 않는다** — 웹 속성에도 PPTX 도형 이름에도 실리지 않고, PPTX의 연결선은 도형 번호로 붙는다.
@@ -426,14 +458,14 @@ PPTX는 **같은 도형의 본문**(`txBody`)이다. 그래서 도형 안 텍스
 |---|---|
 | 도형 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <shape> (wrap it in <text>)` |
 | 도형의 **직속** 자식으로 리스트·그림·표·중첩 도형을 썼다 | `<shape> cannot contain <ul> (available tags: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)` — 컨테이너로 감싸면 들어간다 |
-| 어휘 밖의 속성 | `unknown attribute stroke on <shape> (available attributes: type, id, alt, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
+| 어휘 밖의 속성 | `unknown attribute stroke on <shape> (available attributes: type, id, alt, d, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
 | `<arrow>`·`<line>`·`<group>`을 썼다 | `unknown tag <arrow> — did you mean <row>? (tags available inside <slide>: …)` — 목록은 그 자리에 쓸 수 있는 태그다 |
 
 값 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다:
 
 | 조건 | 진단 메시지 |
 |---|---|
-| `type`이 없다 | `<shape> needs a type (available types: rect, rounded-rect, ellipse, diamond, cylinder, chevron, arrow-right, hexagon, parallelogram, callout, star, cloud, triangle, cube, left-brace, right-brace) — the shape type cannot be guessed` |
+| `type`이 없다 | `<shape> needs a type (available types: rect, rounded-rect, ellipse, diamond, cylinder, chevron, arrow-right, hexagon, parallelogram, callout, star, cloud, triangle, cube, left-brace, right-brace, path) — the shape type cannot be guessed` |
 | `type`이 16종 밖이다 | `unknown shape type "elipse" (available types: …)` |
 | 같은 슬라이드에 `id`가 둘 | `id "db" already exists on this slide (…) — a reference could not tell which shape it means` |
 | `alt`에 값이 없다 | `the alt attribute needs a value (alt="chart") — remove the attribute if no name is needed` |

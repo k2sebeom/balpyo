@@ -807,6 +807,8 @@ type xObject struct {
 				Fmla string `xml:"fmla,attr"`
 			} `xml:"avLst>gd"`
 		} `xml:"prstGeom"`
+		// CustGeom은 경로 도형의 사용자 지오메트리다 (`shape:custGeom`).
+		CustGeom *struct{} `xml:"custGeom"`
 		xFills
 		Ln *struct {
 			xFills
@@ -947,6 +949,9 @@ func pptxNode(obj xObject, theme soml.Theme, links map[string]string, names map[
 			n.Kind = "textbox"
 		} else {
 			n.Kind = "shape:" + obj.SpPr.PrstGeom.Prst
+			if obj.SpPr.CustGeom != nil {
+				n.Kind = "shape:custGeom"
+			}
 			n.Fill = pptxFill(obj.SpPr.xFills, theme)
 			n.Line = "?"
 			if obj.SpPr.Ln != nil {

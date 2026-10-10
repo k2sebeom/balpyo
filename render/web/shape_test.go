@@ -105,7 +105,7 @@ func TestShapeAppearanceVocabularyIsFullyMapped(t *testing.T) {
 func TestShapeTypesAllHaveDistinctGeometry(t *testing.T) {
 	seen := map[string]string{}
 	for _, shapeType := range soml.ShapeTypes() {
-		body := fmt.Sprintf("<shape type=%q w=\"220\" h=\"110\"/>", shapeType)
+		body := fmt.Sprintf("<shape type=%q w=\"220\" h=\"110\"%s/>", shapeType, testPathAttr(shapeType))
 		out := renderString(t, subsetDeck(t, body))
 		ink := inkOf(t, out, "s0.0")
 		// 기하는 프리미티브(rect·ellipse) 아니면 경로다 — 둘 다 없으면 그림이 비었다.
@@ -157,6 +157,10 @@ func TestShapeGeometryTableCoversVocabularyInOrder(t *testing.T) {
 				t.Errorf("%q는 px 공간인데 경로도 있다", geom.Type)
 			}
 		case spaceNormalized:
+			if geom.Custom {
+				// 경로 도형의 기하는 표가 아니라 도형의 확정 외관(`d`)에 있다.
+				break
+			}
 			if len(geom.Paths) == 0 {
 				t.Errorf("%q는 정규 공간인데 경로가 없다", geom.Type)
 			}
@@ -250,6 +254,7 @@ func TestShapeAdjustsListEveryPresetGuide(t *testing.T) {
 		"cube":             {"adj"},
 		"leftBrace":        {"adj1", "adj2"},
 		"rightBrace":       {"adj1", "adj2"},
+		"custGeom":         nil,
 	}
 	for _, geom := range shapeGeometries() {
 		guides, known := presetGuides[geom.Preset]
@@ -294,6 +299,7 @@ func TestShapeTextRectsMatchPresetDefinitions(t *testing.T) {
 		"cube":        {T: 25, R: 25},
 		"left-brace":  {},
 		"right-brace": {},
+		"path":        {},
 	}
 	for _, geom := range shapeGeometries() {
 		insets, ok := ShapeTextRect(geom.Type)
@@ -681,4 +687,13 @@ func TestMeasuredPresetsEvaluateTheFormulaOnTheBox(t *testing.T) {
 	if fallback := inkOf(t, renderString(t, deck), "s0.0"); !strings.Contains(fallback, `viewBox="0 0 100 100"`) {
 		t.Errorf("잰 박스 없는 렌더가 대체 그림이 아니다: %s", fallback)
 	}
+}
+
+// testPathAttr는 경로 도형이 요구하는 `d`다 (어휘 전수 테스트가 모든 종류를 같은 모양으로 만든다).
+func testPathAttr(shapeType string) string {
+	if shapeType == soml.PathShapeType {
+		// 어느 프리셋과도 다른 모양이어야 "기하가 서로 다르다"는 전수 검사가 뜻을 갖는다.
+		return ` d="M0,0 C50,100 50,0 100,100"`
+	}
+	return ""
 }

@@ -1,0 +1,10 @@
+<!-- type="path" draws the author's outline in a 0–100 box that stretches to the shape (web: a
+     normalized SVG, PPTX: a:custGeom with a 100000 path box). A closed area under a demand curve,
+     an open stroked staircase, and a quadratic bump. -->
+<slide id="path" layout="canvas">
+  <shape type="path" fill="tint(accent4, 70%)" border="none" w="560" h="280" x="0" y="80"
+         d="M0,100 L0,80 C20,60 30,90 50,55 C65,30 80,40 100,5 L100,100 Z"/>
+  <shape type="path" fill="none" border="3 solid accent1" w="560" h="280" x="0" y="80"
+         d="M0,85 H25 V60 H50 V35 H75 V10 H100"/>
+  <shape type="path" fill="accent2" w="400" h="200" x="640" y="160" d="M0,100 Q50,-60 100,100 Z"><p align="center" color="bg">bump</p></shape>
+</slide>

@@ -63,7 +63,7 @@ func TestParseShapeErrors(t *testing.T) {
 			// stroke/cap/dash는 선의 것이다 — 도형에 받아 놓고 버리지 않는다.
 			name: "도형에 stroke는 없다",
 			src:  `<slide><shape type="rect" stroke="2 accent1"/></slide>`,
-			want: []string{`1:27 unknown attribute stroke on <shape> (available attributes: type, id, alt, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)`},
+			want: []string{`1:27 unknown attribute stroke on <shape> (available attributes: type, id, alt, d, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)`},
 		},
 	})
 }

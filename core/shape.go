@@ -43,6 +43,11 @@ func (r *resolver) resolveShape(elem *soml.Element) {
 	mergeShape(&style, themeShapePatch(r.comps.shapeDefault, style.Type, backdrop))
 	mergeShape(&style, themeShapePatch(r.shapeVariant(elem), style.Type, backdrop))
 	mergeShape(&style, inline)
+	if style.Type == soml.PathShapeType && style.Path == nil {
+		if _, ok := elem.Attr("d"); !ok {
+			r.errorf(elem.NameSpan, "a type=%q shape needs d — its outline in a 0–100 box (e.g. d=%q)", soml.PathShapeType, "M0,100 L50,0 L100,100 Z")
+		}
+	}
 	elemAppearance(elem).Shape = &style
 	r.shapeInsetTextHeight(elem, &style)
 }
@@ -152,6 +157,16 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 			// 캐스케이드 밖이다 — 저자의 내용이므로 테마도 variant도 얹지 않는다 (alt.go).
 			if alt, ok := r.altName(attr); ok {
 				style.Alt = alt
+			}
+		case "d":
+			// 경로는 `type="path"`의 기하다 — 다른 종류에는 그릴 자리가 없다 (프리셋의 기하는 프리셋이 정한다).
+			if style.Type != soml.PathShapeType {
+				r.errorf(attr.NameSpan, "d is the outline of type=%q shapes — this shape is type=%q (use type=%q to draw a custom outline)",
+					soml.PathShapeType, style.Type, soml.PathShapeType)
+				continue
+			}
+			if cmds, ok := r.pathData(attr); ok {
+				style.Path = cmds
 			}
 		case "variant":
 			// 캐스케이드 둘째 단이라 shapeVariant가 소유한다 — 여기서 또 보면 모르는 variant

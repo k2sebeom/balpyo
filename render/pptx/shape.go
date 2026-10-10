@@ -447,6 +447,8 @@ type spSpec struct {
 	ph *placeholder
 	// locked는 선택할 수 없게 잠근 도형이다 (`a:spLocks noSelect`) — 배경 덮개처럼 슬라이드의 내용이 아닌 칠.
 	locked bool
+	// path는 경로 도형의 명령이다 — 있으면 `prstGeom` 대신 `a:custGeom`을 쓴다 (0~100 상자 = 경로 상자 100000).
+	path []soml.PathCmd
 }
 
 // spAdjust는 `avLst`의 조정값 하나다 — 잰 박스로 평가가 끝난 값이다 (AdjustValue).
@@ -536,7 +538,7 @@ func shapeSp(id int, name string, rect geom.Rect, style soml.ShapeStyle) (spSpec
 		// 어서션만이 그것을 잡는다.
 		return spSpec{}, fmt.Errorf("no prstGeom mapping for shape type %q", style.Type)
 	}
-	spec := spSpec{id: id, name: name, descr: style.Alt, rect: rect, preset: preset}
+	spec := spSpec{id: id, name: name, descr: style.Alt, rect: rect, preset: preset, path: style.Path}
 	if style.Fill == nil {
 		return spSpec{}, fmt.Errorf("fill is unresolved")
 	}
@@ -642,7 +644,11 @@ func writeSp(b *strings.Builder, spec spSpec, theme soml.Theme) error {
 	w(3, fmt.Sprintf(`<a:off x="%d" y="%d"/>`, x, y))
 	w(3, fmt.Sprintf(`<a:ext cx="%d" cy="%d"/>`, cx, cy))
 	w(2, "</a:xfrm>")
-	writeGeom(w, 2, spec.preset, spec.adjust)
+	if len(spec.path) > 0 {
+		writeCustGeom(w, 2, spec.path)
+	} else {
+		writeGeom(w, 2, spec.preset, spec.adjust)
+	}
 	if err := writeFill(w, 2, spec.fill, spec.alpha, theme); err != nil {
 		return err
 	}
@@ -656,6 +662,39 @@ func writeSp(b *strings.Builder, spec spSpec, theme soml.Theme) error {
 	b.WriteString(spec.body)
 	w(0, "</p:sp>")
 	return nil
+}
+
+// writeCustGeom은 경로 도형의 `a:custGeom`이다 — 경로 상자는 100000 × 100000이고(SOML의 0~100 × 1000) 도형
+// 박스로 늘어난다: 웹의 정규 SVG(`preserveAspectRatio="none"`)와 같은 늘림이다. 텍스트 영역은 박스 전체다.
+func writeCustGeom(w func(depth int, line string), depth int, cmds []soml.PathCmd) {
+	pt := func(x, y float64) string {
+		return fmt.Sprintf(`<a:pt x="%d" y="%d"/>`, int64(math.Round(x*1000)), int64(math.Round(y*1000)))
+	}
+	w(depth, "<a:custGeom>")
+	w(depth+1, "<a:avLst/>")
+	w(depth+1, "<a:gdLst/>")
+	w(depth+1, "<a:ahLst/>")
+	w(depth+1, "<a:cxnLst/>")
+	w(depth+1, `<a:rect l="l" t="t" r="r" b="b"/>`)
+	w(depth+1, "<a:pathLst>")
+	w(depth+2, `<a:path w="100000" h="100000">`)
+	for _, c := range cmds {
+		switch c.Op {
+		case 'M':
+			w(depth+3, "<a:moveTo>"+pt(c.Pts[0], c.Pts[1])+"</a:moveTo>")
+		case 'L':
+			w(depth+3, "<a:lnTo>"+pt(c.Pts[0], c.Pts[1])+"</a:lnTo>")
+		case 'C':
+			w(depth+3, "<a:cubicBezTo>"+pt(c.Pts[0], c.Pts[1])+pt(c.Pts[2], c.Pts[3])+pt(c.Pts[4], c.Pts[5])+"</a:cubicBezTo>")
+		case 'Q':
+			w(depth+3, "<a:quadBezTo>"+pt(c.Pts[0], c.Pts[1])+pt(c.Pts[2], c.Pts[3])+"</a:quadBezTo>")
+		case 'Z':
+			w(depth+3, "<a:close/>")
+		}
+	}
+	w(depth+2, "</a:path>")
+	w(depth+1, "</a:pathLst>")
+	w(depth, "</a:custGeom>")
 }
 
 // writeGeom은 프리셋 지오메트리와 조정값을 쓴다 — **도형과 그림이 같은 함수를 지난다**

@@ -208,6 +208,8 @@ type shapeGeometry struct {
 	TextRect ShapeInsets
 	// Measured는 잰 박스의 px로 프리셋 공식을 평가한다 (Space == spaceMeasured).
 	Measured func(w, h float64) measuredInk
+	// Custom이면 경로가 표가 아니라 도형의 확정 외관(ShapeStyle.Path)에서 온다 — `type="path"` 하나다.
+	Custom bool
 }
 
 // ShapeAdjustAxis는 조정값 비율의 분자다 — 늘린 정규 공간을 되돌리는 값의 출처.
@@ -509,7 +511,33 @@ func shapeGeometries() []shapeGeometry {
 		measuredGeometry("cube", "cube", cubeInk),
 		measuredGeometry("left-brace", "leftBrace", braceInk(true)),
 		measuredGeometry("right-brace", "rightBrace", braceInk(false)),
+		{
+			// path: 프리셋이 아니라 저자의 경로다 (`d` — 0~100 상자의 절대 좌표). 정규 공간에 그대로 놓이고, PPTX는
+			// 같은 상자를 늘리는 `a:custGeom`이다 (Preset은 그 원어의 이름이다 — `prstGeom` 이름이 아니다).
+			Type: soml.PathShapeType, Preset: CustomGeometry, Space: spaceNormalized, Custom: true,
+		},
 	}
+}
+
+// CustomGeometry는 경로 도형의 OOXML 원어 이름이다 — `prstGeom@prst`가 아니라 `a:custGeom`이다.
+const CustomGeometry = "custGeom"
+
+// PathData는 경로 명령을 SVG `d`로 쓴다 (0~100 상자 — 정규 공간 그대로).
+func PathData(cmds []soml.PathCmd) string {
+	var b strings.Builder
+	for i, c := range cmds {
+		if i > 0 {
+			b.WriteByte(' ')
+		}
+		b.WriteByte(c.Op)
+		for k := 0; k+1 < len(c.Pts); k += 2 {
+			if k > 0 {
+				b.WriteByte(' ')
+			}
+			b.WriteString(formatNumber(round4(c.Pts[k])) + "," + formatNumber(round4(c.Pts[k+1])))
+		}
+	}
+	return b.String()
 }
 
 // measuredGeometry는 잰 박스로 그리는 프리셋의 표 행이다 — 대체 그림과 텍스트 영역의 비율은 같은 공식을
@@ -800,6 +828,12 @@ func writeShapeInk(b *strings.Builder, geom shapeGeometry, ink *measuredInk, sty
 	// 잰 박스로 평가한 그림은 그 박스의 px 공간이고(늘림이 없다), 아니면 정규 100×100 공간을 늘린다 —
 	// 잰 박스로 그리는 프리셋의 대체 그림(측정용 HTML)도 후자다.
 	viewBox, paths := "0 0 100 100", geom.Paths
+	if geom.Custom {
+		if len(style.Path) == 0 {
+			return fmt.Errorf("type=%q has no path — the deck did not go through core.Resolve", geom.Type)
+		}
+		paths = []shapePath{{D: PathData(style.Path)}}
+	}
 	if ink != nil {
 		viewBox, paths = "0 0 "+formatNumber(round4(ink.boxW))+" "+formatNumber(round4(ink.boxH)), ink.Paths
 	}
