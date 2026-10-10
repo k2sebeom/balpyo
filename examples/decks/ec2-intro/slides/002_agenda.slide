@@ -1,5 +1,5 @@
 <!-- Agenda — a pale panel on the left holds the heading; the right column is a numbered list of the
-     five chapters, each with a round icon and a hairline between rows. The panel bleeds to the
+     five chapters, each with a round SVG icon badge and a hairline between rows. The panel bleeds to the
      slide edge with a negative offset on the canvas. -->
 <slide id="agenda" layout="canvas" enter="rise">
   <shape type="rect" fill="surface" border="none" w="400" h="720" x="-64" y="-64" enter="none"/>
@@ -11,31 +11,31 @@
   <col gap="0" w="760" x="392" y="40">
     <row gap="md" align="center" h="96">
       <text size="32" color="muted" w="56">01</text>
-      <shape type="ellipse" fill="tint(accent1, 85%)" border="none" w="52" h="52"><p align="center" anchor="center" color="accent1" size="20"><strong>E</strong></p></shape>
+      <stack w="52" h="52"><shape type="ellipse" fill="tint(accent1, 85%)" border="none" w="52" h="52"/><image src="assets/icons/elastic.svg" at="center" alt=""/></stack>
       <col gap="0" grow="1"><text role="heading" size="28">Why elastic compute</text><text role="caption">Capacity that follows demand</text></col>
     </row>
     <shape type="rect" fill="surface" border="none" w="fill" h="1"/>
     <row gap="md" align="center" h="96">
       <text size="32" color="muted" w="56">02</text>
-      <shape type="ellipse" fill="tint(accent4, 85%)" border="none" w="52" h="52"><p align="center" anchor="center" color="accent4" size="20"><strong>A</strong></p></shape>
+      <stack w="52" h="52"><shape type="ellipse" fill="tint(accent4, 85%)" border="none" w="52" h="52"/><image src="assets/icons/anatomy.svg" at="center" alt=""/></stack>
       <col gap="0" grow="1"><text role="heading" size="28">Anatomy of an instance</text><text role="caption">AMI, type, storage, network, identity — and Nitro</text></col>
     </row>
     <shape type="rect" fill="surface" border="none" w="fill" h="1"/>
     <row gap="md" align="center" h="96">
       <text size="32" color="muted" w="56">03</text>
-      <shape type="ellipse" fill="tint(accent2, 85%)" border="none" w="52" h="52"><p align="center" anchor="center" color="accent2" size="20"><strong>C</strong></p></shape>
+      <stack w="52" h="52"><shape type="ellipse" fill="tint(accent2, 85%)" border="none" w="52" h="52"/><image src="assets/icons/choosing.svg" at="center" alt=""/></stack>
       <col gap="0" grow="1"><text role="heading" size="28">Choosing an instance</text><text role="caption">Families, generations and sizes</text></col>
     </row>
     <shape type="rect" fill="surface" border="none" w="fill" h="1"/>
     <row gap="md" align="center" h="96">
       <text size="32" color="muted" w="56">04</text>
-      <shape type="ellipse" fill="tint(accent3, 85%)" border="none" w="52" h="52"><p align="center" anchor="center" color="accent3" size="20"><strong>$</strong></p></shape>
+      <stack w="52" h="52"><shape type="ellipse" fill="tint(accent3, 85%)" border="none" w="52" h="52"/><image src="assets/icons/paying.svg" at="center" alt=""/></stack>
       <col gap="0" grow="1"><text role="heading" size="28">Paying for compute</text><text role="caption">On-Demand, Savings Plans, Reserved, Spot</text></col>
     </row>
     <shape type="rect" fill="surface" border="none" w="fill" h="1"/>
     <row gap="md" align="center" h="96">
       <text size="32" color="muted" w="56">05</text>
-      <shape type="ellipse" fill="tint(accent5, 85%)" border="none" w="52" h="52"><p align="center" anchor="center" color="accent5" size="20"><strong>P</strong></p></shape>
+      <stack w="52" h="52"><shape type="ellipse" fill="tint(accent5, 85%)" border="none" w="52" h="52"/><image src="assets/icons/production.svg" at="center" alt=""/></stack>
       <col gap="0" grow="1"><text role="heading" size="28">Run it in production</text><text role="caption">Lifecycle, reference architecture, first launch</text></col>
     </row>
   </col>
