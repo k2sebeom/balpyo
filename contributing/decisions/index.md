@@ -94,6 +94,7 @@
 | [0085](0085-presets-that-depend-on-the-short-side-are-drawn-from-the-measured-box.md) | 짧은 변에 묶인 프리셋은 잰 박스로 그린다 | 백로그 Q3 | 확정 (0017의 늘림을 cube · 괄호에서 대신한다) |
 | [0086](0086-a-path-shape-is-custom-geometry-in-a-stretched-box.md) | 경로 도형은 늘어나는 상자 안의 사용자 지오메트리다 | 백로그 Q2 | 확정 (0017의 닫힌 어휘에 출구를 연다) |
 | [0087](0087-a-flowing-connector-moves-on-the-web-and-is-a-still-dashed-line-in-pptx.md) | 흐르는 연결선은 웹에서 움직이고 PPTX에서는 멈춘 파선이다 | 백로그 Q13 | 확정 |
+| [0088](0088-a-pattern-fill-is-a-preset-hatch-on-shapes.md) | 무늬 채움은 도형에만 쓰는 프리셋 빗금이다 | 백로그 Q15 | 확정 |
 
 0066까지의 ADR에 나오는 `PRD §…` 인용은 커밋 `2121a0b`의 `PRD.md`를 뜻한다. 그 절이 지금 어디에
 있는지는 [0067](0067-prd-is-retired-and-its-standing-decisions-move-here.md)의 대응표가 적는다.
