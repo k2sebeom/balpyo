@@ -87,6 +87,7 @@
 | [0078](0078-program-output-is-written-in-english.md) | 프로그램이 내는 글은 영어로 쓴다 | — | 확정 |
 | [0079](0079-tracking-and-case-are-theme-typography-and-a-run-can-shrink-or-be-marked.md) | 자간 · 대소문자는 테마의 타이포그래피이고, 런은 작아지거나 형광펜을 받는다 | 백로그 Q7 | 확정 |
 | [0080](0080-a-connector-joins-two-measured-boxes-and-is-drawn-after-measurement.md) | 연결선은 잰 두 박스를 잇고, 측정이 끝난 뒤에 그려진다 | 백로그 Q1 | 확정 |
+| [0081](0081-entrance-is-a-native-effect-staggered-by-the-theme.md) | 등장은 두 타깃의 원어 효과이고, 엇갈림은 테마가 정한다 | 백로그 Q10 | 확정 |
 
 0066까지의 ADR에 나오는 `PRD §…` 인용은 커밋 `2121a0b`의 `PRD.md`를 뜻한다. 그 절이 지금 어디에
 있는지는 [0067](0067-prd-is-retired-and-its-standing-decisions-move-here.md)의 대응표가 적는다.
