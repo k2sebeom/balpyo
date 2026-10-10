@@ -232,6 +232,96 @@
     visibility: visible;
   }
 
+  /* Entrance — elements with an entrance wait at their start state **only in the presenter view**,
+     until the runtime marks the slide as entered; then they transition to where they already are.
+     The same gate as stepwise reveal: the document view, measure view, overview and print all see
+     the end state, so the geometry pass measures the same layout. The effects use the individual
+     translate / scale properties, not transform, so a rotated shape keeps its rotation. The delay
+     of each element comes from its data-balpyo-enter-delay (set by the runtime) and the duration
+     from the theme's motion token. */
+  html[data-balpyo-view="presenter"] [data-balpyo-enter] {
+    transition-property: opacity, translate, scale, clip-path;
+    transition-duration: var(--balpyo-motion-duration, 600ms);
+    transition-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter] {
+    opacity: 0;
+    transition: none;
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="rise"] { translate: 0 24px; }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="zoom"] { scale: 0.9; }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="wipe"] {
+    opacity: 1;
+    clip-path: inset(0 100% 0 0);
+  }
+  /* Drawn connectors: a solid line has pathLength="1" and its dash offset runs from 1 to 0; a
+     dashed line (its dash pattern is taken) is wiped in from the side it starts at. Their arrow
+     and dot markers fade in as the line arrives (they carry their own delay). */
+  html[data-balpyo-view="presenter"] [data-balpyo-enter^="draw"] {
+    opacity: 1;
+    transition-property: stroke-dashoffset, clip-path;
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide [data-balpyo-enter="draw"] { stroke-dasharray: 1; }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw"] {
+    opacity: 1;
+    stroke-dashoffset: 1;
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw-left"] { opacity: 1; clip-path: inset(0 100% 0 0); }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw-right"] { opacity: 1; clip-path: inset(0 0 0 100%); }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw-top"] { opacity: 1; clip-path: inset(0 0 100% 0); }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw-bottom"] { opacity: 1; clip-path: inset(100% 0 0 0); }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-instant [data-balpyo-enter] { transition: none; }
+  @media (prefers-reduced-motion: reduce) {
+    html[data-balpyo-view="presenter"] .balpyo-slide [data-balpyo-enter] {
+      opacity: 1;
+      translate: none;
+      scale: none;
+      clip-path: none;
+      stroke-dashoffset: 0;
+      transition: none;
+    }
+  }
+
+  /* Slide transition — only in the presenter view, only when stepping with next / previous (the
+     runtime sets the classes; deep links, the overview, print and the measure view switch slides
+     without one). fade: the arriving slide comes in from transparent. push: the arriving slide
+     slides in from one side while the leaving slide, kept visible for the length of the
+     transition, slides out to the other. The duration comes from the slide's markup. */
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-moving {
+    transition-property: opacity, translate;
+    transition-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-leaving { visibility: visible; }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-from-fade { opacity: 0; }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-from-right { translate: 100% 0; }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-from-left { translate: -100% 0; }
+
+  /* Flowing connectors — the dashes run from start to end, one dash period every 1.2s, only in the
+     presenter view (everywhere else, PPTX included, the same dashed line stands still). */
+  @keyframes balpyo-flow { to { stroke-dashoffset: calc(-1 * var(--balpyo-flow-period, 14px)); } }
+  html[data-balpyo-view="presenter"] .balpyo-viewer-active [data-balpyo-flow] {
+    animation: balpyo-flow 1.2s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html[data-balpyo-view="presenter"] .balpyo-viewer-active [data-balpyo-flow] { animation: none; }
+  }
+
+  /* Progress bar — a thin line at the top of the screen in the presenter view, as wide as the
+     share of the deck shown so far. It is viewer chrome (like the control bar), not slide
+     content: it does not exist in the document view, print, the overview or the measure view.
+     Its color borrows the deck's first accent so the line belongs to the talk it measures. */
+  .balpyo-viewer-progress { display: none; }
+  html[data-balpyo-view="presenter"] .balpyo-viewer-progress {
+    display: block;
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 3px;
+    background: var(--balpyo-color-accent1, #888);
+    transition: width 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+    z-index: 2;
+  }
+
   /* The control bar is visible in the overview too — for someone who does not know the
      keyboard, it is the way out of the overview. A selector that ignores the value
      (html[data-balpyo-view]) is not used because of the measure view: if the chrome were drawn
@@ -361,6 +451,15 @@
        presenter-view gate and comes later, so it wins as is (the same technique as the slide
        restore above). */
     [data-balpyo-reveal], html[data-balpyo-view] [data-balpyo-reveal] { visibility: visible; }
+    /* Entrances are at their end state on paper — every slide prints, not only the entered one.
+       Same specificity as the presenter-view gate, later in the sheet. */
+    html[data-balpyo-view] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter] {
+      opacity: 1;
+      translate: none;
+      scale: none;
+      clip-path: none;
+      stroke-dashoffset: 0;
+    }
     /* Do not create an extra blank page after the last slide. */
     .balpyo-slide:last-child, html[data-balpyo-view] .balpyo-slide:last-child { break-after: auto; }
     /* The overview's active border does not carry over to paper (the border rule is one step
@@ -368,7 +467,8 @@
     .balpyo-slide.balpyo-viewer-active,
     html[data-balpyo-view] .balpyo-slide.balpyo-viewer-active { outline-color: transparent; }
     .balpyo-viewer-bar, html[data-balpyo-view] .balpyo-viewer-bar,
-    .balpyo-viewer-notes, html[data-balpyo-view] .balpyo-viewer-notes { display: none; }
+    .balpyo-viewer-notes, html[data-balpyo-view] .balpyo-viewer-notes,
+    .balpyo-viewer-progress, html[data-balpyo-view] .balpyo-viewer-progress { display: none; }
   }
 
   @media print {
@@ -878,7 +978,12 @@
   notes.setAttribute("aria-label", "Speaker notes");
   notes.hidden = true;
 
-  document.body.append(notes, bar);
+  // 진행 막대 — 지금 장이 덱의 어디인지를 화면 맨 위의 얇은 선으로 보여 준다 (발표자 뷰에서만 보인다).
+  const progress = document.createElement("div");
+  progress.className = "balpyo-viewer-progress";
+  progress.setAttribute("aria-hidden", "true");
+
+  document.body.append(notes, bar, progress);
 
   let current = -1;
 
@@ -915,14 +1020,61 @@
     next.disabled = current === slides.length - 1 && step === lastStep(slide);
   };
 
-  const show = (index, writeHash, revealed) => {
+  // ── 등장 ──
+  //
+  // 지연은 마크업이 요소마다 나르고(data-balpyo-enter-delay) 여기서 전환에 건다 — 한 번이면 된다. 슬라이드에
+  // 들어갈 때 표식을 떼었다가 다음 프레임에 붙이면 요소들이 시작 상태에서 끝 상태로 엇갈려 움직인다. 뒤로
+  // 들어온 장(이미 말한 장)은 움직이지 않고 끝 상태로 온다.
+  const ENTERED_CLASS = "balpyo-viewer-entered";
+  const INSTANT_CLASS = "balpyo-viewer-instant";
+  document.querySelectorAll("[data-balpyo-enter]").forEach((el) => {
+    el.style.transitionDelay = (Number(el.getAttribute("data-balpyo-enter-delay")) || 0) + "ms";
+  });
+  const enter = (slide, instant) => {
+    slide.classList.remove(ENTERED_CLASS);
+    slide.classList.toggle(INSTANT_CLASS, instant);
+    if (instant) { slide.classList.add(ENTERED_CLASS); return; }
+    void slide.offsetWidth;
+    requestAnimationFrame(() => requestAnimationFrame(() => slide.classList.add(ENTERED_CLASS)));
+  };
+
+  // ── 슬라이드 전환 ──
+  //
+  // 전환은 다음 · 이전으로 넘길 때만 있다 (딥링크 · 오버뷰 · Home/End는 곧장 간다). 들어오는 장의 전환을
+  // 쓰고, 이전으로 가면 방향만 뒤집는다. 나가는 장은 전환 동안 보이게 남는다 — fade는 두 장이 엇갈려
+  // 겹치고(크로스페이드), push는 두 장이 함께 밀린다. 표식은 전환 길이가 지나면 걷는다.
+  const MOVE_CLASSES = ["balpyo-viewer-moving", "balpyo-viewer-leaving",
+    "balpyo-viewer-from-fade", "balpyo-viewer-from-left", "balpyo-viewer-from-right"];
+  const reducedMotion = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const transition = (from, to, dir) => {
+    const kind = to.getAttribute("data-balpyo-transition");
+    if (!kind || !from || root.getAttribute("data-balpyo-view") !== "presenter" || reducedMotion()) return;
+    const ms = Number(to.getAttribute("data-balpyo-transition-duration")) || 0;
+    const start = kind === "push" ? (dir > 0 ? "balpyo-viewer-from-right" : "balpyo-viewer-from-left") : "balpyo-viewer-from-fade";
+    const end = kind === "push" ? (dir > 0 ? "balpyo-viewer-from-left" : "balpyo-viewer-from-right") : "balpyo-viewer-from-fade";
+    to.classList.add(start);
+    from.classList.add("balpyo-viewer-leaving");
+    void to.offsetWidth;
+    [from, to].forEach((s) => { s.classList.add("balpyo-viewer-moving"); s.style.transitionDuration = ms + "ms"; });
+    requestAnimationFrame(() => { to.classList.remove(start); from.classList.add(end); });
+    setTimeout(() => [from, to].forEach((s) => {
+      s.classList.remove(...MOVE_CLASSES);
+      s.style.transitionDuration = "";
+    }), ms + 50);
+  };
+
+  const show = (index, writeHash, revealed, dir) => {
     const target = Math.min(Math.max(index, 0), slides.length - 1);
     if (target === current) return;
-    if (current >= 0) slides[current].classList.remove("balpyo-viewer-active");
+    const from = current >= 0 ? slides[current] : null;
+    if (from) from.classList.remove("balpyo-viewer-active");
     current = target;
     const slide = slides[current];
     slide.classList.add("balpyo-viewer-active");
+    if (dir) transition(from, slide, dir);
+    enter(slide, Boolean(revealed));
     counter.textContent = (current + 1) + " / " + slides.length;
+    progress.style.width = ((current + 1) / slides.length * 100) + "%";
     // 들어가는 장의 스텝은 0이다 — 딥링크·오버뷰 타일·Home/End로 **곧장** 들어간 장은 아직
     // 말하지 않은 장이다 (뒤로 들어온 장만 전개된 상태로 온다).
     step = revealed ? lastStep(slide) : 0;
@@ -942,11 +1094,11 @@
   // 이미 말한 장을 다시 한 단계씩 누르게 만들지 않는다.
   const forward = () => {
     if (step < lastStep(slides[current])) { step++; applyReveal(); return; }
-    show(current + 1, true);
+    show(current + 1, true, false, 1);
   };
   const backward = () => {
     if (step > 0) { step--; applyReveal(); return; }
-    show(current - 1, true, true);
+    show(current - 1, true, true, -1);
   };
 
   // ── 오버뷰 ──
