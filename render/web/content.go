@@ -222,6 +222,7 @@ var renderedKinds = []soml.ElementKind{
 	soml.KindTable,
 	soml.KindTableRow,
 	soml.KindTableCell,
+	soml.KindConnector,
 }
 
 // RenderedKinds는 이 렌더러가 다루는 종류다 (선언 순서). soml 카탈로그와 대조하는 테스트가
@@ -266,6 +267,10 @@ func writerFor(kind soml.ElementKind) nodeWriter {
 		return writeTableRow
 	case soml.KindTableCell:
 		return writeTableCell
+	case soml.KindConnector:
+		// 흐름에서는 아무것도 내지 않는다 — 연결선은 측정이 끝난 뒤 슬라이드 오버레이에 그려진다
+		// (writeConnectors). 흐름에 자리를 차지하지 않는 것이 측정한 배치와 구운 배치가 같은 근거다.
+		return func(*strings.Builder, *soml.Deck, *soml.Slide, *soml.Element, []int) error { return nil }
 	}
 	return nil
 }
@@ -605,6 +610,9 @@ func contentCSS(feat features) string {
 	if feat.images {
 		css += imageCSS()
 	}
+	if feat.connectors {
+		css += connectorCSS()
+	}
 	if feat.tables {
 		css += tableCSS()
 	}
@@ -711,6 +719,8 @@ type features struct {
 	// tables는 `<table>`가 있는지다 (tableCSS). 표 CSS 절은 셀 여백·테두리 합침처럼 셀 하나로
 	// 표현할 수 없는 값만 담는다 — 표를 안 쓴 덱의 골든이 이 절로 움직이지 않는다.
 	tables bool
+	// connectors는 `<connector>`가 있는지다 (connectorCSS) — 연결선을 안 쓴 덱의 산출물이 움직이지 않는다.
+	connectors bool
 	// layouts는 이 덱이 실제로 쓴, **배치 CSS를 가진** 레이아웃 이름들이다 (정렬·중복 제거).
 	// themeCSS가 이 목록만 규칙으로 낸다 — 다른 어휘 조건과 같은 근거다 (골든 불변): 쓰지 않은
 	// 레이아웃의 배치 규칙이 산출물에 들어가면 diff가 무엇이 변했는지 말해 주지 못한다.
@@ -763,6 +773,8 @@ func contentFeatures(deck *soml.Deck) features {
 				feat.images = true
 			case soml.KindTable:
 				feat.tables = true
+			case soml.KindConnector:
+				feat.connectors = true
 			}
 			walk(elem.Children)
 		}

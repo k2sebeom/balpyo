@@ -12,6 +12,7 @@ import (
 
 	"github.com/k2sebeom/balpyo/internal/pipeline"
 	"github.com/k2sebeom/balpyo/render/geom"
+	"github.com/k2sebeom/balpyo/render/route"
 	"github.com/k2sebeom/balpyo/render/web"
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -50,7 +51,10 @@ type LayoutNode struct {
 	Alt string
 	// Fill·Line은 도형 채움·선의 요약이다 (텍스트 박스·그림·표는 빈 문자열).
 	Fill, Line string
-	Paras      []LayoutPara
+	// Extra는 종류 고유의 꼬리다 — 연결선의 프레임(회전 · 뒤집기 · 꺾는 자리), 붙은 양 끝, 대시,
+	// 끝 표식 (다른 종류는 빈 문자열).
+	Extra string
+	Paras []LayoutPara
 }
 
 // LayoutPara는 문단 하나다 — 런이 없는 문단은 트리에 넣지 않는다 (빈 도형의 `<a:p/>`).
@@ -89,6 +93,9 @@ func FormatLayout(slides []LayoutSlide, withRect bool) string {
 			}
 			if n.Line != "" {
 				b.WriteString(" line=" + n.Line)
+			}
+			if n.Extra != "" {
+				b.WriteString(" " + n.Extra)
 			}
 			b.WriteString("\n")
 			for _, p := range n.Paras {
@@ -180,7 +187,8 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 					}
 				}
 				return nil
-			case soml.KindSpacer:
+			case soml.KindSpacer, soml.KindConnector:
+				// 연결선은 콘텐츠 도형 뒤에 한꺼번에 온다 (webConnectors).
 				return nil
 			}
 			box, ok := g.Box(id)
@@ -253,6 +261,11 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 				return nil, err
 			}
 		}
+		conns, err := webConnectors(slide, g, deck.Theme)
+		if err != nil {
+			return nil, err
+		}
+		s.Nodes = append(s.Nodes, conns...)
 		// 크롬은 콘텐츠 다음이다 (spTree 순서 = z-순서 — 웹에서도 스테이지 뒤 형제다).
 		for _, item := range slide.Chrome {
 			rect, ok := g.ChromeRect(slide.Index, item.Kind)
@@ -275,6 +288,82 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 		slides = append(slides, s)
 	}
 	return slides, nil
+}
+
+// parityConnectionSites는 붙일 수 있는 상자의 면 → 연결점 번호다 — 렌더러의 표를 부르지 않고 따로
+// 적는다 (ECMA-376 presetShapeDefinitions의 cxnLst 순서). 표 밖의 상자는 붙지 않는다.
+var parityConnectionSites = map[string]map[route.Side]int{
+	"rect":            {route.Top: 0, route.Left: 1, route.Bottom: 2, route.Right: 3},
+	"rounded-rect":    {route.Top: 0, route.Left: 1, route.Bottom: 2, route.Right: 3},
+	"diamond":         {route.Top: 0, route.Left: 1, route.Bottom: 2, route.Right: 3},
+	"ellipse":         {route.Top: 0, route.Left: 2, route.Bottom: 4, route.Right: 6},
+	soml.ImageElement: {route.Top: 0, route.Left: 1, route.Bottom: 2, route.Right: 3},
+}
+
+// webConnectors는 슬라이드 직속 연결선의 기대 노드다 — 덱 + 지오메트리에서 경로 계산(render/route)을
+// 거쳐 프레임을 만든다. 렌더러의 조립(xfrm · 붙은 끝 · 선)을 판정하는 쪽이다: 경로 계산 자체는 두
+// 렌더러가 공유하는 계약이고, route의 단위 테스트가 프리셋 평가와 끝점의 일치를 본다.
+func webConnectors(slide *soml.Slide, g *geom.Geometry, theme soml.Theme) ([]LayoutNode, error) {
+	var nodes []LayoutNode
+	ids := web.ElementIDs(slide)
+	for _, node := range slide.Content {
+		elem, ok := node.(*soml.Element)
+		if !ok || elem.Name != soml.ConnectorElement {
+			continue
+		}
+		if elem.Appearance == nil || elem.Appearance.Connector == nil {
+			return nil, fmt.Errorf("%s: %s <connector> is not resolved", slide.Source, ids[elem])
+		}
+		conn := elem.Appearance.Connector
+		box := func(e *soml.Element) (route.Rect, error) {
+			b, ok := g.Box(ids[e])
+			if !ok {
+				return route.Rect{}, fmt.Errorf("%s: connector end %s has no measured box", slide.Source, ids[e])
+			}
+			return route.Rect{X: b.Rect.X, Y: b.Rect.Y, W: b.Rect.W, H: b.Rect.H}, nil
+		}
+		from, err := box(conn.From)
+		if err != nil {
+			return nil, err
+		}
+		to, err := box(conn.To)
+		if err != nil {
+			return nil, err
+		}
+		p, err := route.Route(from, to, route.Side(conn.FromSide), route.Side(conn.ToSide), route.Kind(conn.Route))
+		if err != nil {
+			return nil, err
+		}
+		n := LayoutNode{Kind: "connector:" + p.Preset, Name: "connector " + ids[elem], Line: webColor(conn.Line.Color)}
+		n.X, n.Y = int64(math.Round(p.Off.X*9525)), int64(math.Round(p.Off.Y*9525))
+		n.W, n.H = int64(math.Round(p.W*9525)), int64(math.Round(p.H*9525))
+		extra := []string{fmt.Sprintf("rot=%d", p.Rot)}
+		if p.FlipH {
+			extra = append(extra, "flipH")
+		}
+		if p.FlipV {
+			extra = append(extra, "flipV")
+		}
+		extra = append(extra, fmt.Sprintf("adj=%d", int64(math.Round(p.Adj*100000))))
+		glue := func(which string, e *soml.Element, side route.Side) string {
+			key := e.Name
+			if s := e.ShapeStyle(); s != nil {
+				key = s.Type
+			}
+			idx, ok := parityConnectionSites[key][side]
+			if !ok {
+				return which + "=-"
+			}
+			return fmt.Sprintf("%s=%s:%d", which, strconv.Quote(e.Name+" "+ids[e]), idx)
+		}
+		dash := map[soml.BorderStyle]string{soml.BorderSolid: "solid", soml.BorderDashed: "dash", soml.BorderDotted: "dot"}[conn.Line.Style]
+		end := map[soml.ConnectorEnd]string{soml.EndNone: "none", soml.EndArrow: "triangle", soml.EndDot: "oval"}
+		extra = append(extra, glue("from", conn.From, p.StartSide), glue("to", conn.To, p.EndSide),
+			"dash="+dash, "ends="+end[conn.Start]+"/"+end[conn.End])
+		n.Extra = strings.Join(extra, " ")
+		nodes = append(nodes, n)
+	}
+	return nodes, nil
 }
 
 // rectEMU는 잰 rect의 EMU다 — 렌더러의 pptx.Offset/Extent를 부르지 않고 **따로** 계산한다
@@ -497,9 +586,14 @@ type xSlide struct {
 
 type xNv struct {
 	CNvPr struct {
+		ID    string `xml:"id,attr"`
 		Name  string `xml:"name,attr"`
 		Descr string `xml:"descr,attr"`
 	} `xml:"cNvPr"`
+	CNvCxnSpPr struct {
+		StCxn  *xCxn `xml:"stCxn"`
+		EndCxn *xCxn `xml:"endCxn"`
+	} `xml:"cNvCxnSpPr"`
 	CNvSpPr struct {
 		TxBox string `xml:"txBox,attr"`
 	} `xml:"cNvSpPr"`
@@ -511,8 +605,17 @@ type xNv struct {
 	} `xml:"nvPr"`
 }
 
+// xCxn은 연결선 끝이 붙은 도형(`cNvPr@id`)과 연결점 번호다.
+type xCxn struct {
+	ID  string `xml:"id,attr"`
+	Idx string `xml:"idx,attr"`
+}
+
 type xXfrm struct {
-	Off struct {
+	Rot   int64  `xml:"rot,attr"`
+	FlipH string `xml:"flipH,attr"`
+	FlipV string `xml:"flipV,attr"`
+	Off   struct {
 		X int64 `xml:"x,attr"`
 		Y int64 `xml:"y,attr"`
 	} `xml:"off"`
@@ -577,14 +680,28 @@ type xObject struct {
 	NvSpPr           *xNv `xml:"nvSpPr"`
 	NvPicPr          *xNv `xml:"nvPicPr"`
 	NvGraphicFramePr *xNv `xml:"nvGraphicFramePr"`
+	NvCxnSpPr        *xNv `xml:"nvCxnSpPr"`
 	SpPr             struct {
 		Xfrm     xXfrm `xml:"xfrm"`
 		PrstGeom struct {
 			Prst string `xml:"prst,attr"`
+			Gd   []struct {
+				Name string `xml:"name,attr"`
+				Fmla string `xml:"fmla,attr"`
+			} `xml:"avLst>gd"`
 		} `xml:"prstGeom"`
 		xFills
 		Ln *struct {
 			xFills
+			PrstDash struct {
+				Val string `xml:"val,attr"`
+			} `xml:"prstDash"`
+			HeadEnd struct {
+				Type string `xml:"type,attr"`
+			} `xml:"headEnd"`
+			TailEnd struct {
+				Type string `xml:"type,attr"`
+			} `xml:"tailEnd"`
 		} `xml:"ln"`
 	} `xml:"spPr"`
 	Xfrm    xXfrm    `xml:"xfrm"`
@@ -643,8 +760,17 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 				s.Background = "fill=" + pptxFill(bg.BgPr.xFills, theme)
 			}
 		}
+		// 연결선의 붙은 끝은 도형 번호(`cNvPr@id`)로 적혀 있다 — 트리에는 이름으로 되돌려 싣는다.
+		names := map[string]string{}
 		for _, obj := range x.CSld.SpTree.Items {
-			n, ok := pptxNode(obj, theme, links)
+			for _, nv := range []*xNv{obj.NvSpPr, obj.NvPicPr, obj.NvGraphicFramePr, obj.NvCxnSpPr} {
+				if nv != nil {
+					names[nv.CNvPr.ID] = nv.CNvPr.Name
+				}
+			}
+		}
+		for _, obj := range x.CSld.SpTree.Items {
+			n, ok := pptxNode(obj, theme, links, names)
 			if ok {
 				s.Nodes = append(s.Nodes, n)
 			}
@@ -654,7 +780,7 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 	return slides, nil
 }
 
-func pptxNode(obj xObject, theme soml.Theme, links map[string]string) (LayoutNode, bool) {
+func pptxNode(obj xObject, theme soml.Theme, links map[string]string, names map[string]string) (LayoutNode, bool) {
 	var n LayoutNode
 	var nv *xNv
 	xfrm := obj.SpPr.Xfrm
@@ -692,6 +818,40 @@ func pptxNode(obj xObject, theme soml.Theme, links map[string]string) (LayoutNod
 				}
 			}
 		}
+	case "cxnSp":
+		nv = obj.NvCxnSpPr
+		n.Kind = "connector:" + obj.SpPr.PrstGeom.Prst
+		n.Line = "?"
+		var extra []string
+		adj := "50000"
+		for _, gd := range obj.SpPr.PrstGeom.Gd {
+			if gd.Name == "adj1" {
+				adj = strings.TrimPrefix(gd.Fmla, "val ")
+			}
+		}
+		x := obj.SpPr.Xfrm
+		extra = append(extra, fmt.Sprintf("rot=%d", x.Rot/60000))
+		if x.FlipH == "1" {
+			extra = append(extra, "flipH")
+		}
+		if x.FlipV == "1" {
+			extra = append(extra, "flipV")
+		}
+		extra = append(extra, "adj="+adj)
+		glue := func(which string, c *xCxn) string {
+			if c == nil {
+				return which + "=-"
+			}
+			return which + "=" + strconv.Quote(names[c.ID]) + ":" + c.Idx
+		}
+		if nv != nil {
+			extra = append(extra, glue("from", nv.CNvCxnSpPr.StCxn), glue("to", nv.CNvCxnSpPr.EndCxn))
+		}
+		if ln := obj.SpPr.Ln; ln != nil {
+			n.Line = pptxFill(ln.xFills, theme)
+			extra = append(extra, "dash="+ln.PrstDash.Val, "ends="+ln.HeadEnd.Type+"/"+ln.TailEnd.Type)
+		}
+		n.Extra = strings.Join(extra, " ")
 	default:
 		// nvGrpSpPr · grpSpPr — 트리의 뿌리 속성이지 객체가 아니다.
 		return n, false

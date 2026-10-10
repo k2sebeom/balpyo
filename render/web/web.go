@@ -79,11 +79,24 @@ import (
 // IndexFile은 웹 타깃의 산출 파일 이름이다.
 const IndexFile = "index.html"
 
-// Renderer는 웹 타깃 렌더러다.
-type Renderer struct{}
+// Renderer는 웹 타깃 렌더러다. 상태는 연결선을 다루는 방식 하나다 (connector.go — 연결선은 측정이
+// 끝난 뒤에 그려진다).
+type Renderer struct {
+	connectors connectorMode
+	boxes      BoxLookup
+}
 
-// New는 웹 렌더러를 만든다.
+// New는 웹 렌더러를 만든다. 잰 박스가 없으므로 연결선이 있는 덱은 렌더 에러다.
 func New() *Renderer { return &Renderer{} }
+
+// NewForMeasurement는 지오메트리 패스가 잴 HTML을 내는 렌더러다 — 연결선을 내지 않는다 (연결선은
+// 흐름에 끼지 않으므로 배치가 연결선을 구운 HTML과 같다).
+func NewForMeasurement() *Renderer { return &Renderer{connectors: connectorsOmitted} }
+
+// NewWithBoxes는 잰 박스로 연결선을 굽는 렌더러다 — 측정이 끝난 빌드가 사용자에게 주는 HTML이다.
+func NewWithBoxes(boxes BoxLookup) *Renderer {
+	return &Renderer{connectors: connectorsDrawn, boxes: boxes}
+}
 
 // Target은 render.TargetHTML이다.
 func (*Renderer) Target() render.Target { return render.TargetHTML }
@@ -94,7 +107,7 @@ func (*Renderer) Target() render.Target { return render.TargetHTML }
 // 완결형이지만 그림은 별도 파일로 나가고, 그 이유가 렌더러에 있어야 측정과 배포가 같은
 // 바이트를 본다 (image.go의 에셋 절). 오프라인 발표는 `index.html` + assets를 함께 두는
 // 것이다.
-func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
+func (r *Renderer) Render(deck *soml.Deck) (render.Files, error) {
 	if deck == nil {
 		return nil, fmt.Errorf("deck is nil")
 	}
@@ -129,7 +142,7 @@ func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 	fmt.Fprintf(&b, "<div class=\"balpyo-deck\" data-aspect=%q data-slides=\"%d\">\n",
 		string(deck.Aspect), len(deck.Slides))
 	for _, slide := range deck.Slides {
-		if err := writeSlide(&b, deck, slide); err != nil {
+		if err := r.writeSlide(&b, deck, slide); err != nil {
 			return nil, err
 		}
 	}
@@ -157,7 +170,7 @@ func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 //
 // `data-slide-*` 속성은 장식이 아니다 — 지오메트리 패스가 이 선택자로 요소를 집어
 // 좌표를 읽고, 웹 런타임이 딥링크를 여기에 맞춘다.
-func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
+func (r *Renderer) writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 	bg, err := backgroundCSS(slide.Background, deck)
 	if err != nil {
 		return fmt.Errorf("%s: background: %w", slide.Source, err)
@@ -165,6 +178,11 @@ func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 	fmt.Fprintf(b, "<section class=%q id=%q %s=\"%d\" data-slide-source=%q%s>\n",
 		SlideClass, html.EscapeString(slide.ID), SlideIndexAttr, slide.Index, html.EscapeString(slide.Source), styleAttr(bg))
 	if err := writeStage(b, deck, slide); err != nil {
+		return err
+	}
+	// 연결선은 스테이지의 형제이고 크롬 앞이다 — 콘텐츠 위에 칠하고 크롬 아래에 둔다 (PPTX의
+	// spTree에서 콘텐츠 도형 뒤 · 크롬 앞인 것과 같은 자리).
+	if err := writeConnectors(b, deck, slide, r.connectors, r.boxes); err != nil {
 		return err
 	}
 	// 크롬은 스테이지의 형제다 — 스테이지 안에 넣으면 흐름에 끼어 본문 높이를 먹고,

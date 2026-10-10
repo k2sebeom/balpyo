@@ -111,3 +111,34 @@ func TestRouteRejectsUnknownValues(t *testing.T) {
 		t.Error("모르는 경로가 통과했다")
 	}
 }
+
+// 같은 면끼리 잇는 U자 경로는 두 상자 바깥에서 꺾는다 — 위 → 위는 더 높은 윗변보다 위로 나간다.
+// 같은 높이(국소 가로 길이 0)에서도 1px 깊이의 프레임으로 비율을 적을 수 있다.
+func TestRouteUTurn(t *testing.T) {
+	a := Rect{X: 0, Y: 100, W: 100, H: 60}
+	b := Rect{X: 400, Y: 100, W: 100, H: 60}
+	for _, kind := range []Kind{Elbow, Curved} {
+		p, err := Route(a, b, Top, Top, kind)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if p.Adj >= 0 && p.Adj <= 1 {
+			t.Errorf("%s: adj %g는 프레임 안이다 — U자는 바깥에서 꺾어야 한다", kind, p.Adj)
+		}
+		first, last := p.Points[0], p.Points[len(p.Points)-1]
+		if math.Hypot(first.X-p.Start.X, first.Y-p.Start.Y) > 1.01 || math.Hypot(last.X-p.End.X, last.Y-p.End.Y) > 1.01 {
+			t.Errorf("%s: 경로 끝 %v…%v가 끝점 %v→%v에서 1px보다 멀다", kind, first, last, p.Start, p.End)
+		}
+		top := math.Inf(1)
+		for _, pt := range p.Points {
+			top = math.Min(top, pt.Y)
+		}
+		if want := 100 - uTurnGap(kind, 400); math.Abs(top-want) > 1e-6 {
+			t.Errorf("%s: 가장 높은 점 y = %g, want %g", kind, top, want)
+		}
+	}
+	p, _ := Route(a, Rect{X: 400, Y: 300, W: 100, H: 60}, Right, Right, Elbow)
+	if got, want := p.Points[1].X, 500+uTurnGap(Elbow, 0); math.Abs(got-want) > 1e-6 {
+		t.Errorf("오른쪽 → 오른쪽: 꺾는 x = %g, want %g", got, want)
+	}
+}

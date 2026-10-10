@@ -85,8 +85,14 @@ type Result struct {
 // 지오메트리를 인자로 받는다 — 좌표를 쓰는 렌더러가 어느 것인지 이 표에 드러나고, 좌표 없이
 // 만든 렌더러가 좌표가 필요한 덱을 만나면 렌더러 쪽에서 멈춘다 (pptx.Renderer.checkGeometry).
 func Renderers(g *geom.Geometry) map[render.Target]render.Renderer {
+	html := web.New()
+	if g != nil {
+		// 잰 빌드의 웹은 연결선을 굽는다 — 끝점이 잰 rect에서 나온다 (연결선은 흐름에 끼지 않으므로
+		// 측정한 HTML과 배치가 같다).
+		html = web.NewWithBoxes(g.RouteBox)
+	}
 	return map[render.Target]render.Renderer{
-		render.TargetHTML: web.New(),
+		render.TargetHTML: html,
 		render.TargetPPTX: pptx.NewWithGeometry(g),
 	}
 }
@@ -273,12 +279,25 @@ func needsGeometry(deck *soml.Deck, targets []render.Target, checkLayout bool) b
 	if len(geom.Refs(deck)) == 0 && !deckHasChrome(deck) {
 		return false
 	}
-	if checkLayout {
+	if checkLayout || deckHasConnectors(deck) {
+		// 연결선의 끝점은 잰 rect에서 나오므로 HTML만 내는 빌드도 잰다.
 		return true
 	}
 	for _, target := range targets {
 		if target == render.TargetPPTX {
 			return true
+		}
+	}
+	return false
+}
+
+// deckHasConnectors는 연결선이 있는 슬라이드가 있는지다 (연결선은 슬라이드 직속뿐이다).
+func deckHasConnectors(deck *soml.Deck) bool {
+	for _, slide := range deck.Slides {
+		for _, node := range slide.Content {
+			if elem, ok := node.(*soml.Element); ok && elem.Name == soml.ConnectorElement {
+				return true
+			}
 		}
 	}
 	return false
@@ -310,7 +329,9 @@ func deckHasChrome(deck *soml.Deck) bool {
 // 흐름을 읽는 것만으로 드러나는 쪽이 낫다.
 // measurer가 nil이면 geom.Measure다 — 브라우저를 한 번 띄우고 닫는다.
 func measure(deck *soml.Deck, measurer Measurer) (*geom.Geometry, error) {
-	files, err := web.New().Render(deck)
+	// 측정용 HTML에는 연결선이 없다 — 끝점이 이 측정의 결과에서 나온다. 연결선은 흐름에 끼지 않으므로
+	// 사용자가 받는 HTML(연결선을 구운 것)과 배치가 같다.
+	files, err := web.NewForMeasurement().Render(deck)
 	if err != nil {
 		return nil, fmt.Errorf("cannot prepare geometry pass input: %w", err)
 	}

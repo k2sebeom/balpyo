@@ -54,6 +54,10 @@ func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, st
 			return "", "", nil, err
 		}
 	}
+	// 연결선은 콘텐츠 뒤 · 크롬 앞이다 (웹의 오버레이와 같은 자리).
+	if err := writeConnectorShapes(&b, deck, slide, &id, g, rels); err != nil {
+		return "", "", nil, err
+	}
 	// 덱 크롬은 콘텐츠 뒤다 — 확정 모델이 비어 있으면 아무것도 나가지 않으므로
 	// 크롬을 켜지 않은 덱의 바이트가 움직이지 않는다 (chrome.go).
 	if err := writeChromeShapes(&b, deck, slide, &id, g, rels); err != nil {
@@ -78,6 +82,10 @@ func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, st
 // 카운터로 문서 순서대로 배정하면 그 어긋남을 만들 방법 자체가 없다.
 type slideRels struct {
 	items []slideRel
+	// shapeIDs는 이 슬라이드에서 도형 번호를 받은 요소다 — 연결선이 끝을 붙일 도형 id를 여기서 찾는다
+	// (연결선은 콘텐츠 뒤에 쓰므로 그때 이미 다 차 있다). 관계 목록과 같은 슬라이드 순회 상태라 같은
+	// 값에 둔다: 순회가 한 번이어야 번호와 붙는 대상이 어긋나지 않는다.
+	shapeIDs map[*soml.Element]int
 }
 
 // slideRel은 슬라이드 rels 파트에 실리는 관계 하나다 — 템플릿이 이 값을 그대로 쓴다
@@ -144,6 +152,7 @@ var renderedKinds = []soml.ElementKind{
 	soml.KindInline,          // 도형 0개        (writeRuns: 문단의 런이 된다)
 	soml.KindLayoutContainer, // 도형 0개        (자식으로 내려간다 — 좌표만 남는다)
 	soml.KindSpacer,          // 도형 0개        (공간은 이미 이웃 도형의 좌표에 들어갔다)
+	soml.KindConnector,       // 도형 하나       (writeConnectorShapes — 콘텐츠 뒤의 p:cxnSp)
 }
 
 // RenderedKinds는 이 렌더러가 다루는 종류다 (선언 순서). soml 카탈로그와 대조하는 테스트가
@@ -233,6 +242,10 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 		if err := write(b, deck, slide, elem, id, *shapeID, g, rels); err != nil {
 			return err
 		}
+		if rels.shapeIDs == nil {
+			rels.shapeIDs = map[*soml.Element]int{}
+		}
+		rels.shapeIDs[elem] = *shapeID
 		// 도형 id는 **도형을 실제로 낸 자리에서만** 오른다 (컨테이너는 id를 소비하지
 		// 않는다 — 도형 id는 도형에만 붙는다): 번호가 배치 구조에 따라 뛰면 슬라이드에
 		// `<row>` 하나를 더한 커밋의 diff에 도형 번호 전부가 잡음으로 실린다 — 노트가
@@ -259,6 +272,9 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 		if err := writeChildShapes(b, deck, slide, elem, path, shapeID, g, rels); err != nil {
 			return err
 		}
+	case soml.KindConnector:
+		// 연결선은 콘텐츠 도형을 다 쓴 **뒤**에 쓴다 (writeConnectorShapes) — 끝을 붙일 도형 번호가
+		// 그때 다 정해져 있고, 웹의 오버레이와 같은 칠 순서(콘텐츠 위)가 된다.
 	case soml.KindSpacer:
 		// `<spacer/>`는 도형을 내지 않는다. 빈 박스이고 뜻은 "여기에 공간이 있다"이며, 그
 		// 공간은 이미 이웃 도형의 좌표에 들어가 있다 — 밀어내기의 결과가 형제의 rect다.

@@ -60,7 +60,7 @@ Vocabulary (closed — unknown tags/attributes are diagnostics):
 - `<text>` (`role`: title/heading/body/caption/code, `variant`, `size`, `color`, `align`, `anchor`, `w`/`min-w`/`max-w`)
 - Text subset: `h1`–`h3`, `p`, `ul`/`ol`/`li`, `blockquote`, `pre`, `strong`, `em`, `code`, `a`, `br`, `span`, `mark`; `reveal` for stepwise appearance
 - Layout: `row`, `col`, `grid`, `spacer`, `stack` (overlap; `at`, `x`/`y`), plus a `style` escape hatch
-- `<shape>` (12 preset types), `<image>` (`src`, `fit`, `alt`), `<table>`/`tr`/`th`/`td`, `<chart>`/`<point>` (desugared into shapes + text, not a native chart part)
+- `<shape>` (12 preset types), `<image>` (`src`, `id`, `fit`, `alt`), `<table>`/`tr`/`th`/`td`, `<chart>`/`<point>` (desugared into shapes + text, not a native chart part), `<connector>` (joins two measured boxes by `id`; drawn after the geometry pass)
 - Layouts (11): `content`, `title`, `section-divider`, `two-column`, `image-full`, `image-text`, `quote`, `code`, `stat`, `canvas`, `end` — each with named **slots** (`slot="title"` …) that become web `grid-area`s and PPTX `p:ph` placeholders
 - Built-in themes: `minimal` (default), `editorial`, `ink` (`core/themes/`). A theme name resolves to
   built-in ∪ project `themes/<name>/` ∪ installed `~/.balpyo/themes/<name>/` (`BALPYO_HOME`); `balpyo.json`
@@ -98,6 +98,7 @@ balpyo.json + slides/*.slide → soml.Collect → soml parse → deck model (som
 | `render/` | target contract (`Target`, `Renderer`, `Files`) | `core` |
 | `render/web/` | HTML + generated CSS, element ID contract, embedded viewer runtime | `core`, `render/pptx` |
 | `render/geom/` | geometry pass (CDP), geometry side table | `core`, `render/pptx` |
+| `render/route/` | connector routing shared by both renderers (pure functions) | every other balpyo package |
 | `render/pptx/` | OOXML assembly, unit conversion (1px = 9525 EMU, pt = px × 0.75) | `core`, `render/web` |
 | `internal/pipeline/` | wiring + file writes (`pipeline.Build` — used by both CLI and tests) | — |
 | `internal/{preview,watch,scaffold,release,testkit}` | gallery, watch server, `init` template, release, test harness | — |

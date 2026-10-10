@@ -443,7 +443,7 @@ minimal"), 테마를 프로젝트 파일시스템 안에서만 읽으므로 `..`
 | 병합 단위 | 무엇 | 자식이 적으면 |
 |---|---|---|
 | **이름** | 색·폰트·공간·반경·그림자 토큰, 텍스트 역할, 태그·슬롯 기본값, `variant`, 코드 토큰(`class`), 크롬 선언(`kind`) | 그 **한 벌이 통째로** 자식 것이다 (부모의 나머지 필드는 남지 않는다) |
-| **필드** | 이름이 없는 절 — `shape.default`·`image.default`, 표의 `cell`·`header`·`stripe`, `code.tabSize` | 적은 필드만 갈리고 나머지는 물려받는다 (빈 문자열·0은 "정하지 않음"이다) |
+| **필드** | 이름이 없는 절 — `shape.default`·`image.default`·`connector.default`, 표의 `cell`·`header`·`stripe`, `code.tabSize`, `text.mark` | 적은 필드만 갈리고 나머지는 물려받는다 (빈 문자열·0은 "정하지 않음"이다) |
 | **파일** | `layouts/<이름>.css`, `layouts/<이름>.slots.css`, `assets/` 아래 그림 | 그 **파일 하나가** 자식 것이다. 두지 않은 파일은 부모 것이 그대로 실린다 |
 | **목록** | `theme.json`의 `layouts` · `backgrounds` | 적으면 그 목록이 이기고, 적지 않으면 부모의 것을 물려받는다 |
 

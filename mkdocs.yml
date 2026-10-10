@@ -32,6 +32,7 @@ nav:
       - SOML — image: reference/soml/image.md
       - SOML — table: reference/soml/table.md
       - SOML — chart: reference/soml/chart.md
+      - SOML — connector: reference/soml/connector.md
       - SOML — note: reference/soml/note.md
       - 외관 속성: reference/appearance.md
       - 레이아웃 카탈로그: reference/layouts.md

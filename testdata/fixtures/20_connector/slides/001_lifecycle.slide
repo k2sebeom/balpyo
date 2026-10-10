@@ -1,0 +1,17 @@
+<!-- A state machine: three route kinds between flow-laid boxes. The connector takes no room in the
+     flow — its ends come from the measured rects of the boxes it names. -->
+<slide id="lifecycle">
+  <h2>Instance lifecycle</h2>
+  <row gap="xl" align="center">
+    <shape type="rounded-rect" id="pending" w="200" h="72"><p align="center">pending</p></shape>
+    <shape type="rounded-rect" id="running" w="200" h="72" fill="accent3"><p align="center" color="bg">running</p></shape>
+    <shape type="rounded-rect" id="stopped" w="200" h="72"><p align="center">stopped</p></shape>
+  </row>
+  <row gap="xl" justify="end">
+    <shape type="ellipse" id="terminated" w="200" h="72"><p align="center">terminated</p></shape>
+  </row>
+  <connector from="pending" to="running"/>
+  <connector from="running" to="stopped" variant="accent"/>
+  <connector from="stopped" to="pending" route="curved" from-side="top" to-side="top" variant="dashed"/>
+  <connector from="running" to="terminated" route="elbow" from-side="bottom" to-side="left"/>
+</slide>

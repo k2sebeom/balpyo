@@ -59,6 +59,9 @@ type Path struct {
 	// Rot은 시계 방향 회전(도)이다 — 0 또는 90.
 	Rot          int
 	FlipH, FlipV bool
+	// Adj는 꺾임 둘 프리셋의 꺾는 자리다 — 국소 가로 길이의 비율(PPTX `adj1` = Adj × 100000). 기본은
+	// 가운데(0.5)이고, 같은 면끼리 잇는 U자 경로에서는 0 ~ 1 밖으로 나가 두 상자 바깥에서 꺾는다.
+	Adj float64
 	// Points는 경로를 그리는 점들이다 — 첫 점은 MoveTo, 그다음은 Segments가 소비한다.
 	Points []Point
 	// Segments는 경로 조각이다: 'L'은 점 하나, 'C'는 점 셋(제어점 둘 + 끝점)을 먹는다.
@@ -145,7 +148,7 @@ func Route(from, to Rect, fromSide, toSide Side, kind Kind) (Path, error) {
 	if toSide == Auto {
 		toSide = facing(to, from)
 	}
-	p := Path{StartSide: fromSide, EndSide: toSide}
+	p := Path{StartSide: fromSide, EndSide: toSide, Adj: 0.5}
 	p.Start, p.End = Anchor(from, fromSide), Anchor(to, toSide)
 	dx, dy := p.End.X-p.Start.X, p.End.Y-p.Start.Y
 
@@ -169,27 +172,74 @@ func Route(from, to Rect, fromSide, toSide Side, kind Kind) (Path, error) {
 		return Path{}, fmt.Errorf("unknown connector route %q", string(kind))
 	}
 
+	// U자 경로: 같은 면끼리 이으면(위 → 위 …) 꺾는 자리가 두 상자 **바깥**이다. 국소 가로 축의 길이가
+	// 0이면(두 위 면이 같은 높이) 비율로 바깥을 가리킬 수 없으므로 프레임에 1px 깊이를 준다 — 끝점이
+	// 1px 비키지만 두 타깃이 같은 프레임에서 그리므로 같은 자리다.
+	uTurn := kind != Straight && fromSide == toSide
 	if rotated {
 		// 시계 방향 90° 회전은 국소 (u, v)를 화면 (−v, u)로 보낸다. 그래서 국소 가로(W)가 화면 세로
 		// 거리이고, 국소 끝점 (±W, ±H)이 화면 (∓H, ±W) = (dx, dy)가 되도록 뒤집는다.
 		p.Rot = 90
 		p.W, p.H = math.Abs(dy), math.Abs(dx)
+		if uTurn && p.W < minUDepth {
+			p.W = minUDepth
+		}
+		// dy가 0인 U자는 위 면이면 위로(뒤집지 않음), 아래 면이면 아래로 나간다 — 아래 adj가 바깥을 고른다.
 		p.FlipH, p.FlipV = dy < 0, dx > 0
 		c := Point{(p.Start.X + p.End.X) / 2, (p.Start.Y + p.End.Y) / 2}
 		p.Off = Point{c.X - p.W/2, c.Y - p.H/2}
 	} else {
 		p.W, p.H = math.Abs(dx), math.Abs(dy)
+		if uTurn && p.W < minUDepth {
+			p.W = minUDepth
+		}
 		p.FlipH, p.FlipV = dx < 0, dy < 0
 		p.Off = Point{math.Min(p.Start.X, p.End.X), math.Min(p.Start.Y, p.End.Y)}
 	}
+	if uTurn {
+		p.Adj = p.uTurnAdj(from, to, kind)
+	}
 
-	local, segs := presetPath(p.Preset, p.W, p.H)
+	local, segs := presetPath(p.Preset, p.W, p.H, p.Adj)
 	p.Segments = segs
 	p.Points = make([]Point, len(local))
 	for i, l := range local {
 		p.Points[i] = p.toWorld(l)
 	}
 	return p, nil
+}
+
+// minUDepth는 U자 경로 프레임의 최소 깊이(px)다 — 0이면 꺾는 자리를 비율로 적을 수 없다.
+const minUDepth = 1
+
+// uTurnGap은 U자 경로가 상자 바깥으로 나가는 거리(px)다. 곡선은 두 끝 사이 거리의 1/4까지 더 크게
+// 부푼다 — 낮은 아치는 두 상자의 윗변을 스치는 선으로 읽힌다.
+func uTurnGap(kind Kind, span float64) float64 {
+	gap := 32.0
+	if kind == Curved {
+		gap = math.Max(gap, span/4)
+	}
+	return gap
+}
+
+// uTurnAdj는 U자 경로의 꺾는 자리다 — 두 상자 중 그 면 쪽으로 더 나간 변에서 uTurnGap만큼 바깥의 선을
+// 국소 가로 축의 비율로 푼다 (국소 → 화면 사상이 선형이므로 두 점이면 된다).
+func (p Path) uTurnAdj(from, to Rect, kind Kind) float64 {
+	a, b := p.toWorld(Point{0, 0}), p.toWorld(Point{p.W, 0})
+	switch p.StartSide {
+	case Top:
+		target := math.Min(from.Y, to.Y) - uTurnGap(kind, math.Abs(p.End.X-p.Start.X))
+		return (target - a.Y) / (b.Y - a.Y)
+	case Bottom:
+		target := math.Max(from.Y+from.H, to.Y+to.H) + uTurnGap(kind, math.Abs(p.End.X-p.Start.X))
+		return (target - a.Y) / (b.Y - a.Y)
+	case Left:
+		target := math.Min(from.X, to.X) - uTurnGap(kind, math.Abs(p.End.Y-p.Start.Y))
+		return (target - a.X) / (b.X - a.X)
+	default:
+		target := math.Max(from.X+from.W, to.X+to.W) + uTurnGap(kind, math.Abs(p.End.Y-p.Start.Y))
+		return (target - a.X) / (b.X - a.X)
+	}
 }
 
 // toWorld는 프리셋 국소 좌표(박스 안 (u, v))를 화면 좌표로 옮긴다 — 뒤집기 다음 회전이다
@@ -211,18 +261,19 @@ func (p Path) toWorld(l Point) Point {
 	return Point{x, y}
 }
 
-// presetPath는 연결선 프리셋의 국소 경로다 (ECMA-376 presetShapeDefinitions — 조정값은 기본 50%).
-func presetPath(preset string, w, h float64) ([]Point, []byte) {
+// presetPath는 연결선 프리셋의 국소 경로다 (ECMA-376 presetShapeDefinitions). adj는 꺾임 둘 프리셋의
+// `adj1`(비율)이다 — 꺾는 자리 x1 = w × adj.
+func presetPath(preset string, w, h, adj float64) ([]Point, []byte) {
 	switch preset {
 	case "bentConnector2":
 		return []Point{{0, 0}, {w, 0}, {w, h}}, []byte("LL")
 	case "bentConnector3":
-		x1 := w / 2
+		x1 := w * adj
 		return []Point{{0, 0}, {x1, 0}, {x1, h}, {w, h}}, []byte("LLL")
 	case "curvedConnector2":
 		return []Point{{0, 0}, {w / 2, 0}, {w, h / 2}, {w, h}}, []byte("C")
 	case "curvedConnector3":
-		x1 := w / 2
+		x1 := w * adj
 		x2, x3 := x1/2, (w+x1)/2
 		return []Point{{0, 0}, {x2, 0}, {x1, h / 4}, {x1, h / 2}, {x1, h * 3 / 4}, {x3, h}, {w, h}}, []byte("CC")
 	default: // straightConnector1

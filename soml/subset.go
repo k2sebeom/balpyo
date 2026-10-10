@@ -171,7 +171,7 @@ func allElementNames() []string {
 // 지우지 않으면 그 대조가 실패한다.
 //
 // 목록이 빈 동안 관문 자체는 목록을 잠시 세워 보는 테스트가 지킨다 (withUnrenderedKinds).
-var unrenderedKinds = []ElementKind{KindConnector}
+var unrenderedKinds []ElementKind
 
 // PlannedAttrMessage는 "이름은 맞는데 아직 구현되지 않은 속성" 진단의 핵 문구다.
 // UnrenderedVocabMessage와 같은 이유로 상수다 — 진단을 내는 곳과 걸러 보는 곳이 같은

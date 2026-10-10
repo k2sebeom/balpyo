@@ -40,6 +40,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/k2sebeom/balpyo/render/route"
 	"github.com/k2sebeom/balpyo/render/web"
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -162,6 +163,11 @@ func collect(refs []Ref, slide *soml.Slide, node soml.Node, path []int, ctx plac
 		// 유지되고 이 순회는 그림을 **다른 종류와 똑같이** 담으면 된다. 자손은 없다 (void).
 		return refs
 	}
+	if soml.KindOf(elem.Name) == soml.KindConnector {
+		// 연결선은 재지 않는다 — 흐름에 자리를 차지하지 않고, 끝점은 측정이 끝난 뒤 두 상자의 잰
+		// rect에서 유도된다 (render/route). 측정용 HTML에는 연결선이 없다 (web.NewForMeasurement).
+		return refs
+	}
 	id := web.ElementID(slide.Index, path)
 	// 좌표를 직접 쓴 요소는 그 자리에 대한 판단을 저자가 이미 했다 — `at`은 셀 안 앵커,
 	// `x`/`y`는 축 오프셋이다 (soml.Placement). 확정 값을 읽는 이유는 렌더러와 같다:
@@ -281,6 +287,16 @@ func (g *Geometry) ChromeRect(slide int, kind soml.ChromeKind) (Rect, bool) {
 		}
 	}
 	return Rect{}, false
+}
+
+// RouteBox는 요소의 잰 rect를 연결선 경로 계산의 박스로 준다 — 웹 렌더러(web.BoxLookup)와 PPTX
+// 렌더러가 같은 조회를 쓴다 (web은 이 패키지를 임포트할 수 없어 함수로 받는다).
+func (g *Geometry) RouteBox(id string) (route.Rect, bool) {
+	box, ok := g.Box(id)
+	if !ok {
+		return route.Rect{}, false
+	}
+	return route.Rect{X: box.Rect.X, Y: box.Rect.Y, W: box.Rect.W, H: box.Rect.H}, true
 }
 
 // Box는 식별자로 측정 결과를 찾는다.

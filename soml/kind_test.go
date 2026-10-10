@@ -187,12 +187,12 @@ func TestCatalogAccessors(t *testing.T) {
 	}
 }
 
-// 연결선을 뺀 **카탈로그의 종류 전부**를 그릴 수 있다 (연결선은 두 렌더러가 뒤따른다). 두 렌더러가
+// 지금은 **카탈로그의 종류 전부**를 그릴 수 있다 (unrenderedKinds가 비었다). 두 렌더러가
 // 정말로 받는지는 render/vocabulary_test.go가 보고, 여기서는 언어 층의 대답만 고정한다.
 func TestKindRendered(t *testing.T) {
 	for _, kind := range append(ElementKinds(), KindNone) {
-		if got, want := KindRendered(kind), kind != KindConnector; got != want {
-			t.Errorf("KindRendered(%v) = %v, want %v", kind, got, want)
+		if !KindRendered(kind) {
+			t.Errorf("KindRendered(%v) = false, want true", kind)
 		}
 	}
 }
