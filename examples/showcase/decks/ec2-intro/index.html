@@ -231,6 +231,53 @@
     transform: none;
   }
 
+  /* <image> is **one box and one picture**. The box has the size the author gave and the
+     picture is the actual fitted rect inside it (=PPTX xfrm). It is centered so that the empty
+     space of contain is not pushed to one side — the picture lands where the default object-fit
+     position (50% 50%) puts it. flex: 0 0 auto keeps the box from being squeezed when the
+     stack is taller than the stage (the fixed-box policy, same reasoning as .balpyo-text) — if
+     a squeezed box were measured, PPTX would draw the picture at that size.
+
+     min-*: 0 turns off the **automatic minimum size** of flex/grid items. With it on, the box
+     cannot be smaller than its content, so a box with a ratio grows because of the picture —
+     measured: a tall picture (8×16) in a fit="cover" w="fill" ratio="4:3" cell makes the box
+     **558×1116** instead of 558×418.5 (the picture's height:100% hits a cycle and resolves to
+     auto, and that height becomes the box's minimum height again), and the measured rect
+     extends past the author's box and off the slide. The box must be the size the author gave. */
+  .balpyo-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  /* display: block removes the space below the baseline of an inline <img> — that space exists
+     only in the box, not in the picture, so leaving it would put a few unexplained px between
+     the author's box and the picture. min-*: 0 turns off the automatic minimum size of flex
+     items (the automatic minimum size would stop max-* from shrinking a picture larger than the
+     box — and then contain would overflow). */
+  .balpyo-image-ink {
+    display: block;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  /* Rotation and flip — the declaration lives here, the values are inline custom properties
+     (imageRotateVar, imageFlipVar). The measure view must cancel this declaration so the
+     measured rect is the **pre-rotation** box: measured, rotate(15deg) on a 200×100 picture
+     makes getBoundingClientRect return 219.07×148.36. Flipping does not change the bbox, so
+     turning it off too leaves the measured rect the same (on shapes the flip sits on the
+     picture svg and the measure view leaves it alone — a picture is a single element, so it
+     cannot be split there, and need not be). */
+  .balpyo-image-transform {
+    transform: rotate(var(--balpyo-image-rotate, 0deg)) var(--balpyo-image-flip, scale(1));
+  }
+  html[data-balpyo-view="measure"] .balpyo-image-transform {
+    transform: none;
+  }
+
   .balpyo-connectors {
     position: absolute;
     left: 0;
@@ -613,10 +660,12 @@
 <div class="balpyo-col" data-balpyo-id="s1.2" data-balpyo-el="col" data-balpyo-enter="rise" data-balpyo-enter-delay="240" style="gap: 0px; width: 760px; position: absolute; left: 392px; top: 40px">
 <div class="balpyo-row" data-balpyo-id="s1.2.0" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center; height: 96px">
 <div class="balpyo-text" data-balpyo-id="s1.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 32px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start; width: 56px">01</div>
-<div class="balpyo-shape" data-balpyo-id="s1.2.0.1" data-balpyo-el="shape" style="width: 52px; height: 52px">
+<div class="balpyo-stack" data-balpyo-id="s1.2.0.1" data-balpyo-el="stack" style="width: 52px; height: 52px">
+<div class="balpyo-shape" data-balpyo-id="s1.2.0.1.0" data-balpyo-el="shape" style="width: 52px; height: 52px">
 <svg class="balpyo-shape-ink" aria-hidden="true" style="fill: hsl(from var(--balpyo-color-accent1) h s calc(l * 0.15 + 85)); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
-<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
-<p class="balpyo-text" data-balpyo-id="s1.2.0.1.0" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: center; font-style: normal; text-decoration: none">E</strong></p>
+</div>
+<div class="balpyo-image" style="place-self: center center">
+<img class="balpyo-image-ink" data-balpyo-id="s1.2.0.1.1" data-balpyo-el="image" src="assets/icons/elastic.svg" alt="" style="max-width: 100%; max-height: 100%">
 </div>
 </div>
 <div class="balpyo-col" data-balpyo-id="s1.2.0.2" data-balpyo-el="col" style="gap: 0px; flex-grow: 1">
@@ -629,10 +678,12 @@
 </div>
 <div class="balpyo-row" data-balpyo-id="s1.2.2" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center; height: 96px">
 <div class="balpyo-text" data-balpyo-id="s1.2.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 32px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start; width: 56px">02</div>
-<div class="balpyo-shape" data-balpyo-id="s1.2.2.1" data-balpyo-el="shape" style="width: 52px; height: 52px">
+<div class="balpyo-stack" data-balpyo-id="s1.2.2.1" data-balpyo-el="stack" style="width: 52px; height: 52px">
+<div class="balpyo-shape" data-balpyo-id="s1.2.2.1.0" data-balpyo-el="shape" style="width: 52px; height: 52px">
 <svg class="balpyo-shape-ink" aria-hidden="true" style="fill: hsl(from var(--balpyo-color-accent4) h s calc(l * 0.15 + 85)); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
-<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
-<p class="balpyo-text" data-balpyo-id="s1.2.2.1.0" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent4); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent4); text-align: center; font-style: normal; text-decoration: none">A</strong></p>
+</div>
+<div class="balpyo-image" style="place-self: center center">
+<img class="balpyo-image-ink" data-balpyo-id="s1.2.2.1.1" data-balpyo-el="image" src="assets/icons/anatomy.svg" alt="" style="max-width: 100%; max-height: 100%">
 </div>
 </div>
 <div class="balpyo-col" data-balpyo-id="s1.2.2.2" data-balpyo-el="col" style="gap: 0px; flex-grow: 1">
@@ -645,10 +696,12 @@
 </div>
 <div class="balpyo-row" data-balpyo-id="s1.2.4" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center; height: 96px">
 <div class="balpyo-text" data-balpyo-id="s1.2.4.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 32px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start; width: 56px">03</div>
-<div class="balpyo-shape" data-balpyo-id="s1.2.4.1" data-balpyo-el="shape" style="width: 52px; height: 52px">
+<div class="balpyo-stack" data-balpyo-id="s1.2.4.1" data-balpyo-el="stack" style="width: 52px; height: 52px">
+<div class="balpyo-shape" data-balpyo-id="s1.2.4.1.0" data-balpyo-el="shape" style="width: 52px; height: 52px">
 <svg class="balpyo-shape-ink" aria-hidden="true" style="fill: hsl(from var(--balpyo-color-accent2) h s calc(l * 0.15 + 85)); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
-<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
-<p class="balpyo-text" data-balpyo-id="s1.2.4.1.0" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent2); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent2); text-align: center; font-style: normal; text-decoration: none">C</strong></p>
+</div>
+<div class="balpyo-image" style="place-self: center center">
+<img class="balpyo-image-ink" data-balpyo-id="s1.2.4.1.1" data-balpyo-el="image" src="assets/icons/choosing.svg" alt="" style="max-width: 100%; max-height: 100%">
 </div>
 </div>
 <div class="balpyo-col" data-balpyo-id="s1.2.4.2" data-balpyo-el="col" style="gap: 0px; flex-grow: 1">
@@ -661,10 +714,12 @@
 </div>
 <div class="balpyo-row" data-balpyo-id="s1.2.6" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center; height: 96px">
 <div class="balpyo-text" data-balpyo-id="s1.2.6.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 32px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start; width: 56px">04</div>
-<div class="balpyo-shape" data-balpyo-id="s1.2.6.1" data-balpyo-el="shape" style="width: 52px; height: 52px">
+<div class="balpyo-stack" data-balpyo-id="s1.2.6.1" data-balpyo-el="stack" style="width: 52px; height: 52px">
+<div class="balpyo-shape" data-balpyo-id="s1.2.6.1.0" data-balpyo-el="shape" style="width: 52px; height: 52px">
 <svg class="balpyo-shape-ink" aria-hidden="true" style="fill: hsl(from var(--balpyo-color-accent3) h s calc(l * 0.15 + 85)); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
-<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
-<p class="balpyo-text" data-balpyo-id="s1.2.6.1.0" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: center; font-style: normal; text-decoration: none">$</strong></p>
+</div>
+<div class="balpyo-image" style="place-self: center center">
+<img class="balpyo-image-ink" data-balpyo-id="s1.2.6.1.1" data-balpyo-el="image" src="assets/icons/paying.svg" alt="" style="max-width: 100%; max-height: 100%">
 </div>
 </div>
 <div class="balpyo-col" data-balpyo-id="s1.2.6.2" data-balpyo-el="col" style="gap: 0px; flex-grow: 1">
@@ -677,10 +732,12 @@
 </div>
 <div class="balpyo-row" data-balpyo-id="s1.2.8" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center; height: 96px">
 <div class="balpyo-text" data-balpyo-id="s1.2.8.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 32px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start; width: 56px">05</div>
-<div class="balpyo-shape" data-balpyo-id="s1.2.8.1" data-balpyo-el="shape" style="width: 52px; height: 52px">
+<div class="balpyo-stack" data-balpyo-id="s1.2.8.1" data-balpyo-el="stack" style="width: 52px; height: 52px">
+<div class="balpyo-shape" data-balpyo-id="s1.2.8.1.0" data-balpyo-el="shape" style="width: 52px; height: 52px">
 <svg class="balpyo-shape-ink" aria-hidden="true" style="fill: hsl(from var(--balpyo-color-accent5) h s calc(l * 0.15 + 85)); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
-<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
-<p class="balpyo-text" data-balpyo-id="s1.2.8.1.0" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent5); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent5); text-align: center; font-style: normal; text-decoration: none">P</strong></p>
+</div>
+<div class="balpyo-image" style="place-self: center center">
+<img class="balpyo-image-ink" data-balpyo-id="s1.2.8.1.1" data-balpyo-el="image" src="assets/icons/production.svg" alt="" style="max-width: 100%; max-height: 100%">
 </div>
 </div>
 <div class="balpyo-col" data-balpyo-id="s1.2.8.2" data-balpyo-el="col" style="gap: 0px; flex-grow: 1">
