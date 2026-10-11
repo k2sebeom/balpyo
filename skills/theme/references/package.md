@@ -10,6 +10,7 @@ Four file groups whose jobs do not overlap. The complete Korean original is
 | `tokens.json` | **the names of values** — what `accent1`, `md`, `heading` are |
 | `components.json` | **appearance of roles and variants** — how big `role="body"` is, what colour a code keyword gets |
 | `layouts/*.css` | **placement** — where a layout puts its children |
+| `README.md` | optional, not loaded — the theme's usage guide for deck authors, printed verbatim by `balpyo theme info` |
 | `assets/` | optional pictures the theme owns — background images and the logo (PNG/JPEG), plus pictures slides use via `theme:` (PNG/JPEG/SVG) |
 
 ## `theme.json`

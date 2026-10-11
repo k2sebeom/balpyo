@@ -87,6 +87,22 @@ icon or illustration library under its `assets/`, point at it with `<image src="
 — never copy the files into the deck or spell out `themes/<name>/…`. `init` refuses to touch a directory that already holds a project — there
 is no `--force`.
 
+**Read the theme before writing a slide:**
+
+```bash
+balpyo theme info <theme> --project my-talk
+```
+
+It prints the theme's `README.md`, where the theme's author says what decks the theme suits, what
+each variant is for, and which `theme:` assets it ships and why. Treat that as the design brief.
+Use variants and icons for the purpose the README gives them, follow its layout advice, and
+prefer what it recommends over generic habits from this skill. If the README says the theme fits
+a different kind of deck than the one the user asked for, tell the user before writing. When
+the theme `extends` another, the second line names the parent: read the parent's README too
+(`balpyo theme info <parent>`) for anything the child does not cover. A theme without a README
+prints `this theme has no README.md`; in that case read its `components.json` variant names
+and list its `assets/`.
+
 **Then delete the three scaffold slides before writing your own.** They carry ids `cover`,
 `what`, and `end`, and a hand-written slide reusing one collides:
 `슬라이드 ID "cover"가 slides/001_title.slide:1:12와 충돌한다`. Read them first if you want to see
@@ -139,7 +155,8 @@ before faking them with images or hand-placed rectangles:
 - **Curves, steps, filled areas, odd silhouettes** → `<shape type="path" d="…">` in a 0–100 box;
   overlay several in a `<stack>`. Hatching is `fill="pattern(…)"`.
 - **Data** → `<chart>` (`bar` / `line` / `area` / `step`, several `<series>` with a legend).
-- **Icons** → SVG files via `<image src="assets/x.svg">` (or `theme:icons/…`).
+- **Icons** → the theme's own icons first (`theme:icons/…`, as its README describes them), else SVG
+  files via `<image src="assets/x.svg">`.
 - **A dark slide mid-deck** → `<slide invert>`, not literal colours.
 - **Highlighted words / a big number with a small unit** → `<mark>` and `<span size="…">` (smaller only).
 - **Motion** → `enter="rise"` (or `fade` / `zoom` / `wipe`) on `<slide>` staggers its children;
