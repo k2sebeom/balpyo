@@ -1,0 +1,9 @@
+/* end 슬롯 영역 — 인사와 연락처를 세로 가운데, 왼쪽에 쌓는다. 표지와 같은 왼쪽 축이다: 첫 장과
+   마지막 장이 같은 선에 글을 세우면 덱이 닫힌 느낌을 준다. 배경 그림의 빛이 바닥에 깔리므로
+   글은 그 위의 어두운 쪽에 선다. */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: auto auto;
+grid-template-areas: "title" "contact";
+row-gap: 16px;
+align-content: center;
