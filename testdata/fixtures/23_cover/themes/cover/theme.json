@@ -1,0 +1,9 @@
+{
+  "$comment": "cover extends minimal with layered backgrounds: the title layout is a photo under a horizontal overlay that fades from fg to transparent, and every other layout is the bg color under a radial glow from the lower-left corner. The overlay is a second fill above the base — PPTX keeps it as a locked full-bleed rectangle at the very back of the slide.",
+  "name": "cover",
+  "extends": "minimal",
+  "backgrounds": [
+    { "layouts": ["title"], "image": "assets/cover.jpg", "overlay": "gradient(fg fg/0, 90deg)" },
+    { "fill": "bg", "overlay": "radial(accent4/30 bg/0, at 0% 100%)" }
+  ]
+}
