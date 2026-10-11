@@ -222,7 +222,7 @@ func (e *engine) layoutFlex(b *box, innerW float64, innerH *float64, fr edges) f
 				continue
 			}
 			if row {
-				if _, ok := k.specified("height", cbh, cbhKnown); ok || k.ratio() > 0 {
+				if _, ok := k.specified("height", cbh, cbhKnown); ok {
 					continue
 				}
 				h := k.clampH(lineCross[li]-it.m.v(), cbh, cbhKnown, innerW)

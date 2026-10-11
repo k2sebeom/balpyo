@@ -181,3 +181,13 @@ func TestFlexAutoMinimumKeepsContentMinimum(t *testing.T) {
 		t.Errorf("a w=%.2f, b w=%.2f; want about 98.6 and 10.6", b["a"].w, b["b"].w)
 	}
 }
+
+// 교차 크기가 auto면 aspect-ratio가 있어도 stretch가 이긴다 — 비율 항목도 줄 높이로 늘어난다
+// (Chromium: 208×150).
+func TestFlexStretchBeatsAspectRatio(t *testing.T) {
+	_, b := layoutBody(t, baseCSS, `<div style="display: flex; width: 800px">`+
+		`<div id="a" style="width: 208px; aspect-ratio: 16/9"></div><div id="b" style="width: 150px; height: 150px"></div></div>`)
+	if !near(b["a"].w, 208) || !near(b["a"].h, 150) {
+		t.Errorf("a = %.2f×%.2f; want 208×150", b["a"].w, b["a"].h)
+	}
+}
