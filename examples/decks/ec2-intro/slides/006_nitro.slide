@@ -1,18 +1,20 @@
 <!-- Nitro — the system as a stack of isometric layers (cube shapes; the web draws them from the
-     measured box so the depth is the same on both axes), with three instances on top. A brace on
+     measured box so the depth is the same on both axes), with three instances on top. Layers are
+     written bottom-up because later siblings paint over earlier ones: each layer must cover the
+     top face of the one below, and the instances sit on the hypervisor's top face. A brace on
      the right marks what is offloaded; on the right, four benefits with tinted icon tiles. -->
 <slide id="nitro" enter="rise">
   <text variant="kicker">02 · Under the hood</text>
   <h2>The Nitro System: virtualization rebuilt in hardware</h2>
   <row gap="xl" align="center" grow="1">
     <stack w="600" h="430">
-      <shape type="cube" fill="tint(accent4, 70%)" border="1 solid tint(accent4, 40%)" w="110" h="96" x="40" y="0"/>
-      <shape type="cube" fill="tint(accent4, 70%)" border="1 solid tint(accent4, 40%)" w="110" h="96" x="180" y="0"/>
-      <shape type="cube" fill="tint(accent4, 70%)" border="1 solid tint(accent4, 40%)" w="110" h="96" x="320" y="0"/>
-      <shape type="cube" fill="accent4" border="none" w="560" h="96" pad="md" x="0" y="90"><p size="18" color="bg"><strong>Nitro Hypervisor</strong> — memory &amp; CPU allocation only</p></shape>
-      <shape type="cube" fill="accent5" border="none" w="560" h="96" pad="md" x="0" y="170"><p size="18" color="bg"><strong>Nitro Security Chip</strong> — hardware root of trust</p></shape>
-      <shape type="cube" fill="accent1" border="none" w="560" h="96" pad="md" x="0" y="250"><p size="18" color="bg"><strong>Nitro Cards</strong> — VPC · EBS · instance storage</p></shape>
       <shape type="cube" fill="fg" border="none" w="560" h="96" pad="md" x="0" y="330"><p size="18" color="bg"><strong>Host hardware</strong> — Graviton · Intel · AMD · GPUs</p></shape>
+      <shape type="cube" fill="accent1" border="none" w="560" h="96" pad="md" x="0" y="250"><p size="18" color="bg"><strong>Nitro Cards</strong> — VPC · EBS · instance storage</p></shape>
+      <shape type="cube" fill="accent5" border="none" w="560" h="96" pad="md" x="0" y="170"><p size="18" color="bg"><strong>Nitro Security Chip</strong> — hardware root of trust</p></shape>
+      <shape type="cube" fill="accent4" border="none" w="560" h="96" pad="md" x="0" y="90"><p size="18" color="bg"><strong>Nitro Hypervisor</strong> — memory &amp; CPU allocation only</p></shape>
+      <shape type="cube" fill="tint(accent4, 70%)" border="1 solid tint(accent4, 40%)" w="110" h="96" x="40" y="14"/>
+      <shape type="cube" fill="tint(accent4, 70%)" border="1 solid tint(accent4, 40%)" w="110" h="96" x="180" y="14"/>
+      <shape type="cube" fill="tint(accent4, 70%)" border="1 solid tint(accent4, 40%)" w="110" h="96" x="320" y="14"/>
       <shape type="right-brace" fill="none" border="2 solid muted" w="22" h="250" x="570" y="160"/>
     </stack>
     <col gap="lg" grow="1" basis="0">
