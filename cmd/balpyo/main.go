@@ -1,7 +1,7 @@
 // Command balpyo는 SOML 슬라이드를 웹과 네이티브 PPTX로 렌더하는 CLI다.
 //
 // 바이너리 하나가 모든 서브커맨드를 담는다는 계약을 유지한다. 지금의 표면은
-// `init`·`build`·`check`·`watch`·`preview`·`theme`·`version`이며, new/server/format/lsp는 아직이다.
+// `init`·`build`·`check`·`watch`·`preview`·`snap`·`theme`·`version`이며, new/server/format/lsp는 아직이다.
 package main
 
 import (
@@ -48,6 +48,8 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return runWatch(ctx, args[1:], stdout, stderr)
 	case "preview":
 		return runPreview(args[1:], stdout, stderr)
+	case "snap":
+		return runSnap(args[1:], stdout, stderr)
 	case "theme":
 		return runTheme(args[1:], stdout, stderr)
 	case "version":
@@ -71,6 +73,7 @@ Usage:
   balpyo check [options] run diagnostics without writing output
   balpyo watch [options] rebuild on change and reload the browser
   balpyo preview [opts]  build a review gallery with web and PPTX side by side
+  balpyo snap [options]  draw the slides to PNG/GIF with the builtin renderer (no browser)
   balpyo theme <command> install themes from GitHub or a local directory and manage installed themes
   balpyo version         print the version
 
@@ -112,6 +115,19 @@ preview options:
 
   Reviewing pptx needs OnlyOffice Document Builder, or else LibreOffice (soffice) and
   pdftoppm (poppler-utils).
+
+snap options:
+  --project .           project root
+  --theme ink           theme (as in build)
+  --out DIR             image directory (default: <outDir>/snap)
+  --slides 1,3-5        slides to draw (default all)
+  --scale 1             device pixels per stage px (2 for sharper images)
+  --gif                 also write deck.gif, one frame per reveal step
+  --outline             draw the measured box and id of every element
+  --strict              promote warnings to errors
+
+  A fast preview for writing: no browser, no OnlyOffice. Layout matches the browser box by
+  box, but line breaks and glyphs may differ — build output stays the reference.
 
 theme commands:
   balpyo theme install <GitHub URL | path> [name...] [--force]

@@ -247,6 +247,7 @@ balpyo build             # --target html,pptx · --theme · --out · --strict ·
 balpyo check             # 쓰지 않고 판정만 (CI 게이트)
 balpyo watch             # 고칠 때마다 다시 빌드 + 브라우저 자동 새로고침
 balpyo preview           # 웹/PPTX 렌더를 나란히 놓은 검수 갤러리
+balpyo snap              # 브라우저 없이 슬라이드를 PNG/GIF로 (--slides · --scale · --gif · --outline)
 balpyo version           # 버전 · 커밋 · 플랫폼
 ```
 
