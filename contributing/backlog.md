@@ -20,13 +20,6 @@
   한 번은 연결선 두 개(`terminate`, shutting-down → terminated)가 빠진 채로 나온다 — HTML은 같은 바이트다.
   `screenshot`이 `enter`/`draw` 전환이 끝나기를 기다리지 않는다. 찍기 전에 모든 스텝을 전개하고
   애니메이션을 끈다.
-- [진단] **테마 JSON 오류의 자리.** `components.json`의 모르는 필드가 `balpyo.json: error: theme "x":
-  cannot parse components.json: json: unknown field "lineHeight"`로 나온다 — 파일이 `balpyo.json`으로
-  찍히고 JSON 안의 경로가 없어서 저자가 항목을 하나씩 지워 가며 찾았다. 실제 파일 경로와 JSON 경로
-  (`variants.stat.lineHeight`)를 말한다.
-- [진단] **`$comment-*` 키의 일관성.** `tokens.json`은 `$comment-accent` 같은 키를 받는데 `components.json`은
-  `unknown field "$comment-defaults"`로 거부한다. 문서는 "`$comment` 예외"라고만 한다. 두 파일이 같은
-  규칙을 갖게 한다.
 - [진단] **첫 경고가 원인이 아닌 상자를 가리킨다.** 너무 낮은 `<shape h="96">` 안의 `<col>`이 처음에는
   `<col> leaves the stage at the bottom by 11px`로 나왔고, 진짜 원인(`<col> overflows its parent
   <shape>`)은 배치를 옮긴 뒤에야 나왔다. 부모 넘침을 스테이지 이탈보다 먼저 말한다.

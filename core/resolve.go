@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"io/fs"
 	"sort"
 	"strconv"
@@ -55,6 +56,11 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 	// 저자가 방금 쓴 파일이므로 내장 테마처럼 panic할 수 없다.
 	pkg, err := loadThemeNamed(fsys, name)
 	if err != nil {
+		// 테마 파일 안의 틀린 자리는 그 파일을 가리킨다 — 이름을 요청한 `balpyo.json`이 아니다.
+		var fe *themeFileError
+		if errors.As(err, &fe) {
+			return soml.Diagnostics{fe.diagnostic()}
+		}
 		return soml.Diagnostics{soml.Errorf(ConfigFile, soml.Span{}, "%s", err)}
 	}
 	deck.Theme = pkg.tokens

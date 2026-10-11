@@ -121,9 +121,10 @@ Formats, required names, and worked examples: `references/package.md`. Shortest 
   variants may use the authoring grammar — `gradient(accent1 accent6, 135deg)`,
   `tint(accent1, 40%)` — so a deck says `variant="hero"` and the theme owns the gradient; roles,
   table cells, and code tokens take a single token name. A `#RRGGBB` is a load error even if no
-  slide uses that variant. Unknown keys are errors (`$comment` excepted). Newer sections:
-  `tracking`/`case` on roles and variants (tracked upper-case kickers belong here; authors have
-  no attribute for them), `text.mark.highlight` (the `<mark>` colour; one colour, no gradient),
+  slide uses that variant. Unknown keys are errors in both `tokens.json` and
+  `components.json`; any key starting with `$comment` (`$comment-accent`, …) is a comment,
+  anywhere. Newer sections: `tracking`/`case` on roles and variants (tracked upper-case
+  kickers belong here; authors have no attribute for them), `text.mark.highlight` (the `<mark>` colour; one colour, no gradient),
   `connector` (default line and end markers plus variants), and `pattern(…)` hatches in shape
   fills.
 - **`layouts/<name>.css`** — a **selector-less declaration list** for flow mode, and

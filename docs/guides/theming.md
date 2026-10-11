@@ -153,7 +153,8 @@ harbor는 예제 덱 셋을 모두 경고 없이 빌드한다 — 내장 테마�
 - 역할이 가리키는 `font`·`color`는 **그 테마에 있는** 토큰 이름이어야 한다 (리터럴 색은 거부다 —
   PPTX의 테마 색 편집을 끊는다).
 - `theme.json`의 `layouts` 선언과 `layouts/*.css` 파일 집합이 **양방향으로** 같아야 한다.
-- `components.json`의 모르는 키는 에러다 (닫힌 어휘).
+- `tokens.json`·`components.json`의 모르는 키는 에러다 (닫힌 어휘 — `$comment`로 시작하는 키만 예외).
+  진단은 그 파일의 줄:칸과 JSON 안의 경로(`text.variants["stat"].lineHeight`)를 가리킨다.
 
 문구와 전체 목록은 [테마 패키지](../reference/theme.md)의 "빌드가 멈추거나 경고하는 조건"에 있다.
 

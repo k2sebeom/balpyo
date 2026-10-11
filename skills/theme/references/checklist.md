@@ -73,7 +73,7 @@ Components
 - [ ] `connector` lines use the border grammar with a token colour (no gradient, no `none`);
       `start`/`end` are `none`, `arrow`, or `dot`.
 - [ ] `pattern(…)` appears only in shape fills (`shape.default` / shape variants).
-- [ ] No unknown keys anywhere in `components.json` (`$comment` is the only exception).
+- [ ] No unknown keys anywhere in `tokens.json` or `components.json` (keys starting with `$comment` are the only exception).
 - [ ] `code.tabSize` ≥ 1; every `code.tokens` class is one of `keyword` `name` `attr` `string`
       `number` `comment` `punct`, none repeated, each colour a token name.
 

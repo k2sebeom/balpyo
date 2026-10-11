@@ -183,7 +183,8 @@ missing; LibreOffice and PowerPoint use the name in `a:ea` literally. This bites
 
 ## `components.json`
 
-Unknown keys are errors (`$comment` excepted). All five text roles must be present and
+Unknown keys are errors (keys starting with `$comment` excepted — the same rule as
+`tokens.json`); the error names the file, line:col and JSON path. All five text roles must be present and
 complete; `size` and `lineHeight` must be > 0, `align` must be there, and `font`/`color` must
 name tokens **this** theme has. Every other colour in the file — defaults, variants, images,
 tables — is checked at load too: a literal `#RRGGBB` (or a gradient with a literal stop) is an
