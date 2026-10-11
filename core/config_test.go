@@ -84,6 +84,10 @@ func TestLoadConfigErrorsPointIntoTheFile(t *testing.T) {
 		want string
 	}{
 		{"{\n  \"title\": 1\n}", "balpyo.json:2:12: title must be a string, not number"},
+		{"{\n  \"tilte\": \"x\"\n}", `balpyo.json:2:3: unknown key "tilte" at tilte`},
+		{`{"targets": {"pptx": {"mdoe": "image"}}}`, `balpyo.json:1:23: unknown key "mdoe" at targets.pptx.mdoe`},
+		// 테마 파일의 `$comment` 주석 규칙은 balpyo.json에 없다 — 이 파일은 닫혀 있다.
+		{`{"$comment": "x"}`, `balpyo.json:1:2: unknown key "$comment"`},
 		{`{"pageNumber": "yes"}`, "balpyo.json:1:16: pageNumber must be true or false, not string"},
 		{`{"targets": {"pptx": {"mode": 3}}}`, "targets.pptx.mode must be a string, not number"},
 		{`{"title": "x",}`, "balpyo.json:1:15: invalid JSON"},

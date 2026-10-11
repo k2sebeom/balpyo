@@ -43,7 +43,7 @@ func (e *themeFileError) diagnostic() soml.Diagnostic {
 // 지워 가며 찾아야 한다. 그리고 접두사 규칙(`$comment*`)을 표현할 수 없다.
 func decodeThemeJSON(data []byte, file string, v any, closed bool) error {
 	if closed {
-		if err := checkThemeKeys(data, 0, reflect.TypeOf(v).Elem(), "", data); err != nil {
+		if err := checkJSONKeys(data, 0, reflect.TypeOf(v).Elem(), "", data, true); err != nil {
 			var fe *themeFileError
 			if errors.As(err, &fe) {
 				fe.file = file
@@ -81,9 +81,10 @@ func jsonDecodeError(data []byte, file string, err error) *themeFileError {
 	return fe
 }
 
-// checkThemeKeys는 raw(파일 전체 data의 base 오프셋에서 시작하는 값)를 t의 스키마와 대조한다.
-// 문법 오류는 여기서 말하지 않는다 — 뒤의 json.Unmarshal이 위치와 함께 말한다.
-func checkThemeKeys(raw []byte, base int, t reflect.Type, at string, data []byte) error {
+// checkJSONKeys는 raw(파일 전체 data의 base 오프셋에서 시작하는 값)를 t의 스키마와 대조한다.
+// comments면 `$comment`로 시작하는 키를 문서 주석으로 건너뛴다 — 테마 파일의 규칙이고, `balpyo.json`은
+// 그 규칙 없이 닫혀 있다. 문법 오류는 여기서 말하지 않는다 — 뒤의 디코딩이 위치와 함께 말한다.
+func checkJSONKeys(raw []byte, base int, t reflect.Type, at string, data []byte, comments bool) error {
 	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
@@ -105,7 +106,7 @@ func checkThemeKeys(raw []byte, base int, t reflect.Type, at string, data []byte
 			if err := dec.Decode(&value); err != nil {
 				return nil
 			}
-			if strings.HasPrefix(key, "$comment") {
+			if comments && strings.HasPrefix(key, "$comment") {
 				continue
 			}
 			field, ok := jsonField(t, key)
@@ -114,7 +115,7 @@ func checkThemeKeys(raw []byte, base int, t reflect.Type, at string, data []byte
 					msg: fmt.Sprintf("unknown key %q at %s", key, joinPath(at, key))}
 			}
 			valueStart := base + int(dec.InputOffset()) - len(value)
-			if err := checkThemeKeys(value, valueStart, field.Type, joinPath(at, key), data); err != nil {
+			if err := checkJSONKeys(value, valueStart, field.Type, joinPath(at, key), data, comments); err != nil {
 				return err
 			}
 		}
@@ -129,7 +130,7 @@ func checkThemeKeys(raw []byte, base int, t reflect.Type, at string, data []byte
 				return nil
 			}
 			valueStart := base + int(dec.InputOffset()) - len(value)
-			if err := checkThemeKeys(value, valueStart, t.Elem(), at+elementLabel(value, i), data); err != nil {
+			if err := checkJSONKeys(value, valueStart, t.Elem(), at+elementLabel(value, i), data, comments); err != nil {
 				return err
 			}
 		}

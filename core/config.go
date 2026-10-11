@@ -11,7 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
+	"reflect"
 
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -105,17 +105,20 @@ func LoadConfigWithThemes(projectDir string, home fs.FS) (Config, error) {
 		return Config{}, fmt.Errorf("cannot read %s: %w", ConfigFile, err)
 	}
 
+	// 키 검사를 DisallowUnknownFields에 맡기지 않는 이유: 그 에러는 타입이 없고 자리도 말하지 않는다.
+	// 스키마를 따라 걷는 검사는 틀린 키의 줄:칸과 경로(`targets.pptx.mdoe`)를 낸다.
+	if err := checkJSONKeys(data, 0, reflect.TypeOf(cfg), "", data, false); err != nil {
+		var fe *themeFileError
+		if errors.As(err, &fe) {
+			fe.file = ConfigFile
+			return Config{}, fe
+		}
+		return Config{}, &themeFileError{file: ConfigFile, msg: err.Error()}
+	}
 	// 파일에 있는 필드만 덮어쓰도록 기본값이 담긴 cfg에 그대로 언마샬한다.
 	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.DisallowUnknownFields()
 	if err := dec.Decode(&cfg); err != nil {
-		fe := jsonDecodeError(data, ConfigFile, err)
-		// DisallowUnknownFields의 에러는 타입이 없어 문구로만 알아본다 — 접두사 `json: `를 떼고
-		// 테마 파일과 같은 말(`unknown key`)로 낸다.
-		if name, ok := strings.CutPrefix(err.Error(), "json: unknown field "); ok {
-			fe.msg = "unknown key " + name
-		}
-		return Config{}, fe
+		return Config{}, jsonDecodeError(data, ConfigFile, err)
 	}
 	// Decoder는 값 하나만 읽고 멈춘다 — 뒤에 남은 것을 보지 않으면 붙여 넣다 남은 조각
 	// (`{…} {…}`)이 조용히 버려지고, 저자는 두 번째 객체의 값이 먹었다고 믿는다.
