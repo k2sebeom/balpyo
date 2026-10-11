@@ -118,7 +118,7 @@ func TestDiagnose(t *testing.T) {
 			name:  "콘텐츠 박스 이탈 (잰 값이 없으면 기본 여백)",
 			deck:  one,
 			rects: map[string]Rect{"s0.0": {X: 64, Y: 64, W: 1152, H: 626}},
-			want:  []string{"overflows the content box at the bottom by 34px"},
+			want:  []string{"overflows the content box at the bottom by 34px — this layout's content box is (64.0,64.0 1152.0×592.0) (a 64px stage margin unless the theme's layout CSS changes it)"},
 		},
 		{
 			name:  "좌표를 쓴 요소의 여백 침범은 저자의 선택이다",

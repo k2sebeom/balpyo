@@ -136,7 +136,7 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 			content := g.ContentBox(ref.Slide)
 			if dir, over := escape(box.Rect, content); over > overflowTolerance {
 				d := soml.Warningf(ref.Source, ref.Span,
-					"<%s> overflows the content box %s by %s — this layout's content box is %s (the theme sets the margins)",
+					"<%s> overflows the content box %s by %s — this layout's content box is %s (a 64px stage margin unless the theme's layout CSS changes it)",
 					ref.El, dir, px(over), content)
 				warning = &d
 			}
