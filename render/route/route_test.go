@@ -228,20 +228,18 @@ func TestRouteSidesFacingAway(t *testing.T) {
 	}
 }
 
-// 상자 둘을 여러 자리에 놓고 서로 다른 두 면의 모든 조합에서, 꺾인 경로는 요청한 면 바깥으로 나가
-// 바깥에서 들어오고 어느 상자도 가로지르지 않는다. 같은 면끼리의 U자는 여기서 보지 않는다 — 한 상자가
-// 다른 상자를 그 면 쪽에서 가리면 U자도 그 상자를 지난다.
+// 상자 둘을 여러 자리에 놓고 두 면의 모든 조합(같은 면끼리의 U자 포함)에서, 꺾인 경로는 요청한 면
+// 바깥으로 나가 바깥에서 들어오고 어느 상자도 가로지르지 않는다 — 한 상자가 다른 상자를 그 면 쪽에서
+// 가리는 자리(바로 위 · 아래 · 옆, 반쯤 비낀 자리)도 포함한다.
 func TestRouteNeverCrossesTheBoxes(t *testing.T) {
 	a := Rect{X: 500, Y: 300, W: 160, H: 80}
 	sides := []Side{Top, Right, Bottom, Left}
-	for _, d := range []Point{{-400, -200}, {0, -200}, {400, -200}, {-400, 0}, {400, 0}, {-400, 200}, {0, 200}, {400, 200}, {-100, 200}, {300, 40}} {
+	for _, d := range []Point{{-400, -200}, {0, -200}, {400, -200}, {-400, 0}, {400, 0}, {-400, 200}, {0, 200}, {400, 200}, {-100, 200}, {300, 40},
+		{60, -150}, {-60, 150}, {300, -30}, {-300, 30}} {
 		b := Rect{X: a.X + d.X, Y: a.Y + d.Y, W: 160, H: 80}
 		for _, kind := range []Kind{Elbow, Curved} {
 			for _, fs := range sides {
 				for _, ts := range sides {
-					if fs == ts {
-						continue
-					}
 					p, err := Route(a, b, fs, ts, kind)
 					if err != nil {
 						t.Fatal(err)
