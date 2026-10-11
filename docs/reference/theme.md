@@ -585,7 +585,9 @@ acme/slide-themes
 | 로드되지 않는 테마 | `…: theme "acme" cannot be loaded, so nothing was installed: …` |
 
 설치한 테마의 레이아웃 CSS 경고(외관 프로퍼티)는 **설치할 때** 나오고 빌드에서는 나오지 않는다 —
-덱 저자가 고칠 수 없는 파일이 `--strict` 빌드를 막지 않게 하기 위해서다. 명령의 전체 표면
+덱 저자가 고칠 수 없는 파일이 `--strict` 빌드를 막지 않게 하기 위해서다. 경고는 고칠 원본 파일을
+가리킨다 — 로컬 디렉토리에서 설치했다면 그 디렉토리 안의 경로(`/work/src2/w/layouts/content.css`),
+GitHub에서 받았다면 저장소 안의 자리(`github.com/acme/themes/dark/layouts/title.css`)다. 명령의 전체 표면
 (`list`·`info`·`remove`·`update`, 받는 주소 모양)은 [CLI](cli.md#balpyo-theme)에 있다.
 
 ### 이름이 겹칠 때
