@@ -53,47 +53,13 @@ func (e *engine) image(src string) *decodedImage {
 			w, h := svgNaturalSize(svg)
 			out = &decodedImage{svg: svg, w: w, h: h}
 		} else if img, _, err := image.Decode(bytes.NewReader(data)); err == nil {
-			img = orientImage(img, soml.JPEGOrientation(data))
+			// 브라우저는 EXIF 방향대로 세운 그림을 그리고 잰다 — 고유 크기도 세운 그림의 것이어야 측정이 같다.
+			img = soml.JPEGOrientation(data).Upright(img)
 			b := img.Bounds()
 			out = &decodedImage{img: img, w: float64(b.Dx()), h: float64(b.Dy())}
 		}
 	}
 	e.images[src] = out
-	return out
-}
-
-// orientImage는 EXIF 방향대로 픽셀을 세운다 — 브라우저가 그렇게 그리고 재므로 고유 크기도 세운 그림의
-// 것이어야 측정이 브라우저와 같다. 대칭을 먼저 하고 시계 방향으로 돌린다 (soml.Orientation).
-func orientImage(img image.Image, o soml.Orientation) image.Image {
-	rotate, flip := o.Rotation(), o.FlipH()
-	if rotate == 0 && !flip {
-		return img
-	}
-	b := img.Bounds()
-	w, h := b.Dx(), b.Dy()
-	dw, dh := w, h
-	if o.SwapsAxes() {
-		dw, dh = h, w
-	}
-	out := image.NewRGBA(image.Rect(0, 0, dw, dh))
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
-			sx := x
-			if flip {
-				sx = w - 1 - x
-			}
-			dx, dy := sx, y
-			switch rotate {
-			case 90:
-				dx, dy = h-1-y, sx
-			case 180:
-				dx, dy = w-1-sx, h-1-y
-			case 270:
-				dx, dy = y, w-1-sx
-			}
-			out.Set(dx, dy, img.At(b.Min.X+x, b.Min.Y+y))
-		}
-	}
 	return out
 }
 
