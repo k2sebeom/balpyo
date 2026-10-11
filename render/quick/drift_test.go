@@ -1,7 +1,11 @@
 package quick_test
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"math"
 	"os"
 	"path/filepath"
@@ -105,6 +109,82 @@ func TestDrift(t *testing.T) {
 	t.Logf("%-28s %s", "TOTAL", summary(all))
 	if share := within(all, 1); share < driftFloor {
 		t.Errorf("only %.1f%% of boxes are within 1px of the browser (floor %.0f%%)", 100*share, 100*driftFloor)
+	}
+}
+
+// image-full의 media 그림이 슬롯을 암묵으로 채우면(w·h·ratio 없음) 내장 엔진도 브라우저처럼 그림을
+// `1fr` 행에 맞추고 caption을 아래 `auto` 행에 놓는다. 16:9 그림은 스테이지 폭에서 스테이지 높이와
+// 같아지므로, 행의 최소 기여를 내용 높이로 잡으면 그림이 스테이지를 다 먹고 caption이 밖으로 밀린다.
+func TestDriftImageFullCaption(t *testing.T) {
+	testkit.RequireChromium(t)
+	img := image.NewRGBA(image.Rect(0, 0, 640, 360))
+	for y := 0; y < 360; y++ {
+		for x := 0; x < 640; x++ {
+			img.Set(x, y, color.RGBA{0x30, 0x60, 0x90, 0xff})
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	for name, body := range map[string][]byte{
+		"balpyo.json": []byte(`{"title": "image-full", "theme": "minimal"}`),
+		"slides/01.slide": []byte(`<slide id="full" layout="image-full">
+  <image slot="media" src="assets/photo.png" fit="cover" alt="photo"/>
+  <text slot="caption" role="caption">CAPTION TEXT</text>
+</slide>`),
+		"assets/photo.png": buf.Bytes(),
+	} {
+		p := filepath.Join(dir, filepath.FromSlash(name))
+		os.MkdirAll(filepath.Dir(p), 0o755)
+		if err := os.WriteFile(p, body, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	deck, diags, err := pipeline.LoadDeck(pipeline.Options{ProjectDir: dir})
+	if err != nil || diags.Err() != nil {
+		t.Fatalf("load: %v %v", err, diags)
+	}
+	files, err := web.NewForMeasurement().Render(deck)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := t.TempDir()
+	for _, name := range files.Paths() {
+		p := filepath.Join(out, filepath.FromSlash(name))
+		os.MkdirAll(filepath.Dir(p), 0o755)
+		os.WriteFile(p, files[name], 0o644)
+	}
+	html := filepath.Join(out, web.IndexFile)
+	session, err := geom.Launch("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
+	want, err := session.Measure(deck, html)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := quick.Measurer{}.Measure(deck, html)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"s0.0", "s0.1"} {
+		wb, ok := want.Box(id)
+		if !ok {
+			t.Fatalf("browser did not measure %s", id)
+		}
+		gb, ok := got.Box(id)
+		if !ok {
+			t.Errorf("%s: builtin engine has no box (web %s)", id, wb.Rect)
+			continue
+		}
+		e := math.Max(math.Max(math.Abs(wb.Rect.X-gb.Rect.X), math.Abs(wb.Rect.Y-gb.Rect.Y)),
+			math.Max(math.Abs(wb.Rect.W-gb.Rect.W), math.Abs(wb.Rect.H-gb.Rect.H)))
+		if e > 1 {
+			t.Errorf("%s: web %s, quick %s", id, wb.Rect, gb.Rect)
+		}
 	}
 }
 
