@@ -560,7 +560,12 @@ func (e *engine) layoutGrid(b *box, innerW float64, innerH *float64, fr edges) f
 	if hKnown {
 		availH = *innerH
 	}
-	rowSizes := e.sizeTracks(rows, items, false, availH, hKnown, rowGap, func(it *gridItem, _ bool) float64 {
+	rowSizes := e.sizeTracks(rows, items, false, availH, hKnown, rowGap, func(it *gridItem, min bool) float64 {
+		if min {
+			if v, ok := rowMinContribution(it); ok {
+				return v
+			}
+		}
 		return measure(it)
 	}, b.st.get("align-content"))
 	total := 0.0
@@ -670,6 +675,26 @@ func (e *engine) layoutGrid(b *box, innerW float64, innerH *float64, fr edges) f
 		k.y = fr.t + ay + it.m.t + jy
 	}
 	return total
+}
+
+// rowMinContribution은 행 트랙에 들어가는 항목의 최소 기여다 — 열의 gridContribution과 같은 규칙이다.
+// 높이가 auto이거나 칸에 기대는 퍼센트이고 min-height가 정해져 있으면 최소 기여는 그 값이다
+// (내용 높이가 아니다). 정해진 px 높이나 auto min-height면 ok=false — 내용 기반 기여를 쓴다.
+//
+// 이 규칙이 없으면 `1fr`(= minmax(auto, 1fr)) 행의 바닥이 내용 높이가 된다: image-full의 media
+// 그림(min-height: 0, height: 100%)이 폭 1280에서 그림 비율대로 잰 높이로 행을 굳혀, 아래
+// `auto` 행(caption)이 스테이지 밖으로 밀려난다. 브라우저는 min-height: 0을 바닥으로 삼아 fr
+// 행이 남는 공간에 맞춰 줄어든다.
+func rowMinContribution(it *gridItem) (float64, bool) {
+	k := it.b
+	if _, ok := k.specified("height", 0, false); ok {
+		return 0, false
+	}
+	mh, ok := k.specified("min-height", 0, false)
+	if !ok {
+		return 0, false
+	}
+	return math.Max(mh, k.frame(0).v()) + it.m.v(), true
 }
 
 func justifySelf(k *box, justifyItems string) string {

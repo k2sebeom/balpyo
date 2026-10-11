@@ -115,6 +115,20 @@ func TestGridTemplateAreas(t *testing.T) {
 	}
 }
 
+// 행의 최소 기여는 min-height다 — 높이가 퍼센트(칸에 기댄다)이고 min-height: 0인 항목은 내용이
+// 더 커도 `1fr` 행을 굳히지 않는다. 내용 높이를 바닥으로 삼으면 fr 행이 컨테이너를 다 먹고
+// 아래 auto 행이 컨테이너 밖으로 밀려난다 (image-full의 media 그림 + caption).
+func TestGridRowMinContributionUsesMinHeight(t *testing.T) {
+	_, b := layoutBody(t, baseCSS, `<div id="g" style="display: grid; width: 1280px; height: 720px; row-gap: 24px; `+
+		`grid-template-rows: 1fr auto; grid-template-areas: 'media' 'caption'">`+
+		`<div id="m" style="grid-area: media; height: 100%; min-height: 0"><div style="height: 900px"></div></div>`+
+		`<div id="c" style="grid-area: caption; height: 25px"></div></div>`)
+	if !near(b["m"].y, 0) || !near(b["m"].h, 671) || !near(b["c"].y, 695) || !near(b["c"].h, 25) {
+		t.Errorf("media y=%.1f h=%.1f, caption y=%.1f h=%.1f; want media 0+671, caption 695+25",
+			b["m"].y, b["m"].h, b["c"].y, b["c"].h)
+	}
+}
+
 // grid 컨테이너의 절대 배치 자식은 grid-area가 정한 영역을 포함 블록으로 쓴다 — 끝 줄이 auto인
 // 변은 padding box 끝까지 간다.
 func TestAbsoluteInGridArea(t *testing.T) {
