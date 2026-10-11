@@ -164,6 +164,25 @@ func Route(from, to Rect, fromSide, toSide Side, kind Kind) (Path, error) {
 	if sameAxis {
 		bends = 2
 	}
+	// 같은 면끼리의 U자에서 한 상자가 다른 상자를 그 면 쪽에서 가리면(위 → 위인데 상대가 바로 위에
+	// 있으면) 안쪽 상자의 첫 토막이 바깥 상자를 꿰뚫는다. 그때는 안쪽 끝이 두 상자 사이 틈에서 꺾어
+	// 두 상자를 옆으로 비켜 간 뒤 바깥 상자 너머로 넘어간다 — 꺾임 넷이다.
+	// 곡선은 꺾는 자리 사이를 비스듬히 휘므로, 끝점이 상대 상자의 구간에서 detourGap 안쪽이기만 해도
+	// 그 모서리를 스친다 — 곡선은 그만큼 넓게 가로막힌 것으로 본다.
+	blocked, margin := Auto, 0.0
+	if kind == Curved {
+		margin = detourGap
+	}
+	if kind != Straight && fromSide == toSide {
+		switch {
+		case hides(to, p.Start, fromSide, margin):
+			blocked = fromSide
+			bends = 4
+		case hides(from, p.End, toSide, margin):
+			blocked = toSide
+			bends = 4
+		}
+	}
 	if kind != Straight && fromSide != toSide {
 		s, o := fromSide.sign(), toSide.sign()
 		h, eh := fromSide.horizontal(), toSide.horizontal()
@@ -213,6 +232,15 @@ func Route(from, to Rect, fromSide, toSide Side, kind Kind) (Path, error) {
 		p.Off = Point{math.Min(p.Start.X, p.End.X), math.Min(p.Start.Y, p.End.Y)}
 	}
 	switch {
+	case uTurn && bends == 4:
+		// 첫 · 셋째 조정값은 국소 가로 축(면에서 나가는 축)의 자리이고, 둘째는 두 상자 옆을 지나는 자리다.
+		outer := p.uTurnAdj(from, to, kind)
+		side := p.ratio(middleLane(from, to, p.Start, p.End, !blocked.horizontal()), false)
+		if hides(to, p.Start, fromSide, margin) {
+			p.Adj = []float64{p.ratio(lane(to, p.Start, fromSide), true), side, outer}
+		} else {
+			p.Adj = []float64{outer, side, p.ratio(lane(from, p.End, toSide), true)}
+		}
 	case uTurn:
 		p.Adj = []float64{p.uTurnAdj(from, to, kind)}
 	case bends == 2:
@@ -314,6 +342,23 @@ func lane(other Rect, end Point, side Side) float64 {
 		return math.Max(e, far) + detourGap
 	}
 	return math.Min(e, far) - detourGap
+}
+
+// hides는 박스 other가 끝점 end에서 면 side 바깥으로 곧게 나가는 토막을 가로막는지다 — other가 통째로
+// 그 면 바깥에 있고, 끝점이 other의 다른 축 구간을 양쪽으로 margin만큼 넓힌 구간 안쪽에 있으면 그렇다.
+func hides(other Rect, end Point, side Side, margin float64) bool {
+	h, s := side.horizontal(), side.sign()
+	lo, hi := span(other, h)
+	near := lo
+	if s < 0 {
+		near = hi
+	}
+	if (near-along(end, h))*s <= 0 {
+		return false
+	}
+	plo, phi := span(other, !h)
+	e := along(end, !h)
+	return e > plo-margin && e < phi+margin
 }
 
 // middleLane은 S자 경로의 가운데 토막이 지나는 자리(horizontal 축의 좌표)다 — 두 박스가 그 축에서
