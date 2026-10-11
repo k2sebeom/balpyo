@@ -562,7 +562,7 @@ func (e *engine) layoutGrid(b *box, innerW float64, innerH *float64, fr edges) f
 	}
 	rowSizes := e.sizeTracks(rows, items, false, availH, hKnown, rowGap, func(it *gridItem, min bool) float64 {
 		if min {
-			if v, ok := rowMinContribution(it); ok {
+			if v, ok := rowMinContribution(it, areaW(it)); ok {
 				return v
 			}
 		}
@@ -685,7 +685,10 @@ func (e *engine) layoutGrid(b *box, innerW float64, innerH *float64, fr edges) f
 // 그림(min-height: 0, height: 100%)이 폭 1280에서 그림 비율대로 잰 높이로 행을 굳혀, 아래
 // `auto` 행(caption)이 스테이지 밖으로 밀려난다. 브라우저는 min-height: 0을 바닥으로 삼아 fr
 // 행이 남는 공간에 맞춰 줄어든다.
-func rowMinContribution(it *gridItem) (float64, bool) {
+//
+// aw는 항목의 grid 영역 폭이다. 퍼센트 padding은 포함 블록의 inline 크기에 대해 풀리므로 frame도
+// 이 폭으로 푼다 — 0으로 풀면 퍼센트 padding이 빠져 행이 항목의 padding box보다 작아진다.
+func rowMinContribution(it *gridItem, aw float64) (float64, bool) {
 	k := it.b
 	if _, ok := k.specified("height", 0, false); ok {
 		return 0, false
@@ -694,7 +697,7 @@ func rowMinContribution(it *gridItem) (float64, bool) {
 	if !ok {
 		return 0, false
 	}
-	return math.Max(mh, k.frame(0).v()) + it.m.v(), true
+	return math.Max(mh, k.frame(aw).v()) + it.m.v(), true
 }
 
 func justifySelf(k *box, justifyItems string) string {
