@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -56,7 +57,7 @@ type Targets struct {
 
 // PPTXTarget은 PPTX 타깃 옵션이다.
 type PPTXTarget struct {
-	// Mode는 "native"(편집 가능한 도형) 또는 "image"(충실도 100%·편집 불가 폴백)다.
+	// Mode는 PPTX 렌더 모드다. 구현된 모드는 "native"(편집 가능한 도형) 하나뿐이다.
 	Mode PPTXMode `json:"mode"`
 }
 
@@ -66,8 +67,6 @@ type PPTXMode string
 const (
 	// PPTXNative는 네이티브 도형으로 조립한다 — 제품의 기본값.
 	PPTXNative PPTXMode = "native"
-	// PPTXImage는 슬라이드를 그림 한 장으로 굽는 폴백이다. Phase 2에서 구현한다.
-	PPTXImage PPTXMode = "image"
 )
 
 // DefaultConfig는 balpyo.json이 없거나 필드가 비었을 때 쓰는 기본값이다.
@@ -138,6 +137,14 @@ func (c *Config) Validate() error {
 	if c.SlidesDir == "" {
 		c.SlidesDir = def.SlidesDir
 	}
+	// 슬라이드는 프로젝트 파일시스템(os.DirFS)으로 읽으므로 slidesDir은 그 안의 경로여야
+	// 한다. 여기서 막지 않으면 `../`나 절대 경로가 fs 층의 날것 에러("invalid argument")로
+	// 터져 저자가 원인을 알 수 없다. `./talk/` 같은 표기는 정규화해서 받는다.
+	slides := path.Clean(filepath.ToSlash(c.SlidesDir))
+	if filepath.IsAbs(c.SlidesDir) || !fs.ValidPath(slides) {
+		return fmt.Errorf("slidesDir: %q must be a relative path inside the project", c.SlidesDir)
+	}
+	c.SlidesDir = slides
 	if c.OutDir == "" {
 		c.OutDir = def.OutDir
 	}
@@ -154,11 +161,10 @@ func (c *Config) Validate() error {
 	// 이유는 모르는 variant와 갈라지는 자리다: variant 어휘는 테마의 사유물이지만 테마 이름의
 	// 어휘는 프로젝트가 소유하므로, 목록 밖 이름은 오타이거나 아직 만들지 않은 테마이고 둘 다
 	// 저자가 즉시 고칠 수 있다.
-	switch c.Targets.PPTX.Mode {
-	case PPTXNative, PPTXImage:
-	default:
-		return fmt.Errorf("targets.pptx.mode: unknown mode %q (%q or %q)",
-			string(c.Targets.PPTX.Mode), PPTXNative, PPTXImage)
+	// 구현되지 않은 모드는 받지 않는다 — 받아 주면 네이티브와 같은 산출물이 조용히 나온다.
+	if c.Targets.PPTX.Mode != PPTXNative {
+		return fmt.Errorf("targets.pptx.mode: unknown mode %q (%q is the only mode)",
+			string(c.Targets.PPTX.Mode), PPTXNative)
 	}
 	return nil
 }
