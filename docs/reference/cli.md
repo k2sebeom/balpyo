@@ -517,6 +517,7 @@ GitHub 저장소나 이 기계의 디렉토리에서 테마를 설치하고, 설
 ```bash
 balpyo theme install <GitHub URL | path> [name...] [--force]
 balpyo theme list [--project .]
+balpyo theme info <name> [--project .]
 balpyo theme remove <name...>
 balpyo theme update [name...]
 ```
@@ -525,6 +526,7 @@ balpyo theme update [name...]
 |---|---|
 | `install` | 저장소를 받아(경로면 그 디렉토리를 복사해) 테마를 설치한다. 이름을 주지 않으면 찾은 테마 전부, 주면 그 테마와 같은 저장소 안의 `extends` 부모. `--force`는 다른 출처에서 설치한 같은 이름을 갈아 끼운다 |
 | `list` | 쓸 수 있는 테마를 자리별로 나열한다 — 내장, 설치한 테마(출처·커밋), `--project`의 `themes/`. 겹치는 이름을 표시한다 |
+| `info` | 테마 하나가 어디서 왔는지(내장 · `--project`의 `themes/` · 설치한 테마)와 부모를 적고, 테마의 `README.md`를 그대로 출력한다 |
 | `remove` | 설치한 테마를 지운다. 남는 설치한 테마가 상속하는 테마는 지우지 않는다 |
 | `update` | 설치한 테마를 기록한 출처·ref에서 다시 받는다 (경로에서 설치한 테마는 그 디렉토리에서 다시 복사한다) (이름을 주지 않으면 출처를 아는 테마 전부). 같은 저장소의 테마는 한 번에 받는다 |
 
@@ -559,6 +561,7 @@ installed 2 themes from github.com/acme/slide-themes@v1.2.0 (3f2a91c) → /home/
   acme       themes/light
   acme-dark  themes/dark
 use the name in balpyo.json, e.g. "theme": "acme"
+see: balpyo theme info acme
 ```
 
 ```
@@ -566,6 +569,22 @@ $ balpyo theme install ./brand
 copied and installed 1 theme from /home/me/work/brand → /home/me/.balpyo/themes
   acme  .
 use the name in balpyo.json, e.g. "theme": "acme"
+see: balpyo theme info acme
+```
+
+`info`는 이름을 빌드와 같은 규칙으로 찾는다 — `balpyo.json`에 적을 수 있는 이름이면 무엇이든 받는다.
+첫 줄은 자리, 부모가 있으면 둘째 줄은 부모를 볼 명령이고, 빈 줄 뒤가 `README.md`의 내용 그대로다.
+부모의 README는 합치지 않는다. README가 없는 테마는 `this theme has no README.md`를 적고 성공한다.
+무엇을 적는지는 [테마 패키지](theme.md#readmemd-덱-저자에게-쓰는-글)에 있다.
+
+```
+$ balpyo theme info acme-dark
+acme-dark — installed theme (/home/me/.balpyo/themes/acme-dark)
+extends acme — see: balpyo theme info acme
+
+# acme-dark
+
+The dark variant of acme for stages and demos. …
 ```
 
 종료 코드는 성공 0, 실패 1이다. 실패한 설치는 홈을 바꾸지 않는다.

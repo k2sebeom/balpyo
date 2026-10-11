@@ -192,12 +192,15 @@ harbor는 예제 덱 셋을 모두 경고 없이 빌드한다 — 내장 테마�
 ```bash
 balpyo theme install github.com/acme/slide-themes@v1.2.0
 balpyo theme list
+balpyo theme info acme
 ```
 
 `balpyo.json`은 그대로 이름만 적는다 (`"theme": "acme"`). 설치한 테마는 `~/.balpyo/themes/<이름>/`에
 놓이고, 이름은 테마의 `theme.json`이 정한다. 한 저장소에 테마를 여럿 두어도 된다 — `acme`와 그것을
 상속한 `acme-dark`를 함께 두면 `balpyo theme install … acme-dark`가 둘을 함께 설치한다. 고친 테마는
-`balpyo theme update`로 다시 받는다. 저장소가 비공개이거나 GitHub 밖에 있으면 체크아웃한 디렉토리를
+`balpyo theme update`로 다시 받는다. 받은 테마를 쓰기 전에는 `balpyo theme info <이름>`으로 테마의
+`README.md`를 읽는다 — 어떤 덱에 맞는지, variant와 그림을 무슨 뜻으로 넣었는지는 테마를 만든 사람이 그
+글에 적는다. 나눌 테마에는 그래서 README를 함께 둔다 ([`README.md`](../reference/theme.md#readmemd-덱-저자에게-쓰는-글)). 저장소가 비공개이거나 GitHub 밖에 있으면 체크아웃한 디렉토리를
 경로로 설치한다 (`balpyo theme install ./slide-themes`) — 파일을 홈으로 복사하고, `update`가 같은
 디렉토리에서 다시 복사한다. 처음 보는 기계나 CI에서는 같은 `install`을 먼저 친다 — 빌드는
 받을 곳을 모르고, 없는 이름은 `unknown theme` 에러로 멈춘다. 규칙 전체는
