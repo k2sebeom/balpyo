@@ -141,8 +141,8 @@ Every key, value grammar, and error: `references/package.md`. Shortest useful ve
 - **`layouts/<name>.css`** — a **selector-less declaration list** for flow mode, and
   `<name>.slots.css` for slot mode. **Placement only**: colour and font declarations here are
   warnings and never reach the PPTX master. Each slot file must carry its own `display: grid`
-  and all of that layout's slot names as `grid-template-areas`. Use literal px in layout CSS
-  rather than `var(--balpyo-space-…)`.
+  and all of that layout's slot names as `grid-template-areas`. Gaps may use the space tokens
+  (`var(--balpyo-space-2xl)`) or literal px.
 
 Six rules nothing in the toolchain will catch for you:
 

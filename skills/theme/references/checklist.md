@@ -145,7 +145,6 @@ Warnings (which `--strict` promotes to errors)
 - [ ] `justify-items: center` only where centring *is* the meaning (cover, a single `stat`
       number, the closing slide) — and tell deck authors in the README that one-line text in
       those slots must stay short.
-- [ ] Layout CSS uses literal px, not `var(--balpyo-space-…)`.
 - [ ] `clrScheme` slots follow the convention, not brightness: a **dark** theme still puts `fg`
       in `dk1` and `bg` in `lt1`, or PowerPoint's theme-colour editor comes out inverted.
 - [ ] On a dark background, fills and lines use `surface`, not `muted` (as `ink`'s table borders

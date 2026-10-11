@@ -439,9 +439,9 @@ Rules:
 - **Horizontal: centre only.** `justify-items: center` where centring is the meaning; write
   nothing for left. `justify-items: start` changes no picture but shrinks items to content
   width, which destroys the PPTX slack.
-- **Use literal px** for gaps inside layout CSS (`grid-template-rows: auto auto 56px auto`,
-  `row-gap: 12px`) rather than `var(--balpyo-space-…)` — the space variables are not declared on
-  every deck.
+- Gaps inside layout CSS may use the space tokens (`grid-template-rows: auto auto
+  var(--balpyo-space-2xl) auto`, `row-gap: var(--balpyo-space-sm)`) or literal px — the space
+  variables are declared whenever a layout's CSS refers to them.
 - Empty rows are spelled with `"."` in `grid-template-areas`, e.g.
   `"." "kicker" "title" "subtitle" "author" "date"` with `grid-template-rows: 1fr auto auto auto auto auto`
   for a cover that sits on the floor.

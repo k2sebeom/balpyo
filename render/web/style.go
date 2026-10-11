@@ -27,7 +27,8 @@ const (
 // 타깃의 색·폰트가 구조적으로 같아진다 (soml.Theme의 주석). 공간만 예외다 — OOXML 테마
 // 파트에 공간 개념이 없어 **이 변수는 웹에만 산다** (soml.SpaceToken의 비대칭).
 //
-// spaces는 덱이 공간 토큰을 참조하는지다 (레이아웃 태그가 있는 덱 — web.features). 참조가
+// 공간 변수는 덱이 공간 토큰을 참조할 때 낸다 — 레이아웃 태그·도형·그림이 있거나
+// (feat.spaceTokens), 덱이 내는 테마 배치 CSS가 참조할 때다 (layoutsReferenceSpace). 참조가
 // 없을 때 선언을 내지 않는 이유는 골든이다: 레이아웃을 쓰지 않은 덱의 산출물이 이
 // 기능 때문에 달라지면 diff가 무엇이 변했는지 말해 주지 못한다. 그림자 토큰도 같은
 // 이유로 **참조하는 어휘**(도형·그림)가 있는 덱에만 나간다 (feat.shadowTokens).
@@ -52,7 +53,7 @@ func themeCSS(theme soml.Theme, feat features) string {
 	for _, token := range theme.Fonts {
 		fmt.Fprintf(&b, "    %s%s: %s;\n", fontVarPrefix, token.Name, fontStack(token))
 	}
-	if feat.spaceTokens() {
+	if feat.spaceTokens() || layoutsReferenceSpace(theme, feat) {
 		// 참조(gap/pad의 var())와 선언이 **한 표**에서 나온다 — 배치조차 테마의 리듬을
 		// 따라간다는 계약의 웹 쪽 절반이다.
 		b.WriteString(spaceVarsCSS(theme))
@@ -153,6 +154,27 @@ func layoutStagesCSS(theme soml.Theme, feat features) string {
 		fmt.Fprintf(&b, "  .balpyo-stage.balpyo-layout-%s.balpyo-slots { %s; }\n", name, theme.SlotLayouts[name])
 	}
 	return b.String()
+}
+
+// layoutsReferenceSpace는 덱이 내는 테마 배치 CSS(layoutStagesCSS)가 공간 변수를 참조하는지다.
+//
+// 어휘 조건(feat.spaceTokens)만으로는 모자란 이유: 테마의 배치 CSS도 공간 변수를 쓴다
+// (`title.slots.css`의 `grid-template-rows: … var(--balpyo-space-2xl) …`). 선언 없는 var()는
+// 계산값 시점에 선언 **전체**를 무효로 만들어, 텍스트만 있는 표지 덱에서는 트랙이 암묵 auto로
+// 무너지고 빈 행의 간격이 0이 된다 — 한 장의 모양이 덱의 다른 장에 무엇이 있는지에 따라
+// 달라진다. 실제로 내는 배치 원문만 보므로 참조하지 않는 덱의 산출물은 움직이지 않는다.
+func layoutsReferenceSpace(theme soml.Theme, feat features) bool {
+	for _, name := range feat.layouts {
+		if strings.Contains(theme.Layouts[name], spaceVarPrefix) {
+			return true
+		}
+	}
+	for _, name := range feat.slotLayouts {
+		if strings.Contains(theme.SlotLayouts[name], spaceVarPrefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // bgToken은 슬라이드 바탕 색 토큰의 이름이다 (표준 토큰 어휘).
