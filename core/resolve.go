@@ -343,7 +343,17 @@ func (r *resolver) resolveSlot(elem *soml.Element, parent *soml.Element) {
 		return
 	}
 	if parent != nil {
-		r.errorf(attr.ValueSpan, "slot is only allowed on direct children of the slide (<%s> is nested)", elem.Name)
+		// 값 없는 slot에는 값 구간이 없다 — 이름 구간으로 물러나야 진단이 line:col을 잃지 않는다.
+		span := attr.ValueSpan
+		if !attr.HasValue {
+			span = attr.NameSpan
+		}
+		r.errorf(span, "slot is only allowed on direct children of the slide (<%s> is nested)", elem.Name)
+		return
+	}
+	// 값 없음·빈 값은 다른 외관 속성과 같은 진단이다 — 슬롯 이름 ""으로 어휘를 찾으면 저자가
+	// 쓰지도 않은 이름을 "없는 슬롯"이라 부르게 된다.
+	if !r.hasValue(attr) {
 		return
 	}
 	if _, ok := soml.LayoutSlot(r.layout, attr.Value); !ok {
@@ -926,6 +936,8 @@ func attrExample(name string) string {
 		return "accent1"
 	case "align":
 		return "center"
+	case soml.SlotAttr:
+		return "body"
 	case soml.AnchorAttr:
 		return "center"
 	// `<pre>` 고유 속성. 예시가 어휘의 첫 이름인 이유: 값 없음 진단은 "쓸 수 있는
