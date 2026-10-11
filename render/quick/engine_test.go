@@ -155,3 +155,28 @@ func TestKeepAllBreaksAtSpaces(t *testing.T) {
 		}
 	}
 }
+
+// fill-rule="evenodd"인 경로는 하위 경로가 겹친 곳을 비운다 — 같은 방향으로 감은 안쪽 사각형이
+// 액자의 구멍이 된다. 규칙이 없으면(nonzero) 같은 경로가 꽉 찬다.
+func TestSVGFillRuleEvenOdd(t *testing.T) {
+	const frame = `M0,0 L100,0 L100,100 L0,100 Z M25,25 L75,25 L75,75 L25,75 Z`
+	for _, tc := range []struct {
+		name, svg string
+		hole      bool
+	}{
+		{"attribute", `<path d="` + frame + `" fill="#000" fill-rule="evenodd"/>`, true},
+		{"inherited property", `<g style="fill-rule: evenodd"><path d="` + frame + `" fill="#000"/></g>`, true},
+		{"nonzero default", `<path d="` + frame + `" fill="#000"/>`, false},
+	} {
+		doc, _ := layoutBody(t, baseCSS, `<svg style="position: absolute; left: 0; top: 0" width="100" height="100" viewBox="0 0 100 100">`+
+			tc.svg+`</svg>`)
+		img := doc.Render(doc.Slides[0], 1)
+		ring, center := img.RGBAAt(10, 50), img.RGBAAt(50, 50)
+		if ring.A != 255 {
+			t.Errorf("%s: ring not filled: %v", tc.name, ring)
+		}
+		if gotHole := center != ring; gotHole != tc.hole {
+			t.Errorf("%s: center %v, ring %v; want hole %v", tc.name, center, ring, tc.hole)
+		}
+	}
+}
