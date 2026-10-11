@@ -11,18 +11,20 @@ deck, with no edit to the markup.
 
 Two facts set the shape of the work:
 
-- **There is no fallback theme.** The engine hardcodes no appearance value at all. Anything a
-  theme fails to supply stops the build *before any slide renders* — a missing piece is never
-  a half-styled slide.
+- **There is no fallback theme.** Every colour, font, size, and placement comes from the theme
+  (the engine owns only the stage size and margin, list indents, and link colour). Anything a
+  theme fails to supply stops the build *before any slide renders* — a missing piece is never a
+  half-styled slide.
 - **The theme owns values and placement; the author owns meaning.** So a theme never contains
   slide content, and layout CSS never contains colour.
 
-The binary must be on PATH (`balpyo version`); see the `deck` skill for installing it.
-`--check-layout` and the `pptx` target also need Chromium or Chrome.
+This skill and its reference files are complete on their own. The binary must be on PATH
+(`balpyo version`); see the `deck` skill for installing it and for the SOML the decks are
+written in. `--check-layout` and the `pptx` target also need Chromium or Chrome.
 
 ## 1. Inherit — don't start from scratch
 
-A theme lives **inside the project**, and the directory name *is* the theme name:
+A theme being designed lives **inside the project**, and the directory name *is* the theme name:
 
 ```text
 my-deck/
@@ -34,7 +36,7 @@ my-deck/
         ├── tokens.json        # partial, when inheriting
         ├── components.json    # partial
         ├── layouts/           # only the files being replaced
-        ├── assets/            # optional — background/logo (PNG/JPEG), icons for theme: (PNG/JPEG/SVG)
+        ├── assets/            # optional — background/logo (PNG/JPEG), pictures for theme: (PNG/JPEG/SVG)
         └── README.md          # for deck authors — what the theme is for, how to use its variants and assets
 ```
 
@@ -46,10 +48,16 @@ Pick the closest built-in as the parent and override only what differs:
 | `editorial` | print page, paper-coloured bg, **serif** titles that sit low | text-heavy decks meant to be read afterwards |
 | `ink` | dark room, near-black bg | stage, dark rooms, code-heavy decks |
 
-A standalone theme (`"extends": ""`) is held to the **full built-in contract**: all four file
-groups complete — 10 colours, 3 fonts, 6 spaces, 3 radii, 1 shadow, 5 text roles, 11 layout
-CSS files, 10 slot CSS files. Only choose that when the design genuinely shares nothing with a
-built-in. Inheriting is otherwise a few dozen lines.
+**Read the parent before overriding it.** `references/builtin-themes.md` holds the complete
+files of all three built-ins. Overriding is by whole entry — re-declaring the role `title`, the
+variant `card`, or the chrome `footer` replaces every field of it — so copy the parent's entry
+and change the fields you mean. `balpyo theme info <parent>` prints the parent's README.
+
+A standalone theme (`"extends": ""`) has to supply everything itself: all three JSON files
+complete (10 colours, 3 fonts, 6 spaces, 3 radii, 1 shadow, 5 text roles, and `code.tabSize`) and
+a CSS file for every layout it declares — which should be all eleven, with slot CSS for the ten
+slotted ones. Only choose that when the design genuinely shares nothing with a built-in;
+inheriting is otherwise a few dozen lines.
 
 Two naming rules, both hard errors: `theme.json`'s `name` must equal the directory name, and a
 local theme **may not shadow a built-in name** (`themes/minimal/` is an error even when
@@ -66,9 +74,8 @@ font families; the six accents as hex with their intended meanings; which layout
 placement; and where the footer and page number sit. Then build the files from that.
 
 The reason is the palette. **Six accents are a measured set, not a ranking** — they must
-satisfy three numbers, and *nothing in the toolchain checks a local theme's palette*
-(`core/palette_test.go` guards built-ins only). So **compute them yourself** before writing
-`tokens.json`:
+satisfy three numbers, and *nothing in the toolchain checks a project theme's palette*. So
+**compute them yourself** before writing `tokens.json`:
 
 | Rule | Number | What it prevents |
 |---|---|---|
@@ -87,7 +94,7 @@ of them with one meaning each.
 
 ## 3. Write the files
 
-Formats, required names, and worked examples: `references/package.md`. Shortest useful version:
+Every key, value grammar, and error: `references/package.md`. Shortest useful version:
 
 - **`theme.json`** — `name`, `extends`, optional `layouts` (inherited, so don't re-list the
   eleven), `chrome` (footer and page-number placement — `align` and `role` are mandatory — and
@@ -97,7 +104,8 @@ Formats, required names, and worked examples: `references/package.md`. Shortest 
   `pageNumber` can take a `format` such as `"{n} / {total}"`. Backgrounds and the logo are the theme's own: the
   deck never mentions them, so a theme swap swaps them too. Slides can also use any picture in
   `assets/` with `<image src="theme:<path under assets/>">` — the way to ship an icon library
-  (SVG icons are fine there).
+  (SVG icons are fine there). `theme.json` keys are **not** checked for typos — a misspelt key
+  is silently ignored, so compare against `package.md`.
 - **`README.md`** — not read by the loader, but printed verbatim by `balpyo theme info <name>`,
   and deck authors (and the `deck` skill) read it before writing slides. It holds the **intent**
   that the other files can't: the voice of the theme, which decks it suits (and which it doesn't,
@@ -105,7 +113,8 @@ Formats, required names, and worked examples: `references/package.md`. Shortest 
   left"), what each variant is *for*, how to split the accents, and, for every picture under
   `assets/`, its `theme:` path and what to use it for. Write uses, not values. When extending,
   cover only what you changed and point at the parent. The file name is exactly `README.md`.
-  The built-in themes' READMEs are the model (`balpyo theme info minimal`).
+  The built-in themes' READMEs are the model (`balpyo theme info minimal`); `package.md` has an
+  example.
 - **`tokens.json` `motion`** — the deck's animation rhythm (`duration`, `stagger`, `delay` in ms)
   and an optional default slide `transition` (`fade` · `push`). Optional for loading, but
   without it every deck that writes `enter=` fails. When inheriting, writing it replaces the
@@ -113,7 +122,8 @@ Formats, required names, and worked examples: `references/package.md`. Shortest 
 - **`tokens.json`** — the **names** authors may write. Each colour needs all four fields
   (`name`, `rgb`, `slot`, `ref`). Colour work in a child theme is **recolouring by name**: the
   `clrScheme` has 12 slots, built-ins use 10, so adding a new colour *name* requires a free
-  slot. Space, radius, shadow, and font have no such ceiling — add freely.
+  slot. Space, radius, shadow, and font have no such ceiling — add freely. Fonts need exactly
+  one `major` (headings) and one `minor` (body) token.
 - **`components.json`** — all five text roles complete (`size`, `lineHeight`, `align`, plus
   `font`/`color` naming tokens **that exist in this theme**), defaults per tag *or* per layout
   slot (`quote`/`quote`, `stat`/`value`, `stat`/`label`), variants, table cell appearance, and
@@ -123,30 +133,32 @@ Formats, required names, and worked examples: `references/package.md`. Shortest 
   table cells, and code tokens take a single token name. A `#RRGGBB` is a load error even if no
   slide uses that variant. Unknown keys are errors in both `tokens.json` and
   `components.json`; any key starting with `$comment` (`$comment-accent`, …) is a comment,
-  anywhere. Newer sections: `tracking`/`case` on roles and variants (tracked upper-case
-  kickers belong here; authors have no attribute for them), `text.mark.highlight` (the `<mark>` colour; one colour, no gradient),
-  `connector` (default line and end markers plus variants), and `pattern(…)` hatches in shape
-  fills.
+  anywhere. Text variants and defaults set size, weight, colour, `tracking`, and `case` — not
+  font or line height (those belong to roles). `tracking`/`case` are how kickers get tracked
+  upper case (authors have no attribute for them); `text.mark.highlight` is the `<mark>` colour;
+  `connector` holds the default line and end markers plus variants; shape fills may be
+  `pattern(…)` hatches.
 - **`layouts/<name>.css`** — a **selector-less declaration list** for flow mode, and
   `<name>.slots.css` for slot mode. **Placement only**: colour and font declarations here are
   warnings and never reach the PPTX master. Each slot file must carry its own `display: grid`
-  and all of that layout's slot names as `grid-template-areas`.
+  and all of that layout's slot names as `grid-template-areas`. Use literal px in layout CSS
+  rather than `var(--balpyo-space-…)`.
 
-Four rules nothing in the toolchain will catch for you:
+Six rules nothing in the toolchain will catch for you:
 
 - **Centre costs slack; left is free.** In slot CSS use `justify-items: center` only where
   centring *is* the meaning (cover, a single `stat` number, the closing slide). Never write
   `justify-items: start` — left is already the default, and it shrinks the box to content
   width, so the PPTX box has zero slack and a line the viewer sets slightly wider gets
-  re-broken and shrunk by `normAutofit`.
+  re-broken and shrunk.
 - **The `mono` token's `ea` must be a monospace CJK face** (`Noto Sans Mono CJK KR`). Pair a
   monospace Latin with a proportional CJK face and one Korean comment line is drawn 7.9%
   narrower in the browser than in PowerPoint.
 - **Every font you name must be installed where the deck is built.** The loader does not check
   this, but every measuring build warns per missing family (`theme "corp" font "Malgun
   Gothic" (heading.ea, body.ea) is missing from the measuring browser — …`) and `--strict` fails on it — the boxes
-  were measured with a substitute that PowerPoint will not use. Pick fonts the user actually has
-  (and their CI), or tell them what to install.
+  were measured with a substitute that PowerPoint will not use. Themes cannot bundle fonts.
+  Pick fonts the user actually has (and their CI), or tell them what to install.
 - **`clrScheme` slots are a convention, not a brightness.** A dark theme still puts `fg` in
   `dk1` and `bg` in `lt1`, or PowerPoint's theme-colour editor comes out inverted.
 - **On a dark background use `surface`, not `muted`, for fills and lines** (that is what
@@ -156,10 +168,10 @@ Four rules nothing in the toolchain will catch for you:
   `fg` colour. Check their contrast against `fg` as well; the 4.5:1 rule above only covers `bg`.
 
 Keep variant names identical to the built-in vocabulary (text `kicker` `lead`; shape `card`
-`card-header` `card-body` `card-backdrop` `stat-card` `badge`; image `framed`; table `striped`;
-connector `dashed` `accent` `plain`), and keep the three sections decks lean on: `motion`,
-`text.mark`, and `connector.default`. A standalone theme that drops one breaks every deck
-using `enter`, `<mark>`, or `<connector>`.
+`card-header` `card-body` `card-backdrop` `stat-card` `badge`; image `framed`; connector
+`dashed` `accent` `plain`; table `striped` is built in and only needs `table.stripe`), and keep
+the three sections decks lean on: `motion`, `text.mark`, and `connector.default`. A standalone
+theme that drops one breaks every deck using `enter`, `<mark>`, or `<connector>`.
 Sharing the vocabulary is the portability contract: if `variant="stat-card"` turns into a
 warning after a theme swap, "looks different" becomes "the deck broke". Add new variants on top
 of those, don't rename them.
@@ -175,12 +187,17 @@ balpyo check --project my-deck --theme corp --check-layout --strict
 
 Every malformed theme fails here, before any slide renders, so a theme error never shows up as
 "the text is missing". Work through `references/checklist.md` for what the loader requires,
-what only the built-in test suite requires (so your local theme must self-police), and the
-hand-checked rules above.
+what it does not check (so your theme must self-police), and the hand-checked rules above.
+
+If the project has no deck yet, make one that exercises every section: a cover, a section
+divider, a content slide with a card grid, a `two-column`, a `stat`, a `quote`, a `code` slide
+with `<pre lang>`, a table with a header row and `variant="striped"`, a chart, connectors between
+boxes, a `<mark>`, `enter=` on a slide, an `<slide invert>`, and an `end` slide.
 
 Then look at it, because values change geometry — a bigger title adds a line and the line
-overflows. The PPTX column needs OnlyOffice Document Builder or LibreOffice + `pdftoppm` (see
-the `deck` skill); without them the gallery is web-only and says so:
+overflows. `balpyo snap --project my-deck --theme corp` draws the web layout to PNGs with no
+browser; read them. For the PPTX side, the gallery needs OnlyOffice Document Builder or
+LibreOffice + `pdftoppm` (see the `deck` skill); without them it is web-only and says so:
 
 ```bash
 balpyo preview --project my-deck --theme corp --gallery preview-corp
@@ -192,7 +209,8 @@ evidence inheritance worked. `--gallery` may not overlap `--out` — `preview` r
 building.
 
 When the user is happy, write the name into `balpyo.json` (`{ "theme": "corp" }`) — until then
-keep it on the flag so reverting is free.
+keep it on the flag so reverting is free. (The `balpyo.json` theme must still resolve while you
+use `--theme`.)
 
 ## 5. Share it — install, don't copy
 
@@ -210,14 +228,20 @@ balpyo theme remove <name...>
 ```
 
 - Installed themes land in `~/.balpyo/themes/<name>/` (`$BALPYO_HOME/themes/` if set), sources in
-  `~/.balpyo/themes.json`. The **name comes from `theme.json`**, not the repo or directory name.
-- Install finds every directory holding a `theme.json` under the source (or the sub-path:
-  `github.com/acme/themes/brand/dark@v1`), skipping `.`-prefixed directories. It loads each with
-  the build's own loader and is **all-or-nothing**: a built-in name, two themes of one name in
-  the source, a symlink inside a theme, or a theme that does not load installs nothing. A name
-  already installed from a different source needs `--force`.
+  `~/.balpyo/themes.json`. The **name comes from `theme.json`**, not the repo or directory name,
+  and must be letters, digits, `_`, `.`, `-` (starting with a letter or digit).
+- Addresses: `github.com/owner/repo`, `https://github.com/owner/repo.git`,
+  `git@github.com:owner/repo.git`, `@branch|tag|commit`, `/sub/path` to search one subtree
+  (`github.com/acme/themes/brand/dark@v1`), or a `…/tree/<ref>/<path>` URL. `./x`, `../x`, `/x`,
+  `~/x` are always paths.
+- Install finds every directory holding a `theme.json` under the source, skipping `.`-prefixed
+  directories. It loads each with the build's own loader and is **all-or-nothing**: a built-in
+  name, two themes of one name in the source, a symlink inside a theme, or a theme that does not
+  load installs nothing. A name already installed from a different source needs `--force`.
+- **An installed theme can extend only built-in or installed themes** — never a project theme.
+  Publish parents together with their children.
 - **Delete the project's `themes/<name>/` after installing** — the same name in both places is
-  a build error (`theme "acme" exists both in the project's themes/acme/ and among installed themes — …`).
+  a build error (`theme "acme" exists both in the project's themes/acme/ and among installed themes — rename the local theme or remove the installation with balpyo theme remove acme`).
 - A path install is a **snapshot**: edits to the source show up only after `balpyo theme update`
   (and `watch` does not see them — save a project file or restart it). While still iterating,
   keep the theme in the project's `themes/`.
@@ -229,28 +253,14 @@ balpyo theme remove <name...>
   holding several themes, each theme directory gets its own.
 - Layout-CSS appearance-property warnings for an installed theme are reported **at install
   time**, not by builds — so fix them before publishing; deck authors can't.
+- `theme remove` refuses while another installed theme extends the one being removed.
 
 ## Reference files
 
-- `references/package.md` — the four files in full: every key, the required token and role
-  names, the `clrScheme` slot table, chrome declarations, backgrounds and overlays, `motion`,
-  typography tracking/case, `mark`, `connector`, and the `extends` merge rule.
-- `references/checklist.md` — what the loader stops on, what the built-in test suite demands,
-  and the hand-checked rules, as a pass-before-delivery list.
-
-`${CLAUDE_PLUGIN_ROOT}` is the root of the balpyo repository (<https://github.com/k2sebeom/balpyo>);
-without the plugin installed, read the same paths there. Korean originals shipped with this plugin: `${CLAUDE_PLUGIN_ROOT}/docs/reference/theme.md`
-(package format), `docs/reference/appearance.md` (the cascade and `minimal`'s actual values),
-`docs/guides/theming.md` (choosing and building), `docs/guides/known-differences.md` (what the
-viewer does to your typography). Working themes to read:
-`${CLAUDE_PLUGIN_ROOT}/core/themes/{minimal,editorial,ink}/`; a complete inheriting theme:
-`${CLAUDE_PLUGIN_ROOT}/testdata/fixtures/15_local_theme/themes/corp/`; an inheriting theme with
-backgrounds and a logo: `${CLAUDE_PLUGIN_ROOT}/testdata/fixtures/18_theme_assets/themes/brand/`;
-a small inheriting theme using the newer keys (overlay glow, `{n} / {total}`, motion with a fade
-transition, tracked kickers, mark): `${CLAUDE_PLUGIN_ROOT}/examples/decks/ec2-intro/themes/summit/`
-— copy its keys, not its palette: its accents are brand colours kept as-is and three of them fail
-the contrast rule above;
-standalone themes (`"extends": ""`, all eleven layouts) meant to be copied into a project:
-`${CLAUDE_PLUGIN_ROOT}/examples/themes/harbor/` (light, cards) and
-`${CLAUDE_PLUGIN_ROOT}/examples/themes/aurora/` (dark, with picture backgrounds and overlays for the
-cover, section divider and closing slide, and a palette that passes the three rules above).
+- `references/package.md` — the theme package in full: every key of every file, value
+  grammars, the slot names per layout, the `clrScheme` slot table, chrome, backgrounds and
+  overlays, `motion`, typography, `mark`, `connector`, tables, code, the `extends` merge rule,
+  and complete worked inheriting themes.
+- `references/checklist.md` — what the loader stops on, what it lets through, and the
+  hand-checked rules, as a pass-before-delivery list.
+- `references/builtin-themes.md` — the exact files of `minimal`, `editorial`, and `ink`.
