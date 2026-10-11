@@ -223,7 +223,27 @@ func TestParseInlineEdgeSpace(t *testing.T) {
 			want: `p("배포 " strong("자동화"))`,
 		},
 		{
-			name: "인라인 양 끝도 트리밍된다",
+			name: "인라인 안 앞 공백이 유일한 구분자면 내용",
+			src:  `<slide><p>13.8<span size="28"> kg/m</span></p></slide>`,
+			want: `p("13.8" span[size=28](" kg/m"))`,
+		},
+		{
+			name: "인라인 안 뒤 공백이 유일한 구분자면 내용",
+			src:  `<slide><p><strong>배포 </strong>자동화</p></slide>`,
+			want: `p(strong("배포 ") "자동화")`,
+		},
+		{
+			name: "중첩 인라인을 넘어 흐름 끝 공백을 버린다",
+			src:  `<slide><p><em><strong> 배포 </strong></em></p></slide>`,
+			want: `p(em(strong("배포")))`,
+		},
+		{
+			name: "줄바꿈 양옆의 공백은 내용이 아니다",
+			src:  `<slide><p>배포 <br/> <em> 자동화</em></p></slide>`,
+			want: `p("배포" br em("자동화"))`,
+		},
+		{
+			name: "태그 경계를 넘는 연속 공백은 한 칸이다",
 			src:  `<slide><p>배포 <strong> 자동화 </strong></p></slide>`,
 			want: `p("배포 " strong("자동화"))`,
 		},
