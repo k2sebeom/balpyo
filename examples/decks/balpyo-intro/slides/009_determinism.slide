@@ -1,39 +1,56 @@
-<!-- 결정성 — two-column 슬롯 모드. 두 렌더가 같은 컴포넌트를 낸다는 것을 무엇이 판정하는가.
+<!-- 결정성 — 두 렌더가 같은 컴포넌트를 낸다는 것을 무엇이 판정하는가. 왼쪽 도식: SOML 트리 하나가
+     두 갈래(웹이 잰 트리 · PPTX에서 다시 읽은 트리)로 갈라졌다가 등호 하나로 모인다. 갈래는
+     `route="elbow"` 연결선이라 상자를 옮겨도 꺾인 선이 다시 계산된다. 등호 원만 `accent3`(초록)이다 —
+     이 장에서 초록은 "같다"만 뜻한다.
 
-     슬롯 영역은 제목 아래 남은 높이를 다 갖는 grid 칸이고 (`two-column.slots.css`의 `1fr`
-     행), 칸마다 카드 하나가 `h="fill"`로 그 칸을 채운다. 오른쪽 카드만 accent1로 칠한다 —
-     왼쪽은 약속이고 오른쪽은 그 약속을 지키는 장치라, 눈이 먼저 갈 곳이 오른쪽이다. -->
-<slide id="determinism" layout="two-column">
-  <h1 slot="title">두 렌더가 같은 컴포넌트를 낸다</h1>
-  <col slot="left" h="fill">
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" h="fill" pad="lg">
-      <col gap="md" h="fill" justify="between">
-        <col gap="md">
-          <text variant="kicker">무엇이 같은가</text>
-          <ul>
-            <li>요소 하나는 두 타깃에서 같은 종류의 객체다</li>
-            <li>자리는 브라우저가 잰 rect, 외관은 해석된 값이다</li>
-            <li>문서 순서가 곧 도형 순서다</li>
-          </ul>
-        </col>
-        <text role="caption">줄이 어디서 접히는지는 각 엔진의 몫이다 — 약속 밖이다.</text>
+     오른쪽은 그 등호가 실제로 무엇을 비교하는지 셋으로 푼다. 체크 원도 같은 초록이라 도식과 목록이
+     한 문장으로 읽힌다. 아래 띠는 셋이 들어 있는 명령 한 줄이다. -->
+<slide id="determinism" enter="rise">
+  <text variant="kicker">무엇이 판정하는가</text>
+  <h1>두 렌더가 같은 컴포넌트를 낸다</h1>
+  <row gap="xl" align="center" grow="1">
+    <row gap="0" align="center" w="560">
+      <shape type="rounded-rect" id="tree" variant="card" w="130" h="96" pad="sm">
+        <col gap="0" justify="center" h="fill"><text role="heading" size="22">SOML</text><text role="caption" size="16">덱 트리</text></col>
+      </shape>
+      <spacer grow="1"/>
+      <col gap="2xl" w="190">
+        <shape type="rounded-rect" id="webtree" variant="card" w="fill" h="84" pad="xs sm">
+          <col gap="0" justify="center" h="fill"><text role="heading" size="20">웹이 잰 트리</text><text role="caption" size="16">Chromium · rect</text></col>
+        </shape>
+        <shape type="rounded-rect" id="pptxtree" variant="card" w="fill" h="84" pad="xs sm">
+          <col gap="0" justify="center" h="fill"><text role="heading" size="20">PPTX의 트리</text><text role="caption" size="16">XML을 다시 읽는다</text></col>
+        </shape>
       </col>
-    </shape>
-  </col>
-  <col slot="right" h="fill">
-    <shape type="rounded-rect" fill="accent1" border="none" radius="lg" w="fill" h="fill" pad="lg">
-      <col gap="md" h="fill" justify="between">
-        <col gap="md">
-          <text variant="kicker" color="bg">무엇이 판정하는가</text>
-          <ul color="bg">
-            <li>PPTX에서 읽은 트리가 웹이 잰 트리와 같다</li>
-            <li>모든 XML 파트가 ECMA-376 스키마를 통과한다</li>
-            <li>같은 입력은 같은 바이트를 낸다</li>
-          </ul>
-        </col>
-        <text role="caption" color="bg">셋 다 go test ./... 한 줄에 들어 있다.</text>
-      </col>
-    </shape>
-  </col>
+      <spacer grow="1"/>
+      <shape type="ellipse" id="same" fill="accent3" border="none" shadow="soft" w="96" h="96" enter="zoom">
+        <text role="title" size="48" color="bg" align="center" anchor="center">=</text>
+      </shape>
+    </row>
+    <col gap="lg" grow="1" basis="0">
+      <row gap="md" align="start">
+        <shape type="ellipse" fill="accent3" border="none" w="36" h="36"><text role="caption" color="bg" align="center" anchor="center"><strong>✓</strong></text></shape>
+        <col gap="0" grow="1" basis="0"><text role="heading" size="24">패리티</text><text role="caption">종류 · rect · 외관 · 순서 · 글자 런이 같다</text></col>
+      </row>
+      <row gap="md" align="start">
+        <shape type="ellipse" fill="accent3" border="none" w="36" h="36"><text role="caption" color="bg" align="center" anchor="center"><strong>✓</strong></text></shape>
+        <col gap="0" grow="1" basis="0"><text role="heading" size="24">스키마</text><text role="caption">모든 XML 파트가 ECMA-376을 통과한다</text></col>
+      </row>
+      <row gap="md" align="start">
+        <shape type="ellipse" fill="accent3" border="none" w="36" h="36"><text role="caption" color="bg" align="center" anchor="center"><strong>✓</strong></text></shape>
+        <col gap="0" grow="1" basis="0"><text role="heading" size="24">결정성</text><text role="caption">같은 입력은 같은 바이트를 낸다</text></col>
+      </row>
+    </col>
+  </row>
+  <connector from="tree" to="webtree" route="elbow" from-side="right" to-side="left" enter="draw"/>
+  <connector from="tree" to="pptxtree" route="elbow" from-side="right" to-side="left" enter="draw"/>
+  <connector from="webtree" to="same" route="elbow" from-side="right" to-side="left" variant="accent" enter="draw"/>
+  <connector from="pptxtree" to="same" route="elbow" from-side="right" to-side="left" variant="accent" enter="draw"/>
+  <shape type="rounded-rect" fill="surface" border="none" radius="md" w="fill" pad="sm md">
+    <row gap="md" align="center" justify="between">
+      <text role="code" size="20"><span color="accent3">$</span> go test ./...</text>
+      <text role="caption">줄이 어디서 접히는지는 각 엔진의 몫이다 — 약속 밖이다.</text>
+    </row>
+  </shape>
   <note>골든은 좌표 없는 레이아웃 트리와 진단 둘뿐이다 — 좌표는 동일성 판정이 매번 다시 재므로, diff에는 "도형이 하나 늘었다"만 남는다.</note>
 </slide>

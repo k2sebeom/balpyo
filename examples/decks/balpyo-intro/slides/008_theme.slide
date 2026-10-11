@@ -1,44 +1,43 @@
-<!-- 테마 = 디자인 시스템. 아래 두 카드는 `grow="1"` 그리드의 stretch로 견본 줄 아래 높이를 다 받는다.
-     색 견본 다섯 장은 토큰 이름 그대로 칠한 도형이다 — 산출 PPTX에서
-     이 채움은 리터럴 RGB가 아니라 schemeClr 참조로 남는다. -->
-<slide id="theme">
+<!-- 테마 = 디자인 시스템. 위 줄은 색 토큰 열 개의 견본이다 — 도형마다 토큰 이름 그대로 칠했고, 산출
+     PPTX에서 이 채움은 리터럴 RGB가 아니라 schemeClr 참조로 남는다. 그래서 이 줄은 테마를 갈면 그
+     테마의 팔레트가 된다 (README의 견본 비교가 그 증거다). 견본 위 글자는 바탕과 반대인 토큰(`bg` 또는
+     `fg`)이다: 강조색 여섯은 바탕 대비 4.5:1 이상으로 고른 값이라 `bg` 글자가 어느 테마에서든 읽힌다.
+
+     아래 두 카드는 `grow="1"` 그리드의 stretch로 견본 줄 아래 높이를 다 받는다. -->
+<slide id="theme" enter="rise">
+  <text variant="kicker">테마</text>
   <h1>테마는 디자인 시스템이다</h1>
-  <grid cols="5" gap="sm">
-    <shape type="rounded-rect" fill="fg" w="fill" h="120" pad="sm">
-      <text size="20" color="bg" align="center" anchor="center">fg</text>
-    </shape>
-    <shape type="rounded-rect" fill="bg" border="1 solid muted" w="fill" h="120" pad="sm">
-      <text size="20" align="center" anchor="center">bg</text>
-    </shape>
-    <shape type="rounded-rect" fill="muted" w="fill" h="120" pad="sm">
-      <text size="20" color="bg" align="center" anchor="center">muted</text>
-    </shape>
-    <shape type="rounded-rect" fill="surface" w="fill" h="120" pad="sm">
-      <text size="20" align="center" anchor="center">surface</text>
-    </shape>
-    <shape type="rounded-rect" fill="accent1" w="fill" h="120" pad="sm">
-      <text size="20" color="bg" align="center" anchor="center">accent1</text>
-    </shape>
+  <grid cols="10" gap="xs">
+    <shape type="rounded-rect" fill="fg" border="none" radius="md" w="fill" h="96" pad="xs"><text role="code" size="14" color="bg" align="center" anchor="bottom">fg</text></shape>
+    <shape type="rounded-rect" fill="bg" border="1 solid muted" radius="md" w="fill" h="96" pad="xs"><text role="code" size="14" color="fg" align="center" anchor="bottom">bg</text></shape>
+    <shape type="rounded-rect" fill="muted" border="none" radius="md" w="fill" h="96" pad="xs"><text role="code" size="14" color="bg" align="center" anchor="bottom">muted</text></shape>
+    <shape type="rounded-rect" fill="surface" border="none" radius="md" w="fill" h="96" pad="xs"><text role="code" size="14" color="fg" align="center" anchor="bottom">surface</text></shape>
+    <shape type="rounded-rect" fill="accent1" border="none" radius="md" w="fill" h="96" pad="xs"><text role="code" size="14" color="bg" align="center" anchor="bottom">accent1</text></shape>
+    <shape type="rounded-rect" fill="accent2" border="none" radius="md" w="fill" h="96" pad="xs"><text role="code" size="14" color="bg" align="center" anchor="bottom">accent2</text></shape>
+    <shape type="rounded-rect" fill="accent3" border="none" radius="md" w="fill" h="96" pad="xs"><text role="code" size="14" color="bg" align="center" anchor="bottom">accent3</text></shape>
+    <shape type="rounded-rect" fill="accent4" border="none" radius="md" w="fill" h="96" pad="xs"><text role="code" size="14" color="bg" align="center" anchor="bottom">accent4</text></shape>
+    <shape type="rounded-rect" fill="accent5" border="none" radius="md" w="fill" h="96" pad="xs"><text role="code" size="14" color="bg" align="center" anchor="bottom">accent5</text></shape>
+    <shape type="rounded-rect" fill="accent6" border="none" radius="md" w="fill" h="96" pad="xs"><text role="code" size="14" color="bg" align="center" anchor="bottom">accent6</text></shape>
   </grid>
   <grid cols="2" gap="lg" grow="1">
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="lg">
+    <shape variant="card" type="rounded-rect" w="fill" pad="lg">
       <col gap="sm" h="fill">
-        <text variant="kicker">토큰과 컴포넌트가 파일이다</text>
-        <ul size="22">
-          <li>tokens.json — 색 · 폰트 · 공간 · 반경 · 그림자</li>
-          <li>components.json — 역할 5종과 variant (kicker · card · stat-card · badge)</li>
-          <li>layouts 아래 CSS — 배치만 쓸 수 있고 외관을 쓰면 경고다</li>
+        <text variant="kicker">네 파일이 한 테마다</text>
+        <ul size="21">
+          <li><code>tokens.json</code> — 색 · 글꼴 · 간격 · 반경 · 그림자 · 움직임</li>
+          <li><code>components.json</code> — 역할 다섯과 variant</li>
+          <li><code>layouts/*.css</code> — 자리만 쓴다, 외관은 경고다</li>
+          <li><code>assets/</code> — 배경 그림 · 로고 · 아이콘</li>
         </ul>
       </col>
     </shape>
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="lg">
+    <shape variant="card" type="rounded-rect" w="fill" pad="lg">
       <col gap="sm" h="fill" justify="between">
         <col gap="sm">
           <text variant="kicker">토큰은 눕지 않는다</text>
-          <p size="22">토큰으로 쓴 색은 웹에서 CSS 변수로, PPTX에서 a:schemeClr로 남는다.
-          리터럴만 srgbClr가 된다.</p>
+          <p size="21">토큰으로 쓴 색은 웹에서 CSS 변수로, PPTX에서 <code>a:schemeClr</code>로 남는다. 리터럴만 <code>srgbClr</code>가 된다.</p>
         </col>
-        <text role="heading" size="26" color="accent1">→ PowerPoint에서 테마 색을 바꾸면 덱이 따라온다</text>
+        <text role="heading" size="24" color="accent1">→ PowerPoint에서 테마 색을 바꾸면 덱이 따라온다</text>
       </col>
     </shape>
   </grid>

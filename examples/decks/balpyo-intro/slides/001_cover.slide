@@ -1,9 +1,13 @@
 <!-- 표지 — title 레이아웃의 슬롯 모드. 다섯 슬롯(kicker·title·subtitle·author·date)은 웹에서
      테마의 grid 영역이 되고 PPTX에서는 진짜 p:ph 플레이스홀더가 된다.
-     정렬은 한 줄도 쓰지 않는다 — 슬롯 영역의 가운데 맞춤은 테마가 소유한다. -->
-<slide id="cover" layout="title">
-  <text slot="kicker" variant="kicker">SLIDE ORIENTED MARKUP LANGUAGE</text>
-  <h1 slot="title" size="88">balpyo</h1>
+     정렬은 한 줄도 쓰지 않는다 — 슬롯 영역의 자리는 테마가 소유한다. 그래서 테마를 갈면 같은
+     원고가 가운데(minimal) · 아래(editorial) · 왼쪽 가운데(ink) · 위 왼쪽(harbor)에 선다.
+
+     제목 글자는 강조색 둘 사이의 그라디언트다 (`gradient(accent1 accent6, 90deg)`). 색이 토큰
+     이름이므로 테마가 바뀌면 그라디언트의 두 끝도 그 테마의 색으로 바뀐다. -->
+<slide id="cover" layout="title" enter="rise">
+  <text slot="kicker" variant="kicker">Slide Oriented Markup Language</text>
+  <h1 slot="title" size="96"><span color="gradient(accent1 accent6, 90deg)">balpyo</span></h1>
   <text slot="subtitle" role="heading" color="muted">슬라이드를 한 번 쓰면
   웹과 편집 가능한 PPTX가 같이 나온다</text>
   <text slot="author" role="body">렌더 엔진 · 테마 · CLI</text>

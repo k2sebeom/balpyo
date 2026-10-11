@@ -1,31 +1,28 @@
-<!-- 매핑 표 — 이 표가 `<table>`이다. 표 하나가 도형 하나이고, 격자선은
-     `border-collapse`가 합쳐 준다 — 행 하나가 그 사실을 자기 내용으로 말한다.
+<!-- 매핑 표 — 이 표가 `<table>`이다. 표 하나가 도형 하나이고, 격자선은 `border-collapse`가 합쳐
+     준다 — 행 하나가 그 사실을 자기 내용으로 말한다. 머리행 색과 줄무늬는 손으로 칠하지 않는다:
+     `<th>`는 테마의 header 값을, `variant="striped"`는 테마의 줄무늬를 받는다.
 
-     왼쪽 칸은 CDATA로 태그를 원문 그대로 싣는다 — 마크업을 설명하는 덱이 자기 문법을
-     띄울 수 있다는 증거다. 셀은 텍스트 전용이므로 CDATA가 곧 셀의 내용이다.
+     왼쪽 칸은 CDATA로 태그를 원문 그대로 싣는다 — 마크업을 설명하는 덱이 자기 문법을 띄울 수 있다는
+     증거다. 셀은 텍스트 전용이므로 CDATA가 곧 셀의 내용이다.
 
-     행이 일곱이라 표가 제목 아래를 거의 다 쓴다 — 어휘가 한 장에 모여야 "무엇이 되는가"의 답이
-     목록이 아니라 약속으로 읽힌다. 캡션을 두지 않는 것도 그래서다: 표가 높이를 다 쓰고, 약속의
-     문장은 노트가 갖는다. -->
-<slide id="pptx">
+     행은 여덟이다: 글 · 도형 · 그림 · 컨테이너 · 표 · 차트 · 연결선 · 움직임. 어휘가 한 장에
+     모여야 "무엇이 되는가"의 답이 목록이 아니라 약속으로 읽힌다. 캡션을 두지 않는 것도 그래서다:
+     표가 높이를 다 쓰고, 약속의 문장은 노트가 갖는다. -->
+<slide id="pptx" enter="rise">
   <h1>태그가 무엇이 되는가</h1>
   <table variant="striped">
     <tr><th>SOML</th><th>PPTX 산출</th></tr>
     <tr>
-      <td><![CDATA[<text> · <h1> · <p> · <blockquote>]]></td>
+      <td><![CDATA[<text> · <h1> · <p> · <ul>]]></td>
       <td>p:sp 텍스트 박스 — 확정된 rPr을 싣는다</td>
     </tr>
     <tr>
-      <td><![CDATA[<shape> (프리셋 12종)]]></td>
-      <td>p:sp + prstGeom — 자식 텍스트를 흡수한다</td>
+      <td><![CDATA[<shape> (프리셋 16종 · path)]]></td>
+      <td>p:sp + prstGeom · custGeom — 글을 품는다</td>
     </tr>
     <tr>
-      <td><![CDATA[<image>]]></td>
-      <td>p:pic + ppt/media 파트 (바이트 그대로)</td>
-    </tr>
-    <tr>
-      <td><![CDATA[<ul> · <ol>]]></td>
-      <td>도형 하나 — 불릿 문단이 한 박스에 산다</td>
+      <td><![CDATA[<image> (PNG · JPEG · SVG)]]></td>
+      <td>p:pic — SVG는 벡터 그대로, PNG 대체본과 함께</td>
     </tr>
     <tr>
       <td><![CDATA[<row> · <col> · <grid> · <stack>]]></td>
@@ -36,9 +33,17 @@
       <td>p:graphicFrame + a:tbl — 편집 가능한 표</td>
     </tr>
     <tr>
-      <td><![CDATA[<chart> · <point>]]></td>
-      <td>도형 + 텍스트로 풀린다 — 막대 하나가 도형 하나</td>
+      <td><![CDATA[<chart> · <series> · <point>]]></td>
+      <td>도형 + 텍스트 — 막대 하나가 도형 하나</td>
+    </tr>
+    <tr>
+      <td><![CDATA[<connector>]]></td>
+      <td>p:cxnSp — 상자에 붙은 연결선</td>
+    </tr>
+    <tr>
+      <td><![CDATA[enter= · transition=]]></td>
+      <td>p:timing · p:transition — 네이티브 등장 효과</td>
     </tr>
   </table>
-  <note>PowerPoint에서 글자를 고칠 수 있고, 표는 셀을 클릭해 행을 더할 수 있다. "열리는 파일"과 "편집 가능한 파일"의 차이가 여기서 갈린다.</note>
+  <note>PowerPoint에서 글자를 고칠 수 있고, 표는 셀을 클릭해 행을 더할 수 있다. 연결선은 상자를 끌면 따라온다. "열리는 파일"과 "편집 가능한 파일"의 차이가 여기서 갈린다.</note>
 </slide>

@@ -1,34 +1,47 @@
-<!-- 현황과 다음 — two-column 슬롯 모드. 슬롯 영역은 제목 아래 남은 높이를 다 갖는 grid 칸이고
-     (`two-column.slots.css`의 `1fr` 행), 칸마다 카드 하나가 `h="fill"`로 그 칸을 채운다. -->
-<slide id="status" layout="two-column">
-  <h1 slot="title">지금 되는 것과 다음</h1>
-  <col slot="left" h="fill">
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" h="fill" pad="lg">
+<!-- 현황과 다음 — 흐름 모드, 카드 두 장이 `grow="1"` 그리드로 제목 아래를 다 갖는다. 왼쪽은 되는 것을
+     딱지(`variant="badge"`)로 늘어놓는다 — 목록보다 딱지 묶음이 "많다"를 먼저 말하고, `wrap` 줄이
+     카드 폭에 맞춰 알아서 접힌다. 딱지의 테두리와 채움은 테마가 정한다.
+
+     오른쪽은 다음에 할 일 다섯이다. 번호 대신 빈 원을 두는 이유는 순서가 정해지지 않았기 때문이다
+     (백로그는 집어 들 때 순서를 정한다). -->
+<slide id="status" enter="rise">
+  <text variant="kicker">지금</text>
+  <h1>되는 것과 다음</h1>
+  <grid cols="3fr 2fr" gap="lg" grow="1">
+    <shape variant="card" type="rounded-rect" w="fill" pad="lg">
       <col gap="md" h="fill">
-        <text variant="kicker">동작한다</text>
-        <ul size="20">
-          <li>파싱에서 두 타깃까지 전 구간 — 웹 + 편집 가능한 네이티브 PPTX</li>
-          <li>텍스트 서브셋 · 레이아웃 컨테이너 · 도형 12종 · 그림 · 겹침 · 그라디언트</li>
-          <li>레이아웃 11종과 슬롯 — 슬롯은 PPTX에서 진짜 플레이스홀더가 된다</li>
-          <li>표와 차트 · 코드 강조 · 단계별 공개</li>
-          <li>내장 테마 셋과 외부 테마 패키지</li>
-          <li>init · build · check · watch · preview</li>
-        </ul>
+        <text variant="kicker" color="accent3">동작한다</text>
+        <row gap="xs" wrap>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">웹 + 네이티브 PPTX</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">레이아웃 11종 · 슬롯</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">도형 16종 · path</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">표</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">차트 · 여러 계열</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">연결선</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">등장 · 전환</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">코드 강조</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">SVG 그림</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">빗금 · 그라디언트</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">뒤집힌 장</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">테마 배경 · 로고</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">theme install</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">줄:열 진단</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">init · build · check · watch · preview</text></shape>
+        </row>
       </col>
     </shape>
-  </col>
-  <col slot="right" h="fill">
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" h="fill" pad="lg">
+    <shape variant="card" type="rounded-rect" w="fill" pad="lg">
       <col gap="md" h="fill">
-        <text variant="kicker">다음</text>
-        <ul size="20">
-          <li>테마가 소유하는 배경과 자산 — 배경 그림 · 로고</li>
-          <li>테마 variant의 그라디언트 토큰</li>
-          <li>측정 브라우저에 없는 테마 글꼴 경고</li>
-          <li>진단 다듬기 — 오타 후보 · 정렬 · 한 사고 한 경고</li>
-        </ul>
+        <text variant="kicker" color="muted">다음</text>
+        <col gap="md">
+          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">챕터를 PPTX 섹션으로</text></row>
+          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">차트 값의 앞붙이 · 천 단위</text></row>
+          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">표 칸의 글자 크기</text></row>
+          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">늘린 프리셋의 매개변수</text></row>
+          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">영어 레퍼런스</text></row>
+        </col>
       </col>
     </shape>
-  </col>
-  <note>오른쪽 열이 다음에 할 일이다.</note>
+  </grid>
+  <note>왼쪽이 지금 되는 것, 오른쪽이 다음에 할 일이다. 순서는 정하지 않았다.</note>
 </slide>

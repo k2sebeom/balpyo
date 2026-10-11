@@ -3,5 +3,7 @@
   "author": "balpyo",
   "lang": "ko",
   "aspect": "16:9",
+  "footer": "balpyo 소개",
+  "pageNumber": true,
   "outDir": "dist"
 }
