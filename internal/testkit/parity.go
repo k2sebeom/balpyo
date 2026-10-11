@@ -235,10 +235,10 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 					return fmt.Errorf("%s: %s <%s> appearance is not resolved", slide.Source, id, elem.Name)
 				}
 				n.Kind = "textbox"
-				n.Paras = webParas(n.Paras, elem, *style, deck.Theme, "", "")
+				n.Paras = webParas(n.Paras, elem, *style, deck, "", "")
 			case soml.KindListContainer:
 				n.Kind = "textbox"
-				n.Paras = webListParas(n.Paras, elem, deck.Theme)
+				n.Paras = webListParas(n.Paras, elem, deck)
 			case soml.KindShape:
 				style := elem.ShapeStyle()
 				if style == nil {
@@ -255,9 +255,9 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 							continue
 						}
 						if soml.KindOf(text.Name) == soml.KindListContainer {
-							n.Paras = webListParas(n.Paras, text, deck.Theme)
+							n.Paras = webListParas(n.Paras, text, deck)
 						} else if ts := text.TextStyle(); ts != nil {
-							n.Paras = webParas(n.Paras, text, *ts, deck.Theme, "", "")
+							n.Paras = webParas(n.Paras, text, *ts, deck, "", "")
 						}
 					}
 				}
@@ -275,7 +275,7 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 				if style := elem.TableStyle(); style != nil {
 					n.Alt = style.Alt
 				}
-				n.Paras = webTableParas(elem, deck.Theme)
+				n.Paras = webTableParas(elem, deck)
 			default:
 				return fmt.Errorf("%s: %s <%s> has no mapping to an object", slide.Source, id, elem.Name)
 			}
@@ -461,26 +461,26 @@ func webPlaceholder(slide *soml.Slide, elem *soml.Element) string {
 }
 
 // webParas는 블록 하나의 문단을 더한다 — 블록은 문단 하나다 (`<br>`은 문단을 쪼개지 않는다).
-func webParas(paras []LayoutPara, elem *soml.Element, style soml.TextStyle, theme soml.Theme, prefix, bullet string) []LayoutPara {
-	runs := webRuns(nil, elem, style, theme, "")
+func webParas(paras []LayoutPara, elem *soml.Element, style soml.TextStyle, deck *soml.Deck, prefix, bullet string) []LayoutPara {
+	runs := webRuns(nil, elem, style, deck, "")
 	if len(runs) == 0 {
 		return paras
 	}
 	return append(paras, LayoutPara{Prefix: prefix, Align: string(style.Align), Bullet: bullet, Runs: runs})
 }
 
-func webListParas(paras []LayoutPara, list *soml.Element, theme soml.Theme) []LayoutPara {
+func webListParas(paras []LayoutPara, list *soml.Element, deck *soml.Deck) []LayoutPara {
 	for _, child := range list.Children {
 		li, ok := child.(*soml.Element)
 		if !ok || li.TextStyle() == nil {
 			continue
 		}
-		paras = webParas(paras, li, *li.TextStyle(), theme, "", list.Name)
+		paras = webParas(paras, li, *li.TextStyle(), deck, "", list.Name)
 	}
 	return paras
 }
 
-func webTableParas(table *soml.Element, theme soml.Theme) []LayoutPara {
+func webTableParas(table *soml.Element, deck *soml.Deck) []LayoutPara {
 	var paras []LayoutPara
 	row := 0
 	for _, child := range table.Children {
@@ -493,7 +493,7 @@ func webTableParas(table *soml.Element, theme soml.Theme) []LayoutPara {
 			if !ok || cell.CellStyle() == nil || cell.CellStyle().Text == nil {
 				continue
 			}
-			paras = webParas(paras, cell, *cell.CellStyle().Text, theme, fmt.Sprintf("r%d", row), "")
+			paras = webParas(paras, cell, *cell.CellStyle().Text, deck, fmt.Sprintf("r%d", row), "")
 		}
 		row++
 	}
@@ -502,7 +502,7 @@ func webTableParas(table *soml.Element, theme soml.Theme) []LayoutPara {
 
 // webRuns는 블록 안 문자 데이터 잎마다 런을 낸다 — 인라인은 자기 확정 외관으로 내려간다.
 // 원문 개행(`<pre>`)과 `<br>`은 ⏎다. 빈 줄은 런을 남기지 않는다 (렌더러와 같은 규칙).
-func webRuns(runs []string, parent *soml.Element, style soml.TextStyle, theme soml.Theme, link string) []string {
+func webRuns(runs []string, parent *soml.Element, style soml.TextStyle, deck *soml.Deck, link string) []string {
 	for _, child := range parent.Children {
 		switch node := child.(type) {
 		case *soml.Text:
@@ -512,7 +512,7 @@ func webRuns(runs []string, parent *soml.Element, style soml.TextStyle, theme so
 				}
 				line = strings.TrimSuffix(line, "\r")
 				if line != "" {
-					runs = append(runs, formatRun(line, webRunStyle(style, theme, link)))
+					runs = append(runs, formatRun(line, webRunStyle(style, deck.Theme, link)))
 				}
 			}
 		case *soml.Element:
@@ -526,12 +526,26 @@ func webRuns(runs []string, parent *soml.Element, style soml.TextStyle, theme so
 			}
 			childLink := link
 			if node.Appearance.Link != "" {
-				childLink = node.Appearance.Link
+				childLink = webLink(deck, node.Appearance.Link)
 			}
-			runs = webRuns(runs, node, *childStyle, theme, childLink)
+			runs = webRuns(runs, node, *childStyle, deck, childLink)
 		}
 	}
 	return runs
+}
+
+// webLink는 런의 링크 목적지다. 덱 안 링크는 웹 뷰어가 실제로 가는 슬라이드의 `#<id>`로 접는다 —
+// `#/2`와 `#second`는 같은 이동이고, 덱에 없는 목적지는 뷰어가 첫 슬라이드로 읽는다. PPTX는
+// 같은 이동을 슬라이드 파트 관계로 적으므로 두 쪽을 같은 이름으로 맞춘다 (pptxParas).
+func webLink(deck *soml.Deck, href string) string {
+	target, inDeck := deck.LinkedSlide(href)
+	if !inDeck || len(deck.Slides) == 0 {
+		return href
+	}
+	if target == nil {
+		target = deck.Slides[0]
+	}
+	return "#" + target.ID
 }
 
 func webRunStyle(style soml.TextStyle, theme soml.Theme, link string) runStyle {
@@ -801,7 +815,8 @@ type xRunItem struct {
 			Typeface string `xml:"typeface,attr"`
 		} `xml:"latin"`
 		HlinkClick *struct {
-			ID string `xml:"http://schemas.openxmlformats.org/officeDocument/2006/relationships id,attr"`
+			ID     string `xml:"http://schemas.openxmlformats.org/officeDocument/2006/relationships id,attr"`
+			Action string `xml:"action,attr"`
 		} `xml:"hlinkClick"`
 	} `xml:"rPr"`
 	T string `xml:"t"`
@@ -864,14 +879,31 @@ type xObject struct {
 type xRels struct {
 	Rel []struct {
 		ID     string `xml:"Id,attr"`
+		Type   string `xml:"Type,attr"`
 		Target string `xml:"Target,attr"`
 	} `xml:"Relationship"`
 }
+
+// pptxSlideJump는 슬라이드 이동 링크의 `hlinkClick@action`이다.
+const pptxSlideJump = "ppaction://hlinksldjump"
 
 // PPTXLayout은 PPTX 패키지의 파트(PPTXParts)에서 슬라이드마다 컴포넌트 트리를 다시 읽는다.
 // 색·글꼴 참조는 테마 표로 토큰 이름에 되돌린다 — 웹 쪽 트리가 토큰 이름을 들고 있다.
 func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]LayoutSlide, error) {
 	var slides []LayoutSlide
+	// 슬라이드 이동 링크는 대상 슬라이드 파트를 가리킨다 — 트리에는 그 슬라이드의 이름(`cSld@name`, 웹의
+	// 슬라이드 id)으로 되돌려 싣는다. 대상이 뒤 슬라이드일 수 있으므로 이름을 먼저 다 모은다.
+	slideNames := map[string]string{}
+	for i := 1; i <= slideCount; i++ {
+		var head struct {
+			CSld struct {
+				Name string `xml:"name,attr"`
+			} `xml:"cSld"`
+		}
+		if err := xml.Unmarshal(parts[fmt.Sprintf("ppt/slides/slide%d.xml", i)], &head); err == nil {
+			slideNames[fmt.Sprintf("slide%d.xml", i)] = head.CSld.Name
+		}
+	}
 	for i := 1; i <= slideCount; i++ {
 		name := fmt.Sprintf("ppt/slides/slide%d.xml", i)
 		data, ok := parts[name]
@@ -890,6 +922,12 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 			}
 			for _, r := range rels.Rel {
 				links[r.ID] = r.Target
+				if strings.HasSuffix(r.Type, "/relationships/slide") {
+					// 이름을 모르는 파트는 경로 그대로 둔다 — 트리 비교가 어긋남을 보인다.
+					if slideName, ok := slideNames[r.Target]; ok {
+						links[r.ID] = pptxSlideJump + "#" + slideName
+					}
+				}
 			}
 		}
 		s := LayoutSlide{ID: x.CSld.Name}
@@ -1076,6 +1114,13 @@ func pptxParas(paras []LayoutPara, body xTxBody, prefix string, theme soml.Theme
 				link := ""
 				if h := item.RPr.HlinkClick; h != nil {
 					link = links[h.ID]
+					// 슬라이드 이동은 action과 slide 관계가 짝일 때만 `#<id>`다 — 한쪽만 있으면
+					// 접두가 남거나 빠져 웹 트리와 갈라진다.
+					if h.Action == pptxSlideJump {
+						link = strings.TrimPrefix(link, pptxSlideJump)
+					} else if strings.HasPrefix(link, pptxSlideJump) {
+						link = "(no action)" + strings.TrimPrefix(link, pptxSlideJump)
+					}
 				}
 				runs = append(runs, formatRun(item.T, runStyle{
 					field:     item.XMLName.Local == "fld",

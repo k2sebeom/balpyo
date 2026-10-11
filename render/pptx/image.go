@@ -102,10 +102,13 @@ func mediaOf(deck *soml.Deck, key string) (int, soml.Asset, bool) {
 }
 
 // imageRelType·externalTargetMode는 관계 파일의 값이다 (hyperlinkRelType의 형제).
+// slideRelType·slideJumpAction은 덱 안 링크(슬라이드 이동)의 관계 종류와 `hlinkClick@action`이다.
 const (
 	hyperlinkRelType   = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
 	imageRelType       = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+	slideRelType       = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
 	externalTargetMode = "External"
+	slideJumpAction    = "ppaction://hlinksldjump"
 )
 
 // roundRectPreset은 반경이 있는 그림의 프리셋이다 — 도형 어휘의 `rounded-rect`가 가는 곳과

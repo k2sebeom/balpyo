@@ -44,7 +44,7 @@ const firstShapeID = 2
 // 칠 순서대로 맨 먼저 배정한다.
 func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, string, *slideRels, error) {
 	var b strings.Builder
-	rels := &slideRels{}
+	rels := &slideRels{deck: deck}
 	background, err := backgroundXML(deck, slide, rels)
 	if err != nil {
 		return "", "", nil, fmt.Errorf("%s: background: %w", slide.Source, err)
@@ -94,6 +94,8 @@ func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, st
 // 카운터로 문서 순서대로 배정하면 그 어긋남을 만들 방법 자체가 없다.
 type slideRels struct {
 	items []slideRel
+	// deck은 덱 안을 가리키는 링크(`#…`)의 목적지 슬라이드를 찾는 자리다 (nil이면 모든 링크가 외부다).
+	deck *soml.Deck
 	// shapeIDs는 이 슬라이드에서 도형 번호를 받은 요소다 — 연결선이 끝을 붙일 도형 id를 여기서 찾는다
 	// (연결선은 콘텐츠 뒤에 쓰므로 그때 이미 다 차 있다). 관계 목록과 같은 슬라이드 순회 상태라 같은
 	// 값에 둔다: 순회가 한 번이어야 번호와 붙는 대상이 어긋나지 않는다.
@@ -134,9 +136,27 @@ func (r *slideRels) relID(relType, target, targetMode string) string {
 	return id
 }
 
-// linkID는 외부 하이퍼링크의 관계 id다.
-func (r *slideRels) linkID(url string) string {
-	return r.relID(hyperlinkRelType, url, externalTargetMode)
+// link는 하이퍼링크의 관계 id와 `hlinkClick@action`이다.
+//
+// 덱 안을 가리키는 href(`#<슬라이드 id>` · `#/<번호>`)는 외부 URL이 아니라 **슬라이드 이동**이다 —
+// 대상 슬라이드 파트로 가는 내부 관계와 `ppaction://hlinksldjump`의 짝이다. 외부 관계로 실으면
+// PowerPoint가 `#second`를 URL로 열려다 아무 데도 가지 못한다. 목적지가 덱에 없으면 첫
+// 슬라이드로 간다 — 웹 뷰어의 해시 딥링크가 모르는 조각을 첫 슬라이드로 읽는 것과 같다
+// (그 링크는 검증이 경고한다).
+func (r *slideRels) link(href string) (id, action string) {
+	if r.deck != nil && len(r.deck.Slides) > 0 {
+		if target, inDeck := r.deck.LinkedSlide(href); inDeck {
+			n := 1
+			for i, s := range r.deck.Slides {
+				if s == target {
+					n = i + 1
+				}
+			}
+			// 대상은 같은 폴더의 형제 파트다 (slidePart의 이름 규칙).
+			return r.relID(slideRelType, fmt.Sprintf("slide%d.xml", n), ""), slideJumpAction
+		}
+	}
+	return r.relID(hyperlinkRelType, href, externalTargetMode), ""
 }
 
 // mediaID는 미디어 파트의 관계 id다 (target은 슬라이드 파트 기준 상대 경로 — mediaTarget).
@@ -1389,7 +1409,12 @@ func writeTextRuns(w func(depth int, line string), text string, style soml.TextS
 		if ctx.link != "" {
 			// hlinkClick은 latin/ea 뒤다 — CT_TextCharacterProperties의 자식 순서가 폰트
 			// 요소들 뒤에 hlinkClick을 둔다 (어기면 LibreOffice가 복구를 묻는다).
-			w(5, fmt.Sprintf(`<a:hlinkClick r:id="%s"/>`, rels.linkID(ctx.link)))
+			id, action := rels.link(ctx.link)
+			if action != "" {
+				w(5, fmt.Sprintf(`<a:hlinkClick r:id="%s" action="%s"/>`, id, action))
+			} else {
+				w(5, fmt.Sprintf(`<a:hlinkClick r:id="%s"/>`, id))
+			}
 		}
 		w(4, "</a:rPr>")
 		w(4, fmt.Sprintf("<a:t>%s</a:t>", escapeXML(line)))
