@@ -830,6 +830,12 @@ func (p *parser) checkAttrName(elem *Element, attr Attr) {
 func (p *parser) closeElement(elem *Element) {
 	switch specOf(elem).model {
 	case modelText, modelInline:
+		// 인라인 요소는 자기 양 끝을 자르지 않는다 — 양 끝 공백이 내용인지는 바깥 흐름을
+		// 봐야 안다 (`13.8<span> kg/m</span>`의 한 칸은 유일한 구분자다). 흐름 전체를
+		// 담은 바깥 요소가 닫힐 때 한 번에 정규화한다.
+		if KindOf(elem.Name) == KindInline {
+			return
+		}
 		elem.Children = trimEdgeSpace(elem.Children)
 	case modelPre:
 		elem.Children = trimPreEdges(elem.Children)
@@ -1069,25 +1075,75 @@ func collapseSpace(s string) string {
 	return b.String()
 }
 
-// trimEdgeSpace는 자식 목록 **양 끝**의 공백만 잘라낸다.
+// trimEdgeSpace는 인라인 흐름의 공백을 HTML처럼 정규화한다.
 //
 // 요소 경계의 공백은 저자가 들여쓰기로 넣은 것이지 내용이 아니다 — `<text>\n  제목\n</text>`는
-// "제목"이다. 반면 자식 사이의 공백은 남긴다: 인라인 태그에서
-// `<strong>배포</strong> 자동화`의 한 칸은 내용이다.
+// "제목"이다. 반면 흐름 **안의** 한 칸은 인라인 태그 경계를 넘어서도 내용이다:
+// `<strong>배포</strong> 자동화`와 `13.8<span> kg/m</span>`의 한 칸은 둘 다 남는다.
+//
+// 규칙은 세 가지다. (1) 흐름의 시작·끝과 줄바꿈(`<br>`)·비인라인 자식 양옆의 공백은 버린다
+// — 중첩된 인라인 안쪽까지 내려가서 버린다. (2) 태그 경계를 사이에 둔 연속 공백은 한 칸으로
+// 접는다 — 뒤쪽 공백을 버리므로 공백은 먼저 나온 런에 남는다. (3) 비게 된 텍스트 노드는
+// 트리에서 뺀다.
 func trimEdgeSpace(children []Node) []Node {
-	if len(children) == 0 {
-		return children
+	var flow []*Text // nil은 경계(줄바꿈·비인라인 자식)다
+	var walk func([]Node)
+	walk = func(nodes []Node) {
+		for _, node := range nodes {
+			switch n := node.(type) {
+			case *Text:
+				flow = append(flow, n)
+			case *Element:
+				if KindOf(n.Name) == KindInline && !IsVoidElement(n.Name) {
+					walk(n.Children)
+				} else {
+					flow = append(flow, nil)
+				}
+			}
+		}
 	}
-	if first, ok := children[0].(*Text); ok {
-		first.Value = strings.TrimLeft(first.Value, " ")
+	walk(children)
+	flow = append(flow, nil)
+
+	// trimBefore는 경계 직전 런들의 꼬리 공백을 버린다 — 빈 런을 건너뛰며 내용이 남는 런까지.
+	trimBefore := func(i int) {
+		for j := i - 1; j >= 0 && flow[j] != nil; j-- {
+			flow[j].Value = strings.TrimRight(flow[j].Value, " ")
+			if flow[j].Value != "" {
+				return
+			}
+		}
 	}
-	if last, ok := children[len(children)-1].(*Text); ok {
-		last.Value = strings.TrimRight(last.Value, " ")
+	afterSpace := true // 흐름의 시작은 경계다
+	for i, text := range flow {
+		if text == nil {
+			trimBefore(i)
+			afterSpace = true
+			continue
+		}
+		if afterSpace {
+			text.Value = strings.TrimLeft(text.Value, " ")
+		}
+		if text.Value != "" {
+			afterSpace = strings.HasSuffix(text.Value, " ")
+		}
 	}
+	return dropEmptyText(children)
+}
+
+// dropEmptyText는 비게 된 텍스트 노드를 인라인 하위 트리까지 내려가며 뺀다.
+func dropEmptyText(children []Node) []Node {
 	out := children[:0]
 	for _, child := range children {
-		if text, ok := child.(*Text); ok && text.Value == "" {
-			continue
+		switch n := child.(type) {
+		case *Text:
+			if n.Value == "" {
+				continue
+			}
+		case *Element:
+			if KindOf(n.Name) == KindInline {
+				n.Children = dropEmptyText(n.Children)
+			}
 		}
 		out = append(out, child)
 	}

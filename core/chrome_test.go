@@ -55,8 +55,8 @@ func TestLoadBuiltinChrome(t *testing.T) {
 		if decl.role != soml.RoleCaption {
 			t.Errorf("chrome[%d].role = %q, want %q", i, decl.role, soml.RoleCaption)
 		}
-		// 표지·섹션 구분·끝 장에는 번호도 푸터도 찍지 않는다.
-		for _, layout := range []soml.SlideLayout{"title", "section-divider", "end"} {
+		// 표지·섹션 구분·끝 장에는 번호도 푸터도 찍지 않는다. 전면 그림 장도 — 크롬이 그림과 캡션 위에 앉는다.
+		for _, layout := range []soml.SlideLayout{"title", "section-divider", "image-full", "end"} {
 			if !decl.skip[layout] {
 				t.Errorf("chrome[%d]의 skipLayouts에 %q가 없다", i, layout)
 			}

@@ -24,10 +24,20 @@ const ShapeElement = "shape"
 // 본다 (Element.Attrs 주석). 12종은 전부 OOXML 프리셋 지오메트리의 부분집합이며, 확장할
 // 때도 OOXML에 존재하는 것만 더해 번역 가능성을 지킨다.
 var shapeTypes = []string{
-	"rect", "rounded-rect", "ellipse", "diamond", "cylinder", "chevron",
+	"rect", "rounded-rect", "ellipse", "diamond", "cylinder", ChevronShapeType,
 	"arrow-right", "hexagon", "parallelogram", "callout", "star", "cloud",
 	"triangle", "cube", "left-brace", "right-brace", PathShapeType,
 }
+
+// ChevronShapeType은 노치가 파인 화살표 띠다 — 노치 깊이를 `notch`로 받는 유일한 프리셋이다.
+const ChevronShapeType = "chevron"
+
+// DefaultChevronNotch는 `notch`를 생략한 chevron의 노치 깊이다 (박스 폭의 %).
+//
+// 20%인 이유: 넓은 단계 띠(460×88)에서도 노치 사이에 라벨 자리가 남고, 정사각형에 가까운 chevron도
+// 화살표로 읽힌다. 프리셋을 정사각형에서 평가한 깊이(폭의 50%)는 넓은 chevron을 몸통 없는 `>`로
+// 만들어 안의 글이 실루엣 밖으로 나갔다.
+const DefaultChevronNotch = 20.0
 
 // PathShapeType은 사용자 지오메트리 도형이다 — 프리셋이 아니라 `d`의 경로를 0~100 상자에서 그리고 그 상자를
 // 박스로 늘린다 (웹 정규 SVG · PPTX `a:custGeom`).
@@ -41,9 +51,10 @@ func ShapeTypes() []string {
 	return types
 }
 
-// shapeInsetTextTypes는 **텍스트 영역이 박스보다 좁은** 프리셋 8종이다 — 뷰어가
+// shapeInsetTextTypes는 **텍스트 영역이 박스보다 좁은** 프리셋이다 — 뷰어가
 // `prstGeom`마다 들고 있는 본문 사각형이 실루엣 안쪽으로 백분율만큼 들어와 있는 종류다.
-// 나머지 넷은 영역이 곧 박스이거나(rect·chevron·callout) 인셋이 px이다(rounded-rect).
+// 나머지는 영역이 곧 박스이거나(rect·callout) 인셋이 px이다(rounded-rect). chevron의 영역은 두 노치
+// 사이다 (`notch="50%"`일 때만 박스 전체 — 그 판정은 값 층이 노치 값으로 한다).
 //
 // 수치가 아니라 **이름만** 여기 있는 이유는 층의 소유다: 백분율 수치는 기하 유도표의 한
 // 열이고(render/web의 shapeGeometries — 우리가 그린 실루엣과 짝이어야 한다), 값 층이 알아야
@@ -53,7 +64,7 @@ func ShapeTypes() []string {
 // 두 곳이 갈라지는 위험은 테스트가 막는다 — render/web이 이 목록과 자기 표의
 // `TextRect.HasPercent()`가 같은지 단정한다 (프리셋을 더할 때 한쪽만 고치면 멈춘다).
 var shapeInsetTextTypes = []string{
-	"ellipse", "diamond", "cylinder", "arrow-right", "hexagon", "parallelogram", "star", "cloud",
+	"ellipse", "diamond", "cylinder", ChevronShapeType, "arrow-right", "hexagon", "parallelogram", "star", "cloud",
 	"triangle", "cube",
 }
 
@@ -130,7 +141,9 @@ var (
 	// `variant`도 얹지 않는다.
 	//
 	// `d`는 `type="path"`의 경로다 (0~100 상자의 절대 좌표 — 다른 종류에서는 진단이다).
-	shapeOwnAttrs = []string{"type", "id", "alt", "d"}
+	// `notch`는 `type="chevron"`의 노치 깊이다 (박스 폭의 % — 다른 종류에서는 진단이다). 둘 다 그
+	// 도형의 기하이지 외관이 아니므로 테마·variant가 얹지 않는다.
+	shapeOwnAttrs = []string{"type", "id", "alt", "d", "notch"}
 	// shapeAppearanceAttrs는 외관 채널이다. `stroke`/`cap`/
 	// `dash`는 line·arrow의 것이라 열지 않는다 — 도형에 받아 놓고 버리는 선언이 되고, 그
 	// 침묵이 닫힌 어휘가 막으려던 실패다.

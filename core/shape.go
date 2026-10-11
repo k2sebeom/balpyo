@@ -43,6 +43,11 @@ func (r *resolver) resolveShape(elem *soml.Element) {
 	mergeShape(&style, themeShapePatch(r.comps.shapeDefault, style.Type, backdrop))
 	mergeShape(&style, themeShapePatch(r.shapeVariant(elem), style.Type, backdrop))
 	mergeShape(&style, inline)
+	if style.Type == soml.ChevronShapeType && style.Notch == nil {
+		// 기본값은 여기서 확정한다 — 렌더러가 "정하지 않음"을 저마다 해석하면 두 타깃의 노치가 갈라진다.
+		notch := soml.DefaultChevronNotch
+		style.Notch = &notch
+	}
 	if style.Type == soml.PathShapeType && style.Path == nil {
 		if _, ok := elem.Attr("d"); !ok {
 			r.errorf(elem.NameSpan, "a type=%q shape needs d — its outline in a 0–100 box (e.g. d=%q)", soml.PathShapeType, "M0,100 L50,0 L100,100 Z")
@@ -67,6 +72,10 @@ func (r *resolver) resolveShape(elem *soml.Element) {
 // 받으므로 내용이 높이를 정하는 카드가 그대로 산다.
 func (r *resolver) shapeInsetTextHeight(elem *soml.Element, style *soml.ShapeStyle) {
 	if !soml.ShapeInsetText(style.Type) || style.Box.Height != nil || style.Box.Ratio != nil {
+		return
+	}
+	if style.Notch != nil && *style.Notch == 50 {
+		// 노치가 폭의 절반이면 프리셋의 텍스트 영역이 박스 전체다 — 기준으로 삼을 인셋이 없다.
 		return
 	}
 	for _, child := range elem.Children {
@@ -167,6 +176,16 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 			}
 			if cmds, ok := r.pathData(attr); ok {
 				style.Path = cmds
+			}
+		case "notch":
+			// 노치는 chevron의 기하다 — 다른 프리셋에는 실을 조정값 자리가 없다 (`d`·`radius`와 같은 관문).
+			if style.Type != soml.ChevronShapeType {
+				r.errorf(attr.NameSpan, "notch is the notch depth of type=%q shapes — this shape is type=%q",
+					soml.ChevronShapeType, style.Type)
+				continue
+			}
+			if notch, ok := r.notch(attr); ok {
+				style.Notch = &notch
 			}
 		case "variant":
 			// 캐스케이드 둘째 단이라 shapeVariant가 소유한다 — 여기서 또 보면 모르는 variant
@@ -670,4 +689,26 @@ func anchorList() string {
 		names = append(names, string(anchor))
 	}
 	return strings.Join(names, ", ")
+}
+
+// notch는 `notch`를 해석한다 — 박스 폭의 백분율이고 0% 초과 50% 이하다.
+//
+// 단위가 `%`뿐인 이유: 노치는 폭에 대한 비율이어야 웹이 측정 전에도 정확한 실루엣과 텍스트 영역을
+// 그린다 (px 깊이는 잰 폭을 알아야 비율이 된다). 50%가 상한인 이유는 두 노치가 만나는 자리이기
+// 때문이다 — 넘기면 실루엣이 스스로를 가로지른다.
+func (r *resolver) notch(attr soml.Attr) (float64, bool) {
+	if !r.hasValue(attr) {
+		return 0, false
+	}
+	raw, ok := strings.CutSuffix(attr.Value, "%")
+	value, err := strconv.ParseFloat(raw, 64)
+	if !ok || err != nil {
+		r.errorf(attr.ValueSpan, "notch must be a percentage of the shape width (%q) — e.g. notch=%q", attr.Value, "20%")
+		return 0, false
+	}
+	if value <= 0 || value > 50 {
+		r.errorf(attr.ValueSpan, "notch must be greater than 0%% and at most 50%% (%q) — at 50%% the two notches meet", attr.Value)
+		return 0, false
+	}
+	return value, true
 }

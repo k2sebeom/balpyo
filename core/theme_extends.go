@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
@@ -228,6 +229,12 @@ func readThemeChain(fsys fs.FS, name string) ([]rawTheme, error) {
 		}
 		raw, err := readRawTheme(loc.fsys, loc.dir)
 		if err != nil {
+			// 파일 자리가 진단의 자리가 되는 것은 프로젝트 안의 테마뿐이다 — 설치한 테마의
+			// `themes/<이름>/`은 홈 기준이라 프로젝트 상대 경로로 찍으면 없는 파일을 가리킨다.
+			var fe *themeFileError
+			if loc.origin != originLocal && errors.As(err, &fe) {
+				return nil, fmt.Errorf("theme %q: %s", name, fe)
+			}
 			return nil, fmt.Errorf("theme %q: %w", name, err)
 		}
 		if raw.manifest.Name != name {

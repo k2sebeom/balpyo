@@ -92,6 +92,20 @@
 | `id` | 임의 이름 | 없음 | 도형 이름 — **아직 아무것도 그리지 않는다** (아래) |
 | `alt` | 문자열 (빈 값은 **에러**) | 없음 | 그림의 **접근성 이름** — 안의 글을 대체하지 않는다 (아래) |
 | `d` | 경로 (`type="path"` 전용) | 없음 | 0~100 상자의 윤곽 — 아래 |
+| `notch` | 박스 **폭**의 `%` — 0% 초과 50% 이하 (`type="chevron"` 전용) | `20%` | 노치 깊이 — 아래 |
+
+`notch`는 chevron의 노치(뒤쪽 홈과 앞쪽 끝이 들어가는 깊이)다. 단위가 폭의 `%`뿐인 이유는 두 타깃이
+같은 모양을 내는 길이기 때문이다: 웹은 프리셋을 0~100 상자에서 그려 박스로 늘리므로 폭 비율이 그대로
+지켜지고, PPTX는 잰 박스로 같은 깊이의 조정값(`avLst`의 `adj`)을 내어 PowerPoint에서도 노치를 끌어
+고칠 수 있는 프리셋 도형으로 남는다. 50%는 두 노치가 만나는 자리라 상한이다. `d`와 같이 도형의 기하라서
+테마·`variant`가 얹지 않는다.
+
+```html
+<row gap="0">
+  <shape type="chevron" fill="accent1" w="fill" h="72"><p align="center" anchor="center">Parse</p></shape>
+  <shape type="chevron" fill="accent2" notch="12%" w="fill" h="72"><p align="center" anchor="center">Resolve</p></shape>
+</row>
+```
 
 `id`는 [연결선](connector.md)이 가리키는 이름이다 (`<connector from="db">`). 이름 자체는 **산출물에
 나가지 않는다** — 웹 속성에도 PPTX 도형 이름에도 실리지 않고, PPTX의 연결선은 도형 번호로 붙는다.
@@ -231,7 +245,7 @@
 | `ellipse` | 네 변 14.64% |
 | `diamond` | 네 변 25% |
 | `cylinder` | 위 25% · 아래 12.5% (좌우는 박스) |
-| `chevron` | 박스 전체 (아래) |
+| `chevron` | 좌우 `notch`% (두 노치 사이 — 기본 20%) · `notch="50%"`면 박스 전체 (아래) |
 | `arrow-right` | 위·아래 25% · 오른쪽 25% (왼쪽은 박스) |
 | `hexagon` | 네 변 16.67% |
 | `parallelogram` | 네 변 18.75% |
@@ -243,16 +257,15 @@
 `rounded-rect`만 인셋이 px인 것은 `radius`가 px이기 때문이고, 그 덕분에 이 프리셋은
 인셋을 `padding`으로 받아 **내용이 높이를 정하는 카드**로 계속 쓸 수 있다.
 
-- **백분율 인셋 프리셋(위 표의 8종)에 내용을 담으면 `h`나 `ratio`가 필요하다.** 인셋의 기준이
-  자기 박스 높이인데 그 높이를 내용이 정하면 기준이 순환한다. 값 층이 에러로 막는다 (아래
-  진단 표).
-- **chevron 안의 단계 라벨은 도형 밖에 둔다.** 우리 유도에서 노치 깊이가 박스 폭의 절반이라
-  (정규 공간을 늘린다) 실루엣 안에 라벨이 들어갈 자리가 없다: 가운데 정렬한 줄은 노치 끝을 가로지른다. 어휘가
-  막지는 않으므로(짧은 기호 하나는 들어간다) 두 타깃은 같게 나오지만, 권하는 배치는 `<col>`
-  안의 형제 `<text>`다.
-  PPTX의 조정값은 노치를 폭의 절반보다 아주 조금(100000분의 1) 깊게 낸다 — 정확히 절반이면 프리셋의
-  텍스트 영역 공식이 경계에 걸려 뷰어마다 박스 전체와 폭 0 열로 갈린다. 조금 넘기면 어느 뷰어에서든
-  박스 전체다.
+- **백분율 인셋 프리셋(위 표에서 인셋이 %인 종류 — `chevron` 포함)에 내용을 담으면 `h`나 `ratio`가
+  필요하다.** 인셋의 기준이 자기 박스인데 그 높이를 내용이 정하면 기준이 순환한다 (웹은 텍스트 영역을
+  박스 안의 절대 배치 상자로 잡는다). 값 층이 에러로 막는다 (아래 진단 표). `notch="50%"`인 chevron은
+  영역이 박스 전체라 묻지 않는다.
+- **chevron의 글은 두 노치 사이에 놓인다.** 노치가 폭의 `notch`%이므로 라벨이 쓸 폭은 박스의
+  `100 − 2 × notch`%다 (기본 60%). 넓은 단계 띠에는 기본값으로 충분하고, 짧은 라벨을 좁은 chevron에 담으려면
+  `notch`를 낮춘다. `notch="50%"`면 노치가 만나 몸통이 없으므로 글은 박스 전체에 놓인다 — 이때 PPTX의
+  조정값은 노치를 절반보다 아주 조금(100000분의 1) 깊게 낸다: 정확히 절반이면 프리셋의 텍스트 영역 공식이
+  경계에 걸려 뷰어마다 박스 전체와 폭 0 열로 갈린다.
 
 두 타깃은 같은 도형에 같은 글을 같은 정렬로 놓는다. 글자가 그 박스 안 어디에 그려지는지는 뷰어의 몫이다.
 
@@ -458,7 +471,7 @@ PPTX는 **같은 도형의 본문**(`txBody`)이다. 그래서 도형 안 텍스
 |---|---|
 | 도형 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <shape> (wrap it in <text>)` |
 | 도형의 **직속** 자식으로 리스트·그림·표·중첩 도형을 썼다 | `<shape> cannot contain <ul> (available tags: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)` — 컨테이너로 감싸면 들어간다 |
-| 어휘 밖의 속성 | `unknown attribute stroke on <shape> (available attributes: type, id, alt, d, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
+| 어휘 밖의 속성 | `unknown attribute stroke on <shape> (available attributes: type, id, alt, d, notch, variant, fill, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
 | `<arrow>`·`<line>`·`<group>`을 썼다 | `unknown tag <arrow> — did you mean <row>? (tags available inside <slide>: …)` — 목록은 그 자리에 쓸 수 있는 태그다 |
 
 값 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다:
@@ -475,6 +488,9 @@ PPTX는 **같은 도형의 본문**(`txBody`)이다. 그래서 도형 안 텍스
 | `border` 굵기가 0 이하 | `the border width must be greater than 0 ("0") — use border="none" to remove the border` |
 | 어휘 밖의 `border` 스타일 | ``unknown border style "double" (available values: solid, dashed, dotted) — the part order is `<width> <style> <color>` `` |
 | 백분율 인셋 프리셋에 내용을 담고 `h`·`ratio`를 안 썼다 | `a type="ellipse" shape with content needs h or ratio (e.g. h="120") — this preset's text area is a percentage of the box height, so letting the content set the height would be circular` |
+| `notch`를 `chevron` 밖에 썼다 | `notch is the notch depth of type="chevron" shapes — this shape is type="rect"` |
+| `notch`가 `%`가 아니다 | `notch must be a percentage of the shape width ("20") — e.g. notch="20%"` |
+| `notch`가 0% 이하이거나 50%를 넘는다 | `notch must be greater than 0% and at most 50% ("60%") — at 50% the two notches meet` |
 | `radius`를 `rounded-rect` 밖에 썼다 | `radius is only for type="rounded-rect" (this is "rect") — other presets have no radius adjustment, so only the web would be rounded` |
 | 모르는 `radius` 토큰 | `radius value is not a number ("huge") — use a token (sm, md, lg) or a number` |
 | 모르는 `shadow` 토큰 | `unknown shadow token "hard" (available tokens: soft) — shadows are written as tokens, not numbers (the two targets define blur differently, so the same numbers would draw differently)` |

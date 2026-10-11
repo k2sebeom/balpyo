@@ -386,7 +386,7 @@ func revealAttr(elem *soml.Element) string {
 }
 
 // EnterAttr · EnterDelayAttr는 등장의 마크업이다 — 효과 이름과 지연(ms)을 나르고, 뷰어 런타임이 지연을
-// 전환에 걸어 슬라이드에 들어갈 때 켠다 (발표자 뷰에서만 — viewer.css).
+// 요소의 변수로 옮겨 슬라이드에 들어갈 때 켠다 (전환에 거는 것은 발표자 뷰의 CSS뿐이다 — viewer.css).
 const (
 	EnterAttr      = "data-balpyo-enter"
 	EnterDelayAttr = "data-balpyo-enter-delay"

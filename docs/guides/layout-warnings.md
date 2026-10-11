@@ -26,6 +26,15 @@ balpyo build --target html,pptx
 경고 끝에 센다 — 스테이지 바닥을 넘친 목록은 `<ul> leaves the stage at the bottom by 120px … (6 <li>
 inside escape too)` 한 줄이다. 고칠 곳은 바깥 박스 하나이고, 그것을 고치면 안의 것도 함께 들어온다.
 
+박스 하나가 여러 판정에 걸리면 **원인에 가까운 것**을 말한다. 스테이지 안에 있는 부모를 넘친 박스가
+스테이지 밖까지 나갔다면 원인은 너무 작은 부모이므로, 경고는 부모 넘침이고 스테이지 이탈은 같은
+문장에 붙는다 — `<col> overflows its parent <shape> at the bottom by 40px and leaves the stage at
+the bottom by 11px`.
+
+[차트](../reference/soml/chart.md)는 도형과 글자로 펼쳐지지만 경고는 **저자가 쓴 태그**로 말한다.
+막대와 값·범주 라벨은 `<point>`(자리도 그 `<point>`), 범례 항목은 `<series>`, 나머지 틀은
+`<chart>`다 — `<point> overflows its parent <chart> on the right by 23px`.
+
 경고는 **넘친 양을 논리 px로** 말한다. 스테이지는 1280×720이고 콘텐츠 박스는 거기서 여백
 64px을 뺀 1152×592이므로, "by 34px"는 줄 하나쯤(본문 24px에서 36px)이라는 뜻이다.
 

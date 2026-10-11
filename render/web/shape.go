@@ -380,19 +380,7 @@ func shapeGeometries() []shapeGeometry {
 			Adjust:   []ShapeAdjust{{Name: "adj", Base: 25000, Axis: AdjustAxisHeight}},
 			TextRect: ShapeInsets{T: 25, B: 12.5},
 		},
-		{
-			// chevron: `adj=50000` → `x1 = ss·adj/100000` = 50(노치 깊이), `x2 = r - x1`.
-			// 경로는 (l,t) → (x2,t) → (r,vc) → (x2,b) → (l,b) → (x1,vc).
-			// Adjust: adj = 50000·w/ss (프리셋의 maxAdj = 100000·w/ss라 언제나 그 절반이다).
-			Type: "chevron", Preset: "chevron", Space: spaceNormalized,
-			// 텍스트 영역: **박스 전체**다. 프리셋의 rect는 `il`~`ir`이고 `dx = x2 − x1`에서
-			// `il = ?: dx x1 l` · `ir = ?: dx x2 r`이다 — 노치가 폭의 절반이면 dx = 0이라 명세로는
-			// 박스 전체(l~r)지만, LibreOffice는 0을 양수로 읽어 폭 0 열(x1~x2)에 한 글자씩 쌓고,
-			// 반올림이 adj를 조금 내리면 모든 엔진이 가는 열이 된다. 그래서 조정값을 한 단위
-			// 넘긴다(Exceed): dx < 0이면 어느 엔진이든 박스 전체다.
-			Paths:  []shapePath{{D: "M0,0 L50,0 L100,50 L50,100 L0,100 L50,50 Z"}},
-			Adjust: []ShapeAdjust{{Name: "adj", Base: 50000, Axis: AdjustAxisWidth, Exceed: true}},
-		},
+		chevronGeometry(soml.DefaultChevronNotch),
 		{
 			// rightArrow: `adj1=50000` → `dy1 = h·adj1/200000` = 25(축 절반, h 기준),
 			// `adj2=50000` → `dx1 = ss·adj2/100000` = 50(머리 길이), `x1 = r - dx1`.
@@ -608,6 +596,41 @@ func braceInk(mirror bool) func(w, h float64) measuredInk {
 	}
 }
 
+// chevronGeometry는 노치 깊이 notch(박스 폭의 %)의 chevron이다.
+//
+// OOXML `chevron`은 `x1 = ss·adj/100000`(노치 깊이) · `x2 = r − x1`이고 경로는 (l,t) → (x2,t) → (r,vc) →
+// (x2,b) → (l,b) → (x1,vc)다. 깊이를 **폭의 비율**로 받으므로 정규 공간에서 x1 = notch로 정확하다 —
+// 늘림이 폭 비율을 지킨다. PPTX는 잰 박스로 같은 깊이를 되돌린다: adj = notch·1000·w/ss (Adjust).
+// 프리셋의 maxAdj가 100000·w/ss라 notch ≤ 50은 언제나 그 안이다.
+//
+// 텍스트 영역은 두 노치 사이다: `dx = x2 − x1`이고 `il = ?: dx x1 l` · `ir = ?: dx x2 r`이므로 dx > 0이면
+// 좌우 notch%씩 들어온다 (실측: 240×80, notch 20%에서 글자가 48px 안쪽에서 시작한다). 노치가 정확히
+// 절반이면 dx = 0이라 명세로는 박스 전체지만 LibreOffice는 0을 양수로 읽어 폭 0 열에 한 글자씩 쌓고,
+// 반올림이 adj를 조금 내리면 모든 엔진이 가는 열이 된다. 그래서 그때만 조정값을 한 단위 넘긴다(Exceed):
+// dx < 0이면 어느 엔진이든 박스 전체다.
+func chevronGeometry(notch float64) shapeGeometry {
+	n := formatNumber(round4(notch))
+	x2 := formatNumber(round4(100 - notch))
+	g := shapeGeometry{
+		Type: soml.ChevronShapeType, Preset: "chevron", Space: spaceNormalized,
+		Paths:  []shapePath{{D: "M0,0 L" + x2 + ",0 L100,50 L" + x2 + ",100 L0,100 L" + n + ",50 Z"}},
+		Adjust: []ShapeAdjust{{Name: "adj", Base: notch * 1000, Axis: AdjustAxisWidth, Exceed: notch == 50}},
+	}
+	if notch < 50 {
+		g.TextRect = ShapeInsets{L: notch, R: notch}
+	}
+	return g
+}
+
+// styleGeometry는 확정 외관 하나의 기하다 — 표의 행에 도형마다의 기하 속성(chevron의 `notch`)을 얹는다.
+// 렌더 경로(웹 잉크 · 텍스트 영역, PPTX 조정값)는 이것을 쓴다. 표의 행은 기본값의 기하다.
+func styleGeometry(style soml.ShapeStyle) (shapeGeometry, error) {
+	if style.Type == soml.ChevronShapeType && style.Notch != nil {
+		return chevronGeometry(*style.Notch), nil
+	}
+	return shapeGeometryOf(style.Type)
+}
+
 // shapeGeometryOf는 프리셋 이름으로 기하를 찾는다.
 //
 // 모르는 `type`을 에러로 두는 이유는 containerClass와 같다: 어휘에 프리셋을 더하고 기하를
@@ -655,6 +678,16 @@ func ShapePreset(shapeType string) (string, bool) {
 // "어휘에 있는데 표에 없는 프리셋"에서 멈출 수 있다.
 func ShapeAdjusts(shapeType string) ([]ShapeAdjust, bool) {
 	geom, err := shapeGeometryOf(shapeType)
+	if err != nil {
+		return nil, false
+	}
+	return geom.Adjust, true
+}
+
+// ShapeStyleAdjusts는 확정 외관 하나의 조정값 명세다 (ShapeAdjusts에 도형의 기하 속성을 얹은 것 —
+// styleGeometry). PPTX 렌더러는 이것을 쓴다: chevron의 `notch`가 조정값을 바꾼다.
+func ShapeStyleAdjusts(style soml.ShapeStyle) ([]ShapeAdjust, bool) {
+	geom, err := styleGeometry(style)
 	if err != nil {
 		return nil, false
 	}
@@ -727,7 +760,7 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 		return fmt.Errorf("%s:%s <%s> shape appearance is unresolved — the deck did not go through core.Resolve",
 			slide.Source, elem.Span, elem.Name)
 	}
-	geom, err := shapeGeometryOf(style.Type)
+	geom, err := styleGeometry(*style)
 	if err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}

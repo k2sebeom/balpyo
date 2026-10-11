@@ -74,7 +74,9 @@ minimal/
 있는데 선언에 없어도 에러다), 크롬 선언의 `skipLayouts`는 이 테마가 구현하는 레이아웃
 이름이어야 한다. 슬롯 영역 파일(`<이름>.slots.css`)만 대조가 **단방향**이다 — 슬롯이 없는
 레이아웃(`canvas`)은 파일이 없어도 되지만, 선언에 없는 레이아웃의 슬롯 파일은 에러다.
-`components.json`의 모르는 키도 에러다 (닫힌 어휘 — `$comment`만 예외).
+`tokens.json`·`components.json`의 모르는 키도 에러다 (닫힌 어휘). 예외는 `$comment`로 시작하는 키
+(`$comment`, `$comment-accent` …)뿐이고, 두 파일의 어느 객체에 두어도 된다 — 값 옆에 그 값을 고른
+이유를 적는 자리다.
 
 `components.json`의 색 · 채움 · 테두리 값은 **저자가 인라인으로 쓰는 문법과 같다**. 그래서 테마가
 그라디언트와 색 변형을 소유할 수 있다 — `"fill": "gradient(accent1 accent6, 135deg)"`,
@@ -103,9 +105,9 @@ minimal/
   ],
   "chrome": [
     { "kind": "footer",     "align": "start", "role": "caption",
-      "skipLayouts": ["title", "section-divider", "end"] },
+      "skipLayouts": ["title", "section-divider", "image-full", "end"] },
     { "kind": "pageNumber", "align": "end",   "role": "caption",
-      "skipLayouts": ["title", "section-divider", "end"] }
+      "skipLayouts": ["title", "section-divider", "image-full", "end"] }
   ]
 }
 ```
@@ -627,7 +629,8 @@ theme "acme" exists both in the project's themes/acme/ and among installed theme
 | 컴포넌트 기본값·variant·이미지·표의 `color`·`fill`·`border` 색이 이 테마의 색 토큰 참조가 아니다 (`#RRGGBB` 리터럴, 리터럴 스톱이 섞인 그라디언트) | **에러** | 자리와 문제의 조각을 가리키고 이 테마의 색 토큰을 나열한다 — 그 variant를 쓴 슬라이드가 없어도 로딩에서 멈춘다 |
 | 역할·컴포넌트 기본값·variant의 `tracking`이 −0.1 ~ 0.5 밖이거나 `case`가 `upper`·`none`이 아니다 | **에러** | `… tracking 0.8 is out of range …` · `… case "lower" is unknown (available values: upper, none)` |
 | `text.mark.highlight`가 그라디언트다 | **에러** | `text.mark highlight "gradient(…)" cannot be a gradient — a highlight is one color (PPTX a:highlight holds a single color)` |
-| `components.json`에 모르는 키가 있다 | **에러** | 미지원 키를 가리킨다 (오타·미구현 키) |
+| `tokens.json`·`components.json`에 모르는 키가 있다 (`$comment*` 밖) | **에러** | 그 파일의 줄:칸과 JSON 안의 경로를 가리킨다 — `themes/corp/components.json:4:24: unknown key "lineHeight" at text.variants["stat"].lineHeight`. 이름이 있는 배열 원소는 이름으로, 없으면 순번(`componentDefaults[1]`)으로 부른다 |
+| 테마 JSON 파일의 값 타입이 틀렸거나 문법이 깨졌다 | **에러** | 같은 방식으로 파일 · 줄:칸 · 경로를 가리킨다 — `shape.variants["card"].fill must be a string, not number` · `invalid JSON: …` |
 | `code.tabSize`가 1 미만이다 | **에러** | `tabSize must be at least 1` |
 | `code.tokens`에 모르는 종류가 있다 | **에러** | `unknown code token class "kw" (available types: keyword, name, attr, string, number, comment, punct)` |
 | `code.tokens`에 같은 종류가 두 번 | **에러** | `code token class "keyword" is listed twice` |

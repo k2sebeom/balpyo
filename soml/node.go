@@ -19,6 +19,18 @@ type Element struct {
 	// Appearance는 core.Resolve가 채운 확정 외관이다 (appearance.go). 파서는 건드리지 않고,
 	// **렌더러는 여기만 읽는다** — Attrs를 다시 해석하지 않는다.
 	Appearance *Appearance
+	// Authored는 값 층이 펼친 **합성 노드**에서 저자가 쓴 태그 이름이다 (`<chart>`의 막대와 값
+	// 라벨은 "point"). 저자가 쓴 노드는 빈 값이다. 배치 진단이 저자가 쓰지 않은 태그(`<text>`)를
+	// 말하지 않게 하는 자리이고, 렌더러는 읽지 않는다 — 그려지는 것은 Name의 종류다.
+	Authored string
+}
+
+// AuthoredName은 진단이 이 요소를 부를 태그 이름이다 — 합성 노드면 저자가 쓴 태그, 아니면 Name.
+func (e *Element) AuthoredName() string {
+	if e.Authored != "" {
+		return e.Authored
+	}
+	return e.Name
 }
 
 // NodeSpan은 Node 계약이다.

@@ -82,6 +82,9 @@ type Ref struct {
 	ID string
 	// El은 이 요소를 만든 SOML 태그 이름이다 (`data-balpyo-el`과 대조한다).
 	El string
+	// Tag는 진단이 이 요소를 부를 이름이다 — 저자가 쓴 태그다 (soml.Element.AuthoredName). 차트가
+	// 펼친 값 라벨은 El이 "text"이지만 저자가 쓴 것은 `<point>`다.
+	Tag string
 	// Slide는 0-based 슬라이드 인덱스다.
 	Slide int
 	// Source는 슬라이드 파일 경로다 — 대조가 실패했을 때 진단이 가리킬 곳.
@@ -124,7 +127,7 @@ func Refs(deck *soml.Deck) []Ref {
 		for i, node := range slide.Content {
 			if elem, ok := node.(*soml.Element); ok && soml.HasConnectorLabel(elem) {
 				refs = append(refs, Ref{
-					ID: web.ElementID(slide.Index, []int{i}), El: elem.Name, Slide: slide.Index,
+					ID: web.ElementID(slide.Index, []int{i}), El: elem.Name, Tag: elem.AuthoredName(), Slide: slide.Index,
 					Source: slide.Source, Span: elem.NameSpan, Free: true, Overlap: true,
 				})
 			}
@@ -188,6 +191,7 @@ func collect(refs []Ref, slide *soml.Slide, node soml.Node, path []int, ctx plac
 	refs = append(refs, Ref{
 		ID:      id,
 		El:      elem.Name,
+		Tag:     elem.AuthoredName(),
 		Slide:   slide.Index,
 		Source:  slide.Source,
 		Parent:  ctx.parent,

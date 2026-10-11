@@ -1,6 +1,7 @@
 package testkit
 
 import (
+	"bytes"
 	"math"
 	"os"
 	"path/filepath"
@@ -81,4 +82,80 @@ func pdfPages(t testing.TB, pdfPath string) [][2]float64 {
 		pages = append(pages, [2]float64{w, h})
 	}
 	return pages
+}
+
+// 좌표로 놓은 요소(`x`/`y` — canvas 스테이지와 `<stack>`의 자식)도 종이에 찍힌다. 화면에서는 보이는데
+// 인쇄에서만 빠지던 회귀다: Chromium의 페이지 나눔이 grid 영역 안의 절대 위치 박스를 잃어버려 canvas
+// 장이 꼬리말만 남은 빈 장으로 인쇄됐다.
+//
+// 판정은 링크 주석이다 — Chromium은 종이에 그린 링크마다 `/URI` 주석을 남기므로, 좌표로 놓은 글이
+// 품은 링크가 PDF에 있으면 그 글이 그려진 것이다 (래스터화하지 않는다). 첫 장은 흐름 배치라 둘째 장이
+// 페이지 나눔을 지난다.
+func TestPrintKeepsCoordinatePlacedChildren(t *testing.T) {
+	outDir := buildHTML(t, map[string]string{
+		"balpyo.json":           `{"title": "print"}`,
+		"slides/001_flow.slide": `<slide id="flow"><h1>Flow</h1></slide>`,
+		"slides/002_canvas.slide": `<slide id="canvas" layout="canvas">
+  <text x="100" y="200"><a href="https://example.com/canvas-xy">canvas</a></text>
+  <stack w="400" h="200" x="500" y="300"><shape type="rect" w="400" h="200"/><text x="20" y="20"><a href="https://example.com/stack-xy">stack</a></text></stack>
+</slide>`,
+	})
+	browser := NewBrowser(t)
+	browser.Load(t, filepath.Join(outDir, web.IndexFile))
+	browser.Eval(t, web.PresenterViewExpr(), nil)
+	pdf, err := os.ReadFile(browser.PrintPDF(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, uri := range []string{"https://example.com/canvas-xy", "https://example.com/stack-xy"} {
+		if !bytes.Contains(pdf, []byte(uri)) {
+			t.Errorf("인쇄한 PDF에 %s가 없다 — 좌표로 놓은 글이 종이에서 빠졌다", uri)
+		}
+	}
+}
+
+// 등장 효과는 발표자 뷰의 것이다 — 문서 뷰로 연 순간(스크린숏 · 측정 · 인쇄가 보는 상태) 모든 요소가 이미
+// 끝 상태다. 지연이 인라인 `transition-delay`로 걸려 있으면 길이 0인 전환이 그 지연만큼 요소를 시작
+// 상태(opacity 0)에 붙잡아, preview 스크린숏이 연결선 몇 개가 빠진 장을 찍었다 (실행마다 달랐다).
+func TestEntrancesAreAtTheirEndStateOutsideThePresenterView(t *testing.T) {
+	outDir := buildHTML(t, map[string]string{
+		"balpyo.json":            `{"title": "enter"}`,
+		"slides/001_first.slide": `<slide id="first"><h1>First</h1></slide>`,
+		"slides/002_staged.slide": `<slide id="staged" enter="fade">
+  <h1>One</h1><p>Two</p><p>Three</p><p>Four</p><p>Five</p><p>Six</p>
+</slide>`,
+	})
+	browser := NewBrowser(t)
+	browser.Load(t, filepath.Join(outDir, web.IndexFile))
+	var hidden []string
+	browser.Eval(t, `[...document.querySelectorAll("[`+web.EnterAttr+`]")]
+  .filter((el) => getComputedStyle(el).opacity !== "1")
+  .map((el) => el.getAttribute("data-balpyo-id"))`, &hidden)
+	if len(hidden) > 0 {
+		t.Errorf("문서 뷰로 연 직후에 아직 보이지 않는 등장 요소: %v", hidden)
+	}
+}
+
+// buildHTML은 files(프로젝트 상대 경로 → 내용)로 프로젝트를 만들어 HTML만 빌드하고 출력 디렉토리를 돌려준다.
+func buildHTML(t *testing.T, files map[string]string) string {
+	t.Helper()
+	dir := t.TempDir()
+	for name, body := range files {
+		path := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	result, err := pipeline.Build(pipeline.Options{
+		ProjectDir: dir,
+		Targets:    []render.Target{render.TargetHTML},
+		OutDir:     t.TempDir(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result.OutDir
 }

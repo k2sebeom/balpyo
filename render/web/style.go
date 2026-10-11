@@ -63,7 +63,7 @@ func themeCSS(theme soml.Theme, feat features) string {
 	}
 	if feat.entrances && theme.Motion != nil {
 		// 등장의 길이도 표에서 나온다 — PPTX 효과의 dur와 같은 값이다. 지연은 요소마다 다르므로 마크업이
-		// 나르고(EnterDelayAttr) 런타임이 건다.
+		// 나르고(EnterDelayAttr) 런타임이 요소의 변수로 옮긴다 (발표자 뷰의 CSS만 그 변수를 읽는다).
 		fmt.Fprintf(&b, "    --balpyo-motion-duration: %dms;\n", theme.Motion.Duration)
 	}
 	b.WriteString("  }\n")

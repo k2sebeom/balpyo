@@ -34,6 +34,11 @@ type ShapeStyle struct {
 	Border *Border
 	// Radius는 모서리 반경이다 — `type="rounded-rect"`에서만 뜻이 있다 (그 검증은 값 층).
 	Radius *Radius
+	// Notch는 chevron의 노치 깊이다 — 박스 **폭**의 백분율(0 초과 50 이하). chevron이면 값 층이 늘
+	// 채우고(생략하면 DefaultChevronNotch) 다른 종류에서는 nil이다. 폭의 비율인 이유: 웹은 프리셋을
+	// 정규 공간에서 늘려 그리므로 폭 비율은 측정 전에도 정확히 그릴 수 있고, PPTX는 잰 박스로 같은
+	// 깊이의 조정값을 낸다.
+	Notch *float64
 	// Shadow는 그림자 토큰이다. 토큰 표의 항목을 **그대로** 담는다 (ShadowToken의 주석).
 	Shadow *ShadowToken
 	// Opacity는 0~1 실수다 (`0.8`). 웹 `opacity`와 OOXML의 알파가 둘 다 이

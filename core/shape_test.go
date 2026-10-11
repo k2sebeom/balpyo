@@ -43,7 +43,10 @@ func wantShapeStyle(delta soml.ShapeStyle) soml.ShapeStyle {
 	}
 	mergeShape(&style, shapePatch{fill: delta.Fill, border: delta.Border, radius: delta.Radius,
 		shadow: delta.Shadow, opacity: delta.Opacity, rotate: delta.Rotate, flip: flip})
-	style.ID, style.Alt, style.Box, style.Path = delta.ID, delta.Alt, delta.Box, delta.Path
+	style.ID, style.Alt, style.Box, style.Path, style.Notch = delta.ID, delta.Alt, delta.Box, delta.Path, delta.Notch
+	if style.Type == soml.ChevronShapeType && style.Notch == nil {
+		style.Notch = ptr(soml.DefaultChevronNotch)
+	}
 	return style
 }
 
@@ -120,6 +123,10 @@ func TestResolveShapeStyle(t *testing.T) {
 		{"rotate 소수", "rotate", `type="rect" rotate="7.5"`,
 			soml.ShapeStyle{Type: "rect", Rotate: ptr(7.5)}},
 
+		{"notch", "notch", `type="chevron" notch="35%"`,
+			soml.ShapeStyle{Type: "chevron", Notch: ptr(35.0)}},
+		{"notch 상한", "notch", `type="chevron" notch="50%"`,
+			soml.ShapeStyle{Type: "chevron", Notch: ptr(50.0)}},
 		{"flip h", "flip", `type="chevron" flip="h"`,
 			soml.ShapeStyle{Type: "chevron", Flip: soml.FlipH}},
 		{"flip v", "flip", `type="chevron" flip="v"`,
@@ -258,6 +265,16 @@ func TestResolveShapeDiagnostics(t *testing.T) {
 			contains: []string{"unitless angle", `"deg"`}},
 		{name: "rotate 수치 아님", attrs: `type="rect" rotate="비스듬히"`, needle: "비스듬히",
 			contains: []string{"is not a number", "negative allowed"}},
+		// 노치는 chevron의 기하다 — 다른 프리셋에는 조정값 자리가 없다. 값은 폭의 %이고 0 초과 50 이하다.
+		{name: "notch는 chevron 전용", attrs: `type="rect" notch="20%"`, needle: "notch",
+			contains: []string{`notch is the notch depth of type="chevron" shapes`, `this shape is type="rect"`},
+			dropped:  func(s *soml.ShapeStyle) bool { return s.Notch == nil }},
+		{name: "notch 단위 없음", attrs: `type="chevron" notch="20"`, needle: "20",
+			contains: []string{"notch must be a percentage of the shape width", `notch="20%"`}},
+		{name: "notch 50% 초과", attrs: `type="chevron" notch="60%"`, needle: "60%",
+			contains: []string{"greater than 0% and at most 50%", "the two notches meet"}},
+		{name: "notch 0%", attrs: `type="chevron" notch="0%"`, needle: "0%",
+			contains: []string{"greater than 0% and at most 50%"}},
 		{name: "flip 어휘 밖", attrs: `type="chevron" flip="both"`, needle: "both", contains: []string{"unknown flip", "h, v, hv"}},
 		{name: "flip 공백 표기", attrs: `type="chevron" flip="h v"`, needle: "h v", contains: []string{"unknown flip"}},
 
@@ -269,6 +286,9 @@ func TestResolveShapeDiagnostics(t *testing.T) {
 		// 텍스트 영역이 박스보다 좁은 프리셋은 내용이 컨테이너여도 확정 높이를 요구한다.
 		{name: "inset 프리셋의 컨테이너 내용", attrs: `type="ellipse"`, children: `<col gap="sm"><p>라벨</p></col>`,
 			contains: []string{"needs h or ratio", "ellipse"}},
+		// chevron의 텍스트 영역은 두 노치 사이라 같은 이유로 높이를 요구한다.
+		{name: "chevron의 내용", attrs: `type="chevron"`, children: `<p>단계</p>`,
+			contains: []string{"needs h or ratio", "chevron"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

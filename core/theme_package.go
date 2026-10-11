@@ -1,9 +1,7 @@
 package core
 
 import (
-	"bytes"
 	"embed"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -268,8 +266,8 @@ type shadowTok struct {
 // "정하지 않음"(nil)과 0값을 구별한다 — 부분 패치가 아래 단을 지우지 않게 한다.
 
 type componentsFile struct {
-	// Comment는 문서용 $comment 키를 허용하기 위한 자리다 — DisallowUnknownFields가 그 외
-	// 모든 미지원 키(예: extends·오타)를 진단하되 문서 주석은 통과시킨다 (닫힌 어휘).
+	// Comment는 문서용 $comment 자리다 — 키 검사(decodeThemeJSON)는 `$comment`로 시작하는 키를
+	// 어디서나 통과시키므로, 이 필드는 병합이 원문 주석을 나르기 위한 것이다.
 	Comment string              `json:"$comment"`
 	Text    textComponentsFile  `json:"text"`
 	Shape   shapeComponentsFile `json:"shape"`
@@ -535,8 +533,8 @@ func readRawTheme(fsys fs.FS, dir string) (rawTheme, error) {
 	if err != nil {
 		return raw, fmt.Errorf("cannot read theme.json: %w", err)
 	}
-	if err := json.Unmarshal(manifestBytes, &raw.manifest); err != nil {
-		return raw, fmt.Errorf("cannot parse theme.json: %w", err)
+	if err := decodeThemeJSON(manifestBytes, path.Join(dir, "theme.json"), &raw.manifest, false); err != nil {
+		return raw, err
 	}
 	if raw.manifest.Name == "" {
 		return raw, fmt.Errorf("theme.json has no name")
@@ -753,7 +751,8 @@ func sortedKeys(set map[string]bool) []string {
 	return names
 }
 
-// readTokensFile은 tokens.json을 원문 선언으로 읽는다. optional이면 파일이 없어도 된다
+// readTokensFile은 tokens.json을 원문 선언으로 읽는다. 모르는 키는 components.json과 같이 에러다
+// (`$comment*`만 예외). optional이면 파일이 없어도 된다
 // (상속하는 테마 — 부모의 표가 바닥이다).
 func readTokensFile(fsys fs.FS, dir string, optional bool) (tokensFile, error) {
 	var file tokensFile
@@ -764,8 +763,8 @@ func readTokensFile(fsys fs.FS, dir string, optional bool) (tokensFile, error) {
 		}
 		return file, fmt.Errorf("cannot read tokens.json: %w", err)
 	}
-	if err := json.Unmarshal(raw, &file); err != nil {
-		return file, fmt.Errorf("cannot parse tokens.json: %w", err)
+	if err := decodeThemeJSON(raw, path.Join(dir, "tokens.json"), &file, true); err != nil {
+		return file, err
 	}
 	return file, nil
 }
@@ -810,9 +809,8 @@ func tokensFromFile(file tokensFile, name string) soml.Theme {
 	return theme
 }
 
-// readComponentsFile은 components.json을 원문 선언으로 읽는다. 미지원 키는
-// DisallowUnknownFields가 진단한다 — 조용히 무시하면 저자가 오버라이드가 먹었다고 착각한다
-// (닫힌 어휘). optional이면 파일이 없어도 된다 (readTokensFile과 같은 계약).
+// readComponentsFile은 components.json을 원문 선언으로 읽는다. 미지원 키는 decodeThemeJSON이
+// 경로와 함께 진단한다 (닫힌 어휘 — tokens.json과 같은 규칙). optional이면 파일이 없어도 된다 (readTokensFile과 같은 계약).
 func readComponentsFile(fsys fs.FS, dir string, optional bool) (componentsFile, error) {
 	var file componentsFile
 	raw, err := fs.ReadFile(fsys, path.Join(dir, "components.json"))
@@ -822,10 +820,8 @@ func readComponentsFile(fsys fs.FS, dir string, optional bool) (componentsFile, 
 		}
 		return file, fmt.Errorf("cannot read components.json: %w", err)
 	}
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&file); err != nil {
-		return file, fmt.Errorf("cannot parse components.json: %w", err)
+	if err := decodeThemeJSON(raw, path.Join(dir, "components.json"), &file, true); err != nil {
+		return file, err
 	}
 	return file, nil
 }

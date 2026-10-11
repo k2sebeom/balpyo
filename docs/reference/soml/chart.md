@@ -149,8 +149,9 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
   저자가 막대를 칠하려다 회색 상자를 받는다.
 - **`none`은 두 자리 모두 에러다** (도형의 `fill`과 갈라지는 유일한 자리다): 그리지 않는 막대는
   데이터가 아니라 빠뜨린 점이고, 빈 막대를 원하면 `value="0"`이 그 표기다.
-- 테마는 계열색을 갖지 않는다 — 단일 계열이므로 기본값 하나로 충분하고, 다계열이 생기는 날
-  테마에 팔레트가 생긴다.
+- 테마는 차트 전용 팔레트를 갖지 않는다 — 계열색의 기본값은 테마의 **강조색 여섯**이다. 단일
+  계열은 `accent1`이고, 여러 계열은 순서대로 `accent1` … `accent6`이다 (아래 "여러 계열" 절).
+  그래서 테마의 강조색 순서가 곧 차트의 기본 계열 순서다.
 
 ## 펼침 — 같은 뜻을 손으로 쓴 덱과 **같은 트리**다
 
@@ -168,42 +169,52 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 
 ```html
 <shape type="rect" fill="none" border="none" alt="월별 평균 탐지 시간" w="fill" h="420">
-  <row gap="0" align="stretch" h="fill">
-    <col grow="1" basis="0" gap="0" align="center" h="fill">
-      <col grow="1" basis="0" w="fill" justify="end" align="center" gap="xs">
-        <text role="caption" align="center" w="fill">22분</text>
-        <shape type="rect" fill="accent1" border="none" w="70%" h="90%" shrink="0"/>
+  <col gap="0" w="fill" h="fill">
+    <row gap="0" align="stretch" grow="1" basis="0" w="fill">
+      <col grow="1" basis="0" gap="0" align="center">
+        <col grow="1" basis="0" w="fill" align="center" gap="xs">
+          <spacer grow="0" basis="10%"/>
+          <text role="caption" align="center" w="fill" shrink="0">22분</text>
+          <shape type="rect" fill="accent1" border="none" w="70%" basis="90%"/>
+        </col>
+        <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
       </col>
-      <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
-      <text role="caption" align="center" w="fill">5월</text>
-    </col>
-    <col grow="1" basis="0" gap="0" align="center" h="fill">
-      <col grow="1" basis="0" w="fill" justify="end" align="center" gap="xs">
-        <text role="caption" align="center" w="fill" color="accent4">12분</text>
-        <shape type="rect" fill="accent4" border="none" w="70%" h="49.09%" shrink="0"/>
+      <col grow="1" basis="0" gap="0" align="center">
+        <col grow="1" basis="0" w="fill" align="center" gap="xs">
+          <spacer grow="0" basis="50.91%"/>
+          <text role="caption" align="center" w="fill" color="accent4" shrink="0">12분</text>
+          <shape type="rect" fill="accent4" border="none" w="70%" basis="49.09%"/>
+        </col>
+        <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
       </col>
-      <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
-      <text role="caption" align="center" w="fill" color="accent4">9월</text>
-    </col>
-  </row>
+    </row>
+    <row gap="0" w="fill">
+      <text role="caption" align="center" w="fill" grow="1" basis="0">5월</text>
+      <text role="caption" align="center" w="fill" color="accent4" grow="1" basis="0">9월</text>
+    </row>
+  </col>
 </shape>
 ```
 
 읽는 법:
 
 - **범주 한 칸이 `<col grow="1" basis="0">`이다** — 막대 폭과 간격을 픽셀로 세지 않는다. 칸 안에서
-  플롯 밴드가 `grow="1"`로 남은 높이를 전부 먹으므로 막대의 백분율 높이는 **밴드**에 대한
-  비율이고, 범주 라벨·기준선 높이는 거기서 빠진다.
-- **막대 높이가 백분율이다** (`90%`·`49.09%`) — `22 ÷ (22÷0.9)`와 `12 ÷ (22÷0.9)`다. 픽셀은
-  브라우저가 잰다. 소수 둘째 자리까지 자르는 이유는 이 트리가 사람이 쓸 수 있는 표기여야
-  한다는 것이다.
-- **축 최대가 데이터 최대와 같지 않다** (÷0.9): 값 라벨이 막대 **위에** 올라타므로 헤드룸이
-  없으면 가장 높은 막대의 라벨이 밴드를 넘어 잘린다.
+  플롯 밴드가 `grow="1"`로 남은 높이를 전부 먹고, 기준선 높이는 거기서 빠진다.
+- **범주 라벨은 칸 안이 아니라 아래의 한 줄이다.** 칸 안에 두면 두 줄로 접힌 라벨 하나가 그 칸의
+  밴드만 줄여 그 막대가 이웃보다 짧게 그려진다. 한 줄로 모으면 모든 칸의 밴드가 같은 높이다 — 줄의
+  높이는 가장 높은 라벨이 정한다. 라벨 줄의 칸도 `grow="1" basis="0"`이라 막대와 같은 열에 선다.
+- **막대 높이가 `basis` 백분율이다** (`90%`·`49.09%`) — `22 ÷ (22÷0.9)`와 `12 ÷ (22÷0.9)`다. 위의
+  `<spacer>`가 나머지(`10%`·`50.91%`)를 잡는다. 둘을 합치면 밴드를 라벨 한 줄 + 간격만큼 넘치고,
+  flex 축소가 그만큼을 **basis에 비례해** 둘에게서 거둔다. 그래서 막대는 언제나 "밴드 − 라벨 −
+  간격"의 그 비율이고 — 막대끼리의 비율은 데이터 그대로다 — 값 라벨은 낮은 차트에서도 밴드
+  안에 남는다. 라벨은 축소되지 않는다 (`shrink="0"`). 픽셀은 브라우저가 잰다. 소수 둘째 자리까지
+  자르는 이유는 이 트리가 사람이 쓸 수 있는 표기여야 한다는 것이다.
+- **축 최대가 데이터 최대와 같지 않다** (÷0.9): 가장 높은 막대의 값 라벨 위에 숨 쉴 자리를 남긴다.
 - **기준선은 칸마다 있는 1px 도형이다** — `gap="0"`으로 붙으면 선이 이어져 축이 된다. 축 도형
   하나를 따로 놓으면 막대의 기준선과 축선이 다른 상자에 살게 되어 두 타깃에서 어긋난다.
 - **라벨은 캡션 역할이다** — 테마가 그 크기·색을 이미 갖는다 (차트 전용 타이포그래피를 만들면
-  테마가 두 벌을 든다). 읽기 순서는 값 → 범주다: 스크린 리더가 "22분, 5월"로 읽는다.
-- **막대의 `shrink="0"`**이 없으면 브라우저의 flex 축소가 100%에 가까운 막대를 줄인다.
+  테마가 두 벌을 든다). 문서 순서는 값 라벨들 → 범주 라벨들이다. 그림의 뜻은 뿌리 도형의
+  `alt`가 한 문장으로 전한다.
 
 ## 예제
 
@@ -371,5 +382,5 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 진단은 저자가 쓴 속성 이름으로 말한다.
 
 막대가 박스를 넘치는 사고는 [배치 경고](../../guides/layout-warnings.md)가 말한다 — 펼친 트리가
-평범한 도형·텍스트이므로 넘침 판정도 평범하게 돈다 (값 라벨이 밴드를 넘으면 그 텍스트가
-경고에 나온다).
+평범한 도형·텍스트이므로 넘침 판정도 평범하게 돈다 (차트 상자가 라벨 두 줄도 담지 못할 만큼
+낮으면 그 텍스트가 경고에 나온다).

@@ -63,13 +63,22 @@ func chartElements(deck *soml.Deck) []*soml.Element {
 func chartBars(deck *soml.Deck) []*soml.Element {
 	var bars []*soml.Element
 	for _, elem := range chartElements(deck) {
-		style := elem.ShapeStyle()
-		if style == nil || style.Height == nil || !style.Height.Percent {
+		// 막대는 밴드에 대한 비율을 basis로 잡는 도형이다 (위 여백은 <spacer>라 도형이 아니다).
+		if elem.Name != soml.ShapeElement || barHeight(elem) == nil {
 			continue
 		}
 		bars = append(bars, elem)
 	}
 	return bars
+}
+
+// barHeight는 막대가 밴드에서 차지하는 비율(basis 백분율)이다 — 막대가 아니면 nil.
+func barHeight(elem *soml.Element) *soml.Length {
+	placement := elem.Placement()
+	if placement == nil || placement.Basis == nil || !placement.Basis.Percent {
+		return nil
+	}
+	return placement.Basis
 }
 
 // chartTexts는 펼침이 낸 라벨들이다 (문서 순서 = 읽기 순서).
@@ -125,32 +134,39 @@ func TestChartExpandsToHandWrittenDeck(t *testing.T) {
 
 	hand, handDiags := resolveSlide(t, `<slide id="c">
   <shape type="rect" fill="none" border="none" alt="월별 평균 탐지 시간" w="fill" h="420">
-    <row gap="0" align="stretch" h="fill">
-      <col grow="1" basis="0" gap="0" align="center" h="fill">
-        <col grow="1" basis="0" w="fill" justify="end" align="center" gap="xs">
-          <text role="caption" align="center" w="fill">22분</text>
-          <shape type="rect" fill="accent1" border="none" w="70%" h="90%" shrink="0"/>
+    <col gap="0" w="fill" h="fill">
+      <row gap="0" align="stretch" grow="1" basis="0" w="fill">
+        <col grow="1" basis="0" gap="0" align="center">
+          <col grow="1" basis="0" w="fill" align="center" gap="xs">
+            <spacer grow="0" basis="10%"/>
+            <text role="caption" align="center" w="fill" shrink="0">22분</text>
+            <shape type="rect" fill="accent1" border="none" w="70%" basis="90%"/>
+          </col>
+          <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
         </col>
-        <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
-        <text role="caption" align="center" w="fill">5월</text>
-      </col>
-      <col grow="1" basis="0" gap="0" align="center" h="fill">
-        <col grow="1" basis="0" w="fill" justify="end" align="center" gap="xs">
-          <text role="caption" align="center" w="fill">19분</text>
-          <shape type="rect" fill="accent1" border="none" w="70%" h="77.73%" shrink="0"/>
+        <col grow="1" basis="0" gap="0" align="center">
+          <col grow="1" basis="0" w="fill" align="center" gap="xs">
+            <spacer grow="0" basis="22.27%"/>
+            <text role="caption" align="center" w="fill" shrink="0">19분</text>
+            <shape type="rect" fill="accent1" border="none" w="70%" basis="77.73%"/>
+          </col>
+          <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
         </col>
-        <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
-        <text role="caption" align="center" w="fill">6월</text>
-      </col>
-      <col grow="1" basis="0" gap="0" align="center" h="fill">
-        <col grow="1" basis="0" w="fill" justify="end" align="center" gap="xs">
-          <text role="caption" align="center" w="fill" color="accent4">12분</text>
-          <shape type="rect" fill="accent4" border="none" w="70%" h="49.09%" shrink="0"/>
+        <col grow="1" basis="0" gap="0" align="center">
+          <col grow="1" basis="0" w="fill" align="center" gap="xs">
+            <spacer grow="0" basis="50.91%"/>
+            <text role="caption" align="center" w="fill" color="accent4" shrink="0">12분</text>
+            <shape type="rect" fill="accent4" border="none" w="70%" basis="49.09%"/>
+          </col>
+          <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
         </col>
-        <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
-        <text role="caption" align="center" w="fill" color="accent4">9월</text>
-      </col>
-    </row>
+      </row>
+      <row gap="0" w="fill">
+        <text role="caption" align="center" w="fill" grow="1" basis="0">5월</text>
+        <text role="caption" align="center" w="fill" grow="1" basis="0">6월</text>
+        <text role="caption" align="center" w="fill" color="accent4" grow="1" basis="0">9월</text>
+      </row>
+    </col>
   </shape>
 </slide>
 `)
@@ -174,7 +190,7 @@ func TestChartAxisLabelsAndZero(t *testing.T) {
 		t.Fatalf("막대 %d개, want %d개 (0인 점은 막대가 없다)", len(bars), len(want))
 	}
 	for i, w := range want {
-		if h := bars[i].ShapeStyle().Height; math.Abs(h.Value-w) > 0.005 {
+		if h := barHeight(bars[i]); math.Abs(h.Value-w) > 0.005 {
 			t.Errorf("막대[%d] 높이 = %g%%, want %g%%", i, h.Value, w)
 		}
 	}
@@ -182,7 +198,7 @@ func TestChartAxisLabelsAndZero(t *testing.T) {
 	for _, text := range chartTexts(deck) {
 		labels = append(labels, text.TextContent())
 	}
-	if got, want := strings.Join(labels, "|"), "22분|5월|19.5분|6월|0분|7월"; got != want {
+	if got, want := strings.Join(labels, "|"), "22분|19.5분|0분|5월|6월|7월"; got != want {
 		t.Errorf("라벨 = %s, want %s", got, want)
 	}
 	if first := chartTexts(resolvedChart(t, `type="bar" h="420"`, chartPoint(`label="5월" value="22"`)))[0].TextContent(); first != "22" {
@@ -207,8 +223,9 @@ func TestChartSeriesColorsEveryBarButNotTheLabels(t *testing.T) {
 		}
 	}
 	for i, text := range texts {
+		// 문서 순서는 값 라벨들 다음 범주 라벨들이다 — 둘째 점의 라벨이 [1]과 [3]이다.
 		want := caption
-		if i >= 2 {
+		if i%2 == 1 {
 			want = soml.TokenColor("accent4")
 		}
 		if got := text.TextStyle().Color; got != want {
@@ -338,7 +355,7 @@ func TestChartSeriesShareTheAxisAndGetALegend(t *testing.T) {
 	want := []float64{45, 90, 22.5, 45}
 	order := []int{0, 2, 1, 3} // 문서 순서는 범주마다 계열 순서다 (Q1-A, Q1-B, Q2-A, Q2-B).
 	for i, bar := range bars {
-		got := bar.ShapeStyle().Height.Value
+		got := barHeight(bar).Value
 		if math.Abs(got-want[order[i]]) > 0.01 {
 			t.Errorf("막대 %d 높이 = %v%%, want %v%%", i, got, want[order[i]])
 		}
