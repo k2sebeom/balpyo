@@ -21,7 +21,7 @@ PPTX에서 사라진다, 자식만 절대 좌표 도형이 된다)을 그대로 
 | 속성 | 허용 값 | CSS 대응 |
 |---|---|---|
 | `align` | `start` `center` `end` `stretch` `baseline` | `align-items` — **`at`이 없는** 자식의 세로 기본 정렬 |
-| `justify` | `start` `center` `end` `between` `around` `evenly` | `justify-content` — `at`이 없는 자식의 가로 기본 정렬 |
+| `justify` | `start` `center` `end` `between` `around` `evenly` | `justify-items` — `at`이 없는 자식의 가로 기본 정렬 (칸이 하나라 `between`은 `start`, `around`·`evenly`는 `center`와 같다) |
 | `pad` | 공간 토큰 · 수치 · `%` (1~4값) | `padding` — 앵커·좌표의 기준 박스를 여백 안쪽으로 좁힌다 |
 | `w` / `h` | 수치 · `%` · `fill` | `width` / `height` |
 | `min-w` / `min-h` · `max-w` / `max-h` | 수치 · `%` · `fill` | `min-*` / `max-*` |
