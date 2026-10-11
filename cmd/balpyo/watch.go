@@ -34,7 +34,7 @@ func runWatch(ctx context.Context, args []string, stdout, stderr io.Writer) erro
 	strict := fs.Bool("strict", false, "promote warnings to errors")
 	checkLayout := fs.Bool("check-layout", false, "check layout (overflow, off-stage, overlap)")
 	addr := fs.String("addr", defaultWatchAddr, "watch server address")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {

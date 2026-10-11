@@ -21,10 +21,7 @@ import (
 )
 
 func main() {
-	if err := run(os.Args[1:], os.Stdout, os.Stderr); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	os.Exit(cli(os.Args[1:], os.Stdout, os.Stderr))
 }
 
 // run은 CLI 본체다. 종료 코드 대신 error를 돌려 테스트가 그대로 호출할 수 있게 한다.
@@ -160,7 +157,7 @@ func runBuild(args []string, stdout, stderr io.Writer) error {
 	// pptx 타깃은 이미 재므로 배치 검사를 공짜로 받는다 — 이 플래그가 뜻을 갖는 자리는 html만
 	// 쓰는 저작 루프다. 기본을 끈 이유는 브라우저 기동이 빌드의 가장 큰 고정 비용이라는 것이다.
 	checkLayout := fs.Bool("check-layout", false, "check layout (overflow, off-stage, overlap)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
