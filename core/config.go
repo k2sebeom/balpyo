@@ -4,6 +4,7 @@
 package core
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -105,10 +106,23 @@ func LoadConfigWithThemes(projectDir string, home fs.FS) (Config, error) {
 	}
 
 	// 파일에 있는 필드만 덮어쓰도록 기본값이 담긴 cfg에 그대로 언마샬한다.
-	dec := json.NewDecoder(strings.NewReader(string(data)))
+	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&cfg); err != nil {
-		return Config{}, fmt.Errorf("cannot parse %s: %w", ConfigFile, err)
+		fe := jsonDecodeError(data, ConfigFile, err)
+		// DisallowUnknownFields의 에러는 타입이 없어 문구로만 알아본다 — 접두사 `json: `를 떼고
+		// 테마 파일과 같은 말(`unknown key`)로 낸다.
+		if name, ok := strings.CutPrefix(err.Error(), "json: unknown field "); ok {
+			fe.msg = "unknown key " + name
+		}
+		return Config{}, fe
+	}
+	// Decoder는 값 하나만 읽고 멈춘다 — 뒤에 남은 것을 보지 않으면 붙여 넣다 남은 조각
+	// (`{…} {…}`)이 조용히 버려지고, 저자는 두 번째 객체의 값이 먹었다고 믿는다.
+	end := int(dec.InputOffset())
+	if rest := bytes.TrimLeft(data[end:], " \t\r\n"); len(rest) > 0 {
+		return Config{}, &themeFileError{file: ConfigFile, pos: offsetPos(data, len(data)-len(rest)),
+			msg: "unexpected content after the top-level object"}
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, fmt.Errorf("%s: %w", ConfigFile, err)

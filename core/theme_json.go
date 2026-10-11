@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"strings"
 	"unicode/utf8"
@@ -52,22 +53,32 @@ func decodeThemeJSON(data []byte, file string, v any, closed bool) error {
 		}
 	}
 	if err := json.Unmarshal(data, v); err != nil {
-		fe := &themeFileError{file: file, msg: err.Error()}
-		var syntax *json.SyntaxError
-		var typ *json.UnmarshalTypeError
-		switch {
-		case errors.As(err, &syntax):
-			// Offset은 틀린 바이트를 읽은 **뒤**다.
-			fe.pos = offsetPos(data, int(syntax.Offset)-1)
-			fe.msg = "invalid JSON: " + syntax.Error()
-		case errors.As(err, &typ):
-			label, offset := locateValue(data, int(typ.Offset), typ.Field)
-			fe.pos = offsetPos(data, offset)
-			fe.msg = fmt.Sprintf("%s must be %s, not %s", label, typeWord(typ.Type), typ.Value)
-		}
-		return fe
+		return jsonDecodeError(data, file, err)
 	}
 	return nil
+}
+
+// jsonDecodeError는 encoding/json의 디코드 에러를 file 안의 줄:칸과 JSON 저자의 말로 옮긴다 —
+// 원래 문구(`cannot unmarshal number into Go struct field Config.title of type string`)는 Go의
+// 구조체·타입 이름을 말하고 자리를 말하지 않아, 파일을 고치는 사람에게 쓸모가 없다.
+func jsonDecodeError(data []byte, file string, err error) *themeFileError {
+	fe := &themeFileError{file: file, msg: err.Error()}
+	var syntax *json.SyntaxError
+	var typ *json.UnmarshalTypeError
+	switch {
+	case errors.As(err, &syntax):
+		// Offset은 틀린 바이트를 읽은 **뒤**다.
+		fe.pos = offsetPos(data, int(syntax.Offset)-1)
+		fe.msg = "invalid JSON: " + syntax.Error()
+	case errors.As(err, &typ):
+		label, offset := locateValue(data, int(typ.Offset), typ.Field)
+		fe.pos = offsetPos(data, offset)
+		fe.msg = fmt.Sprintf("%s must be %s, not %s", label, typeWord(typ.Type), typ.Value)
+	case errors.Is(err, io.ErrUnexpectedEOF):
+		// json.Decoder는 끝나지 않은 값을 SyntaxError가 아니라 이 에러로 낸다.
+		fe.msg = "invalid JSON: unexpected end of file"
+	}
+	return fe
 }
 
 // checkThemeKeys는 raw(파일 전체 data의 base 오프셋에서 시작하는 값)를 t의 스키마와 대조한다.
