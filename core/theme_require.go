@@ -37,45 +37,45 @@ var (
 // 목록을 읽어야 한다.
 func requireTokens(theme soml.Theme) error {
 	if m := theme.Motion; m != nil && (m.Duration <= 0 || m.Stagger < 0 || m.Delay < 0) {
-		return fmt.Errorf("tokens.json motion needs duration > 0 and stagger, delay ≥ 0 (ms) — got duration %d, stagger %d, delay %d",
-			m.Duration, m.Stagger, m.Delay)
+		return declAt(fmt.Errorf("tokens.json motion needs duration > 0 and stagger, delay ≥ 0 (ms) — got duration %d, stagger %d, delay %d",
+			m.Duration, m.Stagger, m.Delay), atKey("motion"))
 	}
 	if m := theme.Motion; m != nil {
 		switch m.Transition {
 		case "", soml.TransitionFade, soml.TransitionPush:
 		default:
-			return fmt.Errorf("tokens.json motion transition %q is unknown (available values: %s)",
-				string(m.Transition), strings.Join(soml.SlideTransitions(), ", "))
+			return declAt(fmt.Errorf("tokens.json motion transition %q is unknown (available values: %s)",
+				string(m.Transition), strings.Join(soml.SlideTransitions(), ", ")), atKey("motion"), atKey("transition"))
 		}
 	}
 	for _, name := range requiredColors {
 		if _, ok := theme.Color(name); !ok {
-			return fmt.Errorf("tokens.json has no color token %q (required: %s)",
-				name, strings.Join(requiredColors, ", "))
+			return declAt(fmt.Errorf("tokens.json has no color token %q (required: %s)",
+				name, strings.Join(requiredColors, ", ")), atKey("color"))
 		}
 	}
 	for _, name := range requiredFonts {
 		if _, ok := theme.Font(name); !ok {
-			return fmt.Errorf("tokens.json has no font token %q (required: %s)",
-				name, fontRoleList(requiredFonts))
+			return declAt(fmt.Errorf("tokens.json has no font token %q (required: %s)",
+				name, fontRoleList(requiredFonts)), atKey("font"))
 		}
 	}
 	for _, name := range requiredSpaces {
 		if _, ok := theme.Space(name); !ok {
-			return fmt.Errorf("tokens.json has no space token %q (required: %s)",
-				name, strings.Join(requiredSpaces, ", "))
+			return declAt(fmt.Errorf("tokens.json has no space token %q (required: %s)",
+				name, strings.Join(requiredSpaces, ", ")), atKey("space"))
 		}
 	}
 	for _, name := range requiredRadii {
 		if _, ok := theme.Radius(name); !ok {
-			return fmt.Errorf("tokens.json has no radius token %q (required: %s)",
-				name, strings.Join(requiredRadii, ", "))
+			return declAt(fmt.Errorf("tokens.json has no radius token %q (required: %s)",
+				name, strings.Join(requiredRadii, ", ")), atKey("radius"))
 		}
 	}
 	for _, name := range requiredShadows {
 		if _, ok := theme.Shadow(name); !ok {
-			return fmt.Errorf("tokens.json has no shadow token %q (required: %s)",
-				name, strings.Join(requiredShadows, ", "))
+			return declAt(fmt.Errorf("tokens.json has no shadow token %q (required: %s)",
+				name, strings.Join(requiredShadows, ", ")), atKey("shadow"))
 		}
 	}
 	return nil
@@ -100,19 +100,19 @@ func requireColorSlots(theme soml.Theme) error {
 			continue
 		}
 		if first, dup := owner[token.Slot]; dup {
-			return fmt.Errorf("tokens.json clrScheme slot %q is shared by color tokens %q and %q — cannot tell which color owns the slot",
-				token.Slot, first, token.Name)
+			return declAt(fmt.Errorf("tokens.json clrScheme slot %q is shared by color tokens %q and %q — cannot tell which color owns the slot",
+				token.Slot, first, token.Name), atKey("color"), atEntry("name", token.Name), atKey("slot"))
 		}
 		owner[token.Slot] = token.Name
 	}
 	for _, token := range theme.Colors {
 		if token.Slot == "" {
-			return fmt.Errorf("tokens.json color token %q has no clrScheme slot — every color token must follow PPTX theme color edits (%s)",
-				token.Name, freeColorSlots(owner))
+			return declAt(fmt.Errorf("tokens.json color token %q has no clrScheme slot — every color token must follow PPTX theme color edits (%s)",
+				token.Name, freeColorSlots(owner)), atKey("color"), atEntry("name", token.Name))
 		}
 		if !knownColorSlot(token.Slot) {
-			return fmt.Errorf("tokens.json color token %q has an unknown clrScheme slot %q (available slots: %s)",
-				token.Name, token.Slot, strings.Join(soml.ColorSlots(), ", "))
+			return declAt(fmt.Errorf("tokens.json color token %q has an unknown clrScheme slot %q (available slots: %s)",
+				token.Name, token.Slot, strings.Join(soml.ColorSlots(), ", ")), atKey("color"), atEntry("name", token.Name), atKey("slot"))
 		}
 	}
 	return nil
@@ -153,36 +153,40 @@ func freeColorSlots(owner map[string]string) string {
 // (웹은 CSS 변수가 비고, PPTX는 schemeClr 참조가 끊긴다).
 func requireComponents(theme soml.Theme, comps components) error {
 	for _, role := range soml.TextRoles() {
+		// 역할 하나의 에러는 그 역할 항목(`text.roles["title"]`)의 필드를 가리킨다.
+		at := func(err error, key string) error {
+			return declAt(err, atKey("text"), atKey("roles"), atEntry("name", string(role)), atKey(key))
+		}
 		style, ok := comps.textRoles[role]
 		if !ok {
-			return fmt.Errorf("components.json text.roles has no role %q (required: %s)",
-				role, textRoleList(soml.TextRoles()))
+			return declAt(fmt.Errorf("components.json text.roles has no role %q (required: %s)",
+				role, textRoleList(soml.TextRoles())), atKey("text"), atKey("roles"))
 		}
 		if style.Size <= 0 {
-			return fmt.Errorf("role %q has size %g — roles are the bottom of the cascade and must be complete",
-				role, style.Size)
+			return at(fmt.Errorf("role %q has size %g — roles are the bottom of the cascade and must be complete",
+				role, style.Size), "size")
 		}
 		if style.LineHeight <= 0 {
-			return fmt.Errorf("role %q has lineHeight %g — roles are the bottom of the cascade and must be complete",
-				role, style.LineHeight)
+			return at(fmt.Errorf("role %q has lineHeight %g — roles are the bottom of the cascade and must be complete",
+				role, style.LineHeight), "lineHeight")
 		}
 		if _, ok := theme.Font(style.Font); !ok {
-			return fmt.Errorf("role %q font %q is not a font token of this theme (this theme: %s)",
-				role, style.Font, fontRoleList(themeFontNames(theme)))
+			return at(fmt.Errorf("role %q font %q is not a font token of this theme (this theme: %s)",
+				role, style.Font, fontRoleList(themeFontNames(theme))), "font")
 		}
 		// 역할의 색은 **토큰 참조**만 뜻이 있다 (리터럴은 PPTX의 테마 색 편집을 끊는다 —
 		// tokens.json의 shadow color와 같은 계약).
 		if !style.Color.IsToken() {
-			return fmt.Errorf("role %q color is not a color token name (this theme: %s)",
-				role, strings.Join(theme.ColorNames(), ", "))
+			return at(fmt.Errorf("role %q color is not a color token name (this theme: %s)",
+				role, strings.Join(theme.ColorNames(), ", ")), "color")
 		}
 		if _, ok := theme.Color(style.Color.Token); !ok {
-			return fmt.Errorf("role %q color %q is not a color token of this theme (this theme: %s)",
-				role, style.Color.Token, strings.Join(theme.ColorNames(), ", "))
+			return at(fmt.Errorf("role %q color %q is not a color token of this theme (this theme: %s)",
+				role, style.Color.Token, strings.Join(theme.ColorNames(), ", ")), "color")
 		}
 		if style.Align == "" {
-			return fmt.Errorf("role %q has no align (available aligns: %s)",
-				role, textAlignList(soml.TextAligns()))
+			return at(fmt.Errorf("role %q has no align (available aligns: %s)",
+				role, textAlignList(soml.TextAligns())), "align")
 		}
 	}
 	return nil
@@ -199,34 +203,35 @@ func requireComponents(theme soml.Theme, comps components) error {
 func requireComponentColors(theme soml.Theme, comps components) error {
 	// 토큰 참조는 셋이다: 토큰 이름, 변형된 토큰(`shade(accent1, 20%)`), 스톱이 전부 토큰인 그라디언트.
 	// 셋 다 PPTX에서 `schemeClr` 참조로 남아 테마 색 편집을 따라간다. 리터럴(`#FF9900`, 리터럴 스톱)은 아니다.
-	check := func(where string, color *soml.Color) error {
+	// at은 그 값을 적은 선언의 자리다 — 에러가 고칠 파일의 줄:칸으로 되돌아간다 (declAt).
+	check := func(where string, color *soml.Color, at ...declStep) error {
 		if color == nil {
 			return nil
 		}
 		if bad, ok := notTokenRef(theme, *color); ok {
-			return fmt.Errorf("components.json %s %q is not a color token reference of this theme — themes use only color token names (including modifiers and token gradients) (this theme: %s)",
-				where, bad, strings.Join(theme.ColorNames(), ", "))
+			return declAt(fmt.Errorf("components.json %s %q is not a color token reference of this theme — themes use only color token names (including modifiers and token gradients) (this theme: %s)",
+				where, bad, strings.Join(theme.ColorNames(), ", ")), at...)
 		}
 		return nil
 	}
-	fill := func(where string, f *soml.Fill) error {
+	fill := func(where string, f *soml.Fill, at ...declStep) error {
 		if f == nil || f.None {
 			return nil
 		}
 		if p := f.Pattern; p != nil {
 			// 무늬의 두 색도 토큰 참조여야 한다 — PPTX의 fgClr · bgClr가 schemeClr로 남는다.
-			if err := check(where+" fill pattern foreground", &p.Fg); err != nil {
+			if err := check(where+" fill pattern foreground", &p.Fg, at...); err != nil {
 				return err
 			}
-			return check(where+" fill pattern background", &p.Bg)
+			return check(where+" fill pattern background", &p.Bg, at...)
 		}
-		return check(where+" fill", &f.Color)
+		return check(where+" fill", &f.Color, at...)
 	}
-	border := func(where string, b *soml.Border) error {
+	border := func(where string, b *soml.Border, at ...declStep) error {
 		if b == nil || b.None {
 			return nil
 		}
-		return check(where+" border", &b.Color)
+		return check(where+" border", &b.Color, at...)
 	}
 
 	tags := make([]string, 0, len(comps.textComponentDefaults))
@@ -236,7 +241,8 @@ func requireComponentColors(theme soml.Theme, comps components) error {
 	sort.Strings(tags)
 	var errs []error
 	for _, tag := range tags {
-		errs = append(errs, check(fmt.Sprintf("text.componentDefaults %q color", tag), comps.textComponentDefaults[tag].color))
+		errs = append(errs, check(fmt.Sprintf("text.componentDefaults %q color", tag), comps.textComponentDefaults[tag].color,
+			atKey("text"), atKey("componentDefaults"), atEntry("tag", tag), atKey("color")))
 	}
 	slots := make([]string, 0, len(comps.textSlotDefaults))
 	for slot := range comps.textSlotDefaults {
@@ -244,38 +250,48 @@ func requireComponentColors(theme soml.Theme, comps components) error {
 	}
 	sort.Strings(slots)
 	for _, slot := range slots {
-		errs = append(errs, check(fmt.Sprintf("text.componentDefaults slot %q color", slot), comps.textSlotDefaults[slot].color))
+		layout, name, _ := strings.Cut(slot, "/")
+		errs = append(errs, check(fmt.Sprintf("text.componentDefaults slot %q color", slot), comps.textSlotDefaults[slot].color,
+			atKey("text"), atKey("componentDefaults"), atEntry("layout", layout, "slot", name), atKey("color")))
 	}
 	for _, v := range comps.textVariants {
-		errs = append(errs, check(fmt.Sprintf("text variant %q color", v.name), v.patch.color))
+		errs = append(errs, check(fmt.Sprintf("text variant %q color", v.name), v.patch.color,
+			atKey("text"), atKey("variants"), atEntry("name", v.name), atKey("color")))
 	}
-	errs = append(errs, check("text.mark highlight", comps.markHighlight))
+	errs = append(errs, check("text.mark highlight", comps.markHighlight,
+		atKey("text"), atKey("mark"), atKey("highlight")))
 	if l := comps.connectorDefault.line; l != nil {
-		errs = append(errs, check("connector.default line", &l.Color))
+		errs = append(errs, check("connector.default line", &l.Color,
+			atKey("connector"), atKey("default"), atKey("line")))
 	}
 	for _, v := range comps.connectorVariants {
 		if l := v.patch.line; l != nil {
-			errs = append(errs, check(fmt.Sprintf("connector variant %q line", v.name), &l.Color))
+			errs = append(errs, check(fmt.Sprintf("connector variant %q line", v.name), &l.Color,
+				atKey("connector"), atKey("variants"), atEntry("name", v.name), atKey("line")))
 		}
 	}
-	errs = append(errs, fill("shape.default", comps.shapeDefault.fill),
-		border("shape.default", comps.shapeDefault.border))
+	errs = append(errs, fill("shape.default", comps.shapeDefault.fill, atKey("shape"), atKey("default"), atKey("fill")),
+		border("shape.default", comps.shapeDefault.border, atKey("shape"), atKey("default"), atKey("border")))
 	for _, v := range comps.shapeVariants {
 		where := fmt.Sprintf("shape variant %q", v.name)
-		errs = append(errs, fill(where, v.patch.fill), border(where, v.patch.border))
+		errs = append(errs,
+			fill(where, v.patch.fill, atKey("shape"), atKey("variants"), atEntry("name", v.name), atKey("fill")),
+			border(where, v.patch.border, atKey("shape"), atKey("variants"), atEntry("name", v.name), atKey("border")))
 	}
-	errs = append(errs, border("image.default", comps.imageDefault.border))
+	errs = append(errs, border("image.default", comps.imageDefault.border, atKey("image"), atKey("default"), atKey("border")))
 	for _, v := range comps.imageVariants {
-		errs = append(errs, border(fmt.Sprintf("image variant %q", v.name), v.patch.border))
+		errs = append(errs, border(fmt.Sprintf("image variant %q", v.name), v.patch.border,
+			atKey("image"), atKey("variants"), atEntry("name", v.name), atKey("border")))
 	}
 	for _, c := range []struct {
-		where string
-		patch cellPatch
-	}{{"table.cell", comps.table.cell}, {"table.header", comps.table.header}} {
-		errs = append(errs, fill(c.where, c.patch.fill), border(c.where, c.patch.border),
-			check(c.where+" color", c.patch.color))
+		where, key string
+		patch      cellPatch
+	}{{"table.cell", "cell", comps.table.cell}, {"table.header", "header", comps.table.header}} {
+		errs = append(errs, fill(c.where, c.patch.fill, atKey("table"), atKey(c.key), atKey("fill")),
+			border(c.where, c.patch.border, atKey("table"), atKey(c.key), atKey("border")),
+			check(c.where+" color", c.patch.color, atKey("table"), atKey(c.key), atKey("color")))
 	}
-	errs = append(errs, fill("table.stripe", comps.table.stripe))
+	errs = append(errs, fill("table.stripe", comps.table.stripe, atKey("table"), atKey("stripe")))
 	// 첫 에러 하나로 멈춘다 — requireTokens와 같은 이유 (파일 하나를 고치는 흐름).
 	for _, err := range errs {
 		if err != nil {

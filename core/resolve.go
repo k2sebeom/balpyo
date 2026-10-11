@@ -150,6 +150,10 @@ type resolver struct {
 	// `reveal`이 받을 차례다 (resolveReveal). 상태가 resolver에 있는 것이 곧 스텝 번호의
 	// 범위가 슬라이드라는 뜻이다 (ids와 같은 태도).
 	revealTurn int
+	// tokensOnly는 테마 파일의 값을 읽는 resolver다 — 테마 데이터는 색을 토큰 참조로만 적으므로
+	// (리터럴은 PPTX의 테마 색 편집을 끊는다) 모르는 토큰 진단이 `#RRGGBB`를 권하지 않는다. 권하면
+	// 그 권고를 따른 값이 다음 검사(requireComponentColors)에서 막힌다.
+	tokensOnly bool
 }
 
 func (r *resolver) errorf(span soml.Span, format string, args ...any) {
@@ -667,8 +671,12 @@ func (r *resolver) simpleColor(name, raw string, span soml.Span) (soml.Color, bo
 	}
 	if _, known := r.theme.Color(raw); !known {
 		names := strings.Join(r.theme.ColorNames(), ", ")
-		r.errorf(span, "%s: color token %q is not in the theme%s (available tokens: %s, or #RRGGBB)",
-			name, raw, didYouMean(raw, names), names)
+		literal := ", or #RRGGBB"
+		if r.tokensOnly {
+			literal = ""
+		}
+		r.errorf(span, "%s: color token %q is not in the theme%s (available tokens: %s%s)",
+			name, raw, didYouMean(raw, names), names, literal)
 		return soml.Color{}, false
 	}
 	return soml.TokenColor(raw), true
