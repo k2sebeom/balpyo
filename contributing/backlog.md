@@ -14,10 +14,6 @@
 
 ## Hotfix
 
-- [검토] **`preview` 스크린숏이 애니메이션 중간을 찍는다.** `make showcase`를 두 번 돌리면 `ec2-intro-10.png`가
-  한 번은 연결선 두 개(`terminate`, shutting-down → terminated)가 빠진 채로 나온다 — HTML은 같은 바이트다.
-  `screenshot`이 `enter`/`draw` 전환이 끝나기를 기다리지 않는다. 찍기 전에 모든 스텝을 전개하고
-  애니메이션을 끈다.
 - [작성] **chevron의 기본 노치.** 노치 깊이가 상자 폭의 절반(`adj` 261113)이라 `<shape type="chevron"
   w="fill" h="88">` 안의 라벨이 실루엣 밖으로 나가고, 글은 위쪽에 붙는다. PowerPoint 기본처럼 얕은
   노치를 기본으로 하거나 skill에 경고를 넣는다.

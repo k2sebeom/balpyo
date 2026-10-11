@@ -51,12 +51,16 @@
      The same gate as stepwise reveal: the document view, measure view, overview and print all see
      the end state, so the geometry pass measures the same layout. The effects use the individual
      translate / scale properties, not transform, so a rotated shape keeps its rotation. The delay
-     of each element comes from its data-balpyo-enter-delay (set by the runtime) and the duration
-     from the theme's motion token. */
+     of each element comes from its data-balpyo-enter-delay (the runtime copies it into
+     --balpyo-enter-delay) and the duration from the theme's motion token. The delay is applied
+     here, inside the gate, never inline: a transition with a zero duration but a positive delay
+     still runs, so an inline delay would keep elements at their start state for that long after
+     leaving the presenter view (to the document view, a screenshot or print). */
   html[data-balpyo-view="presenter"] [data-balpyo-enter] {
     transition-property: opacity, translate, scale, clip-path;
     transition-duration: var(--balpyo-motion-duration, 600ms);
     transition-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition-delay: var(--balpyo-enter-delay, 0ms);
   }
   html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter] {
     opacity: 0;

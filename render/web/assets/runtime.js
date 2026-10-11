@@ -79,13 +79,16 @@
 
   // ── 등장 ──
   //
-  // 지연은 마크업이 요소마다 나르고(data-balpyo-enter-delay) 여기서 전환에 건다 — 한 번이면 된다. 슬라이드에
+  // 지연은 마크업이 요소마다 나르고(data-balpyo-enter-delay) 여기서 변수(--balpyo-enter-delay)로 싣는다 — 한 번이면
+  // 된다. 전환에 거는 것은 발표자 뷰의 CSS다: transition-delay를 인라인으로 걸면 길이가 0인 다른 뷰에서도
+  // "지연 뒤에 바뀌는" 전환이 성립해(길이 + 지연 > 0), 문서 뷰 · 인쇄로 넘어간 순간 요소가 지연만큼 비어 있다.
+  // 슬라이드에
   // 들어갈 때 표식을 떼었다가 다음 프레임에 붙이면 요소들이 시작 상태에서 끝 상태로 엇갈려 움직인다. 뒤로
   // 들어온 장(이미 말한 장)은 움직이지 않고 끝 상태로 온다.
   const ENTERED_CLASS = "balpyo-viewer-entered";
   const INSTANT_CLASS = "balpyo-viewer-instant";
   document.querySelectorAll("[data-balpyo-enter]").forEach((el) => {
-    el.style.transitionDelay = (Number(el.getAttribute("data-balpyo-enter-delay")) || 0) + "ms";
+    el.style.setProperty("--balpyo-enter-delay", (Number(el.getAttribute("data-balpyo-enter-delay")) || 0) + "ms");
   });
   const enter = (slide, instant) => {
     slide.classList.remove(ENTERED_CLASS);
