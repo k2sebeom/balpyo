@@ -1,6 +1,7 @@
 package testkit
 
 import (
+	"bytes"
 	"math"
 	"os"
 	"path/filepath"
@@ -81,4 +82,52 @@ func pdfPages(t testing.TB, pdfPath string) [][2]float64 {
 		pages = append(pages, [2]float64{w, h})
 	}
 	return pages
+}
+
+// 좌표로 놓은 요소(`x`/`y` — canvas 스테이지와 `<stack>`의 자식)도 종이에 찍힌다. 화면에서는 보이는데
+// 인쇄에서만 빠지던 회귀다: Chromium의 페이지 나눔이 grid 영역 안의 절대 위치 박스를 잃어버려 canvas
+// 장이 꼬리말만 남은 빈 장으로 인쇄됐다.
+//
+// 판정은 링크 주석이다 — Chromium은 종이에 그린 링크마다 `/URI` 주석을 남기므로, 좌표로 놓은 글이
+// 품은 링크가 PDF에 있으면 그 글이 그려진 것이다 (래스터화하지 않는다). 첫 장은 흐름 배치라 둘째 장이
+// 페이지 나눔을 지난다.
+func TestPrintKeepsCoordinatePlacedChildren(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"balpyo.json":           `{"title": "print"}`,
+		"slides/001_flow.slide": `<slide id="flow"><h1>Flow</h1></slide>`,
+		"slides/002_canvas.slide": `<slide id="canvas" layout="canvas">
+  <text x="100" y="200"><a href="https://example.com/canvas-xy">canvas</a></text>
+  <stack w="400" h="200" x="500" y="300"><shape type="rect" w="400" h="200"/><text x="20" y="20"><a href="https://example.com/stack-xy">stack</a></text></stack>
+</slide>`,
+	}
+	for name, body := range files {
+		path := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	result, err := pipeline.Build(pipeline.Options{
+		ProjectDir: dir,
+		Targets:    []render.Target{render.TargetHTML},
+		OutDir:     t.TempDir(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	browser := NewBrowser(t)
+	browser.Load(t, filepath.Join(result.OutDir, web.IndexFile))
+	browser.Eval(t, web.PresenterViewExpr(), nil)
+	pdf, err := os.ReadFile(browser.PrintPDF(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, uri := range []string{"https://example.com/canvas-xy", "https://example.com/stack-xy"} {
+		if !bytes.Contains(pdf, []byte(uri)) {
+			t.Errorf("인쇄한 PDF에 %s가 없다 — 좌표로 놓은 글이 종이에서 빠졌다", uri)
+		}
+	}
 }

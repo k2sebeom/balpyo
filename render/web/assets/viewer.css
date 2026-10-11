@@ -259,6 +259,12 @@
       outline: none;
       break-inside: avoid;
       break-after: page;
+      /* Size containment: the slide is a fixed stage-sized box, so this changes no size — it
+         makes the slide one unbreakable piece for the paginator. Without it Chromium drops
+         x/y-positioned children of a canvas stage or <stack> (absolutely positioned inside a
+         grid area) from the printed page while the screen shows them (measured: canvas slides
+         printed blank but for the footer). */
+      contain: size;
     }
     /* Stepwise reveal is fully expanded on paper — someone pressing Cmd+P mid-talk must not get
        paper missing the items not yet presented. The selector has the same specificity as the
