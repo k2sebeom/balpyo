@@ -88,6 +88,7 @@ func (r *resolver) resolveChart(elem *soml.Element) {
 	spec.axis = axis
 
 	elem.Name = soml.ShapeElement
+	elem.Authored = soml.ChartElement
 	elem.Attrs = chartRootAttrs(elem)
 	elem.Children = nil
 	if !hasPoints || !axisOK || len(series) == 0 || len(series[0].data) == 0 {
@@ -110,6 +111,7 @@ func (r *resolver) resolveChart(elem *soml.Element) {
 	}
 	if !grouped {
 		elem.Children = []soml.Node{plot}
+		markChartAuthored(elem)
 		return
 	}
 	// 계열 형식은 범례를 아래에 단다 — 플롯이 남은 높이를 먹고(grow) 범례는 자기 높이다.
@@ -118,6 +120,24 @@ func (r *resolver) resolveChart(elem *soml.Element) {
 	body := chartNode(soml.ColElement, elem.NameSpan, "gap", chartLegendGap, "w", chartFillAxis, "h", chartFillAxis)
 	body.Children = []soml.Node{plot, chartLegend(series)}
 	elem.Children = []soml.Node{body}
+	markChartAuthored(elem)
+}
+
+// markChartAuthored는 펼친 하위 트리에서 아직 출처가 없는 노드를 `<chart>`로 적는다
+// (soml.Element.Authored). 한 점·한 계열에서 나온 노드 — 막대, 값·범주 라벨, 범례 항목 — 는 만드는
+// 자리에서 `<point>`·`<series>`를 이미 받았다. 나머지(플롯·칸·기준선·라벨 줄)는 어느 한 점의 것이
+// 아니라 차트의 틀이다.
+func markChartAuthored(root *soml.Element) {
+	for _, node := range root.Children {
+		elem, ok := node.(*soml.Element)
+		if !ok {
+			continue
+		}
+		if elem.Authored == "" {
+			elem.Authored = soml.ChartElement
+		}
+		markChartAuthored(elem)
+	}
 }
 
 // chartSeries는 검증을 통과한 계열 하나다 — 단일 계열 차트(직계 점)도 이름 없는 계열 하나로 읽는다.
@@ -644,12 +664,14 @@ func chartBand(datum chartDatum, spec chartSpec, barWidth string) *soml.Element 
 	if datum.fill != "" {
 		fill = datum.fill
 	}
-	band.Children = append(band.Children, chartNode(soml.ShapeElement, datum.span,
+	bar := chartNode(soml.ShapeElement, datum.span,
 		"type", chartFrameType,
 		"fill", fill,
 		"border", noneValue,
 		"w", barWidth,
-		"basis", chartPercent(percent)))
+		"basis", chartPercent(percent))
+	bar.Authored = soml.ChartPointElement
+	band.Children = append(band.Children, bar)
 	return band
 }
 
@@ -668,6 +690,7 @@ func chartTextNode(text, color string, span soml.Span) *soml.Element {
 		pairs = append(pairs, "color", color)
 	}
 	label := chartNode(soml.TextElement, span, pairs...)
+	label.Authored = soml.ChartPointElement
 	label.Children = []soml.Node{&soml.Text{Value: text, Span: span}}
 	return label
 }
@@ -816,10 +839,12 @@ func chartLegend(series []chartSeries) *soml.Element {
 		item := chartNode(soml.RowElement, s.span, "gap", chartLabelGap, "align", string(soml.BoxAlignCenter))
 		name := chartNode(soml.TextElement, s.span, "role", string(soml.RoleCaption))
 		name.Children = []soml.Node{&soml.Text{Value: s.name, Span: s.span}}
-		item.Children = []soml.Node{
-			chartNode(soml.ShapeElement, s.span, "type", chartFrameType, "fill", s.fill, "border", noneValue, "w", w, "h", h),
-			name,
+		swatch := chartNode(soml.ShapeElement, s.span, "type", chartFrameType, "fill", s.fill, "border", noneValue, "w", w, "h", h)
+		item.Children = []soml.Node{swatch, name}
+		for _, e := range item.Children {
+			e.(*soml.Element).Authored = soml.ChartSeriesElement
 		}
+		item.Authored = soml.ChartSeriesElement
 		legend.Children = append(legend.Children, item)
 	}
 	return legend

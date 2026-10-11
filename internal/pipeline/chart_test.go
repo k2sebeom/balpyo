@@ -2,6 +2,7 @@ package pipeline_test
 
 import (
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/k2sebeom/balpyo/internal/pipeline"
@@ -54,6 +55,42 @@ func TestShortBarChartFitsAndKeepsProportions(t *testing.T) {
 		}
 		if math.Abs(bars[i].Bottom()-bars[0].Bottom()) > 0.5 {
 			t.Errorf("막대[%d]의 바닥 %.1f, 첫 막대 %.1f — 기준선이 어긋났다", i, bars[i].Bottom(), bars[0].Bottom())
+		}
+	}
+}
+
+// 펼친 차트의 노드가 넘치면 진단은 저자가 쓴 태그로 말한다 — 값 라벨과 막대는 `<point>`이고
+// 자리도 `<point>`다. 저자는 `<text>`를 쓰지 않았으므로 `<text>`라고 들으면 고칠 자리를 찾지 못한다.
+func TestChartLayoutDiagnosticsNameTheAuthoredTag(t *testing.T) {
+	testkit.RequireChromium(t)
+	dir := project(t, map[string]string{
+		"balpyo.json": `{"title": "chart"}`,
+		"slides/001_chart.slide": `<slide id="c">
+  <chart type="bar" w="240" h="200">
+    <point label="A" value="80"/>
+    <point label="Pneumonoultramicroscopicsilicovolcanoconiosis" value="40"/>
+    <point label="C" value="20"/>
+  </chart>
+</slide>`,
+	})
+	result, err := pipeline.Build(pipeline.Options{
+		ProjectDir:  dir,
+		Targets:     []render.Target{render.TargetHTML},
+		CheckLayout: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) == 0 {
+		t.Fatal("넘치는 범주 라벨이 진단을 내지 않았다")
+	}
+	for _, d := range result.Diagnostics {
+		if strings.Contains(d.Message, "<text>") || strings.Contains(d.Message, "<shape>") {
+			t.Errorf("진단이 저자가 쓰지 않은 태그를 말한다: %s", d)
+		}
+		// 긴 라벨이 칸을 밀어 넘친 것은 이웃 칸일 수 있다 — 자리는 어느 `<point>` 줄(3~5)이든 된다.
+		if line := d.Span.Start.Line; !strings.HasPrefix(d.Message, "<point>") || line < 3 || line > 5 {
+			t.Errorf("진단 = %s, want <point> 줄의 <point>", d)
 		}
 	}
 }

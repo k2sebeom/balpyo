@@ -213,6 +213,29 @@ func TestDiagnose(t *testing.T) {
 	}
 }
 
+// 스테이지 안의 부모를 넘친 박스가 스테이지 밖까지 나갔으면 원인은 부모의 크기다 — 첫 경고가
+// 부모 넘침을 말하고 스테이지 이탈은 같은 문장에 붙는다. 스테이지 이탈만 말하면 저자는 자식을
+// 옮기고, 부모 경고는 그다음 빌드에서야 나온다.
+func TestDiagnoseParentOverflowBeforeStageEscape(t *testing.T) {
+	shape := &soml.Element{
+		Name:     soml.ShapeElement,
+		Attrs:    []soml.Attr{{Name: "type", Value: "rect", HasValue: true}, {Name: "h", Value: "96", HasValue: true}},
+		Children: []soml.Node{&soml.Element{Name: soml.ColElement, Children: []soml.Node{textElem(chars("넘치는 칸"))}}},
+	}
+	deck := testDeck([]soml.Node{shape})
+	if diags := core.Resolve(deck, nil); len(diags) > 0 {
+		t.Fatalf("외관 해석 진단: %v", diags)
+	}
+	// 도형은 콘텐츠 박스 안(500~596)이고, 칸은 그 아래 변을 135px · 스테이지를 11px 넘는다.
+	g := measured(t, deck, map[string]Rect{
+		"s0.0":     {X: 64, Y: 500, W: 400, H: 96},
+		"s0.0.0":   {X: 64, Y: 540, W: 400, H: 191},
+		"s0.0.0.0": {X: 64, Y: 540, W: 400, H: 191},
+	}, nil)
+	wantDiags(t, Diagnose(deck, g),
+		"<col> overflows its parent <shape> at the bottom by 135px and leaves the stage at the bottom by 11px — the parent box is too small")
+}
+
 // 부모 박스 이탈이 "고정 크기 박스가 내용을 담지 못했다"의 모양이다 — 저자가 `h`를 준 도형에
 // 글이 넘치면 자식 박스가 부모 변을 넘어간다.
 func TestDiagnoseParentEscape(t *testing.T) {

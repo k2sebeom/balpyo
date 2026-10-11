@@ -70,9 +70,11 @@ func stageRect(stage soml.Stage) Rect {
 // Diagnose는 잰 좌표에서 배치 사고를 찾는다 (위 목록). 심각도는 전부 경고다 — 에러로
 // 승격하는 것은 `--strict`의 몫이고, 그 판단은 파이프라인이 한 곳에서 한다.
 //
-// 요소 하나가 받는 이탈 진단은 하나다. 스테이지 → 부모 → 콘텐츠 박스 순으로 **가장 바깥
+// 요소 하나가 받는 이탈 진단은 하나다. 부모 → 스테이지 → 콘텐츠 박스 순으로 **원인에 가까운
 // 사고부터** 보고 하나를 말한다: 같은 사고를 세 이름으로 부르면 저자는 세 줄을 읽고 한 곳을
-// 고친다. 같은 이유로 **사고 하나도 경고 하나다** — 이탈 경고를 받은 요소 안에서 함께 벗어난
+// 고친다. 부모가 먼저인 이유는 스테이지 안의 부모를 넘친 박스가 스테이지까지 나갔다면 그것은
+// 부모가 작은 결과라는 것이다 — 스테이지 이탈을 먼저 말하면 저자는 자식을 옮기고, 부모 경고를
+// 그다음 빌드에서야 본다. 스테이지 이탈은 같은 문장에 덧붙인다. 같은 이유로 **사고 하나도 경고 하나다** — 이탈 경고를 받은 요소 안에서 함께 벗어난
 // 자손은 따로 말하지 않고 그 경고에 세어 붙인다 (escapedAncestor). 글줄 넘침과 형제 겹침은
 // 다른 사실이므로 따로 붙는다.
 //
@@ -105,30 +107,41 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 		parent, hasParent := index[ref.Parent]
 
 		var warning *soml.Diagnostic
-		switch dir, over := escape(box.Rect, stage); {
-		case over > overflowTolerance:
+		// 부모 판정을 묻는 자리다 — 좌표를 직접 쓴 요소와 표의 셀은 부모 변을 넘는 것이 정상이다.
+		//
+		// 좌표를 직접 쓴 요소(와 그 자손)는 부모 변과 여백을 넘어서는 것이 저작 수단이다. 표의 셀은
+		// 부모 `<tr>`를 **합법적으로** 넘친다: `rowspan`이 든 셀의 박스는 여러 행에 걸치므로 자기
+		// 행보다 높다 (격자를 짜는 것은 브라우저의 표 알고리즘이다). 격자의 어느 박스도 저자가 크기를
+		// 정한 것이 아니므로, "고정 크기 박스가 내용을 담지 못했다"는 이 판정의 사고가 셀에서는
+		// 성립하지 않는다. 표가 담기지 않는 사고를 놓치지는 않는다 — 그것은 프레임(`<table>`)이 부모나
+		// 콘텐츠 박스를 넘치는 모양으로 나타나고, 그 판정은 그대로 남는다. 행(`<tr>`)도 그대로 본다:
+		// 행이 표를 넘치는 것은 격자가 설명하지 않는 일이다.
+		askParent := hasParent && !ref.Free && soml.KindOf(ref.El) != soml.KindTableCell
+		stageDir, stageOver := escape(box.Rect, stage)
+		parentDir, parentOver := "", 0.0
+		if askParent {
+			parentDir, parentOver = escape(box.Rect, g.Boxes[parent].Rect)
+		}
+		switch {
+		case parentOver > overflowTolerance:
+			// 부모를 넘친 것이 먼저다: 부모가 스테이지 안에 있으면 스테이지 이탈은 너무 작은 부모의
+			// 결과이고, 고칠 자리는 부모의 크기다. (부모까지 스테이지를 나갔다면 부모가 먼저 경고를
+			// 받고 이 요소는 그 경고에 접힌다.)
+			also := ""
+			if stageOver > overflowTolerance {
+				also = fmt.Sprintf(" and leaves the stage %s by %s", stageDir, px(stageOver))
+			}
+			d := soml.Warningf(ref.Source, ref.Span,
+				"<%s> overflows its parent <%s> %s by %s%s — the parent box is too small for its content",
+				ref.Tag, refs[parent].Tag, parentDir, px(parentOver), also)
+			warning = &d
+		case stageOver > overflowTolerance:
 			d := soml.Warningf(ref.Source, ref.Span,
 				"<%s> leaves the stage %s by %s — off-stage content is clipped on screen and placed off the slide in PPTX",
-				ref.El, dir, px(over))
+				ref.Tag, stageDir, px(stageOver))
 			warning = &d
-		case ref.Free:
-			// 좌표를 직접 쓴 요소(와 그 자손)는 부모 변과 여백을 넘어서는 것이 저작 수단이다.
-		case soml.KindOf(ref.El) == soml.KindTableCell:
-			// 표의 셀은 부모 `<tr>`를 **합법적으로** 넘친다: `rowspan`이 든 셀의 박스는 여러
-			// 행에 걸치므로 자기 행보다 높다 (격자를 짜는 것은 브라우저의 표
-			// 알고리즘이다). 격자의 어느 박스도 저자가 크기를 정한 것이 아니므로, "고정 크기 박스가
-			// 내용을 담지 못했다"는 이 판정의 사고가 셀에서는 성립하지 않는다.
-			//
-			// 표가 담기지 않는 사고를 놓치지는 않는다 — 그것은 프레임(`<table>`)이 부모나
-			// 콘텐츠 박스를 넘치는 모양으로 나타나고, 그 판정은 그대로 남는다. 행(`<tr>`)도
-			// 그대로 본다: 행이 표를 넘치는 것은 격자가 설명하지 않는 일이다.
-		case hasParent:
-			if dir, over := escape(box.Rect, g.Boxes[parent].Rect); over > overflowTolerance {
-				d := soml.Warningf(ref.Source, ref.Span,
-					"<%s> overflows its parent <%s> %s by %s — the parent box is too small for its content",
-					ref.El, refs[parent].El, dir, px(over))
-				warning = &d
-			}
+		case hasParent || ref.Free:
+			// 부모 안에 있거나 좌표로 놓였다 — 콘텐츠 박스는 슬라이드 직계의 흐름 요소에게만 묻는다.
 		default:
 			// 콘텐츠 박스는 **이 슬라이드에서 잰** 것이다 — 여백은 테마가 레이아웃마다 정하므로
 			// (`image-full`은 전면 배치라 여백이 없다) 상수로 판정하면 그 레이아웃의 전면
@@ -137,13 +150,13 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 			if dir, over := escape(box.Rect, content); over > overflowTolerance {
 				d := soml.Warningf(ref.Source, ref.Span,
 					"<%s> overflows the content box %s by %s — this layout's content box is %s (a 64px stage margin unless the theme's layout CSS changes it)",
-					ref.El, dir, px(over), content)
+					ref.Tag, dir, px(over), content)
 				warning = &d
 			}
 		}
 		if warning != nil {
 			if ancestor, ok := escapedAncestor(refs, index, escaped, ref); ok {
-				folds[ancestor].add(ref.El)
+				folds[ancestor].add(ref.Tag)
 			} else {
 				escaped[i] = len(diags)
 				folds[len(diags)] = &escapeFold{}
@@ -154,7 +167,7 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 		if dir, over := textEscape(box); over > overflowTolerance {
 			diags = append(diags, soml.Warningf(ref.Source, ref.Span,
 				"<%s> text overflows its box %s by %s — text that cannot wrap (a long word, URL or `pre`)",
-				ref.El, dir, px(over)))
+				ref.Tag, dir, px(over)))
 		}
 
 		group := sibGroup{slide: ref.Slide, parent: ref.Parent}
@@ -167,7 +180,7 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 				if w, h, ok := overlap(g.Boxes[j].Rect, box.Rect); ok {
 					diags = append(diags, soml.Warningf(ref.Source, ref.Span,
 						"<%s> overlaps its sibling <%s> by %s×%s — if the overlap is intended, use <%s> or x/y",
-						ref.El, other.El, px(w), px(h), soml.StackElement))
+						ref.Tag, other.Tag, px(w), px(h), soml.StackElement))
 				}
 			}
 		}

@@ -20,11 +20,6 @@
   한 번은 연결선 두 개(`terminate`, shutting-down → terminated)가 빠진 채로 나온다 — HTML은 같은 바이트다.
   `screenshot`이 `enter`/`draw` 전환이 끝나기를 기다리지 않는다. 찍기 전에 모든 스텝을 전개하고
   애니메이션을 끈다.
-- [진단] **첫 경고가 원인이 아닌 상자를 가리킨다.** 너무 낮은 `<shape h="96">` 안의 `<col>`이 처음에는
-  `<col> leaves the stage at the bottom by 11px`로 나왔고, 진짜 원인(`<col> overflows its parent
-  <shape>`)은 배치를 옮긴 뒤에야 나왔다. 부모 넘침을 스테이지 이탈보다 먼저 말한다.
-- [진단] **차트 라벨 진단의 이름.** 펼친 차트의 라벨이 넘치면 진단이 `<text>`를 말한다 — 저자가 쓴 것은
-  `<point>`다. 합성 노드의 진단은 저자가 쓴 태그 이름으로 말한다.
 - [작성] **chevron의 기본 노치.** 노치 깊이가 상자 폭의 절반(`adj` 261113)이라 `<shape type="chevron"
   w="fill" h="88">` 안의 라벨이 실루엣 밖으로 나가고, 글은 위쪽에 붙는다. PowerPoint 기본처럼 얕은
   노치를 기본으로 하거나 skill에 경고를 넣는다.
