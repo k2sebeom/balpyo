@@ -1,6 +1,7 @@
 package quick
 
 import (
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -230,6 +231,53 @@ func TestNoBreakAfterSlashBeforeASCII(t *testing.T) {
 	for id, want := range map[string]float64{"u": 30, "v": 30, "w": 30, "x": 60} {
 		if !near(b[id].h, want) {
 			t.Errorf("%s: height %.1f, want %.1f", id, b[id].h, want)
+		}
+	}
+}
+
+// 줄에 꼭 맞는 내용. Chromium은 글리프 진행 폭을 1/64px보다 곱게 더한 내용 폭을 1/64px로 올리고,
+// 줄 폭에는 1/64px을 더 허용해 견준다. 줄바꿈 기회 너머의 커닝(に와 す 사이 +0.2px)도 폭에 들고,
+// 줄이 거기서 끝나면 빠진다. 기댓값은 Chromium이 잰 줄 수와 첫 줄의 텍스트 폭이다.
+func TestExactFitLine(t *testing.T) {
+	const jp = `日本語の文章を両端揃えにすると`
+	const plain = `日本語日本語日本語日本語日本語`
+	cases := []struct {
+		w, family, text string
+		lines           int
+		first           float64 // 0이면 보지 않는다
+	}{
+		// 커닝 때문에 15자가 300px을 넘친다 — 정렬과 상관없다.
+		{"300px", "'Noto Sans CJK JP'", jp, 2, 280.2},
+		{"300px", "'Noto Sans CJK JP'; text-align: center", jp, 2, 280.2},
+		// に가 들어가는지 볼 때도 뒤 글자와의 커닝이 든다.
+		{"240px", "'Noto Sans CJK JP'", jp, 2, 220},
+		// 줄이 に에서 끝나면 다음 줄 글자와의 커닝은 빠진다.
+		{"250px", "'Noto Sans CJK JP'", jp, 2, 240},
+		// 꼭 맞으면 한 줄이고, 1/64px 넘침까지는 봐준다.
+		{"300px", "'Noto Sans CJK JP'", plain, 1, 300},
+		{"299.984375px", "'Noto Sans CJK JP'", plain, 1, 300},
+		{"299.96875px", "'Noto Sans CJK JP'", plain, 2, 0},
+		// 1/64px보다 작은 진행 폭의 끝자리가 쌓인다.
+		{"143.5px", "'Noto Sans'", "Hello world foo", 2, 0},
+		{"143.515625px", "'Noto Sans'", "Hello world foo", 2, 0},
+		{"143.53125px", "'Noto Sans'", "Hello world foo", 1, 0},
+		{"99.25px", "'Noto Sans'", "aaaa bbbb", 2, 0},
+		{"99.265625px", "'Noto Sans'", "aaaa bbbb", 1, 0},
+	}
+	var body string
+	for i, c := range cases {
+		body += fmt.Sprintf(`<div id="f%d" style="width: %s; font-size: 20px; line-height: 30px; font-family: %s">%s</div>`,
+			i, c.w, c.family, c.text)
+	}
+	_, b := layoutBody(t, baseCSS, body)
+	for i, c := range cases {
+		box := b[fmt.Sprintf("f%d", i)]
+		if len(box.lines) != c.lines {
+			t.Errorf("%q in %s: %d lines, want %d", c.text, c.w, len(box.lines), c.lines)
+			continue
+		}
+		if c.first != 0 && math.Abs(box.lines[0].textRect.w-c.first) > 0.05 {
+			t.Errorf("%q in %s: first line %.3fpx wide, want %.1f", c.text, c.w, box.lines[0].textRect.w, c.first)
 		}
 	}
 }
