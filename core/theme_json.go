@@ -61,7 +61,7 @@ func decodeThemeJSON(data []byte, file string, v any, closed bool) error {
 			fe.pos = offsetPos(data, int(syntax.Offset)-1)
 			fe.msg = "invalid JSON: " + syntax.Error()
 		case errors.As(err, &typ):
-			label, offset := locateField(data, strings.Split(typ.Field, "."))
+			label, offset := locateValue(data, int(typ.Offset), typ.Field)
 			fe.pos = offsetPos(data, offset)
 			fe.msg = fmt.Sprintf("%s must be %s, not %s", label, typeWord(typ.Type), typ.Value)
 		}
@@ -165,21 +165,25 @@ func elementLabel(value json.RawMessage, i int) string {
 	return fmt.Sprintf("[%d]", i)
 }
 
-// locateField는 encoding/json의 필드 경로(`shape.variants.0.fill`)를 키 검사와 같은 표기
-// (`shape.variants["card"].fill`)와 그 값이 시작하는 오프셋으로 옮긴다 — 두 종류의 에러가 같은 말로
-// 같은 자리를 가리키게.
-func locateField(data []byte, segments []string) (string, int) {
+// locateValue는 오프셋 offset에서 끝나는(또는 그것을 품은) 가장 깊은 값을 찾아 키 검사와 같은 표기의 경로
+// (`shape.variants["card"].fill`)와 그 값이 시작하는 오프셋을 돌려준다. 못 찾으면 fallback 경로와 -1이다.
+//
+// encoding/json의 UnmarshalTypeError.Offset은 틀린 값을 읽은 **뒤**의 오프셋이다. 경로를 Field 문자열에서
+// 읽지 않는 이유는 Go 버전마다 그 모양이 다르다는 것이다 — 배열 순번을 담는 버전(`shape.variants.0.fill`)과
+// 담지 않는 버전(`shape.variants.fill`)이 있어, 순번 없이는 어느 원소인지 정할 수 없다. 오프셋은 두 버전에서 같다.
+func locateValue(data []byte, offset int, fallback string) (string, int) {
 	at, raw, base := "", json.RawMessage(data), 0
-	for _, seg := range segments {
+	found := false
+	for {
 		dec := json.NewDecoder(bytes.NewReader(raw))
 		tok, err := dec.Token()
 		if err != nil {
 			break
 		}
-		found := false
+		descended := false
 		switch tok {
 		case json.Delim('{'):
-			for dec.More() && !found {
+			for dec.More() && !descended {
 				keyTok, err := dec.Token()
 				if err != nil {
 					break
@@ -188,26 +192,31 @@ func locateField(data []byte, segments []string) (string, int) {
 				if dec.Decode(&value) != nil {
 					break
 				}
-				if key, _ := keyTok.(string); strings.EqualFold(key, seg) {
-					at = joinPath(at, key)
-					base, raw, found = base+int(dec.InputOffset())-len(value), value, true
+				end := base + int(dec.InputOffset())
+				if start := end - len(value); start < offset && offset <= end {
+					key, _ := keyTok.(string)
+					at, raw, base, descended = joinPath(at, key), value, start, true
 				}
 			}
 		case json.Delim('['):
-			for i := 0; dec.More() && !found; i++ {
+			for i := 0; dec.More() && !descended; i++ {
 				var value json.RawMessage
 				if dec.Decode(&value) != nil {
 					break
 				}
-				if fmt.Sprint(i) == seg {
-					at += elementLabel(value, i)
-					base, raw, found = base+int(dec.InputOffset())-len(value), value, true
+				end := base + int(dec.InputOffset())
+				if start := end - len(value); start < offset && offset <= end {
+					at, raw, base, descended = at+elementLabel(value, i), value, start, true
 				}
 			}
 		}
-		if !found {
-			return strings.Join(segments, "."), -1
+		if !descended {
+			break
 		}
+		found = true
+	}
+	if !found {
+		return fallback, -1
 	}
 	return at, base
 }
