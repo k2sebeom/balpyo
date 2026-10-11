@@ -136,24 +136,24 @@ func TestChartExpandsToHandWrittenDeck(t *testing.T) {
   <shape type="rect" fill="none" border="none" alt="월별 평균 탐지 시간" w="fill" h="420">
     <col gap="0" w="fill" h="fill">
       <row gap="0" align="stretch" grow="1" basis="0" w="fill">
-        <col grow="1" basis="0" gap="0" align="center">
-          <col grow="1" basis="0" w="fill" align="center" gap="xs">
+        <col grow="1" basis="0" min-w="0" gap="0" align="center">
+          <col grow="1" basis="0" min-w="0" w="fill" align="center" gap="xs">
             <spacer grow="0" basis="10%"/>
             <text role="caption" align="center" w="fill" shrink="0">22분</text>
             <shape type="rect" fill="accent1" border="none" w="70%" basis="90%"/>
           </col>
           <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
         </col>
-        <col grow="1" basis="0" gap="0" align="center">
-          <col grow="1" basis="0" w="fill" align="center" gap="xs">
+        <col grow="1" basis="0" min-w="0" gap="0" align="center">
+          <col grow="1" basis="0" min-w="0" w="fill" align="center" gap="xs">
             <spacer grow="0" basis="22.27%"/>
             <text role="caption" align="center" w="fill" shrink="0">19분</text>
             <shape type="rect" fill="accent1" border="none" w="70%" basis="77.73%"/>
           </col>
           <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
         </col>
-        <col grow="1" basis="0" gap="0" align="center">
-          <col grow="1" basis="0" w="fill" align="center" gap="xs">
+        <col grow="1" basis="0" min-w="0" gap="0" align="center">
+          <col grow="1" basis="0" min-w="0" w="fill" align="center" gap="xs">
             <spacer grow="0" basis="50.91%"/>
             <text role="caption" align="center" w="fill" color="accent4" shrink="0">12분</text>
             <shape type="rect" fill="accent4" border="none" w="70%" basis="49.09%"/>
@@ -162,9 +162,9 @@ func TestChartExpandsToHandWrittenDeck(t *testing.T) {
         </col>
       </row>
       <row gap="0" w="fill">
-        <text role="caption" align="center" w="fill" grow="1" basis="0">5월</text>
-        <text role="caption" align="center" w="fill" grow="1" basis="0">6월</text>
-        <text role="caption" align="center" w="fill" color="accent4" grow="1" basis="0">9월</text>
+        <text role="caption" align="center" w="fill" grow="1" basis="0" min-w="0">5월</text>
+        <text role="caption" align="center" w="fill" grow="1" basis="0" min-w="0">6월</text>
+        <text role="caption" align="center" w="fill" color="accent4" grow="1" basis="0" min-w="0">9월</text>
       </row>
     </col>
   </shape>

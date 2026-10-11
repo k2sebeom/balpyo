@@ -575,7 +575,7 @@ func (r *resolver) chartAxis(elem *soml.Element, data []chartDatum) (float64, bo
 // 범주 라벨을 칸 안이 아니라 **따로 한 줄로** 두는 이유: 칸 안에 두면 두 줄로 접힌 라벨 하나가
 // 그 칸의 밴드만 줄여서 그 막대가 이웃보다 짧게 그려진다 — 그림이 데이터를 속인다. 한 줄로
 // 모으면 줄의 높이는 가장 높은 라벨이 정하고 모든 칸의 밴드가 같은 높이를 갖는다. 라벨 줄의
-// 칸도 `grow="1" basis="0"`이라 막대 칸과 같은 열에 선다.
+// 칸도 `grow="1" basis="0"`에 최소 폭 0이라 막대 칸과 같은 열에 선다 (chartCellMinWidth).
 func chartPlot(data []chartDatum, spec chartSpec) *soml.Element {
 	row := chartBandRow(data[0].span)
 	for _, datum := range data {
@@ -601,6 +601,7 @@ func chartColumn(span soml.Span, band *soml.Element) *soml.Element {
 	col := chartNode(soml.ColElement, span,
 		"grow", "1",
 		"basis", "0",
+		"min-w", chartCellMinWidth,
 		"gap", "0",
 		"align", string(soml.BoxAlignCenter))
 	col.Children = []soml.Node{
@@ -619,13 +620,31 @@ func chartColumn(span soml.Span, band *soml.Element) *soml.Element {
 func chartBody(bands *soml.Element, categories []chartDatum) *soml.Element {
 	labels := chartNode(soml.RowElement, categories[0].span, "gap", "0", "w", chartFillAxis)
 	for _, datum := range categories {
-		label := chartTextNode(datum.label, datum.fill, datum.span)
-		label.Attrs = append(label.Attrs, chartAttr("grow", "1", datum.span), chartAttr("basis", "0", datum.span))
-		labels.Children = append(labels.Children, label)
+		labels.Children = append(labels.Children, chartCategoryLabel(datum, datum.fill))
 	}
 	body := chartNode(soml.ColElement, categories[0].span, "gap", "0", "w", chartFillAxis, "h", chartFillAxis)
 	body.Children = []soml.Node{bands, labels}
 	return body
+}
+
+// chartCellMinWidth는 범주 칸(막대 칸 · 라벨 칸 · 묶음 막대의 계열 밴드)의 최소 폭이다.
+//
+// 칸은 `grow="1" basis="0"`인 flex 항목이라 균등 분배가 되어야 하는데, flex 항목의 최소 폭은 기본이
+// `auto` — 내용의 min-content 폭이다. 그래서 칸보다 넓은 낱말 하나(`Internationalization`)가 자기 칸을
+// 넓히고 이웃 칸들을 밀어, 라벨 줄과 막대 밴드가 서로 다른 열로 나뉜다. 최소 폭 0이면 칸은 언제나
+// 줄을 n등분한 폭이고, 넓은 라벨은 자기 칸 안에서 넘친다 — 그 넘침은 그 `<point>`의 글자 넘침
+// 경고가 된다.
+const chartCellMinWidth = "0"
+
+// chartCategoryLabel은 범주 라벨 줄의 칸 하나다 — 막대 칸과 같은 `grow="1" basis="0"`이고 최소 폭이
+// 0이라 같은 열에 선다 (chartCellMinWidth).
+func chartCategoryLabel(datum chartDatum, color string) *soml.Element {
+	label := chartTextNode(datum.label, color, datum.span)
+	label.Attrs = append(label.Attrs,
+		chartAttr("grow", "1", datum.span),
+		chartAttr("basis", "0", datum.span),
+		chartAttr("min-w", chartCellMinWidth, datum.span))
+	return label
 }
 
 // chartBand는 한 칸의 플롯 밴드다 — 위에서 아래로 여백·값 라벨·막대가 쌓인다.
@@ -643,6 +662,7 @@ func chartBand(datum chartDatum, spec chartSpec, barWidth string) *soml.Element 
 	band := chartNode(soml.ColElement, datum.span,
 		"grow", "1",
 		"basis", "0",
+		"min-w", chartCellMinWidth,
 		"w", chartFillAxis,
 		"align", string(soml.BoxAlignCenter),
 		"gap", chartLabelGap)
@@ -784,9 +804,7 @@ func chartLinePlot(series []chartSeries, spec chartSpec) *soml.Element {
 
 	labels := chartNode(soml.RowElement, span, "gap", "0", "w", chartFillAxis)
 	for _, datum := range data {
-		label := chartTextNode(datum.label, "", datum.span)
-		label.Attrs = append(label.Attrs, chartAttr("grow", "1", datum.span), chartAttr("basis", "0", datum.span))
-		labels.Children = append(labels.Children, label)
+		labels.Children = append(labels.Children, chartCategoryLabel(datum, ""))
 	}
 	col := chartNode(soml.ColElement, span, "gap", "0", "w", chartFillAxis, "h", chartFillAxis)
 	col.Children = []soml.Node{
@@ -807,7 +825,7 @@ func chartGroupedPlot(series []chartSeries, spec chartSpec) *soml.Element {
 	row := chartBandRow(first[0].span)
 	for i, category := range first {
 		group := chartNode(soml.RowElement, category.span,
-			"grow", "1", "basis", "0", "w", chartBarWidth, "gap", "0",
+			"grow", "1", "basis", "0", "min-w", chartCellMinWidth, "w", chartBarWidth, "gap", "0",
 			"align", string(soml.BoxAlignStretch))
 		for _, s := range series {
 			datum := s.data[i]
