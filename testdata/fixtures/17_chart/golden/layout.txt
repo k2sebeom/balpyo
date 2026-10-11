@@ -2,35 +2,35 @@
 textbox "h2 s0.0"
   ¶ start | "차트는 도형과 텍스트로 펼쳐진다"{heading 27pt b fg}
 shape:rect "shape s0.1" alt="월별 평균 탐지 시간 — 5월 22분에서 9월 12분으로 줄었다" fill=none line=none
-textbox "text s0.1.0.0.0.0"
+textbox "text s0.1.0.0.0.0.1"
   ¶ center | "22분"{body 13.5pt muted}
-shape:rect "shape s0.1.0.0.0.1" fill=accent1 line=none
-shape:rect "shape s0.1.0.0.1" fill=muted line=none
-textbox "text s0.1.0.0.2"
-  ¶ center | "5월"{body 13.5pt muted}
-textbox "text s0.1.0.1.0.0"
+shape:rect "shape s0.1.0.0.0.0.2" fill=accent1 line=none
+shape:rect "shape s0.1.0.0.0.1" fill=muted line=none
+textbox "text s0.1.0.0.1.0.1"
   ¶ center | "19분"{body 13.5pt muted}
-shape:rect "shape s0.1.0.1.0.1" fill=accent1 line=none
-shape:rect "shape s0.1.0.1.1" fill=muted line=none
-textbox "text s0.1.0.1.2"
-  ¶ center | "6월"{body 13.5pt muted}
-textbox "text s0.1.0.2.0.0"
+shape:rect "shape s0.1.0.0.1.0.2" fill=accent1 line=none
+shape:rect "shape s0.1.0.0.1.1" fill=muted line=none
+textbox "text s0.1.0.0.2.0.1"
   ¶ center | "15분"{body 13.5pt muted}
-shape:rect "shape s0.1.0.2.0.1" fill=accent1 line=none
-shape:rect "shape s0.1.0.2.1" fill=muted line=none
-textbox "text s0.1.0.2.2"
-  ¶ center | "7월"{body 13.5pt muted}
-textbox "text s0.1.0.3.0.0"
+shape:rect "shape s0.1.0.0.2.0.2" fill=accent1 line=none
+shape:rect "shape s0.1.0.0.2.1" fill=muted line=none
+textbox "text s0.1.0.0.3.0.1"
   ¶ center | "13분"{body 13.5pt muted}
-shape:rect "shape s0.1.0.3.0.1" fill=accent1 line=none
-shape:rect "shape s0.1.0.3.1" fill=muted line=none
-textbox "text s0.1.0.3.2"
-  ¶ center | "8월"{body 13.5pt muted}
-textbox "text s0.1.0.4.0.0"
+shape:rect "shape s0.1.0.0.3.0.2" fill=accent1 line=none
+shape:rect "shape s0.1.0.0.3.1" fill=muted line=none
+textbox "text s0.1.0.0.4.0.1"
   ¶ center | "12분"{body 13.5pt accent4}
-shape:rect "shape s0.1.0.4.0.1" fill=accent4 line=none
-shape:rect "shape s0.1.0.4.1" fill=muted line=none
-textbox "text s0.1.0.4.2"
+shape:rect "shape s0.1.0.0.4.0.2" fill=accent4 line=none
+shape:rect "shape s0.1.0.0.4.1" fill=muted line=none
+textbox "text s0.1.0.1.0"
+  ¶ center | "5월"{body 13.5pt muted}
+textbox "text s0.1.0.1.1"
+  ¶ center | "6월"{body 13.5pt muted}
+textbox "text s0.1.0.1.2"
+  ¶ center | "7월"{body 13.5pt muted}
+textbox "text s0.1.0.1.3"
+  ¶ center | "8월"{body 13.5pt muted}
+textbox "text s0.1.0.1.4"
   ¶ center | "9월"{body 13.5pt accent4}
 textbox "text s0.2"
   ¶ start | "축 최대를 적지 않으면 가장 높은 막대가 플롯 밴드의 90%다 — 값 라벨이 올라탈 자리가 남는다."{body 13.5pt muted}
@@ -38,22 +38,22 @@ textbox "text s0.2"
 textbox "h2 s1.0"
   ¶ start | "축은 저자가 정할 수 있다"{heading 27pt b fg}
 shape:rect "shape s1.1.0" alt="지역별 도입률" fill=none line=none
-textbox "text s1.1.0.0.0.0.0"
+textbox "text s1.1.0.0.0.0.0.1"
   ¶ center | "62%"{body 13.5pt muted}
-shape:rect "shape s1.1.0.0.0.0.1" fill=accent2 line=none
-shape:rect "shape s1.1.0.0.0.1" fill=muted line=none
-textbox "text s1.1.0.0.0.2"
-  ¶ center | "서울"{body 13.5pt muted}
-textbox "text s1.1.0.0.1.0.0"
+shape:rect "shape s1.1.0.0.0.0.0.2" fill=accent2 line=none
+shape:rect "shape s1.1.0.0.0.0.1" fill=muted line=none
+textbox "text s1.1.0.0.0.1.0.1"
   ¶ center | "41%"{body 13.5pt muted}
-shape:rect "shape s1.1.0.0.1.0.1" fill=accent2 line=none
-shape:rect "shape s1.1.0.0.1.1" fill=muted line=none
-textbox "text s1.1.0.0.1.2"
-  ¶ center | "부산"{body 13.5pt muted}
-textbox "text s1.1.0.0.2.0.0"
+shape:rect "shape s1.1.0.0.0.1.0.2" fill=accent2 line=none
+shape:rect "shape s1.1.0.0.0.1.1" fill=muted line=none
+textbox "text s1.1.0.0.0.2.0.1"
   ¶ center | "0%"{body 13.5pt muted}
-shape:rect "shape s1.1.0.0.2.1" fill=muted line=none
-textbox "text s1.1.0.0.2.2"
+shape:rect "shape s1.1.0.0.0.2.1" fill=muted line=none
+textbox "text s1.1.0.0.1.0"
+  ¶ center | "서울"{body 13.5pt muted}
+textbox "text s1.1.0.0.1.1"
+  ¶ center | "부산"{body 13.5pt muted}
+textbox "text s1.1.0.0.1.2"
   ¶ center | "대전"{body 13.5pt muted}
 textbox "text s1.1.1.0"
   ¶ start | "0은 막대가 없다"{heading 27pt b fg}
@@ -90,32 +90,32 @@ textbox "text s2.0.2.0.2.2"
   ¶ center | "6pm"{body 13.5pt muted}
 # slide 4 series
 shape:rect "shape s3.0.0" alt="Revenue by quarter" fill=none line=none
-textbox "text s3.0.0.0.0.0.0.0.0"
+textbox "text s3.0.0.0.0.0.0.0.0.1"
   ¶ center | "12M"{body 13.5pt muted}
-shape:rect "shape s3.0.0.0.0.0.0.0.1" fill=accent1 line=none
-textbox "text s3.0.0.0.0.0.0.1.0"
+shape:rect "shape s3.0.0.0.0.0.0.0.0.2" fill=accent1 line=none
+textbox "text s3.0.0.0.0.0.0.0.1.1"
   ¶ center | "16M"{body 13.5pt muted}
-shape:rect "shape s3.0.0.0.0.0.0.1.1" fill=accent4 line=none
-shape:rect "shape s3.0.0.0.0.0.1" fill=muted line=none
-textbox "text s3.0.0.0.0.0.2"
-  ¶ center | "Q1"{body 13.5pt muted}
-textbox "text s3.0.0.0.0.1.0.0.0"
+shape:rect "shape s3.0.0.0.0.0.0.0.1.2" fill=accent4 line=none
+shape:rect "shape s3.0.0.0.0.0.0.1" fill=muted line=none
+textbox "text s3.0.0.0.0.0.1.0.0.1"
   ¶ center | "18M"{body 13.5pt muted}
-shape:rect "shape s3.0.0.0.0.1.0.0.1" fill=accent1 line=none
-textbox "text s3.0.0.0.0.1.0.1.0"
+shape:rect "shape s3.0.0.0.0.0.1.0.0.2" fill=accent1 line=none
+textbox "text s3.0.0.0.0.0.1.0.1.1"
   ¶ center | "21M"{body 13.5pt muted}
-shape:rect "shape s3.0.0.0.0.1.0.1.1" fill=accent4 line=none
-shape:rect "shape s3.0.0.0.0.1.1" fill=muted line=none
-textbox "text s3.0.0.0.0.1.2"
-  ¶ center | "Q2"{body 13.5pt muted}
-textbox "text s3.0.0.0.0.2.0.0.0"
+shape:rect "shape s3.0.0.0.0.0.1.0.1.2" fill=accent4 line=none
+shape:rect "shape s3.0.0.0.0.0.1.1" fill=muted line=none
+textbox "text s3.0.0.0.0.0.2.0.0.1"
   ¶ center | "15M"{body 13.5pt muted}
-shape:rect "shape s3.0.0.0.0.2.0.0.1" fill=accent1 line=none
-textbox "text s3.0.0.0.0.2.0.1.0"
+shape:rect "shape s3.0.0.0.0.0.2.0.0.2" fill=accent1 line=none
+textbox "text s3.0.0.0.0.0.2.0.1.1"
   ¶ center | "24M"{body 13.5pt accent5}
-shape:rect "shape s3.0.0.0.0.2.0.1.1" fill=accent5 line=none
-shape:rect "shape s3.0.0.0.0.2.1" fill=muted line=none
-textbox "text s3.0.0.0.0.2.2"
+shape:rect "shape s3.0.0.0.0.0.2.0.1.2" fill=accent5 line=none
+shape:rect "shape s3.0.0.0.0.0.2.1" fill=muted line=none
+textbox "text s3.0.0.0.0.1.0"
+  ¶ center | "Q1"{body 13.5pt muted}
+textbox "text s3.0.0.0.0.1.1"
+  ¶ center | "Q2"{body 13.5pt muted}
+textbox "text s3.0.0.0.0.1.2"
   ¶ center | "Q3"{body 13.5pt muted}
 shape:rect "shape s3.0.0.0.1.0.0" fill=accent1 line=none
 textbox "text s3.0.0.0.1.0.1"

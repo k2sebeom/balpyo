@@ -548,63 +548,94 @@ func (r *resolver) chartAxis(elem *soml.Element, data []chartDatum) (float64, bo
 	return axis, true
 }
 
-// chartPlot은 막대 밴드다 — 범주 칸이 나란히 선 `<row>` 하나.
+// chartPlot은 막대 차트의 본체다 — 위에서 아래로 막대 밴드(범주 칸이 나란히 선 `<row>`)와
+// 범주 라벨의 줄이다.
 //
 // 칸이 `grow="1" basis="0"`인 이유는 균등 분배다 (막대 폭·간격을 픽셀로 세지 않는다).
-// `align="stretch" h="fill"`이 칸을 프레임 높이까지 늘리고, 그 안에서 플롯 밴드가 `grow="1"`로
-// 남은 높이를 전부 먹는다 — 그래서 막대의 백분율 높이가 **밴드**에 대한 비율이 되고 범주
-// 라벨·기준선 높이는 거기서 빠진다.
+// 범주 라벨을 칸 안이 아니라 **따로 한 줄로** 두는 이유: 칸 안에 두면 두 줄로 접힌 라벨 하나가
+// 그 칸의 밴드만 줄여서 그 막대가 이웃보다 짧게 그려진다 — 그림이 데이터를 속인다. 한 줄로
+// 모으면 줄의 높이는 가장 높은 라벨이 정하고 모든 칸의 밴드가 같은 높이를 갖는다. 라벨 줄의
+// 칸도 `grow="1" basis="0"`이라 막대 칸과 같은 열에 선다.
 func chartPlot(data []chartDatum, spec chartSpec) *soml.Element {
-	row := chartNode(soml.RowElement, data[0].span,
-		"gap", "0",
-		"align", string(soml.BoxAlignStretch),
-		"h", chartFillAxis)
+	row := chartBandRow(data[0].span)
 	for _, datum := range data {
-		row.Children = append(row.Children, chartColumn(datum, spec))
+		row.Children = append(row.Children, chartColumn(datum.span, chartBand(datum, spec, chartBarWidth)))
 	}
-	return row
+	return chartBody(row, data)
 }
 
-// chartColumn은 범주 한 칸이다 — 위에서 아래로 플롯 밴드·기준선·범주 라벨이다.
+// chartBandRow는 범주 칸이 나란히 서는 줄이다 — 라벨 줄을 뺀 높이를 전부 먹는다.
+func chartBandRow(span soml.Span) *soml.Element {
+	return chartNode(soml.RowElement, span,
+		"gap", "0",
+		"align", string(soml.BoxAlignStretch),
+		"grow", "1",
+		"basis", "0",
+		"w", chartFillAxis)
+}
+
+// chartColumn은 범주 한 칸이다 — 위에서 아래로 플롯 밴드와 기준선이다.
 //
 // 기준선이 칸마다 있는 이유는 chartBaselineFill의 주석에 있다 (`gap="0"`으로 이어 붙는다).
-// 읽기 순서가 값 → 범주인 것은 문서 순서가 곧 읽기 순서라는 계약을 따른다:
-// 스크린 리더는 "22분, 5월"로 읽는다.
-func chartColumn(datum chartDatum, spec chartSpec) *soml.Element {
-	col := chartNode(soml.ColElement, datum.span,
+func chartColumn(span soml.Span, band *soml.Element) *soml.Element {
+	col := chartNode(soml.ColElement, span,
 		"grow", "1",
 		"basis", "0",
 		"gap", "0",
-		"align", string(soml.BoxAlignCenter),
-		"h", chartFillAxis)
+		"align", string(soml.BoxAlignCenter))
 	col.Children = []soml.Node{
-		chartBand(datum, spec, chartBarWidth),
-		chartNode(soml.ShapeElement, datum.span,
+		band,
+		chartNode(soml.ShapeElement, span,
 			"type", chartFrameType,
 			"fill", chartBaselineFill,
 			"border", noneValue,
 			"w", chartFillAxis,
 			"h", chartBaselineHeight),
-		chartTextNode(datum.label, datum.fill, datum.span),
 	}
 	return col
 }
 
-// chartBand는 한 칸의 플롯 밴드다 — 값 라벨과 막대가 **바닥에 정렬되어** 쌓인다
-// (`justify="end"`). 막대의 `shrink="0"`이 없으면 브라우저의 flex 축소가 100%에 가까운 막대를
-// 줄여 버린다 (뷰어에서 실측했다).
+// chartBody는 막대 밴드 줄 아래에 범주 라벨 줄을 단다. 라벨은 점의 강조색을 따른다.
+func chartBody(bands *soml.Element, categories []chartDatum) *soml.Element {
+	labels := chartNode(soml.RowElement, categories[0].span, "gap", "0", "w", chartFillAxis)
+	for _, datum := range categories {
+		label := chartTextNode(datum.label, datum.fill, datum.span)
+		label.Attrs = append(label.Attrs, chartAttr("grow", "1", datum.span), chartAttr("basis", "0", datum.span))
+		labels.Children = append(labels.Children, label)
+	}
+	body := chartNode(soml.ColElement, categories[0].span, "gap", "0", "w", chartFillAxis, "h", chartFillAxis)
+	body.Children = []soml.Node{bands, labels}
+	return body
+}
+
+// chartBand는 한 칸의 플롯 밴드다 — 위에서 아래로 여백·값 라벨·막대가 쌓인다.
+//
+// 막대 높이를 `h="p%"`로 적지 않는 이유: 백분율은 **밴드 전체**에 대한 비율이라 라벨 한 줄이
+// 들어갈 자리가 남지 않는다. 낮은 차트에서는 가장 높은 막대의 라벨이 밴드 위로 넘친다 (헤드룸
+// 10%가 캡션 한 줄보다 작다). 대신 여백과 막대가 `basis`로 밴드의 (100−p)%와 p%를 잡고, 넘치는
+// 만큼(라벨 + 간격)을 flex 축소가 **basis에 비례해** 둘에게서 거둔다. 그래서 막대는 언제나
+// "밴드 − 라벨 − 간격"의 p%가 되고 — 칸마다 라벨 높이가 같으므로 막대끼리의 비율은 데이터
+// 그대로다 — 라벨은 밴드 안에 남는다. 라벨은 축소되지 않는다 (`shrink="0"`).
 //
 // 값 0은 막대를 내지 않는다: 높이 0의 도형은 산출물에서 아무것도 아니므로 선언을 낼 이유가
-// 없다. 라벨은 남는다 — "0"이 데이터다.
+// 없다. 라벨은 남는다 — "0"이 데이터다. 여백이 100%를 잡아 라벨을 기준선에 내려놓는다.
 func chartBand(datum chartDatum, spec chartSpec, barWidth string) *soml.Element {
 	band := chartNode(soml.ColElement, datum.span,
 		"grow", "1",
 		"basis", "0",
 		"w", chartFillAxis,
-		"justify", string(soml.BoxJustifyEnd),
 		"align", string(soml.BoxAlignCenter),
 		"gap", chartLabelGap)
-	band.Children = []soml.Node{chartTextNode(datum.raw+spec.unit, datum.fill, datum.span)}
+	percent := 0.0
+	if datum.value != 0 {
+		percent = math.Round(datum.value/spec.axis*10000) / 100
+	}
+	label := chartTextNode(datum.raw+spec.unit, datum.fill, datum.span)
+	label.Attrs = append(label.Attrs, chartAttr("shrink", "0", datum.span))
+	band.Children = []soml.Node{
+		chartNode(soml.SpacerElement, datum.span, "grow", "0", "basis", chartPercent(100-percent)),
+		label,
+	}
 	if datum.value == 0 {
 		return band
 	}
@@ -618,8 +649,7 @@ func chartBand(datum chartDatum, spec chartSpec, barWidth string) *soml.Element 
 		"fill", fill,
 		"border", noneValue,
 		"w", barWidth,
-		"h", chartPercent(datum.value/spec.axis*100),
-		"shrink", "0"))
+		"basis", chartPercent(percent)))
 	return band
 }
 
@@ -751,15 +781,8 @@ func chartLinePlot(series []chartSeries, spec chartSpec) *soml.Element {
 // 작은 밴드가 칸의 밴드 높이를 그대로 갖는다).
 func chartGroupedPlot(series []chartSeries, spec chartSpec) *soml.Element {
 	first := series[0].data
-	row := chartNode(soml.RowElement, first[0].span,
-		"gap", "0",
-		"align", string(soml.BoxAlignStretch),
-		"h", chartFillAxis)
+	row := chartBandRow(first[0].span)
 	for i, category := range first {
-		col := chartNode(soml.ColElement, category.span,
-			"grow", "1", "basis", "0", "gap", "0",
-			"align", string(soml.BoxAlignCenter),
-			"h", chartFillAxis)
 		group := chartNode(soml.RowElement, category.span,
 			"grow", "1", "basis", "0", "w", chartBarWidth, "gap", "0",
 			"align", string(soml.BoxAlignStretch))
@@ -767,19 +790,14 @@ func chartGroupedPlot(series []chartSeries, spec chartSpec) *soml.Element {
 			datum := s.data[i]
 			group.Children = append(group.Children, chartBand(datum, chartSpec{axis: spec.axis, unit: spec.unit, series: s.fill}, chartFillAxis))
 		}
-		col.Children = []soml.Node{
-			group,
-			chartNode(soml.ShapeElement, category.span,
-				"type", chartFrameType,
-				"fill", chartBaselineFill,
-				"border", noneValue,
-				"w", chartFillAxis,
-				"h", chartBaselineHeight),
-			chartTextNode(category.label, "", category.span),
-		}
-		row.Children = append(row.Children, col)
+		row.Children = append(row.Children, chartColumn(category.span, group))
 	}
-	return row
+	// 범주 라벨은 계열의 색을 따르지 않는다 — 한 범주가 여러 계열에 걸친다.
+	categories := make([]chartDatum, len(first))
+	for i, category := range first {
+		categories[i] = chartDatum{label: category.label, span: category.span}
+	}
+	return chartBody(row, categories)
 }
 
 // chartLegend는 계열 형식의 범례다 — 계열마다 색 견본과 이름이 가운데 정렬된 한 줄이다. 견본은 막대 · 영역이면 사각형,
