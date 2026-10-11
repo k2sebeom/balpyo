@@ -68,7 +68,12 @@ type LayoutPara struct {
 	Align  string
 	// Bullet은 리스트 마커 종류다 (ul · ol) — 리스트 밖은 빈 문자열.
 	Bullet string
-	Runs   []string
+	// Enter는 문단이 자기 도형과 따로 나타나는 등장이다 (`enter=fade@150+600`) — 도형과 함께 나타나면 빈 문자열.
+	Enter string
+	Runs  []string
+	// index는 PPTX에서 되읽은 문단의 `a:p` 번호다 (txBody 안) — 문단 등장의 대상(`p:pRg`)을 찾는 열쇠이고
+	// 직렬화되지 않는다.
+	index int
 }
 
 // FormatLayout은 트리를 줄 형식으로 직렬화한다. withRect가 false면 rect를 뺀다 —
@@ -116,6 +121,9 @@ func FormatLayout(slides []LayoutSlide, withRect bool) string {
 				b.WriteString(" " + p.Align)
 				if p.Bullet != "" {
 					b.WriteString(" " + p.Bullet)
+				}
+				if p.Enter != "" {
+					b.WriteString(" " + p.Enter)
 				}
 				b.WriteString(" | " + strings.Join(p.Runs, " · ") + "\n")
 			}
@@ -257,7 +265,12 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 						if soml.KindOf(text.Name) == soml.KindListContainer {
 							n.Paras = webListParas(n.Paras, text, deck.Theme)
 						} else if ts := text.TextStyle(); ts != nil {
+							before := len(n.Paras)
 							n.Paras = webParas(n.Paras, text, *ts, deck.Theme, "", "")
+							// 도형에 흡수된 글이 자기 등장을 가지면 그 문단만 따로 나타난다.
+							if e := text.EnterOf(); e != nil && len(n.Paras) > before {
+								n.Paras[before].Enter = enterString(e)
+							}
 						}
 					}
 				}
@@ -697,6 +710,11 @@ type xEffect struct {
 		Set struct {
 			SpTgt struct {
 				Spid string `xml:"spid,attr"`
+				// Para는 도형 안 문단 하나가 대상일 때의 문단 범위다 (`p:txEl/p:pRg`) — 도형 전체 · 배경이면 nil.
+				Para *struct {
+					St  int `xml:"st,attr"`
+					End int `xml:"end,attr"`
+				} `xml:"txEl>pRg"`
 			} `xml:"cBhvr>tgtEl>spTgt"`
 		} `xml:"childTnLst>set"`
 		Effect []struct {
@@ -924,6 +942,8 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 		}
 		// 등장은 대상 도형 번호로 객체에 붙는다.
 		enters := map[string]string{}
+		// paraEnters는 도형 안 문단 하나를 대상으로 한 등장이다 (도형 번호 → 문단 번호 → 등장).
+		paraEnters := map[string]map[int]string{}
 		if x.Timing != nil {
 			for _, e := range x.Timing.Effects {
 				name, ok := pptxEnterNames[e.CTn.PresetID]
@@ -934,7 +954,18 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 				if len(e.CTn.Effect) > 0 {
 					dur = e.CTn.Effect[0].CTn.Dur
 				}
-				enters[e.CTn.Set.SpTgt.Spid] = fmt.Sprintf("enter=%s@%d+%d", name, e.CTn.Cond.Delay, dur)
+				enter := fmt.Sprintf("enter=%s@%d+%d", name, e.CTn.Cond.Delay, dur)
+				tgt := e.CTn.Set.SpTgt
+				if tgt.Para == nil {
+					enters[tgt.Spid] = enter
+					continue
+				}
+				if paraEnters[tgt.Spid] == nil {
+					paraEnters[tgt.Spid] = map[int]string{}
+				}
+				for i := tgt.Para.St; i <= tgt.Para.End; i++ {
+					paraEnters[tgt.Spid][i] = enter
+				}
 			}
 		}
 		for _, obj := range x.CSld.SpTree.Items {
@@ -950,6 +981,9 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 						}
 						n.Extra += e
 					}
+					if byPara := paraEnters[nv.CNvPr.ID]; byPara != nil {
+						markParaEnters(n.Paras, byPara, enters[nv.CNvPr.ID])
+					}
 				}
 				s.Nodes = append(s.Nodes, n)
 			}
@@ -957,6 +991,26 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 		slides = append(slides, s)
 	}
 	return slides, nil
+}
+
+// markParaEnters는 문단 단위로 지어진 도형의 문단에 등장을 붙인다. 도형(배경)과 같은 등장은 "도형과 함께
+// 나타난다"이므로 적지 않는다 — 웹 쪽은 자기 `enter`를 가진 문단만 적는다. 도형이 나타나는데 효과가 없는
+// 문단은 처음부터 보이므로 `enter=static`으로 적어 웹과 갈라지게 한다.
+func markParaEnters(paras []LayoutPara, byPara map[int]string, shape string) {
+	for i := range paras {
+		e, ok := byPara[paras[i].index]
+		switch {
+		case !ok && shape != "":
+			paras[i].Enter = "enter=static"
+		case ok && e != shape:
+			paras[i].Enter = e
+		}
+	}
+}
+
+// enterString은 등장 하나의 트리 표기다 (`enter=fade@150+600`).
+func enterString(e *soml.Entrance) string {
+	return fmt.Sprintf("enter=%s@%d+%d", e.Effect, e.Delay, e.Duration)
 }
 
 func pptxNode(obj xObject, theme soml.Theme, links map[string]string, names map[string]string) (LayoutNode, bool) {
@@ -1066,7 +1120,7 @@ var pptxAligns = map[string]string{
 }
 
 func pptxParas(paras []LayoutPara, body xTxBody, prefix string, theme soml.Theme, links map[string]string) []LayoutPara {
-	for _, p := range body.P {
+	for i, p := range body.P {
 		var runs []string
 		for _, item := range p.Items {
 			switch item.XMLName.Local {
@@ -1106,7 +1160,7 @@ func pptxParas(paras []LayoutPara, body xTxBody, prefix string, theme soml.Theme
 		if !ok {
 			align = "algn=" + p.PPr.Algn
 		}
-		paras = append(paras, LayoutPara{Prefix: prefix, Align: align, Bullet: bullet, Runs: runs})
+		paras = append(paras, LayoutPara{Prefix: prefix, Align: align, Bullet: bullet, Runs: runs, index: i})
 	}
 	return paras
 }
