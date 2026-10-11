@@ -250,19 +250,20 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 </row>
 ```
 
-`examples/decks/incident-postmortem/slides/008_detection.slide` — 두 채널을 함께 쓴 실물:
+`examples/decks/quarterly-review/slides/004_table.slide` — 두 채널을 함께 쓴 실물. 계열색이 막대
+다섯을 배경으로 가라앉히고, 점의 `fill`이 가장 싼 채널과 가장 비싼 채널만 앞에 세운다:
 
 ```html
-<chart type="bar" unit="분" series="surface" alt="월별 평균 탐지 시간 — 5월 22분에서 이번 장애 12분까지" w="fill" h="440">
-  <point label="5월" value="22"/>
-  <point label="6월" value="19"/>
-  <point label="7월" value="15"/>
-  <point label="8월" value="13"/>
-  <point label="이번 장애" value="12" fill="accent4"/>
+<chart type="bar" series="muted" max="24" alt="채널별 CAC — 검색 12.0, 추천 3.2, 소셜 9.4, 제휴 7.1, 디스플레이 광고 21.5 (천 원)" w="fill" grow="1" basis="0" h="300">
+  <point label="검색" value="12.0"/>
+  <point label="추천" value="3.2" fill="accent3"/>
+  <point label="소셜" value="9.4"/>
+  <point label="제휴" value="7.1"/>
+  <point label="광고" value="21.5" fill="accent5"/>
 </chart>
 ```
 
-이 슬라이드가 `<chart>`가 생긴 이유다 — 손으로 쓰던 판이 도형·텍스트 **16개**였고 좌표
+`<chart>`가 생긴 이유는 `incident-postmortem`의 탐지 시간 슬라이드(`008_detection.slide`, 지금은 계열 둘의 차트)다 — 손으로 쓰던 판이 도형·텍스트 **16개**였고 좌표
 스물넷(`x`·`y`)이 붙어 있어서 값 하나를 고치면 여섯 숫자를 다시 셌다. 이제 값 하나가 속성 하나다.
 
 ## 렌더 결과

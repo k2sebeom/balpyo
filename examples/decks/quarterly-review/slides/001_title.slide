@@ -1,7 +1,11 @@
-<!-- 표지: 표준 title 레이아웃을 써 본다. -->
-<slide id="cover" layout="title">
-  <text role="caption" color="muted" align="center">GROWTH TEAM · 2026 Q3</text>
-  <text role="title" size="72" color="gradient(#0F65F9 #7C3AED, 90deg)" align="center">Q3 비즈니스 리뷰</text>
-  <text role="heading" size="28" color="muted" align="center">성장 지표 회고와 Q4 계획</text>
-  <note>인사 30초. 오늘 다룰 세 가지: 지표, 학습, 계획.</note>
+<!-- 표지: title 레이아웃의 슬롯 모드. 자리는 테마가 소유하므로 정렬을 적지 않는다. 제목의 "Q3"만
+     강조색 둘의 그라디언트다 — 리터럴 색(#0F65F9)이 아니라 토큰 이름이라, 테마를 갈면 그라디언트도
+     그 테마의 색이 된다. -->
+<slide id="cover" layout="title" enter="rise">
+  <text slot="kicker" variant="kicker">Growth Team · 2026 Q3</text>
+  <h1 slot="title" size="80"><span color="gradient(accent1 accent6, 90deg)">Q3</span> 비즈니스 리뷰</h1>
+  <text slot="subtitle" role="heading" size="30" color="muted">성장 지표 회고와 Q4 계획</text>
+  <text slot="author" role="body">Growth Team</text>
+  <text slot="date" role="caption">2026년 10월 · 분기 경영 회의</text>
+  <note>인사 30초. 오늘 다룰 세 가지: 지표, 학습, 계획 — 그리고 결정 하나.</note>
 </slide>

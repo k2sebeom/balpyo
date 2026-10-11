@@ -1,35 +1,36 @@
-<!-- 채널별 성과 — 표다. 머리 셀 색·줄무늬·격자선은 전부 테마와 `border-collapse`의 몫이므로
-     셀에 적는 것은 숫자 정렬 하나뿐이다.
+<!-- 채널별 성과 — 표와 차트가 같은 숫자를 두 번 말한다: 표는 정확한 값을, 차트는 어느 값을 봐야
+     하는지를. 머리 셀 색 · 줄무늬 · 격자선은 전부 테마와 `border-collapse`의 몫이므로 셀에 적는 것은
+     숫자 정렬 하나뿐이다.
 
-     표 오른쪽에 읽는 법을 하나 둔다 — 행이 다섯뿐인 표는 슬라이드 폭을 다 쓰면 칸이 비고,
-     듣는 사람은 숫자 스무 개 중 어느 것을 봐야 하는지 모른다. 그리드 두 트랙(2fr 1fr)이 표와
-     해설의 몫을 나누고, `grow="1"`이 해설 카드를 표 높이가 아니라 남은 높이까지 늘린다. -->
-<slide id="table">
-  <h2>채널별 성과</h2>
-  <grid cols="2fr 1fr" gap="lg" grow="1">
+     오른쪽 차트는 CAC 하나만 막대로 세운다. 계열색(`series="muted"`)이 막대 다섯을 배경으로 가라앉히고,
+     `<point fill>`이 둘만 앞에 세운다 — 가장 싼 추천(`accent3`)과 가장 비싼 디스플레이(`accent5`).
+     막대 라벨은 칸이 좁아 "광고"로 줄인다 (표의 디스플레이 광고). 값은 천 원 단위다 (`unit`은 값 라벨의 꼬리일 뿐이라 천 단위 구분 기호를 붙일 수 없다). -->
+<slide id="table" enter="rise">
+  <text variant="kicker">02 · 채널별 성과</text>
+  <h2>추천은 싸고, 디스플레이는 비싸다</h2>
+  <grid cols="3fr 2fr" gap="lg" grow="1">
     <table variant="striped">
       <tr><th>채널</th><th align="end">신규 사용자</th><th align="end">전환율</th><th align="end">CAC (원)</th></tr>
       <tr><td>검색</td><td align="end">312K</td><td align="end">4.2%</td><td align="end">12,000</td></tr>
-      <tr><td>추천</td><td align="end">268K</td><td align="end">7.8%</td><td align="end">3,200</td></tr>
+      <tr><td><strong>추천</strong></td><td align="end">268K</td><td align="end" color="accent3"><strong>7.8%</strong></td><td align="end" color="accent3"><strong>3,200</strong></td></tr>
       <tr><td>소셜</td><td align="end">141K</td><td align="end">2.9%</td><td align="end">9,400</td></tr>
       <tr><td>제휴</td><td align="end">63K</td><td align="end">3.5%</td><td align="end">7,100</td></tr>
-      <tr><td>디스플레이 광고</td><td align="end">38K</td><td align="end">1.1%</td><td align="end">21,500</td></tr>
+      <tr><td>디스플레이 광고</td><td align="end">38K</td><td align="end">1.1%</td><td align="end" color="accent5">21,500</td></tr>
       <tr><td><strong>합계</strong></td><td align="end"><strong>822K</strong></td><td align="end"><strong>4.6%</strong></td><td align="end"><strong>8,900</strong></td></tr>
     </table>
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="lg">
-      <col gap="md" h="fill" justify="between">
-        <col gap="md">
-          <text variant="kicker">읽는 법</text>
-          <ul size="22">
-            <li><strong>추천</strong>은 전환율 1위, CAC 최저</li>
-            <li><strong>검색</strong>은 규모 1위지만 CAC가 추천의 4배</li>
-            <li><strong>디스플레이</strong>는 CAC가 평균의 2.4배</li>
-          </ul>
-        </col>
-        <text role="heading" size="26" color="accent1">→ 디스플레이 예산을 추천으로</text>
+    <shape variant="card" type="rounded-rect" w="fill" pad="md">
+      <col gap="sm" h="fill">
+        <text variant="kicker" color="muted">CAC · 천 원</text>
+        <chart type="bar" series="muted" max="24" alt="채널별 CAC — 검색 12.0, 추천 3.2, 소셜 9.4, 제휴 7.1, 디스플레이 광고 21.5 (천 원)" w="fill" grow="1" basis="0" h="300">
+          <point label="검색" value="12.0"/>
+          <point label="추천" value="3.2" fill="accent3"/>
+          <point label="소셜" value="9.4"/>
+          <point label="제휴" value="7.1"/>
+          <point label="광고" value="21.5" fill="accent5"/>
+        </chart>
       </col>
     </shape>
   </grid>
   <text role="caption">CAC = 채널 비용 ÷ 신규 사용자. 합계 행의 전환율과 CAC는 가중 평균이다.</text>
-  <note>디스플레이 광고 예산은 Q4에 추천 보상으로 옮긴다 — 다음 장의 근거다.</note>
+  <note>디스플레이 광고 예산은 Q4에 추천 보상으로 옮긴다 — 다음 장들의 근거다.</note>
 </slide>

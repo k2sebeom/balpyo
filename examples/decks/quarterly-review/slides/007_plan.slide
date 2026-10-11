@@ -1,54 +1,53 @@
 <!-- Q4 계획: two-column 슬롯 모드. 두 슬롯 영역은 제목 아래 남은 높이를 다 갖는 grid 칸이고
      (`two-column.slots.css`의 `1fr` 행), 칸마다 카드 하나가 `h="fill"`로 그 칸을 채운다.
-     카드 안의 세 줄은 `justify="between"`으로 카드 높이에 고르게 선다 — 목표는 숫자가, 투자는
-     항목 이름이 줄의 주인공이다. -->
-<slide id="plan" layout="two-column">
+
+     왼쪽 목표는 줄마다 Q3 → Q4의 진행 막대다: 회색 막대가 Q4 목표 전체이고 그 위의 색 막대가 Q3에
+     이미 온 몫이다 (`grid cols="29fr 5fr"` — MAU 2.9M / 3.4M처럼 원고의 숫자 그대로의 비율). CAC는
+     낮출수록 좋은 숫자라 막대 대신 화살표 한 줄이다.
+
+     오른쪽 투자는 항목 이름이 줄의 주인공이고, 맨 아래 띠가 이 장의 결론이다 — 추가 예산 0원. -->
+<slide id="plan" layout="two-column" enter="rise">
   <h2 slot="title">Q4 목표와 필요한 투자</h2>
   <col slot="left" h="fill">
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" h="fill" pad="lg">
+    <shape variant="card" type="rounded-rect" w="fill" h="fill" pad="lg">
       <col gap="md" h="fill" justify="between">
         <text variant="kicker">목표</text>
-        <row gap="md" align="center" justify="between">
-          <col gap="xs">
-            <text role="body">월간 활성 사용자</text>
-            <text role="caption">Q3 2.9M</text>
-          </col>
-          <text role="title" size="48" color="accent1">3.4M</text>
-        </row>
-        <row gap="md" align="center" justify="between">
-          <col gap="xs">
-            <text role="body">분기 매출</text>
-            <text role="caption">Q3 1.2B원</text>
-          </col>
-          <text role="title" size="48" color="accent1">1.4B</text>
-        </row>
-        <row gap="md" align="center" justify="between">
-          <col gap="xs">
-            <text role="body">평균 CAC</text>
-            <text role="caption">Q3 8,900원</text>
-          </col>
-          <text role="title" size="48" color="accent1">7,000</text>
-        </row>
+        <col gap="xs">
+          <row gap="md" align="end" justify="between"><text role="body">월간 활성 사용자</text><text role="title" size="40" color="accent1">3.4M</text></row>
+          <grid cols="29fr 5fr" gap="0" w="fill"><shape type="rect" fill="accent1" border="none" w="fill" h="10"/><shape type="rect" fill="alpha(muted, 0.3)" border="none" w="fill" h="10"/></grid>
+          <text role="caption">Q3 2.9M · 85% 왔다</text>
+        </col>
+        <col gap="xs">
+          <row gap="md" align="end" justify="between"><text role="body">분기 매출</text><text role="title" size="40" color="accent2">1.4B</text></row>
+          <grid cols="12fr 2fr" gap="0" w="fill"><shape type="rect" fill="accent2" border="none" w="fill" h="10"/><shape type="rect" fill="alpha(muted, 0.3)" border="none" w="fill" h="10"/></grid>
+          <text role="caption">Q3 1.2B원 · 86% 왔다</text>
+        </col>
+        <col gap="xs">
+          <row gap="md" align="end" justify="between"><text role="body">평균 CAC</text><text role="title" size="40" color="accent3">7,000</text></row>
+          <text role="caption">Q3 8,900원 → −21% · 추천 비중이 오를수록 내려간다</text>
+        </col>
       </col>
     </shape>
   </col>
   <col slot="right" h="fill">
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" h="fill" pad="lg">
+    <shape variant="card" type="rounded-rect" w="fill" h="fill" pad="lg">
       <col gap="md" h="fill" justify="between">
         <text variant="kicker">투자</text>
-        <col gap="xs">
-          <text role="heading" size="28">추천 보상 예산 2배</text>
+        <col gap="0">
+          <text role="heading" size="26">추천 보상 예산 2배</text>
           <text role="caption">디스플레이 광고 예산에서 옮긴다</text>
         </col>
-        <col gap="xs">
-          <text role="heading" size="28">온보딩 개선 · 엔지니어 2명</text>
+        <col gap="0">
+          <text role="heading" size="26">온보딩 개선 · 엔지니어 2명</text>
           <text role="caption">첫 주 이탈률 31% → 24%</text>
         </col>
-        <col gap="xs">
-          <text role="heading" size="28">추천 어트리뷰션 정비</text>
+        <col gap="0">
+          <text role="heading" size="26">추천 어트리뷰션 정비</text>
           <text role="caption">링크 경유 가입의 18%가 미집계</text>
         </col>
-        <text role="body" color="accent1"><strong>추가 예산 0원 — 재배치만 한다</strong></text>
+        <shape type="rounded-rect" fill="alpha(accent3, 0.14)" border="1 solid accent3" radius="md" w="fill" pad="xs md">
+          <text role="body" color="accent3"><strong>추가 예산 0원 — 재배치만 한다</strong></text>
+        </shape>
       </col>
     </shape>
   </col>

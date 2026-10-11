@@ -3,5 +3,7 @@
   "author": "Growth Team",
   "lang": "ko",
   "aspect": "16:9",
+  "footer": "Growth Team · 2026 Q3",
+  "pageNumber": true,
   "outDir": "dist"
 }

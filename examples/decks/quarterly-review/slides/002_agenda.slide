@@ -1,45 +1,20 @@
-<!-- 아젠다: 순서가 있는 네 꼭지를 카드 넷으로. 그리드가 `grow="1"`로 제목 아래를 다 갖고,
-     카드 안은 번호(위)와 꼭지(아래)를 `justify="between"`으로 벌린다 — 카드 높이를 숫자로
-     적지 않아도 슬라이드가 채워진다. -->
-<slide id="agenda">
-  <h2>오늘의 아젠다</h2>
-  <grid cols="4" gap="md" grow="1">
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="lg">
-      <col gap="sm" h="fill" justify="between">
-        <text role="title" size="64" color="accent1">01</text>
-        <col gap="xs">
-          <text role="heading" size="28">핵심 지표</text>
-          <text role="caption">사용자 · 매출 · 평점</text>
-        </col>
-      </col>
-    </shape>
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="lg">
-      <col gap="sm" h="fill" justify="between">
-        <text role="title" size="64" color="accent1">02</text>
-        <col gap="xs">
-          <text role="heading" size="28">채널별 성과</text>
-          <text role="caption">전환율과 획득 비용</text>
-        </col>
-      </col>
-    </shape>
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="lg">
-      <col gap="sm" h="fill" justify="between">
-        <text role="title" size="64" color="accent1">03</text>
-        <col gap="xs">
-          <text role="heading" size="28">가장 큰 학습</text>
-          <text role="caption">추천 채널의 CAC</text>
-        </col>
-      </col>
-    </shape>
-    <shape type="rounded-rect" fill="accent1" border="none" radius="lg" w="fill" pad="lg">
-      <col gap="sm" h="fill" justify="between">
-        <text role="title" size="64" color="bg">04</text>
-        <col gap="xs">
-          <text role="heading" size="28" color="bg">Q4 계획</text>
-          <text role="caption" color="bg">목표와 필요한 투자</text>
-        </col>
-      </col>
-    </shape>
+<!-- 아젠다: 순서가 있는 네 꼭지를 원 넷과 점선 연결선으로 잇는다 — 목록이 아니라 길이다. 원은
+     그리드 칸마다 가운데에 서고, 연결선은 잰 원을 이어 그리므로 칸 폭이 바뀌어도 따라간다.
+
+     앞의 셋은 돌아보기라 테두리만 있는 원이고, 마지막 하나(오늘 결정할 것)만 채운 원이다 — 이
+     회의의 목적지가 어디인지 색 하나가 말한다. 아래 줄은 꼭지마다 다룰 숫자를 미리 보여 준다. -->
+<slide id="agenda" justify="center" enter="rise">
+  <text variant="kicker">오늘의 아젠다</text>
+  <h2>돌아보기 셋, 결정 하나</h2>
+  <spacer grow="0" basis="24"/>
+  <grid cols="4" gap="md">
+    <col gap="sm" align="center"><shape type="ellipse" id="a1" fill="bg" border="2 solid accent1" w="120" h="120"><text role="title" size="44" color="accent1" align="center" anchor="center">01</text></shape><text role="heading" size="30" align="center">핵심 지표</text><text role="caption" align="center">사용자 · 매출 · 평점</text></col>
+    <col gap="sm" align="center"><shape type="ellipse" id="a2" fill="bg" border="2 solid accent1" w="120" h="120"><text role="title" size="44" color="accent1" align="center" anchor="center">02</text></shape><text role="heading" size="30" align="center">채널별 성과</text><text role="caption" align="center">전환율과 획득 비용</text></col>
+    <col gap="sm" align="center"><shape type="ellipse" id="a3" fill="bg" border="2 solid accent1" w="120" h="120"><text role="title" size="44" color="accent1" align="center" anchor="center">03</text></shape><text role="heading" size="30" align="center">가장 큰 학습</text><text role="caption" align="center">추천 채널의 CAC</text></col>
+    <col gap="sm" align="center"><shape type="ellipse" id="a4" fill="gradient(accent1 accent6, 135deg)" border="none" shadow="soft" w="120" h="120" enter="zoom"><text role="title" size="44" color="bg" align="center" anchor="center">04</text></shape><text role="heading" size="30" color="accent1" align="center">Q4 계획</text><text role="caption" align="center">오늘 결정할 것</text></col>
   </grid>
+  <connector from="a1" to="a2" variant="dashed" end="none" enter="draw"/>
+  <connector from="a2" to="a3" variant="dashed" end="none" enter="draw"/>
+  <connector from="a3" to="a4" variant="accent" enter="draw"/>
   <note>앞의 셋은 돌아보기, 마지막 하나가 오늘 결정할 것이다.</note>
 </slide>
