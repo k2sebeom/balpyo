@@ -132,3 +132,60 @@ func TestCheckLayoutMeasuresAndWarns(t *testing.T) {
 		t.Errorf("측정이 출력 디렉토리를 만들었다: %v", err)
 	}
 }
+
+// 렌더러만 아는 테마 결함이 있으면 "check는 통과했는데 build가 실패한다"가 생긴다. 테마 로딩이 같은
+// 판정을 먼저 해야 두 명령이 같은 자리에서 멈추고, 진단이 슬라이드나 렌더러가 아니라 고칠 테마
+// 파일을 가리킨다.
+func TestThemeDefectsStopCheckAndBuildAlike(t *testing.T) {
+	noBrowser(t)
+	for _, tc := range []struct {
+		name, file, body string
+		want             []string
+	}{
+		{"색 토큰의 ref가 비었다", "tokens.json",
+			`{"color":[{"name":"accent1","rgb":"112233","slot":"accent1","ref":""}]}`,
+			[]string{"tokens.json", `"accent1"`, "schemeClr reference"}},
+		{"폰트 scheme이 어휘 밖이다", "tokens.json",
+			`{"font":[{"name":"body","latin":"Noto Sans","ea":"Noto Sans CJK KR","generic":"sans-serif","scheme":"middle"}]}`,
+			[]string{"tokens.json", `"body"`, `"middle"`}},
+		{"major 폰트가 둘이다", "tokens.json",
+			`{"font":[{"name":"body","latin":"Noto Sans","ea":"Noto Sans CJK KR","generic":"sans-serif","scheme":"major"}]}`,
+			[]string{"tokens.json", `"heading"`, `"body"`, "major"}},
+		{"그림자 색이 테마의 색 토큰이 아니다", "tokens.json",
+			`{"shadow":[{"name":"soft","dist":4,"dir":90,"blur":16,"color":"nope","alpha":0.15}]}`,
+			[]string{"tokens.json", `"soft"`, `"nope"`}},
+		{"역할의 align이 어휘 밖이다", "components.json",
+			`{"text":{"roles":[{"name":"title","font":"heading","size":56,"weight":700,"lineHeight":1.2,"color":"fg","align":"middle"}]}}`,
+			[]string{`"title"`, `"middle"`, "start, center, end, justify"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files := map[string]string{
+				"balpyo.json":            `{"theme": "b"}`,
+				"slides/001_title.slide": textSlide,
+				"slides/002_sh.slide":    `<slide><shape type="rect" shadow="soft" w="200" h="100"/></slide>`,
+				"themes/b/theme.json":    `{"name":"b","extends":"minimal"}`,
+				"themes/b/" + tc.file:    tc.body,
+			}
+			_, checkErr := pipeline.Check(pipeline.Options{ProjectDir: project(t, files)})
+			if checkErr == nil {
+				t.Fatal("check가 테마 결함을 통과시켰다")
+			}
+			_, buildErr := pipeline.Build(pipeline.Options{ProjectDir: project(t, files)})
+			if buildErr == nil {
+				t.Fatal("build가 테마 결함을 통과시켰다")
+			}
+			for _, err := range []error{checkErr, buildErr} {
+				for _, want := range tc.want {
+					if !strings.Contains(err.Error(), want) {
+						t.Errorf("에러가 %q를 말하지 않는다: %v", want, err)
+					}
+				}
+				for _, blame := range []string{"pptx render", ".slide", "geometry pass"} {
+					if strings.Contains(err.Error(), blame) {
+						t.Errorf("테마 결함을 %q 탓으로 돌린다: %v", blame, err)
+					}
+				}
+			}
+		})
+	}
+}

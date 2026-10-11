@@ -623,8 +623,12 @@ theme "acme" exists both in the project's themes/acme/ and among installed theme
 | `tokens.json`에 필수 토큰 이름이 없다 | **에러** | `tokens.json has no color token "accent6" (required: fg, bg, muted, surface, accent1, …)` |
 | 색 토큰에 `clrScheme` 슬롯이 없다 | **에러** | 남은 자리를 나열한다 — `… has no clrScheme slot … (free slots: hlink, folHlink)`. 자리가 다 찼으면 `no free slots — replace the value of an existing name instead of adding a new color name` |
 | 두 색 토큰이 같은 슬롯을 쓴다 | **에러** | `tokens.json clrScheme slot "accent1" is shared by color tokens "accent1" and "brand" — cannot tell which color owns the slot` |
+| 색 토큰의 `ref`가 비었다 | **에러** | `tokens.json color token "accent1" has no schemeClr reference (ref) — …` |
+| 폰트 토큰의 `scheme`이 `major`·`minor`·생략 밖이다 · 두 폰트가 같은 자리를 쓴다 · `major`나 `minor` 자리가 비었다 | **에러** | `… has an unknown fontScheme slot "middle" …` · `tokens.json font tokens "heading" and "body" both take the fontScheme slot "major" — each slot holds exactly one font` · `tokens.json has no font token in the fontScheme slot "minor" — …` |
+| 그림자 토큰의 `color`가 이 테마의 색 토큰이 아니다 | **에러** | `tokens.json shadow token "soft" color "nope" is not a color token of this theme (this theme: …)` |
 | `components.json`의 `text.roles`에 역할 5종 중 하나가 없다 | **에러** | `components.json text.roles has no role "code" (required: title, heading, body, caption, code)` |
 | 역할의 `size`·`lineHeight`가 0 이하이거나 `align`이 없다 | **에러** | `roles are the bottom of the cascade and must be complete` |
+| 역할의 `align`이 `start`·`center`·`end`·`justify` 밖이다 | **에러** | `role "title" has an unknown align "middle" (available aligns: start, center, end, justify)` |
 | 역할의 `font`·`color`가 이 테마의 토큰이 아니다 | **에러** | 이 테마가 가진 이름을 함께 나열한다 |
 | 컴포넌트 기본값·variant·이미지·표의 `color`·`fill`·`border` 색이 이 테마의 색 토큰 참조가 아니다 (`#RRGGBB` 리터럴, 리터럴 스톱이 섞인 그라디언트) | **에러** | 자리와 문제의 조각을 가리키고 이 테마의 색 토큰을 나열한다 — 그 variant를 쓴 슬라이드가 없어도 로딩에서 멈춘다 |
 | 역할·컴포넌트 기본값·variant의 `tracking`이 −0.1 ~ 0.5 밖이거나 `case`가 `upper`·`none`이 아니다 | **에러** | `… tracking 0.8 is out of range …` · `… case "lower" is unknown (available values: upper, none)` |

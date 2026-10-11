@@ -118,6 +118,56 @@ func requireColorSlots(theme soml.Theme) error {
 	return nil
 }
 
+// requireTokenWiring은 토큰 표가 **두 타깃에 배선될 수 있는지** 본다 — 색의 schemeClr 참조,
+// 폰트의 fontScheme 자리, 그림자의 색.
+//
+// 이 판정은 렌더러도 한다 (render/pptx가 색 요소와 fontScheme을 조립할 때). 그 자리에서만
+// 멈추면 렌더하지 않는 `check`는 통과하고 `build`만 실패하며, 진단이 "pptx 렌더 실패"나 그 토큰을
+// 처음 쓴 슬라이드를 가리켜 고칠 파일(tokens.json)에서 멀어진다. 그래서 로드 시점에 같은 판정을
+// 먼저 한다 — 렌더러의 검사는 자기 계약을 스스로 지키는 방어로 남는다.
+func requireTokenWiring(theme soml.Theme) error {
+	// 색 토큰의 ref는 도형·런이 그 색을 가리키는 schemeClr 값이다. 비어 있으면 참조를 만들 수
+	// 없고, RGB로 눕히면 PowerPoint의 테마 색 편집을 따라가지 못한다.
+	for _, token := range theme.Colors {
+		if token.Ref == "" {
+			return fmt.Errorf("tokens.json color token %q has no schemeClr reference (ref) — shapes and runs refer to the color through it (slot %q)",
+				token.Name, token.Slot)
+		}
+	}
+	// fontScheme에는 major·minor 두 자리가 있고 rPr의 +mj-lt/+mn-lt가 각각을 가리킨다. 한 자리에
+	// 둘이 앉으면 어느 폰트가 실릴지 정할 수 없고, 빈 자리는 그 참조를 허공에 남긴다.
+	owner := map[string]soml.FontRole{}
+	for _, token := range theme.Fonts {
+		switch token.Scheme {
+		case "":
+			continue
+		case "major", "minor":
+		default:
+			return fmt.Errorf("tokens.json font token %q has an unknown fontScheme slot %q (available values: major, minor — or omit it for a literal typeface)",
+				string(token.Name), token.Scheme)
+		}
+		if first, dup := owner[token.Scheme]; dup {
+			return fmt.Errorf("tokens.json font tokens %q and %q both take the fontScheme slot %q — each slot holds exactly one font",
+				string(first), string(token.Name), token.Scheme)
+		}
+		owner[token.Scheme] = token.Name
+	}
+	for _, slot := range []string{"major", "minor"} {
+		if _, ok := owner[slot]; !ok {
+			return fmt.Errorf("tokens.json has no font token in the fontScheme slot %q — every theme needs one major and one minor font",
+				slot)
+		}
+	}
+	// 그림자의 색도 토큰 참조다 — 도형마다 구운 outerShdw에 색만 schemeClr로 남는다.
+	for _, token := range theme.Shadows {
+		if _, ok := theme.Color(token.Color.Token); !token.Color.IsToken() || !ok {
+			return fmt.Errorf("tokens.json shadow token %q color %q is not a color token of this theme (this theme: %s)",
+				token.Name, token.Color.Token, strings.Join(theme.ColorNames(), ", "))
+		}
+	}
+	return nil
+}
+
 // knownColorSlot은 이름이 clrScheme의 열두 자리 중 하나인지 본다.
 func knownColorSlot(slot string) bool {
 	for _, known := range soml.ColorSlots() {
@@ -183,6 +233,12 @@ func requireComponents(theme soml.Theme, comps components) error {
 		if style.Align == "" {
 			return fmt.Errorf("role %q has no align (available aligns: %s)",
 				role, textAlignList(soml.TextAligns()))
+		}
+		// 어휘 밖의 정렬은 웹 CSS로도 PPTX algn으로도 옮길 수 없다 — 여기서 보지 않으면 그 역할을
+		// 쓴 첫 슬라이드에서야 멈춘다.
+		if !knownTextAlign(style.Align) {
+			return fmt.Errorf("role %q has an unknown align %q (available aligns: %s)",
+				role, string(style.Align), textAlignList(soml.TextAligns()))
 		}
 	}
 	return nil
@@ -308,6 +364,15 @@ func textRoleList(roles []soml.TextRole) string {
 		names = append(names, string(r))
 	}
 	return strings.Join(names, ", ")
+}
+
+func knownTextAlign(align soml.TextAlign) bool {
+	for _, known := range soml.TextAligns() {
+		if align == known {
+			return true
+		}
+	}
+	return false
 }
 
 func textAlignList(aligns []soml.TextAlign) string {
