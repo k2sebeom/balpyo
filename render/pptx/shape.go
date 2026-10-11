@@ -576,7 +576,7 @@ func shapeSp(id int, name string, rect geom.Rect, style soml.ShapeStyle) (spSpec
 // 남아 있으면 실을 자리가 없어 **웹만 둥글어진다**. core가 이미 막지만 렌더러가 마지막
 // 관문이다. 어느 프리셋이 반경을 받는지는 표가 말한다 — 이름 비교를 두 번째로 적지 않는다.
 func shapeAdjusts(style soml.ShapeStyle, rect geom.Rect) ([]spAdjust, error) {
-	specs, ok := web.ShapeAdjusts(style.Type)
+	specs, ok := web.ShapeStyleAdjusts(style)
 	if !ok {
 		return nil, fmt.Errorf("no adjust-value spec for shape type %q", style.Type)
 	}

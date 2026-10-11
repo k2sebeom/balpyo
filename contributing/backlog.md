@@ -14,9 +14,7 @@
 
 ## Hotfix
 
-- [작성] **chevron의 기본 노치.** 노치 깊이가 상자 폭의 절반(`adj` 261113)이라 `<shape type="chevron"
-  w="fill" h="88">` 안의 라벨이 실루엣 밖으로 나가고, 글은 위쪽에 붙는다. PowerPoint 기본처럼 얕은
-  노치를 기본으로 하거나 skill에 경고를 넣는다.
+(없음)
 
 ## Suggestion
 
@@ -38,5 +36,8 @@
   전개된 정적 모드(또는 skill에 print-to-PDF 절차)가 필요하다.
 - [검토] **래스터라이저 없는 `preview`.** OnlyOffice·LibreOffice가 없으면 PPTX를 볼 길이 없다는 한 줄만 나오고
   산출물을 프로젝트 `dist/`에 쓴다. 무엇을 설치하면 되는지 말한다.
+- [작성] **늘린 프리셋의 매개변수.** `arrow-right`(머리 길이) · `parallelogram`(기울기) · `hexagon`도 chevron처럼
+  정사각형에서 평가해 늘린 기하라 넓은 박스에서 모양이 고정된다. chevron의 `notch`와 같은 기준(늘림이 지키는
+  축의 %)으로 연다.
 - [검토] **영어 레퍼런스.** skill이 가리키는 깊은 문서가 한국어뿐이라 영어 사용자는 `reveal`·chevron·차트
   주의사항에 닿기 어렵다.

@@ -135,6 +135,7 @@ metadata: one per slide, direct child of `<slide>` only, text only, no attribute
 | `wrap`, `skip` | valueless, or `"true"` |
 | `reveal` | valueless (next step on this slide), or an integer ≥ 1 (`reveal="2"`; equal numbers appear together). Not `"true"` |
 | `shape type` | `rect` `rounded-rect` `ellipse` `diamond` `cylinder` `chevron` `arrow-right` `hexagon` `parallelogram` `callout` `star` `cloud` `triangle` `cube` `left-brace` `right-brace` — plus `path` (custom outline, needs `d`) |
+| `shape notch` (`chevron` only) | a percentage of the width, `0%` < notch ≤ `50%`; default `20%`. Text sits between the two notches (the middle `100 − 2×notch`% of the width), so a chevron with a label needs `h`; lower the notch for a short label on a narrow chevron |
 | `chart type` | `bar` `line` `area` `step` |
 | `series type` | `line` `area` `step` (line-family charts only) |
 | `enter` | `fade` `rise` `zoom` `wipe` `none`; on `<connector>`: `draw` `fade` `none` |

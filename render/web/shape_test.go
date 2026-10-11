@@ -186,7 +186,7 @@ func TestShapeAdjustSpecsMatchStretchedGeometry(t *testing.T) {
 	want := map[string][]ShapeAdjust{
 		"rounded-rect": {{Name: "adj", Base: 100000, Axis: AdjustAxisRadius, Max: 50000}},
 		"cylinder":     {{Name: "adj", Base: 25000, Axis: AdjustAxisHeight}},
-		"chevron":      {{Name: "adj", Base: 50000, Axis: AdjustAxisWidth, Exceed: true}},
+		"chevron":      {{Name: "adj", Base: 20000, Axis: AdjustAxisWidth}},
 		"arrow-right": {
 			{Name: "adj1", Base: 50000, Axis: AdjustAxisFixed},
 			{Name: "adj2", Base: 50000, Axis: AdjustAxisWidth},
@@ -287,7 +287,7 @@ func TestShapeTextRectsMatchPresetDefinitions(t *testing.T) {
 		"ellipse":       {L: 14.6447, T: 14.6447, R: 14.6447, B: 14.6447},
 		"diamond":       {L: 25, T: 25, R: 25, B: 25},
 		"cylinder":      {T: 25, B: 12.5},
-		"chevron":       {},
+		"chevron":       {L: 20, R: 20},
 		"arrow-right":   {T: 25, R: 25, B: 25},
 		"hexagon":       {L: 16.6667, T: 16.6667, R: 16.6667, B: 16.6667},
 		"parallelogram": {L: 18.75, T: 18.75, R: 18.75, B: 18.75},
@@ -472,7 +472,7 @@ func TestShapeRotationIsOverridableInMeasureView(t *testing.T) {
 // 박스에 걸면 CSS가 자식 텍스트까지 흐리게·거울로 만들어 두 타깃이 갈라진다.
 func TestShapeOpacityAndFlipDoNotTouchText(t *testing.T) {
 	out := renderString(t, subsetDeck(t,
-		`<shape type="chevron" opacity="0.4" flip="h"><p>글자</p></shape>`))
+		`<shape type="chevron" opacity="0.4" flip="h" h="120"><p>글자</p></shape>`))
 	box, ink, text := openTagOf(t, out, "s0.0"), inkOf(t, out, "s0.0"), openTagOf(t, out, "s0.0.0")
 	for _, decl := range []string{"opacity:", "transform: scale"} {
 		if strings.Contains(box, decl) {
@@ -696,4 +696,35 @@ func testPathAttr(shapeType string) string {
 		return ` d="M0,0 C50,100 50,0 100,100"`
 	}
 	return ""
+}
+
+// `notch`는 chevron의 노치 깊이(폭의 %)다 — 정규 공간의 경로에서 x1 = notch, x2 = 100 − notch이고, 텍스트 영역은
+// 두 노치 사이(좌우 notch%)다. 노치가 정확히 절반이면 프리셋의 영역이 박스 전체라 래퍼를 내지 않는다.
+func TestChevronNotch(t *testing.T) {
+	cases := []struct {
+		name, attrs, path string
+		body              []string
+	}{
+		{"35%", `notch="35%"`, `d="M0,0 L65,0 L100,50 L65,100 L0,100 L35,50 Z"`, []string{"left: 35%", "right: 35%"}},
+		{"기본값 20%", ``, `d="M0,0 L80,0 L100,50 L80,100 L0,100 L20,50 Z"`, []string{"left: 20%", "right: 20%"}},
+		{"절반", `notch="50%"`, `d="M0,0 L50,0 L100,50 L50,100 L0,100 L50,50 Z"`, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			out := renderString(t, subsetDeck(t,
+				`<shape type="chevron" `+tc.attrs+` w="300" h="80"><p>단계</p></shape>`))
+			if ink := inkOf(t, out, "s0.0"); !strings.Contains(ink, tc.path) {
+				t.Errorf("잉크에 %s가 없다:\n%s", tc.path, ink)
+			}
+			hasBody := strings.Contains(out, `class="`+shapeBodyClass+`"`)
+			if hasBody != (tc.body != nil) {
+				t.Errorf("텍스트 영역 래퍼 = %v, want %v", hasBody, tc.body != nil)
+			}
+			for _, want := range tc.body {
+				if !strings.Contains(out, want) {
+					t.Errorf("텍스트 영역에 %q가 없다", want)
+				}
+			}
+		})
+	}
 }
