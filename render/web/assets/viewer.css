@@ -38,11 +38,13 @@
      time an item appears, turning the author's single layout into several layouts during the
      talk.
 
-     The restoring rule is narrowed to the active slide because if items on the other stacked
-     slides were visible, their text would float over hidden slides (visibility comes back to
-     life in children). */
+     The restoring rule is narrowed to the slides on screen — the active slide and the slide
+     leaving during a transition — because if items on the other stacked slides were visible,
+     their text would float over hidden slides (visibility comes back to life in children). The
+     leaving slide keeps the marks it had, so it moves out exactly as it was left. */
   html[data-balpyo-view="presenter"] [data-balpyo-reveal] { visibility: hidden; }
-  html[data-balpyo-view="presenter"] .balpyo-viewer-active [data-balpyo-reveal].balpyo-viewer-revealed {
+  html[data-balpyo-view="presenter"] .balpyo-viewer-active [data-balpyo-reveal].balpyo-viewer-revealed,
+  html[data-balpyo-view="presenter"] .balpyo-viewer-leaving [data-balpyo-reveal].balpyo-viewer-revealed {
     visibility: visible;
   }
 
