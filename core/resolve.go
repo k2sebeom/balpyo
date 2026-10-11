@@ -1009,6 +1009,24 @@ func attrExample(name string) string {
 		return "May"
 	case "value":
 		return "22"
+	// 표 셀 병합 속성.
+	case "colspan", "rowspan":
+		return "2"
+	// 등장 속성. `fade`인 이유: 콘텐츠와 연결선의 어휘가 갈라지는데, 둘 다 받는 이름이어야
+	// 어느 태그에서 난 진단이든 예시를 그대로 적으면 끝난다.
+	case soml.EnterAttr:
+		return "fade"
+	// 연결선 속성.
+	case "from", "to":
+		return "db"
+	case "route":
+		return "elbow"
+	case "from-side", "to-side":
+		return "right"
+	case "line":
+		return "2 solid muted"
+	case "start", "end":
+		return "arrow"
 	}
 	return ""
 }
