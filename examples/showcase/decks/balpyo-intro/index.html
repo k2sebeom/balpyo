@@ -149,6 +149,26 @@
     flex: 0 1 auto;
   }
 
+  /* <stack> and the canvas stage = single-cell grid overlap. Children overlap in grid-area 1/1
+     but stay in flow, so the stack sizes itself to its largest child. position:relative creates
+     the containing block for x/y children (relative to the padding box), and position:relative
+     on the children restores painting to document order (positioned siblings paint in document
+     order — no separate z-index). */
+  .balpyo-stack { display: grid; position: relative; }
+  .balpyo-stage-canvas { display: grid; }
+  :is(.balpyo-stack, .balpyo-stage-canvas) > * {
+    grid-area: 1 / 1;
+    position: relative;
+  }
+
+  /* Text and lists inside a stack leave the fixed width and go back to auto — if the width
+     filled the cell, at's justify-self could not move the child. This is a separate rule from
+     the existing row/col/grid reset (that rule is also emitted in goldens without a stack, so
+     folding stack into it would move those goldens). */
+  :is(.balpyo-stack, .balpyo-stage-canvas) > :is(.balpyo-text, .balpyo-list) {
+    width: auto;
+  }
+
   /* <shape> is **one box and one picture**. The box is the measured rect (=PPTX xfrm) and the
      picture is absolutely positioned out of the flow, so the preset geometry does not affect
      layout. It is a vertical flex because text inside a shape stacks in document order and the
@@ -212,6 +232,16 @@
     transform: none;
   }
 
+  .balpyo-connectors {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+
   /* Tables — the frame takes the full content width and the browser's table algorithm decides
      the column widths. Those measured values become the PPTX a:tblGrid column widths, so the
      engine does not compute grid geometry.
@@ -233,6 +263,21 @@
   .balpyo-table td {
     padding: 8px 12px;
   }
+
+  /* Deck chrome is a sibling of the stage — it sits outside the flow and does not take up body
+     height. */
+  .balpyo-chrome {
+    position: absolute;
+    bottom: 0;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .balpyo-chrome-start { left: 64px; }
+  .balpyo-chrome-center { left: 50%; transform: translateX(-50%); }
+  .balpyo-chrome-end { right: 64px; }
 
   /* This file is the viewer CSS (render/web.viewerCSS embeds it with go:embed). It goes
      verbatim into index.html's <style>, **inside** the `@layer balpyo.base` block, so its rules
@@ -559,15 +604,23 @@
     --balpyo-space-xl: 48px;
     --balpyo-space-2xl: 72px;
     --balpyo-shadow-soft: 0px 4px 16px color-mix(in srgb, var(--balpyo-color-fg) 15%, transparent);
+    --balpyo-motion-duration: 600ms;
   }
 
   .balpyo-slide { background: var(--balpyo-color-bg); }
+
+  /* Inverted slide — the background and text roles swap, as PPTX overrideClrMapping does. */
+  .balpyo-slide.balpyo-inverse {
+    --balpyo-color-fg: #FFFFFF;
+    --balpyo-color-bg: #1A1A1A;
+    --balpyo-color-muted: #F3F4F6;
+    --balpyo-color-surface: #6B7280;
+  }
 
   .balpyo-stage.balpyo-slots > :is(.balpyo-text, .balpyo-list) { width: auto; }
   .balpyo-stage.balpyo-layout-end:not(.balpyo-slots) { justify-content: center; }
   .balpyo-stage.balpyo-layout-quote:not(.balpyo-slots) { justify-content: center; }
   .balpyo-stage.balpyo-layout-title.balpyo-slots { display: grid; grid-template-columns: 1fr; grid-template-rows: auto auto auto var(--balpyo-space-2xl) auto auto; grid-template-areas: "kicker" "title" "subtitle" "." "author" "date"; justify-items: center; align-content: center; }
-  .balpyo-stage.balpyo-layout-two-column.balpyo-slots { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; grid-template-areas: "title title" "left right"; align-content: start; }
 }
 </style>
 </head>
@@ -575,411 +628,759 @@
 <div class="balpyo-deck" data-aspect="16:9" data-slides="12">
 <section class="balpyo-slide" id="cover" data-slide-index="0" data-slide-source="slides/001_cover.slide">
 <div class="balpyo-stage balpyo-layout-title balpyo-slots">
-<div class="balpyo-text" data-balpyo-id="s0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase; grid-area: kicker">SLIDE ORIENTED MARKUP LANGUAGE</div>
-<h1 class="balpyo-text" data-balpyo-id="s0.1" data-balpyo-el="h1" style="font-family: var(--balpyo-font-heading); font-size: 88px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start; grid-area: title">balpyo</h1>
-<div class="balpyo-text" data-balpyo-id="s0.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-muted); text-align: start; grid-area: subtitle">슬라이드를 한 번 쓰면 웹과 편집 가능한 PPTX가 같이 나온다</div>
-<div class="balpyo-text" data-balpyo-id="s0.3" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; grid-area: author">렌더 엔진 · 테마 · CLI</div>
-<div class="balpyo-text" data-balpyo-id="s0.4" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start; grid-area: date">이 덱은 SOML 열두 장이고, balpyo가 렌더했다</div>
+<div class="balpyo-text" data-balpyo-id="s0.0" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="150" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase; grid-area: kicker">Slide Oriented Markup Language</div>
+<h1 class="balpyo-text" data-balpyo-id="s0.1" data-balpyo-el="h1" data-balpyo-enter="rise" data-balpyo-enter-delay="240" style="font-family: var(--balpyo-font-heading); font-size: 96px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start; grid-area: title"><span style="font-family: var(--balpyo-font-heading); font-size: 96px; font-weight: 700; line-height: 1.2; background-image: linear-gradient(90deg, var(--balpyo-color-accent1), var(--balpyo-color-accent6)); -webkit-background-clip: text; background-clip: text; color: transparent; text-align: start; font-style: normal; text-decoration: none">balpyo</span></h1>
+<div class="balpyo-text" data-balpyo-id="s0.2" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="330" style="font-family: var(--balpyo-font-heading); font-size: 36px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-muted); text-align: start; grid-area: subtitle">슬라이드를 한 번 쓰면 웹과 편집 가능한 PPTX가 같이 나온다</div>
+<div class="balpyo-text" data-balpyo-id="s0.3" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="420" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; grid-area: author">렌더 엔진 · 테마 · CLI</div>
+<div class="balpyo-text" data-balpyo-id="s0.4" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="510" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start; grid-area: date">이 덱은 SOML 열두 장이고, balpyo가 렌더했다</div>
 </div>
 <div class="balpyo-notes" hidden>덱 자체가 산출물이다 — 지금 보고 있는 화면과 배포한 pptx가 같은 소스에서 나왔다.</div>
 </section>
 <section class="balpyo-slide" id="problem" data-slide-index="1" data-slide-source="slides/002_problem.slide">
-<div class="balpyo-stage balpyo-layout-two-column balpyo-slots">
-<h1 class="balpyo-text" data-balpyo-id="s1.0" data-balpyo-el="h1" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start; grid-area: title">텍스트로 슬라이드를 쓰면 둘 중 하나를 잃는다</h1>
-<div class="balpyo-col" data-balpyo-id="s1.1" data-balpyo-el="col" style="height: 100%; grid-area: left">
-<div class="balpyo-shape" data-balpyo-id="s1.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-col" data-balpyo-id="s1.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: space-between; height: 100%">
-<div class="balpyo-col" data-balpyo-id="s1.1.0.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md)">
-<div class="balpyo-text" data-balpyo-id="s1.1.0.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">Markdown 계열 · Marp · Slidev</div>
-<ul class="balpyo-list" data-balpyo-id="s1.1.0.0.0.1" data-balpyo-el="ul">
-<li class="balpyo-text" data-balpyo-id="s1.1.0.0.0.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">Markdown은 문서 마크업이라 2단·도형·겹침 같은 슬라이드 어휘가 없다</li>
-<li class="balpyo-text" data-balpyo-id="s1.1.0.0.0.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">PPTX 내보내기는 슬라이드를 이미지로 찍는다 — 열리지만 고칠 수 없다</li>
+<div class="balpyo-stage">
+<div class="balpyo-text" data-balpyo-id="s1.0" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="150" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">왜 또 하나의 도구인가</div>
+<h1 class="balpyo-text" data-balpyo-id="s1.1" data-balpyo-el="h1" data-balpyo-enter="rise" data-balpyo-enter-delay="240" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">텍스트로 슬라이드를 쓰면 둘 중 하나를 잃는다</h1>
+<div class="balpyo-stack" data-balpyo-id="s1.2" data-balpyo-el="stack" data-balpyo-enter="rise" data-balpyo-enter-delay="330" style="width: 100%; flex-grow: 1">
+<div class="balpyo-grid" data-balpyo-id="s1.2.0" data-balpyo-el="grid" style="gap: var(--balpyo-space-2xl); grid-template-columns: repeat(2, 1fr); width: 100%; height: 100%">
+<div class="balpyo-shape" data-balpyo-id="s1.2.0.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s1.2.0.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s1.2.0.0.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md)">
+<div class="balpyo-text" data-balpyo-id="s1.2.0.0.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">Markdown 계열 · Marp · Slidev</div>
+<div class="balpyo-stack" data-balpyo-id="s1.2.0.0.0.0.1" data-balpyo-el="stack" style="width: 100%; height: 76px">
+<div class="balpyo-shape" data-balpyo-id="s1.2.0.0.0.0.1.0" data-balpyo-el="shape" style="width: 100%; height: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: url(#s1.2.0.0.0.0.1.0-fill-pattern); stroke: var(--balpyo-color-muted); stroke-width: 1px; stroke-dasharray: 4px 3px"><defs><pattern id="s1.2.0.0.0.0.1.0-fill-pattern" patternUnits="userSpaceOnUse" width="8" height="8"><rect width="8" height="8" style="fill: color-mix(in srgb, transparent, var(--balpyo-color-bg) 0%); stroke: none"/><path d="M0,8 L8,0 M-1,1 L1,-1 M7,9 L9,7" style="fill: none; stroke: color-mix(in srgb, transparent, var(--balpyo-color-muted) 35%); stroke-width: 3px"/></pattern></defs><rect width="100%" height="100%" rx="6"/></svg>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s1.2.0.0.0.0.1.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-sm) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-sm) + 1.7574px); place-self: center center">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: none"><rect width="100%" height="100%" rx="6"/></svg>
+<div class="balpyo-text" data-balpyo-id="s1.2.0.0.0.0.1.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 17px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">slide-03.png · 그림 한 장</div>
+</div>
+</div>
+<ul class="balpyo-list" data-balpyo-id="s1.2.0.0.0.0.2" data-balpyo-el="ul">
+<li class="balpyo-text" data-balpyo-id="s1.2.0.0.0.0.2.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">문서 마크업이라 슬라이드 어휘가 없다</li>
+<li class="balpyo-text" data-balpyo-id="s1.2.0.0.0.0.2.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">PPTX 내보내기는 그림 한 장이다</li>
 </ul>
 </div>
-<div class="balpyo-text" data-balpyo-id="s1.1.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent1); text-align: start">→ 편집 가능한 산출물을 잃는다</div>
+<div class="balpyo-text" data-balpyo-id="s1.2.0.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent5); text-align: start">✕ 편집 가능한 산출물을 잃는다</div>
 </div>
 </div>
+<div class="balpyo-shape" data-balpyo-id="s1.2.0.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s1.2.0.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s1.2.0.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md)">
+<div class="balpyo-text" data-balpyo-id="s1.2.0.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">라이브러리 계열 · python-pptx</div>
+<div class="balpyo-shape" data-balpyo-id="s1.2.0.1.0.0.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-sm) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-sm) + 1.7574px); width: 100%; height: 76px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="6"/></svg>
+<pre class="balpyo-text" data-balpyo-id="s1.2.0.1.0.0.1.0" data-balpyo-el="pre" style="font-family: var(--balpyo-font-mono); font-size: 16px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; white-space: pre">box.left = Emu(1219200)  # 손으로 잰 값
+box.top  = Emu(2286000)</pre>
 </div>
-<div class="balpyo-col" data-balpyo-id="s1.2" data-balpyo-el="col" style="height: 100%; grid-area: right">
-<div class="balpyo-shape" data-balpyo-id="s1.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-col" data-balpyo-id="s1.2.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: space-between; height: 100%">
-<div class="balpyo-col" data-balpyo-id="s1.2.0.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md)">
-<div class="balpyo-text" data-balpyo-id="s1.2.0.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">라이브러리 계열 · python-pptx</div>
-<ul class="balpyo-list" data-balpyo-id="s1.2.0.0.0.1" data-balpyo-el="ul">
-<li class="balpyo-text" data-balpyo-id="s1.2.0.0.0.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">모든 요소를 EMU 절대 좌표로 손으로 배치한다</li>
-<li class="balpyo-text" data-balpyo-id="s1.2.0.0.0.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">그라디언트 테두리처럼 &#34;디자인된 느낌&#34;에는 API조차 없어 raw XML을 조립한다</li>
+<ul class="balpyo-list" data-balpyo-id="s1.2.0.1.0.0.2" data-balpyo-el="ul">
+<li class="balpyo-text" data-balpyo-id="s1.2.0.1.0.0.2.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">모든 요소를 EMU 좌표로 손으로 놓는다</li>
+<li class="balpyo-text" data-balpyo-id="s1.2.0.1.0.0.2.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">디자인에는 API가 없어 XML을 조립한다</li>
 </ul>
 </div>
-<div class="balpyo-text" data-balpyo-id="s1.2.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent1); text-align: start">→ 쓰기 쉬움을 잃는다</div>
+<div class="balpyo-text" data-balpyo-id="s1.2.0.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent5); text-align: start">✕ 쓰기 쉬움을 잃는다</div>
+</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s1.2.1" data-balpyo-el="shape" data-balpyo-enter="zoom" data-balpyo-enter-delay="420" style="width: 64px; height: 64px; place-self: center center">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-surface); stroke-width: 2px; filter: drop-shadow(var(--balpyo-shadow-soft))"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
+<div class="balpyo-text" data-balpyo-id="s1.2.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 22px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-muted); text-align: center">vs</div>
 </div>
 </div>
 </div>
 </div>
-<div class="balpyo-notes" hidden>둘 중 하나를 잃는다: 표현력이냐, 편집 가능한 산출물이냐.</div>
+<div class="balpyo-chrome balpyo-chrome-start" data-chrome-kind="footer" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">balpyo 소개</div>
+<div class="balpyo-chrome balpyo-chrome-end" data-chrome-kind="pageNumber" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: end">2</div>
+<div class="balpyo-notes" hidden>둘 중 하나를 잃는다: 표현력이냐, 편집 가능한 산출물이냐. balpyo는 둘 다 갖는 자리를 노린다.</div>
 </section>
 <section class="balpyo-slide" id="cost" data-slide-index="2" data-slide-source="slides/003_cost.slide">
 <div class="balpyo-stage">
-<div class="balpyo-text" data-balpyo-id="s2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">기업 덱의 카드 그리드 슬라이드 한 장을 python-pptx로 다시 만들었을 때</div>
-<div class="balpyo-grid" data-balpyo-id="s2.1" data-balpyo-el="grid" style="gap: var(--balpyo-space-lg); grid-template-columns: 3fr 2fr; flex-grow: 1">
+<div class="balpyo-text" data-balpyo-id="s2.0" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="150" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">기업 덱의 카드 그리드 한 장을 python-pptx로 다시 만들었을 때</div>
+<div class="balpyo-grid" data-balpyo-id="s2.1" data-balpyo-el="grid" data-balpyo-enter="rise" data-balpyo-enter-delay="240" style="gap: var(--balpyo-space-lg); grid-template-columns: 3fr 2fr; flex-grow: 1">
 <div class="balpyo-shape" data-balpyo-id="s2.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
 <div class="balpyo-col" data-balpyo-id="s2.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: center; height: 100%">
-<div class="balpyo-text" data-balpyo-id="s2.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">python-pptx</div>
-<div class="balpyo-text" data-balpyo-id="s2.1.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 180px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: start">128</div>
-<div class="balpyo-text" data-balpyo-id="s2.1.0.0.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 30px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">수동 좌표 계산 · 그리고 raw XML 수술 10회</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">python-pptx</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 168px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent5); text-align: start">128<span style="font-family: var(--balpyo-font-heading); font-size: 48px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent5); text-align: start; font-style: normal; text-decoration: none">회</span></div>
+<div class="balpyo-text" data-balpyo-id="s2.1.0.0.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 28px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">수동 좌표 계산 · 그리고 raw XML 수술 10회</div>
+<div class="balpyo-shape" data-balpyo-id="s2.1.0.0.3" data-balpyo-el="shape" style="width: 100%; height: 20px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: url(#s2.1.0.0.3-fill-pattern); stroke: none"><defs><pattern id="s2.1.0.0.3-fill-pattern" patternUnits="userSpaceOnUse" width="8" height="8"><rect width="8" height="8" style="fill: color-mix(in srgb, transparent, var(--balpyo-color-bg) 0%); stroke: none"/><path d="M0.5,0 V8 M4.5,0 V8" style="fill: none; stroke: color-mix(in srgb, transparent, var(--balpyo-color-accent5) 70%); stroke-width: 1px"/></pattern></defs><rect width="100%" height="100%"/></svg>
+</div>
 </div>
 </div>
 <div class="balpyo-shape" data-balpyo-id="s2.1.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: url(#s2.1.1-fill-grad); stroke: none; filter: drop-shadow(var(--balpyo-shadow-soft))"><defs><linearGradient id="s2.1.1-fill-grad" x1="0.1464" y1="0.1464" x2="0.8536" y2="0.8536"><stop offset="0" style="stop-color: var(--balpyo-color-accent1)"/><stop offset="1" style="stop-color: var(--balpyo-color-accent6)"/></linearGradient></defs><rect width="100%" height="100%" rx="24"/></svg>
 <div class="balpyo-col" data-balpyo-id="s2.1.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: center; height: 100%">
 <div class="balpyo-text" data-balpyo-id="s2.1.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">balpyo</div>
-<div class="balpyo-text" data-balpyo-id="s2.1.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 88px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-bg); text-align: start">1줄</div>
-<div class="balpyo-text" data-balpyo-id="s2.1.1.0.2" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start">&lt;grid cols=&#34;4&#34;&gt;</div>
+<div class="balpyo-text" data-balpyo-id="s2.1.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 104px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-bg); text-align: start">1<span style="font-family: var(--balpyo-font-heading); font-size: 48px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-bg); text-align: start; font-style: normal; text-decoration: none">줄</span></div>
+<div class="balpyo-shape" data-balpyo-id="s2.1.1.0.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-sm) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-sm) + 1.7574px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: color-mix(in srgb, transparent, var(--balpyo-color-bg) 20%); stroke: none"><rect width="100%" height="100%" rx="6"/></svg>
+<div class="balpyo-text" data-balpyo-id="s2.1.1.0.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start">&lt;grid cols=&#34;4&#34;&gt;</div>
+</div>
 <div class="balpyo-text" data-balpyo-id="s2.1.1.0.3" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start">좌표는 브라우저가 잰다.</div>
 </div>
 </div>
 </div>
 </div>
+<div class="balpyo-chrome balpyo-chrome-start" data-chrome-kind="footer" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">balpyo 소개</div>
+<div class="balpyo-chrome balpyo-chrome-end" data-chrome-kind="pageNumber" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: end">3</div>
 <div class="balpyo-notes" hidden>여기가 제품의 출발점이다. 저자가 계산할 것이 남아 있으면 자동화가 아니다.</div>
 </section>
 <section class="balpyo-slide" id="pipeline" data-slide-index="3" data-slide-source="slides/004_pipeline.slide">
 <div class="balpyo-stage">
-<h1 class="balpyo-text" data-balpyo-id="s3.0" data-balpyo-el="h1" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">한 소스, 두 산출물</h1>
-<div class="balpyo-grid" data-balpyo-id="s3.1" data-balpyo-el="grid" style="gap: var(--balpyo-space-sm); grid-template-columns: repeat(4, 1fr)">
-<div class="balpyo-col" data-balpyo-id="s3.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
-<div class="balpyo-shape" data-balpyo-id="s3.1.0.0" data-balpyo-el="shape" style="width: 100%; height: 72px">
-<svg class="balpyo-shape-ink" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-muted); stroke-width: 1px"><path d="M0,0 L80,0 L100,50 L80,100 L0,100 L20,50 Z" vector-effect="non-scaling-stroke"/></svg>
-</div>
-<div class="balpyo-text" data-balpyo-id="s3.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">1 · SOML 파싱</div>
-</div>
-<div class="balpyo-col" data-balpyo-id="s3.1.1" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
-<div class="balpyo-shape" data-balpyo-id="s3.1.1.0" data-balpyo-el="shape" style="width: 100%; height: 72px">
-<svg class="balpyo-shape-ink" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-muted); stroke-width: 1px"><path d="M0,0 L80,0 L100,50 L80,100 L0,100 L20,50 Z" vector-effect="non-scaling-stroke"/></svg>
-</div>
-<div class="balpyo-text" data-balpyo-id="s3.1.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">2 · 외관·배치 해석</div>
-</div>
-<div class="balpyo-col" data-balpyo-id="s3.1.2" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
-<div class="balpyo-shape" data-balpyo-id="s3.1.2.0" data-balpyo-el="shape" style="width: 100%; height: 72px">
-<svg class="balpyo-shape-ink" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-muted); stroke-width: 1px"><path d="M0,0 L80,0 L100,50 L80,100 L0,100 L20,50 Z" vector-effect="non-scaling-stroke"/></svg>
-</div>
-<div class="balpyo-text" data-balpyo-id="s3.1.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">3 · 지오메트리 측정</div>
-</div>
-<div class="balpyo-col" data-balpyo-id="s3.1.3" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
-<div class="balpyo-shape" data-balpyo-id="s3.1.3.0" data-balpyo-el="shape" style="width: 100%; height: 72px">
-<svg class="balpyo-shape-ink" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: var(--balpyo-color-muted); stroke-width: 1px"><path d="M0,0 L80,0 L100,50 L80,100 L0,100 L20,50 Z" vector-effect="non-scaling-stroke"/></svg>
-</div>
-<div class="balpyo-text" data-balpyo-id="s3.1.3.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: center; font-style: normal; text-decoration: none">4 · 두 타깃 렌더</strong></div>
+<div class="balpyo-text" data-balpyo-id="s3.0" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="150" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">빌드 한 번의 경로</div>
+<h1 class="balpyo-text" data-balpyo-id="s3.1" data-balpyo-el="h1" data-balpyo-enter="rise" data-balpyo-enter-delay="240" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">한 소스, 두 산출물</h1>
+<div class="balpyo-row" data-balpyo-id="s3.2" data-balpyo-el="row" data-balpyo-enter="rise" data-balpyo-enter-delay="330" style="gap: 0px; align-items: center; flex-grow: 1">
+<div class="balpyo-shape" data-balpyo-id="s3.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px); width: 150px; height: 88px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s3.2.0.0" data-balpyo-el="col" style="gap: 0px; justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s3.2.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">.slide</div>
+<div class="balpyo-text" data-balpyo-id="s3.2.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 16px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">SOML 원고</div>
 </div>
 </div>
-<div class="balpyo-grid" data-balpyo-id="s3.2" data-balpyo-el="grid" style="gap: var(--balpyo-space-lg); grid-template-columns: repeat(2, 1fr); flex-grow: 1">
-<div class="balpyo-shape" data-balpyo-id="s3.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-col" data-balpyo-id="s3.2.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); height: 100%">
-<div class="balpyo-text" data-balpyo-id="s3.2.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 30px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent1); text-align: start">웹 · index.html 한 장</div>
-<ul class="balpyo-list" data-balpyo-id="s3.2.0.0.1" data-balpyo-el="ul">
-<li class="balpyo-text" data-balpyo-id="s3.2.0.0.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">CSS와 발표 런타임이 인라인 — 파일 하나로 배포한다</li>
-<li class="balpyo-text" data-balpyo-id="s3.2.0.0.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">발표자 화면 · 개요 그리드 · 노트 · 장 링크</li>
-<li class="balpyo-text" data-balpyo-id="s3.2.0.0.1.2" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">브라우저 인쇄가 곧 PDF다</li>
-</ul>
+<div class="balpyo-spacer" data-balpyo-id="s3.2.1" data-balpyo-el="spacer" style="flex-grow: 1"></div>
+<div class="balpyo-shape" data-balpyo-id="s3.2.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px); width: 150px; height: 88px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s3.2.2.0" data-balpyo-el="col" style="gap: 0px; justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s3.2.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 22px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">soml</div>
+<div class="balpyo-text" data-balpyo-id="s3.2.2.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 16px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">파싱 · 진단</div>
 </div>
 </div>
-<div class="balpyo-shape" data-balpyo-id="s3.2.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-col" data-balpyo-id="s3.2.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); height: 100%">
-<div class="balpyo-text" data-balpyo-id="s3.2.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 30px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent1); text-align: start">PPTX · 편집 가능한 원본</div>
-<ul class="balpyo-list" data-balpyo-id="s3.2.1.0.1" data-balpyo-el="ul">
-<li class="balpyo-text" data-balpyo-id="s3.2.1.0.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">텍스트 박스는 p:sp, 도형은 prstGeom, 표는 a:tbl</li>
-<li class="balpyo-text" data-balpyo-id="s3.2.1.0.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">슬롯은 p:ph 플레이스홀더 — 레이아웃이 살아 있다</li>
-<li class="balpyo-text" data-balpyo-id="s3.2.1.0.1.2" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">테마 색은 schemeClr — 이미지로 찍지 않는다</li>
-</ul>
+<div class="balpyo-spacer" data-balpyo-id="s3.2.3" data-balpyo-el="spacer" style="flex-grow: 1"></div>
+<div class="balpyo-shape" data-balpyo-id="s3.2.4" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px); width: 150px; height: 88px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s3.2.4.0" data-balpyo-el="col" style="gap: 0px; justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s3.2.4.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 22px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">core</div>
+<div class="balpyo-text" data-balpyo-id="s3.2.4.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 16px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">외관 · 자산 해석</div>
+</div>
+</div>
+<div class="balpyo-spacer" data-balpyo-id="s3.2.5" data-balpyo-el="spacer" style="flex-grow: 1"></div>
+<div class="balpyo-col" data-balpyo-id="s3.2.6" data-balpyo-el="col" style="gap: var(--balpyo-space-md); width: 210px">
+<div class="balpyo-shape" data-balpyo-id="s3.2.6.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px); width: 100%; height: 76px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s3.2.6.0.0" data-balpyo-el="col" style="gap: 0px; justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s3.2.6.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 20px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">render/web</div>
+<div class="balpyo-text" data-balpyo-id="s3.2.6.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 16px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">HTML + CSS</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s3.2.6.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px); width: 100%; height: 76px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: color-mix(in srgb, transparent, var(--balpyo-color-accent1) 12%); stroke: var(--balpyo-color-accent1); stroke-width: 2px; stroke-dasharray: 8px 6px"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-col" data-balpyo-id="s3.2.6.1.0" data-balpyo-el="col" style="gap: 0px; justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s3.2.6.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 20px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent1); text-align: start">render/geom</div>
+<div class="balpyo-text" data-balpyo-id="s3.2.6.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 16px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">Chromium이 박스를 잰다</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s3.2.6.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px); width: 100%; height: 76px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s3.2.6.2.0" data-balpyo-el="col" style="gap: 0px; justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s3.2.6.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 20px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">render/pptx</div>
+<div class="balpyo-text" data-balpyo-id="s3.2.6.2.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 16px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">잰 rect → EMU</div>
 </div>
 </div>
 </div>
-<div class="balpyo-text" data-balpyo-id="s3.3" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">같은 SOML 트리가 두 번 렌더된다. 갈라지는 지점은 마지막 단계 하나뿐이다.</div>
+<div class="balpyo-spacer" data-balpyo-id="s3.2.7" data-balpyo-el="spacer" style="flex-grow: 1"></div>
+<div class="balpyo-col" data-balpyo-id="s3.2.8" data-balpyo-el="col" style="gap: var(--balpyo-space-md); width: 160px">
+<div class="balpyo-shape" data-balpyo-id="s3.2.8.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px); width: 100%; height: 76px; justify-content: center">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: none; filter: drop-shadow(var(--balpyo-shadow-soft))"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s3.2.8.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">index.html</div>
 </div>
-<div class="balpyo-notes" hidden>파싱은 soml, 해석은 core, 측정은 render/geom, 렌더는 render/web과 render/pptx다.</div>
+<div class="balpyo-shape" data-balpyo-id="s3.2.8.1" data-balpyo-el="shape" style="width: 100%; height: 76px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: none; stroke: none"><rect width="100%" height="100%"/></svg>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s3.2.8.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px); width: 100%; height: 76px; justify-content: center">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent6); stroke: none; filter: drop-shadow(var(--balpyo-shadow-soft))"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s3.2.8.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">deck.pptx</div>
+</div>
+</div>
+</div>
+<div class="balpyo-grid" data-balpyo-id="s3.11" data-balpyo-el="grid" data-balpyo-enter="rise" data-balpyo-enter-delay="1140" style="gap: var(--balpyo-space-lg); grid-template-columns: repeat(2, 1fr)">
+<div class="balpyo-shape" data-balpyo-id="s3.11.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-row" data-balpyo-id="s3.11.0.0" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center; height: 100%">
+<div class="balpyo-shape" data-balpyo-id="s3.11.0.0.0" data-balpyo-el="shape" style="width: 4px; height: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: none"><rect width="100%" height="100%"/></svg>
+</div>
+<div class="balpyo-col" data-balpyo-id="s3.11.0.0.1" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-text" data-balpyo-id="s3.11.0.0.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">웹 · 파일 한 장</div>
+<div class="balpyo-text" data-balpyo-id="s3.11.0.0.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 19px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">인라인 CSS · 발표자 화면 · 개요 · 인쇄(PDF)</div>
+</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s3.11.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-row" data-balpyo-id="s3.11.1.0" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center; height: 100%">
+<div class="balpyo-shape" data-balpyo-id="s3.11.1.0.0" data-balpyo-el="shape" style="width: 4px; height: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent6); stroke: none"><rect width="100%" height="100%"/></svg>
+</div>
+<div class="balpyo-col" data-balpyo-id="s3.11.1.0.1" data-balpyo-el="col" style="gap: var(--balpyo-space-xs); flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-text" data-balpyo-id="s3.11.1.0.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">PPTX · 편집 가능한 원본</div>
+<div class="balpyo-text" data-balpyo-id="s3.11.1.0.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 19px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">텍스트 박스 · 도형 · 표 · 연결선 — 그림이 아니다</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<svg class="balpyo-connectors" viewBox="0 0 1280 720" aria-hidden="true">
+<marker id="balpyo-s3-3-end" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" data-balpyo-enter="fade" data-balpyo-enter-delay="870" style="fill: var(--balpyo-color-muted)"/></marker>
+<path data-balpyo-connector="s3.3" d="M214,355.23 L292,355.23" pathLength="1" data-balpyo-enter="draw" data-balpyo-enter-delay="420" marker-end="url(#balpyo-s3-3-end)" style="fill: none; stroke: var(--balpyo-color-muted); stroke-width: 2px"/>
+<marker id="balpyo-s3-4-end" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" data-balpyo-enter="fade" data-balpyo-enter-delay="960" style="fill: var(--balpyo-color-muted)"/></marker>
+<path data-balpyo-connector="s3.4" d="M447,355.23 L525,355.23" pathLength="1" data-balpyo-enter="draw" data-balpyo-enter-delay="510" marker-end="url(#balpyo-s3-4-end)" style="fill: none; stroke: var(--balpyo-color-muted); stroke-width: 2px"/>
+<marker id="balpyo-s3-5-end" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" data-balpyo-enter="fade" data-balpyo-enter-delay="1050" style="fill: var(--balpyo-color-muted)"/></marker>
+<path data-balpyo-connector="s3.5" d="M680,355.23 L721.5,355.23 L721.5,255.23 L758,255.23" pathLength="1" data-balpyo-enter="draw" data-balpyo-enter-delay="600" marker-end="url(#balpyo-s3-5-end)" style="fill: none; stroke: var(--balpyo-color-muted); stroke-width: 2px"/>
+<marker id="balpyo-s3-6-end" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" data-balpyo-enter="fade" data-balpyo-enter-delay="1140" style="fill: var(--balpyo-color-muted)"/></marker>
+<path data-balpyo-connector="s3.6" d="M680,355.23 L721.5,355.23 L721.5,455.23 L758,455.23" pathLength="1" data-balpyo-enter="draw" data-balpyo-enter-delay="690" marker-end="url(#balpyo-s3-6-end)" style="fill: none; stroke: var(--balpyo-color-muted); stroke-width: 2px"/>
+<marker id="balpyo-s3-7-end" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" data-balpyo-enter="fade" data-balpyo-enter-delay="1230" style="fill: var(--balpyo-color-accent1)"/></marker>
+<path data-balpyo-connector="s3.7" d="M868,293.23 L868,312.23" pathLength="1" data-balpyo-enter="draw" data-balpyo-enter-delay="780" marker-end="url(#balpyo-s3-7-end)" style="fill: none; stroke: var(--balpyo-color-accent1); stroke-width: 2px"/>
+<marker id="balpyo-s3-8-end" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" data-balpyo-enter="fade" data-balpyo-enter-delay="1320" style="fill: var(--balpyo-color-accent1)"/></marker>
+<path data-balpyo-connector="s3.8" d="M868,393.23 L868,412.23" pathLength="1" data-balpyo-enter="draw" data-balpyo-enter-delay="870" marker-end="url(#balpyo-s3-8-end)" style="fill: none; stroke: var(--balpyo-color-accent1); stroke-width: 2px"/>
+<marker id="balpyo-s3-9-end" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" data-balpyo-enter="fade" data-balpyo-enter-delay="1410" style="fill: var(--balpyo-color-muted)"/></marker>
+<path data-balpyo-connector="s3.9" d="M973,255.23 L1051,255.23" pathLength="1" data-balpyo-enter="draw" data-balpyo-enter-delay="960" marker-end="url(#balpyo-s3-9-end)" style="fill: none; stroke: var(--balpyo-color-muted); stroke-width: 2px"/>
+<marker id="balpyo-s3-10-end" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" data-balpyo-enter="fade" data-balpyo-enter-delay="1500" style="fill: var(--balpyo-color-muted)"/></marker>
+<path data-balpyo-connector="s3.10" d="M973,455.23 L1051,455.23" pathLength="1" data-balpyo-enter="draw" data-balpyo-enter-delay="1050" marker-end="url(#balpyo-s3-10-end)" style="fill: none; stroke: var(--balpyo-color-muted); stroke-width: 2px"/>
+</svg>
+<div class="balpyo-chrome balpyo-chrome-start" data-chrome-kind="footer" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">balpyo 소개</div>
+<div class="balpyo-chrome balpyo-chrome-end" data-chrome-kind="pageNumber" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: end">4</div>
+<div class="balpyo-notes" hidden>파싱은 soml, 해석은 core, 측정은 render/geom, 렌더는 render/web과 render/pptx다. PPTX 렌더러는 좌표를 계산하지 않는다 — 브라우저가 잰 값을 굽는다.</div>
 </section>
 <section class="balpyo-slide" id="project" data-slide-index="4" data-slide-source="slides/005_project.slide">
 <div class="balpyo-stage">
-<h1 class="balpyo-text" data-balpyo-id="s4.0" data-balpyo-el="h1" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">프로젝트 하나가 덱 하나다</h1>
-<div class="balpyo-grid" data-balpyo-id="s4.1" data-balpyo-el="grid" style="gap: var(--balpyo-space-xl); grid-template-columns: repeat(2, 1fr); flex-grow: 1">
-<div class="balpyo-shape" data-balpyo-id="s4.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
-<pre class="balpyo-text" data-balpyo-id="s4.1.0.0" data-balpyo-el="pre" style="font-family: var(--balpyo-font-mono); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; white-space: pre">my-deck/
-  balpyo.json
+<div class="balpyo-text" data-balpyo-id="s4.0" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="150" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">프로젝트</div>
+<h1 class="balpyo-text" data-balpyo-id="s4.1" data-balpyo-el="h1" data-balpyo-enter="rise" data-balpyo-enter-delay="240" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">프로젝트 하나가 덱 하나다</h1>
+<div class="balpyo-grid" data-balpyo-id="s4.2" data-balpyo-el="grid" data-balpyo-enter="rise" data-balpyo-enter-delay="330" style="gap: var(--balpyo-space-xl); grid-template-columns: 5fr 6fr; flex-grow: 1">
+<div class="balpyo-shape" data-balpyo-id="s4.2.0" data-balpyo-el="shape" style="padding: calc(0px + 7.0294px) calc(0px + 7.0294px) calc(0px + 7.0294px) calc(0px + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s4.2.0.0" data-balpyo-el="col" style="gap: 0px; height: 100%">
+<div class="balpyo-shape" data-balpyo-id="s4.2.0.0.0" data-balpyo-el="shape" style="padding: var(--balpyo-space-sm) var(--balpyo-space-md) var(--balpyo-space-sm) var(--balpyo-space-md); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%"/></svg>
+<div class="balpyo-row" data-balpyo-id="s4.2.0.0.0.0" data-balpyo-el="row" style="gap: var(--balpyo-space-xs); align-items: center">
+<div class="balpyo-shape" data-balpyo-id="s4.2.0.0.0.0.0" data-balpyo-el="shape" style="width: 12px; height: 12px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent5); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s4.2.0.0.0.0.1" data-balpyo-el="shape" style="width: 12px; height: 12px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent4); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s4.2.0.0.0.0.2" data-balpyo-el="shape" style="width: 12px; height: 12px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent3); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+</div>
+<div class="balpyo-text" data-balpyo-id="s4.2.0.0.0.0.3" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 15px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">~/talks/my-deck</div>
+</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s4.2.0.0.1" data-balpyo-el="col" style="gap: 0px; padding: var(--balpyo-space-md) var(--balpyo-space-lg) var(--balpyo-space-md) var(--balpyo-space-lg); flex-grow: 1">
+<pre class="balpyo-text" data-balpyo-id="s4.2.0.0.1.0" data-balpyo-el="pre" style="font-family: var(--balpyo-font-mono); font-size: 19px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; white-space: pre">my-deck/
+  balpyo.json        ⑤
   slides/
-    001_cover.slide
+    001_cover.slide  ①
     002_problem.slide
-    _draft_ideas.slide
+    _draft.slide     ③
+    chapter-2/       ④
   assets/
-    diagram.png
-  themes/
-    my-brand/</pre>
-</div>
-<div class="balpyo-col" data-balpyo-id="s4.1.1" data-balpyo-el="col" style="gap: var(--balpyo-space-lg)">
-<div class="balpyo-col" data-balpyo-id="s4.1.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
-<div class="balpyo-text" data-balpyo-id="s4.1.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">수집 규칙</div>
-<ul class="balpyo-list" data-balpyo-id="s4.1.1.0.1" data-balpyo-el="ul">
-<li class="balpyo-text" data-balpyo-id="s4.1.1.0.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">슬라이드 한 장이 파일 한 개다</li>
-<li class="balpyo-text" data-balpyo-id="s4.1.1.0.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">순서는 경로 사전순 — 숫자 접두가 순서를 만든다</li>
-<li class="balpyo-text" data-balpyo-id="s4.1.1.0.1.2" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">밑줄로 시작하는 파일은 건너뛴다 (초안·보류)</li>
-<li class="balpyo-text" data-balpyo-id="s4.1.1.0.1.3" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">하위 디렉토리는 챕터가 된다</li>
-</ul>
-</div>
-<div class="balpyo-col" data-balpyo-id="s4.1.1.1" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
-<div class="balpyo-text" data-balpyo-id="s4.1.1.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">balpyo.json</div>
-<p class="balpyo-text" data-balpyo-id="s4.1.1.1.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">제목 · 저자 · 언어 · 비율(16:9 · 4:3) · 테마 · 출력 경로 · 꼬리말 · 쪽 번호</p>
+  themes/my-brand/</pre>
 </div>
 </div>
 </div>
-<div class="balpyo-shape" data-balpyo-id="s4.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px); width: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="12"/></svg>
-<pre class="balpyo-text" data-balpyo-id="s4.2.0" data-balpyo-el="pre" style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; white-space: pre">balpyo build --project my-deck --target html,pptx</pre>
+<div class="balpyo-col" data-balpyo-id="s4.2.1" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: center">
+<div class="balpyo-row" data-balpyo-id="s4.2.1.0" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center">
+<div class="balpyo-shape" data-balpyo-id="s4.2.1.0.0" data-balpyo-el="shape" style="width: 40px; height: 40px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
+<div class="balpyo-text" data-balpyo-id="s4.2.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center; font-style: normal; text-decoration: none">1</strong></div>
 </div>
 </div>
-<div class="balpyo-notes" hidden>덱 설정은 balpyo.json 한 파일이다 — 제목·저자·언어·비율·출력 경로.</div>
+<div class="balpyo-text" data-balpyo-id="s4.2.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; flex-grow: 1; flex-basis: 0px">슬라이드 한 장이 파일 한 개다</div>
+</div>
+<div class="balpyo-row" data-balpyo-id="s4.2.1.1" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center">
+<div class="balpyo-shape" data-balpyo-id="s4.2.1.1.0" data-balpyo-el="shape" style="width: 40px; height: 40px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
+<div class="balpyo-text" data-balpyo-id="s4.2.1.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center; font-style: normal; text-decoration: none">2</strong></div>
+</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s4.2.1.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; flex-grow: 1; flex-basis: 0px">순서는 경로 사전순 — 숫자 접두가 순서다</div>
+</div>
+<div class="balpyo-row" data-balpyo-id="s4.2.1.2" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center">
+<div class="balpyo-shape" data-balpyo-id="s4.2.1.2.0" data-balpyo-el="shape" style="width: 40px; height: 40px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
+<div class="balpyo-text" data-balpyo-id="s4.2.1.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center; font-style: normal; text-decoration: none">3</strong></div>
+</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s4.2.1.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; flex-grow: 1; flex-basis: 0px">밑줄로 시작하는 파일은 건너뛴다 (초안)</div>
+</div>
+<div class="balpyo-row" data-balpyo-id="s4.2.1.3" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center">
+<div class="balpyo-shape" data-balpyo-id="s4.2.1.3.0" data-balpyo-el="shape" style="width: 40px; height: 40px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
+<div class="balpyo-text" data-balpyo-id="s4.2.1.3.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center; font-style: normal; text-decoration: none">4</strong></div>
+</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s4.2.1.3.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; flex-grow: 1; flex-basis: 0px">하위 디렉토리는 챕터가 된다</div>
+</div>
+<div class="balpyo-row" data-balpyo-id="s4.2.1.4" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center">
+<div class="balpyo-shape" data-balpyo-id="s4.2.1.4.0" data-balpyo-el="shape" style="width: 40px; height: 40px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent6); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
+<div class="balpyo-text" data-balpyo-id="s4.2.1.4.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center; font-style: normal; text-decoration: none">5</strong></div>
+</div>
+</div>
+<div class="balpyo-text" data-balpyo-id="s4.2.1.4.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; flex-grow: 1; flex-basis: 0px">덱 설정은 <code style="font-family: var(--balpyo-font-mono); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">balpyo.json</code> 한 파일</div>
+</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s4.3" data-balpyo-el="shape" data-balpyo-enter="rise" data-balpyo-enter-delay="420" style="padding: calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-fg); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s4.3.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start"><span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: start; font-style: normal; text-decoration: none">$</span> balpyo build --project my-deck --target html,pptx</div>
+</div>
+</div>
+<div class="balpyo-chrome balpyo-chrome-start" data-chrome-kind="footer" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">balpyo 소개</div>
+<div class="balpyo-chrome balpyo-chrome-end" data-chrome-kind="pageNumber" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: end">5</div>
+<div class="balpyo-notes" hidden>덱 설정은 balpyo.json 한 파일이다 — 제목·저자·언어·비율·테마·출력 경로·꼬리말·쪽 번호.</div>
 </section>
 <section class="balpyo-slide" id="geometry" data-slide-index="5" data-slide-source="slides/006_geometry.slide">
 <div class="balpyo-stage">
-<h1 class="balpyo-text" data-balpyo-id="s5.0" data-balpyo-el="h1" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">좌표는 브라우저가 계산한다</h1>
-<div class="balpyo-grid" data-balpyo-id="s5.1" data-balpyo-el="grid" style="gap: var(--balpyo-space-lg); grid-template-columns: repeat(3, 1fr); flex-grow: 1">
-<div class="balpyo-shape" data-balpyo-id="s5.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-col" data-balpyo-id="s5.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: space-between; height: 100%">
-<div class="balpyo-col" data-balpyo-id="s5.1.0.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
-<div class="balpyo-shape" data-balpyo-id="s5.1.0.0.0.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px); width: 100%; height: 48px">
+<div class="balpyo-text" data-balpyo-id="s5.0" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="150" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">지오메트리 패스</div>
+<h1 class="balpyo-text" data-balpyo-id="s5.1" data-balpyo-el="h1" data-balpyo-enter="rise" data-balpyo-enter-delay="240" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">좌표는 브라우저가 계산한다</h1>
+<div class="balpyo-grid" data-balpyo-id="s5.2" data-balpyo-el="grid" data-balpyo-enter="rise" data-balpyo-enter-delay="330" style="gap: var(--balpyo-space-lg); grid-template-columns: repeat(3, 1fr); flex-grow: 1">
+<div class="balpyo-shape" data-balpyo-id="s5.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s5.2.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s5.2.0.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
+<div class="balpyo-shape" data-balpyo-id="s5.2.0.0.0.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px); width: 100%; height: 44px; justify-content: center">
 <svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: none"><rect width="100%" height="100%" rx="6"/></svg>
-<div class="balpyo-text" data-balpyo-id="s5.1.0.0.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">선언</div>
+<div class="balpyo-text" data-balpyo-id="s5.2.0.0.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center; font-style: normal; text-decoration: none">① 선언</strong></div>
 </div>
-<p class="balpyo-text" data-balpyo-id="s5.1.0.0.0.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">저자는 flex와 grid로 배치를 선언한다. 좌표를 쓰는 자리가 어휘에 없다.</p>
+<div class="balpyo-shape" data-balpyo-id="s5.2.0.0.0.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-sm) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-sm) + 1.7574px); width: 100%; height: 104px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: color-mix(in srgb, transparent, var(--balpyo-color-fg) 5%); stroke: none"><rect width="100%" height="100%" rx="6"/></svg>
+<pre class="balpyo-text" data-balpyo-id="s5.2.0.0.0.1.0" data-balpyo-el="pre" style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; white-space: pre"><span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">&lt;row</span> <span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent2); text-align: start; font-style: normal; text-decoration: none">gap=</span><span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: start; font-style: normal; text-decoration: none">&#34;md&#34;</span><span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">&gt;</span>
+  <span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">&lt;shape</span> <span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent2); text-align: start; font-style: normal; text-decoration: none">w=</span><span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: start; font-style: normal; text-decoration: none">&#34;fill&#34;</span><span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">/&gt;</span>
+  <span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">&lt;shape</span> <span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent2); text-align: start; font-style: normal; text-decoration: none">w=</span><span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: start; font-style: normal; text-decoration: none">&#34;fill&#34;</span><span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">/&gt;</span>
+<span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">&lt;/row&gt;</span></pre>
 </div>
-<div class="balpyo-text" data-balpyo-id="s5.1.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">&lt;row&gt; · &lt;col&gt; · &lt;grid&gt; · &lt;stack&gt;</div>
+<p class="balpyo-text" data-balpyo-id="s5.2.0.0.0.2" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">저자는 flex와 grid로 배치를 선언한다. 좌표를 쓰는 자리가 어휘에 없다.</p>
+</div>
+<div class="balpyo-text" data-balpyo-id="s5.2.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 16px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">row · col · grid · stack</div>
 </div>
 </div>
-<div class="balpyo-shape" data-balpyo-id="s5.1.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-col" data-balpyo-id="s5.1.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: space-between; height: 100%">
-<div class="balpyo-col" data-balpyo-id="s5.1.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
-<div class="balpyo-shape" data-balpyo-id="s5.1.1.0.0.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px); width: 100%; height: 48px">
+<div class="balpyo-shape" data-balpyo-id="s5.2.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s5.2.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s5.2.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
+<div class="balpyo-shape" data-balpyo-id="s5.2.1.0.0.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px); width: 100%; height: 44px; justify-content: center">
 <svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: none"><rect width="100%" height="100%" rx="6"/></svg>
-<div class="balpyo-text" data-balpyo-id="s5.1.1.0.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">측정</div>
+<div class="balpyo-text" data-balpyo-id="s5.2.1.0.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center; font-style: normal; text-decoration: none">② 측정</strong></div>
 </div>
-<p class="balpyo-text" data-balpyo-id="s5.1.1.0.0.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">헤드리스 Chromium이 요소마다 박스를 재고, 패스는 그 지오메트리만 읽는다.</p>
+<div class="balpyo-row" data-balpyo-id="s5.2.1.0.0.1" data-balpyo-el="row" style="gap: var(--balpyo-space-sm); width: 100%; height: 104px">
+<div class="balpyo-shape" data-balpyo-id="s5.2.1.0.0.1.0" data-balpyo-el="shape" style="width: 100%; height: 100%; justify-content: center">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: color-mix(in srgb, transparent, var(--balpyo-color-accent1) 12%); stroke: var(--balpyo-color-accent1); stroke-width: 2px; stroke-dasharray: 8px 6px"><rect width="100%" height="100%"/></svg>
+<div class="balpyo-text" data-balpyo-id="s5.2.1.0.0.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 15px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: center">x · y · w · h</div>
 </div>
-<div class="balpyo-text" data-balpyo-id="s5.1.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">getBoundingClientRect</div>
+<div class="balpyo-shape" data-balpyo-id="s5.2.1.0.0.1.1" data-balpyo-el="shape" style="width: 100%; height: 100%; justify-content: center">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: color-mix(in srgb, transparent, var(--balpyo-color-accent1) 12%); stroke: var(--balpyo-color-accent1); stroke-width: 2px; stroke-dasharray: 8px 6px"><rect width="100%" height="100%"/></svg>
+<div class="balpyo-text" data-balpyo-id="s5.2.1.0.0.1.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 15px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: center">x · y · w · h</div>
 </div>
 </div>
-<div class="balpyo-shape" data-balpyo-id="s5.1.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-col" data-balpyo-id="s5.1.2.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: space-between; height: 100%">
-<div class="balpyo-col" data-balpyo-id="s5.1.2.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
-<div class="balpyo-shape" data-balpyo-id="s5.1.2.0.0.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px); width: 100%; height: 48px">
+<p class="balpyo-text" data-balpyo-id="s5.2.1.0.0.2" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">헤드리스 Chromium이 요소마다 박스를 잰다. 패스는 그 rect만 읽는다.</p>
+</div>
+<div class="balpyo-text" data-balpyo-id="s5.2.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 16px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">getBoundingClientRect</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s5.2.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s5.2.2.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s5.2.2.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
+<div class="balpyo-shape" data-balpyo-id="s5.2.2.0.0.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px); width: 100%; height: 44px; justify-content: center">
 <svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: none"><rect width="100%" height="100%" rx="6"/></svg>
-<div class="balpyo-text" data-balpyo-id="s5.1.2.0.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">굽기</div>
+<div class="balpyo-text" data-balpyo-id="s5.2.2.0.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center; font-style: normal; text-decoration: none">③ 굽기</strong></div>
 </div>
-<p class="balpyo-text" data-balpyo-id="s5.1.2.0.0.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">잰 rect가 곧 PPTX 좌표다 — 1px은 9525 EMU이고 환산은 한 곳에만 있다.</p>
+<div class="balpyo-shape" data-balpyo-id="s5.2.2.0.0.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-sm) + 1.7574px) calc(var(--balpyo-space-xs) + 1.7574px) calc(var(--balpyo-space-sm) + 1.7574px); width: 100%; height: 104px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: color-mix(in srgb, transparent, var(--balpyo-color-fg) 5%); stroke: none"><rect width="100%" height="100%" rx="6"/></svg>
+<pre class="balpyo-text" data-balpyo-id="s5.2.2.0.0.1.0" data-balpyo-el="pre" style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; white-space: pre"><span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">&lt;a:off</span> <span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent2); text-align: start; font-style: normal; text-decoration: none">x=</span><span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: start; font-style: normal; text-decoration: none">&#34;609600&#34;</span>
+       <span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent2); text-align: start; font-style: normal; text-decoration: none">y=</span><span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: start; font-style: normal; text-decoration: none">&#34;1714500&#34;</span><span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">/&gt;</span>
+<span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">&lt;a:ext</span> <span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent2); text-align: start; font-style: normal; text-decoration: none">cx=</span><span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: start; font-style: normal; text-decoration: none">&#34;1562100&#34;</span>
+       <span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent2); text-align: start; font-style: normal; text-decoration: none">cy=</span><span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: start; font-style: normal; text-decoration: none">&#34;1066800&#34;</span><span style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; font-style: normal; text-decoration: none">/&gt;</span></pre>
 </div>
-<div class="balpyo-text" data-balpyo-id="s5.1.2.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">a:off · a:ext</div>
+<p class="balpyo-text" data-balpyo-id="s5.2.2.0.0.2" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">잰 rect가 곧 PPTX 좌표다 — 1px은 9525 EMU이고 환산은 한 곳에만 있다.</p>
+</div>
+<div class="balpyo-text" data-balpyo-id="s5.2.2.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 16px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start">a:off · a:ext</div>
 </div>
 </div>
 </div>
-<div class="balpyo-shape" data-balpyo-id="s5.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 3px"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-text" data-balpyo-id="s5.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: center">파이프라인이 주고받는 수치는 전부 논리 스테이지 px다 (16:9는 1280×720). EMU와 pt는 PPTX 렌더러 안에서만 존재한다.</div>
+<div class="balpyo-shape" data-balpyo-id="s5.3" data-balpyo-el="shape" data-balpyo-enter="rise" data-balpyo-enter-delay="420" style="padding: calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-md) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: none; stroke: var(--balpyo-color-accent1); stroke-width: 3px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s5.3.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: center">파이프라인이 주고받는 수치는 전부 논리 스테이지 px다 (16:9는 1280×720). EMU와 pt는 PPTX 렌더러 안에서만 존재한다.</div>
 </div>
 </div>
+<div class="balpyo-chrome balpyo-chrome-start" data-chrome-kind="footer" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">balpyo 소개</div>
+<div class="balpyo-chrome balpyo-chrome-end" data-chrome-kind="pageNumber" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: end">6</div>
 <div class="balpyo-notes" hidden>이것이 두 번째 통찰이다 — 브라우저를 레이아웃 엔진으로 빌려 쓴다.</div>
 </section>
 <section class="balpyo-slide" id="pptx" data-slide-index="6" data-slide-source="slides/007_pptx.slide">
 <div class="balpyo-stage">
-<h1 class="balpyo-text" data-balpyo-id="s6.0" data-balpyo-el="h1" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">태그가 무엇이 되는가</h1>
-<table class="balpyo-table balpyo-table-striped" data-balpyo-id="s6.1" data-balpyo-el="table">
+<h1 class="balpyo-text" data-balpyo-id="s6.0" data-balpyo-el="h1" data-balpyo-enter="rise" data-balpyo-enter-delay="150" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">태그가 무엇이 되는가</h1>
+<table class="balpyo-table balpyo-table-striped" data-balpyo-id="s6.1" data-balpyo-el="table" data-balpyo-enter="rise" data-balpyo-enter-delay="240">
 <tr data-balpyo-id="s6.1.0" data-balpyo-el="tr">
 <th data-balpyo-id="s6.1.0.0" data-balpyo-el="th" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start; background-color: var(--balpyo-color-accent1); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">SOML</th>
 <th data-balpyo-id="s6.1.0.1" data-balpyo-el="th" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start; background-color: var(--balpyo-color-accent1); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">PPTX 산출</th>
 </tr>
 <tr data-balpyo-id="s6.1.1" data-balpyo-el="tr">
-<td data-balpyo-id="s6.1.1.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">&lt;text&gt; · &lt;h1&gt; · &lt;p&gt; · &lt;blockquote&gt;</td>
+<td data-balpyo-id="s6.1.1.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">&lt;text&gt; · &lt;h1&gt; · &lt;p&gt; · &lt;ul&gt;</td>
 <td data-balpyo-id="s6.1.1.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">p:sp 텍스트 박스 — 확정된 rPr을 싣는다</td>
 </tr>
 <tr data-balpyo-id="s6.1.2" data-balpyo-el="tr">
-<td data-balpyo-id="s6.1.2.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">&lt;shape&gt; (프리셋 12종)</td>
-<td data-balpyo-id="s6.1.2.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">p:sp + prstGeom — 자식 텍스트를 흡수한다</td>
+<td data-balpyo-id="s6.1.2.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">&lt;shape&gt; (프리셋 16종 · path)</td>
+<td data-balpyo-id="s6.1.2.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">p:sp + prstGeom · custGeom — 글을 품는다</td>
 </tr>
 <tr data-balpyo-id="s6.1.3" data-balpyo-el="tr">
-<td data-balpyo-id="s6.1.3.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">&lt;image&gt;</td>
-<td data-balpyo-id="s6.1.3.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">p:pic + ppt/media 파트 (바이트 그대로)</td>
+<td data-balpyo-id="s6.1.3.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">&lt;image&gt; (PNG · JPEG · SVG)</td>
+<td data-balpyo-id="s6.1.3.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">p:pic — SVG는 벡터 그대로, PNG 대체본과 함께</td>
 </tr>
 <tr data-balpyo-id="s6.1.4" data-balpyo-el="tr">
-<td data-balpyo-id="s6.1.4.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">&lt;ul&gt; · &lt;ol&gt;</td>
-<td data-balpyo-id="s6.1.4.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">도형 하나 — 불릿 문단이 한 박스에 산다</td>
+<td data-balpyo-id="s6.1.4.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">&lt;row&gt; · &lt;col&gt; · &lt;grid&gt; · &lt;stack&gt;</td>
+<td data-balpyo-id="s6.1.4.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">도형 0개 — 자식의 절대 좌표에 녹는다</td>
 </tr>
 <tr data-balpyo-id="s6.1.5" data-balpyo-el="tr">
-<td data-balpyo-id="s6.1.5.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">&lt;row&gt; · &lt;col&gt; · &lt;grid&gt; · &lt;stack&gt;</td>
-<td data-balpyo-id="s6.1.5.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">도형 0개 — 자식의 절대 좌표에 녹는다</td>
+<td data-balpyo-id="s6.1.5.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">&lt;table&gt; (이 슬라이드)</td>
+<td data-balpyo-id="s6.1.5.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">p:graphicFrame + a:tbl — 편집 가능한 표</td>
 </tr>
 <tr data-balpyo-id="s6.1.6" data-balpyo-el="tr">
-<td data-balpyo-id="s6.1.6.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">&lt;table&gt; (이 슬라이드)</td>
-<td data-balpyo-id="s6.1.6.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">p:graphicFrame + a:tbl — 편집 가능한 표</td>
+<td data-balpyo-id="s6.1.6.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">&lt;chart&gt; · &lt;series&gt; · &lt;point&gt;</td>
+<td data-balpyo-id="s6.1.6.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">도형 + 텍스트 — 막대 하나가 도형 하나</td>
 </tr>
 <tr data-balpyo-id="s6.1.7" data-balpyo-el="tr">
-<td data-balpyo-id="s6.1.7.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">&lt;chart&gt; · &lt;point&gt;</td>
-<td data-balpyo-id="s6.1.7.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">도형 + 텍스트로 풀린다 — 막대 하나가 도형 하나</td>
+<td data-balpyo-id="s6.1.7.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">&lt;connector&gt;</td>
+<td data-balpyo-id="s6.1.7.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">p:cxnSp — 상자에 붙은 연결선</td>
+</tr>
+<tr data-balpyo-id="s6.1.8" data-balpyo-el="tr">
+<td data-balpyo-id="s6.1.8.0" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">enter= · transition=</td>
+<td data-balpyo-id="s6.1.8.1" data-balpyo-el="td" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; background-color: var(--balpyo-color-surface); border-width: 1px; border-style: solid; border-color: var(--balpyo-color-muted); vertical-align: top">p:timing · p:transition — 네이티브 등장 효과</td>
 </tr>
 </table>
 </div>
-<div class="balpyo-notes" hidden>PowerPoint에서 글자를 고칠 수 있고, 표는 셀을 클릭해 행을 더할 수 있다. &#34;열리는 파일&#34;과 &#34;편집 가능한 파일&#34;의 차이가 여기서 갈린다.</div>
+<div class="balpyo-chrome balpyo-chrome-start" data-chrome-kind="footer" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">balpyo 소개</div>
+<div class="balpyo-chrome balpyo-chrome-end" data-chrome-kind="pageNumber" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: end">7</div>
+<div class="balpyo-notes" hidden>PowerPoint에서 글자를 고칠 수 있고, 표는 셀을 클릭해 행을 더할 수 있다. 연결선은 상자를 끌면 따라온다. &#34;열리는 파일&#34;과 &#34;편집 가능한 파일&#34;의 차이가 여기서 갈린다.</div>
 </section>
 <section class="balpyo-slide" id="theme" data-slide-index="7" data-slide-source="slides/008_theme.slide">
 <div class="balpyo-stage">
-<h1 class="balpyo-text" data-balpyo-id="s7.0" data-balpyo-el="h1" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">테마는 디자인 시스템이다</h1>
-<div class="balpyo-grid" data-balpyo-id="s7.1" data-balpyo-el="grid" style="gap: var(--balpyo-space-sm); grid-template-columns: repeat(5, 1fr)">
-<div class="balpyo-shape" data-balpyo-id="s7.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px); width: 100%; height: 120px; justify-content: center">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-fg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="12"/></svg>
-<div class="balpyo-text" data-balpyo-id="s7.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">fg</div>
+<div class="balpyo-text" data-balpyo-id="s7.0" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="150" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">테마</div>
+<h1 class="balpyo-text" data-balpyo-id="s7.1" data-balpyo-el="h1" data-balpyo-enter="rise" data-balpyo-enter-delay="240" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">테마는 디자인 시스템이다</h1>
+<div class="balpyo-grid" data-balpyo-id="s7.2" data-balpyo-el="grid" data-balpyo-enter="rise" data-balpyo-enter-delay="330" style="gap: var(--balpyo-space-xs); grid-template-columns: repeat(10, 1fr)">
+<div class="balpyo-shape" data-balpyo-id="s7.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px); width: 100%; height: 96px; justify-content: end">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-fg); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s7.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">fg</div>
 </div>
-<div class="balpyo-shape" data-balpyo-id="s7.1.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px); width: 100%; height: 120px; justify-content: center">
+<div class="balpyo-shape" data-balpyo-id="s7.2.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px); width: 100%; height: 96px; justify-content: end">
 <svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="12"/></svg>
-<div class="balpyo-text" data-balpyo-id="s7.1.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">bg</div>
+<div class="balpyo-text" data-balpyo-id="s7.2.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">bg</div>
 </div>
-<div class="balpyo-shape" data-balpyo-id="s7.1.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px); width: 100%; height: 120px; justify-content: center">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-muted); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="12"/></svg>
-<div class="balpyo-text" data-balpyo-id="s7.1.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">muted</div>
+<div class="balpyo-shape" data-balpyo-id="s7.2.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px); width: 100%; height: 96px; justify-content: end">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-muted); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s7.2.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">muted</div>
 </div>
-<div class="balpyo-shape" data-balpyo-id="s7.1.3" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px); width: 100%; height: 120px; justify-content: center">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="12"/></svg>
-<div class="balpyo-text" data-balpyo-id="s7.1.3.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">surface</div>
+<div class="balpyo-shape" data-balpyo-id="s7.2.3" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px); width: 100%; height: 96px; justify-content: end">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s7.2.3.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">surface</div>
 </div>
-<div class="balpyo-shape" data-balpyo-id="s7.1.4" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px); width: 100%; height: 120px; justify-content: center">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="12"/></svg>
-<div class="balpyo-text" data-balpyo-id="s7.1.4.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">accent1</div>
+<div class="balpyo-shape" data-balpyo-id="s7.2.4" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px); width: 100%; height: 96px; justify-content: end">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s7.2.4.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">accent1</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s7.2.5" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px); width: 100%; height: 96px; justify-content: end">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent2); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s7.2.5.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">accent2</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s7.2.6" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px); width: 100%; height: 96px; justify-content: end">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent3); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s7.2.6.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">accent3</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s7.2.7" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px); width: 100%; height: 96px; justify-content: end">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent4); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s7.2.7.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">accent4</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s7.2.8" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px); width: 100%; height: 96px; justify-content: end">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent5); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s7.2.8.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">accent5</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s7.2.9" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px) calc(var(--balpyo-space-xs) + 3.5147px); width: 100%; height: 96px; justify-content: end">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent6); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s7.2.9.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center">accent6</div>
 </div>
 </div>
-<div class="balpyo-grid" data-balpyo-id="s7.2" data-balpyo-el="grid" style="gap: var(--balpyo-space-lg); grid-template-columns: repeat(2, 1fr); flex-grow: 1">
-<div class="balpyo-shape" data-balpyo-id="s7.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-col" data-balpyo-id="s7.2.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); height: 100%">
-<div class="balpyo-text" data-balpyo-id="s7.2.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">토큰과 컴포넌트가 파일이다</div>
-<ul class="balpyo-list" data-balpyo-id="s7.2.0.0.1" data-balpyo-el="ul">
-<li class="balpyo-text" data-balpyo-id="s7.2.0.0.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">tokens.json — 색 · 폰트 · 공간 · 반경 · 그림자</li>
-<li class="balpyo-text" data-balpyo-id="s7.2.0.0.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">components.json — 역할 5종과 variant (kicker · card · stat-card · badge)</li>
-<li class="balpyo-text" data-balpyo-id="s7.2.0.0.1.2" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">layouts 아래 CSS — 배치만 쓸 수 있고 외관을 쓰면 경고다</li>
+<div class="balpyo-grid" data-balpyo-id="s7.3" data-balpyo-el="grid" data-balpyo-enter="rise" data-balpyo-enter-delay="420" style="gap: var(--balpyo-space-lg); grid-template-columns: repeat(2, 1fr); flex-grow: 1">
+<div class="balpyo-shape" data-balpyo-id="s7.3.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s7.3.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); height: 100%">
+<div class="balpyo-text" data-balpyo-id="s7.3.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">네 파일이 한 테마다</div>
+<ul class="balpyo-list" data-balpyo-id="s7.3.0.0.1" data-balpyo-el="ul">
+<li class="balpyo-text" data-balpyo-id="s7.3.0.0.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 21px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start"><code style="font-family: var(--balpyo-font-mono); font-size: 21px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">tokens.json</code> — 색 · 글꼴 · 간격 · 반경 · 그림자 · 움직임</li>
+<li class="balpyo-text" data-balpyo-id="s7.3.0.0.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 21px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start"><code style="font-family: var(--balpyo-font-mono); font-size: 21px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">components.json</code> — 역할 다섯과 variant</li>
+<li class="balpyo-text" data-balpyo-id="s7.3.0.0.1.2" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 21px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start"><code style="font-family: var(--balpyo-font-mono); font-size: 21px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">layouts/*.css</code> — 자리만 쓴다, 외관은 경고다</li>
+<li class="balpyo-text" data-balpyo-id="s7.3.0.0.1.3" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 21px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start"><code style="font-family: var(--balpyo-font-mono); font-size: 21px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">assets/</code> — 배경 그림 · 로고 · 아이콘</li>
 </ul>
 </div>
 </div>
-<div class="balpyo-shape" data-balpyo-id="s7.2.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-col" data-balpyo-id="s7.2.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
-<div class="balpyo-col" data-balpyo-id="s7.2.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
-<div class="balpyo-text" data-balpyo-id="s7.2.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">토큰은 눕지 않는다</div>
-<p class="balpyo-text" data-balpyo-id="s7.2.1.0.0.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">토큰으로 쓴 색은 웹에서 CSS 변수로, PPTX에서 a:schemeClr로 남는다. 리터럴만 srgbClr가 된다.</p>
+<div class="balpyo-shape" data-balpyo-id="s7.3.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s7.3.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm); justify-content: space-between; height: 100%">
+<div class="balpyo-col" data-balpyo-id="s7.3.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-sm)">
+<div class="balpyo-text" data-balpyo-id="s7.3.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">토큰은 눕지 않는다</div>
+<p class="balpyo-text" data-balpyo-id="s7.3.1.0.0.1" data-balpyo-el="p" style="font-family: var(--balpyo-font-body); font-size: 21px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">토큰으로 쓴 색은 웹에서 CSS 변수로, PPTX에서 <code style="font-family: var(--balpyo-font-mono); font-size: 21px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">a:schemeClr</code>로 남는다. 리터럴만 <code style="font-family: var(--balpyo-font-mono); font-size: 21px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; font-style: normal; text-decoration: none">srgbClr</code>가 된다.</p>
 </div>
-<div class="balpyo-text" data-balpyo-id="s7.2.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 26px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent1); text-align: start">→ PowerPoint에서 테마 색을 바꾸면 덱이 따라온다</div>
-</div>
-</div>
+<div class="balpyo-text" data-balpyo-id="s7.3.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-accent1); text-align: start">→ PowerPoint에서 테마 색을 바꾸면 덱이 따라온다</div>
 </div>
 </div>
+</div>
+</div>
+<div class="balpyo-chrome balpyo-chrome-start" data-chrome-kind="footer" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">balpyo 소개</div>
+<div class="balpyo-chrome balpyo-chrome-end" data-chrome-kind="pageNumber" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: end">8</div>
 <div class="balpyo-notes" hidden>토큰이 리터럴로 눕는 순간 제품의 약속이 깨진다. 골든 테스트가 그것을 감시한다.</div>
 </section>
 <section class="balpyo-slide" id="determinism" data-slide-index="8" data-slide-source="slides/009_determinism.slide">
-<div class="balpyo-stage balpyo-layout-two-column balpyo-slots">
-<h1 class="balpyo-text" data-balpyo-id="s8.0" data-balpyo-el="h1" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start; grid-area: title">두 렌더가 같은 컴포넌트를 낸다</h1>
-<div class="balpyo-col" data-balpyo-id="s8.1" data-balpyo-el="col" style="height: 100%; grid-area: left">
-<div class="balpyo-shape" data-balpyo-id="s8.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-col" data-balpyo-id="s8.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: space-between; height: 100%">
-<div class="balpyo-col" data-balpyo-id="s8.1.0.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md)">
-<div class="balpyo-text" data-balpyo-id="s8.1.0.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">무엇이 같은가</div>
-<ul class="balpyo-list" data-balpyo-id="s8.1.0.0.0.1" data-balpyo-el="ul">
-<li class="balpyo-text" data-balpyo-id="s8.1.0.0.0.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">요소 하나는 두 타깃에서 같은 종류의 객체다</li>
-<li class="balpyo-text" data-balpyo-id="s8.1.0.0.0.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">자리는 브라우저가 잰 rect, 외관은 해석된 값이다</li>
-<li class="balpyo-text" data-balpyo-id="s8.1.0.0.0.1.2" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">문서 순서가 곧 도형 순서다</li>
-</ul>
-</div>
-<div class="balpyo-text" data-balpyo-id="s8.1.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">줄이 어디서 접히는지는 각 엔진의 몫이다 — 약속 밖이다.</div>
+<div class="balpyo-stage">
+<div class="balpyo-text" data-balpyo-id="s8.0" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="150" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">무엇이 판정하는가</div>
+<h1 class="balpyo-text" data-balpyo-id="s8.1" data-balpyo-el="h1" data-balpyo-enter="rise" data-balpyo-enter-delay="240" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">두 렌더가 같은 컴포넌트를 낸다</h1>
+<div class="balpyo-row" data-balpyo-id="s8.2" data-balpyo-el="row" data-balpyo-enter="rise" data-balpyo-enter-delay="330" style="gap: var(--balpyo-space-xl); align-items: center; flex-grow: 1">
+<div class="balpyo-row" data-balpyo-id="s8.2.0" data-balpyo-el="row" style="gap: 0px; align-items: center; width: 560px">
+<div class="balpyo-shape" data-balpyo-id="s8.2.0.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px); width: 130px; height: 96px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s8.2.0.0.0" data-balpyo-el="col" style="gap: 0px; justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s8.2.0.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 22px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">SOML</div>
+<div class="balpyo-text" data-balpyo-id="s8.2.0.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 16px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">덱 트리</div>
 </div>
 </div>
+<div class="balpyo-spacer" data-balpyo-id="s8.2.0.1" data-balpyo-el="spacer" style="flex-grow: 1"></div>
+<div class="balpyo-col" data-balpyo-id="s8.2.0.2" data-balpyo-el="col" style="gap: var(--balpyo-space-2xl); width: 190px">
+<div class="balpyo-shape" data-balpyo-id="s8.2.0.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px); width: 100%; height: 84px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s8.2.0.2.0.0" data-balpyo-el="col" style="gap: 0px; justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s8.2.0.2.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 20px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">웹이 잰 트리</div>
+<div class="balpyo-text" data-balpyo-id="s8.2.0.2.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 16px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">Chromium · rect</div>
 </div>
-<div class="balpyo-col" data-balpyo-id="s8.2" data-balpyo-el="col" style="height: 100%; grid-area: right">
-<div class="balpyo-shape" data-balpyo-id="s8.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-col" data-balpyo-id="s8.2.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); justify-content: space-between; height: 100%">
-<div class="balpyo-col" data-balpyo-id="s8.2.0.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md)">
-<div class="balpyo-text" data-balpyo-id="s8.2.0.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">무엇이 판정하는가</div>
-<ul class="balpyo-list" data-balpyo-id="s8.2.0.0.0.1" data-balpyo-el="ul">
-<li class="balpyo-text" data-balpyo-id="s8.2.0.0.0.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start">PPTX에서 읽은 트리가 웹이 잰 트리와 같다</li>
-<li class="balpyo-text" data-balpyo-id="s8.2.0.0.0.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start">모든 XML 파트가 ECMA-376 스키마를 통과한다</li>
-<li class="balpyo-text" data-balpyo-id="s8.2.0.0.0.1.2" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: start">같은 입력은 같은 바이트를 낸다</li>
-</ul>
 </div>
-<div class="balpyo-text" data-balpyo-id="s8.2.0.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-bg); text-align: start">셋 다 go test ./... 한 줄에 들어 있다.</div>
+<div class="balpyo-shape" data-balpyo-id="s8.2.0.2.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px); width: 100%; height: 84px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s8.2.0.2.1.0" data-balpyo-el="col" style="gap: 0px; justify-content: center; height: 100%">
+<div class="balpyo-text" data-balpyo-id="s8.2.0.2.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 20px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">PPTX의 트리</div>
+<div class="balpyo-text" data-balpyo-id="s8.2.0.2.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 16px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">XML을 다시 읽는다</div>
 </div>
 </div>
 </div>
+<div class="balpyo-spacer" data-balpyo-id="s8.2.0.3" data-balpyo-el="spacer" style="flex-grow: 1"></div>
+<div class="balpyo-shape" data-balpyo-id="s8.2.0.4" data-balpyo-el="shape" data-balpyo-enter="zoom" data-balpyo-enter-delay="420" style="width: 96px; height: 96px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent3); stroke: none; filter: drop-shadow(var(--balpyo-shadow-soft))"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
+<div class="balpyo-text" data-balpyo-id="s8.2.0.4.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 48px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-bg); text-align: center">=</div>
 </div>
+</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s8.2.1" data-balpyo-el="col" style="gap: var(--balpyo-space-lg); flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-row" data-balpyo-id="s8.2.1.0" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: start">
+<div class="balpyo-shape" data-balpyo-id="s8.2.1.0.0" data-balpyo-el="shape" style="width: 36px; height: 36px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent3); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
+<div class="balpyo-text" data-balpyo-id="s8.2.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center; font-style: normal; text-decoration: none">✓</strong></div>
+</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s8.2.1.0.1" data-balpyo-el="col" style="gap: 0px; flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-text" data-balpyo-id="s8.2.1.0.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">패리티</div>
+<div class="balpyo-text" data-balpyo-id="s8.2.1.0.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">종류 · rect · 외관 · 순서 · 글자 런이 같다</div>
+</div>
+</div>
+<div class="balpyo-row" data-balpyo-id="s8.2.1.1" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: start">
+<div class="balpyo-shape" data-balpyo-id="s8.2.1.1.0" data-balpyo-el="shape" style="width: 36px; height: 36px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent3); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
+<div class="balpyo-text" data-balpyo-id="s8.2.1.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center; font-style: normal; text-decoration: none">✓</strong></div>
+</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s8.2.1.1.1" data-balpyo-el="col" style="gap: 0px; flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-text" data-balpyo-id="s8.2.1.1.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">스키마</div>
+<div class="balpyo-text" data-balpyo-id="s8.2.1.1.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">모든 XML 파트가 ECMA-376을 통과한다</div>
+</div>
+</div>
+<div class="balpyo-row" data-balpyo-id="s8.2.1.2" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: start">
+<div class="balpyo-shape" data-balpyo-id="s8.2.1.2.0" data-balpyo-el="shape" style="width: 36px; height: 36px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent3); stroke: none"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+<div class="balpyo-shape-body" style="left: 14.6447%; top: 14.6447%; right: 14.6447%; bottom: 14.6447%; justify-content: center">
+<div class="balpyo-text" data-balpyo-id="s8.2.1.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center"><strong style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.4; color: var(--balpyo-color-bg); text-align: center; font-style: normal; text-decoration: none">✓</strong></div>
+</div>
+</div>
+<div class="balpyo-col" data-balpyo-id="s8.2.1.2.1" data-balpyo-el="col" style="gap: 0px; flex-grow: 1; flex-basis: 0px">
+<div class="balpyo-text" data-balpyo-id="s8.2.1.2.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 24px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-fg); text-align: start">결정성</div>
+<div class="balpyo-text" data-balpyo-id="s8.2.1.2.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">같은 입력은 같은 바이트를 낸다</div>
+</div>
+</div>
+</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s8.7" data-balpyo-el="shape" data-balpyo-enter="rise" data-balpyo-enter-delay="870" style="padding: calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-md) + 3.5147px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-row" data-balpyo-id="s8.7.0" data-balpyo-el="row" style="gap: var(--balpyo-space-md); align-items: center; justify-content: space-between">
+<div class="balpyo-text" data-balpyo-id="s8.7.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start"><span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: start; font-style: normal; text-decoration: none">$</span> go test ./...</div>
+<div class="balpyo-text" data-balpyo-id="s8.7.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">줄이 어디서 접히는지는 각 엔진의 몫이다 — 약속 밖이다.</div>
+</div>
+</div>
+</div>
+<svg class="balpyo-connectors" viewBox="0 0 1280 720" aria-hidden="true">
+<marker id="balpyo-s8-3-end" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" data-balpyo-enter="fade" data-balpyo-enter-delay="960" style="fill: var(--balpyo-color-muted)"/></marker>
+<path data-balpyo-connector="s8.3" d="M194,388.59 L230,388.59 L230,310.59 L261,310.59" pathLength="1" data-balpyo-enter="draw" data-balpyo-enter-delay="510" marker-end="url(#balpyo-s8-3-end)" style="fill: none; stroke: var(--balpyo-color-muted); stroke-width: 2px"/>
+<marker id="balpyo-s8-4-end" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" data-balpyo-enter="fade" data-balpyo-enter-delay="1050" style="fill: var(--balpyo-color-muted)"/></marker>
+<path data-balpyo-connector="s8.4" d="M194,388.59 L230,388.59 L230,466.59 L261,466.59" pathLength="1" data-balpyo-enter="draw" data-balpyo-enter-delay="600" marker-end="url(#balpyo-s8-4-end)" style="fill: none; stroke: var(--balpyo-color-muted); stroke-width: 2px"/>
+<marker id="balpyo-s8-5-end" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" data-balpyo-enter="fade" data-balpyo-enter-delay="1140" style="fill: var(--balpyo-color-accent1)"/></marker>
+<path data-balpyo-connector="s8.5" d="M456,310.59 L492,310.59 L492,388.59 L523,388.59" pathLength="1" data-balpyo-enter="draw" data-balpyo-enter-delay="690" marker-end="url(#balpyo-s8-5-end)" style="fill: none; stroke: var(--balpyo-color-accent1); stroke-width: 2px"/>
+<marker id="balpyo-s8-6-end" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" data-balpyo-enter="fade" data-balpyo-enter-delay="1230" style="fill: var(--balpyo-color-accent1)"/></marker>
+<path data-balpyo-connector="s8.6" d="M456,466.59 L492,466.59 L492,388.59 L523,388.59" pathLength="1" data-balpyo-enter="draw" data-balpyo-enter-delay="780" marker-end="url(#balpyo-s8-6-end)" style="fill: none; stroke: var(--balpyo-color-accent1); stroke-width: 2px"/>
+</svg>
+<div class="balpyo-chrome balpyo-chrome-start" data-chrome-kind="footer" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">balpyo 소개</div>
+<div class="balpyo-chrome balpyo-chrome-end" data-chrome-kind="pageNumber" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: end">9</div>
 <div class="balpyo-notes" hidden>골든은 좌표 없는 레이아웃 트리와 진단 둘뿐이다 — 좌표는 동일성 판정이 매번 다시 재므로, diff에는 &#34;도형이 하나 늘었다&#34;만 남는다.</div>
 </section>
-<section class="balpyo-slide" id="quote" data-slide-index="9" data-slide-source="slides/010_quote.slide">
+<section class="balpyo-slide balpyo-inverse" id="quote" data-slide-index="9" data-slide-source="slides/010_quote.slide">
 <div class="balpyo-stage balpyo-layout-quote">
-<blockquote class="balpyo-text" data-balpyo-id="s9.0" data-balpyo-el="blockquote" style="font-family: var(--balpyo-font-body); font-size: 52px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">“열리는 파일”과 “편집 가능한 파일”의 차이가 이 제품의 핵심이다.</blockquote>
-<div class="balpyo-text" data-balpyo-id="s9.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: center">— 테스트 문서, 사람이 직접 pptx를 열어 확인하는 단계를 자동화하지 않는 이유</div>
+<div class="balpyo-text" data-balpyo-id="s9.0" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="150" style="font-family: var(--balpyo-font-heading); font-size: 160px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-accent1); text-align: center">“</div>
+<blockquote class="balpyo-text" data-balpyo-id="s9.1" data-balpyo-el="blockquote" data-balpyo-enter="rise" data-balpyo-enter-delay="240" style="font-family: var(--balpyo-font-body); font-size: 50px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">“열리는 파일”과 <span style="font-family: var(--balpyo-font-body); font-size: 50px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: center; font-style: normal; text-decoration: none">“편집 가능한 파일”</span>의 차이가 이 제품의 핵심이다.</blockquote>
+<div class="balpyo-shape" data-balpyo-id="s9.2" data-balpyo-el="shape" data-balpyo-enter="rise" data-balpyo-enter-delay="330" style="width: 72px; height: 4px; align-self: center">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-accent1); stroke: none"><rect width="100%" height="100%"/></svg>
 </div>
+<div class="balpyo-text" data-balpyo-id="s9.3" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="420" style="font-family: var(--balpyo-font-body); font-size: 24px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-muted); text-align: center">— 테스트 문서, 사람이 직접 pptx를 열어 확인하는 단계를 자동화하지 않는 이유</div>
+</div>
+<div class="balpyo-chrome balpyo-chrome-start" data-chrome-kind="footer" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">balpyo 소개</div>
+<div class="balpyo-chrome balpyo-chrome-end" data-chrome-kind="pageNumber" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: end">10</div>
 <div class="balpyo-notes" hidden>그래서 바뀔 때마다 PowerPoint나 Keynote로 직접 연다.</div>
 </section>
 <section class="balpyo-slide" id="status" data-slide-index="10" data-slide-source="slides/011_status.slide">
-<div class="balpyo-stage balpyo-layout-two-column balpyo-slots">
-<h1 class="balpyo-text" data-balpyo-id="s10.0" data-balpyo-el="h1" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start; grid-area: title">지금 되는 것과 다음</h1>
-<div class="balpyo-col" data-balpyo-id="s10.1" data-balpyo-el="col" style="height: 100%; grid-area: left">
-<div class="balpyo-shape" data-balpyo-id="s10.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-col" data-balpyo-id="s10.1.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); height: 100%">
-<div class="balpyo-text" data-balpyo-id="s10.1.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">동작한다</div>
-<ul class="balpyo-list" data-balpyo-id="s10.1.0.0.1" data-balpyo-el="ul">
-<li class="balpyo-text" data-balpyo-id="s10.1.0.0.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">파싱에서 두 타깃까지 전 구간 — 웹 + 편집 가능한 네이티브 PPTX</li>
-<li class="balpyo-text" data-balpyo-id="s10.1.0.0.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">텍스트 서브셋 · 레이아웃 컨테이너 · 도형 12종 · 그림 · 겹침 · 그라디언트</li>
-<li class="balpyo-text" data-balpyo-id="s10.1.0.0.1.2" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">레이아웃 11종과 슬롯 — 슬롯은 PPTX에서 진짜 플레이스홀더가 된다</li>
-<li class="balpyo-text" data-balpyo-id="s10.1.0.0.1.3" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">표와 차트 · 코드 강조 · 단계별 공개</li>
-<li class="balpyo-text" data-balpyo-id="s10.1.0.0.1.4" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">내장 테마 셋과 외부 테마 패키지</li>
-<li class="balpyo-text" data-balpyo-id="s10.1.0.0.1.5" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">init · build · check · watch · preview</li>
-</ul>
-</div>
-</div>
-</div>
-<div class="balpyo-col" data-balpyo-id="s10.2" data-balpyo-el="col" style="height: 100%; grid-area: right">
-<div class="balpyo-shape" data-balpyo-id="s10.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%; height: 100%">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: none"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-stage">
+<div class="balpyo-text" data-balpyo-id="s10.0" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="150" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">지금</div>
+<h1 class="balpyo-text" data-balpyo-id="s10.1" data-balpyo-el="h1" data-balpyo-enter="rise" data-balpyo-enter-delay="240" style="font-family: var(--balpyo-font-heading); font-size: 56px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: start">되는 것과 다음</h1>
+<div class="balpyo-grid" data-balpyo-id="s10.2" data-balpyo-el="grid" data-balpyo-enter="rise" data-balpyo-enter-delay="330" style="gap: var(--balpyo-space-lg); grid-template-columns: 3fr 2fr; flex-grow: 1">
+<div class="balpyo-shape" data-balpyo-id="s10.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
 <div class="balpyo-col" data-balpyo-id="s10.2.0.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); height: 100%">
-<div class="balpyo-text" data-balpyo-id="s10.2.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent1); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">다음</div>
-<ul class="balpyo-list" data-balpyo-id="s10.2.0.0.1" data-balpyo-el="ul">
-<li class="balpyo-text" data-balpyo-id="s10.2.0.0.1.0" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">테마가 소유하는 배경과 자산 — 배경 그림 · 로고</li>
-<li class="balpyo-text" data-balpyo-id="s10.2.0.0.1.1" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">테마 variant의 그라디언트 토큰</li>
-<li class="balpyo-text" data-balpyo-id="s10.2.0.0.1.2" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">측정 브라우저에 없는 테마 글꼴 경고</li>
-<li class="balpyo-text" data-balpyo-id="s10.2.0.0.1.3" data-balpyo-el="li" style="font-family: var(--balpyo-font-body); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">진단 다듬기 — 오타 후보 · 정렬 · 한 사고 한 경고</li>
-</ul>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">동작한다</div>
+<div class="balpyo-row" data-balpyo-id="s10.2.0.0.1" data-balpyo-el="row" style="gap: var(--balpyo-space-xs); flex-wrap: wrap">
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">웹 + 네이티브 PPTX</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">레이아웃 11종 · 슬롯</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">도형 16종 · path</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.3" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.3.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">표</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.4" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.4.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">차트 · 여러 계열</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.5" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.5.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">연결선</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.6" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.6.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">등장 · 전환</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.7" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.7.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">코드 강조</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.8" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.8.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">SVG 그림</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.9" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.9.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">빗금 · 그라디언트</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.10" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.10.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">뒤집힌 장</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.11" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.11.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">테마 배경 · 로고</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.12" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.12.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">theme install</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.13" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.13.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">줄:열 진단</div>
+</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.0.0.1.14" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-xs) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px)">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-text" data-balpyo-id="s10.2.0.0.1.14.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start">init · build · check · watch · preview</div>
 </div>
 </div>
 </div>
 </div>
-<div class="balpyo-notes" hidden>오른쪽 열이 다음에 할 일이다.</div>
+<div class="balpyo-shape" data-balpyo-id="s10.2.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px) calc(var(--balpyo-space-lg) + 7.0294px); width: 100%">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-bg); stroke: var(--balpyo-color-muted); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
+<div class="balpyo-col" data-balpyo-id="s10.2.1.0" data-balpyo-el="col" style="gap: var(--balpyo-space-md); height: 100%">
+<div class="balpyo-text" data-balpyo-id="s10.2.1.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--balpyo-color-muted); text-align: start; letter-spacing: 0.1em; text-transform: uppercase">다음</div>
+<div class="balpyo-col" data-balpyo-id="s10.2.1.0.1" data-balpyo-el="col" style="gap: var(--balpyo-space-md)">
+<div class="balpyo-row" data-balpyo-id="s10.2.1.0.1.0" data-balpyo-el="row" style="gap: var(--balpyo-space-sm); align-items: center">
+<div class="balpyo-shape" data-balpyo-id="s10.2.1.0.1.0.0" data-balpyo-el="shape" style="width: 16px; height: 16px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: none; stroke: var(--balpyo-color-muted); stroke-width: 2px"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+</div>
+<div class="balpyo-text" data-balpyo-id="s10.2.1.0.1.0.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; flex-grow: 1; flex-basis: 0px">챕터를 PPTX 섹션으로</div>
+</div>
+<div class="balpyo-row" data-balpyo-id="s10.2.1.0.1.1" data-balpyo-el="row" style="gap: var(--balpyo-space-sm); align-items: center">
+<div class="balpyo-shape" data-balpyo-id="s10.2.1.0.1.1.0" data-balpyo-el="shape" style="width: 16px; height: 16px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: none; stroke: var(--balpyo-color-muted); stroke-width: 2px"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+</div>
+<div class="balpyo-text" data-balpyo-id="s10.2.1.0.1.1.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; flex-grow: 1; flex-basis: 0px">차트 값의 앞붙이 · 천 단위</div>
+</div>
+<div class="balpyo-row" data-balpyo-id="s10.2.1.0.1.2" data-balpyo-el="row" style="gap: var(--balpyo-space-sm); align-items: center">
+<div class="balpyo-shape" data-balpyo-id="s10.2.1.0.1.2.0" data-balpyo-el="shape" style="width: 16px; height: 16px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: none; stroke: var(--balpyo-color-muted); stroke-width: 2px"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+</div>
+<div class="balpyo-text" data-balpyo-id="s10.2.1.0.1.2.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; flex-grow: 1; flex-basis: 0px">표 칸의 글자 크기</div>
+</div>
+<div class="balpyo-row" data-balpyo-id="s10.2.1.0.1.3" data-balpyo-el="row" style="gap: var(--balpyo-space-sm); align-items: center">
+<div class="balpyo-shape" data-balpyo-id="s10.2.1.0.1.3.0" data-balpyo-el="shape" style="width: 16px; height: 16px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: none; stroke: var(--balpyo-color-muted); stroke-width: 2px"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+</div>
+<div class="balpyo-text" data-balpyo-id="s10.2.1.0.1.3.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; flex-grow: 1; flex-basis: 0px">늘린 프리셋의 매개변수</div>
+</div>
+<div class="balpyo-row" data-balpyo-id="s10.2.1.0.1.4" data-balpyo-el="row" style="gap: var(--balpyo-space-sm); align-items: center">
+<div class="balpyo-shape" data-balpyo-id="s10.2.1.0.1.4.0" data-balpyo-el="shape" style="width: 16px; height: 16px">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: none; stroke: var(--balpyo-color-muted); stroke-width: 2px"><ellipse cx="50%" cy="50%" rx="50%" ry="50%"/></svg>
+</div>
+<div class="balpyo-text" data-balpyo-id="s10.2.1.0.1.4.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-body); font-size: 22px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: start; flex-grow: 1; flex-basis: 0px">영어 레퍼런스</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="balpyo-chrome balpyo-chrome-start" data-chrome-kind="footer" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: start">balpyo 소개</div>
+<div class="balpyo-chrome balpyo-chrome-end" data-chrome-kind="pageNumber" style="font-family: var(--balpyo-font-body); font-size: 18px; font-weight: 400; line-height: 1.4; color: var(--balpyo-color-muted); text-align: end">11</div>
+<div class="balpyo-notes" hidden>왼쪽이 지금 되는 것, 오른쪽이 다음에 할 일이다. 순서는 정하지 않았다.</div>
 </section>
 <section class="balpyo-slide" id="end" data-slide-index="11" data-slide-source="slides/012_end.slide">
 <div class="balpyo-stage balpyo-layout-end">
-<div class="balpyo-text" data-balpyo-id="s11.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 80px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: center">SOML로 한 번 쓴다</div>
-<div class="balpyo-text" data-balpyo-id="s11.1" data-balpyo-el="text" style="font-family: var(--balpyo-font-heading); font-size: 32px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-muted); text-align: center">나머지는 balpyo가 두 곳으로 렌더한다</div>
-<div class="balpyo-grid" data-balpyo-id="s11.2" data-balpyo-el="grid" style="gap: var(--balpyo-space-md); grid-template-columns: repeat(3, 1fr); width: 100%">
-<div class="balpyo-shape" data-balpyo-id="s11.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px); width: 100%; height: 72px; justify-content: center">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-text" data-balpyo-id="s11.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">balpyo init my-talk</div>
+<div class="balpyo-text" data-balpyo-id="s11.0" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="150" style="font-family: var(--balpyo-font-heading); font-size: 80px; font-weight: 700; line-height: 1.2; color: var(--balpyo-color-fg); text-align: center">SOML로 <span style="font-family: var(--balpyo-font-heading); font-size: 80px; font-weight: 700; line-height: 1.2; background-image: linear-gradient(90deg, var(--balpyo-color-accent1), var(--balpyo-color-accent6)); -webkit-background-clip: text; background-clip: text; color: transparent; text-align: center; font-style: normal; text-decoration: none">한 번 쓴다</span></div>
+<div class="balpyo-text" data-balpyo-id="s11.1" data-balpyo-el="text" data-balpyo-enter="rise" data-balpyo-enter-delay="240" style="font-family: var(--balpyo-font-heading); font-size: 30px; font-weight: 700; line-height: 1.3; color: var(--balpyo-color-muted); text-align: center">나머지는 balpyo가 두 곳으로 렌더한다</div>
+<div class="balpyo-grid" data-balpyo-id="s11.2" data-balpyo-el="grid" data-balpyo-enter="rise" data-balpyo-enter-delay="330" style="gap: var(--balpyo-space-md); grid-template-columns: repeat(3, 1fr); width: 100%">
+<div class="balpyo-shape" data-balpyo-id="s11.2.0" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px); width: 100%; height: 68px; justify-content: center">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-fg); stroke: none; filter: drop-shadow(var(--balpyo-shadow-soft))"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s11.2.0.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center"><span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: center; font-style: normal; text-decoration: none">$</span> balpyo init my-talk</div>
 </div>
-<div class="balpyo-shape" data-balpyo-id="s11.2.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px); width: 100%; height: 72px; justify-content: center">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-text" data-balpyo-id="s11.2.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">balpyo build</div>
+<div class="balpyo-shape" data-balpyo-id="s11.2.1" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px); width: 100%; height: 68px; justify-content: center">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-fg); stroke: none; filter: drop-shadow(var(--balpyo-shadow-soft))"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s11.2.1.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center"><span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: center; font-style: normal; text-decoration: none">$</span> balpyo build</div>
 </div>
-<div class="balpyo-shape" data-balpyo-id="s11.2.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px) calc(var(--balpyo-space-sm) + 7.0294px); width: 100%; height: 72px; justify-content: center">
-<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-surface); stroke: var(--balpyo-color-accent1); stroke-width: 1px"><rect width="100%" height="100%" rx="24"/></svg>
-<div class="balpyo-text" data-balpyo-id="s11.2.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-fg); text-align: center">balpyo watch</div>
+<div class="balpyo-shape" data-balpyo-id="s11.2.2" data-balpyo-el="shape" style="padding: calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px) calc(var(--balpyo-space-sm) + 3.5147px); width: 100%; height: 68px; justify-content: center">
+<svg class="balpyo-shape-ink" aria-hidden="true" style="fill: var(--balpyo-color-fg); stroke: none; filter: drop-shadow(var(--balpyo-shadow-soft))"><rect width="100%" height="100%" rx="12"/></svg>
+<div class="balpyo-text" data-balpyo-id="s11.2.2.0" data-balpyo-el="text" style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-bg); text-align: center"><span style="font-family: var(--balpyo-font-mono); font-size: 20px; font-weight: 400; line-height: 1.5; color: var(--balpyo-color-accent3); text-align: center; font-style: normal; text-decoration: none">$</span> balpyo watch</div>
 </div>
 </div>
 </div>

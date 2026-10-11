@@ -40,9 +40,12 @@ qa: ## web | PPTX review gallery for every example deck and fixture → preview/
 # 커밋하는 산출물이라 렌더 결과가 바뀌면 이 타깃을 다시 돌려 함께 커밋한다. 스크린샷은 웹 렌더다
 # (balpyo preview --target html — 브라우저만 있으면 된다). 예제 테마는 덱마다 themes/에 넣어 둔다.
 SHOWCASE        := examples/showcase
-SHOWCASE_SLIDES := balpyo-intro:04 balpyo-intro:07 incident-postmortem:03 incident-postmortem:05 incident-postmortem:08 quarterly-review:05 ec2-intro:01 ec2-intro:06 ec2-intro:10 ec2-intro:11
+SHOWCASE_SLIDES := balpyo-intro:04 incident-postmortem:03 quarterly-review:03 quarterly-review:06 incident-postmortem:06 incident-postmortem:05 quarterly-review:04 incident-postmortem:08 ec2-intro:01 ec2-intro:06 ec2-intro:10 ec2-intro:11
 SHOWCASE_THEMED := balpyo-intro:01 balpyo-intro:06
-SHOWCASE_THEMES := minimal editorial ink harbor
+SHOWCASE_THEMES := minimal editorial ink harbor aurora
+# 테마 비교 표의 마지막 줄을 채우는 낱장: 테마:덱:장. 그림을 가진 테마(aurora)가 표지 말고 어디에
+# 그림을 쓰는지 보여 준다.
+SHOWCASE_EXTRA  := aurora:balpyo-intro:12 aurora:quarterly-review:06
 
 showcase: ## regenerate the README showcase (example deck output and screenshots) in examples/showcase/
 	@set -e; tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
@@ -66,6 +69,13 @@ showcase: ## regenerate the README showcase (example deck output and screenshots
 			deck=$${pick%%:*}; n=$${pick##*:}; \
 			cp "$$tmp"/gallery-$$deck-$$theme/*/$$n-web.png $(SHOWCASE)/images/themes/$$deck-$$n-$$theme.png; \
 		done; \
+	done; \
+	for pick in $(SHOWCASE_EXTRA); do \
+		theme=$${pick%%:*}; rest=$${pick#*:}; deck=$${rest%%:*}; n=$${rest##*:}; \
+		if [ ! -d "$$tmp/gallery-$$deck-$$theme" ]; then \
+			"$$tmp/balpyo" preview --project "$$tmp/$$deck" --theme $$theme --target html --out "$$tmp/out-$$deck-$$theme" --gallery "$$tmp/gallery-$$deck-$$theme" >/dev/null; \
+		fi; \
+		cp "$$tmp"/gallery-$$deck-$$theme/*/$$n-web.png $(SHOWCASE)/images/themes/$$deck-$$n-$$theme.png; \
 	done; \
 	echo "showcase: $(SHOWCASE)/"
 
