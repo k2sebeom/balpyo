@@ -97,6 +97,7 @@
 | [0088](0088-a-pattern-fill-is-a-preset-hatch-on-shapes.md) | 무늬 채움은 도형에만 쓰는 프리셋 빗금이다 | 백로그 Q15 | 확정 |
 | [0089](0089-a-chart-takes-several-series-that-share-its-categories.md) | 차트는 범주를 함께 쓰는 여러 계열을 받는다 | 백로그 Q15 | 확정 |
 | [0090](0090-svg-images-carry-a-browser-rasterized-fallback-in-pptx.md) | SVG 그림은 PPTX에서 브라우저가 래스터화한 대체 그림을 함께 싣는다 | 백로그 Q8 | 확정 (0025의 포맷 어휘를 대체한다) |
+| [0091](0091-a-theme-carries-a-readme-for-the-deck-author.md) | 테마는 덱 저자에게 쓰는 README를 담고, `balpyo theme info`가 그것을 보인다 | — | 확정 |
 
 0066까지의 ADR에 나오는 `PRD §…` 인용은 커밋 `2121a0b`의 `PRD.md`를 뜻한다. 그 절이 지금 어디에
 있는지는 [0067](0067-prd-is-retired-and-its-standing-decisions-move-here.md)의 대응표가 적는다.
