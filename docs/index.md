@@ -87,6 +87,8 @@ my-talk/
 ```
 
 우선순위: **CLI 플래그 > `balpyo.json` > 기본값.** `aspect`는 `16:9`(기본) 또는 `4:3`이다.
+`lang`은 덱의 **자연어**다 (`index.html`의 `lang`, `ko`이면 어절 줄바꿈) — 코드 블록의 언어는
+[`<pre lang>`](reference/soml/text-subset.md#코드-블록-lang과-탭)이 따로 정한다.
 
 `footer`·`pageNumber`는 [덱 크롬](reference/theme.md#덱-크롬-chrome)을 켠다 — 둘 다 기본은
 꺼짐이고, 그 글자가 어디에 어떤 크기로 앉는지는 테마가 정한다.
