@@ -132,7 +132,7 @@ CSS 선언(`font-family` `font-size` `font-weight` `line-height` `color` `text-a
 
 - canvas에서 특정 폭 안에 라벨을 가운데 두려면 그 폭을 텍스트에 직접 준다
   (`<text w="140" align="center" x="106" y="216">`) — 예:
-  `examples/decks/incident-postmortem/slides/008_detection.slide`. 세로 크기까지 정해야 하면
+  `testdata/fixtures/06_stack/slides/011_canvas_labels.slide`. 세로 크기까지 정해야 하면
   `<shape>`로 감싼다.
 
 외관 해석(`core.Resolve`) — 값 어휘는 이 층이 소유한다:

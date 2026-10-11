@@ -1,5 +1,7 @@
-<!-- 배운 것: quote 레이아웃의 슬롯 둘. -->
-<slide id="lessons" layout="quote">
+<!-- 배운 것: quote 레이아웃의 슬롯 둘, 그리고 덱에서 유일한 **뒤집힌 장**이다. `<slide invert>`가
+     이 장에서만 bg ↔ fg를 바꾼다 — 어두운 덱 한가운데에서 밝은 장 하나가 "이 문장만 기억하라"를
+     말한다. 원고의 `color="fg"`는 그대로이고 PPTX에서는 색 지도 덮어쓰기라 테마 색이 장을 움직인다. -->
+<slide id="lessons" layout="quote" invert enter="rise">
   <blockquote slot="quote" size="48" color="fg">캐시는 가용성 장치가 아니다. 캐시가 사라진 순간의
   부하를 견딜 수 있을 때만 캐시다.</blockquote>
   <text slot="attribution" role="caption" color="muted" align="end">— 회고에서 합의한 한 문장</text>

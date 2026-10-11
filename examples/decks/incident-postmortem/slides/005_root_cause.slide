@@ -1,16 +1,26 @@
-<!-- 근본 원인: code 레이아웃의 흐름 모드. 코드 판이 슬라이드 폭을 다 쓰고 `grow="1"`로 남은 높이를
-     갖고, 그 아래에 원인 → 결과의 사슬 세 칸이 선다 — 코드만 있는 장은 짧은 함수 하나가 왼쪽 위
-     구석을 차지하고 나머지가 빈다. 판은 배경 도형이라 코드와 파일 경로가 그 안에서 배치된다.
+<!-- 근본 원인: code 레이아웃의 흐름 모드. 코드 판은 편집기 창 모양이다 — 제목 띠의 점 셋과 파일
+     경로가 "이것이 실제 코드다"를 말한다. 판이 슬라이드 폭을 다 쓰고 `grow="1"`로 남은 높이를 갖고,
+     그 아래에 원인 → 결과의 사슬 세 칸이 연결선으로 이어진다.
 
      `lang="go"`가 어휘에 있으므로 코드는 **gofmt 출력을 그대로** 붙인다 — 들여쓰기는 탭이고
      (테마의 `code.tabSize`가 2칸으로 편다), 강조는 값 층이 토큰 스트림에서 만든다.
 
-     사슬의 마지막 칸만 `accent5`다 — 장애가 낸 값이다 (덱의 색 규칙 — 001_cover). -->
-<slide id="root-cause" layout="code">
-  <h2>근본 원인 — 만료가 한 시각에 몰렸다</h2>
-  <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" grow="1" pad="md lg">
-    <col gap="sm" h="fill" justify="between">
-      <pre lang="go" size="20">// 배포 때 캐시를 한 번에 채운다 — TTL이 전부 같은 시각이 된다.
+     사슬의 마지막 칸만 `accent5` 테두리다 — 장애가 낸 값이다 (덱의 색 규칙 — 001_cover). -->
+<slide id="root-cause" layout="code" enter="rise">
+  <text variant="kicker">근본 원인</text>
+  <h2>만료가 한 시각에 몰렸다</h2>
+  <shape type="rounded-rect" variant="card" fill="surface" border="none" w="fill" grow="1" pad="0">
+    <col gap="0" h="fill">
+      <shape type="rect" fill="alpha(fg, 0.06)" border="none" w="fill" pad="xs md">
+        <row gap="xs" align="center">
+          <shape type="ellipse" fill="accent5" border="none" w="12" h="12"/>
+          <shape type="ellipse" fill="accent4" border="none" w="12" h="12"/>
+          <shape type="ellipse" fill="accent3" border="none" w="12" h="12"/>
+          <text role="code" size="15" color="muted">  payments/cache/warm.go — 배포 훅이 부른다</text>
+        </row>
+      </shape>
+      <col gap="0" pad="sm lg" grow="1" justify="center">
+        <pre lang="go" size="19">// 배포 때 캐시를 한 번에 채운다 — TTL이 전부 같은 시각이 된다.
 func warm(ctx context.Context, ids []string) error {
 	for _, id := range ids {
 		if err := cache.Set(ctx, key(id), load(id), 30*time.Minute); err != nil {
@@ -19,22 +29,21 @@ func warm(ctx context.Context, ids []string) error {
 	}
 	return nil
 }</pre>
-      <text role="caption">payments/cache/warm.go — 배포 훅이 부른다</text>
+      </col>
     </col>
   </shape>
-  <grid cols="3" gap="md">
-    <col gap="xs">
-      <text role="heading" size="24">① 일괄 예열</text>
-      <text role="body" size="20">배포가 12만 키를 몇 초 안에 채운다.</text>
-    </col>
-    <col gap="xs">
-      <text role="heading" size="24">② 고정 TTL 30분</text>
-      <text role="body" size="20">지터가 없어 만료 시각이 하나로 모인다.</text>
-    </col>
-    <col gap="xs">
-      <text role="heading" size="24" color="accent5">③ 같은 초에 전부 미스</text>
-      <text role="body" size="20">단일 비행이 없어 미스 하나가 DB 질의 하나가 된다.</text>
-    </col>
-  </grid>
+  <row gap="2xl">
+    <shape type="rounded-rect" id="c1" fill="none" border="1 solid muted" radius="md" grow="1" basis="0" pad="sm md">
+      <col gap="0"><text role="heading" size="22">① 일괄 예열</text><text role="caption">배포가 12만 키를 몇 초 안에 채운다</text></col>
+    </shape>
+    <shape type="rounded-rect" id="c2" fill="none" border="1 solid muted" radius="md" grow="1" basis="0" pad="sm md">
+      <col gap="0"><text role="heading" size="22">② 고정 TTL 30분</text><text role="caption">지터가 없어 만료 시각이 하나로 모인다</text></col>
+    </shape>
+    <shape type="rounded-rect" id="c3" fill="alpha(accent5, 0.12)" border="2 solid accent5" radius="md" grow="1" basis="0" pad="sm md">
+      <col gap="0"><text role="heading" size="22" color="accent5">③ 같은 초에 전부 미스</text><text role="caption">미스 하나가 DB 질의 하나가 된다</text></col>
+    </shape>
+  </row>
+  <connector from="c1" to="c2" enter="draw"/>
+  <connector from="c2" to="c3" variant="accent" line="2 solid accent5" enter="draw"/>
   <note>고정 TTL + 일괄 예열 = 스탬피드. 지터와 단일 비행(single-flight) 둘 다 없었다.</note>
 </slide>

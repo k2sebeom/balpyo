@@ -1,34 +1,46 @@
 <!-- 한 장 요약: 숫자 셋을 나란히. stat 레이아웃은 value 슬롯이 하나라 흐름 모드로 짠다.
 
-     카드 높이를 숫자로 적지 않는다 — 숫자 그리드가 `grow="1"`로 제목과 아래 띠 사이를 다
-     갖고, 카드 셋은 grid의 stretch로 그 높이를 받는다. 아래 띠는 "무슨 일"과 "어떻게
-     멈췄나" 두 칸이라, 숫자를 본 사람이 같은 장에서 이유를 읽는다.
+     카드마다 숫자 아래에 그 숫자의 그림을 하나 둔다 — 숫자는 크기를, 그림은 모양을 말한다:
+       - 47분: 47칸의 띠가 끝까지 빨갛다 (장애가 덮은 시간 전부).
+       - 8.4%: 오류율 곡선이 평시 바닥에서 솟았다가 내려온다 (`type="path"`, 0–100 상자의 곡선).
+       - 12분: 47분 가운데 12분(26%)만 호박색인 띠 — 장애의 사분의 일을 모르고 지냈다.
+     띠 둘은 `grid cols="12fr 35fr"`의 두 칸이라 비율이 원고의 숫자 그대로다.
 
-     숫자 셋의 색은 덱의 색 규칙을 따른다 (001_cover): 47분·8.4%는 장애가 낸 값이라
-     `accent5`, 12분은 우리가 늦은 곳이라 `accent4`다. 셋이 같은 색이던 동안 이 슬라이드는
-     "큰 숫자 셋"이었고, 지금은 "피해 둘과 우리 문제 하나"다. -->
-<slide id="summary">
-  <h2>한 장 요약</h2>
+     숫자 셋의 색은 덱의 색 규칙을 따른다 (001_cover): 47분 · 8.4%는 장애가 낸 값이라 `accent5`,
+     12분은 우리가 늦은 곳이라 `accent4`다. 카드 높이를 숫자로 적지 않는다 — 숫자 그리드가
+     `grow="1"`로 제목과 아래 띠 사이를 다 갖는다. -->
+<slide id="summary" enter="rise">
+  <text variant="kicker">한 장 요약</text>
+  <h2>47분 동안 결제 열 건 중 한 건이 실패했다</h2>
   <grid cols="3" gap="md" grow="1">
     <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
-      <col gap="xs" h="fill" justify="center">
-        <text role="title" size="72" color="accent5">47분</text>
+      <col gap="sm" h="fill" justify="center">
+        <text role="title" size="88" color="accent5">47<span size="40">분</span></text>
         <text role="body">결제 API 5xx 지속</text>
+        <shape type="rect" fill="accent5" border="none" w="fill" h="10"/>
         <text role="caption">14:02 – 14:49 KST</text>
       </col>
     </shape>
     <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
-      <col gap="xs" h="fill" justify="center">
-        <text role="title" size="72" color="accent5">8.4%</text>
+      <col gap="sm" h="fill" justify="center">
+        <text role="title" size="88" color="accent5">8.4<span size="40">%</span></text>
         <text role="body">최대 오류율</text>
+        <stack w="fill" h="56">
+          <shape type="path" fill="alpha(accent5, 0.25)" border="none" w="fill" h="fill" d="M0,96 H22 C30,96 32,4 40,4 C48,4 50,60 62,74 C72,86 80,94 100,96 V100 H0 Z"/>
+          <shape type="path" fill="none" border="2 solid accent5" w="fill" h="fill" d="M0,96 H22 C30,96 32,4 40,4 C48,4 50,60 62,74 C72,86 80,94 100,96"/>
+        </stack>
         <text role="caption">평시 0.02%</text>
       </col>
     </shape>
     <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
-      <col gap="xs" h="fill" justify="center">
-        <text role="title" size="72" color="accent4">12분</text>
+      <col gap="sm" h="fill" justify="center">
+        <text role="title" size="88" color="accent4">12<span size="40">분</span></text>
         <text role="body">탐지까지 걸린 시간</text>
-        <text role="caption">경보가 5분 평균이었다</text>
+        <grid cols="12fr 35fr" gap="0" w="fill">
+          <shape type="rect" fill="accent4" border="none" w="fill" h="10"/>
+          <shape type="rect" fill="alpha(muted, 0.35)" border="none" w="fill" h="10"/>
+        </grid>
+        <text role="caption">장애의 26% — 경보가 5분 평균이었다</text>
       </col>
     </shape>
   </grid>
