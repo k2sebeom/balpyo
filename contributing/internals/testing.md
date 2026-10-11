@@ -77,8 +77,8 @@ go run ./cmd/balpyo build --project testdata/fixtures/00_empty --target html,ppt
 
 ## 예제 게이트 — 도그푸딩 덱은 조용해야 한다
 
-`examples/decks/` 아래 덱 셋(`balpyo-intro` 12장 · `incident-postmortem` 10장 ·
-`quarterly-review` 6장)은 **사람이 실제로 쓴 덱**이고, 픽스처가 못 하는 일을 한다: 어휘 수십
+`examples/decks/` 아래 덱 넷(`balpyo-intro` 12장 · `incident-postmortem` 10장 ·
+`quarterly-review` 8장 · `ec2-intro` 13장)은 **사람이 실제로 쓴 덱**이고, 픽스처가 못 하는 일을 한다: 어휘 수십
 개가 한 장에 겹쳐 있어 "이 도구로 덱을 쓸 수 있다"의 실물 증거가 된다. 그래서 게이트도 다르다.
 
 ```bash

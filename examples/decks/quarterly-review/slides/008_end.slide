@@ -1,0 +1,10 @@
+<!-- 마무리 — end 레이아웃(세로 가운데)의 흐름 모드. 인사 한 줄이 표지와 같은 그라디언트로 덱을
+     닫는다. 아래 결정 요청은 배지(`variant="badge"`)라 테마가 그 모양을 정한다. -->
+<slide id="end" layout="end" enter="rise">
+  <text role="title" size="80" align="center"><span color="gradient(accent1 accent6, 90deg)">감사합니다</span></text>
+  <text role="heading" size="28" color="muted" align="center">질문은 #growth 채널로</text>
+  <shape variant="badge" type="rounded-rect" pad="xs md" self="center">
+    <text role="body" align="center">오늘 결정: 디스플레이 예산 → 추천 보상</text>
+  </shape>
+  <note>결정 하나를 다시 말하고 끝낸다.</note>
+</slide>

@@ -1,39 +1,47 @@
-<!-- 프로젝트 구조 — code 레이아웃(흐름). pre는 공백을 원문 그대로 보존하는 유일한 블록이다.
-     디렉토리 트리는 코드 판(배경 도형) 안에 두고, 판과 규칙 목록이 `grow="1"` 그리드의
-     stretch로 명령 줄 위의 높이를 다 받는다. -->
-<slide id="project" layout="code">
+<!-- 프로젝트 구조 — code 레이아웃(흐름). 왼쪽은 창 모양 카드 안의 디렉토리 트리다: 제목 띠의 점 셋과
+     경로 한 줄이 "이것은 파일 시스템이다"를 말하고, `pre`가 공백을 원문 그대로 보존한다. 오른쪽은
+     수집 규칙 넷이 번호 원과 함께 선다 — 번호가 트리의 어느 줄을 말하는지 듣는 사람이 짝을 짓는다.
+
+     아래 띠는 명령 한 줄을 터미널처럼 보여 준다: `fill="fg"`에 `color="bg"` 글자라 밝은 테마에서는
+     어두운 띠, 어두운 테마에서는 밝은 띠가 된다 — 어느 쪽이든 바탕과 반대인 면이 "여기서 친다"를
+     뜻한다. 프롬프트 기호만 강조색이다. -->
+<slide id="project" layout="code" enter="rise">
+  <text variant="kicker">프로젝트</text>
   <h1>프로젝트 하나가 덱 하나다</h1>
-  <grid cols="2" gap="xl" grow="1">
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="lg">
-      <pre size="18">my-deck/
-  balpyo.json
+  <grid cols="5fr 6fr" gap="xl" grow="1">
+    <shape variant="card" type="rounded-rect" w="fill" pad="0">
+      <col gap="0" h="fill">
+        <shape type="rect" fill="surface" border="none" w="fill" pad="sm md">
+          <row gap="xs" align="center">
+            <shape type="ellipse" fill="accent5" border="none" w="12" h="12"/>
+            <shape type="ellipse" fill="accent4" border="none" w="12" h="12"/>
+            <shape type="ellipse" fill="accent3" border="none" w="12" h="12"/>
+            <text role="code" size="15" color="muted">  ~/talks/my-deck</text>
+          </row>
+        </shape>
+        <col gap="0" pad="md lg" grow="1">
+          <pre size="19">my-deck/
+  balpyo.json        ⑤
   slides/
-    001_cover.slide
+    001_cover.slide  ①
     002_problem.slide
-    _draft_ideas.slide
+    _draft.slide     ③
+    chapter-2/       ④
   assets/
-    diagram.png
-  themes/
-    my-brand/</pre>
+  themes/my-brand/</pre>
+        </col>
+      </col>
     </shape>
-    <col gap="lg">
-      <col gap="sm">
-        <text variant="kicker">수집 규칙</text>
-        <ul>
-          <li>슬라이드 한 장이 파일 한 개다</li>
-          <li>순서는 경로 사전순 — 숫자 접두가 순서를 만든다</li>
-          <li>밑줄로 시작하는 파일은 건너뛴다 (초안·보류)</li>
-          <li>하위 디렉토리는 챕터가 된다</li>
-        </ul>
-      </col>
-      <col gap="sm">
-        <text variant="kicker">balpyo.json</text>
-        <p size="20">제목 · 저자 · 언어 · 비율(16:9 · 4:3) · 테마 · 출력 경로 · 꼬리말 · 쪽 번호</p>
-      </col>
+    <col gap="md" justify="center">
+      <row gap="md" align="center"><shape type="ellipse" fill="accent1" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>1</strong></text></shape><text role="body" size="22" grow="1" basis="0">슬라이드 한 장이 파일 한 개다</text></row>
+      <row gap="md" align="center"><shape type="ellipse" fill="accent1" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>2</strong></text></shape><text role="body" size="22" grow="1" basis="0">순서는 경로 사전순 — 숫자 접두가 순서다</text></row>
+      <row gap="md" align="center"><shape type="ellipse" fill="accent1" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>3</strong></text></shape><text role="body" size="22" grow="1" basis="0">밑줄로 시작하는 파일은 건너뛴다 (초안)</text></row>
+      <row gap="md" align="center"><shape type="ellipse" fill="accent1" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>4</strong></text></shape><text role="body" size="22" grow="1" basis="0">하위 디렉토리는 챕터가 된다</text></row>
+      <row gap="md" align="center"><shape type="ellipse" fill="accent6" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>5</strong></text></shape><text role="body" size="22" grow="1" basis="0">덱 설정은 <code>balpyo.json</code> 한 파일</text></row>
     </col>
   </grid>
-  <shape type="rounded-rect" fill="surface" w="fill" pad="md">
-    <pre size="20">balpyo build --project my-deck --target html,pptx</pre>
+  <shape type="rounded-rect" fill="fg" border="none" radius="md" w="fill" pad="sm md">
+    <text role="code" size="20" color="bg"><span color="accent3">$</span> balpyo build --project my-deck --target html,pptx</text>
   </shape>
-  <note>덱 설정은 balpyo.json 한 파일이다 — 제목·저자·언어·비율·출력 경로.</note>
+  <note>덱 설정은 balpyo.json 한 파일이다 — 제목·저자·언어·비율·테마·출력 경로·꼬리말·쪽 번호.</note>
 </slide>

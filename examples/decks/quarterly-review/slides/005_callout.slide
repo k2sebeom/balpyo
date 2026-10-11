@@ -1,30 +1,37 @@
-<!-- 겹침: stack으로 배경 위 배지 오버레이. 겹침 판은 `grow="1"`로 남은 높이를 다 갖고,
-     그 아래 숫자 둘이 콜아웃의 근거를 받친다 — 주장 한 줄과 증거 두 개가 한 장에 있어야
-     "가장 큰 학습"이 인상이 아니라 결론이 된다. -->
-<slide id="callout">
-  <h2>가장 큰 학습</h2>
+<!-- 가장 큰 학습 — 겹침: `<stack>`으로 그라디언트 판 위에 주장 한 줄과 배지를 얹는다. 판의 색은 강조색
+     둘의 그라디언트이고 그 위에 가운데 원형 광채(`radial(bg/20 bg/0)`)를 한 겹 더 얹는다 — 둘 다
+     토큰이라 테마를 갈면 따라간다. 겹침 판은 `grow="1"`로 남은 높이를 다 갖는다.
+
+     그 아래 숫자 둘이 주장의 근거다: 검색 CAC → 추천 CAC를 연결선이 잇고, 선의 라벨이 배수(÷3.75)를
+     말한다. 주장 한 줄과 증거 두 개가 한 장에 있어야 "가장 큰 학습"이 인상이 아니라 결론이 된다. -->
+<slide id="callout" enter="rise">
+  <text variant="kicker">03 · 가장 큰 학습</text>
   <stack w="fill" grow="1">
-    <shape type="rounded-rect" fill="gradient(#0F65F9 #7C3AED, 45deg)" radius="lg" w="fill" h="fill"/>
+    <shape type="rounded-rect" fill="gradient(accent1 accent6, 120deg)" border="none" radius="lg" shadow="soft" w="fill" h="fill"/>
+    <shape type="rounded-rect" fill="radial(bg/20 bg/0)" border="none" radius="lg" w="fill" h="fill"/>
     <col gap="sm" at="center">
-      <text role="title" size="52" color="bg" align="center">추천 채널이 CAC를 4배 낮췄다</text>
-      <text role="heading" size="26" color="bg" align="center">같은 예산이면 사용자가 네 배 온다</text>
+      <text role="title" size="60" color="bg" align="center">추천 채널이 CAC를 4배 낮췄다</text>
+      <text role="heading" size="28" color="bg" align="center">같은 예산이면 사용자가 네 배 온다</text>
     </col>
-    <shape variant="badge" type="rounded-rect" fill="bg" w="120" h="44" at="top-right" pad="xs">
-      <text color="accent1" align="center">NEW</text>
+    <shape type="rounded-rect" fill="bg" border="none" radius="lg" w="120" h="44" x="1008" y="24" pad="xs">
+      <text role="caption" color="accent1" align="center" anchor="center"><strong>NEW</strong></text>
     </shape>
   </stack>
-  <grid cols="2" gap="lg">
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="md">
+  <row gap="0" align="center">
+    <shape type="rounded-rect" id="search" variant="card" w="420" pad="md">
       <row gap="md" align="center" justify="between">
         <text role="body">검색 CAC</text>
-        <text role="title" size="44">12,000원</text>
+        <text role="title" size="44" color="muted">12,000원</text>
       </row>
     </shape>
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="md">
+    <spacer grow="1"/>
+    <shape type="rounded-rect" id="referral" variant="card" w="420" pad="md">
       <row gap="md" align="center" justify="between">
         <text role="body">추천 CAC</text>
-        <text role="title" size="44" color="accent1">3,200원</text>
+        <text role="title" size="44" color="accent3">3,200원</text>
       </row>
     </shape>
-  </grid>
+  </row>
+  <connector from="search" to="referral" variant="accent" label="÷ 3.75" enter="draw"/>
+  <note>같은 돈으로 네 배. 이것이 Q4 계획의 근거다.</note>
 </slide>

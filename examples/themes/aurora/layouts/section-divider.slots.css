@@ -1,0 +1,8 @@
+/* section-divider 슬롯 영역 — 구역 제목과 부제를 세로 가운데, 왼쪽에 쌓는다. 표지와 같은 760px
+   열이다: 배경 그림의 빛이 오른쪽에 있고 덮개가 왼쪽을 눌러 두므로 글은 왼쪽에만 선다. */
+display: grid;
+grid-template-columns: minmax(0, 760px);
+grid-template-rows: auto auto;
+grid-template-areas: "title" "subtitle";
+row-gap: 14px;
+align-content: center;

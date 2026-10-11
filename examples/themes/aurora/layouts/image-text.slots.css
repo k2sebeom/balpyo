@@ -1,0 +1,8 @@
+/* image-text 슬롯 영역 — 제목이 두 열에 걸쳐 위, 그 아래 그림(media)과 글(body)이
+   나란히. 그림과 글의 높이가 다르면 둘의 가운데를 맞춘다. */
+display: grid;
+grid-template-columns: 1fr 1fr;
+grid-template-rows: auto 1fr;
+grid-template-areas: "title title" "media body";
+align-content: start;
+align-items: center;

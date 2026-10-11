@@ -7,7 +7,7 @@
 **SOML**(Slide Oriented Markup Language)로 슬라이드를 쓰면, **balpyo**가 테마를 입혀
 **웹 프레젠테이션**과 **편집 가능한 네이티브 PPTX**를 함께 만든다.
 
-![balpyo로 렌더한 표지 — minimal 테마](examples/showcase/images/themes/balpyo-intro-01-minimal.png)
+![balpyo로 렌더한 표지 — 예제 테마 aurora](examples/showcase/images/themes/balpyo-intro-01-aurora.png)
 
 - **슬라이드 전용 마크업.** `<slide>` · `<row>` · `<grid>` · `<shape>` · `<table>` · `<chart>` · `<note>` —
   슬라이드의 어휘가 1급 태그다. 닫힌 어휘라 오타와 구조 실수는 `줄:열`이 붙은 진단으로 나온다.
@@ -29,16 +29,18 @@ PowerPoint나 Keynote에서 열면 글자와 도형을 그대로 고칠 수 있�
 
 | | |
 |---|---|
-| ![파이프라인 도형과 카드](examples/showcase/images/balpyo-intro-04.png) | ![SOML 태그와 PPTX 대응 표](examples/showcase/images/balpyo-intro-07.png) |
-| 도형 프리셋(`chevron`)과 카드 — [`balpyo-intro`](examples/decks/balpyo-intro) | `<table>` — PPTX에서 편집 가능한 표가 된다 |
-| ![장애 타임라인](examples/showcase/images/incident-postmortem-03.png) | ![Go 코드 블록](examples/showcase/images/incident-postmortem-05.png) |
-| 타임라인 — [`incident-postmortem`](examples/decks/incident-postmortem) | `<pre lang="go">` — 하이라이팅이 PPTX 글자 런으로 간다 |
-| ![막대 차트](examples/showcase/images/incident-postmortem-08.png) | ![그라디언트 콜아웃](examples/showcase/images/quarterly-review-05.png) |
-| `<chart>` — 도형과 텍스트로 펼친다 | 그라디언트 채움과 `<stack>` 배지 — [`quarterly-review`](examples/decks/quarterly-review) |
+| ![연결선으로 그린 빌드 경로](examples/showcase/images/balpyo-intro-04.png) | ![비례하는 시간 축의 장애 타임라인](examples/showcase/images/incident-postmortem-03.png) |
+| `<connector>` 도식 — PPTX에서 상자에 붙은 연결선이 된다 · [`balpyo-intro`](examples/decks/balpyo-intro) | 비례하는 시간 축 — `<stack>` 위의 깃발 카드 · [`incident-postmortem`](examples/decks/incident-postmortem) (`ink`) |
+| ![경로 · 막대 · 별로 그린 KPI 카드](examples/showcase/images/quarterly-review-03.png) | ![사진과 깔때기](examples/showcase/images/quarterly-review-06.png) |
+| `type="path"` 곡선 · 막대 · `star` — 전부 편집 가능한 도형 · [`quarterly-review`](examples/decks/quarterly-review) | `image-text` 레이아웃 — 그림은 PPTX 플레이스홀더가 된다 |
+| ![한 결과로 모이는 기여 요인](examples/showcase/images/incident-postmortem-06.png) | ![Go 코드 창](examples/showcase/images/incident-postmortem-05.png) |
+| 곡선 연결선이 한 결과로 모인다 | `<pre lang="go">` — 하이라이팅이 PPTX 글자 런으로 간다 |
+| ![표와 차트](examples/showcase/images/quarterly-review-04.png) | ![계열 둘의 막대 차트](examples/showcase/images/incident-postmortem-08.png) |
+| `<table>`과 `<chart>` — 둘 다 PPTX에서 고칠 수 있다 | 계열 둘의 `<chart>`와 범례 |
 | ![방사형 광채의 표지](examples/showcase/images/ec2-intro-01.png) | ![등축 층으로 쌓은 Nitro](examples/showcase/images/ec2-intro-06.png) |
-| 배경 덮개(`radial()`)와 그라디언트 글자 — [`ec2-intro`](examples/decks/ec2-intro) | `cube` · `right-brace` 프리셋 — PPTX에서도 같은 도형이다 |
+| 배경 덮개(`radial()`)와 그라디언트 글자 · [`ec2-intro`](examples/decks/ec2-intro) | `cube` · `right-brace` 프리셋 — PPTX에서도 같은 도형이다 |
 | ![인스턴스 상태 다이어그램](examples/showcase/images/ec2-intro-10.png) | ![고가용성 웹 계층](examples/showcase/images/ec2-intro-11.png) |
-| `<connector>` — PPTX에서 상자에 붙은 연결선이 된다 | 중첩한 영역과 흐르는 연결선(`flow`) |
+| 상태 기계 — 직선 · 꺾인 선 · U자 곡선 연결선 | 중첩한 영역과 흐르는 연결선(`flow`) |
 
 ### 같은 슬라이드, 다른 테마
 
@@ -47,14 +49,16 @@ PowerPoint나 Keynote에서 열면 글자와 도형을 그대로 고칠 수 있�
 바뀌면 같은 원고가 다른 덱이 된다.
 
 ```xml
-<slide id="geometry">
+<slide id="geometry" enter="rise">
+  <text variant="kicker">지오메트리 패스</text>
   <h1>좌표는 브라우저가 계산한다</h1>
-  <grid cols="3" gap="lg">
-    <shape variant="card" type="rounded-rect" fill="surface" border="1 solid muted" w="fill" h="220" pad="md">
-      <col gap="sm" h="fill">
-        <shape variant="card-header" type="rounded-rect" fill="accent1" w="fill" h="48" pad="xs">
-          <text color="bg" align="center">선언</text>
+  <grid cols="3" gap="lg" grow="1">
+    <shape variant="card" type="rounded-rect" w="fill" pad="md">
+      <col gap="sm" h="fill" justify="between">
+        <shape variant="card-header" type="rounded-rect" fill="accent1" w="fill" h="44" pad="xs">
+          <text color="bg" align="center" anchor="center"><strong>① 선언</strong></text>
         </shape>
+        <pre lang="soml" size="14">&lt;row gap="md"&gt; …</pre>
         <p size="20">저자는 flex와 grid로 배치를 선언한다. 좌표를 쓰는 자리가 어휘에 없다.</p>
       </col>
     </shape>
@@ -68,15 +72,20 @@ PowerPoint나 Keynote에서 열면 글자와 도형을 그대로 고칠 수 있�
 | ![minimal](examples/showcase/images/themes/balpyo-intro-06-minimal.png) | ![editorial](examples/showcase/images/themes/balpyo-intro-06-editorial.png) |
 | **`ink`** | **`harbor`** ([예제 테마](examples/themes/harbor)) |
 | ![ink](examples/showcase/images/themes/balpyo-intro-06-ink.png) | ![harbor](examples/showcase/images/themes/balpyo-intro-06-harbor.png) |
+| **`aurora`** ([예제 테마](examples/themes/aurora)) | **`aurora`** — 다른 덱의 사진 장 |
+| ![aurora](examples/showcase/images/themes/balpyo-intro-06-aurora.png) | ![aurora의 image-text](examples/showcase/images/themes/quarterly-review-06-aurora.png) |
 
-테마는 색만이 아니라 **자리**도 소유한다. 같은 표지 원고가 minimal에서는 가운데, editorial에서는
-아래, ink에서는 왼쪽 가운데, harbor에서는 위 왼쪽에 선다 — 표지 원고에는 정렬이 한 줄도 없다.
+테마는 색만이 아니라 **자리**와 **그림**도 소유한다. 같은 표지 원고가 minimal에서는 가운데,
+editorial에서는 아래, ink에서는 왼쪽 가운데, harbor에서는 위 왼쪽에 선다 — 표지 원고에는 정렬이
+한 줄도 없다. aurora는 표지 · 마무리 장의 배경 그림까지 갖고 온다: 덱은 그림을 한 번도 부르지 않는다.
 
 | `minimal` | `editorial` |
 |---|---|
 | ![minimal 표지](examples/showcase/images/themes/balpyo-intro-01-minimal.png) | ![editorial 표지](examples/showcase/images/themes/balpyo-intro-01-editorial.png) |
 | **`ink`** | **`harbor`** |
 | ![ink 표지](examples/showcase/images/themes/balpyo-intro-01-ink.png) | ![harbor 표지](examples/showcase/images/themes/balpyo-intro-01-harbor.png) |
+| **`aurora`** — 표지 | **`aurora`** — 마무리 장 |
+| ![aurora 표지](examples/showcase/images/themes/balpyo-intro-01-aurora.png) | ![aurora 마무리](examples/showcase/images/themes/balpyo-intro-12-aurora.png) |
 
 ## 빠른 시작
 
@@ -119,7 +128,7 @@ my-talk/
 - [시작하기](docs/guides/getting-started.md) — 설치부터 발표까지
 - [레퍼런스](docs/reference/index.md) — 태그 · 외관 속성 · 레이아웃 · 테마 패키지 · CLI
 - [테마 고르기 · 만들기](docs/guides/theming.md) — 내장 테마 셋과 자기 테마
-- [예제](examples/) — 완성된 덱 셋과 혼자 서는 테마 하나
+- [예제](examples/) — 완성된 덱 넷과 혼자 서는 테마 둘
 
 ## 기여
 

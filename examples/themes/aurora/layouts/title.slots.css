@@ -1,0 +1,12 @@
+/* title(표지) 슬롯 영역 — kicker · title · subtitle이 세로 가운데에 붙어 서고, 고정 56px 빈 행 뒤에
+   author · date가 온다. 열 폭을 760px로 묶는 이유는 배경 그림이다: 오른쪽 아래의 빛 위로 글줄이
+   지나가지 않게, 글은 덮개(overlay)가 어둡게 눌러 둔 왼쪽에만 선다.
+
+   가로에 justify-items를 쓰지 않는다: 왼쪽은 기본값이고, `start`를 적으면 항목이 내용 폭으로
+   줄어 글줄의 여유 폭을 잃는다. */
+display: grid;
+grid-template-columns: minmax(0, 760px);
+grid-template-rows: auto auto auto 56px auto auto;
+grid-template-areas: "kicker" "title" "subtitle" "." "author" "date";
+row-gap: 14px;
+align-content: center;

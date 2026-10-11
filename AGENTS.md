@@ -160,7 +160,8 @@ make docs        # mkdocs build --strict (new pages must be in mkdocs.yml nav)
   reader; a second engine is how cross-reader defects (wrapping, preset formulas, color spaces) show up.
 - Fixtures live in `testdata/fixtures/NN_name/` (`balpyo.json`, `slides/`, `golden/`).
 - `examples/` is user-facing: `examples/decks/` (balpyo-intro 12, incident-postmortem 10,
-  quarterly-review 7, ec2-intro 13 slides) and `examples/themes/` (standalone themes — `extends` empty). They are
+  quarterly-review 8, ec2-intro 13 slides) and `examples/themes/` (standalone themes — `extends` empty:
+  harbor, aurora). They are
   gated by a strict zero-warning build, not goldens: every deck with its own theme, and every
   example theme against every deck.
 - `core/docs_test.go` reads closed lists and quoted diagnostics from the docs — changing a

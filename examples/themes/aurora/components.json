@@ -1,0 +1,75 @@
+{
+  "$comment": "aurora의 컴포넌트 외관. 본문 24px · 줄높이 1.5는 내장 테마와 같다 — 테마를 갈아도 덱이 넘치지 않게 하는 약속이다. variant 이름(kicker · lead · card … · framed)도 내장 테마와 같은 어휘다: 덱이 쓰는 variant가 이 테마에 없으면 경고가 난다. 이 테마의 목소리는 variant의 값에 있다 — 카드 머리띠와 배지가 보라→분홍 그라디언트이고, 카드는 가는 빛 테두리로 바탕에서 뜬다.",
+
+  "text": {
+    "roles": [
+      { "name": "title",   "font": "heading", "size": 58, "weight": 700, "lineHeight": 1.12, "color": "fg",    "align": "start", "tracking": -0.01 },
+      { "name": "heading", "font": "heading", "size": 34, "weight": 700, "lineHeight": 1.25, "color": "fg",    "align": "start" },
+      { "name": "body",    "font": "body",    "size": 24, "weight": 400, "lineHeight": 1.5,  "color": "fg",    "align": "start" },
+      { "name": "caption", "font": "body",    "size": 18, "weight": 400, "lineHeight": 1.4,  "color": "muted", "align": "start" },
+      { "name": "code",    "font": "mono",    "size": 20, "weight": 400, "lineHeight": 1.5,  "color": "fg",    "align": "start" }
+    ],
+    "componentDefaults": [
+      { "tag": "h3",         "size": 28 },
+      { "tag": "blockquote", "size": 32, "color": "fg" },
+      { "layout": "quote", "slot": "quote", "size": 42, "color": "fg" },
+      { "layout": "stat",  "slot": "value", "size": 104, "weight": 700, "color": "accent2" },
+      { "layout": "stat",  "slot": "label", "size": 28, "weight": 700 }
+    ],
+    "mark": { "highlight": "shade(accent1, 55%)" },
+    "variants": [
+      { "name": "kicker", "size": 17, "weight": 700, "color": "accent2", "tracking": 0.18, "case": "upper" },
+      { "name": "lead",   "size": 30, "color": "muted" }
+    ]
+  },
+
+  "shape": {
+    "$comment": "어두운 바탕에서 카드를 띄우는 것은 밝기 한 단(surface)과 가는 빛 테두리(fg 12%)다 — 테두리를 muted로 그으면 선이 글자보다 먼저 보인다. 강조가 필요한 자리(머리띠 · 배지)만 보라→분홍 그라디언트를 갖는다: 테마가 그라디언트를 소유하므로 덱은 variant 이름 하나만 쓴다.",
+    "default": { "fill": "surface", "border": "none", "radius": "md" },
+    "variants": [
+      { "name": "card",          "fill": "surface", "border": "1 solid alpha(fg, 0.12)", "radius": "md", "shadow": "soft" },
+      { "name": "card-header",   "fill": "gradient(accent1 accent6, 90deg)", "radius": "sm" },
+      { "name": "card-body",     "fill": "surface" },
+      { "name": "card-backdrop", "fill": "alpha(surface, 0.6)", "border": "1 solid alpha(accent1, 0.55)", "radius": "lg" },
+      { "name": "stat-card",     "fill": "gradient(surface bg, 160deg)", "border": "1 solid alpha(fg, 0.12)", "radius": "md", "shadow": "soft" },
+      { "name": "badge",         "fill": "alpha(accent2, 0.14)", "border": "1 solid accent2", "radius": "lg" }
+    ]
+  },
+
+  "connector": {
+    "$comment": "연결선. 기본은 muted 2px 실선 + 끝 화살표다 — 어두운 바탕에서도 선은 상자보다 물러나야 상자가 읽힌다. accent는 청록이다: 표지의 빛과 같은 색이 '주된 흐름'을 뜻한다.",
+    "default": { "line": "2 solid muted", "start": "none", "end": "arrow" },
+    "variants": [
+      { "name": "dashed", "line": "2 dashed muted" },
+      { "name": "accent", "line": "2 solid accent2" },
+      { "name": "plain",  "end": "none" }
+    ]
+  },
+  "image": {
+    "$comment": "이미지 기본값은 비어 있다 — 그림은 자기 픽셀로 완전하다. framed는 테두리 없이 반경과 그림자만 준다: 밝은 사진은 어두운 바탕에서 이미 면이다.",
+    "default": {},
+    "variants": [
+      { "name": "framed", "radius": "md", "shadow": "soft" }
+    ]
+  },
+
+  "table": {
+    "$comment": "머리행은 accent1 띠 + bg 글자(6.88:1)다. 셀 테두리를 muted가 아니라 surface로 두는 이유: 어두운 화면에서 밝은 격자선은 숫자보다 먼저 눈에 들어온다.",
+    "cell":   { "border": "1 solid surface" },
+    "header": { "fill": "accent1", "color": "bg", "weight": 700 },
+    "stripe": "surface"
+  },
+
+  "code": {
+    "$comment": "코드 색은 이 테마의 밝은 강조색이라 어두운 바탕에서 읽힌다. tabSize는 탭을 펼 때의 칸 수다 — 슬라이드는 폭이 좁다.",
+    "tabSize": 2,
+    "tokens": [
+      { "class": "keyword", "color": "accent6" },
+      { "class": "name",    "color": "accent1" },
+      { "class": "attr",    "color": "accent2" },
+      { "class": "string",  "color": "accent3" },
+      { "class": "number",  "color": "accent4" },
+      { "class": "comment", "color": "muted" }
+    ]
+  }
+}

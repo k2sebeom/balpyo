@@ -1,50 +1,80 @@
-<!-- 파이프라인 — 흐름 모드 content. 네 단계를 chevron 넷으로, 두 타깃을 카드 둘로 놓는다.
-     grid·col은 PPTX에서 도형이 0개다 — 남는 것은 자식의 절대 좌표뿐이다.
+<!-- 파이프라인 — 흐름 모드 content. 상자 일곱과 연결선 여덟이 빌드 한 번의 경로를 그린다:
+     .slide 파일 → soml(파싱) → core(해석) → 웹 렌더 → 측정 → PPTX 렌더, 그리고 두 산출물.
+     상자는 `<row>`가 놓고, 선은 슬라이드 직계 자식 `<connector>`가 잰 상자를 이어 그린다 —
+     선은 흐름에서 자리를 차지하지 않으므로 상자부터 배치하고 선을 나중에 얹는다. PPTX에서 이
+     선들은 상자에 붙은 진짜 연결선이라, 상자를 끌면 선이 따라온다.
 
-     카드 그리드가 `grow="1"`로 chevron 줄과 캡션 사이를 다 갖는다 — 카드 높이를 숫자로 적지
-     않으므로 카드 안 목록이 길어지면 카드가 아니라 남은 여백이 준다. -->
-<slide id="pipeline">
+     가운데 열(웹 · 측정 · PPTX)이 이 도구의 요점이다: PPTX 렌더러는 좌표를 계산하지 않고, 웹
+     렌더를 헤드리스 Chromium이 잰 rect를 받아 굽는다. 그 두 화살표만 `accent`이고 측정 상자만
+     점선 테두리다 — 좌표가 어디서 오는지가 이 장의 질문이다.
+
+     아래 줄은 두 산출물 카드다. 남는 높이는 도식 줄이 `grow="1"`로 갖는다 — 상자는 그 줄의 세로
+     가운데에 서고, 카드는 내용 높이만큼만 차지한다. -->
+<slide id="pipeline" enter="rise">
+  <text variant="kicker">빌드 한 번의 경로</text>
   <h1>한 소스, 두 산출물</h1>
-  <grid cols="4" gap="sm">
-    <col gap="sm">
-      <shape type="chevron" fill="surface" w="fill" h="72"/>
-      <text size="20" align="center">1 · SOML 파싱</text>
-    </col>
-    <col gap="sm">
-      <shape type="chevron" fill="surface" w="fill" h="72"/>
-      <text size="20" align="center">2 · 외관·배치 해석</text>
-    </col>
-    <col gap="sm">
-      <shape type="chevron" fill="surface" w="fill" h="72"/>
-      <text size="20" align="center">3 · 지오메트리 측정</text>
-    </col>
-    <col gap="sm">
-      <shape type="chevron" fill="accent1" w="fill" h="72"/>
-      <text size="20" color="accent1" align="center"><strong>4 · 두 타깃 렌더</strong></text>
-    </col>
-  </grid>
-  <grid cols="2" gap="lg" grow="1">
-    <shape variant="card" type="rounded-rect" fill="surface" w="fill" pad="lg">
-      <col gap="sm" h="fill">
-        <text role="heading" size="30" color="accent1">웹 · index.html 한 장</text>
-        <ul size="22">
-          <li>CSS와 발표 런타임이 인라인 — 파일 하나로 배포한다</li>
-          <li>발표자 화면 · 개요 그리드 · 노트 · 장 링크</li>
-          <li>브라우저 인쇄가 곧 PDF다</li>
-        </ul>
-      </col>
+  <row gap="0" align="center" grow="1">
+    <shape type="rounded-rect" id="src" variant="card" w="150" h="88" pad="sm">
+      <col gap="0" justify="center" h="fill"><text role="code" size="18">.slide</text><text role="caption" size="16">SOML 원고</text></col>
     </shape>
-    <shape variant="card" type="rounded-rect" fill="surface" w="fill" pad="lg">
-      <col gap="sm" h="fill">
-        <text role="heading" size="30" color="accent1">PPTX · 편집 가능한 원본</text>
-        <ul size="22">
-          <li>텍스트 박스는 p:sp, 도형은 prstGeom, 표는 a:tbl</li>
-          <li>슬롯은 p:ph 플레이스홀더 — 레이아웃이 살아 있다</li>
-          <li>테마 색은 schemeClr — 이미지로 찍지 않는다</li>
-        </ul>
-      </col>
+    <spacer grow="1"/>
+    <shape type="rounded-rect" id="parse" variant="card" w="150" h="88" pad="sm">
+      <col gap="0" justify="center" h="fill"><text role="heading" size="22">soml</text><text role="caption" size="16">파싱 · 진단</text></col>
+    </shape>
+    <spacer grow="1"/>
+    <shape type="rounded-rect" id="resolve" variant="card" w="150" h="88" pad="sm">
+      <col gap="0" justify="center" h="fill"><text role="heading" size="22">core</text><text role="caption" size="16">외관 · 자산 해석</text></col>
+    </shape>
+    <spacer grow="1"/>
+    <col gap="md" w="210">
+      <shape type="rounded-rect" id="web" variant="card" w="fill" h="76" pad="xs sm">
+        <col gap="0" justify="center" h="fill"><text role="heading" size="20">render/web</text><text role="caption" size="16">HTML + CSS</text></col>
+      </shape>
+      <shape type="rounded-rect" id="geom" fill="alpha(accent1, 0.12)" border="2 dashed accent1" radius="md" w="fill" h="76" pad="xs sm">
+        <col gap="0" justify="center" h="fill"><text role="heading" size="20" color="accent1">render/geom</text><text role="caption" size="16">Chromium이 박스를 잰다</text></col>
+      </shape>
+      <shape type="rounded-rect" id="pptx" variant="card" w="fill" h="76" pad="xs sm">
+        <col gap="0" justify="center" h="fill"><text role="heading" size="20">render/pptx</text><text role="caption" size="16">잰 rect → EMU</text></col>
+      </shape>
+    </col>
+    <spacer grow="1"/>
+    <col gap="md" w="160">
+      <shape type="rounded-rect" id="html" fill="accent1" border="none" radius="md" shadow="soft" w="fill" h="76" pad="xs sm">
+        <text role="code" size="18" color="bg" align="center" anchor="center">index.html</text>
+      </shape>
+      <shape type="rect" fill="none" border="none" w="fill" h="76"/>
+      <shape type="rounded-rect" id="deck" fill="accent6" border="none" radius="md" shadow="soft" w="fill" h="76" pad="xs sm">
+        <text role="code" size="18" color="bg" align="center" anchor="center">deck.pptx</text>
+      </shape>
+    </col>
+  </row>
+  <connector from="src" to="parse" enter="draw"/>
+  <connector from="parse" to="resolve" enter="draw"/>
+  <connector from="resolve" to="web" route="elbow" from-side="right" to-side="left" enter="draw"/>
+  <connector from="resolve" to="pptx" route="elbow" from-side="right" to-side="left" enter="draw"/>
+  <connector from="web" to="geom" variant="accent" enter="draw"/>
+  <connector from="geom" to="pptx" variant="accent" enter="draw"/>
+  <connector from="web" to="html" enter="draw"/>
+  <connector from="pptx" to="deck" enter="draw"/>
+  <grid cols="2" gap="lg">
+    <shape variant="card" type="rounded-rect" w="fill" pad="md">
+      <row gap="md" align="center" h="fill">
+        <shape type="rect" fill="accent1" border="none" w="4" h="fill"/>
+        <col gap="xs" grow="1" basis="0">
+          <text role="heading" size="24">웹 · 파일 한 장</text>
+          <text role="body" size="19" color="muted">인라인 CSS · 발표자 화면 · 개요 · 인쇄(PDF)</text>
+        </col>
+      </row>
+    </shape>
+    <shape variant="card" type="rounded-rect" w="fill" pad="md">
+      <row gap="md" align="center" h="fill">
+        <shape type="rect" fill="accent6" border="none" w="4" h="fill"/>
+        <col gap="xs" grow="1" basis="0">
+          <text role="heading" size="24">PPTX · 편집 가능한 원본</text>
+          <text role="body" size="19" color="muted">텍스트 박스 · 도형 · 표 · 연결선 — 그림이 아니다</text>
+        </col>
+      </row>
     </shape>
   </grid>
-  <text role="caption">같은 SOML 트리가 두 번 렌더된다. 갈라지는 지점은 마지막 단계 하나뿐이다.</text>
-  <note>파싱은 soml, 해석은 core, 측정은 render/geom, 렌더는 render/web과 render/pptx다.</note>
+  <note>파싱은 soml, 해석은 core, 측정은 render/geom, 렌더는 render/web과 render/pptx다. PPTX 렌더러는 좌표를 계산하지 않는다 — 브라우저가 잰 값을 굽는다.</note>
 </slide>

@@ -1,39 +1,58 @@
-<!-- 문제 — two-column 레이아웃의 슬롯 모드 (title은 두 열에 걸치고 left·right가 나란히).
-     컨테이너에 실린 슬롯은 웹 영역일 뿐이고 p:ph가 되지 않는다 — 여기서는 그것이 맞다:
-     칸마다 카드 한 장(배경 도형)에 kicker · 목록 · 결론이 들어간다.
+<!-- 문제 — 두 길이 각자 무엇을 잃는가. 흐름 모드에서 카드 두 장이 `grow="1"` 그리드로 제목 아래를
+     다 갖는다. 카드 안은 위에서부터 갈래 이름(kicker) · 그 길의 산출물을 흉내 낸 작은 그림 · 목록 ·
+     결론이고, 결론 줄은 `justify="between"`으로 카드 아래 끝에 선다 — 두 카드의 결론이 같은
+     높이에 있어야 "둘 중 하나"가 나란히 읽힌다.
 
-     슬롯 영역은 제목 아래 남은 높이를 다 갖는 grid 칸이고 (`two-column.slots.css`의 `1fr`
-     행), 카드가 `h="fill"`로 그 칸을 채운다. 결론 줄은 `justify="between"`으로 카드 아래 끝에
-     선다 — 두 칸의 결론이 같은 높이에 있어야 "둘 중 하나"가 나란히 읽힌다. -->
-<slide id="problem" layout="two-column">
-  <h1 slot="title">텍스트로 슬라이드를 쓰면 둘 중 하나를 잃는다</h1>
-  <col slot="left" h="fill">
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" h="fill" pad="lg">
-      <col gap="md" h="fill" justify="between">
-        <col gap="md">
-          <text variant="kicker">Markdown 계열 · Marp · Slidev</text>
-          <ul>
-            <li>Markdown은 문서 마크업이라 2단·도형·겹침 같은 슬라이드 어휘가 없다</li>
-            <li>PPTX 내보내기는 슬라이드를 이미지로 찍는다 — 열리지만 고칠 수 없다</li>
-          </ul>
+     목록은 항목마다 한 줄이다 — 제목 서체가 큰 테마(editorial)에서도 카드가 제목 아래 높이에 들어가야 한다.
+     작은 그림은 말 대신 보여 주는 증거다. 왼쪽은 슬라이드를 찍은 그림 한 장(빗금 채움 =
+     통째로 된 픽셀, 그 위 가운데에 파일 이름 딱지)이고, 오른쪽은 좌표를 손으로 적는 코드다. 잃는 것을 말하는 결론 줄은
+     `accent5`(빨강) 하나로 칠한다 — 이 장에서 빨강은 "잃는다"만 뜻한다.
+
+     가운데 원은 `<stack>` 없이 그리드 두 칸 사이에 놓을 수 없으므로, 카드 줄 전체를 stack으로
+     감싸 그 위 가운데에 `at="center"`로 얹는다. -->
+<slide id="problem" enter="rise">
+  <text variant="kicker">왜 또 하나의 도구인가</text>
+  <h1>텍스트로 슬라이드를 쓰면 둘 중 하나를 잃는다</h1>
+  <stack w="fill" grow="1">
+    <grid cols="2" gap="2xl" w="fill" h="fill">
+      <shape variant="card" type="rounded-rect" w="fill" h="fill" pad="lg">
+        <col gap="md" h="fill" justify="between">
+          <col gap="md">
+            <text variant="kicker" color="muted">Markdown 계열 · Marp · Slidev</text>
+            <stack w="fill" h="76">
+              <shape type="rounded-rect" fill="pattern(wide-diagonal-up muted/35 bg/0)" border="1 dashed muted" radius="sm" w="fill" h="fill"/>
+              <shape type="rounded-rect" fill="bg" border="none" radius="sm" pad="xs sm" at="center">
+                <text role="code" size="17" color="muted">slide-03.png · 그림 한 장</text>
+              </shape>
+            </stack>
+            <ul size="22">
+              <li>문서 마크업이라 슬라이드 어휘가 없다</li>
+              <li>PPTX 내보내기는 그림 한 장이다</li>
+            </ul>
+          </col>
+          <text role="heading" size="28" color="accent5">✕ 편집 가능한 산출물을 잃는다</text>
         </col>
-        <text role="heading" size="28" color="accent1">→ 편집 가능한 산출물을 잃는다</text>
-      </col>
-    </shape>
-  </col>
-  <col slot="right" h="fill">
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" h="fill" pad="lg">
-      <col gap="md" h="fill" justify="between">
-        <col gap="md">
-          <text variant="kicker">라이브러리 계열 · python-pptx</text>
-          <ul>
-            <li>모든 요소를 EMU 절대 좌표로 손으로 배치한다</li>
-            <li>그라디언트 테두리처럼 "디자인된 느낌"에는 API조차 없어 raw XML을 조립한다</li>
-          </ul>
+      </shape>
+      <shape variant="card" type="rounded-rect" w="fill" h="fill" pad="lg">
+        <col gap="md" h="fill" justify="between">
+          <col gap="md">
+            <text variant="kicker" color="muted">라이브러리 계열 · python-pptx</text>
+            <shape type="rounded-rect" fill="surface" border="none" radius="sm" w="fill" h="76" pad="xs sm">
+              <pre size="16">box.left = Emu(1219200)  # 손으로 잰 값
+box.top  = Emu(2286000)</pre>
+            </shape>
+            <ul size="22">
+              <li>모든 요소를 EMU 좌표로 손으로 놓는다</li>
+              <li>디자인에는 API가 없어 XML을 조립한다</li>
+            </ul>
+          </col>
+          <text role="heading" size="28" color="accent5">✕ 쓰기 쉬움을 잃는다</text>
         </col>
-        <text role="heading" size="28" color="accent1">→ 쓰기 쉬움을 잃는다</text>
-      </col>
+      </shape>
+    </grid>
+    <shape type="ellipse" fill="bg" border="2 solid surface" shadow="soft" w="64" h="64" at="center" enter="zoom">
+      <text role="heading" size="22" color="muted" align="center" anchor="center">vs</text>
     </shape>
-  </col>
-  <note>둘 중 하나를 잃는다: 표현력이냐, 편집 가능한 산출물이냐.</note>
+  </stack>
+  <note>둘 중 하나를 잃는다: 표현력이냐, 편집 가능한 산출물이냐. balpyo는 둘 다 갖는 자리를 노린다.</note>
 </slide>

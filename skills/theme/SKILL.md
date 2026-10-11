@@ -250,5 +250,7 @@ a small inheriting theme using the newer keys (overlay glow, `{n} / {total}`, mo
 transition, tracked kickers, mark): `${CLAUDE_PLUGIN_ROOT}/examples/decks/ec2-intro/themes/summit/`
 — copy its keys, not its palette: its accents are brand colours kept as-is and three of them fail
 the contrast rule above;
-a standalone theme (`"extends": ""`, all eleven layouts) meant to be copied into a project:
-`${CLAUDE_PLUGIN_ROOT}/examples/themes/harbor/`.
+standalone themes (`"extends": ""`, all eleven layouts) meant to be copied into a project:
+`${CLAUDE_PLUGIN_ROOT}/examples/themes/harbor/` (light, cards) and
+`${CLAUDE_PLUGIN_ROOT}/examples/themes/aurora/` (dark, with picture backgrounds and overlays for the
+cover, section divider and closing slide, and a palette that passes the three rules above).

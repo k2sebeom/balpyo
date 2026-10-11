@@ -1,49 +1,52 @@
-<!-- 기여 요인: 넷을 2×2 카드로. 그리드가 `grow="1"`로 제목과 캡션 사이를 다 갖고, 카드
-     넷이 그 높이를 나눠 받는다. 카드 안은 요인(위) · 설명 · 그것을 막는 액션(아래 끝)이다 —
-     요인과 액션이 같은 카드에 있어야 다음 장의 목록이 어디서 왔는지 보인다.
+<!-- 기여 요인: 넷이 한 결과로 모인다. 왼쪽에 요인 카드 넷이 쌓이고, 오른쪽의 빨간 원(47분 — 장애가
+     낸 값, 덱의 색 규칙 001_cover)으로 곡선 연결선 넷이 모인다. "원인 하나"가 아니라 "넷이 겹쳤다"를
+     목록이 아니라 모양으로 말한다.
 
-     액션 줄은 `accent3`다 — 우리가 할 것이다 (덱의 색 규칙 — 001_cover). -->
-<slide id="factors">
-  <h2>기여 요인 넷</h2>
-  <grid cols="2" gap="md" grow="1">
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="md">
-      <col gap="xs" h="fill" justify="between">
-        <col gap="xs">
-          <text role="heading" size="26">고정 TTL</text>
-          <text role="body" size="20">예열이 모든 키에 같은 만료 시각을 준다.</text>
-        </col>
-        <text role="caption" color="accent3">→ TTL에 ±10% 지터</text>
+     카드마다 요인(왼쪽)과 그것을 막는 액션(오른쪽 끝, `accent3` — 우리가 할 것)이 한 줄에 선다 — 요인과
+     액션이 같은 카드에 있어야 다음 장의 목록이 어디서 왔는지 보인다. 아래 캡션이 이 장의 결론이다:
+     넷 중 하나만 없었어도. -->
+<slide id="factors" enter="rise">
+  <text variant="kicker">기여 요인</text>
+  <h2>넷이 한꺼번에 겹쳤다</h2>
+  <row gap="0" align="center" grow="1">
+    <col gap="sm" w="760">
+      <shape type="rounded-rect" id="f1" variant="card" fill="surface" border="none" w="fill" pad="sm md">
+        <row gap="md" align="center">
+          <col gap="0" grow="1" basis="0"><text role="heading" size="22">고정 TTL</text><text role="caption">예열이 모든 키에 같은 만료 시각을 준다</text></col>
+          <text role="caption" color="accent3" w="230" align="end">→ TTL에 ±10% 지터</text>
+        </row>
+      </shape>
+      <shape type="rounded-rect" id="f2" variant="card" fill="surface" border="none" w="fill" pad="sm md">
+        <row gap="md" align="center">
+          <col gap="0" grow="1" basis="0"><text role="heading" size="22">단일 비행 없음</text><text role="caption">캐시 미스가 그대로 DB 질의가 된다</text></col>
+          <text role="caption" color="accent3" w="230" align="end">→ 미스에 단일 비행 잠금</text>
+        </row>
+      </shape>
+      <shape type="rounded-rect" id="f3" variant="card" fill="surface" border="none" w="fill" pad="sm md">
+        <row gap="md" align="center">
+          <col gap="0" grow="1" basis="0"><text role="heading" size="22">읽기 풀이 작다</text><text role="caption">상한 40, 평시 피크 26 — 여유가 14개뿐</text></col>
+          <text role="caption" color="accent3" w="230" align="end">→ 상한 96, 80%에 경보</text>
+        </row>
+      </shape>
+      <shape type="rounded-rect" id="f4" variant="card" fill="surface" border="none" w="fill" pad="sm md">
+        <row gap="md" align="center">
+          <col gap="0" grow="1" basis="0"><text role="heading" size="22">경보가 5분 평균</text><text role="caption">평균이라 급한 스파이크를 늦게 본다</text></col>
+          <text role="caption" color="accent3" w="230" align="end">→ 1분 p99 경보로</text>
+        </row>
+      </shape>
+    </col>
+    <spacer grow="1"/>
+    <shape type="ellipse" id="outcome" fill="accent5" border="none" shadow="soft" w="220" h="220" enter="zoom">
+      <col gap="0" align="center" justify="center" h="fill">
+        <text role="title" size="56" color="bg" align="center">47<span size="28">분</span></text>
+        <text role="caption" color="bg" align="center"><strong>결제 5xx</strong></text>
       </col>
     </shape>
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="md">
-      <col gap="xs" h="fill" justify="between">
-        <col gap="xs">
-          <text role="heading" size="26">단일 비행 없음</text>
-          <text role="body" size="20">캐시 미스가 그대로 DB 질의가 된다
-          (<code>cache.Get</code> 실패 경로에 잠금이 없다).</text>
-        </col>
-        <text role="caption" color="accent3">→ 캐시 미스에 단일 비행 잠금</text>
-      </col>
-    </shape>
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="md">
-      <col gap="xs" h="fill" justify="between">
-        <col gap="xs">
-          <text role="heading" size="26">읽기 풀이 작다</text>
-          <text role="body" size="20">풀 상한 40, 평시 피크 26. 여유가 14개뿐이었다.</text>
-        </col>
-        <text role="caption" color="accent3">→ 풀 상한 96, 사용률 80%에 경보</text>
-      </col>
-    </shape>
-    <shape type="rounded-rect" fill="surface" border="none" radius="lg" w="fill" pad="md">
-      <col gap="xs" h="fill" justify="between">
-        <col gap="xs">
-          <text role="heading" size="26">경보가 5분 평균</text>
-          <text role="body" size="20">임계값이 평균이라 급한 스파이크를 늦게 본다.</text>
-        </col>
-        <text role="caption" color="accent3">→ 1분 p99 경보로 교체</text>
-      </col>
-    </shape>
-  </grid>
+  </row>
+  <connector from="f1" to="outcome" route="curved" from-side="right" to-side="left" variant="plain" end="dot" enter="draw"/>
+  <connector from="f2" to="outcome" route="curved" from-side="right" to-side="left" variant="plain" end="dot" enter="draw"/>
+  <connector from="f3" to="outcome" route="curved" from-side="right" to-side="left" variant="plain" end="dot" enter="draw"/>
+  <connector from="f4" to="outcome" route="curved" from-side="right" to-side="left" variant="plain" end="dot" enter="draw"/>
   <text role="caption" color="muted">넷 중 하나만 없었어도 47분이 아니라 5분이었다.</text>
   <note>순서는 고치는 비용 순이다. 1번과 4번이 이번 주, 2번이 다음 스프린트.</note>
 </slide>

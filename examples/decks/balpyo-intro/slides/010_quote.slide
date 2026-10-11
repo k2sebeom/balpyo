@@ -1,9 +1,15 @@
-<!-- 인용 — quote 레이아웃(세로 가운데)의 흐름 모드. blockquote의 기본 색은 muted다.
-     인용 한 장은 글자가 화면을 받쳐야 한다 — 세로 가운데 레이아웃에서 본문 크기면 장 전체가 빈
-     화면으로 읽히므로 크게 둔다. -->
-<slide id="quote" layout="quote">
-  <blockquote size="52" color="fg" align="center">“열리는 파일”과 “편집 가능한 파일”의
+<!-- 인용 — quote 레이아웃(세로 가운데)의 흐름 모드, 그리고 덱에서 유일한 **뒤집힌 장**이다.
+     `<slide invert>`는 bg ↔ fg, surface ↔ muted를 이 장에서만 바꾼다 — 원고의 `color="fg"`는 그대로이고
+     밝은 테마에서는 어두운 장이, 어두운 테마에서는 밝은 장이 된다. PPTX에서는 색 지도 덮어쓰기라
+     테마 색이 여전히 장을 움직인다.
+
+     큰 따옴표 하나가 장의 무게를 받친다. 강조는 `<mark>`가 아니라 글자색이다: 형광펜의 색은 테마가
+     밝은 바탕을 위해 고른 값이라, 뒤집힌 장에서는 밝은 글자 밑에 밝은 형광펜이 깔린다. -->
+<slide id="quote" layout="quote" invert enter="rise">
+  <text role="title" size="160" color="accent1" align="center">“</text>
+  <blockquote size="50" color="fg" align="center">“열리는 파일”과 <span color="accent1">“편집 가능한 파일”</span>의
   차이가 이 제품의 핵심이다.</blockquote>
+  <shape type="rect" fill="accent1" border="none" w="72" h="4" self="center"/>
   <text role="body" color="muted" align="center">— 테스트 문서, 사람이 직접 pptx를 열어 확인하는 단계를 자동화하지 않는 이유</text>
   <note>그래서 바뀔 때마다 PowerPoint나 Keynote로 직접 연다.</note>
 </slide>

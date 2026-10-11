@@ -1,0 +1,8 @@
+/* content 슬롯 영역 — 제목이 위, 본문이 남은 높이를 채운다.
+   슬롯 영역 CSS는 흐름 규칙을 물려받지 않으므로 display:grid부터 스스로 갖춘다.
+   저자의 직계 자식은 slot="title"·slot="body"로 이 영역에 앉는다. */
+display: grid;
+grid-template-columns: 1fr;
+grid-template-rows: auto 1fr;
+grid-template-areas: "title" "body";
+align-content: start;

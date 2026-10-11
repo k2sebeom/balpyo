@@ -1,0 +1,32 @@
+{
+  "$comment": "aurora — 혼자 서는(standalone) 어두운 예제 테마. extends가 비어 있으므로 아무것도 물려받지 않는다. harbor와 다른 점은 테마가 그림을 갖는다는 것이다: 표지 · 구역 표지 · 마무리의 배경이 assets/의 오로라 그림이고, 그 위의 덮개(overlay)가 글자가 서는 쪽을 어둡게 눌러 둔다. 덱은 그림을 한 번도 부르지 않는다 — 테마를 갈면 배경도 함께 갈린다.",
+
+  "name": "aurora",
+  "extends": "",
+  "layouts": [
+    "title", "section-divider", "content", "two-column",
+    "image-full", "image-text", "quote", "code", "stat", "canvas", "end"
+  ],
+  "backgrounds": [
+    { "layouts": ["title"], "image": "assets/cover.jpg", "overlay": "gradient(bg/80 bg/0, 90deg)" },
+    { "layouts": ["section-divider"], "image": "assets/section.jpg", "overlay": "gradient(bg/90 bg/20, 90deg)" },
+    { "layouts": ["end"], "image": "assets/end.jpg", "overlay": "gradient(bg/50 bg/0, 180deg)" },
+    { "layouts": ["quote"], "fill": "bg", "overlay": "radial(accent6/16 bg/0)" },
+    { "fill": "bg", "overlay": "gradient(accent1/14 bg/0 bg/0, 210deg)" }
+  ],
+  "chrome": [
+    {
+      "kind": "footer",
+      "align": "start",
+      "role": "caption",
+      "skipLayouts": ["title", "section-divider", "image-full", "end"]
+    },
+    {
+      "kind": "pageNumber",
+      "align": "end",
+      "role": "caption",
+      "format": "{n} / {total}",
+      "skipLayouts": ["title", "section-divider", "image-full", "end"]
+    }
+  ]
+}
