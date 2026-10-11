@@ -622,11 +622,17 @@ theme "acme" exists both in the project's themes/acme/ and among installed theme
 | `layouts/<이름>.css`가 있는데 선언에 없다 | **에러** | `layouts/….css exists but is not declared in theme.json layouts` |
 | `tokens.json`에 필수 토큰 이름이 없다 | **에러** | `tokens.json has no color token "accent6" (required: fg, bg, muted, surface, accent1, …)` |
 | 색 토큰에 `clrScheme` 슬롯이 없다 | **에러** | 남은 자리를 나열한다 — `… has no clrScheme slot … (free slots: hlink, folHlink)`. 자리가 다 찼으면 `no free slots — replace the value of an existing name instead of adding a new color name` |
+| 색 토큰의 `rgb`가 `#` 없는 16진수 6자리가 아니다 | **에러** | `tokens.json color token "accent1" has rgb "#A10" — rgb must be 6 hex digits without # (RRGGBB)` |
+| 색 토큰의 `ref`가 그 슬롯의 참조 이름이 아니다 (`dk1`→`tx1` · `lt1`→`bg1` · `dk2`→`tx2` · `lt2`→`bg2`, 나머지는 슬롯 이름 그대로) | **에러** | `tokens.json color token "accent1" has ref "bogus" — a color in clrScheme slot "accent1" is referenced as "accent1"` |
+| 그림자 토큰의 `alpha`가 0 ~ 1 밖이다 | **에러** | `tokens.json shadow token "soft" has alpha 3.3 — alpha is an opacity from 0 to 1` |
+| `motion`의 `duration`이 0 이하이거나 `stagger`·`delay`·`transitionDuration`이 음수다 | **에러** | `tokens.json motion transitionDuration must be ≥ 0 (ms; 0 follows duration) — got -5` |
 | 두 색 토큰이 같은 슬롯을 쓴다 | **에러** | `tokens.json clrScheme slot "accent1" is shared by color tokens "accent1" and "brand" — cannot tell which color owns the slot` |
 | `components.json`의 `text.roles`에 역할 5종 중 하나가 없다 | **에러** | `components.json text.roles has no role "code" (required: title, heading, body, caption, code)` |
 | 역할의 `size`·`lineHeight`가 0 이하이거나 `align`이 없다 | **에러** | `roles are the bottom of the cascade and must be complete` |
 | 역할의 `font`·`color`가 이 테마의 토큰이 아니다 | **에러** | 이 테마가 가진 이름을 함께 나열한다 |
 | 컴포넌트 기본값·variant·이미지·표의 `color`·`fill`·`border` 색이 이 테마의 색 토큰 참조가 아니다 (`#RRGGBB` 리터럴, 리터럴 스톱이 섞인 그라디언트) | **에러** | 자리와 문제의 조각을 가리키고 이 테마의 색 토큰을 나열한다 — 그 variant를 쓴 슬라이드가 없어도 로딩에서 멈춘다 |
+| 역할·컴포넌트 기본값·variant·표 셀의 `weight`가 1 ~ 1000 밖이다 (역할에서 생략하면 0이다) | **에러** | `text role "title" weight 6000 is out of range — weight is a CSS font-weight from 1 to 1000` |
+| 도형·이미지의 `radius`·`shadow`가 이 테마의 토큰 이름이 아니다 | **에러** | `shape variant "card": unknown shadow token "nope" (available tokens: soft)` — 그 variant를 쓴 슬라이드가 없어도 로딩에서 멈춘다 |
 | 역할·컴포넌트 기본값·variant의 `tracking`이 −0.1 ~ 0.5 밖이거나 `case`가 `upper`·`none`이 아니다 | **에러** | `… tracking 0.8 is out of range …` · `… case "lower" is unknown (available values: upper, none)` |
 | `text.mark.highlight`가 그라디언트다 | **에러** | `text.mark highlight "gradient(…)" cannot be a gradient — a highlight is one color (PPTX a:highlight holds a single color)` |
 | `tokens.json`·`components.json`에 모르는 키가 있다 (`$comment*` 밖) | **에러** | 그 파일의 줄:칸과 JSON 안의 경로를 가리킨다 — `themes/corp/components.json:4:24: unknown key "lineHeight" at text.variants["stat"].lineHeight`. 이름이 있는 배열 원소는 이름으로, 없으면 순번(`componentDefaults[1]`)으로 부른다 |
