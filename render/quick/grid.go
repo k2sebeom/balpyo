@@ -143,91 +143,144 @@ func resolveAxis(startV, endV string, areas map[string]area, rows bool) axisPlac
 	return axisPlace{-1, 1}
 }
 
-// placeItems는 항목을 격자 칸에 놓는다 (명시 위치 → 행 우선 sparse 자동 배치).
-func placeItems(kids []*box, areas map[string]area, cols int) ([]*gridItem, int, int) {
-	occupied := map[[2]int]bool{}
-	mark := func(it *gridItem) {
-		for r := it.r0; r < it.r1; r++ {
-			for c := it.c0; c < it.c1; c++ {
-				occupied[[2]int{r, c}] = true
-			}
+// placeItems는 항목을 격자 칸에 놓는다 — CSS 격자 자동 배치 알고리즘이다. cols · rows는 명시 격자의
+// 열 · 행 수, flow는 grid-auto-flow다 (row | column, dense).
+//
+// 알고리즘은 흐름 방향을 기준으로 적는다: 흐름이 row면 "줄"은 행이고 커서는 줄 안에서 열을 따라
+// 걷는다. column이면 둘이 바뀐다. 순서는 1) 두 축이 다 정해진 항목 2) 줄만 정해진 항목 3) 줄 안의
+// 트랙 수 확정 4) 나머지를 커서로 놓기다. sparse는 커서가 뒤로 가지 않고, dense는 항목마다 맨 앞에서
+// 다시 찾아 앞에 남은 빈칸을 채운다.
+func placeItems(kids []*box, areas map[string]area, cols, rows int, flow string) ([]*gridItem, int, int) {
+	column, dense := false, false
+	for _, f := range strings.Fields(flow) {
+		switch f {
+		case "column":
+			column = true
+		case "dense":
+			dense = true
 		}
 	}
-	fits := func(r0, c0, rs, cs int) bool {
-		for r := r0; r < r0+rs; r++ {
+	// (줄, 칸) 좌표: 줄은 흐름이 넘어가는 축, 칸은 커서가 줄 안에서 걷는 축이다.
+	type placed struct{ line, cell axisPlace }
+	occupied := map[[2]int]bool{}
+	fits := func(l0, c0, ls, cs int) bool {
+		for l := l0; l < l0+ls; l++ {
 			for c := c0; c < c0+cs; c++ {
-				if occupied[[2]int{r, c}] {
+				if occupied[[2]int{l, c}] {
 					return false
 				}
 			}
 		}
 		return true
 	}
-	type pending struct {
-		it       *gridItem
-		row, col axisPlace
+	mark := func(p placed) {
+		for l := p.line.start; l < p.line.start+p.line.span; l++ {
+			for c := p.cell.start; c < p.cell.start+p.cell.span; c++ {
+				occupied[[2]int{l, c}] = true
+			}
+		}
 	}
-	var items []*gridItem
-	var autos []pending
-	rows := 0
-	for _, k := range kids {
-		it := &gridItem{b: k}
+	nCells := cols
+	if column {
+		nCells = rows
+	}
+	items := make([]*gridItem, len(kids))
+	pos := make([]placed, len(kids))
+	for i, k := range kids {
+		items[i] = &gridItem{b: k}
 		row := resolveAxis(k.st.get("grid-row-start"), k.st.get("grid-row-end"), areas, true)
 		col := resolveAxis(k.st.get("grid-column-start"), k.st.get("grid-column-end"), areas, false)
-		items = append(items, it)
-		if row.start >= 0 && col.start >= 0 {
-			it.r0, it.r1, it.c0, it.c1 = row.start, row.start+row.span, col.start, col.start+col.span
-			mark(it)
-			rows, cols = max(rows, it.r1), max(cols, it.c1)
+		if column {
+			pos[i] = placed{col, row}
+		} else {
+			pos[i] = placed{row, col}
+		}
+	}
+	// 1. 두 축이 다 정해진 항목
+	for i := range pos {
+		if p := pos[i]; p.line.start >= 0 && p.cell.start >= 0 {
+			mark(p)
+		}
+	}
+	// 2. 줄만 정해진 항목: 그 줄에서 겹치지 않는 첫 칸. sparse면 이 단계가 그 줄에 앞서 놓은 항목 뒤에서
+	// 찾는다.
+	after := map[int]int{}
+	for i := range pos {
+		p := &pos[i]
+		if p.line.start < 0 || p.cell.start >= 0 {
 			continue
 		}
-		cols = max(cols, col.span)
-		if col.start >= 0 {
-			cols = max(cols, col.start+col.span)
+		c := 0
+		if !dense {
+			c = after[p.line.start]
 		}
-		autos = append(autos, pending{it, row, col})
+		for !fits(p.line.start, c, p.line.span, p.cell.span) {
+			c++
+		}
+		p.cell.start = c
+		after[p.line.start] = c + p.cell.span
+		mark(*p)
 	}
-	cols = max(cols, 1)
-	curR, curC := 0, 0
-	for _, p := range autos {
-		it := p.it
-		switch {
-		case p.row.start >= 0:
-			// 행이 정해졌다: 그 행에서 들어갈 첫 열
-			c := 0
-			for !fits(p.row.start, c, p.row.span, p.col.span) {
-				c++
+	// 3. 줄 안의 트랙 수: 명시 격자, 칸이 정해진 항목의 끝, 자동 항목의 가장 긴 span 가운데 큰 것.
+	for _, p := range pos {
+		if p.cell.start >= 0 {
+			nCells = max(nCells, p.cell.start+p.cell.span)
+		} else {
+			nCells = max(nCells, p.cell.span)
+		}
+	}
+	nCells = max(nCells, 1)
+	// 4. 나머지 — 줄이 auto인 항목. 커서는 마지막에 놓은 항목의 시작 자리다.
+	curL, curC := 0, 0
+	for i := range pos {
+		p := &pos[i]
+		if p.line.start >= 0 {
+			continue
+		}
+		if dense {
+			curL, curC = 0, 0
+		}
+		if p.cell.start >= 0 {
+			// 칸이 정해졌다: 커서가 그 칸보다 뒤에 있으면 다음 줄로 넘어가 겹치지 않는 줄을 찾는다.
+			if !dense && p.cell.start < curC {
+				curL++
 			}
-			it.r0, it.c0 = p.row.start, c
-		case p.col.start >= 0:
-			if p.col.start < curC {
-				curR++
+			curC = p.cell.start
+			for !fits(curL, curC, p.line.span, p.cell.span) {
+				curL++
 			}
-			for !fits(curR, p.col.start, p.row.span, p.col.span) {
-				curR++
-			}
-			it.r0, it.c0 = curR, p.col.start
-			curC = p.col.start + p.col.span
-		default:
+		} else {
 			for {
-				if curC+p.col.span > cols {
-					curR++
+				if curC+p.cell.span > nCells {
+					curL++
 					curC = 0
 					continue
 				}
-				if fits(curR, curC, p.row.span, p.col.span) {
+				if fits(curL, curC, p.line.span, p.cell.span) {
 					break
 				}
 				curC++
 			}
-			it.r0, it.c0 = curR, curC
-			curC += p.col.span
+			p.cell.start = curC
 		}
-		it.r1, it.c1 = it.r0+p.row.span, it.c0+p.col.span
-		mark(it)
-		rows, cols = max(rows, it.r1), max(cols, it.c1)
+		p.line.start = curL
+		mark(*p)
 	}
-	return items, rows, cols
+	nRows, nCols := 0, 0
+	for i, it := range items {
+		row, col := pos[i].line, pos[i].cell
+		if column {
+			row, col = col, row
+		}
+		it.r0, it.r1, it.c0, it.c1 = row.start, row.start+row.span, col.start, col.start+col.span
+		nRows, nCols = max(nRows, it.r1), max(nCols, it.c1)
+	}
+	if column {
+		nRows = max(nRows, nCells)
+	} else {
+		nCols = max(nCols, nCells)
+	}
+	return items, nRows, nCols
 }
 
 func (e *engine) gridSetup(b *box) ([]*gridItem, []track, []track) {
@@ -236,7 +289,7 @@ func (e *engine) gridSetup(b *box) ([]*gridItem, []track, []track) {
 	rows := parseTrackList(b.st.get("grid-template-rows"), fs)
 	areas, areaRows, areaCols := parseAreas(b.st.get("grid-template-areas"))
 	nCols := max(len(cols), areaCols)
-	items, nr, nc := placeItems(ordered(b.kids), areas, nCols)
+	items, nr, nc := placeItems(ordered(b.kids), areas, nCols, max(len(rows), areaRows), b.st.get("grid-auto-flow"))
 	// 항목이 모두 절대 배치여도 격자는 한 칸을 가진다 — 절대 배치 자식의 `grid-area: 1 / 1`이 그 칸을
 	// 포함 블록으로 쓴다 (브라우저가 그렇게 잰다).
 	nr = max(nr, max(len(rows), areaRows), 1)

@@ -155,6 +155,38 @@ func TestGridSpanningItemGrowsRowsUpToLimits(t *testing.T) {
 	}
 }
 
+// grid-auto-flow는 자동 배치의 방향과 채우기를 정한다: column은 열 우선으로 채우고, dense는 앞에 남은
+// 빈칸으로 되돌아가 채운다. 한 축이 정해진 항목은 그 축이 흐름 방향의 줄이면 자동 항목보다 먼저 놓인다.
+// 기대값은 Chromium이 잰 값이다 (x/y는 컨테이너 기준).
+func TestGridAutoFlow(t *testing.T) {
+	_, b := layoutBody(t, baseCSS,
+		`<div style="display: grid; width: 600px; grid-template-columns: repeat(3, 1fr); grid-auto-flow: column; grid-template-rows: repeat(2, 60px)">`+
+			`<div id="i1"></div><div id="i2"></div><div id="i3"></div><div id="i4"></div><div id="i5"></div></div>`+
+			`<div style="display: grid; width: 600px; grid-auto-flow: column; grid-template-rows: repeat(2, 50px)">`+
+			`<div id="j1"></div><div id="j2" style="grid-row: span 2"></div><div id="j3"></div><div id="j4" style="grid-row: 2"></div><div id="j5"></div></div>`+
+			`<div style="display: grid; width: 600px; grid-template-columns: repeat(3, 1fr); grid-auto-flow: row dense">`+
+			`<div id="d1" style="height: 24px"></div><div id="d2" style="grid-column: span 3; height: 24px"></div><div id="d3" style="height: 24px"></div>`+
+			`<div id="d4" style="grid-column: span 2; height: 24px"></div><div id="d5" style="height: 24px"></div></div>`+
+			`<div style="display: grid; width: 600px; grid-template-rows: repeat(3, 30px); grid-auto-flow: column dense">`+
+			`<div id="e1"></div><div id="e2" style="grid-row: span 3"></div><div id="e3"></div><div id="e4" style="grid-column: 1"></div><div id="e5" style="grid-row: 3"></div></div>`+
+			// 기본 흐름(row)에서도 행이 정해진 항목(f2 · f3)이 앞선 자동 항목보다 먼저 첫 행을 차지한다.
+			`<div style="display: grid; width: 400px; grid-template-columns: 1fr 1fr; grid-auto-rows: 20px">`+
+			`<div id="f1"></div><div id="f2" style="grid-row: 1"></div><div id="f3" style="grid-row: 1"></div><div id="f4" style="grid-column: 1"></div><div id="f5"></div></div>`)
+	want := map[string][4]float64{
+		"i1": {0, 0, 200, 60}, "i2": {0, 60, 200, 60}, "i3": {200, 0, 200, 60}, "i4": {200, 60, 200, 60}, "i5": {400, 0, 200, 60},
+		"j1": {0, 0, 150, 50}, "j2": {150, 0, 150, 100}, "j3": {300, 0, 150, 50}, "j4": {300, 50, 150, 50}, "j5": {450, 0, 150, 50},
+		"d1": {0, 0, 200, 24}, "d2": {0, 24, 600, 24}, "d3": {200, 0, 200, 24}, "d4": {0, 48, 400, 24}, "d5": {400, 0, 200, 24},
+		"e1": {0, 30, 200, 30}, "e2": {200, 0, 200, 90}, "e3": {0, 60, 200, 30}, "e4": {0, 0, 200, 30}, "e5": {400, 60, 200, 30},
+		"f1": {0, 20, 200, 20}, "f2": {0, 0, 200, 20}, "f3": {200, 0, 200, 20}, "f4": {0, 40, 200, 20}, "f5": {200, 40, 200, 20},
+	}
+	for id, r := range want {
+		k := b[id]
+		if !near(k.x, r[0]) || !near(k.y, r[1]) || !near(k.w, r[2]) || !near(k.h, r[3]) {
+			t.Errorf("%s = (%.1f,%.1f %.1fx%.1f), want (%.0f,%.0f %.0fx%.0f)", id, k.x, k.y, k.w, k.h, r[0], r[1], r[2], r[3])
+		}
+	}
+}
+
 // grid 컨테이너의 절대 배치 자식은 grid-area가 정한 영역을 포함 블록으로 쓴다 — 끝 줄이 auto인
 // 변은 padding box 끝까지 간다.
 func TestAbsoluteInGridArea(t *testing.T) {
