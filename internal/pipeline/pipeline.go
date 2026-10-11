@@ -106,7 +106,15 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 		projectDir = "."
 	}
 	home := themeHomeFS(opts.ThemeHome)
-	cfg, err := core.LoadConfigWithThemes(projectDir, home)
+	// 플래그가 테마를 덮으면 설정의 이름은 검사하지 않는다 — 이 실행이 버릴 이름이라, 그 오타나
+	// 이름 겹침이 다른 테마를 명시한 실행을 멈추면 안 된다. 쓸 이름의 검사는 아래에서 한다.
+	var cfg core.Config
+	var err error
+	if opts.Theme != "" {
+		cfg, err = core.ReadConfig(projectDir)
+	} else {
+		cfg, err = core.LoadConfigWithThemes(projectDir, home)
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -145,7 +153,7 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 		Aspect: cfg.Aspect,
 		Stage:  stage,
 		// 테마 요청도 크롬과 같은 태도로 옮긴다 — 이름을 패키지로 바꾸는 것은
-		// core.Resolve다. 설정 로드가 이미 어휘를 검사했으므로 여기 도달한 이름은 내장 테마,
+		// core.Resolve다. 설정 로드나 플래그 검사가 이미 어휘를 봤으므로 여기 도달한 이름은 내장 테마,
 		// 이 프로젝트의 `themes/<이름>/`, 설치한 테마 중 하나다.
 		ThemeName: cfg.Theme,
 		// 크롬 요청은 설정에서 그대로 옮긴다 — 테마 선언과 합치는 것은 core.Resolve다.

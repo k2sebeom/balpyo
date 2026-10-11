@@ -248,6 +248,45 @@ func TestLoadDeckRejectsUnknownThemeOption(t *testing.T) {
 	}
 }
 
+// 플래그가 설정을 덮으면 이름 검사도 **실제로 쓸 이름**에만 돈다: 버려질 `balpyo.json`의 이름이
+// 오타이거나 겹치는 이름이어도, 다른 테마를 명시한 실행이 그 이름 때문에 멈추면 안 된다.
+func TestLoadDeckThemeOptionSkipsTheConfigName(t *testing.T) {
+	brine := map[string]string{
+		"themes/brine/theme.json":  `{"name":"brine","extends":"minimal"}`,
+		"themes/brine/tokens.json": `{"color":[{"name":"accent1","rgb":"112233","slot":"accent1","ref":"accent1"}]}`,
+	}
+	tests := []struct {
+		name   string
+		config string
+		local  bool // 프로젝트에도 themes/brine/을 둔다
+	}{
+		{name: "설정의 이름이 오타다", config: `{"theme": "inkk"}`},
+		{name: "설정의 이름이 로컬과 설치 양쪽에 있다", config: `{"theme": "brine"}`, local: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files := map[string]string{
+				"balpyo.json":            tt.config,
+				"slides/001_title.slide": "<slide><h1>제목</h1></slide>",
+			}
+			if tt.local {
+				for name, body := range brine {
+					files[name] = body
+				}
+			}
+			dir := newProject(t, files)
+			home := newProject(t, brine)
+			deck, _, err := LoadDeck(Options{ProjectDir: dir, ThemeHome: home, Theme: "ink"})
+			if err != nil {
+				t.Fatalf("--theme ink인데 설정의 이름 때문에 멈췄다: %v", err)
+			}
+			if deck.Theme.Name != "ink" {
+				t.Errorf("deck.Theme.Name = %q, want ink", deck.Theme.Name)
+			}
+		})
+	}
+}
+
 // TestLoadDeckUsesAProjectLocalTheme는 프로젝트의 `themes/<이름>/`이 설정과 플래그 **양쪽**에서
 // 이름으로 불림을 못 박는다. 파이프라인이 프로젝트 파일시스템을 값 층에
 // 넘기지 않으면 로컬 테마는 core에서 보이지 않는다.

@@ -42,6 +42,10 @@ project's themes/, or an installed theme (available themes: editorial, ink, mini
 슬라이드에서 찾는다. 모르는 `variant`가 경고 + 폴백인 것과 갈라지는 자리이기도 하다: variant
 어휘는 테마의 사유물이지만 테마 **이름**의 어휘는 프로젝트가 소유한다.
 
+검사하는 이름은 **이 실행이 쓸 이름 하나**다. `--theme`를 주면 `balpyo.json`의 `theme`는 버려지므로
+검사하지 않는다 — 설정에 `"inkk"`가 적혀 있어도 `balpyo build --theme ink`는 빌드된다. 대신
+플래그의 이름이 어휘 밖이면 `--theme`를 가리키며 멈춘다.
+
 슬라이드마다 다른 테마, 시스템 다크 모드 자동 전환, 테마를 가리키는 **경로** 문법은 열지 않았다.
 
 ## 패키지 구조
