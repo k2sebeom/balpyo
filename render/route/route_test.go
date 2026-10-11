@@ -1,6 +1,7 @@
 package route
 
 import (
+	"fmt"
 	"math"
 	"testing"
 )
@@ -22,6 +23,9 @@ func TestRouteEndpointsMatchTheFrame(t *testing.T) {
 		for _, kind := range []Kind{Straight, Elbow, Curved} {
 			for _, fs := range sides {
 				for _, ts := range sides {
+					if fs == ts {
+						continue
+					}
 					p, err := Route(a, b, fs, ts, kind)
 					if err != nil {
 						t.Fatal(err)
@@ -122,8 +126,8 @@ func TestRouteUTurn(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if p.Adj >= 0 && p.Adj <= 1 {
-			t.Errorf("%s: adj %g는 프레임 안이다 — U자는 바깥에서 꺾어야 한다", kind, p.Adj)
+		if p.Adj[0] >= 0 && p.Adj[0] <= 1 {
+			t.Errorf("%s: adj %g는 프레임 안이다 — U자는 바깥에서 꺾어야 한다", kind, p.Adj[0])
 		}
 		first, last := p.Points[0], p.Points[len(p.Points)-1]
 		if math.Hypot(first.X-p.Start.X, first.Y-p.Start.Y) > 1.01 || math.Hypot(last.X-p.End.X, last.Y-p.End.Y) > 1.01 {
@@ -152,5 +156,118 @@ func TestRouteLabelRect(t *testing.T) {
 	p, _ = Route(Rect{X: 0, Y: 0, W: 100, H: 100}, Rect{X: 0, Y: 400, W: 100, H: 100}, Auto, Auto, Straight)
 	if got := p.LabelRect(80, 20); got != (Rect{X: 50 + LabelGap, Y: 240, W: 80, H: 20}) {
 		t.Errorf("세로 선의 라벨 = %+v", got)
+	}
+}
+
+// sample은 경로를 촘촘한 점으로 편다 — 곡선은 flatten, 직선 조각은 1px 간격으로 자른다.
+func sample(p Path) []Point {
+	pts := p.flatten()
+	out := []Point{pts[0]}
+	for k := 1; k < len(pts); k++ {
+		a, b := pts[k-1], pts[k]
+		n := int(math.Ceil(math.Hypot(b.X-a.X, b.Y-a.Y)))
+		for i := 1; i <= n; i++ {
+			t := float64(i) / float64(n)
+			out = append(out, Point{a.X + (b.X-a.X)*t, a.Y + (b.Y-a.Y)*t})
+		}
+	}
+	return out
+}
+
+// inside는 점이 박스 안쪽(변에서 1px 넘게 들어간 자리)인지다 — 변 위를 지나는 선은 가로지른 것이
+// 아니고, 길이 0인 프레임 변에 준 1px 깊이만큼 끝점이 비키는 것도 가로지른 것이 아니다.
+func inside(pt Point, r Rect) bool {
+	const m = 1.01
+	return pt.X > r.X+m && pt.X < r.X+r.W-m && pt.Y > r.Y+m && pt.Y < r.Y+r.H-m
+}
+
+// outward는 면의 바깥 방향 단위 벡터다.
+func outward(s Side) Point {
+	switch s {
+	case Top:
+		return Point{0, -1}
+	case Bottom:
+		return Point{0, 1}
+	case Left:
+		return Point{-1, 0}
+	default:
+		return Point{1, 0}
+	}
+}
+
+// 면이 상대를 등져도 선은 요청한 면에서 바깥으로 나가고, 끝 면에는 바깥에서 들어가며, 두 상자를
+// 가로지르지 않는다 — 오른쪽 → 왼쪽인데 상대가 왼쪽에 있거나, 위 → 아래인데 상대가 아래에 있는 경우다.
+func TestRouteSidesFacingAway(t *testing.T) {
+	a := Rect{X: 700, Y: 100, W: 160, H: 80}
+	b := Rect{X: 200, Y: 400, W: 160, H: 80}
+	c := Rect{X: 700, Y: 400, W: 160, H: 80}
+	cases := []struct {
+		name     string
+		from, to Rect
+		fs, ts   Side
+		preset   string
+	}{
+		{"right→left, target left", a, b, Right, Left, "Connector5"},
+		{"top→bottom, target below", a, c, Top, Bottom, "Connector5"},
+		{"right→top, target below-left", a, b, Right, Top, "Connector4"},
+		{"bottom→left, target below-left", a, b, Bottom, Left, "Connector4"},
+		{"left→bottom, target below-left", a, b, Left, Bottom, "Connector4"},
+		{"left→right, target right", b, a, Left, Right, "Connector5"},
+	}
+	for _, tc := range cases {
+		for _, kind := range []Kind{Elbow, Curved} {
+			p, err := Route(tc.from, tc.to, tc.fs, tc.ts, kind)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := map[Kind]string{Elbow: "bent", Curved: "curved"}[kind] + tc.preset; p.Preset != want {
+				t.Errorf("%s %s: preset %s, want %s", tc.name, kind, p.Preset, want)
+			}
+			checkDetour(t, tc.name+" "+string(kind), p, tc.from, tc.to)
+		}
+	}
+}
+
+// 상자 둘을 여러 자리에 놓고 서로 다른 두 면의 모든 조합에서, 꺾인 경로는 요청한 면 바깥으로 나가
+// 바깥에서 들어오고 어느 상자도 가로지르지 않는다. 같은 면끼리의 U자는 여기서 보지 않는다 — 한 상자가
+// 다른 상자를 그 면 쪽에서 가리면 U자도 그 상자를 지난다.
+func TestRouteNeverCrossesTheBoxes(t *testing.T) {
+	a := Rect{X: 500, Y: 300, W: 160, H: 80}
+	sides := []Side{Top, Right, Bottom, Left}
+	for _, d := range []Point{{-400, -200}, {0, -200}, {400, -200}, {-400, 0}, {400, 0}, {-400, 200}, {0, 200}, {400, 200}, {-100, 200}, {300, 40}} {
+		b := Rect{X: a.X + d.X, Y: a.Y + d.Y, W: 160, H: 80}
+		for _, kind := range []Kind{Elbow, Curved} {
+			for _, fs := range sides {
+				for _, ts := range sides {
+					if fs == ts {
+						continue
+					}
+					p, err := Route(a, b, fs, ts, kind)
+					if err != nil {
+						t.Fatal(err)
+					}
+					checkDetour(t, fmt.Sprintf("%v %s %s→%s %s", d, kind, fs, ts, p.Preset), p, a, b)
+				}
+			}
+		}
+	}
+}
+
+func checkDetour(t *testing.T, name string, p Path, from, to Rect) {
+	t.Helper()
+	n := len(p.Points)
+	first := Point{p.Points[1].X - p.Points[0].X, p.Points[1].Y - p.Points[0].Y}
+	last := Point{p.Points[n-1].X - p.Points[n-2].X, p.Points[n-1].Y - p.Points[n-2].Y}
+	if o := outward(p.StartSide); first.X*o.X+first.Y*o.Y <= 0 {
+		t.Errorf("%s: 첫 토막 %v가 %s 면 바깥으로 나가지 않는다 (%s)", name, first, p.StartSide, p.SVG())
+	}
+	if o := outward(p.EndSide); last.X*o.X+last.Y*o.Y >= 0 {
+		t.Errorf("%s: 끝 토막 %v가 %s 면에 바깥에서 들어오지 않는다 (%s)", name, last, p.EndSide, p.SVG())
+	}
+	for _, pt := range sample(p) {
+		if inside(pt, from) || inside(pt, to) {
+			t.Errorf("%s: 경로가 %v에서 상자를 가로지른다 (%s)", name, pt, p.SVG())
+			break
+		}
 	}
 }
