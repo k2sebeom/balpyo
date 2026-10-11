@@ -87,6 +87,70 @@ func TestOverviewView(t *testing.T) {
 	}
 }
 
+// 오버뷰의 타일 클릭은 링크 위에서도 그 슬라이드로 들어가는 것이지 링크를 따라가는 것이
+// 아니다 — 타일이 줄어 있어 링크 제목이 타일의 큰 몫을 덮고, 따라가면 덱을 떠난다. 발표자
+// 뷰에서는 링크가 그대로 동작해야 한다.
+//
+// 판정은 기본 동작이 막혔는지(defaultPrevented)로 한다: 실제로 이동시키면 페이지가 바뀌어
+// 다음 판정을 할 문서가 사라진다. 문서에 단 리스너는 슬라이드의 리스너 뒤에 불리므로 그
+// 시점의 defaultPrevented가 런타임의 결정이고, 리스너가 스스로 막아 이동은 일어나지 않는다.
+func TestOverviewTileClickOnLinkStaysInDeck(t *testing.T) {
+	fixture := fixtureByName(t, "02_text_subset")
+	result, err := pipeline.Build(pipeline.Options{
+		ProjectDir: fixture.Dir,
+		Targets:    []render.Target{render.TargetHTML},
+		OutDir:     t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("%s 빌드 실패: %v", fixture.Name, err)
+	}
+	deck := result.Deck
+	n := len(deck.Slides)
+	linked := -1
+	for i, s := range deck.Slides {
+		if s.ID == "inline" {
+			linked = i
+		}
+	}
+	if linked < 1 {
+		t.Fatalf("픽스처 전제가 깨졌다: 링크가 있는 슬라이드 inline이 첫 슬라이드 뒤에 있어야 한다 (%d)", linked)
+	}
+
+	browser := NewBrowser(t)
+	browser.Load(t, filepath.Join(result.OutDir, web.IndexFile))
+	browser.Eval(t, web.PresenterViewExpr(), nil)
+	waitCounter(t, browser, fmt.Sprintf("1 / %d", n))
+
+	clickLink := func() bool {
+		t.Helper()
+		var prevented bool
+		browser.Eval(t, fmt.Sprintf(`(() => {
+  const link = document.querySelectorAll(%q)[%d].querySelector("a[href]");
+  if (!link) throw new Error("no link in slide");
+  let prevented = null;
+  const probe = (e) => { prevented = e.defaultPrevented; e.preventDefault(); };
+  document.addEventListener("click", probe);
+  link.dispatchEvent(new MouseEvent("click", {bubbles: true, cancelable: true}));
+  document.removeEventListener("click", probe);
+  return prevented;
+})()`, web.SlideSelector(), linked), &prevented)
+		return prevented
+	}
+
+	pressKey(t, browser, "o")
+	waitView(t, browser, web.OverviewView)
+	if !clickLink() {
+		t.Error("오버뷰에서 링크 위 타일 클릭이 링크를 따라간다 — 덱을 떠난다")
+	}
+	waitView(t, browser, web.PresenterView)
+	waitCounter(t, browser, fmt.Sprintf("%d / %d", linked+1, n))
+
+	// 발표자 뷰에서는 링크가 링크다.
+	if clickLink() {
+		t.Error("발표자 뷰에서 링크 클릭의 기본 동작이 막혔다")
+	}
+}
+
 // pressKey는 문서에 키를 누른 것과 같은 이벤트를 보낸다 (런타임의 리스너는 window에 있다).
 func pressKey(t testing.TB, b *Browser, key string) {
 	t.Helper()
