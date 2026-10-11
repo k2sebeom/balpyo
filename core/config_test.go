@@ -77,6 +77,19 @@ func TestValidateFillsBlanks(t *testing.T) {
 	}
 }
 
+// 메모장은 UTF-8을 BOM과 함께 저장한다. 에디터에 보이지 않는 그 세 바이트 때문에 멀쩡해 보이는
+// 설정이 "invalid character"로 거부되면 저자는 원인을 찾을 수 없다.
+func TestLoadConfigIgnoresLeadingBOM(t *testing.T) {
+	dir := writeConfig(t, "\uFEFF{\"title\": \"BOM\"}")
+	cfg, err := LoadConfig(dir)
+	if err != nil {
+		t.Fatalf("BOM으로 시작하는 balpyo.json도 읽혀야 한다: %v", err)
+	}
+	if cfg.Title != "BOM" {
+		t.Errorf("Title = %q, want BOM", cfg.Title)
+	}
+}
+
 func writeConfig(t *testing.T, body string) string {
 	t.Helper()
 	dir := t.TempDir()

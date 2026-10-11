@@ -55,3 +55,32 @@ func TestThemeJSONCommentKeysAreAllowedEverywhere(t *testing.T) {
 		t.Fatalf("진단이 없어야 한다: %v", diags)
 	}
 }
+
+// 메모장이 저장한 테마 파일은 UTF-8 BOM으로 시작한다. 에디터에 보이지 않는 그 바이트 때문에 테마가
+// "invalid character"로 깨지면 안 되고, 진단의 칸도 에디터가 보여 주는 대로 BOM을 세지 않는다.
+func TestThemeJSONIgnoresLeadingBOM(t *testing.T) {
+	const bom = "\uFEFF"
+	project := localTheme("corp", bom+`{"name":"corp","extends":"minimal"}`,
+		bom+`{"$comment": "a"}`, bom+`{"$comment": "b"}`, nil)
+	if _, diags := themeDeckIn(t, project, "corp", themeProbe); len(diags) != 0 {
+		t.Fatalf("진단이 없어야 한다: %v", diags)
+	}
+	if h, err := ReadThemeHeader(project, "themes/corp"); err != nil || h.Name != "corp" {
+		t.Fatalf("ReadThemeHeader = %+v, %v; want corp", h, err)
+	}
+	// 레이아웃 CSS는 `<style>`에 그대로 인라인되므로 BOM이 남으면 첫 선택자의 일부가 된다.
+	project = localTheme("corp", `{"name":"corp","extends":"minimal"}`, "", "",
+		map[string]string{"title.css": bom + "display: grid;"})
+	if got := mustLoadLocal(t, project, "corp").layoutStyles()["title"]; strings.Contains(got, bom) {
+		t.Errorf("title 배치에 BOM이 남았다: %q", got)
+	}
+
+	project = localTheme("corp", `{"name":"corp","extends":"minimal"}`, bom+`{"colour": []}`, "", nil)
+	_, diags := themeDeckIn(t, project, "corp", themeProbe)
+	if len(diags) != 1 {
+		t.Fatalf("진단 %d개, want 1: %v", len(diags), diags)
+	}
+	if got := diags[0].Span.Start.String(); got != "1:2" {
+		t.Errorf("자리 = %s, want 1:2", got)
+	}
+}

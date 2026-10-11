@@ -70,7 +70,7 @@ func ReadThemeHeader(fsys fs.FS, dir string) (ThemeHeader, error) {
 		return ThemeHeader{}, fmt.Errorf("cannot read theme.json: %w", err)
 	}
 	var m themeManifest
-	if err := json.Unmarshal(data, &m); err != nil {
+	if err := json.Unmarshal(trimBOM(data), &m); err != nil {
 		return ThemeHeader{}, fmt.Errorf("cannot parse %s/theme.json: %w", dir, err)
 	}
 	if m.Name == "" {
