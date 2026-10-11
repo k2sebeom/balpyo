@@ -295,3 +295,22 @@ func TestInstallLocalLintNamesSourceFile(t *testing.T) {
 		t.Errorf("자식과 부모의 경고가 하나씩이어야 한다: %v", res.Lint)
 	}
 }
+
+// 부모와 자식을 한 번에 설치하면 자식의 검사가 부모의 파일도 다시 읽는다 — 그래도 부모의 경고는
+// 설치 한 번에 한 번만 나온다. 같은 파일·같은 자리·같은 문장의 경고는 하나다.
+func TestInstallLintOncePerRun(t *testing.T) {
+	s, _ := newStore(t)
+	dir := t.TempDir()
+	files := map[string]string{"base/layouts/content.css": "color: red;"}
+	child(files, "base/", "base", "")
+	child(files, "child/", "child", "base")
+	writeTree(t, dir, files)
+
+	res, err := s.Install(context.Background(), mustLocal(t, dir), InstallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Lint) != 1 {
+		t.Errorf("부모의 경고가 한 번만 나와야 한다: %v", res.Lint)
+	}
+}
