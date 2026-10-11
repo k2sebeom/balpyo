@@ -1300,10 +1300,12 @@
   });
   overviewToggle.addEventListener("click", () => setOverview(!overviewOn()));
   // 타일 클릭은 오버뷰에서만 슬라이드를 고른다 — 발표 중의 클릭은 넘기기가 아니다
-  // (링크·코드 선택을 삼키지 않는다).
+  // (링크·코드 선택을 삼키지 않는다). 오버뷰에서는 타일 안의 링크도 따라가지 않는다:
+  // 줄어든 타일에서는 링크가 타일의 큰 몫을 덮고, 따라가면 고르려던 덱을 떠난다.
   slides.forEach((slide, index) => {
-    slide.addEventListener("click", () => {
+    slide.addEventListener("click", (e) => {
       if (!overviewOn()) return;
+      e.preventDefault();
       show(index, true);
       setOverview(false);
     });
