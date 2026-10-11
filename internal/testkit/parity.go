@@ -656,7 +656,11 @@ type xSlide struct {
 		Bg   *struct {
 			BgPr struct {
 				xFills
-				BlipFill *struct{} `xml:"blipFill"`
+				BlipFill *struct {
+					Blip struct {
+						Embed string `xml:"http://schemas.openxmlformats.org/officeDocument/2006/relationships embed,attr"`
+					} `xml:"blip"`
+				} `xml:"blipFill"`
 			} `xml:"bgPr"`
 		} `xml:"bg"`
 		SpTree struct {
@@ -908,8 +912,15 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 			s.Transition = kind + "/" + t.Spd
 		}
 		if bg := x.CSld.Bg; bg != nil {
-			if bg.BgPr.BlipFill != nil {
+			if fill := bg.BgPr.BlipFill; fill != nil {
 				s.Background = "image"
+				// 브라우저는 EXIF 방향대로 세운 배경을 그리지만 PowerPoint는 저장된 픽셀을 그대로 편다 — 배경의
+				// `blipFill`에는 회전을 적을 자리가 없으므로, 방향이 남은 그림은 웹과 다른 그림이다.
+				if target := links[fill.Blip.Embed]; target != "" {
+					if o := soml.JPEGOrientation(parts[path.Join("ppt/slides", target)]); o.Rotation() != 0 || o.FlipH() {
+						s.Background = fmt.Sprintf("image exif=%d", o)
+					}
+				}
 			} else {
 				s.Background = "fill=" + pptxFill(bg.BgPr.xFills, theme)
 			}
