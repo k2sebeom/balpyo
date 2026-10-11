@@ -49,6 +49,8 @@ a `<connector>` (its ends come from the measured boxes) or a `cube` / `left-brac
 shape (drawn from the measured box). A PPTX with SVG images also uses the browser to render
 their PNG fallbacks. If no browser is available, say so and build `--target html` (with no
 connectors or measured-box shapes); do not quietly drop the PPTX the user asked for.
+`balpyo snap` (below) needs no browser at all — it is how you still *see* the slides on a
+machine without one.
 
 **The theme's fonts must be installed where the build runs.** A measuring build checks every
 font token against the browser and warns about each missing one (`테마 "minimal"의 글꼴 "…"가
@@ -186,6 +188,30 @@ For the live loop instead, `balpyo watch --project my-talk` serves `http://127.0
 rebuilds in milliseconds on save; a failed build leaves the last good render up with the
 diagnostics overlaid.
 
+### Then look at the slides
+
+A clean gate means nothing overflows; it does not mean the slide reads well. Draw the slides
+and read the images yourself:
+
+```bash
+balpyo snap --project my-talk --slides 3-5        # dist/snap/003.png … in well under a second
+```
+
+Open the PNGs (stage size — 1280×720 at 16:9; `--scale 2` for small text) and check what the gate cannot:
+hierarchy, balance, a chart that says the right thing, a card that is mostly empty. `snap` needs
+no browser, OnlyOffice or LibreOffice — a builtin renderer lays out the deck's own HTML/CSS and
+paints it. It also prints the same layout warnings as `--check-layout`, measured by that
+renderer.
+
+When a warning names a box you cannot place, `--outline` draws every element's measured box
+with its id, the `data-balpyo-id` in `index.html`. Ids count from 0 (`s3.1.0` is the 4th
+slide → its 2nd child → that child's 1st child), while `--slides` and the PNG names count
+from 1. `--gif` writes `deck.gif` with one frame per slide and per `reveal` step.
+
+`snap` is a preview, not the gate: its boxes match the browser's, but its line breaks and glyphs
+are not promised to, and a missing theme font is substituted silently. The verdict is still
+`balpyo check --check-layout --strict`.
+
 ## 5. Build
 
 ```bash
@@ -201,6 +227,9 @@ There is no PDF target: open `index.html` and print to PDF — one slide per pag
 the stage, with "background graphics" enabled.
 
 ## 6. Review when it matters
+
+`balpyo snap` (§4) is the quick look at the web layout. `preview` is the slower, two-column
+review: it is the only way to see the **PPTX** drawn by another engine.
 
 `balpyo preview` builds a gallery putting each web render beside its PPTX render. The PPTX
 column needs a rasterizer: **OnlyOffice Document Builder** first (`BALPYO_ONLYOFFICE`, default

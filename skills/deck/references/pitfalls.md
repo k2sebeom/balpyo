@@ -21,7 +21,8 @@ font on that one box. So:
 - Leave real room in sized boxes (`<shape h="…">`) instead of fitting text to the last pixel.
 - Keep paragraphs in narrow shapes short; a card is a label, not a paragraph.
 - Don't chase identical line breaks — that is outside the contract. Open the PPTX or run
-  `balpyo preview` to see whether the shrink is acceptable.
+  `balpyo preview` to see whether the shrink is acceptable. `balpyo snap` will not show it: it draws the web
+  layout, not the PPTX.
 
 ### A centred slot has no slack
 
@@ -131,6 +132,13 @@ does not fit shows up as the `<table>` frame overflowing instead.
   `검수 갤러리 디렉토리 …가 빌드 출력 디렉토리 …와 겹친다`. Pick two separate directories.
 - **`init` scaffold IDs are `cover`, `what`, `end`** — not the filename stems. Delete the three
   scaffold slides before writing your own, or the first `check` starts with 2 errors.
+- **`snap` is never a gate either.** A clean `snap` run means the builtin renderer found no
+  layout warning. The gate is still `check --check-layout --strict`: its browser measurement is
+  the one the build uses. `snap` writes into `<outDir>/snap/` by default — inside the build
+  output, so don't ship `dist/` with it, or pass `--out`.
+- **`snap` does not warn about missing fonts.** It picks the nearest installed font silently. A
+  slide that looks wrong only in `snap` may just be missing a theme font. `build --check-layout`
+  reports missing fonts.
 - **`preview` is never a gate**: there is no diff or tolerance, and exit 0 only means the
   gallery was made. Exit 1 means nothing was produced to review (build failed, an explicit
   `--target pptx` with no rasterizer, output that does not match the deck).
