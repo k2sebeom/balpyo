@@ -287,12 +287,16 @@
      The same gate as stepwise reveal: the document view, measure view, overview and print all see
      the end state, so the geometry pass measures the same layout. The effects use the individual
      translate / scale properties, not transform, so a rotated shape keeps its rotation. The delay
-     of each element comes from its data-balpyo-enter-delay (set by the runtime) and the duration
-     from the theme's motion token. */
+     of each element comes from its data-balpyo-enter-delay (the runtime copies it into
+     --balpyo-enter-delay) and the duration from the theme's motion token. The delay is applied
+     here, inside the gate, never inline: a transition with a zero duration but a positive delay
+     still runs, so an inline delay would keep elements at their start state for that long after
+     leaving the presenter view (to the document view, a screenshot or print). */
   html[data-balpyo-view="presenter"] [data-balpyo-enter] {
     transition-property: opacity, translate, scale, clip-path;
     transition-duration: var(--balpyo-motion-duration, 600ms);
     transition-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition-delay: var(--balpyo-enter-delay, 0ms);
   }
   html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter] {
     opacity: 0;
@@ -495,6 +499,12 @@
       outline: none;
       break-inside: avoid;
       break-after: page;
+      /* Size containment: the slide is a fixed stage-sized box, so this changes no size — it
+         makes the slide one unbreakable piece for the paginator. Without it Chromium drops
+         x/y-positioned children of a canvas stage or <stack> (absolutely positioned inside a
+         grid area) from the printed page while the screen shows them (measured: canvas slides
+         printed blank but for the footer). */
+      contain: size;
     }
     /* Stepwise reveal is fully expanded on paper — someone pressing Cmd+P mid-talk must not get
        paper missing the items not yet presented. The selector has the same specificity as the
@@ -1058,13 +1068,16 @@
 
   // ── 등장 ──
   //
-  // 지연은 마크업이 요소마다 나르고(data-balpyo-enter-delay) 여기서 전환에 건다 — 한 번이면 된다. 슬라이드에
+  // 지연은 마크업이 요소마다 나르고(data-balpyo-enter-delay) 여기서 변수(--balpyo-enter-delay)로 싣는다 — 한 번이면
+  // 된다. 전환에 거는 것은 발표자 뷰의 CSS다: transition-delay를 인라인으로 걸면 길이가 0인 다른 뷰에서도
+  // "지연 뒤에 바뀌는" 전환이 성립해(길이 + 지연 > 0), 문서 뷰 · 인쇄로 넘어간 순간 요소가 지연만큼 비어 있다.
+  // 슬라이드에
   // 들어갈 때 표식을 떼었다가 다음 프레임에 붙이면 요소들이 시작 상태에서 끝 상태로 엇갈려 움직인다. 뒤로
   // 들어온 장(이미 말한 장)은 움직이지 않고 끝 상태로 온다.
   const ENTERED_CLASS = "balpyo-viewer-entered";
   const INSTANT_CLASS = "balpyo-viewer-instant";
   document.querySelectorAll("[data-balpyo-enter]").forEach((el) => {
-    el.style.transitionDelay = (Number(el.getAttribute("data-balpyo-enter-delay")) || 0) + "ms";
+    el.style.setProperty("--balpyo-enter-delay", (Number(el.getAttribute("data-balpyo-enter-delay")) || 0) + "ms");
   });
   const enter = (slide, instant) => {
     slide.classList.remove(ENTERED_CLASS);
