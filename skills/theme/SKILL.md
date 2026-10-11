@@ -142,8 +142,8 @@ Four rules nothing in the toolchain will catch for you:
   monospace Latin with a proportional CJK face and one Korean comment line is drawn 7.9%
   narrower in the browser than in PowerPoint.
 - **Every font you name must be installed where the deck is built.** The loader does not check
-  this, but every measuring build warns per missing family (`테마 "corp"의 글꼴 "Malgun
-  Gothic"(heading.ea, body.ea)가 측정 브라우저에 없다`) and `--strict` fails on it — the boxes
+  this, but every measuring build warns per missing family (`theme "corp" font "Malgun
+  Gothic" (heading.ea, body.ea) is missing from the measuring browser — …`) and `--strict` fails on it — the boxes
   were measured with a substitute that PowerPoint will not use. Pick fonts the user actually has
   (and their CI), or tell them what to install.
 - **`clrScheme` slots are a convention, not a brightness.** A dark theme still puts `fg` in
@@ -216,12 +216,12 @@ balpyo theme remove <name...>
   the source, a symlink inside a theme, or a theme that does not load installs nothing. A name
   already installed from a different source needs `--force`.
 - **Delete the project's `themes/<name>/` after installing** — the same name in both places is
-  a build error (`테마 "acme"가 프로젝트의 themes/acme/에도, 설치한 테마에도 있다 — …`).
+  a build error (`theme "acme" exists both in the project's themes/acme/ and among installed themes — …`).
 - A path install is a **snapshot**: edits to the source show up only after `balpyo theme update`
   (and `watch` does not see them — save a project file or restart it). While still iterating,
   keep the theme in the project's `themes/`.
 - **Builds never touch the network.** On another machine or in CI, run the same
-  `balpyo theme install` first; otherwise the build stops with `알 수 없는 테마`. Private repos
+  `balpyo theme install` first; otherwise the build stops with `unknown theme "…"`. Private repos
   and non-GitHub hosts: check them out and install the directory by path.
 - **Ship a `README.md` in every theme directory.** It is what `balpyo theme info` shows to the
   people installing it, and the same file GitHub shows on the repository page. In a repository
@@ -237,7 +237,8 @@ balpyo theme remove <name...>
 - `references/checklist.md` — what the loader stops on, what the built-in test suite demands,
   and the hand-checked rules, as a pass-before-delivery list.
 
-Korean originals shipped with this plugin: `${CLAUDE_PLUGIN_ROOT}/docs/reference/theme.md`
+`${CLAUDE_PLUGIN_ROOT}` is the root of the balpyo repository (<https://github.com/k2sebeom/balpyo>);
+without the plugin installed, read the same paths there. Korean originals shipped with this plugin: `${CLAUDE_PLUGIN_ROOT}/docs/reference/theme.md`
 (package format), `docs/reference/appearance.md` (the cascade and `minimal`'s actual values),
 `docs/guides/theming.md` (choosing and building), `docs/guides/known-differences.md` (what the
 viewer does to your typography). Working themes to read:
@@ -245,6 +246,8 @@ viewer does to your typography). Working themes to read:
 `${CLAUDE_PLUGIN_ROOT}/testdata/fixtures/15_local_theme/themes/corp/`; an inheriting theme with
 backgrounds and a logo: `${CLAUDE_PLUGIN_ROOT}/testdata/fixtures/18_theme_assets/themes/brand/`;
 a small inheriting theme using the newer keys (overlay glow, `{n} / {total}`, motion with a fade
-transition, tracked kickers, mark): `${CLAUDE_PLUGIN_ROOT}/examples/decks/ec2-intro/themes/summit/`;
+transition, tracked kickers, mark): `${CLAUDE_PLUGIN_ROOT}/examples/decks/ec2-intro/themes/summit/`
+— copy its keys, not its palette: its accents are brand colours kept as-is and three of them fail
+the contrast rule above;
 a standalone theme (`"extends": ""`, all eleven layouts) meant to be copied into a project:
 `${CLAUDE_PLUGIN_ROOT}/examples/themes/harbor/`.

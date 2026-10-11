@@ -3,7 +3,8 @@
 Everything legal in a `.slide` file. The vocabulary is **closed**: a name absent from these
 tables is a build error, not a fallback. When something here disagrees with the binary, the
 binary is right — `${CLAUDE_PLUGIN_ROOT}/docs/reference/` is the authority this sheet is
-condensed from.
+condensed from. (`${CLAUDE_PLUGIN_ROOT}` is the root of the balpyo repository,
+<https://github.com/k2sebeom/balpyo> — read the same paths there when the plugin is not installed.)
 
 ## Slide
 
@@ -107,15 +108,16 @@ blocks, lists, containers, `shape`, `image`, `table`, `chart` — also takes `en
 | `series` | `name` (required) `fill` `type` | — |
 | `point` | `label` `value` `fill` | — |
 | `connector` | `from` `to` `route` `from-side` `to-side` `line` `start` `end` `variant` `label` `enter` `flow` | — (no box, no child, no slot) |
-| `ul`, `ol` | — | child, slot |
-| `li` | `reveal` | — |
+| `ul`, `ol` | `size` `color` `align` `anchor` `w` `min-w` `max-w` — the whole list's look; items inherit it (no `variant`) | child, slot |
+| `li` | `reveal` — web presenter only; the PPTX shows every item (use `enter` for PPTX motion) | — |
 | `a` | `href` | — |
 | `span` | `color` `weight` `size` | — |
 | `spacer` | none of its own — it is not a container | child, slot |
 | `note`, `tr`, `strong`, `em`, `code`, `br`, `mark` | none | — |
 
 `<spacer/>` is a void element (no children, no text) that behaves as `flex: 1`; size it with
-the child attributes, usually `grow="2"`. A container may not hold bare text — wrap it in
+the child attributes, usually `grow="2"` — for a fixed gap write `grow="0" basis="120"` (`w`/`h`
+are not spacer attributes). A container may not hold bare text — wrap it in
 `<text>` or a block tag, or the PPTX has no shape to put the words in. `<note>` is slide
 metadata: one per slide, direct child of `<slide>` only, text only, no attributes.
 
@@ -130,7 +132,8 @@ metadata: one per slide, direct child of `<slide>` only, text only, no attribute
 | `justify` | `start` `center` `end` `between` `around` `evenly` |
 | `at` | `top-left` `top-center` `top-right` `center-left` `center` `center-right` `bottom-left` `bottom-center` `bottom-right` |
 | `fit` | `cover` `contain` |
-| `wrap`, `skip`, `reveal` | valueless, or `"true"` |
+| `wrap`, `skip` | valueless, or `"true"` |
+| `reveal` | valueless (next step on this slide), or an integer ≥ 1 (`reveal="2"`; equal numbers appear together). Not `"true"` |
 | `shape type` | `rect` `rounded-rect` `ellipse` `diamond` `cylinder` `chevron` `arrow-right` `hexagon` `parallelogram` `callout` `star` `cloud` `triangle` `cube` `left-brace` `right-brace` — plus `path` (custom outline, needs `d`) |
 | `chart type` | `bar` `line` `area` `step` |
 | `series type` | `line` `area` `step` (line-family charts only) |

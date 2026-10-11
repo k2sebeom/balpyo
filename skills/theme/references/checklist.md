@@ -124,8 +124,14 @@ Warnings (which `--strict` promotes to errors)
       in `dk1` and `bg` in `lt1`, or PowerPoint's theme-colour editor comes out inverted.
 - [ ] On a dark background, fills and lines use `surface`, not `muted` (as `ink`'s table borders
       do) — grey on black outshines the text.
-- [ ] The accents still read on an **inverted** slide (`<slide invert>` puts them on `fg`), and
-      the `mark` highlight works under both light and dark text.
+- [ ] The accents still read on an **inverted** slide (`<slide invert>` puts them on `fg`). The
+      4.5:1 rule is against `bg` only: with a near-black `fg`, no colour reaches 4.5:1 against
+      both (about 3.9:1 is the ceiling). Aim for ≥ 3:1 on `fg` — enough for headings, numbers,
+      bars and lines — and tell deck authors in the README to keep small accent text off
+      inverted slides.
+- [ ] The `mark` highlight is **one colour**, so it cannot suit light and dark text equally. Pick
+      it for the theme's normal text (≥ 4.5:1 between `fg` and the highlight); if it fails under
+      the inverted slide's light text, say so in the README.
 - [ ] An off-centre `radial(…, at X% Y%)` background or overlay was checked in PowerPoint:
       OnlyOffice ignores the focus and draws it from the centre.
 - [ ] Code-token colours were chosen **by eye**, not by accent number: comment recedes to
