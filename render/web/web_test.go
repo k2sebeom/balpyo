@@ -31,11 +31,21 @@ func TestRenderProducesSingleSelfContainedFile(t *testing.T) {
 		t.Fatalf("산출 파일 = %v, want [%s]", got, IndexFile)
 	}
 	out := string(files[IndexFile])
-	// 자체 완결형: 외부 CSS·JS 참조가 없어야 어디에 두어도 열린다.
-	for _, forbidden := range []string{"<link", "<script src"} {
-		if strings.Contains(out, forbidden) {
-			t.Errorf("외부 참조 %q가 들어갔다", forbidden)
+	// 자체 완결형: 외부 CSS·JS 참조가 없어야 어디에 두어도 열린다. <link>는 data URI로
+	// 인라인된 것(파비콘)만 허용한다.
+	if strings.Contains(out, "<script src") {
+		t.Error(`외부 참조 "<script src"가 들어갔다`)
+	}
+	for rest := out; ; {
+		_, after, ok := strings.Cut(rest, "<link")
+		if !ok {
+			break
 		}
+		tag, _, _ := strings.Cut(after, ">")
+		if !strings.Contains(tag, `href="data:`) {
+			t.Errorf("외부 참조 <link%s>가 들어갔다", tag)
+		}
+		rest = after
 	}
 	if !strings.Contains(out, "<style>") {
 		t.Error("CSS가 인라인되어야 한다")

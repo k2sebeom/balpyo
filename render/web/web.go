@@ -150,6 +150,7 @@ func (r *Renderer) Render(deck *soml.Deck) (render.Files, error) {
 	b.WriteString(`<meta charset="utf-8">` + "\n")
 	b.WriteString(`<meta name="viewport" content="width=device-width, initial-scale=1">` + "\n")
 	fmt.Fprintf(&b, "<title>%s</title>\n", html.EscapeString(deck.Title))
+	b.WriteString(faviconLink + "\n")
 	if deck.Author != "" {
 		fmt.Fprintf(&b, "<meta name=\"author\" content=%q>\n", html.EscapeString(deck.Author))
 	}

@@ -2,6 +2,7 @@ package web
 
 import (
 	_ "embed"
+	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -148,6 +149,20 @@ func printPageCSS(stage soml.Stage) string {
   }
 `, stage.Width, stage.Height)
 }
+
+//go:embed assets/favicon.png
+var faviconPNG []byte
+
+// faviconLink는 브라우저 탭에 balpyo 로고를 띄우는 <link>다.
+//
+// data URI로 인라인한다 — 산출물은 파일 하나로 열려야 하므로 아이콘도 외부 파일을 가리킬 수
+// 없다. 자산은 원본 로고(1254px, 300KB)가 아니라 마크만 잘라 64px로 줄인 PNG다: 아이콘은
+// 덱마다 실리므로 탭이 쓰는 해상도 이상은 산출물 크기만 늘린다. 바탕은 투명이라 어두운 탭
+// 바에서도 흰 사각형이 뜨지 않는다.
+//
+// 덱 데이터와 무관한 고정 문자열이다 — 같은 입력에 같은 바이트가 나온다.
+var faviconLink = `<link rel="icon" type="image/png" href="data:image/png;base64,` +
+	base64.StdEncoding.EncodeToString(faviconPNG) + `">`
 
 //go:embed assets/runtime.js
 var runtimeJSAsset string

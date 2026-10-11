@@ -1,7 +1,10 @@
 package web
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
+	"image/png"
 	"strings"
 	"testing"
 )
@@ -250,5 +253,41 @@ func TestPrintCSSRestoresTheDocumentView(t *testing.T) {
 	}
 	if layerAt > printAt {
 		t.Error("인쇄 CSS가 base 층 밖에 있다")
+	}
+}
+
+// 파비콘은 <head> 안에 data URI로 한 번 실린다 — 외부 파일을 가리키면 산출물을 옮겼을 때
+// 탭 아이콘이 사라진다. 실린 바이트는 디코드되는 PNG여야 하고, 덱마다 실리므로 작아야 한다.
+func TestFaviconIsInlinedInHead(t *testing.T) {
+	out := renderString(t, testDeck())
+	head, _, ok := strings.Cut(out, "</head>")
+	if !ok {
+		t.Fatal("</head>가 없다")
+	}
+	if got := strings.Count(head, `rel="icon"`); got != 1 {
+		t.Fatalf(`<head>의 rel="icon"이 %d개, want 1`, got)
+	}
+	if !strings.Contains(head, faviconLink) {
+		t.Fatal("파비콘 링크가 <head>에 없다")
+	}
+	const prefix = "data:image/png;base64,"
+	_, rest, _ := strings.Cut(faviconLink, `href="`)
+	uri, _, _ := strings.Cut(rest, `"`)
+	if !strings.HasPrefix(uri, prefix) {
+		t.Fatalf("href가 PNG data URI가 아니다: %.40s…", uri)
+	}
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(uri, prefix))
+	if err != nil {
+		t.Fatalf("base64 디코드 실패: %v", err)
+	}
+	img, err := png.Decode(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatalf("PNG 디코드 실패: %v", err)
+	}
+	if b := img.Bounds(); b.Dx() != b.Dy() || b.Dx() > 128 {
+		t.Errorf("파비콘이 %dx%d다 — 128px 이하의 정사각형이어야 한다", b.Dx(), b.Dy())
+	}
+	if len(raw) > 8<<10 {
+		t.Errorf("파비콘이 %d바이트다 — 덱마다 실리므로 8KiB를 넘지 않는다", len(raw))
 	}
 }
