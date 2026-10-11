@@ -644,6 +644,14 @@ theme "acme" exists both in the project's themes/acme/ and among installed theme
 표보다 **먼저** 검사한다 — 선언만으로 판정할 수 있는 값 어휘이고, 먼저 멈추면 "테마의 오타"와
 "토큰 표의 문제"가 한 메시지에 섞이지 않는다. 경고는 [`--strict`](cli.md)로 에러로 승격할 수 있다.
 
+테마 파일에서 난 에러는 `balpyo.json`이 아니라 **그 선언을 적은 파일과 줄:칸**을 가리킨다 —
+`themes/corp/components.json:31:42: error: shape variant "card-body": fill: color token "nope2" is not in the theme (available tokens: fg, bg, …)`.
+`extends` 체인에서는 틀린 값을 실제로 적은 테마의 파일이다: 자식이 다시 적은 이름은 자식의 파일,
+물려받은 이름은 부모의 파일이다. 빠진 이름(필수 토큰·역할)은 그 이름을 더할 파일의 절을 가리킨다.
+설치한 테마는 파일이 프로젝트 밖에 있으므로 메시지 앞에 테마 이름과 그 테마 안의 파일·줄:칸을
+적는다 (`theme "acme": themes/acme/components.json:2:51: …`). 테마 파일의 색은 토큰 참조만
+받으므로, 모르는 토큰 진단은 슬라이드에서와 달리 `#RRGGBB`를 권하지 않는다.
+
 ## 예제
 
 같은 덱을 `--theme ink`로 내면 같은 어휘로 쓴 슬라이드가 다른 테마에서 어떻게 달라지는지 보인다 —
