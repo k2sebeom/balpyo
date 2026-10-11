@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -37,12 +38,14 @@ func openStore() (*themestore.Store, error) {
 	return &themestore.Store{Dir: dir, Client: themeClient}, nil
 }
 
-// runTheme은 `balpyo theme <install|list|remove|update>`다.
+// runTheme은 `balpyo theme <install|list|info|remove|update>`다.
 func runTheme(args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("a theme command is required: install · list · remove · update")
+		return fmt.Errorf("a theme command is required: install · list · info · remove · update")
 	}
 	switch args[0] {
+	case "info":
+		return runThemeInfo(args[1:], stdout, stderr)
 	case "install":
 		return runThemeInstall(args[1:], stdout, stderr)
 	case "list":
@@ -52,7 +55,7 @@ func runTheme(args []string, stdout, stderr io.Writer) error {
 	case "update":
 		return runThemeUpdate(args[1:], stdout, stderr)
 	}
-	return fmt.Errorf("unknown theme command %q (available commands: install, list, remove, update)", args[0])
+	return fmt.Errorf("unknown theme command %q (available commands: install, list, info, remove, update)", args[0])
 }
 
 // parseInterleaved는 플래그와 위치 인자가 섞인 인자를 읽는다 (`install <URL> --force`). flag 패키지는
@@ -106,7 +109,56 @@ func runThemeInstall(args []string, stdout, stderr io.Writer) error {
 	if len(res.Themes) > 0 {
 		fmt.Fprintf(stdout, "use the name in balpyo.json, e.g. \"theme\": %q\n", res.Themes[0].Name)
 	}
+	printInfoHint(stdout, res)
 	return nil
+}
+
+// runThemeInfo는 `balpyo theme info <이름>`이다 — 테마를 만든 사람이 README.md에 적은 쓰임새를 낸다.
+//
+// 첫 줄은 이름이 풀린 자리, 부모가 있으면 둘째 줄은 부모를 볼 명령이고, 빈 줄 뒤는 README의 바이트
+// 그대로다: 덱을 쓰는 사람(과 에이전트)이 읽는 것이 테마 저장소의 README와 같은 글이어야 한다. 부모의
+// README를 합치지 않는 이유는 자식이 부모의 의도를 바꾸는 테마일 수 있다는 것이다.
+func runThemeInfo(args []string, stdout, stderr io.Writer) error {
+	flags := flag.NewFlagSet("theme info", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	projectDir := flags.String("project", ".", "project root (its themes/ are looked up too)")
+	positional, err := parseInterleaved(flags, args)
+	if err != nil {
+		return err
+	}
+	switch {
+	case len(positional) == 0:
+		return fmt.Errorf("theme info needs the name of a theme (balpyo theme list shows them)")
+	case len(positional) > 1:
+		return fmt.Errorf("theme info takes one theme name: %v", positional)
+	}
+	var home fs.FS
+	homeDir := themeHome()
+	if homeDir != "" {
+		home = os.DirFS(homeDir)
+	}
+	info, err := core.ReadThemeInfo(core.WithInstalledThemes(os.DirFS(*projectDir), home), positional[0])
+	if err != nil {
+		return err
+	}
+	switch info.Source {
+	case core.ThemeBuiltin:
+		fmt.Fprintf(stdout, "%s — built-in theme\n", info.Name)
+	case core.ThemeFromProject:
+		fmt.Fprintf(stdout, "%s — project theme (%s)\n", info.Name, filepath.Join(*projectDir, filepath.FromSlash(info.Dir)))
+	case core.ThemeInstalled:
+		fmt.Fprintf(stdout, "%s — installed theme (%s)\n", info.Name, filepath.Join(homeDir, filepath.FromSlash(info.Dir)))
+	}
+	if info.Extends != "" {
+		fmt.Fprintf(stdout, "extends %s — see: balpyo theme info %s\n", info.Extends, info.Extends)
+	}
+	fmt.Fprintln(stdout)
+	if !info.HasReadme {
+		fmt.Fprintln(stdout, "this theme has no README.md")
+		return nil
+	}
+	_, err = stdout.Write(info.Readme)
+	return err
 }
 
 func printInstalled(w io.Writer, store *themestore.Store, res themestore.InstallResult) {
@@ -125,6 +177,13 @@ func printInstalled(w io.Writer, store *themestore.Store, res themestore.Install
 		fmt.Fprintf(tw, "  %s\t%s\n", r.Name, r.Path)
 	}
 	tw.Flush()
+}
+
+// printInfoHint는 방금 받은 테마의 README를 읽는 명령을 가리킨다 — 테마를 쓰기 전에 읽을 글이 그것이다.
+func printInfoHint(w io.Writer, res themestore.InstallResult) {
+	if len(res.Themes) > 0 {
+		fmt.Fprintf(w, "see: balpyo theme info %s\n", res.Themes[0].Name)
+	}
 }
 
 func shortCommit(c string) string {
@@ -240,6 +299,7 @@ func runThemeUpdate(args []string, stdout, stderr io.Writer) error {
 	for _, res := range results {
 		printDiags(stderr, res.Lint)
 		printInstalled(stdout, store, res)
+		printInfoHint(stdout, res)
 	}
 	if err != nil {
 		return err
