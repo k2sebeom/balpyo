@@ -110,3 +110,50 @@ func waitView(t testing.TB, b *Browser, want string) {
 		time.Sleep(50 * time.Millisecond)
 	}
 }
+
+// 오버뷰의 화살표는 타일 사이를 옮긴다 — 오버뷰에서는 reveal 항목이 늘 보이므로 스텝을
+// 먹으면 강조가 제자리에 머문 채 키만 사라진다. 옮겨 들어간 장은 타일 클릭처럼 아직 말하지
+// 않은 장이어서 나오면 스텝 0이다 (보지도 않은 스텝이 전개된 것으로 남지 않는다).
+func TestOverviewArrowsMoveBetweenTiles(t *testing.T) {
+	fixture := fixtureByName(t, "02_text_subset")
+	result, err := pipeline.Build(pipeline.Options{
+		ProjectDir: fixture.Dir,
+		Targets:    []render.Target{render.TargetHTML},
+		OutDir:     t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("%s 빌드 실패: %v", fixture.Name, err)
+	}
+	deck := result.Deck
+	n := len(deck.Slides)
+
+	browser := NewBrowser(t)
+	browser.Load(t, filepath.Join(result.OutDir, web.IndexFile))
+	slide := revealSlideIndex(t, browser)
+	if slide < 0 || slide+1 >= n {
+		t.Fatalf("픽스처 전제가 깨졌다: reveal 슬라이드(%d) 뒤에 슬라이드가 하나 더 있어야 한다 (%d장)", slide, n)
+	}
+	steps := revealSteps(t, browser, slide)
+	if len(steps) < 2 {
+		t.Fatalf("reveal 항목이 %d개다 — 판정에는 둘 이상이 필요하다", len(steps))
+	}
+
+	browser.Eval(t, web.PresenterViewExpr(), nil)
+	browser.Eval(t, fmt.Sprintf("location.hash = %q", "#/"+deck.Slides[slide].ID), nil)
+	waitCounter(t, browser, fmt.Sprintf("%d / %d", slide+1, n))
+
+	pressKey(t, browser, "o")
+	waitView(t, browser, web.OverviewView)
+
+	// 한 번 누르면 다음 타일이다 — 스텝이 남아 있어도.
+	pressKey(t, browser, "ArrowRight")
+	waitCounter(t, browser, fmt.Sprintf("%d / %d", slide+2, n))
+	pressKey(t, browser, "ArrowLeft")
+	waitCounter(t, browser, fmt.Sprintf("%d / %d", slide+1, n))
+
+	pressKey(t, browser, "Escape")
+	waitView(t, browser, web.PresenterView)
+	if got := hiddenReveals(t, browser, slide); !equalInts(got, steps) {
+		t.Fatalf("오버뷰에서 옮겨 들어간 장의 숨은 항목 = %v, want %v (스텝 0)", got, steps)
+	}
+}
