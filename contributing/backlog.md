@@ -56,6 +56,10 @@
   전개된 정적 모드(또는 skill에 print-to-PDF 절차)가 필요하다.
 - **인쇄가 좌표 배치를 빠뜨린다.** headless Chrome `--print-to-pdf`에서 `x`/`y`로 놓은 canvas·stack
   자식이 사라진다 (화면에서는 그려진다). `ec2-intro` 2·9·10·11장이 거의 빈 장으로 인쇄된다.
+- **`preview` 스크린숏이 애니메이션 중간을 찍는다.** `make showcase`를 두 번 돌리면 `ec2-intro-10.png`가
+  한 번은 연결선 두 개(`terminate`, shutting-down → terminated)가 빠진 채로 나온다 — HTML은 같은 바이트다.
+  `screenshot`이 `enter`/`draw` 전환이 끝나기를 기다리지 않는다. 찍기 전에 모든 스텝을 전개하고
+  애니메이션을 끈다.
 - **래스터라이저 없는 `preview`.** OnlyOffice·LibreOffice가 없으면 PPTX를 볼 길이 없다는 한 줄만 나오고
   산출물을 프로젝트 `dist/`에 쓴다. 무엇을 설치하면 되는지 말한다.
 - **영어 레퍼런스.** skill이 가리키는 깊은 문서가 한국어뿐이라 영어 사용자는 `reveal`·chevron·차트
