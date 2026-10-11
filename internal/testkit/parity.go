@@ -394,7 +394,19 @@ func webConnectors(slide *soml.Slide, g *geom.Geometry, theme soml.Theme) ([]Lay
 		if p.FlipV {
 			extra = append(extra, "flipV")
 		}
-		extra = append(extra, fmt.Sprintf("adj=%d", int64(math.Round(p.Adj*100000))))
+		// 조정값은 PPTX가 적는 대로다 — 모두 기본(가운데)이면 적지 않으므로 되읽은 쪽과 같이 50000이다.
+		adj := []string{"50000"}
+		custom := false
+		var vals []string
+		for _, a := range p.Adj {
+			v := int64(math.Round(a * 100000))
+			custom = custom || v != 50000
+			vals = append(vals, strconv.FormatInt(v, 10))
+		}
+		if custom {
+			adj = vals
+		}
+		extra = append(extra, "adj="+strings.Join(adj, "/"))
 		glue := func(which string, e *soml.Element, side route.Side) string {
 			key := e.Name
 			if s := e.ShapeStyle(); s != nil {
@@ -1008,11 +1020,22 @@ func pptxNode(obj xObject, theme soml.Theme, links map[string]string, names map[
 		n.Kind = "connector:" + obj.SpPr.PrstGeom.Prst
 		n.Line = "?"
 		var extra []string
+		// 조정값은 `adj1`, `adj2` … 순서다 — 없으면 프리셋 기본(가운데)이다.
 		adj := "50000"
-		for _, gd := range obj.SpPr.PrstGeom.Gd {
-			if gd.Name == "adj1" {
-				adj = strings.TrimPrefix(gd.Fmla, "val ")
+		var vals []string
+		for i := 1; ; i++ {
+			found := false
+			for _, gd := range obj.SpPr.PrstGeom.Gd {
+				if gd.Name == fmt.Sprintf("adj%d", i) {
+					vals, found = append(vals, strings.TrimPrefix(gd.Fmla, "val ")), true
+				}
 			}
+			if !found {
+				break
+			}
+		}
+		if len(vals) > 0 {
+			adj = strings.Join(vals, "/")
 		}
 		x := obj.SpPr.Xfrm
 		extra = append(extra, fmt.Sprintf("rot=%d", x.Rot/60000))
