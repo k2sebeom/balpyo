@@ -132,7 +132,7 @@ func (e *engine) layoutFlex(b *box, innerW float64, innerH *float64, fr edges) f
 		}
 		// 교차축 크기를 먼저 안다 (열 방향은 폭이 정해져야 높이를 잴 수 있다).
 		if !row {
-			it.cross = e.flexCrossWidth(b, k, innerW, alignItems, it.m)
+			it.cross = e.flexCrossWidth(b, k, innerW, alignItems, it.m, flexWraps(b))
 		}
 		it.basis = e.flexBasis(k, row, mainSize, mainKnown, innerW, cbh, cbhKnown, it.cross)
 		it.minMain, it.maxMain = e.flexMinMax(k, row, mainSize, mainKnown, innerW, cbh, cbhKnown, it.cross)
@@ -229,6 +229,22 @@ func (e *engine) layoutFlex(b *box, innerW float64, innerH *float64, fr edges) f
 	if len(lines) == 1 && crossKnown && !flexWraps(b) {
 		lineCross[0] = crossSize
 	}
+	// 여러 줄 컨테이너의 align-content: normal(= stretch)은 남는 교차 공간을 줄마다 똑같이 더한다
+	// (줄이 하나여도 여러 줄 컨테이너면 같다).
+	if crossKnown && flexWraps(b) && len(lines) > 0 {
+		switch b.st.get("align-content") {
+		case "", "normal", "stretch":
+			used := crossGap * float64(len(lines)-1)
+			for _, c := range lineCross {
+				used += c
+			}
+			if free := crossSize - used; free > 0 {
+				for li := range lineCross {
+					lineCross[li] += free / float64(len(lines))
+				}
+			}
+		}
+	}
 
 	// stretch: 교차 크기가 auto인 항목을 줄 교차 크기로 늘리고 다시 배치한다.
 	for li, line := range lines {
@@ -247,11 +263,21 @@ func (e *engine) layoutFlex(b *box, innerW float64, innerH *float64, fr edges) f
 					e.layout(k, it.main, &h, innerW, cbh, cbhKnown)
 				}
 				it.cross = h
+			} else {
+				if _, ok := k.specified("width", innerW, true); ok {
+					continue
+				}
+				w := k.clampW(lineCross[li]-it.m.h(), innerW, true)
+				if math.Abs(w-it.cross) > 0.001 {
+					h := it.main
+					e.layout(k, w, &h, innerW, cbh, cbhKnown)
+					it.cross = w
+				}
 			}
 		}
 	}
 
-	// 줄을 교차축에 놓는다 (align-content는 여러 줄일 때만 뜻이 있다).
+	// 줄을 교차축에 놓는다 (align-content는 여러 줄 컨테이너에서만 뜻이 있다).
 	crossUsed := 0.0
 	for i, c := range lineCross {
 		if i > 0 {
@@ -262,7 +288,7 @@ func (e *engine) layoutFlex(b *box, innerW float64, innerH *float64, fr edges) f
 	lineStart := make([]float64, len(lines))
 	{
 		free := 0.0
-		if crossKnown && len(lines) > 1 {
+		if crossKnown && flexWraps(b) {
 			free = crossSize - crossUsed
 		}
 		lead, between := distribute(b.st.get("align-content"), free, len(lines))
@@ -432,16 +458,18 @@ func distribute(v string, free float64, n int) (lead, between float64) {
 }
 
 // flexCrossWidth는 열 방향 항목의 폭이다: 지정 폭, stretch면 줄 폭, 아니면 fit-content.
-func (e *engine) flexCrossWidth(b, k *box, innerW float64, alignItems string, m edges) float64 {
+// 여러 줄 컨테이너에서는 줄 폭이 아직 없으므로 stretch 항목도 fit-content로 재고(가상 교차 크기),
+// 줄 폭이 정해진 뒤 늘린다.
+func (e *engine) flexCrossWidth(b, k *box, innerW float64, alignItems string, m edges, multiLine bool) float64 {
 	if w, ok := k.specified("width", innerW, true); ok {
 		return k.clampW(w, innerW, true)
 	}
-	if k.replaced != "" && alignSelf(k, alignItems) != "stretch" {
+	if k.replaced != "" && (alignSelf(k, alignItems) != "stretch" || multiLine) {
 		w, _ := e.replacedSize(k, innerW, 0, false)
 		return w
 	}
 	avail := innerW - m.h()
-	if alignSelf(k, alignItems) == "stretch" {
+	if alignSelf(k, alignItems) == "stretch" && !multiLine {
 		return k.clampW(avail, innerW, true)
 	}
 	w := math.Min(e.maxContent(k), math.Max(e.minContent(k), avail))
