@@ -95,6 +95,9 @@ type para struct {
 	styles  []*style // 문자별 계산값
 	atomics map[int]*box
 	forced  map[int]bool // 이 문자 앞에서 반드시 끊는다
+	// justify면 셰이핑 조각을 확장 기회 문자의 앞뒤에서 자른다 — 늘어날 자리가 조각 경계에
+	// 오므로 정렬이 조각을 옮기고 넓히는 것만으로 끝난다.
+	justify bool
 }
 
 const objectChar = '￼'
@@ -176,6 +179,27 @@ func isCJKLetter(r rune) bool {
 
 func isWordChar(r rune) bool {
 	return unicode.IsLetter(r) || unicode.IsNumber(r) || unicode.Is(unicode.Mn, r)
+}
+
+// 양쪽 정렬이 늘리는 자리의 종류: 낱말 사이 공백은 뒤가, 한자 · 가나 같은 표의 문자는 앞뒤가
+// 늘어난다.
+type expansion int
+
+const (
+	expandNone expansion = iota
+	expandSpace
+	expandIdeograph
+)
+
+func expansionKind(r rune) expansion {
+	switch {
+	case r == ' ' || r == '\t' || r == '\u00a0':
+		return expandSpace
+	case unicode.Is(unicode.Han, r) || unicode.Is(unicode.Hiragana, r) || unicode.Is(unicode.Katakana, r) ||
+		(r >= 0x3000 && r <= 0x303F) || (r >= 0xFF00 && r <= 0xFFEF):
+		return expandIdeograph
+	}
+	return expandNone
 }
 
 // isTableASCII는 브라우저의 ASCII 줄바꿈 표가 다루는 범위('!'부터 DEL까지)다.
@@ -260,6 +284,9 @@ func (e *engine) shapeRange(p *para, start, end int) []piece {
 		j := i + 1
 		for j < end && p.styles[j] == p.styles[i] {
 			if _, ok := p.atomics[j]; ok {
+				break
+			}
+			if p.justify && (expansionKind(p.runes[j]) != expandNone || expansionKind(p.runes[j-1]) != expandNone) {
 				break
 			}
 			j++
@@ -378,12 +405,17 @@ func (e *engine) layoutInline(b *box, innerW float64, fr edges) float64 {
 	}
 	indent := textIndent(b.st, innerW)
 
+	align := b.st.get("text-align")
+	p.justify = align == "justify"
+
 	var lines [][]placed
+	var forcedEnd []bool // 줄이 강제 줄바꿈(<br>)으로 끝났다
 	var cur []placed
 	x := indent
 	first := true
-	flush := func() {
+	flush := func(forced bool) {
 		lines = append(lines, cur)
+		forcedEnd = append(forcedEnd, forced)
 		cur = nil
 		x = 0
 		first = false
@@ -407,12 +439,12 @@ func (e *engine) layoutInline(b *box, innerW float64, fr edges) float64 {
 	const eps = 0.01
 	for i, w := range ws {
 		if w.mandatory && i > 0 {
-			flush()
+			flush(true)
 		}
 		corePieces := e.shapeRange(p, w.start, w.spaceStart)
 		core := e.piecesWidth(corePieces, innerW)
 		if len(cur) > 0 && x+core > innerW+eps && wraps(whiteSpace(p.styles[w.start])) {
-			flush()
+			flush(false)
 		}
 		if x+core > innerW+eps && breakWord(p.styles[w.start]) && wraps(whiteSpace(p.styles[w.start])) {
 			// 한 단어가 줄보다 넓다: 글자 단위로 끊는다.
@@ -420,7 +452,7 @@ func (e *engine) layoutInline(b *box, innerW float64, fr edges) float64 {
 				ps := e.shapeRange(p, j, j+1)
 				cw := e.piecesWidth(ps, innerW)
 				if len(cur) > 0 && x+cw > innerW+eps {
-					flush()
+					flush(false)
 				}
 				place(ps, false)
 			}
@@ -431,11 +463,10 @@ func (e *engine) layoutInline(b *box, innerW float64, fr edges) float64 {
 			place(e.shapeRange(p, w.spaceStart, w.end), true)
 		}
 	}
-	flush()
+	flush(false)
 
 	// 줄 높이와 기준선
 	y := fr.t
-	align := b.st.get("text-align")
 	for li, items := range lines {
 		strut := e.inlineMetrics(b.st)
 		above, below := strut.above, strut.below
@@ -480,6 +511,9 @@ func (e *engine) layoutInline(b *box, innerW float64, fr edges) float64 {
 				offset = 0
 			}
 		}
+		if p.justify && li < len(lines)-1 && !forcedEnd[li] && used < innerW {
+			e.justifyLine(p, items, innerW-used)
+		}
 		lb := lineBox{x: fr.l, y: y, w: innerW, h: lh, baseline: y + above}
 		for _, it := range items {
 			f := frag{x: fr.l + offset + it.x, w: it.w, baseline: lb.baseline, st: it.st, atomic: it.atomic}
@@ -506,6 +540,61 @@ func (e *engine) layoutInline(b *box, innerW float64, fr edges) float64 {
 		y += lh
 	}
 	return y - fr.t
+}
+
+// justifyLine은 줄에 남는 폭 extra를 확장 기회에 고루 나눈다 (text-align: justify). 공백은
+// 그 뒤가 늘어나고, 표의 문자는 앞(직전이 이미 늘어나는 자리가 아니면)과 뒤가 늘어난다. 줄의
+// 처음과 끝은 늘리지 않으므로 마지막 기회는 지우고, 줄 끝에 걸린 공백은 기회가 아니다. 기회가
+// 없는 줄은 시작 쪽에 붙은 채로 둔다.
+func (e *engine) justifyLine(p *para, items []placed, extra float64) {
+	last := -1
+	for i, it := range items {
+		if it.atomic != nil || !isBlank(p.runes[it.start:it.end]) {
+			last = i
+		}
+	}
+	before := make([]int, len(items))
+	after := make([]int, len(items))
+	count, lastAfter := 0, -1
+	afterExpansion := true
+	for i := 0; i <= last; i++ {
+		it := items[i]
+		kind := expandNone
+		if it.atomic == nil && it.end-it.start == 1 {
+			kind = expansionKind(p.runes[it.start])
+		}
+		switch kind {
+		case expandSpace:
+			after[i] = 1
+			count++
+			lastAfter = i
+		case expandIdeograph:
+			if !afterExpansion {
+				before[i] = 1
+				count++
+			}
+			after[i] = 1
+			count++
+			lastAfter = i
+		}
+		afterExpansion = kind != expandNone
+	}
+	if afterExpansion && lastAfter >= 0 {
+		after[lastAfter] = 0
+		count--
+	}
+	if count <= 0 {
+		return
+	}
+	per := extra / float64(count)
+	shift := 0.0
+	for i := range items {
+		shift += float64(before[i]) * per
+		items[i].x += shift
+		grow := float64(after[i]) * per
+		items[i].w += grow
+		shift += grow
+	}
 }
 
 func isBlank(rs []rune) bool {
