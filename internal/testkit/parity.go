@@ -248,6 +248,11 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 				n.Kind = "shape:" + preset
 				n.Alt = style.Alt
 				n.Fill, n.Line = webFill(style.Fill, deck.Theme), webLine(style.Border, deck.Theme)
+				if len(elem.Children) == 0 || soml.ShapeHoldsLayout(elem) {
+					// 글자 없는 도형은 슬롯을 채워도 플레이스홀더가 아니다 — 빈 본문의 `<p:ph>`는
+					// PowerPoint가 도형 위에 입력 안내문을 띄운다.
+					n.Ph = ""
+				}
 				if !soml.ShapeHoldsLayout(elem) {
 					for _, child := range elem.Children {
 						text, ok := child.(*soml.Element)
