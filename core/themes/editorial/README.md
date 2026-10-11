@@ -1,7 +1,7 @@
 # editorial
 
 A print voice: warm paper background, serif headings (Noto Serif) over a sans body, square
-corners and a red-brown accent. It reads like a magazine page.
+corners and a terracotta accent. It reads like a magazine page.
 
 ## Works best for
 
