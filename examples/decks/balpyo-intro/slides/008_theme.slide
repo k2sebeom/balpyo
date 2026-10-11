@@ -1,12 +1,15 @@
-<!-- 테마 = 디자인 시스템. 위 줄은 색 토큰 열 개의 견본이다 — 도형마다 토큰 이름 그대로 칠했고, 산출
-     PPTX에서 이 채움은 리터럴 RGB가 아니라 schemeClr 참조로 남는다. 그래서 이 줄은 테마를 갈면 그
-     테마의 팔레트가 된다 (README의 견본 비교가 그 증거다). 견본 위 글자는 바탕과 반대인 토큰(`bg` 또는
-     `fg`)이다: 강조색 여섯은 바탕 대비 4.5:1 이상으로 고른 값이라 `bg` 글자가 어느 테마에서든 읽힌다.
+<!-- Theme = design system. The top row is a swatch of the ten color tokens — each shape is painted
+     with the token name as is, and in the output PPTX that fill stays a schemeClr reference, not a
+     literal RGB. So this row becomes the palette of whatever theme is applied (the README's swatch
+     comparison is the proof). The text on each swatch is the token opposite the background (`bg` or
+     `fg`): the six accents are chosen at 4.5:1 or better against the background, so `bg` text reads
+     in any theme.
 
-     아래 두 카드는 `grow="1"` 그리드의 stretch로 견본 줄 아래 높이를 다 받는다. -->
+     The two cards below take the full height under the swatch row through the stretch of a
+     `grow="1"` grid. -->
 <slide id="theme" enter="rise">
-  <text variant="kicker">테마</text>
-  <h1>테마는 디자인 시스템이다</h1>
+  <text variant="kicker">Themes</text>
+  <h1>A theme is a design system</h1>
   <grid cols="10" gap="xs">
     <shape type="rounded-rect" fill="fg" border="none" radius="md" w="fill" h="96" pad="xs"><text role="code" size="14" color="bg" align="center" anchor="bottom">fg</text></shape>
     <shape type="rounded-rect" fill="bg" border="1 solid muted" radius="md" w="fill" h="96" pad="xs"><text role="code" size="14" color="fg" align="center" anchor="bottom">bg</text></shape>
@@ -22,24 +25,24 @@
   <grid cols="2" gap="lg" grow="1">
     <shape variant="card" type="rounded-rect" w="fill" pad="lg">
       <col gap="sm" h="fill">
-        <text variant="kicker">네 파일이 한 테마다</text>
+        <text variant="kicker">Four files make a theme</text>
         <ul size="21">
-          <li><code>tokens.json</code> — 색 · 글꼴 · 간격 · 반경 · 그림자 · 움직임</li>
-          <li><code>components.json</code> — 역할 다섯과 variant</li>
-          <li><code>layouts/*.css</code> — 자리만 쓴다, 외관은 경고다</li>
-          <li><code>assets/</code> — 배경 그림 · 로고 · 아이콘</li>
+          <li><code>tokens.json</code> — color · type · spacing</li>
+          <li><code>components.json</code> — roles and variants</li>
+          <li><code>layouts/*.css</code> — placement, not styling</li>
+          <li><code>assets/</code> — backgrounds · logos · icons</li>
         </ul>
       </col>
     </shape>
     <shape variant="card" type="rounded-rect" w="fill" pad="lg">
       <col gap="sm" h="fill" justify="between">
         <col gap="sm">
-          <text variant="kicker">토큰은 눕지 않는다</text>
-          <p size="21">토큰으로 쓴 색은 웹에서 CSS 변수로, PPTX에서 <code>a:schemeClr</code>로 남는다. 리터럴만 <code>srgbClr</code>가 된다.</p>
+          <text variant="kicker">Tokens stay names</text>
+          <p size="21">A token color stays a CSS variable on the web and an <code>a:schemeClr</code> in PPTX. Only literals become <code>srgbClr</code>.</p>
         </col>
-        <text role="heading" size="24" color="accent1">→ PowerPoint에서 테마 색을 바꾸면 덱이 따라온다</text>
+        <text role="heading" size="24" color="accent1">→ Change the theme colors in PowerPoint and the deck follows</text>
       </col>
     </shape>
   </grid>
-  <note>토큰이 리터럴로 눕는 순간 제품의 약속이 깨진다. 골든 테스트가 그것을 감시한다.</note>
+  <note>The moment a token flattens into a literal, the product's promise breaks. The tests watch for exactly that.</note>
 </slide>

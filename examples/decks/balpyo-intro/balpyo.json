@@ -1,9 +1,9 @@
 {
-  "title": "balpyo 소개",
+  "title": "Introducing balpyo",
   "author": "balpyo",
-  "lang": "ko",
+  "lang": "en",
   "aspect": "16:9",
-  "footer": "balpyo 소개",
+  "footer": "Introducing balpyo",
   "pageNumber": true,
   "outDir": "dist"
 }

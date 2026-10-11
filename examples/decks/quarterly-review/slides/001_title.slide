@@ -1,11 +1,11 @@
-<!-- 표지: title 레이아웃의 슬롯 모드. 자리는 테마가 소유하므로 정렬을 적지 않는다. 제목의 "Q3"만
-     강조색 둘의 그라디언트다 — 리터럴 색(#0F65F9)이 아니라 토큰 이름이라, 테마를 갈면 그라디언트도
-     그 테마의 색이 된다. -->
+<!-- Cover — the title layout in slot mode. The theme owns the positions, so no alignment is written here.
+     Only the "Q3" in the title is a gradient of two accent colors — token names, not a literal color
+     (#0F65F9), so switching the theme turns the gradient into that theme's colors. -->
 <slide id="cover" layout="title" enter="rise">
   <text slot="kicker" variant="kicker">Growth Team · 2026 Q3</text>
-  <h1 slot="title" size="80"><span color="gradient(accent1 accent6, 90deg)">Q3</span> 비즈니스 리뷰</h1>
-  <text slot="subtitle" role="heading" size="30" color="muted">성장 지표 회고와 Q4 계획</text>
+  <h1 slot="title" size="80"><span color="gradient(accent1 accent6, 90deg)">Q3</span> Business Review</h1>
+  <text slot="subtitle" role="heading" size="30" color="muted">Growth metrics in review, and the plan for Q4</text>
   <text slot="author" role="body">Growth Team</text>
-  <text slot="date" role="caption">2026년 10월 · 분기 경영 회의</text>
-  <note>인사 30초. 오늘 다룰 세 가지: 지표, 학습, 계획 — 그리고 결정 하나.</note>
+  <text slot="date" role="caption">October 2026 · Quarterly business meeting</text>
+  <note>Thirty seconds of hello. Three things today: the metrics, what we learned, the plan — and one decision.</note>
 </slide>

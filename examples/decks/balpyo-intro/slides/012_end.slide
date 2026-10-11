@@ -1,10 +1,12 @@
-<!-- 마무리 — end 레이아웃(세로 가운데)의 흐름 모드. 제목 뒤 절반이 표지와 같은 그라디언트라 첫 장과
-     마지막 장이 한 쌍으로 읽힌다. 명령 셋이 덱의 마지막 할 일이다 — 만들고, 빌드하고, 고치며 본다.
-     명령 띠는 `fill="fg"`에 `color="bg"` 글자라 어느 테마에서든 바탕과 반대인 면이 되고, 프롬프트
-     기호만 강조색이다. 줄은 `w="fill"` 그리드라 세 띠가 스테이지 폭을 나눠 갖는다. -->
+<!-- Closing — the end layout (vertically centered) in flow mode. The second half of the title is the
+     same gradient as the cover, so the first and last slides read as a pair. The three commands are
+     the deck's last to-do — create, build, and watch while you edit. The command strips are
+     `fill="fg"` with `color="bg"` text, so in any theme they are the surface opposite the background,
+     and only the prompt symbol is an accent. The row is a `w="fill"` grid, so the three strips split
+     the stage width. -->
 <slide id="end" layout="end" enter="rise">
-  <text role="title" size="80" align="center">SOML로 <span color="gradient(accent1 accent6, 90deg)">한 번 쓴다</span></text>
-  <text role="heading" size="30" color="muted" align="center">나머지는 balpyo가 두 곳으로 렌더한다</text>
+  <text role="title" size="80" align="center"><span color="gradient(accent1 accent6, 90deg)">Write once</span> in SOML</text>
+  <text role="heading" size="30" color="muted" align="center">balpyo renders the rest, to both targets</text>
   <grid cols="3" gap="md" w="fill">
     <shape type="rounded-rect" fill="fg" border="none" radius="md" shadow="soft" w="fill" h="68" pad="sm">
       <text role="code" color="bg" align="center" anchor="center"><span color="accent3">$</span> balpyo init my-talk</text>
@@ -16,5 +18,5 @@
       <text role="code" color="bg" align="center" anchor="center"><span color="accent3">$</span> balpyo watch</text>
     </shape>
   </grid>
-  <note>질문을 받는다. 덱을 pptx로 내려받아 직접 고쳐 보라고 권한다.</note>
+  <note>Take questions. Encourage everyone to download the deck as PPTX and edit it themselves.</note>
 </slide>

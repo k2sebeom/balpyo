@@ -1,10 +1,10 @@
 {
-  "title": "INC-2431 장애 회고",
+  "title": "INC-2431 Incident Postmortem",
   "author": "Platform Team",
-  "lang": "ko",
+  "lang": "en",
   "aspect": "16:9",
   "theme": "ink",
-  "footer": "INC-2431 장애 회고",
+  "footer": "INC-2431 Incident Postmortem",
   "pageNumber": true,
   "outDir": "dist"
 }

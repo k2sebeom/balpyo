@@ -1,36 +1,38 @@
-<!-- 채널별 성과 — 표와 차트가 같은 숫자를 두 번 말한다: 표는 정확한 값을, 차트는 어느 값을 봐야
-     하는지를. 머리 셀 색 · 줄무늬 · 격자선은 전부 테마와 `border-collapse`의 몫이므로 셀에 적는 것은
-     숫자 정렬 하나뿐이다.
+<!-- Performance by channel — the table and the chart say the same numbers twice: the table gives exact
+     values, the chart says which value to look at. Header color, stripes and grid lines all belong to the
+     theme and `border-collapse`, so the only thing written on the cells is number alignment.
 
-     오른쪽 차트는 CAC 하나만 막대로 세운다. 계열색(`series="muted"`)이 막대 다섯을 배경으로 가라앉히고,
-     `<point fill>`이 둘만 앞에 세운다 — 가장 싼 추천(`accent3`)과 가장 비싼 디스플레이(`accent5`).
-     막대 라벨은 칸이 좁아 "광고"로 줄인다 (표의 디스플레이 광고). 값은 천 원 단위다 (`unit`은 값 라벨의 꼬리일 뿐이라 천 단위 구분 기호를 붙일 수 없다). -->
+     The chart on the right raises bars for CAC alone. The series color (`series="muted"`) sinks the five
+     bars into the background, and `<point fill>` brings two forward — the cheapest, referral (`accent3`),
+     and the most expensive, display (`accent5`). Bar labels are short because the cells are narrow
+     ("Display" for the table's display ads). Values are in thousands of won (`unit` is only a suffix on
+     the value labels, so it cannot add a thousands separator). -->
 <slide id="table" enter="rise">
-  <text variant="kicker">02 · 채널별 성과</text>
-  <h2>추천은 싸고, 디스플레이는 비싸다</h2>
+  <text variant="kicker">02 · By channel</text>
+  <h2>Referral is cheap, display is expensive</h2>
   <grid cols="3fr 2fr" gap="lg" grow="1">
     <table variant="striped">
-      <tr><th>채널</th><th align="end">신규 사용자</th><th align="end">전환율</th><th align="end">CAC (원)</th></tr>
-      <tr><td>검색</td><td align="end">312K</td><td align="end">4.2%</td><td align="end">12,000</td></tr>
-      <tr><td><strong>추천</strong></td><td align="end">268K</td><td align="end" color="accent3"><strong>7.8%</strong></td><td align="end" color="accent3"><strong>3,200</strong></td></tr>
-      <tr><td>소셜</td><td align="end">141K</td><td align="end">2.9%</td><td align="end">9,400</td></tr>
-      <tr><td>제휴</td><td align="end">63K</td><td align="end">3.5%</td><td align="end">7,100</td></tr>
-      <tr><td>디스플레이 광고</td><td align="end">38K</td><td align="end">1.1%</td><td align="end" color="accent5">21,500</td></tr>
-      <tr><td><strong>합계</strong></td><td align="end"><strong>822K</strong></td><td align="end"><strong>4.6%</strong></td><td align="end"><strong>8,900</strong></td></tr>
+      <tr><th>Channel</th><th align="end">New users</th><th align="end">Conv.</th><th align="end">CAC (₩)</th></tr>
+      <tr><td>Search</td><td align="end">312K</td><td align="end">4.2%</td><td align="end">12,000</td></tr>
+      <tr><td><strong>Referral</strong></td><td align="end">268K</td><td align="end" color="accent3"><strong>7.8%</strong></td><td align="end" color="accent3"><strong>3,200</strong></td></tr>
+      <tr><td>Social</td><td align="end">141K</td><td align="end">2.9%</td><td align="end">9,400</td></tr>
+      <tr><td>Partners</td><td align="end">63K</td><td align="end">3.5%</td><td align="end">7,100</td></tr>
+      <tr><td>Display ads</td><td align="end">38K</td><td align="end">1.1%</td><td align="end" color="accent5">21,500</td></tr>
+      <tr><td><strong>Total</strong></td><td align="end"><strong>822K</strong></td><td align="end"><strong>4.6%</strong></td><td align="end"><strong>8,900</strong></td></tr>
     </table>
     <shape variant="card" type="rounded-rect" w="fill" pad="md">
       <col gap="sm" h="fill">
-        <text variant="kicker" color="muted">CAC · 천 원</text>
-        <chart type="bar" series="muted" max="24" alt="채널별 CAC — 검색 12.0, 추천 3.2, 소셜 9.4, 제휴 7.1, 디스플레이 광고 21.5 (천 원)" w="fill" grow="1" basis="0" h="300">
-          <point label="검색" value="12.0"/>
-          <point label="추천" value="3.2" fill="accent3"/>
-          <point label="소셜" value="9.4"/>
-          <point label="제휴" value="7.1"/>
-          <point label="광고" value="21.5" fill="accent5"/>
+        <text variant="kicker" color="muted">CAC · ₩ thousands</text>
+        <chart type="bar" series="muted" max="24" alt="CAC by channel — search 12.0, referral 3.2, social 9.4, partners 7.1, display ads 21.5 (thousands of won)" w="fill" grow="1" basis="0" h="300">
+          <point label="Search" value="12.0"/>
+          <point label="Referral" value="3.2" fill="accent3"/>
+          <point label="Social" value="9.4"/>
+          <point label="Partners" value="7.1"/>
+          <point label="Display" value="21.5" fill="accent5"/>
         </chart>
       </col>
     </shape>
   </grid>
-  <text role="caption">CAC = 채널 비용 ÷ 신규 사용자. 합계 행의 전환율과 CAC는 가중 평균이다.</text>
-  <note>디스플레이 광고 예산은 Q4에 추천 보상으로 옮긴다 — 다음 장들의 근거다.</note>
+  <text role="caption">CAC = channel spend ÷ new users. Conversion and CAC in the total row are weighted averages.</text>
+  <note>In Q4 the display ad budget moves to referral rewards — the next slides make the case.</note>
 </slide>

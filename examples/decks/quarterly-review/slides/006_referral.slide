@@ -1,27 +1,27 @@
-<!-- 추천은 어떻게 퍼지는가 — image-text 레이아웃의 슬롯 모드. 그림(`slot="media"`)과 글(`slot="body"`)이
-     나란히 서고 자리는 테마의 image-text.slots.css가 정한다. 그림은 덱의 `assets/`에 있는 사진 한
-     장이고 PPTX에서는 p:pic 플레이스홀더가 된다. `fit="cover"`가 칸을 채우도록 가운데를 자른다 —
-     칸의 비율이 테마마다 달라도 사진에 빈 띠가 생기지 않는다. `variant="framed"`의 반경과 그림자는
-     테마의 것이다.
+<!-- How referrals spread — the image-text layout in slot mode. The picture (`slot="media"`) and the text
+     (`slot="body"`) stand side by side, positioned by the theme's image-text.slots.css. The picture is a
+     single photo from the deck's `assets/` and becomes a p:pic placeholder in PPTX. `fit="cover"` crops
+     around the center to fill the cell — even though the cell's aspect ratio differs per theme, the photo
+     never gets empty bands. The radius and shadow of `variant="framed"` belong to the theme.
 
-     글 쪽은 세 단계의 깔때기다: 공유 → 가입 → 첫 결제. 단계마다 큰 숫자와 짧은 설명이고, 마지막 단계만
-     `accent3`(이 덱에서 "좋은 숫자")다. -->
+     The text side is a three-step funnel: share → sign up → first payment. Each step is a big number with a
+     short description, and only the last step is `accent3` (the "good number" color in this deck). -->
 <slide id="referral" layout="image-text" enter="rise">
-  <h2 slot="title">추천은 친구의 화면에서 시작한다</h2>
-  <image slot="media" src="assets/referral.jpg" variant="framed" fit="cover" w="fill" h="400" alt="카페에서 휴대폰 화면을 함께 보며 웃는 두 사람"/>
+  <h2 slot="title">Referrals start on a friend's screen</h2>
+  <image slot="media" src="assets/referral.jpg" variant="framed" fit="cover" w="fill" h="400" alt="Two people laughing together over a phone screen in a café"/>
   <col slot="body" gap="lg">
     <row gap="md" align="center">
       <text role="title" size="52" color="accent1" w="150">38%</text>
-      <col gap="0" grow="1" basis="0"><text role="heading" size="24">초대 링크를 연다</text><text role="caption">공유된 링크 1,000개 중 380개</text></col>
+      <col gap="0" grow="1" basis="0"><text role="heading" size="24">Open the invite link</text><text role="caption">380 of every 1,000 shared links</text></col>
     </row>
     <row gap="md" align="center">
       <text role="title" size="52" color="accent1" w="150">21%</text>
-      <col gap="0" grow="1" basis="0"><text role="heading" size="24">가입한다</text><text role="caption">연 사람의 다섯 중 하나 — 검색의 세 배</text></col>
+      <col gap="0" grow="1" basis="0"><text role="heading" size="24">Sign up</text><text role="caption">One in five who open — 3x search</text></col>
     </row>
     <row gap="md" align="center">
       <text role="title" size="52" color="accent3" w="150">7.8%</text>
-      <col gap="0" grow="1" basis="0"><text role="heading" size="24">첫 결제까지 간다</text><text role="caption">모든 채널 중 전환율 1위</text></col>
+      <col gap="0" grow="1" basis="0"><text role="heading" size="24">Make a first payment</text><text role="caption">Highest conversion of any channel</text></col>
     </row>
   </col>
-  <note>추천은 광고가 아니라 친구의 말이다. 그래서 전환율이 높고, 보상만 있으면 비용이 낮다.</note>
+  <note>A referral isn't an ad, it's a friend talking. That's why conversion is high — and with a reward in place, the cost stays low.</note>
 </slide>

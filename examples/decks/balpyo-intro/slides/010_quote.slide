@@ -1,15 +1,16 @@
-<!-- 인용 — quote 레이아웃(세로 가운데)의 흐름 모드, 그리고 덱에서 유일한 **뒤집힌 장**이다.
-     `<slide invert>`는 bg ↔ fg, surface ↔ muted를 이 장에서만 바꾼다 — 원고의 `color="fg"`는 그대로이고
-     밝은 테마에서는 어두운 장이, 어두운 테마에서는 밝은 장이 된다. PPTX에서는 색 지도 덮어쓰기라
-     테마 색이 여전히 장을 움직인다.
+<!-- Quote — the quote layout (vertically centered) in flow mode, and the deck's only **inverted
+     slide**. `<slide invert>` swaps bg ↔ fg and surface ↔ muted on this slide only — the source's
+     `color="fg"` stays as is, giving a dark slide in light themes and a light slide in dark themes.
+     In PPTX it is a color-map override, so the theme colors still drive the slide.
 
-     큰 따옴표 하나가 장의 무게를 받친다. 강조는 `<mark>`가 아니라 글자색이다: 형광펜의 색은 테마가
-     밝은 바탕을 위해 고른 값이라, 뒤집힌 장에서는 밝은 글자 밑에 밝은 형광펜이 깔린다. -->
+     One big quotation mark carries the weight of the slide. The emphasis is text color, not `<mark>`:
+     the highlighter color is chosen by the theme for a light background, so on an inverted slide a
+     light highlight would sit under light text. -->
 <slide id="quote" layout="quote" invert enter="rise">
   <text role="title" size="160" color="accent1" align="center">“</text>
-  <blockquote size="50" color="fg" align="center">“열리는 파일”과 <span color="accent1">“편집 가능한 파일”</span>의
-  차이가 이 제품의 핵심이다.</blockquote>
+  <blockquote size="50" color="fg" align="center">The gap between “a file that opens” and<br/>
+  <span color="accent1">“a file you can edit”</span> is the product.</blockquote>
   <shape type="rect" fill="accent1" border="none" w="72" h="4" self="center"/>
-  <text role="body" color="muted" align="center">— 테스트 문서, 사람이 직접 pptx를 열어 확인하는 단계를 자동화하지 않는 이유</text>
-  <note>그래서 바뀔 때마다 PowerPoint나 Keynote로 직접 연다.</note>
+  <text role="body" color="muted" align="center">— from the testing guide, on why a person still opens the PPTX by hand</text>
+  <note>So every time something changes, we open it in PowerPoint or Keynote ourselves.</note>
 </slide>

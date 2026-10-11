@@ -1,7 +1,7 @@
-<!-- 마무리: end 레이아웃의 슬롯 둘. 제목은 슬라이드 하나를 받칠 만큼 크게 둔다 — end 레이아웃은
-     세로 가운데라 글자가 작으면 장 전체가 빈 화면으로 읽힌다. -->
+<!-- Closing: the two slots of the end layout. The title is big enough to carry a slide on its own — the
+     end layout is vertically centered, so small type makes the whole slide read as an empty screen. -->
 <slide id="end" layout="end" enter="rise">
-  <text slot="title" role="title" size="80" align="center">질문과 반론</text>
-  <text slot="contact" role="heading" size="28" color="muted" align="center">기록: <a href="https://example.com/inc-2431">INC-2431 회고 문서</a> · #incident-2431</text>
-  <note>반론이 나오면 액션을 고친다. 회고는 합의가 아니라 수정이 목적이다.</note>
+  <text slot="title" role="title" size="80" align="center">Questions and pushback</text>
+  <text slot="contact" role="heading" size="28" color="muted" align="center">Record: <a href="https://example.com/inc-2431">INC-2431 postmortem doc</a> · #incident-2431</text>
+  <note>If there is pushback, we change the actions. The point of a postmortem is correction, not consensus.</note>
 </slide>

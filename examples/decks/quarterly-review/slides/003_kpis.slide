@@ -1,19 +1,20 @@
-<!-- KPI 카드. 카드 높이를 숫자로 적지 않는다 — 그리드가 `grow="1"`로 제목 아래 남은 높이를 다
-     갖고, grid 항목은 기본이 stretch라 카드 셋이 그 높이를 나눠 받는다. 카드 안 내용은
-     `justify="between"`으로 위(지표 이름) · 가운데(숫자와 그 그림) · 아래(비교) 세 띠에 놓인다.
+<!-- KPI cards. No card height is written as a number — the grid takes all the height left under the
+     heading with `grow="1"`, and grid items stretch by default, so the three cards share that height. Inside
+     a card, `justify="between"` places the content in three bands: top (metric name), middle (the number
+     and its picture), bottom (the comparison).
 
-     숫자마다 그 숫자의 그림이 하나씩 붙는다 — 모두 PPTX에서 편집 가능한 도형이다:
-       - 사용자: 넉 분기의 곡선과 그 아래 면 (`type="path"` 둘을 `<stack>`에 겹친다).
-       - 매출: 다섯 달의 막대 다섯 (`<row align="end">`에 높이만 다른 사각형).
-       - 평점: 별 다섯 — 넷은 채우고 다섯째는 반투명이다 (4.6).
-     세 그림은 같은 높이(64)라 카드 셋의 숫자가 한 줄에 선다. -->
+     Every number gets a picture of itself — all of them editable shapes in PPTX:
+       - Users: a four-quarter curve with the area under it (two `type="path"` shapes overlapped in a `<stack>`).
+       - Revenue: five bars for five months (rectangles of different heights in a `<row align="end">`).
+       - Rating: five stars — four filled, the fifth translucent (4.6).
+     The three pictures share one height (64), so the numbers on all three cards line up. -->
 <slide id="kpis" enter="rise">
-  <text variant="kicker">01 · 핵심 지표</text>
-  <h2>세 지표 모두 목표를 넘겼다</h2>
+  <text variant="kicker">01 · Key metrics</text>
+  <h2>All three metrics beat their targets</h2>
   <grid cols="3" gap="lg" grow="1">
     <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
       <col gap="sm" h="fill" justify="between">
-        <text variant="kicker" color="muted">월간 활성 사용자</text>
+        <text variant="kicker" color="muted">Monthly active users</text>
         <col gap="sm">
           <text role="title" size="80" color="accent1">+38<span size="40">%</span></text>
           <stack w="fill" h="64">
@@ -23,15 +24,15 @@
         </col>
         <col gap="0">
           <p>2.1M → 2.9M</p>
-          <text role="caption">Q2 대비 · 목표 +30%</text>
+          <text role="caption">vs. Q2 · target +30%</text>
         </col>
       </col>
     </shape>
     <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
       <col gap="sm" h="fill" justify="between">
-        <text variant="kicker" color="muted">분기 매출</text>
+        <text variant="kicker" color="muted">Quarterly revenue</text>
         <col gap="sm">
-          <text role="title" size="80" color="accent2">1.2<span size="40">B</span></text>
+          <text role="title" size="80" color="accent2">₩1.2<span size="40">B</span></text>
           <row gap="xs" align="end" w="fill" h="64">
             <shape type="rect" fill="alpha(accent2, 0.35)" border="none" grow="1" basis="0" h="30"/>
             <shape type="rect" fill="alpha(accent2, 0.35)" border="none" grow="1" basis="0" h="36"/>
@@ -41,14 +42,14 @@
           </row>
         </col>
         <col gap="0">
-          <p>목표 대비 108%</p>
-          <text role="caption">원 · 구독 74% · 광고 26%</text>
+          <p>108% of target</p>
+          <text role="caption">Subscriptions 74% · ads 26%</text>
         </col>
       </col>
     </shape>
     <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
       <col gap="sm" h="fill" justify="between">
-        <text variant="kicker" color="muted">앱스토어 평점</text>
+        <text variant="kicker" color="muted">App Store rating</text>
         <col gap="sm">
           <text role="title" size="80" color="accent4">4.6</text>
           <row gap="xs" align="center" h="64">
@@ -60,11 +61,11 @@
           </row>
         </col>
         <col gap="0">
-          <p>리뷰 18,400건</p>
-          <text role="caption">Q2 4.3 · 1점 리뷰 −41%</text>
+          <p>18,400 reviews</p>
+          <text role="caption">Q2 4.3 · 1-star reviews −41%</text>
         </col>
       </col>
     </shape>
   </grid>
-  <note>매출은 목표 대비 108%. 평점 상승은 결제 오류 수정 이후다. 사용자 증가의 절반 이상이 추천 채널에서 왔다.</note>
+  <note>Revenue landed at 108% of target. The rating climbed after we fixed the payment errors. More than half of the user growth came from referrals.</note>
 </slide>

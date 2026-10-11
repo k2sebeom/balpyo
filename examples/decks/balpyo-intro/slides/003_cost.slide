@@ -1,33 +1,35 @@
-<!-- 수치 한 장 — 흐름 모드. 수치는 기업 덱의 카드 그리드 한 장을 python-pptx로 다시 만든 역분석에서
-     왔다. 왼쪽 판이 그 비용(128)을, 오른쪽 판이 같은 그림의 SOML 한 줄을 보여 준다 — 숫자 하나만
-     가운데 띄우면 듣는 사람은 "128회가 무엇과 비교해서인가"를 묻는다. 두 판이 `grow="1"` 그리드의
-     stretch로 제목 아래 높이를 다 받는다.
+<!-- One number — flow mode. The figures come from reverse-engineering a single card-grid slide from
+     a corporate deck by rebuilding it in python-pptx. The left panel shows that cost (128); the right
+     panel shows the same picture as one line of SOML — float a lone number in the middle and the
+     audience asks "128 compared to what?". Both panels take the full height below the heading through
+     the stretch of a `grow="1"` grid.
 
-     왼쪽 판 아래의 띠는 128을 눈으로 세게 하는 그림이다: 같은 폭의 막대 둘을 겹쳐, 한쪽을 128칸의
-     세로 빗금(`pattern(vertical …)`)으로, 다른 쪽을 한 칸으로 그린다. 오른쪽 판은 테마가
-     소유하는 두 강조색의 그라디언트다 — 숫자 대신 색이 "이쪽"을 가리킨다. 그 위 글자는 `bg`라
-     어떤 테마에서든 강조색과 대비가 맞는다 (강조색은 바탕 대비 4.5:1 이상으로 고른 값이다). -->
+     The strip at the bottom of the left panel makes you count 128 with your eyes: two bars of the
+     same width overlaid, one drawn as 128 vertical hatch lines (`pattern(vertical …)`), the other as
+     a single cell. The right panel is a gradient of two accents the theme owns — color, not a number,
+     points to "this side". The text on it is `bg`, so it contrasts with the accents in any theme
+     (accents are chosen at 4.5:1 or better against the background). -->
 <slide id="cost" enter="rise">
-  <text variant="kicker">기업 덱의 카드 그리드 한 장을 python-pptx로 다시 만들었을 때</text>
+  <text variant="kicker">Rebuilding one card-grid slide from a corporate deck in python-pptx</text>
   <grid cols="3fr 2fr" gap="lg" grow="1">
     <shape variant="card" type="rounded-rect" w="fill" pad="lg">
       <col gap="sm" h="fill" justify="center">
         <text variant="kicker" color="muted">python-pptx</text>
-        <text role="title" size="168" color="accent5">128<span size="48">회</span></text>
-        <text role="heading" size="28">수동 좌표 계산 · 그리고 raw XML 수술 10회</text>
+        <text role="title" size="168" color="accent5">128<span size="48"> times</span></text>
+        <text role="heading" size="28">Manual coordinates · 10 raw-XML patches</text>
         <shape type="rect" fill="pattern(vertical accent5/70 bg/0)" border="none" w="fill" h="20"/>
       </col>
     </shape>
     <shape type="rounded-rect" fill="gradient(accent1 accent6, 135deg)" border="none" radius="lg" shadow="soft" w="fill" pad="lg">
       <col gap="md" h="fill" justify="center">
         <text variant="kicker" color="bg">balpyo</text>
-        <text role="title" size="104" color="bg">1<span size="48">줄</span></text>
+        <text role="title" size="104" color="bg">1<span size="48"> line</span></text>
         <shape type="rounded-rect" fill="alpha(bg, 0.2)" border="none" radius="sm" pad="xs sm">
           <text role="code" size="22" color="bg">&lt;grid cols="4"&gt;</text>
         </shape>
-        <text role="body" color="bg">좌표는 브라우저가 잰다.</text>
+        <text role="body" color="bg">The browser measures layout.</text>
       </col>
     </shape>
   </grid>
-  <note>여기가 제품의 출발점이다. 저자가 계산할 것이 남아 있으면 자동화가 아니다.</note>
+  <note>This is where the product started. If the author still has something to calculate, it isn't automation.</note>
 </slide>

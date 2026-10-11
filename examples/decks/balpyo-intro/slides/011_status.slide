@@ -1,47 +1,48 @@
-<!-- 현황과 다음 — 흐름 모드, 카드 두 장이 `grow="1"` 그리드로 제목 아래를 다 갖는다. 왼쪽은 되는 것을
-     딱지(`variant="badge"`)로 늘어놓는다 — 목록보다 딱지 묶음이 "많다"를 먼저 말하고, `wrap` 줄이
-     카드 폭에 맞춰 알아서 접힌다. 딱지의 테두리와 채움은 테마가 정한다.
+<!-- Status and next — flow mode, two cards in a `grow="1"` grid take all the space below the title. The
+     left lays out what works as badges (`variant="badge"`) — a cluster of badges says "a lot" before a
+     list would, and the `wrap` row folds to the card width on its own. The theme sets the badges'
+     border and fill.
 
-     오른쪽은 다음에 할 일 다섯이다. 번호 대신 빈 원을 두는 이유는 순서가 정해지지 않았기 때문이다
-     (백로그는 집어 들 때 순서를 정한다). -->
+     The right holds five things to do next. Empty circles stand in for numbers because the order is
+     not decided (the backlog picks an order when an item is taken up). -->
 <slide id="status" enter="rise">
-  <text variant="kicker">지금</text>
-  <h1>되는 것과 다음</h1>
+  <text variant="kicker">Now</text>
+  <h1>What works, what's next</h1>
   <grid cols="3fr 2fr" gap="lg" grow="1">
     <shape variant="card" type="rounded-rect" w="fill" pad="lg">
       <col gap="md" h="fill">
-        <text variant="kicker" color="accent3">동작한다</text>
+        <text variant="kicker" color="accent3">Works today</text>
         <row gap="xs" wrap>
-          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">웹 + 네이티브 PPTX</text></shape>
-          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">레이아웃 11종 · 슬롯</text></shape>
-          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">도형 16종 · path</text></shape>
-          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">표</text></shape>
-          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">차트 · 여러 계열</text></shape>
-          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">연결선</text></shape>
-          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">등장 · 전환</text></shape>
-          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">코드 강조</text></shape>
-          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">SVG 그림</text></shape>
-          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">빗금 · 그라디언트</text></shape>
-          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">뒤집힌 장</text></shape>
-          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">테마 배경 · 로고</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">Web + native PPTX</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">11 layouts · slots</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">16 shapes · path</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">Tables</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">Charts · series</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">Connectors</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">Animations</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">Code highlighting</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">SVG images</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">Hatches · gradients</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">Inverted slides</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">Backgrounds · logos</text></shape>
           <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">theme install</text></shape>
-          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">줄:열 진단</text></shape>
+          <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">line:col diagnostics</text></shape>
           <shape variant="badge" type="rounded-rect" pad="xs sm"><text size="18">init · build · check · watch · preview</text></shape>
         </row>
       </col>
     </shape>
     <shape variant="card" type="rounded-rect" w="fill" pad="lg">
       <col gap="md" h="fill">
-        <text variant="kicker" color="muted">다음</text>
+        <text variant="kicker" color="muted">Next</text>
         <col gap="md">
-          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">챕터를 PPTX 섹션으로</text></row>
-          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">차트 값의 앞붙이 · 천 단위</text></row>
-          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">표 칸의 글자 크기</text></row>
-          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">늘린 프리셋의 매개변수</text></row>
-          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">영어 레퍼런스</text></row>
+          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">Chapters as PPTX sections</text></row>
+          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">Chart value prefixes · thousands</text></row>
+          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">Font size in table cells</text></row>
+          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">Stretched preset parameters</text></row>
+          <row gap="sm" align="center"><shape type="ellipse" fill="none" border="2 solid muted" w="16" h="16"/><text size="22" grow="1" basis="0">English reference docs</text></row>
         </col>
       </col>
     </shape>
   </grid>
-  <note>왼쪽이 지금 되는 것, 오른쪽이 다음에 할 일이다. 순서는 정하지 않았다.</note>
+  <note>Left is what works today, right is what comes next. The order isn't decided.</note>
 </slide>

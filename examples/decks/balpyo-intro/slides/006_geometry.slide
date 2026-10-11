@@ -1,25 +1,28 @@
-<!-- 지오메트리 패스 — 카드 세 장이 빌드의 세 단계(선언 · 측정 · 굽기)다. 카드 한 장이 **도형 하나**다
-     (배경 모드): `<shape>`가 `<col>`을 담으면 도형은 배경이 되고 머리띠 · 그림 · 설명 · 이름표가 그
-     안에서 배치된다.
+<!-- Geometry pass — the three cards are the three stages of a build (declare · measure · bake). Each
+     card is **one shape** (backdrop mode): when a `<shape>` holds a `<col>`, the shape becomes the
+     background, and the header, picture, description and label are laid out inside it.
 
-     이 장은 README의 "같은 슬라이드, 다른 테마" 견본이라, 카드와 아래 틀에 **채움을 적지 않는다** —
-     `variant="card"` · `card-backdrop`의 값은 테마가 정한다. 그래서 테마를 갈면 테두리 두른 흰
-     카드(minimal)가, 회색 바탕 위에 뜬 흰 카드(harbor)가, 남색 바탕 위의 한 단 밝은 카드(aurora)가 된다.
-     원고는 같다. 머리띠만 `fill="accent1"`을 적는다: 머리띠 글자가 `bg`이므로 띠는 어느 테마에서든
-     강조색이어야 하는데, 내장 테마의 `card-header`는 채움을 정하지 않는다 (색은 그 테마의 accent1이다).
+     This slide is the README's "same slide, different themes" sample, so the cards and the frame
+     below **write no fill** — the values of `variant="card"` and `card-backdrop` come from the theme.
+     Swap the theme and you get a white card with a border (minimal), a white card floating on a grey
+     background (harbor), or a one-step-lighter card on navy (aurora). The source is the same. Only
+     the header writes `fill="accent1"`: its text is `bg`, so the strip must be an accent in every
+     theme, and the built-in themes' `card-header` sets no fill (the color is that theme's accent1).
 
-     카드마다 가운데에 그 단계의 증거를 하나씩 둔다: 저자가 쓰는 SOML(`lang="soml"` 강조), 브라우저가
-     잰 박스(점선 테두리 둘과 그 네 값), PPTX에 적히는 EMU(`lang="xml"`). 카드 높이는 숫자로 적지
-     않는다 — 그리드가 `grow="1"`로 남은 높이를 갖고 카드 셋이 grid의 stretch로 그것을 받는다. -->
+     Each card puts one piece of evidence for its stage in the middle: the SOML the author writes
+     (highlighted with `lang="soml"`), the boxes the browser measured (two dashed borders and their
+     four values), and the EMU written into the PPTX (`lang="xml"`). Card heights are not written as
+     numbers — the grid takes the remaining height with `grow="1"` and the three cards receive it
+     through the grid's stretch. -->
 <slide id="geometry" enter="rise">
-  <text variant="kicker">지오메트리 패스</text>
-  <h1>좌표는 브라우저가 계산한다</h1>
+  <text variant="kicker">Geometry pass</text>
+  <h1>The browser computes the coordinates</h1>
   <grid cols="3" gap="lg" grow="1">
     <shape variant="card" type="rounded-rect" w="fill" pad="md">
       <col gap="sm" h="fill" justify="between">
         <col gap="sm">
           <shape variant="card-header" type="rounded-rect" fill="accent1" w="fill" h="44" pad="xs">
-            <text color="bg" align="center" anchor="center"><strong>① 선언</strong></text>
+            <text color="bg" align="center" anchor="center"><strong>① Declare</strong></text>
           </shape>
           <shape type="rounded-rect" fill="alpha(fg, 0.05)" border="none" radius="sm" w="fill" h="104" pad="xs sm">
             <pre lang="soml" size="14">&lt;row gap="md"&gt;
@@ -27,7 +30,7 @@
   &lt;shape w="fill"/&gt;
 &lt;/row&gt;</pre>
           </shape>
-          <p size="20">저자는 flex와 grid로 배치를 선언한다. 좌표를 쓰는 자리가 어휘에 없다.</p>
+          <p size="20">Authors declare layout with flex and grid. Coordinates have no place in it.</p>
         </col>
         <text role="code" size="16" color="muted">row · col · grid · stack</text>
       </col>
@@ -36,7 +39,7 @@
       <col gap="sm" h="fill" justify="between">
         <col gap="sm">
           <shape variant="card-header" type="rounded-rect" fill="accent1" w="fill" h="44" pad="xs">
-            <text color="bg" align="center" anchor="center"><strong>② 측정</strong></text>
+            <text color="bg" align="center" anchor="center"><strong>② Measure</strong></text>
           </shape>
           <row gap="sm" w="fill" h="104">
             <shape type="rect" fill="alpha(accent1, 0.12)" border="2 dashed accent1" w="fill" h="fill">
@@ -46,7 +49,7 @@
               <text role="code" size="15" color="accent1" align="center" anchor="center">x · y · w · h</text>
             </shape>
           </row>
-          <p size="20">헤드리스 Chromium이 요소마다 박스를 잰다. 패스는 그 rect만 읽는다.</p>
+          <p size="20">Headless Chromium measures every element's box. The pass reads only rects.</p>
         </col>
         <text role="code" size="16" color="muted">getBoundingClientRect</text>
       </col>
@@ -55,7 +58,7 @@
       <col gap="sm" h="fill" justify="between">
         <col gap="sm">
           <shape variant="card-header" type="rounded-rect" fill="accent1" w="fill" h="44" pad="xs">
-            <text color="bg" align="center" anchor="center"><strong>③ 굽기</strong></text>
+            <text color="bg" align="center" anchor="center"><strong>③ Bake</strong></text>
           </shape>
           <shape type="rounded-rect" fill="alpha(fg, 0.05)" border="none" radius="sm" w="fill" h="104" pad="xs sm">
             <pre lang="xml" size="14">&lt;a:off x="609600"
@@ -63,14 +66,14 @@
 &lt;a:ext cx="1562100"
        cy="1066800"/&gt;</pre>
           </shape>
-          <p size="20">잰 rect가 곧 PPTX 좌표다 — 1px은 9525 EMU이고 환산은 한 곳에만 있다.</p>
+          <p size="20">Measured rects are the PPTX coordinates. 1px = 9525 EMU, converted once.</p>
         </col>
         <text role="code" size="16" color="muted">a:off · a:ext</text>
       </col>
     </shape>
   </grid>
   <shape variant="card-backdrop" type="rounded-rect" w="fill" pad="sm md">
-    <text role="caption" align="center">파이프라인이 주고받는 수치는 전부 논리 스테이지 px다 (16:9는 1280×720). EMU와 pt는 PPTX 렌더러 안에서만 존재한다.</text>
+    <text role="caption" align="center">The pipeline speaks logical stage px (16:9 is 1280×720). EMU and pt exist only inside the PPTX renderer.</text>
   </shape>
-  <note>이것이 두 번째 통찰이다 — 브라우저를 레이아웃 엔진으로 빌려 쓴다.</note>
+  <note>This is the second insight — borrow the browser as the layout engine.</note>
 </slide>

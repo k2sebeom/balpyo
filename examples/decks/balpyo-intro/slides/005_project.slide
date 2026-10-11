@@ -1,13 +1,14 @@
-<!-- 프로젝트 구조 — code 레이아웃(흐름). 왼쪽은 창 모양 카드 안의 디렉토리 트리다: 제목 띠의 점 셋과
-     경로 한 줄이 "이것은 파일 시스템이다"를 말하고, `pre`가 공백을 원문 그대로 보존한다. 오른쪽은
-     수집 규칙 넷이 번호 원과 함께 선다 — 번호가 트리의 어느 줄을 말하는지 듣는 사람이 짝을 짓는다.
+<!-- Project layout — the code layout (flow). On the left, a directory tree inside a window-shaped
+     card: the three dots and the path line in the title bar say "this is a file system", and `pre`
+     preserves the whitespace verbatim. On the right stand the four collection rules, each with a
+     numbered circle — the audience pairs each number with a line of the tree.
 
-     아래 띠는 명령 한 줄을 터미널처럼 보여 준다: `fill="fg"`에 `color="bg"` 글자라 밝은 테마에서는
-     어두운 띠, 어두운 테마에서는 밝은 띠가 된다 — 어느 쪽이든 바탕과 반대인 면이 "여기서 친다"를
-     뜻한다. 프롬프트 기호만 강조색이다. -->
+     The strip at the bottom shows one command like a terminal: `fill="fg"` with `color="bg"` text, so
+     it is a dark strip in light themes and a light strip in dark themes — either way, the surface
+     opposite the background means "type here". Only the prompt symbol is an accent. -->
 <slide id="project" layout="code" enter="rise">
-  <text variant="kicker">프로젝트</text>
-  <h1>프로젝트 하나가 덱 하나다</h1>
+  <text variant="kicker">Project</text>
+  <h1>One project is one deck</h1>
   <grid cols="5fr 6fr" gap="xl" grow="1">
     <shape variant="card" type="rounded-rect" w="fill" pad="0">
       <col gap="0" h="fill">
@@ -33,15 +34,15 @@
       </col>
     </shape>
     <col gap="md" justify="center">
-      <row gap="md" align="center"><shape type="ellipse" fill="accent1" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>1</strong></text></shape><text role="body" size="22" grow="1" basis="0">슬라이드 한 장이 파일 한 개다</text></row>
-      <row gap="md" align="center"><shape type="ellipse" fill="accent1" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>2</strong></text></shape><text role="body" size="22" grow="1" basis="0">순서는 경로 사전순 — 숫자 접두가 순서다</text></row>
-      <row gap="md" align="center"><shape type="ellipse" fill="accent1" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>3</strong></text></shape><text role="body" size="22" grow="1" basis="0">밑줄로 시작하는 파일은 건너뛴다 (초안)</text></row>
-      <row gap="md" align="center"><shape type="ellipse" fill="accent1" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>4</strong></text></shape><text role="body" size="22" grow="1" basis="0">하위 디렉토리는 챕터가 된다</text></row>
-      <row gap="md" align="center"><shape type="ellipse" fill="accent6" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>5</strong></text></shape><text role="body" size="22" grow="1" basis="0">덱 설정은 <code>balpyo.json</code> 한 파일</text></row>
+      <row gap="md" align="center"><shape type="ellipse" fill="accent1" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>1</strong></text></shape><text role="body" size="22" grow="1" basis="0">One slide is one file</text></row>
+      <row gap="md" align="center"><shape type="ellipse" fill="accent1" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>2</strong></text></shape><text role="body" size="22" grow="1" basis="0">Sorted by path — numeric prefixes set the order</text></row>
+      <row gap="md" align="center"><shape type="ellipse" fill="accent1" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>3</strong></text></shape><text role="body" size="22" grow="1" basis="0"><code>_</code>-prefixed files are skipped (drafts)</text></row>
+      <row gap="md" align="center"><shape type="ellipse" fill="accent1" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>4</strong></text></shape><text role="body" size="22" grow="1" basis="0">Subdirectories become chapters</text></row>
+      <row gap="md" align="center"><shape type="ellipse" fill="accent6" border="none" w="40" h="40"><text role="caption" color="bg" align="center" anchor="center"><strong>5</strong></text></shape><text role="body" size="22" grow="1" basis="0">Deck settings live in one file: <code>balpyo.json</code></text></row>
     </col>
   </grid>
   <shape type="rounded-rect" fill="fg" border="none" radius="md" w="fill" pad="sm md">
     <text role="code" size="20" color="bg"><span color="accent3">$</span> balpyo build --project my-deck --target html,pptx</text>
   </shape>
-  <note>덱 설정은 balpyo.json 한 파일이다 — 제목·저자·언어·비율·테마·출력 경로·꼬리말·쪽 번호.</note>
+  <note>All deck settings live in balpyo.json — title, author, language, aspect, theme, output path, footer, page numbers.</note>
 </slide>

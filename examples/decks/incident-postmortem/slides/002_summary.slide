@@ -1,22 +1,23 @@
-<!-- 한 장 요약: 숫자 셋을 나란히. stat 레이아웃은 value 슬롯이 하나라 흐름 모드로 짠다.
+<!-- One-page summary: three numbers side by side. The stat layout has a single value slot, so this is
+     built in flow mode.
 
-     카드마다 숫자 아래에 그 숫자의 그림을 하나 둔다 — 숫자는 크기를, 그림은 모양을 말한다:
-       - 47분: 47칸의 띠가 끝까지 빨갛다 (장애가 덮은 시간 전부).
-       - 8.4%: 오류율 곡선이 평시 바닥에서 솟았다가 내려온다 (`type="path"`, 0–100 상자의 곡선).
-       - 12분: 47분 가운데 12분(26%)만 호박색인 띠 — 장애의 사분의 일을 모르고 지냈다.
-     띠 둘은 `grid cols="12fr 35fr"`의 두 칸이라 비율이 원고의 숫자 그대로다.
+     Each card puts one picture under its number — the number gives the size, the picture the shape:
+       - 47 min: a 47-cell strip that is red all the way (the whole span the incident covered).
+       - 8.4%: the error-rate curve rises off the normal floor and comes back down (`type="path"`, a curve in a 0–100 box).
+       - 12 min: a strip where only 12 of the 47 minutes (26%) are amber — a quarter of the incident went unnoticed.
+     The two strip pieces are the two cells of `grid cols="12fr 35fr"`, so the ratio is the source numbers verbatim.
 
-     숫자 셋의 색은 덱의 색 규칙을 따른다 (001_cover): 47분 · 8.4%는 장애가 낸 값이라 `accent5`,
-     12분은 우리가 늦은 곳이라 `accent4`다. 카드 높이를 숫자로 적지 않는다 — 숫자 그리드가
-     `grow="1"`로 제목과 아래 띠 사이를 다 갖는다. -->
+     The three numbers follow the deck's color rule (001_cover): 47 min and 8.4% are what the incident
+     cost, so `accent5`; 12 min is where we were late, so `accent4`. Card height is never written as a
+     number — the number grid takes everything between the title and the strip below with `grow="1"`. -->
 <slide id="summary" enter="rise">
-  <text variant="kicker">한 장 요약</text>
-  <h2>47분 동안 결제 열 건 중 한 건이 실패했다</h2>
+  <text variant="kicker">Summary</text>
+  <h2>For 47 minutes, one in ten payments failed</h2>
   <grid cols="3" gap="md" grow="1">
     <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
       <col gap="sm" h="fill" justify="center">
-        <text role="title" size="88" color="accent5">47<span size="40">분</span></text>
-        <text role="body">결제 API 5xx 지속</text>
+        <text role="title" size="88" color="accent5">47<span size="40"> min</span></text>
+        <text role="body">of Payments API 5xx</text>
         <shape type="rect" fill="accent5" border="none" w="fill" h="10"/>
         <text role="caption">14:02 – 14:49 KST</text>
       </col>
@@ -24,37 +25,37 @@
     <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
       <col gap="sm" h="fill" justify="center">
         <text role="title" size="88" color="accent5">8.4<span size="40">%</span></text>
-        <text role="body">최대 오류율</text>
+        <text role="body">peak error rate</text>
         <stack w="fill" h="56">
           <shape type="path" fill="alpha(accent5, 0.25)" border="none" w="fill" h="fill" d="M0,96 H22 C30,96 32,4 40,4 C48,4 50,60 62,74 C72,86 80,94 100,96 V100 H0 Z"/>
           <shape type="path" fill="none" border="2 solid accent5" w="fill" h="fill" d="M0,96 H22 C30,96 32,4 40,4 C48,4 50,60 62,74 C72,86 80,94 100,96"/>
         </stack>
-        <text role="caption">평시 0.02%</text>
+        <text role="caption">0.02% on a normal day</text>
       </col>
     </shape>
     <shape variant="stat-card" type="rounded-rect" fill="surface" w="fill" pad="lg">
       <col gap="sm" h="fill" justify="center">
-        <text role="title" size="88" color="accent4">12<span size="40">분</span></text>
-        <text role="body">탐지까지 걸린 시간</text>
+        <text role="title" size="88" color="accent4">12<span size="40"> min</span></text>
+        <text role="body">to detect</text>
         <grid cols="12fr 35fr" gap="0" w="fill">
           <shape type="rect" fill="accent4" border="none" w="fill" h="10"/>
           <shape type="rect" fill="alpha(muted, 0.35)" border="none" w="fill" h="10"/>
         </grid>
-        <text role="caption">장애의 26% — 경보가 5분 평균이었다</text>
+        <text role="caption">26% of the outage went unseen</text>
       </col>
     </shape>
   </grid>
   <grid cols="2" gap="lg">
     <col gap="xs">
-      <text role="heading" size="24">무슨 일</text>
-      <p size="20">결제 캐시 키 12만 개가 같은 초에 만료되면서 DB로 요청이 쏟아졌다.
-      읽기 풀이 고갈되고 결제 API가 5xx를 반환했다.</p>
+      <text role="heading" size="24">What happened</text>
+      <p size="20">120k payment cache keys expired in one second and hit the DB.
+      The read pool ran dry; the API returned 5xx.</p>
     </col>
     <col gap="xs">
-      <text role="heading" size="24" color="accent3">어떻게 멈췄나</text>
-      <p size="20">롤백이 아니라 <strong>부하 차단</strong>으로 멈췄다. 캐시가 다시 차자
-      14:49에 오류율이 평시로 돌아왔다.</p>
+      <text role="heading" size="24" color="accent3">How it stopped</text>
+      <p size="20"><strong>Load shedding</strong>, not a rollback. Once the cache
+      refilled, errors were normal by 14:49.</p>
     </col>
   </grid>
-  <note>숫자 셋만 읽고 다음으로. 자세한 것은 뒤에 있다.</note>
+  <note>Read the three numbers and move on. The detail comes later.</note>
 </slide>

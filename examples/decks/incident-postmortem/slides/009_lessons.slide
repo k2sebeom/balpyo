@@ -1,9 +1,10 @@
-<!-- 배운 것: quote 레이아웃의 슬롯 둘, 그리고 덱에서 유일한 **뒤집힌 장**이다. `<slide invert>`가
-     이 장에서만 bg ↔ fg를 바꾼다 — 어두운 덱 한가운데에서 밝은 장 하나가 "이 문장만 기억하라"를
-     말한다. 원고의 `color="fg"`는 그대로이고 PPTX에서는 색 지도 덮어쓰기라 테마 색이 장을 움직인다. -->
+<!-- Lessons: the two slots of the quote layout, and the deck's only **inverted slide**. `<slide invert>`
+     swaps bg ↔ fg on this slide alone — one light slide in the middle of a dark deck says "remember just
+     this sentence". The source's `color="fg"` stays as is; in PPTX it is a color-map override, so the
+     theme colors move the slide. -->
 <slide id="lessons" layout="quote" invert enter="rise">
-  <blockquote slot="quote" size="48" color="fg">캐시는 가용성 장치가 아니다. 캐시가 사라진 순간의
-  부하를 견딜 수 있을 때만 캐시다.</blockquote>
-  <text slot="attribution" role="caption" color="muted" align="end">— 회고에서 합의한 한 문장</text>
-  <note>이 문장을 캐시 설계 리뷰 체크리스트 맨 위에 넣는다.</note>
+  <blockquote slot="quote" size="48" color="fg">A cache is not an availability tool. It is only a cache
+  if you can survive the load the moment it is gone.</blockquote>
+  <text slot="attribution" role="caption" color="muted" align="end">— the one sentence we agreed on</text>
+  <note>This sentence goes at the top of the cache design review checklist.</note>
 </slide>

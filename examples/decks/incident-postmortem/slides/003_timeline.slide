@@ -1,50 +1,50 @@
-<!-- 타임라인 (KST): 47분을 **비례하는** 시간 축 하나에 놓는다. `<stack>` 안의 x는 스테이지 px이고,
-     스택이 콘텐츠 폭(1152px)을 다 쓰므로 x = (14:02부터 지난 분 ÷ 47) × 1152다 — 14:14는 294,
-     14:23은 515, 14:31은 711. 그래서 칸 사이의 거리가 곧 시간이고, 탐지 12분이 축의 사분의 일을
-     차지하는 것이 눈에 보인다.
+<!-- Timeline (KST): the 47 minutes on a single **proportional** time axis. x inside the `<stack>` is in
+     stage px, and the stack takes the full content width (1152px), so x = (minutes since 14:02 ÷ 47) × 1152
+     — 14:14 is 294, 14:23 is 515, 14:31 is 711. The distance between cards is therefore time, and you can
+     see the 12 minutes of detection take a quarter of the axis.
 
-     맨 위 띠 셋은 구간이다 (탐지 12분 · 완화 17분 · 복구 18분 — 폭도 같은 식이다). 탐지만 호박색
-     빗금(`pattern(…)`)이다: 덱의 색 규칙에서 호박은 "우리가 늦은 곳"이고, 빗금은 "아무도 모르던
-     시간"이다. 완화 · 복구는 초록 계열이다 — 우리가 한 일이다 (001_cover).
+     The three bands on top are phases (detect 12 min · mitigate 17 min · recover 18 min — widths use the same
+     formula). Only detection is an amber hatch (`pattern(…)`): in the deck's color rule amber is "where we
+     were late", and the hatch is "time nobody knew". Mitigate and recover are green — work we did (001_cover).
 
-     사건 카드는 깃발이다: 카드의 왼쪽 끝이 그 사건의 점 위에 서고 (마지막 14:49만 축 끝이라 오른쪽
-     끝), 가는 막대가 카드와 점을 잇는다. 위아래로 번갈아 서는 것은 붙어 있는 사건(14:14 · 14:23)이
-     겹치지 않게 하려는 것이다. 점과 막대의 색이 그 사건의 뜻이다 (빨강 시작 · 호박 늦은 경보 · 초록
-     대응). 점의 테두리는 `bg`라 축 선을 끊고 선다. -->
+     Event cards are flags: a card's left edge stands over its event's dot (only the last one, 14:49, sits at
+     the end of the axis, so it uses its right edge), and a thin bar joins card and dot. Cards alternate above
+     and below so the close events (14:14 · 14:23) don't collide. The dot and bar color is the event's meaning
+     (red start · amber late alert · green response). The dots have a `bg` border so they cut the axis line. -->
 <slide id="timeline" enter="rise">
-  <text variant="kicker">타임라인 · KST</text>
-  <h2>탐지에 12분, 멈추는 데 17분, 회복에 18분</h2>
+  <text variant="kicker">Timeline · KST</text>
+  <h2>12 min to detect, 17 to mitigate, 18 to recover</h2>
   <stack w="fill" h="438">
-    <shape type="rounded-rect" fill="pattern(wide-diagonal-up accent4/45 bg/0)" border="1 solid accent4" radius="sm" w="290" h="40" x="0" y="0"><text role="caption" color="fg" align="center" anchor="center"><strong>탐지 12분</strong></text></shape>
-    <shape type="rounded-rect" fill="alpha(accent3, 0.18)" border="none" radius="sm" w="413" h="40" x="296" y="0"><text role="caption" color="fg" align="center" anchor="center"><strong>완화 17분</strong></text></shape>
-    <shape type="rounded-rect" fill="alpha(accent3, 0.35)" border="none" radius="sm" w="437" h="40" x="715" y="0"><text role="caption" color="fg" align="center" anchor="center"><strong>복구 18분</strong></text></shape>
+    <shape type="rounded-rect" fill="pattern(wide-diagonal-up accent4/45 bg/0)" border="1 solid accent4" radius="sm" w="290" h="40" x="0" y="0"><text role="caption" color="fg" align="center" anchor="center"><strong>Detect 12 min</strong></text></shape>
+    <shape type="rounded-rect" fill="alpha(accent3, 0.18)" border="none" radius="sm" w="413" h="40" x="296" y="0"><text role="caption" color="fg" align="center" anchor="center"><strong>Mitigate 17 min</strong></text></shape>
+    <shape type="rounded-rect" fill="alpha(accent3, 0.35)" border="none" radius="sm" w="437" h="40" x="715" y="0"><text role="caption" color="fg" align="center" anchor="center"><strong>Recover 18 min</strong></text></shape>
 
     <shape type="rect" fill="alpha(muted, 0.6)" border="none" w="1152" h="2" x="0" y="262"/>
     <shape type="rect" fill="accent5" border="none" w="2" h="54" x="9" y="208"/>
     <shape type="ellipse" fill="accent5" border="2 solid bg" w="20" h="20" x="0" y="253"/>
     <shape type="rounded-rect" variant="card" fill="surface" border="none" radius="sm" w="250" h="136" pad="sm md" x="0" y="72">
-      <col gap="0"><text role="title" size="34" color="accent5">14:02</text><text role="heading" size="20">키 동시 만료</text><text role="caption" size="16">12만 키가 같은 초에</text></col>
+      <col gap="0"><text role="title" size="34" color="accent5">14:02</text><text role="heading" size="20">Keys expire at once</text><text role="caption" size="16">120k keys in one second</text></col>
     </shape>
     <shape type="rect" fill="accent4" border="none" w="2" h="40" x="293" y="262"/>
     <shape type="ellipse" fill="accent4" border="2 solid bg" w="20" h="20" x="284" y="253"/>
     <shape type="rounded-rect" variant="card" fill="surface" border="none" radius="sm" w="250" h="136" pad="sm md" x="294" y="302">
-      <col gap="0"><text role="title" size="34" color="accent4">14:14</text><text role="heading" size="20">5xx 경보</text><text role="caption" size="16">5분 평균이 12분 늦게 울렸다</text></col>
+      <col gap="0"><text role="title" size="34" color="accent4">14:14</text><text role="heading" size="20">5xx alert fires</text><text role="caption" size="16">5-min average, 12 min late</text></col>
     </shape>
     <shape type="rect" fill="muted" border="none" w="2" h="54" x="514" y="208"/>
     <shape type="ellipse" fill="muted" border="2 solid bg" w="20" h="20" x="505" y="253"/>
     <shape type="rounded-rect" variant="card" fill="surface" border="none" radius="sm" w="250" h="136" pad="sm md" x="515" y="72">
-      <col gap="0"><text role="title" size="34">14:23</text><text role="heading" size="20">DB 풀 고갈 확인</text><text role="caption" size="16">읽기 풀 40/40 · 대기 1,900</text></col>
+      <col gap="0"><text role="title" size="34">14:23</text><text role="heading" size="20">DB pool exhausted</text><text role="caption" size="16">Pool 40/40 · 1,900 queued</text></col>
     </shape>
     <shape type="rect" fill="accent3" border="none" w="2" h="40" x="710" y="262"/>
     <shape type="ellipse" fill="accent3" border="2 solid bg" w="20" h="20" x="701" y="253"/>
     <shape type="rounded-rect" variant="card" fill="surface" border="none" radius="sm" w="250" h="136" pad="sm md" x="711" y="302">
-      <col gap="0"><text role="title" size="34" color="accent3">14:31</text><text role="heading" size="20">부하 차단 적용</text><text role="caption" size="16">결제 외 캐시 미스 경로를 끊었다</text></col>
+      <col gap="0"><text role="title" size="34" color="accent3">14:31</text><text role="heading" size="20">Load shedding on</text><text role="caption" size="16">Non-payment misses cut</text></col>
     </shape>
     <shape type="rect" fill="accent3" border="none" w="2" h="54" x="1141" y="208"/>
     <shape type="ellipse" fill="accent3" border="2 solid bg" w="20" h="20" x="1132" y="253"/>
     <shape type="rounded-rect" variant="card" fill="surface" border="none" radius="sm" w="250" h="136" pad="sm md" x="902" y="72">
-      <col gap="0"><text role="title" size="34">14:49</text><text role="heading" size="20">오류율 정상</text><text role="caption" size="16">캐시 적중률 97%로 회복</text></col>
+      <col gap="0"><text role="title" size="34">14:49</text><text role="heading" size="20">Error rate normal</text><text role="caption" size="16">Cache hit rate back to 97%</text></col>
     </shape>
   </stack>
-  <note>경보가 늦은 이유는 5xx 임계값이 5분 평균이어서다. 액션 2번이 여기서 나온다. 축의 거리가 시간이다 — 탐지 구간이 생각보다 길다는 것을 눈으로 본다.</note>
+  <note>The alert was late because the 5xx threshold is a 5-minute average — that is where action 2 comes from. Distance on the axis is time: see how long the detection band really is.</note>
 </slide>

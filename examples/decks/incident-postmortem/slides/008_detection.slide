@@ -1,41 +1,41 @@
-<!-- 탐지 · 완화 시간 추이: `<chart>` 하나에 계열 둘이다. 값 하나가 속성 하나이고 (`<point value>`),
-     같은 라벨을 같은 순서로 가진 `<series>` 둘이 막대를 묶어 세우고 범례를 단다. PPTX에서는 막대
-     하나가 도형 하나다.
+<!-- Detection and mitigation over time: one `<chart>` with two series. One value is one attribute
+     (`<point value>`), and two `<series>` with the same labels in the same order group the bars and get a
+     legend. In PPTX each bar is one shape.
 
-     막대 높이는 `값 ÷ 축 최대`의 백분율이고 픽셀은 브라우저가 잰다 — 그래서 `h`가 필요하다
-     (차트의 높이를 내용이 정하면 기준이 순환한다). `unit`은 값 라벨의 꼬리다: "22"는 데이터고
-     "분"은 표기이므로 값에 섞지 않는다.
+     Bar height is a percentage `value ÷ axis max`, and the browser measures the pixels — which is why `h`
+     is required (if the content set the chart's height, the reference would be circular). `unit` is the
+     tail of the value label: "22" is data and "min" is notation, so it stays out of the value.
 
-     계열 색은 덱의 색 규칙이다 (001_cover): 탐지는 우리가 늦은 곳이라 `accent4`, 완화는 우리가 한
-     것이라 `accent3`. 오른쪽 카드가 목표를 말한다 — 차트 안에 목표선을 그리는 어휘는 없으므로, 목표는
-     숫자 하나로 옆에 세운다. -->
+     Series colors follow the deck's color rule (001_cover): detection is where we were late, so `accent4`;
+     mitigation is what we did, so `accent3`. The card on the right states the target — there is no
+     vocabulary for a target line inside a chart, so the target stands beside it as a single number. -->
 <slide id="detection" enter="rise">
-  <text variant="kicker">추이</text>
-  <h2>탐지와 완화가 줄고 있다 — 아직 느리다</h2>
+  <text variant="kicker">Trend</text>
+  <h2>Detection and mitigation are improving — still too slow</h2>
   <row gap="lg" grow="1" align="center">
-    <chart type="bar" unit="분" max="35" alt="월별 평균 탐지 · 완화 시간 — 5월 22분 · 31분에서 이번 장애 12분 · 17분까지" grow="1" basis="0" h="420">
-      <series name="탐지" fill="accent4">
-        <point label="5월" value="22"/>
-        <point label="6월" value="19"/>
-        <point label="7월" value="15"/>
-        <point label="8월" value="13"/>
-        <point label="이번 장애" value="12"/>
+    <chart type="bar" unit=" min" max="35" alt="Monthly average time to detect and mitigate — from 22 and 31 min in May to 12 and 17 min in this incident" grow="1" basis="0" h="420">
+      <series name="Detect" fill="accent4">
+        <point label="May" value="22"/>
+        <point label="Jun" value="19"/>
+        <point label="Jul" value="15"/>
+        <point label="Aug" value="13"/>
+        <point label="This incident" value="12"/>
       </series>
-      <series name="완화" fill="accent3">
-        <point label="5월" value="31"/>
-        <point label="6월" value="26"/>
-        <point label="7월" value="24"/>
-        <point label="8월" value="20"/>
-        <point label="이번 장애" value="17"/>
+      <series name="Mitigate" fill="accent3">
+        <point label="May" value="31"/>
+        <point label="Jun" value="26"/>
+        <point label="Jul" value="24"/>
+        <point label="Aug" value="20"/>
+        <point label="This incident" value="17"/>
       </series>
     </chart>
     <shape variant="stat-card" type="rounded-rect" fill="surface" w="280" pad="lg">
       <col gap="sm">
-        <text variant="kicker" color="muted">탐지 목표</text>
-        <text role="title" size="88" color="accent4">3<span size="36">분</span></text>
-        <text role="caption">1분 p99 경보 + 2분 확인. 액션 2번이 이 막대를 사분의 일로 줄인다.</text>
+        <text variant="kicker" color="muted">Target</text>
+        <text role="title" size="88" color="accent4">3<span size="36"> min</span></text>
+        <text role="caption">1-min p99 alert + 2 min to confirm. Action 2 cuts this bar to a quarter.</text>
       </col>
     </shape>
   </row>
-  <note>추세는 좋지만 목표까지 네 배 남았다. 다음 회고에서 이 차트에 이번 달을 더한다.</note>
+  <note>The trend is good, but we are still four times off the target. At the next review we add this month to the chart.</note>
 </slide>
