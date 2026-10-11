@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/text/language"
+
 	"github.com/k2sebeom/balpyo/soml"
 )
 
@@ -123,6 +125,21 @@ func LoadConfigWithThemes(projectDir string, home fs.FS) (Config, error) {
 	return cfg, nil
 }
 
+// CanonicalLang은 덱 언어를 BCP 47 언어 태그로 읽고 정규형을 돌려준다 ("EN-us" → "en-US",
+// "kor" → "ko").
+//
+// 판정하는 이유는 이 값이 `<html lang>`에 그대로 실려 언어별 규칙을 고른다는 것이다 — 한국어의
+// 어절 줄바꿈은 `:lang(ko)`에 걸려 있어서, "korean" 같은 이름은 빌드가 조용히 통과한 채 그
+// 규칙만 꺼 버린다. 정규형으로 바꾸는 이유도 같다: "kor"·"ko_KR"도 뜻은 한국어인데 선택자는
+// 정규형 태그에만 맞는다.
+func CanonicalLang(s string) (string, error) {
+	tag, err := language.Parse(s)
+	if err != nil {
+		return "", fmt.Errorf("not a BCP 47 language tag: %q (for example \"en\", \"ko\", \"ja\")", s)
+	}
+	return tag.String(), nil
+}
+
 // Validate는 설정 값이 닫힌 어휘 안에 있는지 검사하고, 빈 필드를 기본값으로 채운다.
 func (c *Config) Validate() error {
 	def := DefaultConfig()
@@ -148,6 +165,11 @@ func (c *Config) Validate() error {
 	if _, err := c.Aspect.Stage(); err != nil {
 		return fmt.Errorf("aspect: %w", err)
 	}
+	lang, err := CanonicalLang(c.Lang)
+	if err != nil {
+		return fmt.Errorf("lang: %w", err)
+	}
+	c.Lang = lang
 	// 테마 **이름의 어휘**는 여기서 보지 않는다: 쓸 수 있는 이름이 내장 ∪
 	// 프로젝트 로컬이므로 판정에 프로젝트 파일시스템이 필요하고, 이 함수는 그것을 모른다.
 	// 판정하는 자리는 둘이다 — 프로젝트를 아는 LoadConfig와 값 층의 Resolve. 폴백하지 않는

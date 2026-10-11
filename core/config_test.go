@@ -58,6 +58,8 @@ func TestLoadConfigRejectsClosedVocabularyViolations(t *testing.T) {
 	for _, body := range []string{
 		`{"aspect": "21:9"}`,
 		`{"targets": {"pptx": {"mode": "vector"}}}`,
+		`{"lang": "korean"}`,
+		`{"lang": "ko-"}`,
 		`{`,
 	} {
 		dir := writeConfig(t, body)
@@ -74,6 +76,40 @@ func TestValidateFillsBlanks(t *testing.T) {
 	}
 	if cfg.Aspect != soml.DefaultAspect || cfg.Lang != "en" || cfg.Theme != "minimal" {
 		t.Errorf("빈 필드가 채워지지 않았다: %+v", cfg)
+	}
+}
+
+// lang은 BCP 47 언어 태그다. 이름("korean")은 `<html lang>`에 그대로 실리면 언어별 줄바꿈
+// 규칙(`:lang(ko)`)을 조용히 끄므로 설정을 읽는 자리에서 멈춘다.
+func TestLoadConfigRejectsNonBCP47Lang(t *testing.T) {
+	_, err := LoadConfig(writeConfig(t, `{"lang": "korean"}`))
+	if err == nil {
+		t.Fatal(`"korean"을 언어 태그로 받아들였다`)
+	}
+	if !strings.Contains(err.Error(), "lang") || !strings.Contains(err.Error(), `"korean"`) ||
+		!strings.Contains(err.Error(), `"ko"`) {
+		t.Errorf("에러가 키·값·고칠 예를 말해야 한다: %v", err)
+	}
+}
+
+// 올바른 태그는 정규형으로 바뀐다 — 대소문자·밑줄·세 글자 코드가 달라도 `:lang(ko)`가 맞는다.
+func TestLoadConfigCanonicalizesLang(t *testing.T) {
+	for body, want := range map[string]string{
+		`{"lang": "ko"}`:         "ko",
+		`{"lang": "ko-KR"}`:      "ko-KR",
+		`{"lang": "EN-us"}`:      "en-US",
+		`{"lang": "ko_KR"}`:      "ko-KR",
+		`{"lang": "kor"}`:        "ko",
+		`{"lang": "zh-Hant-TW"}`: "zh-Hant-TW",
+	} {
+		cfg, err := LoadConfig(writeConfig(t, body))
+		if err != nil {
+			t.Errorf("%s: %v", body, err)
+			continue
+		}
+		if cfg.Lang != want {
+			t.Errorf("%s: Lang = %q, want %q", body, cfg.Lang, want)
+		}
 	}
 }
 
