@@ -261,13 +261,14 @@ balpyo version           # 버전 · 커밋 · 플랫폼
 ## 예제
 
 설명을 읽는 것보다 덱을 보는 것이 빠르다. 저장소의 `examples/decks/` 아래에 **사람이 쓴 덱
-셋**이 있고, 셋 다 두 타깃으로 **경고 0건**에 빌드된다.
+넷**이 있고, 넷 다 두 타깃으로 **경고 0건**에 빌드된다.
 
 | 덱 | 장수 | 무엇을 보여 주는가 |
 |---|---|---|
-| [`examples/decks/balpyo-intro`](https://github.com/k2sebeom/balpyo/tree/main/examples/decks/balpyo-intro) | 12 | 이 도구 자체의 소개 덱 — 파이프라인 도형, `<table>`, 인용 레이아웃, 장마다 `<note>` |
-| [`examples/decks/incident-postmortem`](https://github.com/k2sebeom/balpyo/tree/main/examples/decks/incident-postmortem) | 10 | 장애 회고 — 타임라인, 영향 표, `lang="go"` 코드 블록, `layout="canvas"`의 손그림 막대 |
-| [`examples/decks/quarterly-review`](https://github.com/k2sebeom/balpyo/tree/main/examples/decks/quarterly-review) | 7 | 분기 리뷰 — KPI 카드 그리드, `<table>`, `<stack>` 콜아웃, two-column 계획 |
+| [`examples/decks/balpyo-intro`](https://github.com/k2sebeom/balpyo/tree/main/examples/decks/balpyo-intro) | 12 | 이 도구 자체의 소개 덱 — 연결선으로 그린 빌드 경로, 색 토큰 견본, `<table>`, 뒤집힌 인용 장(`invert`), `lang="soml"` 강조 |
+| [`examples/decks/incident-postmortem`](https://github.com/k2sebeom/balpyo/tree/main/examples/decks/incident-postmortem) | 10 | 장애 회고 (`ink` 테마) — 비례하는 시간 축, 한 결과로 모이는 곡선 연결선, 계열 둘의 `<chart>`, `lang="go"` 코드 창 |
+| [`examples/decks/quarterly-review`](https://github.com/k2sebeom/balpyo/tree/main/examples/decks/quarterly-review) | 8 | 분기 리뷰 — 경로 · 막대 · 별로 그린 KPI 카드, 표와 차트, `image-text` 사진 장, 진행 막대 |
+| [`examples/decks/ec2-intro`](https://github.com/k2sebeom/balpyo/tree/main/examples/decks/ec2-intro) | 13 | 손으로 짠 키노트 수준의 기술 소개 — 상태 기계 · 아키텍처 도식, `cube` 층, SVG 아이콘, 덱 안의 테마 `summit` |
 
 ```bash
 ./balpyo build --project examples/decks/quarterly-review --target html,pptx --strict
@@ -277,11 +278,17 @@ ls examples/decks/quarterly-review/dist/     # index.html + <덱 제목>.pptx
 같은 덱을 다른 테마로 보려면 `--theme editorial`을 더한다 — **슬라이드는 한 줄도 고치지
 않는다.**
 
-`examples/themes/`에는 **혼자 서는 테마** 하나가 있다:
-[`harbor`](https://github.com/k2sebeom/balpyo/tree/main/examples/themes/harbor) — 차가운 회색
-바탕에 흰 카드, 굵은 제목, 위 왼쪽에서 시작하는 표지. 아무것도 물려받지 않으므로 테마 하나를
-처음부터 짜는 견본이 된다. 덱의 `themes/harbor/`로 디렉토리를 복사하고 `balpyo.json`에
-`"theme": "harbor"`를 적으면 쓸 수 있다 (자세히는 [테마 고르기·만들기](guides/theming.md)).
+`examples/themes/`에는 아무것도 물려받지 않는 **혼자 서는 테마** 둘이 있다 — 테마 하나를
+처음부터 짜는 견본이다:
+
+- [`harbor`](https://github.com/k2sebeom/balpyo/tree/main/examples/themes/harbor) — 차가운 회색
+  바탕에 흰 카드, 굵은 제목, 위 왼쪽에서 시작하는 표지.
+- [`aurora`](https://github.com/k2sebeom/balpyo/tree/main/examples/themes/aurora) — 한밤의 남색
+  바탕에 Noto Sans Display 제목. 표지 · 구역 표지 · 마무리 장의 배경이 테마가 가진 오로라 그림이다
+  — 덱은 그림을 한 번도 부르지 않는다.
+
+덱의 `themes/<이름>/`으로 디렉토리를 복사하고 `balpyo.json`에 `"theme": "<이름>"`을 적으면 쓸 수
+있다 (자세히는 [테마 고르기·만들기](guides/theming.md)).
 
 ---
 
