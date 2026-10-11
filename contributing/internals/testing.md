@@ -47,6 +47,7 @@ Chromium이 없으면 빌드가 필요한 테스트는 메시지와 함께 **건
 | `BALPYO_CHROMIUM_NO_SANDBOX` | 1이면 `--no-sandbox` (CI 러너처럼 샌드박스를 못 쓰는 환경) |
 | `BALPYO_ONLYOFFICE` | `balpyo preview`의 PPTX 래스터 엔진(OnlyOffice Document Builder) 설치 디렉토리 — 게이트와 무관하다 |
 | `BALPYO_SOFFICE` / `BALPYO_PDFTOPPM` | OnlyOffice가 없을 때의 PPTX 래스터 도구 경로 — 게이트와 무관하다 |
+| `BALPYO_DRIFT` | 1이면 `TestDrift`가 덱마다 브라우저와 가장 많이 어긋난 박스를 보고한다 |
 
 ## 픽스처
 
@@ -271,6 +272,33 @@ sudo mkdir -p /opt/onlyoffice && sudo tar -xJf onlyoffice-documentbuilder-linux-
 가능성을 확인한다 — 텍스트 박스가 진짜 텍스트 박스인지, 테마 색을 바꾸면 도형 색이 따라오는지.
 "열리는 파일"과 "편집 가능한 파일"의 차이가 이 제품의 핵심이고, 자동 판정은 그 앞(스키마 · 동일성)
 까지다.
+
+## 내장 렌더러 — 브라우저와 박스로 견준다
+
+`render/quick`(`balpyo snap`)은 웹 산출물을 브라우저 없이 배치한다 ([ADR 0093](../decisions/0093-a-builtin-renderer-draws-the-web-output-without-a-browser.md)).
+산출물의 기준이 아니므로 동일성 판정에는 들지 않고, 정확도를 따로 잰다.
+
+| 테스트 | 판정 | 도구 |
+|---|---|---|
+| `TestDrift` | 예제 덱과 픽스처의 같은 측정용 HTML을 브라우저와 내장 엔진이 재고, 박스 rect가 1px 안에 드는 비율이 99% 이상이다 | Chromium |
+| `TestSnapshotProjects` | 모든 예제 덱 · 픽스처가 그려진다 — 내장 측정이 덱 대조(`geom.FromMeasurement`)를 통과하고, 그림이 스테이지 크기이며 한 색이 아니다 | 글꼴 |
+| `TestSnapshotDeterministic` | 같은 슬라이드를 두 번 그리면 같은 픽셀이다 | 글꼴 |
+| `engine_test.go` | 값 파서 · 선택자 · flex · grid · 절대 배치 · `keep-all` 줄바꿈의 단위 판정 | 글꼴 |
+
+`TestDrift`가 견주는 것은 계약의 단위인 rect다 — 픽셀 · 줄 수는 보지 않는다. 바닥을 100%가 아니라
+99%로 둔 것은 글꼴 · 셰이퍼 판이 바뀌어 줄 하나가 갈리는 일을 회귀로 읽지 않기 위해서다. 바닥 아래로
+떨어지면 `BALPYO_DRIFT=1`로 어긋난 박스를 보고, 아래 도구로 원인을 좁힌다.
+
+```bash
+BALPYO_DRIFT=1 go test ./render/quick -run TestDrift -v
+# 한 프로젝트의 박스 · 줄 rect를 브라우저와 나란히 (식별자 접두로 거른다)
+DUMP_PROJECT=../../testdata/fixtures/09_table DUMP_PREFIX=s3.1 DUMP_LINES=1 go test ./render/quick -run TestDump -v
+# 슬라이드마다 web | quick 나란히 그림
+COMPARE_PROJECTS='../../examples/decks/*' COMPARE_OUT=/tmp/cmp go test ./render/quick -run TestCompareDump -v
+```
+
+**내장 렌더러를 고친 커밋은 `TestCompareDump`의 그림을 보고 낸다** — `make qa`와 같은 이유다. 박스가
+맞아도 그리기(그라디언트 · 무늬 · 글리프)는 그림에서만 드러난다.
 
 ## CI
 

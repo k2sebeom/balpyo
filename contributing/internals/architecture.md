@@ -48,8 +48,10 @@ assets/** ────────────────→ 에셋 해석 (cor
 | `render/web/` | HTML + 생성 CSS, 요소 식별자 계약 (`ElementID`) | `core`, `render/pptx` |
 | `render/geom/` | 지오메트리 패스 — 브라우저 제어(CDP), 좌표 곁 표 | `core`, `render/pptx` (`render/web`은 식별자 계약 때문에 임포트한다) |
 | `render/pptx/` | OOXML 조립, 단위 변환(EMU·pt) | `core`, `render/web` |
+| `render/quick/` | 내장 렌더러 — 웹 산출물을 브라우저 없이 배치(CSS cascade · flex · grid · 표 · 텍스트)하고 그린다, 측정 JSON | `core`, `render/pptx` (`render/web`은 식별자 계약, `render/geom`은 지오메트리 꼴 때문에 임포트한다) |
 | `internal/pipeline/` | 위 층들의 조립, 파일 쓰기 | — |
 | `internal/testkit/` | 픽스처 러너, 골든, 렌더 헬퍼, 리뷰 갤러리 | — |
+| `internal/snapshot/` | `balpyo snap` — 내장 렌더러의 그림을 PNG · GIF로 쓴다 | — |
 | `cmd/balpyo/` | CLI 표면 (플래그 파싱, 출력) | 빌드 로직 |
 
 경계가 이렇게 잡힌 이유:

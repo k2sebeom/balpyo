@@ -76,6 +76,7 @@ go run ./cmd/balpyo build --project my-talk --target html,pptx   # --strict, --c
 go run ./cmd/balpyo check --project my-talk --check-layout --strict   # build without writing (CI gate)
 go run ./cmd/balpyo watch --project my-talk                      # rebuild + live reload on http://127.0.0.1:4600
 go run ./cmd/balpyo preview --project my-talk                    # side-by-side web/PPTX review gallery
+go run ./cmd/balpyo snap --project my-talk --gif                 # PNG/GIF without a browser (builtin renderer)
 go run ./cmd/balpyo theme install github.com/acme/themes@v1      # install themes into ~/.balpyo (list/remove/update)
 ```
 
@@ -89,6 +90,7 @@ balpyo.json + slides/*.slide → soml.Collect → soml parse → deck model (som
   → core.Resolve (appearance cascade) → core.ResolveAssets → core.Validate
   → render/web (HTML)  ─┬→ internal/pipeline writes files
   → render/geom (Chromium via CDP measures the HTML) → render/pptx (OOXML)
+  → render/quick (builtin renderer: lays out + draws the HTML without a browser — `balpyo snap`)
 ```
 
 | Package | Owns | Must not import |
@@ -100,8 +102,9 @@ balpyo.json + slides/*.slide → soml.Collect → soml parse → deck model (som
 | `render/geom/` | geometry pass (CDP), geometry side table | `core`, `render/pptx` |
 | `render/route/` | connector routing shared by both renderers (pure functions) | every other balpyo package |
 | `render/pptx/` | OOXML assembly, unit conversion (1px = 9525 EMU, pt = px × 0.75) | `core`, `render/web` |
+| `render/quick/` | builtin renderer: CSS cascade + block/inline/flex/grid/table layout + text shaping + rasterizer over the web output; emits the geometry pass's measurement JSON | `core`, `render/pptx` |
 | `internal/pipeline/` | wiring + file writes (`pipeline.Build` — used by both CLI and tests) | — |
-| `internal/{preview,watch,scaffold,release,testkit}` | gallery, watch server, `init` template, release, test harness | — |
+| `internal/{preview,watch,scaffold,release,testkit,snapshot}` | gallery, watch server, `init` template, release, test harness, `snap` output | — |
 | `internal/themestore/` | installed-theme home: GitHub tarball fetch, theme discovery, atomic install, `themes.json` | renderers |
 | `cmd/balpyo/` | CLI surface only (flags, output) | build logic |
 
@@ -143,6 +146,11 @@ What the suite judges, per fixture (`TestFixtures`) and per example (`TestExampl
   cross-part rules the schema can't express (`crosspart.go`) and package invariants
   (`package.go`). Mutation tests prove the validator still rejects broken parts.
 - **Determinism**: two builds of the same input produce the same bytes.
+
+The builtin renderer (`render/quick`) is not a target and not part of parity — it is a fast
+preview. `TestDrift` measures the same HTML with Chromium and with the builtin engine and fails
+if fewer than 99% of boxes agree within 1px (rects only, never pixels). After changing it, look at
+`TestCompareDump`'s web | quick images (see `contributing/internals/testing.md`).
 
 ```bash
 make test        # go test ./... (the gate; same command CI runs)
