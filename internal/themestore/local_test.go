@@ -238,3 +238,60 @@ func TestInstallLocalSkipsHome(t *testing.T) {
 		t.Errorf("홈을 담은 디렉토리에서 다시 설치하지 못했다: %v", err)
 	}
 }
+
+// 로컬 설치의 CSS 경고는 저자가 고칠 원본 파일을 가리킨다 — 테마 이름과 디렉토리 이름이 달라도
+// 홈의 사본이나 `themes/<이름>/`이 아니라 원본 디렉토리 안의 파일이다. 같이 설치한 부모 테마의
+// 경고도 그 부모의 원본 자리를 가리킨다.
+func TestInstallLocalLintNamesSourceFile(t *testing.T) {
+	s, _ := newStore(t)
+	dir := t.TempDir()
+	files := map[string]string{
+		"w/layouts/content.css": "color: red;",
+		"p/layouts/title.css":   "color: blue;",
+	}
+	child(files, "p/", "parent", "")
+	child(files, "w/", "warny", "parent")
+	writeTree(t, dir, files)
+	src := mustLocal(t, dir)
+
+	res, err := s.Install(context.Background(), src, InstallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]bool{
+		filepath.Join(src.Dir, "w", "layouts", "content.css"): true,
+		filepath.Join(src.Dir, "p", "layouts", "title.css"):   true,
+	}
+	if len(res.Lint) == 0 {
+		t.Fatal("설치가 CSS 경고를 내지 않았다")
+	}
+	for _, d := range res.Lint {
+		if !want[d.File] {
+			t.Errorf("경고가 원본에 없는 파일을 가리킨다: %s", d)
+		}
+	}
+
+	// 부모가 이미 홈에 있고 자식만 다른 디렉토리에서 설치하면 부모는 이번 설치의 것이 아니다 —
+	// 부모의 경고는 홈의 사본을 가리킨다.
+	other := t.TempDir()
+	files = map[string]string{"x/layouts/content.css": "color: red;"}
+	child(files, "x/", "warny2", "parent")
+	writeTree(t, other, files)
+	src2 := mustLocal(t, other)
+	res, err = s.Install(context.Background(), src2, InstallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = map[string]bool{
+		filepath.Join(src2.Dir, "x", "layouts", "content.css"):           true,
+		filepath.Join(s.Dir, "themes", "parent", "layouts", "title.css"): true,
+	}
+	for _, d := range res.Lint {
+		if !want[d.File] {
+			t.Errorf("경고가 없는 파일을 가리킨다: %s", d)
+		}
+	}
+	if len(res.Lint) != 2 {
+		t.Errorf("자식과 부모의 경고가 하나씩이어야 한다: %v", res.Lint)
+	}
+}
