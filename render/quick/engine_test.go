@@ -129,6 +129,32 @@ func TestGridRowMinContributionUsesMinHeight(t *testing.T) {
 	}
 }
 
+// 여러 auto 행에 걸친 항목이 모자란 높이를 채울 때 행은 성장 한계(내용 높이)까지만 먼저 자라고,
+// 항목이 없는 행은 한계가 없어 나머지를 다 받는다. 모든 행이 한계에 닿았을 때만 고르게 넘친다.
+// 기대값은 Chromium이 잰 값이다.
+func TestGridSpanningItemGrowsRowsUpToLimits(t *testing.T) {
+	_, b := layoutBody(t, baseCSS,
+		// 둘째 행이 비었다: 첫 행은 내용 높이 40에 머물고 빈 행이 150을 받는다.
+		`<div id="g1" style="display: grid; width: 400px; gap: 10px; grid-template-columns: 1fr 1fr">`+
+			`<div style="grid-row: span 2; height: 200px"></div><div id="a1"><div style="height: 40px"></div></div></div>`+
+			// 세 행 중 가운데만 비었다: 40 · 240 · 20.
+			`<div id="g2" style="display: grid; width: 400px; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: auto auto auto">`+
+			`<div style="grid-row: span 3; height: 300px"></div><div id="a2" style="height: 40px"></div>`+
+			`<div id="c2" style="grid-column: 3; grid-row: 3; height: 20px"></div></div>`+
+			// 두 행 모두 한계(40 · 0)에 닿으면 남는 160을 고르게 나눈다: 120 · 80.
+			`<div id="g3" style="display: grid; width: 400px; grid-template-columns: 1fr 1fr">`+
+			`<div style="grid-row: span 2; height: 200px"></div><div style="height: 40px"></div><div id="b3"></div></div>`)
+	if !near(b["a1"].h, 40) {
+		t.Errorf("empty second row: first row item h=%.1f, want 40", b["a1"].h)
+	}
+	if !near(b["a2"].h, 40) || !near(b["c2"].y, 280) {
+		t.Errorf("empty middle row: a h=%.1f, c y=%.1f; want 40, 280", b["a2"].h, b["c2"].y)
+	}
+	if !near(b["b3"].y, 120) || !near(b["b3"].h, 80) {
+		t.Errorf("both rows at limit: second row y=%.1f h=%.1f; want 120, 80", b["b3"].y, b["b3"].h)
+	}
+}
+
 // grid 컨테이너의 절대 배치 자식은 grid-area가 정한 영역을 포함 블록으로 쓴다 — 끝 줄이 auto인
 // 변은 padding box 끝까지 간다.
 func TestAbsoluteInGridArea(t *testing.T) {
