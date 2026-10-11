@@ -35,7 +35,7 @@
   variant 세 벌(텍스트·도형·이미지), 인라인 서식·리스트·도형·이미지 외관 매핑 표, 토큰 색
   보존 계약, 공간·반경·그림자 토큰
 - [CLI](cli.md) — `init`(빌드되는 세 장짜리 덱)·`build`(`--strict` 포함)·`check`(산출물 없는
-  판정)·`watch`·`preview`(웹/PPTX 검수 갤러리)와 `version`
+  판정)·`watch`·`preview`(웹/PPTX 검수 갤러리)·`snap`(브라우저 없는 PNG/GIF 미리보기)과 `version`
 
 - [레이아웃과 슬롯](layouts.md) — 표준 카탈로그 **11종**(`content`·`title`·`section-divider`·
   `two-column`·`image-full`·`image-text`·`quote`·`code`·`stat`·`canvas`·`end`)과 레이아웃별
