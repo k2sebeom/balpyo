@@ -258,3 +258,83 @@ func TestInstalledThemeImagesBuildWithoutProjectThemes(t *testing.T) {
 		}
 	}
 }
+
+// theme info: 이름을 빌드와 같은 해석으로 찾아 자리 한 줄 · 부모 한 줄 · README 그대로를 낸다.
+func TestThemeInfoPrintsTheReadme(t *testing.T) {
+	isolatedHome(t)
+	readme := "# acme\n\nUse `theme:icons/alert.png` for incidents only.\n"
+	serveRepo(t, map[string]string{
+		"theme.json": `{"name":"acme","extends":"ink"}`,
+		"README.md":  readme,
+	})
+	var stdout, stderr bytes.Buffer
+	if err := run([]string{"theme", "install", "github.com/acme/themes"}, &stdout, &stderr); err != nil {
+		t.Fatalf("%v\nstderr: %s", err, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "see: balpyo theme info acme") {
+		t.Errorf("설치 출력이 theme info를 가리키지 않는다:\n%s", stdout.String())
+	}
+
+	stdout.Reset()
+	if err := run([]string{"theme", "info", "acme"}, &stdout, &stderr); err != nil {
+		t.Fatalf("%v\nstderr: %s", err, stderr.String())
+	}
+	lines := strings.SplitN(stdout.String(), "\n", 4)
+	if !strings.HasPrefix(lines[0], "acme — installed theme (") || !strings.HasSuffix(lines[0], filepath.Join("themes", "acme")+")") {
+		t.Errorf("첫 줄 = %q", lines[0])
+	}
+	if lines[1] != "extends ink — see: balpyo theme info ink" || lines[2] != "" {
+		t.Errorf("부모 줄 = %q, 빈 줄 = %q", lines[1], lines[2])
+	}
+	if lines[3] != readme {
+		t.Errorf("README가 그대로 나오지 않았다: %q", lines[3])
+	}
+}
+
+func TestThemeInfoBuiltinAndProject(t *testing.T) {
+	isolatedHome(t)
+	dir := newProject(t)
+	theme := filepath.Join(dir, "themes", "corp")
+	if err := os.MkdirAll(theme, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(theme, "theme.json"), []byte(`{"name":"corp","extends":"minimal"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	if err := run([]string{"theme", "info", "minimal"}, &stdout, &stderr); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(stdout.String(), "minimal — built-in theme\n\n# minimal\n") {
+		t.Errorf("내장 테마 출력:\n%s", stdout.String())
+	}
+
+	stdout.Reset()
+	if err := run([]string{"theme", "info", "corp", "--project", dir}, &stdout, &stderr); err != nil {
+		t.Fatal(err)
+	}
+	want := "corp — project theme (" + theme + ")\nextends minimal — see: balpyo theme info minimal\n\nthis theme has no README.md\n"
+	if stdout.String() != want {
+		t.Errorf("README 없는 프로젝트 테마 출력:\n%q\nwant\n%q", stdout.String(), want)
+	}
+}
+
+func TestThemeInfoErrors(t *testing.T) {
+	isolatedHome(t)
+	var stdout, stderr bytes.Buffer
+	cases := []struct {
+		args []string
+		want string
+	}{
+		{[]string{"theme", "info"}, "theme info needs the name of a theme"},
+		{[]string{"theme", "info", "a", "b"}, "theme info takes one theme name"},
+		{[]string{"theme", "info", "nope"}, `unknown theme "nope"`},
+	}
+	for _, c := range cases {
+		err := run(c.args, &stdout, &stderr)
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%v: err = %v, want %q", c.args, err, c.want)
+		}
+	}
+}

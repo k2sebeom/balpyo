@@ -108,6 +108,9 @@ Warnings (which `--strict` promotes to errors)
 
 ## Tier 3 — nothing checks these; they surface in the output
 
+- [ ] The theme directory has a `README.md` (exact name) saying what decks it suits, what each
+      variant is for, and the `theme:` path and purpose of every picture under `assets/`.
+      `balpyo theme info <name>` prints it — read it back once as a deck author would.
 - [ ] The `mono` token's `ea` is a **monospace CJK** face (`Noto Sans Mono CJK KR`). A
       proportional face draws a Korean comment line 7.9% narrower in the browser than in
       PowerPoint.

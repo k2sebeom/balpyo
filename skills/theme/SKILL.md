@@ -34,7 +34,8 @@ my-deck/
         ├── tokens.json        # partial, when inheriting
         ├── components.json    # partial
         ├── layouts/           # only the files being replaced
-        └── assets/            # optional — background/logo (PNG/JPEG), icons for theme: (PNG/JPEG/SVG)
+        ├── assets/            # optional — background/logo (PNG/JPEG), icons for theme: (PNG/JPEG/SVG)
+        └── README.md          # for deck authors — what the theme is for, how to use its variants and assets
 ```
 
 Pick the closest built-in as the parent and override only what differs:
@@ -97,6 +98,14 @@ Formats, required names, and worked examples: `references/package.md`. Shortest 
   deck never mentions them, so a theme swap swaps them too. Slides can also use any picture in
   `assets/` with `<image src="theme:<path under assets/>">` — the way to ship an icon library
   (SVG icons are fine there).
+- **`README.md`** — not read by the loader, but printed verbatim by `balpyo theme info <name>`,
+  and deck authors (and the `deck` skill) read it before writing slides. It holds the **intent**
+  that the other files can't: the voice of the theme, which decks it suits (and which it doesn't,
+  with the theme to use instead), layout traits an author must know (e.g. "covers sit bottom
+  left"), what each variant is *for*, how to split the accents, and, for every picture under
+  `assets/`, its `theme:` path and what to use it for. Write uses, not values. When extending,
+  cover only what you changed and point at the parent. The file name is exactly `README.md`.
+  The built-in themes' READMEs are the model (`balpyo theme info minimal`).
 - **`tokens.json` `motion`** — the deck's animation rhythm (`duration`, `stagger`, `delay` in ms)
   and an optional default slide `transition` (`fade` · `push`). Optional for loading, but
   without it every deck that writes `enter=` fails. When inheriting, writing it replaces the
@@ -194,6 +203,7 @@ balpyo theme install github.com/acme/slide-themes@v1.2.0      # public GitHub on
 balpyo theme install ./slide-themes                           # a local directory — copied, not linked
 balpyo theme install github.com/acme/slide-themes acme-dark   # one theme + its same-repo extends parents
 balpyo theme list --project my-deck                           # built-in / installed / project, overlaps flagged
+balpyo theme info <name> --project my-deck                    # where the theme comes from + its README.md
 balpyo theme update [name...]                                 # re-fetch / re-copy from the recorded source
 balpyo theme remove <name...>
 ```
@@ -213,6 +223,9 @@ balpyo theme remove <name...>
 - **Builds never touch the network.** On another machine or in CI, run the same
   `balpyo theme install` first; otherwise the build stops with `알 수 없는 테마`. Private repos
   and non-GitHub hosts: check them out and install the directory by path.
+- **Ship a `README.md` in every theme directory.** It is what `balpyo theme info` shows to the
+  people installing it, and the same file GitHub shows on the repository page. In a repository
+  holding several themes, each theme directory gets its own.
 - Layout-CSS appearance-property warnings for an installed theme are reported **at install
   time**, not by builds — so fix them before publishing; deck authors can't.
 

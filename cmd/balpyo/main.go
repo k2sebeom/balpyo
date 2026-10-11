@@ -118,6 +118,8 @@ theme commands:
                         install the themes in a repository or directory (all of them if no name is given)
   balpyo theme list [--project .]
                         list the available themes with their sources
+  balpyo theme info <name> [--project .]
+                        show where a theme comes from and print its README.md
   balpyo theme remove <name...>
                         remove installed themes
   balpyo theme update [name...]
