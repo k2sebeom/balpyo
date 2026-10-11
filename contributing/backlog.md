@@ -23,9 +23,6 @@
 - [작성] **chevron의 기본 노치.** 노치 깊이가 상자 폭의 절반(`adj` 261113)이라 `<shape type="chevron"
   w="fill" h="88">` 안의 라벨이 실루엣 밖으로 나가고, 글은 위쪽에 붙는다. PowerPoint 기본처럼 얕은
   노치를 기본으로 하거나 skill에 경고를 넣는다.
-- [테마] **`minimal`의 `image-full` 크롬.** footer·쪽 번호가 전면 그림의 캡션 위에 앉는다 — `skipLayouts`에
-  `image-full`이 없다. 또 `<image slot="media" fit="cover">`만으로는 가장자리까지 차지 않고
-  `w="fill" h="fill"`이 필요한데 레이아웃 문서에 없다.
 
 ## Suggestion
 

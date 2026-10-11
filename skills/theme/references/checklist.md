@@ -35,6 +35,8 @@ Chrome
 - [ ] A `pageNumber` `format`, if any, holds `{n}` exactly once (and at most uses `{total}`).
 - [ ] No `kind` declared twice.
 - [ ] Every `skipLayouts` name is a layout of *this* theme.
+- [ ] `image-full` is in the footer/page-number `skipLayouts` (or the chrome is placed where it
+      does not sit on a full-bleed picture and its caption) — the built-in themes skip it.
 
 Backgrounds and assets
 

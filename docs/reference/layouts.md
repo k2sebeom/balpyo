@@ -108,6 +108,11 @@
 
 `idx`가 없는 행(`title`·`ctrTitle`)은 `p:ph`에 `idx` 속성을 내지 않는다 (제목류의 관례).
 
+그림 슬롯(`media`)에 크기 없이 놓인 `<image>`는 슬롯 영역을 채운다 — `<image slot="media"
+fit="cover">`만으로 `image-full`의 그림이 가장자리까지 닿는다 ([`<image>`](soml/image.md)).
+내장 테마 셋은 `image-full`에 footer·쪽 번호를 그리지 않는다 (크롬의 `skipLayouts`) — 전면 그림과
+캡션 위에 앉기 때문이다.
+
 자리가 글자 크기를 정하는 슬롯은 테마가 기본값을 갖는다 — `quote`의 `quote`(인용 크기),
 `stat`의 `value`(큰 수치)와 `label`(본문 이상). 값과 우선순위는 [외관 속성](appearance.md#캐스케이드-해석-순서)에 있다.
 `layout="canvas"`처럼 슬롯이 없는 레이아웃에 `slot=`을 쓰면 빌드 에러다.

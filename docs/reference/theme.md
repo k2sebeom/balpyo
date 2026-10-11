@@ -105,9 +105,9 @@ minimal/
   ],
   "chrome": [
     { "kind": "footer",     "align": "start", "role": "caption",
-      "skipLayouts": ["title", "section-divider", "end"] },
+      "skipLayouts": ["title", "section-divider", "image-full", "end"] },
     { "kind": "pageNumber", "align": "end",   "role": "caption",
-      "skipLayouts": ["title", "section-divider", "end"] }
+      "skipLayouts": ["title", "section-divider", "image-full", "end"] }
   ]
 }
 ```

@@ -46,7 +46,26 @@ func (r *resolver) resolveImage(elem *soml.Element) {
 	mergeImage(&style, r.comps.imageDefault)
 	mergeImage(&style, r.imageVariant(elem))
 	mergeImage(&style, inline)
+	r.fillPictureSlot(elem, &style)
 	elemAppearance(elem).Image = &style
+}
+
+// fillPictureSlot은 그림 슬롯(`p:ph type="pic"` — `image-full`·`image-text`의 `media`)에 크기 없이 놓인
+// 그림이 그 슬롯 영역을 채우게 한다 (`w="fill" h="fill"`).
+//
+// 그림 슬롯은 그림 한 장을 위한 영역이고, `fit`은 그 영역 안에서 그림이 앉는 방식이다. 크기가 없으면
+// 박스가 그림의 원래 픽셀 크기가 되어 `fit="cover"`가 덮을 영역이 없다 — 전면 그림 레이아웃의 그림이
+// 가운데에 작게 남는다. 저자가 `w`·`h`·`ratio` 중 하나라도 적었으면 그 크기가 저자의 결정이다.
+func (r *resolver) fillPictureSlot(elem *soml.Element, style *soml.ImageStyle) {
+	slot, ok := soml.LayoutSlot(r.layout, placedSlot(elem))
+	if !ok || slot.PhType != soml.PhPic {
+		return
+	}
+	if style.Box.Width != nil || style.Box.Height != nil || style.Box.Ratio != nil {
+		return
+	}
+	full := soml.Percent(100)
+	style.Box.Width, style.Box.Height = &full, &full
 }
 
 // imageVariant는 `variant`를 테마의 **이미지** variant 표에서 찾는다 — 모르는 이름은 에러가
