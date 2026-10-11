@@ -90,16 +90,16 @@ func svgSize(key string, root xml.StartElement) (float64, float64, string) {
 	if viewBox != "" {
 		f := strings.FieldsFunc(viewBox, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' || r == '\n' })
 		if len(f) == 4 {
-			vw, _ = strconv.ParseFloat(f[2], 64)
-			vh, _ = strconv.ParseFloat(f[3], 64)
+			vw, _ = parseNumber(f[2])
+			vh, _ = parseNumber(f[3])
 		}
 	}
 	px := func(name, v string) (float64, string) {
 		if v == "" {
 			return 0, ""
 		}
-		n, err := strconv.ParseFloat(strings.TrimSuffix(strings.TrimSpace(v), "px"), 64)
-		if err != nil || n <= 0 {
+		n, ok := parseNumber(strings.TrimSuffix(strings.TrimSpace(v), "px"))
+		if !ok || n <= 0 {
 			return 0, fmt.Sprintf("%s has %s=%q — an SVG image gives its size in px (or a unitless number)", key, name, v)
 		}
 		return n, ""

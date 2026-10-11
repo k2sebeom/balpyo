@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"path"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/k2sebeom/balpyo/soml"
@@ -1193,12 +1192,12 @@ func borderFromString(s string) (*soml.Border, error) {
 	if len(fields) != borderParts {
 		return nil, fmt.Errorf("border is %q or three parts `<width> <style> <color>` (%q)", noneValue, s)
 	}
-	width, err := strconv.ParseFloat(fields[0], 64)
-	if err != nil {
+	width, ok := parseNumber(fields[0])
+	if !ok {
 		return nil, fmt.Errorf("border width is not a number (%q)", fields[0])
 	}
 	style := soml.BorderStyle(fields[1])
-	ok := false
+	ok = false
 	for _, s := range soml.BorderStyles() {
 		if s == style {
 			ok = true
