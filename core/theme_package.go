@@ -533,7 +533,7 @@ func readRawTheme(fsys fs.FS, dir string) (rawTheme, error) {
 	if err != nil {
 		return raw, fmt.Errorf("cannot read theme.json: %w", err)
 	}
-	if err := decodeThemeJSON(manifestBytes, path.Join(dir, "theme.json"), &raw.manifest, false); err != nil {
+	if err := decodeThemeJSON(manifestBytes, path.Join(dir, "theme.json"), &raw.manifest); err != nil {
 		return raw, err
 	}
 	if raw.manifest.Name == "" {
@@ -763,7 +763,7 @@ func readTokensFile(fsys fs.FS, dir string, optional bool) (tokensFile, error) {
 		}
 		return file, fmt.Errorf("cannot read tokens.json: %w", err)
 	}
-	if err := decodeThemeJSON(raw, path.Join(dir, "tokens.json"), &file, true); err != nil {
+	if err := decodeThemeJSON(raw, path.Join(dir, "tokens.json"), &file); err != nil {
 		return file, err
 	}
 	return file, nil
@@ -820,7 +820,7 @@ func readComponentsFile(fsys fs.FS, dir string, optional bool) (componentsFile, 
 		}
 		return file, fmt.Errorf("cannot read components.json: %w", err)
 	}
-	if err := decodeThemeJSON(raw, path.Join(dir, "components.json"), &file, true); err != nil {
+	if err := decodeThemeJSON(raw, path.Join(dir, "components.json"), &file); err != nil {
 		return file, err
 	}
 	return file, nil

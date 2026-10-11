@@ -33,23 +33,22 @@ func (e *themeFileError) diagnostic() soml.Diagnostic {
 	return soml.Errorf(e.file, soml.Span{Start: e.pos, End: e.pos}, "%s", e.msg)
 }
 
-// decodeThemeJSON은 테마 JSON 파일 하나를 v에 읽는다. closed면 v의 스키마에 없는 키를 에러로 낸다
-// — 조용히 무시하면 저자가 오버라이드가 먹었다고 착각한다. `$comment`로 시작하는 키는 어느 객체에서나
-// 문서 주석이다 (`$comment-accent`처럼 주석을 값 옆에 여럿 둘 수 있게).
+// decodeThemeJSON은 테마 JSON 파일 하나를 v에 읽고, v의 스키마에 없는 키를 에러로 낸다 — 조용히
+// 무시하면 저자가 오버라이드가 먹었다고 착각한다 (theme.json도 같다: 크롬 선언의 `skipLayout` 오타를
+// 버리면 푸터가 빼려던 레이아웃에 실린다). `$comment`로 시작하는 키는 어느 객체에서나 문서 주석이다
+// (`$comment-accent`처럼 주석을 값 옆에 여럿 둘 수 있게).
 //
 // 키 검사를 encoding/json의 DisallowUnknownFields에 맡기지 않는 이유: 그 에러는 키 이름만 말하고
 // JSON 안의 경로도 줄 번호도 없어서, 같은 이름(`lineHeight`)이 여러 절에 있으면 저자가 항목을 하나씩
 // 지워 가며 찾아야 한다. 그리고 접두사 규칙(`$comment*`)을 표현할 수 없다.
-func decodeThemeJSON(data []byte, file string, v any, closed bool) error {
-	if closed {
-		if err := checkThemeKeys(data, 0, reflect.TypeOf(v).Elem(), "", data); err != nil {
-			var fe *themeFileError
-			if errors.As(err, &fe) {
-				fe.file = file
-				return fe
-			}
-			return &themeFileError{file: file, msg: err.Error()}
+func decodeThemeJSON(data []byte, file string, v any) error {
+	if err := checkThemeKeys(data, 0, reflect.TypeOf(v).Elem(), "", data); err != nil {
+		var fe *themeFileError
+		if errors.As(err, &fe) {
+			fe.file = file
+			return fe
 		}
+		return &themeFileError{file: file, msg: err.Error()}
 	}
 	if err := json.Unmarshal(data, v); err != nil {
 		fe := &themeFileError{file: file, msg: err.Error()}
