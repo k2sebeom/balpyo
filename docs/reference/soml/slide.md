@@ -11,6 +11,9 @@
 | `id` | 문자열 | 파일명에서 유도 | 딥링크 앵커. 덱 전체에서 유일해야 한다 |
 | `skip` | 없음 · `true` · `false` | `false` | 참이면 이 슬라이드를 렌더에서 뺀다 |
 | `justify` | `start` · `center` · `end` · `between` · `around` · `evenly` | 없음 (위에서부터 쌓는다) | 흐름 모드 슬라이드의 **세로 분배** (아래) |
+| `enter` | `fade` · `rise` · `zoom` · `wipe` · `none` | 없음 | 직속 자식마다의 [등장](enter.md) |
+| `transition` | `fade` · `push` · `none` | 테마의 `motion.transition` | 이 장에 들어올 때의 [전환](enter.md) |
+| `invert` | 없음 · `true` · `false` | `false` | 이 장의 색 매핑을 뒤집는다 — 어두운 장 (아래) |
 
 - `id`를 생략하면 파일명에서 유도한다: 순서용 숫자 접두(`001_`, `010-`)를 떼고 확장자를
   뗀 나머지가 앵커가 된다 — `001_title.slide`는 `title`. 순서 접두가 앵커에 들어가지
@@ -68,6 +71,27 @@
   <shape type="star" fill="accent1" w="64" h="64" x="-24" y="24"/>
 </slide>
 ```
+
+## `invert` 속성 — 어두운 장
+
+`<slide invert>`는 그 장의 **배경 · 글자 색을 뒤집는다**. 밝은 테마에서는 어두운 장이 되고, 어두운 테마(`ink`)에서는
+밝은 장이 된다. 원고의 색은 그대로다 — `color="fg"`는 그 장에서 밝은 글자가 되고, 바탕(`bg`)은 어두워진다.
+
+```html
+<slide id="takeaways" invert>
+  <text variant="kicker">KEY TAKEAWAYS</text>
+  <h2>EC2 in four sentences</h2>
+  <p color="muted">Elastic, composable, purpose-built, cost-aware.</p>
+</slide>
+```
+
+- **뒤집히는 것은 네 자리다**: 배경 · 글자 역할의 짝 둘 — `bg` ↔ `fg`, `surface` ↔ `muted` (내장 테마의 이름).
+  강조색 여섯과 링크 색은 그대로다. 크롬(푸터 · 쪽번호)도 함께 뒤집힌다.
+- PPTX는 그 슬라이드의 색 매핑 덮기(`a:overrideClrMapping` — PowerPoint의 "배경 스타일")다. 도형 · 글자의 색은
+  여전히 테마 색 참조라, PowerPoint에서 테마 색을 바꾸면 어두운 장도 따라간다. 웹은 그 장에서 네 색 변수를
+  다시 선언한다.
+- 테마가 그 레이아웃에 정한 배경은 그대로 실린다 — 채움이 토큰이면 그 토큰의 반전된 색이다.
+- 값 없는 `invert`는 참이다 (`skip`과 같은 관례). 그 밖의 값은 `invert must be true or false ("yes")`다.
 
 ## `justify` 속성 — 세로 리듬
 
@@ -145,7 +169,7 @@
 | 파일에 `<slide>`가 둘 이상 | `a file must have exactly one root element <slide> (one slide per file)` |
 | 어휘 밖의 자식 태그 | `<slide> cannot contain <…> (available tags: <text>, <shape>, <image>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)` |
 | 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <slide> (wrap it in <text>)` |
-| 어휘 밖의 속성 | `unknown attribute … on <slide> (available attributes: layout, id, skip, justify)` |
+| 어휘 밖의 속성 | `unknown attribute … on <slide> (available attributes: layout, id, skip, justify, enter, transition, invert)` |
 | `id`에 값이 없다 (`<slide id>`) | `the id attribute needs a value (id="architecture")` |
 | `id=""` | `the id attribute is empty (remove it to derive the id from the file name)` |
 | `skip` 값이 `true`/`false`가 아니다 | `skip must be true or false (…)` |

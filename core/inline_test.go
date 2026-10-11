@@ -39,6 +39,11 @@ func TestResolveInlineDeltas(t *testing.T) {
 			func(s soml.TextStyle) soml.TextStyle { s.Color = soml.LiteralColor("0F65F9"); return s }},
 		{"span weight", "<slide>\n  <p><span weight=\"bold\">굵게</span></p>\n</slide>\n", "span",
 			func(s soml.TextStyle) soml.TextStyle { s.Weight = 700; return s }},
+		// 작은 런 — 큰 수 뒤의 작은 단위. 감싼 텍스트와 같은 크기도 받는다.
+		{"span size (작게)", "<slide>\n  <p><span size=\"16\">+</span></p>\n</slide>\n", "span",
+			func(s soml.TextStyle) soml.TextStyle { s.Size = 16; return s }},
+		{"span size (같게)", "<slide>\n  <p><span size=\"24\">+</span></p>\n</slide>\n", "span",
+			func(s soml.TextStyle) soml.TextStyle { return s }},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -150,6 +155,8 @@ func TestResolveInlineDiagnostics(t *testing.T) {
 		{"값 없는 weight", `<span weight>x</span>`, 12, "needs a value"},
 		{"빈 weight", `<span weight="">x</span>`, 20, "is empty"},
 		{"span color", `<span color="brand">x</span>`, 19, "is not in the theme"},
+		{"감싼 텍스트보다 큰 span", `<span size="40">x</span>`, 18, "<span> size 40 is larger than the surrounding text (24)"},
+		{"span size 단위", `<span size="12px">x</span>`, 18, "unitless number"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -208,5 +215,30 @@ func TestResolveInlineAppearanceNonNil(t *testing.T) {
 		if !seen[name] {
 			t.Errorf("테스트 원문에 <%s>가 없다 — 커버리지가 줄었다", name)
 		}
+	}
+}
+
+// <mark>는 테마의 형광펜을 런에 얹고, 안의 런은 상속-복사로 같은 색을 받는다. 테마가 형광펜을
+// 정하지 않았으면 에러이고 런은 형광펜 없이 계속한다.
+func TestResolveMark(t *testing.T) {
+	deck, diags := resolveSlide(t, "<slide>\n  <p><mark>핵심 <strong>구절</strong></mark></p>\n</slide>\n")
+	if len(diags) != 0 {
+		t.Fatalf("진단 = %v", diags)
+	}
+	for _, name := range []string{"mark", "strong"} {
+		style := findElement(t, deck, name).TextStyle()
+		if style == nil || style.Highlight == nil || style.Highlight.Mod == nil || style.Highlight.Token != "accent4" {
+			t.Errorf("<%s> Highlight = %+v, want tint(accent4, …)", name, style)
+		}
+	}
+	if style := findElement(t, deck, "p").TextStyle(); style.Highlight != nil {
+		t.Errorf("<p> Highlight = %+v, want nil (형광펜은 <mark> 안에서만)", style.Highlight)
+	}
+
+	bare, _ := resolveSlide(t, "<slide>\n  <p><mark>x</mark></p>\n</slide>\n")
+	r := &resolver{theme: soml.Theme{Name: "bare"}}
+	r.resolveInlines(findElement(t, bare, "p"), &soml.TextStyle{Size: 24})
+	if len(r.diags) != 1 || !strings.Contains(r.diags[0].Message, `<mark> needs a highlight color, and theme "bare" defines none`) {
+		t.Errorf("진단 = %v, want 형광펜 없는 테마 에러", r.diags)
 	}
 }

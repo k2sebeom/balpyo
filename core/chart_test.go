@@ -238,7 +238,8 @@ func TestChartDiagnostics(t *testing.T) {
 		contains            []string
 	}{
 		{"type이 없다", `h="420"`, p, []string{"<chart> needs a type", "available types: bar", "no way to guess"}},
-		{"어휘 밖의 type", `type="line" h="420"`, p, []string{`unknown chart type "line"`, "available types: bar"}},
+		{"어휘 밖의 type", `type="pie" h="420"`, p, []string{`unknown chart type "pie"`, "available types: bar, line, area, step"}},
+		{"선 차트의 점 강조", `type="line" h="420"`, chartPoint(`label="May" value="22" fill="accent4"`), []string{"<point fill> highlights one bar — a line chart"}},
 		// 막대 높이가 축에 대한 백분율이라 차트 높이를 내용이 정하면 순환한다.
 		{"h도 ratio도 없다", `type="bar"`, p, []string{"<chart> needs h or ratio", "would be circular"}},
 		{"점이 없다", `type="bar" h="420"`, "", []string{"<chart> has no <point>", "no data to draw"}},
@@ -275,4 +276,113 @@ func TestChartDiagnostics(t *testing.T) {
 	attrs := `label="6월" value="-3"`
 	_, diag := oneDiag(t, chartSlide(`type="bar" h="420"`, p+chartPoint(attrs)))
 	assertDiag(t, diag, 4, len([]rune(`    <point label="6월" value="`))+1)
+}
+
+// 선 차트는 경로 도형 하나로 펼쳐진다 — 점은 범주 칸의 가운데(i + ½)/n, 세로는 값 ÷ 축을 아래에서 잰 자리다.
+// 계단은 칸마다 수평인 단이고, 영역은 같은 선 아래를 기준선까지 닫은 면을 먼저 깐다.
+func TestChartLineExpandsToAPath(t *testing.T) {
+	for _, tc := range []struct{ kind, want string }{
+		{"line", "M25,75 L75,25"},
+		{"step", "M0,75 H50 V25 H100"},
+		{"area", "M25,75 L75,25 L75,100 L25,100 Z"},
+	} {
+		t.Run(tc.kind, func(t *testing.T) {
+			deck, diags := resolveSlide(t, "<slide>\n  <chart type=\""+tc.kind+"\" max=\"100\" h=\"300\">"+
+				chartPoint(`label="a" value="25"`)+chartPoint(`label="b" value="75"`)+"</chart>\n</slide>\n")
+			if len(diags) != 0 {
+				t.Fatalf("진단: %v", diags)
+			}
+			found := false
+			var walk func(n soml.Node)
+			walk = func(n soml.Node) {
+				e, ok := n.(*soml.Element)
+				if !ok {
+					return
+				}
+				if d, ok := e.Attr("d"); ok && d.Value == tc.want {
+					found = true
+				}
+				for _, c := range e.Children {
+					walk(c)
+				}
+			}
+			for _, n := range deck.Slides[0].Content {
+				walk(n)
+			}
+			if !found {
+				t.Errorf("펼친 트리에 d=%q인 경로 도형이 없다", tc.want)
+			}
+		})
+	}
+}
+
+// chartSeriesXML은 계열 하나다 — 점들은 속성 문자열의 목록이다.
+func chartSeriesXML(attrs string, points ...string) string {
+	b := "    <series " + attrs + ">\n"
+	for _, p := range points {
+		b += "  " + chartPoint(p)
+	}
+	return b + "    </series>\n"
+}
+
+// 계열 형식: 축은 모든 계열의 최대에서 정하고, 막대는 범주마다 계열 수만큼 서며, 범례가 계열마다 이름 하나를 단다.
+func TestChartSeriesShareTheAxisAndGetALegend(t *testing.T) {
+	deck := resolvedChart(t, `type="bar" h="420"`,
+		chartSeriesXML(`name="A"`, `label="Q1" value="9"`, `label="Q2" value="18"`)+
+			chartSeriesXML(`name="B" fill="accent4"`, `label="Q1" value="4.5"`, `label="Q2" value="9"`))
+	bars := chartBars(deck)
+	if len(bars) != 4 {
+		t.Fatalf("막대 %d개, want 4 (범주 2 × 계열 2)", len(bars))
+	}
+	// 축 = 18 ÷ 0.9 = 20 — 둘째 계열의 9는 45%다.
+	want := []float64{45, 90, 22.5, 45}
+	order := []int{0, 2, 1, 3} // 문서 순서는 범주마다 계열 순서다 (Q1-A, Q1-B, Q2-A, Q2-B).
+	for i, bar := range bars {
+		got := bar.ShapeStyle().Height.Value
+		if math.Abs(got-want[order[i]]) > 0.01 {
+			t.Errorf("막대 %d 높이 = %v%%, want %v%%", i, got, want[order[i]])
+		}
+	}
+	if fill := bars[1].ShapeStyle().Fill.Color.Token; fill != "accent4" {
+		t.Errorf("둘째 계열 막대 색 = %s, want accent4", fill)
+	}
+	if fill := bars[0].ShapeStyle().Fill.Color.Token; fill != "accent1" {
+		t.Errorf("첫 계열 기본색 = %s, want accent1", fill)
+	}
+	var names []string
+	for _, text := range chartTexts(deck) {
+		if v := dumpTree(text.Children); v == `"A"` || v == `"B"` {
+			names = append(names, v)
+		}
+	}
+	if strings.Join(names, " ") != `"A" "B"` {
+		t.Errorf("범례 이름 = %v", names)
+	}
+}
+
+func TestChartSeriesDiagnostics(t *testing.T) {
+	a := chartSeriesXML(`name="A"`, `label="Q1" value="1"`, `label="Q2" value="2"`)
+	for _, tc := range []struct {
+		name, attrs, body, want string
+	}{
+		{"점과 계열을 섞었다", `type="bar" h="420"`, a + chartPoint(`label="Q1" value="1"`), "<chart> holds either <point>s or <series>, not both"},
+		{"프레임 series", `type="bar" series="accent2" h="420"`, a, "<chart series> colors the only series"},
+		{"이름이 없다", `type="bar" h="420"`, a + chartSeriesXML(`fill="accent2"`, `label="Q1" value="1"`, `label="Q2" value="2"`), "<series> needs a name"},
+		{"범주 수", `type="bar" h="420"`, a + chartSeriesXML(`name="B"`, `label="Q1" value="1"`), `<series name="B"> has 1 points but the first series has 2`},
+		{"범주 라벨", `type="bar" h="420"`, a + chartSeriesXML(`name="B"`, `label="Q1" value="1"`, `label="Q3" value="2"`), `<point label="Q3"> is category 2 — the first series has "Q2" there`},
+		{"막대 차트의 계열 type", `type="bar" h="420"`, a + chartSeriesXML(`name="B" type="line"`, `label="Q1" value="1"`, `label="Q2" value="2"`), "<series type> is for line, area and step charts"},
+		{"모르는 계열 type", `type="line" h="420"`, a + chartSeriesXML(`name="B" type="bar"`, `label="Q1" value="1"`, `label="Q2" value="2"`), `unknown series type "bar" (available series types: line, area, step)`},
+		{"빈 계열", `type="bar" h="420"`, a + "    <series name=\"B\"></series>\n", "<series> has no <point>"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, diags := resolveSlide(t, chartSlide(tc.attrs, tc.body))
+			found := false
+			for _, d := range diags {
+				found = found || strings.Contains(d.Message, tc.want)
+			}
+			if !found {
+				t.Errorf("진단 = %v, want %q", diags, tc.want)
+			}
+		})
+	}
 }

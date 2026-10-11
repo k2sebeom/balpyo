@@ -43,6 +43,27 @@ about ¼ em each. It is the viewer's CJK typesetting rule (JIS X 4051), it is no
 and DrawingML has no attribute to turn it off. **Nothing to do**: boxes and coordinates match
 the web, the text holds no extra spaces, and PowerPoint and Keynote may not do it at all.
 
+### Connectors and their labels are not layout-judged
+
+A `<connector>` takes no space in the flow, so overflow and overlap warnings never look at it,
+and neither do its labels. A curved or elbow U-turn between two `top` sides arcs above both
+boxes, so its label can leave the stage without a warning. Leave room above (for example
+`<slide justify="center">`, or move the boxes down) and look at the slide. An elbow line that is
+drawn in (`enter="draw"`) may be revealed in a different order on the two targets: PowerPoint
+has no draw-along-path effect, so it wipes in from the start side.
+
+### Viewer-side differences in the new fills
+
+- **An off-centre radial gradient** (`radial(…, at 0% 100%)`) is written with its focus point,
+  but OnlyOffice ignores the focus and spreads it from the centre, so a corner glow becomes a
+  smudge in the middle. PowerPoint draws it right. A centred `radial(…)` matches everywhere.
+- **Pattern density differs**: the web tile scales with the stage; PowerPoint and OnlyOffice
+  draw the pattern in screen pixels. Same pattern and colours, different line spacing.
+- **SVG images** carry a PNG fallback at 2× intrinsic size for viewers older than PowerPoint
+  2016. Blown up far past that, the fallback blurs. The vector itself does not.
+- **`flow`** connectors move on the web presenter view only; PPTX, print, and the overview show
+  the still dash.
+
 ### A warning-free build is not a finished deck
 
 Layout judgement asks whether a box escaped a box. Overflow that ends inside a parent's `pad`
@@ -113,6 +134,10 @@ does not fit shows up as the `<table>` frame overflowing instead.
 - **`preview` is never a gate**: there is no diff or tolerance, and exit 0 only means the
   gallery was made. Exit 1 means nothing was produced to review (build failed, an explicit
   `--target pptx` with no rasterizer, output that does not match the deck).
+- **Motion needs the theme's `motion` tokens.** All built-ins have them; a custom theme without
+  them fails any deck that uses `enter` (`… defines no motion — add "motion": …`). Likewise
+  `<mark>` needs the theme's `text.mark.highlight`, and `<connector>` needs `connector.default`
+  (or an inline `line=`). These are theme gaps, so fix the theme or drop the feature.
 - **`watch` needs `html` in `--target`** and refuses to start without it.
 - **`init --theme` takes built-ins only** (`minimal` · `editorial` · `ink`); other commands
   also accept a local `themes/<name>/` or an installed theme (`balpyo theme install`), and

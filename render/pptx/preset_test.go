@@ -65,6 +65,11 @@ var shapePresets = map[string]string{
 	"callout":       "wedgeRectCallout",
 	"star":          "star5",
 	"cloud":         "cloud",
+	"triangle":      "triangle",
+	"cube":          "cube",
+	"left-brace":    "leftBrace",
+	"right-brace":   "rightBrace",
+	"path":          "custGeom",
 }
 
 // 12종 전수 — 어휘의 모든 `type`이 프리셋 지오메트리를 갖고, 도형은 **텍스트 박스로 표시되지
@@ -79,7 +84,11 @@ func TestRenderShapePresetsCoverVocabulary(t *testing.T) {
 	src.WriteString("<slide>\n")
 	rects := make([]geom.Rect, 0, len(types))
 	for i, name := range types {
-		fmt.Fprintf(&src, "  <shape type=%q w=\"220\" h=\"110\"/>\n", name)
+		d := ""
+		if name == soml.PathShapeType {
+			d = ` d="M0,100 L50,0 L100,100 Z"`
+		}
+		fmt.Fprintf(&src, "  <shape type=%q w=\"220\" h=\"110\"%s/>\n", name, d)
 		rects = append(rects, geom.Rect{X: float64(64 + i*4), Y: 64, W: 220, H: 110})
 	}
 	src.WriteString("</slide>")
@@ -94,6 +103,10 @@ func TestRenderShapePresetsCoverVocabulary(t *testing.T) {
 	}
 	for _, name := range types {
 		want := fmt.Sprintf(`<a:prstGeom prst="%s">`, shapePresets[name])
+		if name == soml.PathShapeType {
+			// 경로 도형은 프리셋이 아니라 사용자 지오메트리다 — 점 편집이 되는 진짜 도형이다.
+			want = `<a:custGeom>`
+		}
 		if !strings.Contains(xml, want) {
 			t.Errorf("type=%q의 산출에 %q가 없다", name, want)
 		}
@@ -376,7 +389,7 @@ func TestRenderShapeGuards(t *testing.T) {
 	})
 	t.Run("어휘 밖 type", func(t *testing.T) {
 		deck := resolvedDeck(t, src)
-		shapeStyleOf(t, deck).Type = "triangle"
+		shapeStyleOf(t, deck).Type = "trapezoid"
 		if got := renderShapeError(t, deck, rect); !strings.Contains(got, "no prstGeom mapping") {
 			t.Errorf("에러가 프리셋 매핑 부재를 가리키지 않는다: %s", got)
 		}

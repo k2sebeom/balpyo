@@ -48,6 +48,12 @@ type Appearance struct {
 	// 이 번호를 소비하는 타깃은 웹 **하나**이고(발표자 뷰의 숨김), PPTX·인쇄·측정은 이 필드를
 	// 보지 않는다 — 평탄화가 "무시"로 구현되는 자리다.
 	Reveal int
+	// Enter는 확정된 등장이다 (motion.go) — `enter`를 가졌거나 `<slide enter>`를 물려받은 요소에만 실린다.
+	// Reveal과 같은 이유로 TextStyle 밖이다: 외관이 아니라 발표 순서다.
+	Enter *Entrance
+	// Connector는 확정된 연결선이다 (connector.go) — `<connector>`에만 채워진다. 렌더러는 잇는 두
+	// 상자의 잰 rect와 이 값으로 경로를 계산한다 (render/route).
+	Connector *ConnectorStyle
 	// Container는 확정된 컨테이너 배치다 (placement.go) — 레이아웃 컨테이너에만 채워진다.
 	// 외관과 형제로 두는 이유는 계약이 같기 때문이다: 값 층이 한 번 해석하고 렌더러는
 	// 읽기만 한다. 배치가 값 층을 두 번 지나면 CSS와 지오메트리 패스가 갈라진다.
@@ -117,7 +123,29 @@ type TextStyle struct {
 	// `bodyPr@anchor`·flex 정렬 선언을 하나 더 싣게 되고, 그 선언은 뜻이 없는 자리에서도
 	// 산출물을 흔든다.
 	Anchor TextAnchor
+	// Tracking은 **자간**이다 — 글자 크기의 배수(em). 0은 "자간 없음"이고 아무 선언도 나가지
+	// 않는다. 웹은 `letter-spacing: <n>em`, PPTX는 `a:rPr@spc`(1/100pt)로 환산한다 — 배수로
+	// 들고 있는 이유는 LineHeight와 같다: "크기의 몇 배"가 테마의 의도이고, 절대값은 크기가
+	// 확정된 뒤 타깃 경계에서만 정해진다. 저자 속성이 아니라 테마 필드다 (역할·variant).
+	Tracking float64
+	// Case는 **표시 대소문자**다 — 빈 값은 원문 그대로, CaseUpper는 대문자로 보인다. 원문은
+	// 바뀌지 않는다: 웹 `text-transform`과 PPTX `a:rPr@cap="all"`이 둘 다 표시 속성이라
+	// PowerPoint에서 글을 고치면 저자가 쓴 대소문자로 편집되고, 테마를 갈면 대문자가 사라진다.
+	Case TextCase
+	// Highlight는 런 뒤에 칠하는 **형광펜 색**이다 (`<mark>`의 런 델타 — 테마의
+	// `text.mark.highlight`). nil은 형광펜 없음이다. 웹은 `background-color`, PPTX는
+	// `a:rPr/a:highlight`다.
+	Highlight *Color
 }
+
+// TextCase는 표시 대소문자다. 어휘는 둘이고, 원문 그대로가 빈 값이다 — 테마 파일의 `"none"`은
+// 아래 단의 `upper`를 끄는 패치이고 확정 값으로는 빈 값이 된다.
+type TextCase string
+
+const (
+	// CaseUpper는 대문자 표시다.
+	CaseUpper TextCase = "upper"
+)
 
 // TextRole은 텍스트 역할이다 — 1층의 HTML 서브셋(`<p>`, `<h2>` …)과 2층의 `<text role>`이
 // 공유하는 타이포그래피 계약이다. 어휘는 5종으로 닫혀 있다.
@@ -241,10 +269,14 @@ func ColorMods() []ColorModKind { return []ColorModKind{ModShade, ModTint, ModAl
 // 변환은 렌더러의 몫이다 (render/pptx.GradientAngle). 스톱은 단색(Token/RGB)만 담으며
 // 변형·중첩 그라디언트를 담지 않는다 — 그 제약은 core가 파싱 때 건다.
 type Gradient struct {
-	// Stops는 그라디언트 색 목록이다 (문서 순서 = 스톱 0→1). 둘 이상이어야 한다.
+	// Stops는 그라디언트 색 목록이다 (문서 순서 = 스톱 0→1). 둘 이상이어야 한다. 스톱은 불투명도(alpha 변형)를
+	// 가질 수 있다 (`bg/0`).
 	Stops []Color
-	// Angle은 CSS 각도(도)다 — 생략 시 180(위→아래).
+	// Angle은 CSS 각도(도)다 — 생략 시 180(위→아래). 방사형에는 뜻이 없다.
 	Angle float64
+	// Radial은 방사형인지다 (`radial(…)`). CX · CY는 중심이다 — 박스의 백분율(0~100), 기본은 50 · 50.
+	Radial bool
+	CX, CY float64
 }
 
 // IsToken은 이 색이 토큰 참조인지 보고한다 (변형된 토큰 색도 참조로 센다 — Mod는 밑색을
@@ -269,6 +301,11 @@ func LiteralColor(rgb string) Color { return Color{RGB: rgb} }
 // GradientColor는 그라디언트 색이다 (스톱 목록 + CSS 각도).
 func GradientColor(stops []Color, angle float64) Color {
 	return Color{Gradient: &Gradient{Stops: stops, Angle: angle}}
+}
+
+// RadialColor는 방사형 그라디언트 색이다 — 중심 (cx, cy)는 박스의 백분율이다.
+func RadialColor(stops []Color, cx, cy float64) Color {
+	return Color{Gradient: &Gradient{Stops: stops, Radial: true, CX: cx, CY: cy}}
 }
 
 // VariantColor는 단색 base에 변형을 얹은 색이다 — base의 Token/RGB를 유지한다
@@ -309,6 +346,9 @@ type Theme struct {
 	// Shadows는 그림자 토큰이다 (테마의 `shadow` 토큰) — `shadow="soft"`의 값
 	// 어휘이자 **유일한** 어휘다 (도형 외관은 그림자 수치를 받지 않는다 — ShadowToken).
 	Shadows []ShadowToken
+	// Motion은 등장의 박자다 (테마의 `motion` 토큰 — motion.go). nil이면 테마가 박자를 정하지 않았고,
+	// 그 테마에서 `enter`를 쓴 덱은 값 층의 에러다.
+	Motion *MotionTokens
 	// Layouts는 레이아웃 이름 → 스테이지에 얹는 **정규화된 배치 선언**이다 (`layouts/*.css`의
 	// 실체). 색·폰트처럼 이 표에 있는 이유: 배치도 테마가 소유하고, 웹의 스테이지
 	// CSS와 지오메트리 패스가 재는 박스가 **같은 한 표**에서 나와야 두 타깃의 배치가 갈라지지

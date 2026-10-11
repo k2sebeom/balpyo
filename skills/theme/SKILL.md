@@ -34,7 +34,7 @@ my-deck/
         ├── tokens.json        # partial, when inheriting
         ├── components.json    # partial
         ├── layouts/           # only the files being replaced
-        └── assets/            # optional — background, logo, and icon pictures (PNG/JPEG)
+        └── assets/            # optional — background/logo (PNG/JPEG), icons for theme: (PNG/JPEG/SVG)
 ```
 
 Pick the closest built-in as the parent and override only what differs:
@@ -91,9 +91,16 @@ Formats, required names, and worked examples: `references/package.md`. Shortest 
 - **`theme.json`** — `name`, `extends`, optional `layouts` (inherited, so don't re-list the
   eleven), `chrome` (footer and page-number placement — `align` and `role` are mandatory — and
   an optional `logo`), and optional `backgrounds` (per-layout slide backgrounds: a colour,
-  token gradient, or picture from `assets/`). Backgrounds and the logo are the theme's own: the
+  token gradient, or picture from `assets/`, with an optional `overlay` layer on top, such as a
+  photo darkened by `gradient(fg fg/0, 90deg)` or a corner glow `radial(accent1/35 bg/0, at 0% 100%)`).
+  `pageNumber` can take a `format` such as `"{n} / {total}"`. Backgrounds and the logo are the theme's own: the
   deck never mentions them, so a theme swap swaps them too. Slides can also use any picture in
-  `assets/` with `<image src="theme:<path under assets/>">` — the way to ship an icon library.
+  `assets/` with `<image src="theme:<path under assets/>">` — the way to ship an icon library
+  (SVG icons are fine there).
+- **`tokens.json` `motion`** — the deck's animation rhythm (`duration`, `stagger`, `delay` in ms)
+  and an optional default slide `transition` (`fade` · `push`). Optional for loading, but
+  without it every deck that writes `enter=` fails. When inheriting, writing it replaces the
+  parent's whole object.
 - **`tokens.json`** — the **names** authors may write. Each colour needs all four fields
   (`name`, `rgb`, `slot`, `ref`). Colour work in a child theme is **recolouring by name**: the
   `clrScheme` has 12 slots, built-ins use 10, so adding a new colour *name* requires a free
@@ -105,7 +112,11 @@ Formats, required names, and worked examples: `references/package.md`. Shortest 
   variants may use the authoring grammar — `gradient(accent1 accent6, 135deg)`,
   `tint(accent1, 40%)` — so a deck says `variant="hero"` and the theme owns the gradient; roles,
   table cells, and code tokens take a single token name. A `#RRGGBB` is a load error even if no
-  slide uses that variant. Unknown keys are errors (`$comment` excepted).
+  slide uses that variant. Unknown keys are errors (`$comment` excepted). Newer sections:
+  `tracking`/`case` on roles and variants (tracked upper-case kickers belong here; authors have
+  no attribute for them), `text.mark.highlight` (the `<mark>` colour; one colour, no gradient),
+  `connector` (default line and end markers plus variants), and `pattern(…)` hatches in shape
+  fills.
 - **`layouts/<name>.css`** — a **selector-less declaration list** for flow mode, and
   `<name>.slots.css` for slot mode. **Placement only**: colour and font declarations here are
   warnings and never reach the PPTX master. Each slot file must carry its own `display: grid`
@@ -130,9 +141,15 @@ Four rules nothing in the toolchain will catch for you:
   `dk1` and `bg` in `lt1`, or PowerPoint's theme-colour editor comes out inverted.
 - **On a dark background use `surface`, not `muted`, for fills and lines** (that is what
   `ink`'s table borders do) — a grey line on black outshines the text.
+- **Design for the inverted slide too.** `<slide invert>` swaps `bg` ↔ `fg` and `surface` ↔
+  `muted` and leaves the six accents alone. So on a deck's dark slide the accents sit on your
+  `fg` colour. Check their contrast against `fg` as well; the 4.5:1 rule above only covers `bg`.
 
 Keep variant names identical to the built-in vocabulary (text `kicker` `lead`; shape `card`
-`card-header` `card-body` `card-backdrop` `stat-card` `badge`; image `framed`; table `striped`).
+`card-header` `card-body` `card-backdrop` `stat-card` `badge`; image `framed`; table `striped`;
+connector `dashed` `accent` `plain`), and keep the three sections decks lean on: `motion`,
+`text.mark`, and `connector.default`. A standalone theme that drops one breaks every deck
+using `enter`, `<mark>`, or `<connector>`.
 Sharing the vocabulary is the portability contract: if `variant="stat-card"` turns into a
 warning after a theme swap, "looks different" becomes "the deck broke". Add new variants on top
 of those, don't rename them.
@@ -202,7 +219,8 @@ balpyo theme remove <name...>
 ## Reference files
 
 - `references/package.md` — the four files in full: every key, the required token and role
-  names, the `clrScheme` slot table, chrome declarations, and the `extends` merge rule.
+  names, the `clrScheme` slot table, chrome declarations, backgrounds and overlays, `motion`,
+  typography tracking/case, `mark`, `connector`, and the `extends` merge rule.
 - `references/checklist.md` — what the loader stops on, what the built-in test suite demands,
   and the hand-checked rules, as a pass-before-delivery list.
 
@@ -213,5 +231,7 @@ viewer does to your typography). Working themes to read:
 `${CLAUDE_PLUGIN_ROOT}/core/themes/{minimal,editorial,ink}/`; a complete inheriting theme:
 `${CLAUDE_PLUGIN_ROOT}/testdata/fixtures/15_local_theme/themes/corp/`; an inheriting theme with
 backgrounds and a logo: `${CLAUDE_PLUGIN_ROOT}/testdata/fixtures/18_theme_assets/themes/brand/`;
+a small inheriting theme using the newer keys (overlay glow, `{n} / {total}`, motion with a fade
+transition, tracked kickers, mark): `${CLAUDE_PLUGIN_ROOT}/examples/decks/ec2-intro/themes/summit/`;
 a standalone theme (`"extends": ""`, all eleven layouts) meant to be copied into a project:
 `${CLAUDE_PLUGIN_ROOT}/examples/themes/harbor/`.

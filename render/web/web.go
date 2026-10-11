@@ -71,19 +71,49 @@ import (
 	"fmt"
 	"html"
 	"strings"
+	"sync"
 
 	"github.com/k2sebeom/balpyo/render"
+	"github.com/k2sebeom/balpyo/render/route"
 	"github.com/k2sebeom/balpyo/soml"
 )
+
+// inkBoxes는 지금 렌더 중인 덱 → 잰 박스 조회다. 잰 박스로 그리는 프리셋(spaceMeasured)이 도형 writer
+// 깊숙한 곳에서 자기 rect를 찾는 자리다 — writer 스물다섯 개의 서명에 조회를 실어 나르는 대신 렌더 한 번 동안만
+// 덱에 묶어 둔다 (Render가 넣고 끝나면 지운다). 같은 덱을 두 렌더가 동시에 그리지 않는다는 것이 전제다 —
+// 파이프라인은 측정용 렌더와 최종 렌더를 차례로 돈다.
+var inkBoxes sync.Map
+
+// measuredBox는 이 렌더에서 요소의 잰 rect다 (잰 박스가 없는 렌더 · 모르는 요소면 false).
+func measuredBox(deck *soml.Deck, id string) (route.Rect, bool) {
+	v, ok := inkBoxes.Load(deck)
+	if !ok {
+		return route.Rect{}, false
+	}
+	return v.(BoxLookup)(id)
+}
 
 // IndexFile은 웹 타깃의 산출 파일 이름이다.
 const IndexFile = "index.html"
 
-// Renderer는 웹 타깃 렌더러다.
-type Renderer struct{}
+// Renderer는 웹 타깃 렌더러다. 상태는 연결선을 다루는 방식 하나다 (connector.go — 연결선은 측정이
+// 끝난 뒤에 그려진다).
+type Renderer struct {
+	connectors connectorMode
+	boxes      BoxLookup
+}
 
-// New는 웹 렌더러를 만든다.
+// New는 웹 렌더러를 만든다. 잰 박스가 없으므로 연결선이 있는 덱은 렌더 에러다.
 func New() *Renderer { return &Renderer{} }
+
+// NewForMeasurement는 지오메트리 패스가 잴 HTML을 내는 렌더러다 — 연결선을 내지 않는다 (연결선은
+// 흐름에 끼지 않으므로 배치가 연결선을 구운 HTML과 같다).
+func NewForMeasurement() *Renderer { return &Renderer{connectors: connectorsOmitted} }
+
+// NewWithBoxes는 잰 박스로 연결선을 굽는 렌더러다 — 측정이 끝난 빌드가 사용자에게 주는 HTML이다.
+func NewWithBoxes(boxes BoxLookup) *Renderer {
+	return &Renderer{connectors: connectorsDrawn, boxes: boxes}
+}
 
 // Target은 render.TargetHTML이다.
 func (*Renderer) Target() render.Target { return render.TargetHTML }
@@ -94,9 +124,14 @@ func (*Renderer) Target() render.Target { return render.TargetHTML }
 // 완결형이지만 그림은 별도 파일로 나가고, 그 이유가 렌더러에 있어야 측정과 배포가 같은
 // 바이트를 본다 (image.go의 에셋 절). 오프라인 발표는 `index.html` + assets를 함께 두는
 // 것이다.
-func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
+func (r *Renderer) Render(deck *soml.Deck) (render.Files, error) {
 	if deck == nil {
 		return nil, fmt.Errorf("deck is nil")
+	}
+	if r.boxes != nil {
+		// 잰 박스로 그리는 도형(cube · 괄호)이 이 렌더의 박스를 읽는다 — 렌더 한 번 동안만 산다.
+		inkBoxes.Store(deck, r.boxes)
+		defer inkBoxes.Delete(deck)
 	}
 	stage := deck.Stage
 	if stage.Width <= 0 || stage.Height <= 0 {
@@ -129,7 +164,7 @@ func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 	fmt.Fprintf(&b, "<div class=\"balpyo-deck\" data-aspect=%q data-slides=\"%d\">\n",
 		string(deck.Aspect), len(deck.Slides))
 	for _, slide := range deck.Slides {
-		if err := writeSlide(&b, deck, slide); err != nil {
+		if err := r.writeSlide(&b, deck, slide); err != nil {
 			return nil, err
 		}
 	}
@@ -157,14 +192,24 @@ func (*Renderer) Render(deck *soml.Deck) (render.Files, error) {
 //
 // `data-slide-*` 속성은 장식이 아니다 — 지오메트리 패스가 이 선택자로 요소를 집어
 // 좌표를 읽고, 웹 런타임이 딥링크를 여기에 맞춘다.
-func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
+func (r *Renderer) writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 	bg, err := backgroundCSS(slide.Background, deck)
 	if err != nil {
 		return fmt.Errorf("%s: background: %w", slide.Source, err)
 	}
-	fmt.Fprintf(b, "<section class=%q id=%q %s=\"%d\" data-slide-source=%q%s>\n",
-		SlideClass, html.EscapeString(slide.ID), SlideIndexAttr, slide.Index, html.EscapeString(slide.Source), styleAttr(bg))
+	class := SlideClass
+	if slide.Invert {
+		class += " " + InverseClass
+	}
+	fmt.Fprintf(b, "<section class=%q id=%q %s=\"%d\" data-slide-source=%q%s%s>\n",
+		class, html.EscapeString(slide.ID), SlideIndexAttr, slide.Index, html.EscapeString(slide.Source),
+		transitionAttr(slide), styleAttr(bg))
 	if err := writeStage(b, deck, slide); err != nil {
+		return err
+	}
+	// 연결선은 스테이지의 형제이고 크롬 앞이다 — 콘텐츠 위에 칠하고 크롬 아래에 둔다 (PPTX의
+	// spTree에서 콘텐츠 도형 뒤 · 크롬 앞인 것과 같은 자리).
+	if err := writeConnectors(b, deck, slide, r.connectors, r.boxes); err != nil {
 		return err
 	}
 	// 크롬은 스테이지의 형제다 — 스테이지 안에 넣으면 흐름에 끼어 본문 높이를 먹고,
@@ -179,6 +224,21 @@ func writeSlide(b *strings.Builder, deck *soml.Deck, slide *soml.Slide) error {
 	}
 	b.WriteString("</section>\n")
 	return nil
+}
+
+// TransitionAttr · TransitionDurationAttr는 슬라이드 전환의 마크업이다 — 뷰어 런타임이 발표자 뷰에서 장을
+// 넘길 때 읽는다 (viewer.css · runtime.js).
+const (
+	TransitionAttr         = "data-balpyo-transition"
+	TransitionDurationAttr = "data-balpyo-transition-duration"
+)
+
+// transitionAttr는 슬라이드 전환 속성이다 (전환이 없으면 속성 자체가 없다).
+func transitionAttr(slide *soml.Slide) string {
+	if slide.Transition == "" {
+		return ""
+	}
+	return fmt.Sprintf(" %s=%q %s=\"%d\"", TransitionAttr, string(slide.Transition), TransitionDurationAttr, slide.TransitionDuration)
 }
 
 // baseCSS는 엔진이 소유하는 기본 CSS다 — 배치와 좌표계만 담고 색·폰트는 담지 않는다.
@@ -231,6 +291,18 @@ func baseCSS(stage soml.Stage, feat features) string {
 `, stage.Width, stage.Height, contentCSS(feat), chromeCSS(feat), viewerCSS(), printPageCSS(stage))
 }
 
+// overlayLayer는 배경 덮개 한 겹이다 — 그라디언트는 그대로, 단색은 한 색짜리 선형 그라디언트로 낸다.
+func overlayLayer(fill soml.Fill, theme soml.Theme) (string, error) {
+	if fill.Color.IsGradient() {
+		return gradientCSS(*fill.Color.Gradient, theme)
+	}
+	c, err := colorValue(fill.Color, theme)
+	if err != nil {
+		return "", err
+	}
+	return "linear-gradient(" + c + ", " + c + ")", nil
+}
+
 // backgroundCSS는 테마가 정한 슬라이드 배경을 슬라이드 요소의 선언으로 만든다 (nil이면 없음 — 테마의
 // `.balpyo-slide { background: var(bg) }`가 그대로 산다).
 //
@@ -246,6 +318,16 @@ func backgroundCSS(bg *soml.Background, deck *soml.Deck) ([]string, error) {
 	}
 	var layers, sizes []string
 	var decls []string
+	if bg.Overlay != nil {
+		// 덮개는 맨 위 겹이다 (CSS 배경 겹은 앞에 쓴 것이 위다). 단색 덮개도 그림 겹으로 낸다 — 바탕색
+		// 자리(background-color)는 맨 아래 하나뿐이다.
+		layer, err := overlayLayer(*bg.Overlay, deck.Theme)
+		if err != nil {
+			return nil, fmt.Errorf("overlay: %w", err)
+		}
+		layers = append(layers, layer)
+		sizes = append(sizes, "auto")
+	}
 	if bg.Image != "" {
 		if _, ok := deck.Assets.Get(bg.Image); !ok {
 			return nil, fmt.Errorf("%q is not in the asset table — the deck did not go through core.ResolveAssets", bg.Image)

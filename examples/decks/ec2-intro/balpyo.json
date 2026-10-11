@@ -1,0 +1,10 @@
+{
+  "title": "What is Amazon EC2?",
+  "author": "balpyo",
+  "lang": "en",
+  "aspect": "16:9",
+  "theme": "summit",
+  "footer": "What is Amazon EC2?",
+  "pageNumber": true,
+  "outDir": "dist"
+}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/k2sebeom/balpyo/internal/pipeline"
 	"github.com/k2sebeom/balpyo/render/geom"
+	"github.com/k2sebeom/balpyo/render/route"
 	"github.com/k2sebeom/balpyo/render/web"
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -33,7 +34,11 @@ type LayoutSlide struct {
 	// `image`다. 비면 배경을 정하지 않은 슬라이드다 (마스터의 bg1). 그림 바이트가 입력과 같은지는 패키지
 	// 판정(미디어 파트 = 에셋)이 본다.
 	Background string
-	Nodes      []LayoutNode
+	// Transition은 이 장에 들어올 때의 전환이다 (`fade/fast` — 효과/속도 단계). 비면 전환이 없다.
+	Transition string
+	// Inverse는 이 장의 색 매핑이 뒤집혔는지다 (`colors inverse`).
+	Inverse bool
+	Nodes   []LayoutNode
 }
 
 // LayoutNode는 PPTX 객체 하나(= 웹 요소 하나)다. 문서 순서 = 칠 순서다.
@@ -50,7 +55,10 @@ type LayoutNode struct {
 	Alt string
 	// Fill·Line은 도형 채움·선의 요약이다 (텍스트 박스·그림·표는 빈 문자열).
 	Fill, Line string
-	Paras      []LayoutPara
+	// Extra는 종류 고유의 꼬리다 — 연결선의 프레임(회전 · 뒤집기 · 꺾는 자리), 붙은 양 끝, 대시,
+	// 끝 표식 (다른 종류는 빈 문자열).
+	Extra string
+	Paras []LayoutPara
 }
 
 // LayoutPara는 문단 하나다 — 런이 없는 문단은 트리에 넣지 않는다 (빈 도형의 `<a:p/>`).
@@ -72,6 +80,12 @@ func FormatLayout(slides []LayoutSlide, withRect bool) string {
 		if s.Background != "" {
 			b.WriteString("bg " + s.Background + "\n")
 		}
+		if s.Transition != "" {
+			b.WriteString("transition " + s.Transition + "\n")
+		}
+		if s.Inverse {
+			b.WriteString("colors inverse\n")
+		}
 		for _, n := range s.Nodes {
 			b.WriteString(n.Kind + " " + strconv.Quote(n.Name))
 			if withRect {
@@ -89,6 +103,9 @@ func FormatLayout(slides []LayoutSlide, withRect bool) string {
 			}
 			if n.Line != "" {
 				b.WriteString(" line=" + n.Line)
+			}
+			if n.Extra != "" {
+				b.WriteString(" " + n.Extra)
 			}
 			b.WriteString("\n")
 			for _, p := range n.Paras {
@@ -153,7 +170,24 @@ func (f Fixture) AssertParity(t testing.TB, result *pipeline.Result) {
 func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 	var slides []LayoutSlide
 	for _, slide := range deck.Slides {
-		s := LayoutSlide{ID: slide.ID}
+		s := LayoutSlide{ID: slide.ID, Inverse: slide.Invert}
+		if bg := slide.Background; bg != nil && bg.Overlay != nil {
+			// 배경 덮개는 맨 앞 객체다 — PPTX는 잠긴 전면 사각형이다 (웹은 배경의 윗겹).
+			n := LayoutNode{Kind: "shape:rect", Name: "background overlay", Fill: webFill(bg.Overlay, deck.Theme), Line: "none"}
+			n.X, n.Y, n.W, n.H = rectEMU(geom.Rect{W: float64(deck.Stage.Width), H: float64(deck.Stage.Height)})
+			s.Nodes = append(s.Nodes, n)
+		}
+		if slide.Transition != "" {
+			// 속도 단계는 렌더러와 따로 접는다 — 600ms까지 fast, 875ms까지 med, 그보다 길면 slow.
+			spd := "slow"
+			switch {
+			case slide.TransitionDuration <= 600:
+				spd = "fast"
+			case slide.TransitionDuration <= 875:
+				spd = "med"
+			}
+			s.Transition = string(slide.Transition) + "/" + spd
+		}
 		if bg := slide.Background; bg != nil {
 			if bg.Image != "" {
 				s.Background = "image"
@@ -161,11 +195,15 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 				s.Background = "fill=" + webFill(bg.Fill, deck.Theme)
 			}
 		}
-		var walk func(node soml.Node, p []int) error
-		walk = func(node soml.Node, p []int) error {
+		// enter는 가장 가까운 등장 조상이다 — 객체는 그 등장과 함께 나타난다 (PPTX는 객체마다 효과 하나).
+		var walk func(node soml.Node, p []int, enter *soml.Entrance) error
+		walk = func(node soml.Node, p []int, enter *soml.Entrance) error {
 			elem, ok := node.(*soml.Element)
 			if !ok {
 				return nil
+			}
+			if e := elem.EnterOf(); e != nil {
+				enter = e
 			}
 			id := web.ElementID(slide.Index, p)
 			kind := soml.KindOf(elem.Name)
@@ -175,12 +213,13 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 			switch kind {
 			case soml.KindLayoutContainer:
 				for i, child := range elem.Children {
-					if err := walk(child, web.ChildPath(p, i)); err != nil {
+					if err := walk(child, web.ChildPath(p, i), enter); err != nil {
 						return err
 					}
 				}
 				return nil
-			case soml.KindSpacer:
+			case soml.KindSpacer, soml.KindConnector:
+				// 연결선은 콘텐츠 도형 뒤에 한꺼번에 온다 (webConnectors).
 				return nil
 			}
 			box, ok := g.Box(id)
@@ -226,6 +265,10 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 				n.Kind = "pic"
 				if style := elem.ImageStyle(); style != nil {
 					n.Alt = style.Alt
+					// SVG 그림은 PPTX에서 svgBlip 확장을 함께 가져야 한다 — 대체 PNG만 남으면 벡터가 사라진다.
+					if asset, ok := deck.Assets.Get(style.Src); ok && asset.Format == soml.FormatSVG {
+						n.Extra = "svg"
+					}
 				}
 			case soml.KindTable:
 				n.Kind = "table"
@@ -237,11 +280,17 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 				return fmt.Errorf("%s: %s <%s> has no mapping to an object", slide.Source, id, elem.Name)
 			}
 			n.X, n.Y, n.W, n.H = rectEMU(rect)
+			if enter != nil {
+				if n.Extra != "" {
+					n.Extra += " "
+				}
+				n.Extra += fmt.Sprintf("enter=%s@%d+%d", enter.Effect, enter.Delay, enter.Duration)
+			}
 			s.Nodes = append(s.Nodes, n)
 			// 배경 모드 도형의 자식은 형제 객체다.
 			if kind == soml.KindShape && soml.ShapeHoldsLayout(elem) {
 				for i, child := range elem.Children {
-					if err := walk(child, web.ChildPath(p, i)); err != nil {
+					if err := walk(child, web.ChildPath(p, i), enter); err != nil {
 						return err
 					}
 				}
@@ -249,10 +298,15 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 			return nil
 		}
 		for i, node := range slide.Content {
-			if err := walk(node, []int{i}); err != nil {
+			if err := walk(node, []int{i}, nil); err != nil {
 				return nil, err
 			}
 		}
+		conns, err := webConnectors(slide, g, deck.Theme)
+		if err != nil {
+			return nil, err
+		}
+		s.Nodes = append(s.Nodes, conns...)
 		// 크롬은 콘텐츠 다음이다 (spTree 순서 = z-순서 — 웹에서도 스테이지 뒤 형제다).
 		for _, item := range slide.Chrome {
 			rect, ok := g.ChromeRect(slide.Index, item.Kind)
@@ -267,14 +321,124 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 			n.X, n.Y, n.W, n.H = rectEMU(rect)
 			if item.Text != "" {
 				style := webRunStyle(item.Style, deck.Theme, "")
-				style.field = item.Kind == soml.ChromePageNumber
-				n.Paras = []LayoutPara{{Align: string(item.Align), Runs: []string{formatRun(item.Text, style)}}}
+				var runs []string
+				if item.Prefix != "" {
+					runs = append(runs, formatRun(item.Prefix, style))
+				}
+				field := style
+				field.field = item.Kind == soml.ChromePageNumber
+				runs = append(runs, formatRun(item.Text, field))
+				if item.Suffix != "" {
+					runs = append(runs, formatRun(item.Suffix, style))
+				}
+				n.Paras = []LayoutPara{{Align: string(item.Align), Runs: runs}}
 			}
 			s.Nodes = append(s.Nodes, n)
 		}
 		slides = append(slides, s)
 	}
 	return slides, nil
+}
+
+// parityConnectionSites는 붙일 수 있는 상자의 면 → 연결점 번호다 — 렌더러의 표를 부르지 않고 따로
+// 적는다 (ECMA-376 presetShapeDefinitions의 cxnLst 순서). 표 밖의 상자는 붙지 않는다.
+var parityConnectionSites = map[string]map[route.Side]int{
+	"rect":            {route.Top: 0, route.Left: 1, route.Bottom: 2, route.Right: 3},
+	"rounded-rect":    {route.Top: 0, route.Left: 1, route.Bottom: 2, route.Right: 3},
+	"diamond":         {route.Top: 0, route.Left: 1, route.Bottom: 2, route.Right: 3},
+	"ellipse":         {route.Top: 0, route.Left: 2, route.Bottom: 4, route.Right: 6},
+	soml.ImageElement: {route.Top: 0, route.Left: 1, route.Bottom: 2, route.Right: 3},
+}
+
+// webConnectors는 슬라이드 직속 연결선의 기대 노드다 — 덱 + 지오메트리에서 경로 계산(render/route)을
+// 거쳐 프레임을 만든다. 렌더러의 조립(xfrm · 붙은 끝 · 선)을 판정하는 쪽이다: 경로 계산 자체는 두
+// 렌더러가 공유하는 계약이고, route의 단위 테스트가 프리셋 평가와 끝점의 일치를 본다.
+func webConnectors(slide *soml.Slide, g *geom.Geometry, theme soml.Theme) ([]LayoutNode, error) {
+	var nodes, labels []LayoutNode
+	ids := web.ElementIDs(slide)
+	for _, node := range slide.Content {
+		elem, ok := node.(*soml.Element)
+		if !ok || elem.Name != soml.ConnectorElement {
+			continue
+		}
+		if elem.Appearance == nil || elem.Appearance.Connector == nil {
+			return nil, fmt.Errorf("%s: %s <connector> is not resolved", slide.Source, ids[elem])
+		}
+		conn := elem.Appearance.Connector
+		box := func(e *soml.Element) (route.Rect, error) {
+			b, ok := g.Box(ids[e])
+			if !ok {
+				return route.Rect{}, fmt.Errorf("%s: connector end %s has no measured box", slide.Source, ids[e])
+			}
+			return route.Rect{X: b.Rect.X, Y: b.Rect.Y, W: b.Rect.W, H: b.Rect.H}, nil
+		}
+		from, err := box(conn.From)
+		if err != nil {
+			return nil, err
+		}
+		to, err := box(conn.To)
+		if err != nil {
+			return nil, err
+		}
+		p, err := route.Route(from, to, route.Side(conn.FromSide), route.Side(conn.ToSide), route.Kind(conn.Route))
+		if err != nil {
+			return nil, err
+		}
+		n := LayoutNode{Kind: "connector:" + p.Preset, Name: "connector " + ids[elem], Line: webColor(conn.Line.Color)}
+		n.X, n.Y = int64(math.Round(p.Off.X*9525)), int64(math.Round(p.Off.Y*9525))
+		n.W, n.H = int64(math.Round(p.W*9525)), int64(math.Round(p.H*9525))
+		extra := []string{fmt.Sprintf("rot=%d", p.Rot)}
+		if p.FlipH {
+			extra = append(extra, "flipH")
+		}
+		if p.FlipV {
+			extra = append(extra, "flipV")
+		}
+		extra = append(extra, fmt.Sprintf("adj=%d", int64(math.Round(p.Adj*100000))))
+		glue := func(which string, e *soml.Element, side route.Side) string {
+			key := e.Name
+			if s := e.ShapeStyle(); s != nil {
+				key = s.Type
+			}
+			idx, ok := parityConnectionSites[key][side]
+			if !ok {
+				return which + "=-"
+			}
+			return fmt.Sprintf("%s=%s:%d", which, strconv.Quote(e.Name+" "+ids[e]), idx)
+		}
+		dash := map[soml.BorderStyle]string{soml.BorderSolid: "solid", soml.BorderDashed: "dash", soml.BorderDotted: "dot"}[conn.Line.Style]
+		end := map[soml.ConnectorEnd]string{soml.EndNone: "none", soml.EndArrow: "triangle", soml.EndDot: "oval"}
+		extra = append(extra, glue("from", conn.From, p.StartSide), glue("to", conn.To, p.EndSide),
+			"dash="+dash, "ends="+end[conn.Start]+"/"+end[conn.End])
+		enter := elem.EnterOf()
+		if enter != nil {
+			// 선 그리기는 PPTX에서 닦아내기다 — 트리에는 PPTX가 되읽는 이름으로 적는다.
+			effect := string(enter.Effect)
+			if enter.Effect == soml.EnterDraw {
+				effect = "wipe"
+			}
+			extra = append(extra, fmt.Sprintf("enter=%s@%d+%d", effect, enter.Delay, enter.Duration))
+		}
+		n.Extra = strings.Join(extra, " ")
+		nodes = append(nodes, n)
+		if conn.Label != "" {
+			// 라벨은 모든 선 뒤의 한 줄 글상자다 — 잰 크기(연결선의 식별자)를 경로 옆에 놓는다.
+			size, ok := g.Box(ids[elem])
+			if !ok {
+				return nil, fmt.Errorf("%s: connector %s label has no measured box", slide.Source, ids[elem])
+			}
+			rect := p.LabelRect(size.Rect.W, size.Rect.H)
+			label := LayoutNode{Kind: "textbox", Name: "connector-label " + ids[elem]}
+			label.X, label.Y, label.W, label.H = rectEMU(geom.Rect{X: rect.X, Y: rect.Y, W: rect.W, H: rect.H})
+			label.Paras = []LayoutPara{{Align: string(soml.AlignCenter),
+				Runs: []string{formatRun(conn.Label, webRunStyle(*conn.LabelStyle, theme, ""))}}}
+			if enter != nil {
+				label.Extra = fmt.Sprintf("enter=fade@%d+%d", enter.Delay, enter.Duration)
+			}
+			labels = append(labels, label)
+		}
+	}
+	return append(nodes, labels...), nil
 }
 
 // rectEMU는 잰 rect의 EMU다 — 렌더러의 pptx.Offset/Extent를 부르지 않고 **따로** 계산한다
@@ -379,7 +543,19 @@ func webRunStyle(style soml.TextStyle, theme soml.Theme, link string) runStyle {
 		underline: style.Underline,
 		color:     webColor(style.Color),
 		link:      link,
+		// 자간은 렌더러와 따로 환산한다 — em × 크기(px) × 0.75 × 100 = 1/100pt.
+		tracking: int64(math.Round(style.Tracking * style.Size * 0.75 * 100)),
+		upper:    style.Case == soml.CaseUpper,
+		mark:     webHighlight(style.Highlight),
 	}
+}
+
+// webHighlight는 런의 형광펜 색이다 (없으면 빈 문자열 — 줄에 나오지 않는다).
+func webHighlight(c *soml.Color) string {
+	if c == nil {
+		return ""
+	}
+	return webColor(*c)
 }
 
 func webColor(c soml.Color) string {
@@ -388,6 +564,9 @@ func webColor(c soml.Color) string {
 		stops := make([]string, len(c.Gradient.Stops))
 		for i, stop := range c.Gradient.Stops {
 			stops[i] = webColor(stop)
+		}
+		if c.Gradient.Radial {
+			return "radial(" + strings.Join(stops, ",") + ")"
 		}
 		return "gradient(" + strings.Join(stops, ",") + ")"
 	case c.Token != "":
@@ -404,6 +583,9 @@ func webFill(f *soml.Fill, theme soml.Theme) string {
 	}
 	if f.None {
 		return "none"
+	}
+	if p := f.Pattern; p != nil {
+		return "pattern(" + string(p.Kind) + "," + webColor(p.Fg) + "," + webColor(p.Bg) + ")"
 	}
 	return webColor(f.Color)
 }
@@ -428,6 +610,11 @@ type runStyle struct {
 	bold, italic, underline bool
 	color                   string
 	link                    string
+	// tracking은 자간(1/100pt)이고 upper는 대문자 표시다 — 정했을 때만 줄에 나온다.
+	tracking int64
+	upper    bool
+	// mark는 형광펜 색이다 (토큰 이름 · 리터럴 — 없으면 빈 문자열).
+	mark string
 }
 
 func formatRun(text string, s runStyle) string {
@@ -445,7 +632,16 @@ func formatRun(text string, s runStyle) string {
 	if s.underline {
 		attrs = append(attrs, "u")
 	}
+	if s.tracking != 0 {
+		attrs = append(attrs, "tracking="+strconv.FormatFloat(float64(s.tracking)/100, 'f', -1, 64)+"pt")
+	}
+	if s.upper {
+		attrs = append(attrs, "upper")
+	}
 	attrs = append(attrs, s.color)
+	if s.mark != "" {
+		attrs = append(attrs, "mark="+s.mark)
+	}
 	if s.link != "" {
 		attrs = append(attrs, "→"+s.link)
 	}
@@ -467,13 +663,63 @@ type xSlide struct {
 			Items []xObject `xml:",any"`
 		} `xml:"spTree"`
 	} `xml:"cSld"`
+	// ClrMapOvr는 색 매핑 덮기다 — 반전된 장은 bg1이 dk1을 가리킨다.
+	ClrMapOvr struct {
+		Override *struct {
+			Bg1 string `xml:"bg1,attr"`
+			Tx1 string `xml:"tx1,attr"`
+			Bg2 string `xml:"bg2,attr"`
+			Tx2 string `xml:"tx2,attr"`
+		} `xml:"overrideClrMapping"`
+	} `xml:"clrMapOvr"`
+	// Transition은 슬라이드 전환이다 — 효과 요소 이름과 속도를 되읽는다.
+	Transition *struct {
+		Spd  string    `xml:"spd,attr"`
+		Fade *struct{} `xml:"fade"`
+		Push *struct {
+			Dir string `xml:"dir,attr"`
+		} `xml:"push"`
+	} `xml:"transition"`
+	// Timing은 등장 효과다 — 효과마다 대상 도형 번호 · 효과 번호 · 지연 · 길이를 되읽는다.
+	Timing *struct {
+		Effects []xEffect `xml:"tnLst>par>cTn>childTnLst>seq>cTn>childTnLst>par>cTn>childTnLst>par>cTn>childTnLst>par"`
+	} `xml:"timing"`
 }
+
+// xEffect는 등장 효과 하나다 (`p:par > p:cTn[presetClass=entr]`).
+type xEffect struct {
+	CTn struct {
+		PresetID  int    `xml:"presetID,attr"`
+		PresetCls string `xml:"presetClass,attr"`
+		Cond      struct {
+			Delay int `xml:"delay,attr"`
+		} `xml:"stCondLst>cond"`
+		Set struct {
+			SpTgt struct {
+				Spid string `xml:"spid,attr"`
+			} `xml:"cBhvr>tgtEl>spTgt"`
+		} `xml:"childTnLst>set"`
+		Effect []struct {
+			CTn struct {
+				Dur int `xml:"dur,attr"`
+			} `xml:"cBhvr>cTn"`
+		} `xml:"childTnLst>animEffect"`
+	} `xml:"cTn"`
+}
+
+// pptxEnterNames는 PowerPoint 등장 효과 번호 → SOML 효과 이름이다 (렌더러의 표를 부르지 않고 따로 적는다).
+var pptxEnterNames = map[int]string{10: "fade", 42: "rise", 53: "zoom", 22: "wipe"}
 
 type xNv struct {
 	CNvPr struct {
+		ID    string `xml:"id,attr"`
 		Name  string `xml:"name,attr"`
 		Descr string `xml:"descr,attr"`
 	} `xml:"cNvPr"`
+	CNvCxnSpPr struct {
+		StCxn  *xCxn `xml:"stCxn"`
+		EndCxn *xCxn `xml:"endCxn"`
+	} `xml:"cNvCxnSpPr"`
 	CNvSpPr struct {
 		TxBox string `xml:"txBox,attr"`
 	} `xml:"cNvSpPr"`
@@ -485,8 +731,17 @@ type xNv struct {
 	} `xml:"nvPr"`
 }
 
+// xCxn은 연결선 끝이 붙은 도형(`cNvPr@id`)과 연결점 번호다.
+type xCxn struct {
+	ID  string `xml:"id,attr"`
+	Idx string `xml:"idx,attr"`
+}
+
 type xXfrm struct {
-	Off struct {
+	Rot   int64  `xml:"rot,attr"`
+	FlipH string `xml:"flipH,attr"`
+	FlipV string `xml:"flipV,attr"`
+	Off   struct {
 		X int64 `xml:"x,attr"`
 		Y int64 `xml:"y,attr"`
 	} `xml:"off"`
@@ -508,9 +763,15 @@ type xColor struct {
 type xFills struct {
 	NoFill   *struct{} `xml:"noFill"`
 	GradFill *struct {
-		Gs []xColor `xml:"gsLst>gs"`
+		Gs   []xColor  `xml:"gsLst>gs"`
+		Path *struct{} `xml:"path"`
 	} `xml:"gradFill"`
 	SolidFill *xColor `xml:"solidFill"`
+	PattFill  *struct {
+		Prst  string `xml:"prst,attr"`
+		FgClr xColor `xml:"fgClr"`
+		BgClr xColor `xml:"bgClr"`
+	} `xml:"pattFill"`
 }
 
 type xTxBody struct {
@@ -531,8 +792,12 @@ type xRunItem struct {
 		B  string `xml:"b,attr"`
 		I  string `xml:"i,attr"`
 		U  string `xml:"u,attr"`
+		// Spc는 자간(1/100pt), Cap은 대문자 표시다.
+		Spc int64  `xml:"spc,attr"`
+		Cap string `xml:"cap,attr"`
 		xFills
-		Latin struct {
+		Highlight *xColor `xml:"highlight"`
+		Latin     struct {
 			Typeface string `xml:"typeface,attr"`
 		} `xml:"latin"`
 		HlinkClick *struct {
@@ -547,18 +812,40 @@ type xObject struct {
 	NvSpPr           *xNv `xml:"nvSpPr"`
 	NvPicPr          *xNv `xml:"nvPicPr"`
 	NvGraphicFramePr *xNv `xml:"nvGraphicFramePr"`
+	NvCxnSpPr        *xNv `xml:"nvCxnSpPr"`
 	SpPr             struct {
 		Xfrm     xXfrm `xml:"xfrm"`
 		PrstGeom struct {
 			Prst string `xml:"prst,attr"`
+			Gd   []struct {
+				Name string `xml:"name,attr"`
+				Fmla string `xml:"fmla,attr"`
+			} `xml:"avLst>gd"`
 		} `xml:"prstGeom"`
+		// CustGeom은 경로 도형의 사용자 지오메트리다 (`shape:custGeom`).
+		CustGeom *struct{} `xml:"custGeom"`
 		xFills
 		Ln *struct {
 			xFills
+			PrstDash struct {
+				Val string `xml:"val,attr"`
+			} `xml:"prstDash"`
+			HeadEnd struct {
+				Type string `xml:"type,attr"`
+			} `xml:"headEnd"`
+			TailEnd struct {
+				Type string `xml:"type,attr"`
+			} `xml:"tailEnd"`
 		} `xml:"ln"`
 	} `xml:"spPr"`
-	Xfrm    xXfrm    `xml:"xfrm"`
-	TxBody  *xTxBody `xml:"txBody"`
+	Xfrm   xXfrm    `xml:"xfrm"`
+	TxBody *xTxBody `xml:"txBody"`
+	// BlipFill은 그림의 채움이다 — SVG 그림이면 blip의 확장에 svgBlip이 있다.
+	BlipFill struct {
+		Blip struct {
+			SvgBlip *struct{} `xml:"extLst>ext>svgBlip"`
+		} `xml:"blip"`
+	} `xml:"blipFill"`
 	Graphic struct {
 		GraphicData struct {
 			Tbl *struct {
@@ -606,6 +893,19 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 			}
 		}
 		s := LayoutSlide{ID: x.CSld.Name}
+		if o := x.ClrMapOvr.Override; o != nil {
+			s.Inverse = o.Bg1 == "dk1" && o.Tx1 == "lt1" && o.Bg2 == "dk2" && o.Tx2 == "lt2"
+		}
+		if t := x.Transition; t != nil {
+			kind := "?"
+			switch {
+			case t.Fade != nil:
+				kind = "fade"
+			case t.Push != nil && t.Push.Dir == "l":
+				kind = "push"
+			}
+			s.Transition = kind + "/" + t.Spd
+		}
 		if bg := x.CSld.Bg; bg != nil {
 			if bg.BgPr.BlipFill != nil {
 				s.Background = "image"
@@ -613,9 +913,44 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 				s.Background = "fill=" + pptxFill(bg.BgPr.xFills, theme)
 			}
 		}
+		// 연결선의 붙은 끝은 도형 번호(`cNvPr@id`)로 적혀 있다 — 트리에는 이름으로 되돌려 싣는다.
+		names := map[string]string{}
 		for _, obj := range x.CSld.SpTree.Items {
-			n, ok := pptxNode(obj, theme, links)
+			for _, nv := range []*xNv{obj.NvSpPr, obj.NvPicPr, obj.NvGraphicFramePr, obj.NvCxnSpPr} {
+				if nv != nil {
+					names[nv.CNvPr.ID] = nv.CNvPr.Name
+				}
+			}
+		}
+		// 등장은 대상 도형 번호로 객체에 붙는다.
+		enters := map[string]string{}
+		if x.Timing != nil {
+			for _, e := range x.Timing.Effects {
+				name, ok := pptxEnterNames[e.CTn.PresetID]
+				if !ok || e.CTn.PresetCls != "entr" {
+					name = fmt.Sprintf("preset%d", e.CTn.PresetID)
+				}
+				dur := 0
+				if len(e.CTn.Effect) > 0 {
+					dur = e.CTn.Effect[0].CTn.Dur
+				}
+				enters[e.CTn.Set.SpTgt.Spid] = fmt.Sprintf("enter=%s@%d+%d", name, e.CTn.Cond.Delay, dur)
+			}
+		}
+		for _, obj := range x.CSld.SpTree.Items {
+			n, ok := pptxNode(obj, theme, links, names)
 			if ok {
+				for _, nv := range []*xNv{obj.NvSpPr, obj.NvPicPr, obj.NvGraphicFramePr, obj.NvCxnSpPr} {
+					if nv == nil {
+						continue
+					}
+					if e, ok := enters[nv.CNvPr.ID]; ok {
+						if n.Extra != "" {
+							n.Extra += " "
+						}
+						n.Extra += e
+					}
+				}
 				s.Nodes = append(s.Nodes, n)
 			}
 		}
@@ -624,7 +959,7 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 	return slides, nil
 }
 
-func pptxNode(obj xObject, theme soml.Theme, links map[string]string) (LayoutNode, bool) {
+func pptxNode(obj xObject, theme soml.Theme, links map[string]string, names map[string]string) (LayoutNode, bool) {
 	var n LayoutNode
 	var nv *xNv
 	xfrm := obj.SpPr.Xfrm
@@ -635,6 +970,9 @@ func pptxNode(obj xObject, theme soml.Theme, links map[string]string) (LayoutNod
 			n.Kind = "textbox"
 		} else {
 			n.Kind = "shape:" + obj.SpPr.PrstGeom.Prst
+			if obj.SpPr.CustGeom != nil {
+				n.Kind = "shape:custGeom"
+			}
 			n.Fill = pptxFill(obj.SpPr.xFills, theme)
 			n.Line = "?"
 			if obj.SpPr.Ln != nil {
@@ -647,6 +985,9 @@ func pptxNode(obj xObject, theme soml.Theme, links map[string]string) (LayoutNod
 	case "pic":
 		nv = obj.NvPicPr
 		n.Kind = "pic"
+		if obj.BlipFill.Blip.SvgBlip != nil {
+			n.Extra = "svg"
+		}
 	case "graphicFrame":
 		nv = obj.NvGraphicFramePr
 		xfrm = obj.Xfrm
@@ -662,6 +1003,40 @@ func pptxNode(obj xObject, theme soml.Theme, links map[string]string) (LayoutNod
 				}
 			}
 		}
+	case "cxnSp":
+		nv = obj.NvCxnSpPr
+		n.Kind = "connector:" + obj.SpPr.PrstGeom.Prst
+		n.Line = "?"
+		var extra []string
+		adj := "50000"
+		for _, gd := range obj.SpPr.PrstGeom.Gd {
+			if gd.Name == "adj1" {
+				adj = strings.TrimPrefix(gd.Fmla, "val ")
+			}
+		}
+		x := obj.SpPr.Xfrm
+		extra = append(extra, fmt.Sprintf("rot=%d", x.Rot/60000))
+		if x.FlipH == "1" {
+			extra = append(extra, "flipH")
+		}
+		if x.FlipV == "1" {
+			extra = append(extra, "flipV")
+		}
+		extra = append(extra, "adj="+adj)
+		glue := func(which string, c *xCxn) string {
+			if c == nil {
+				return which + "=-"
+			}
+			return which + "=" + strconv.Quote(names[c.ID]) + ":" + c.Idx
+		}
+		if nv != nil {
+			extra = append(extra, glue("from", nv.CNvCxnSpPr.StCxn), glue("to", nv.CNvCxnSpPr.EndCxn))
+		}
+		if ln := obj.SpPr.Ln; ln != nil {
+			n.Line = pptxFill(ln.xFills, theme)
+			extra = append(extra, "dash="+ln.PrstDash.Val, "ends="+ln.HeadEnd.Type+"/"+ln.TailEnd.Type)
+		}
+		n.Extra = strings.Join(extra, " ")
 	default:
 		// nvGrpSpPr · grpSpPr — 트리의 뿌리 속성이지 객체가 아니다.
 		return n, false
@@ -711,6 +1086,9 @@ func pptxParas(paras []LayoutPara, body xTxBody, prefix string, theme soml.Theme
 					underline: item.RPr.U != "" && item.RPr.U != "none",
 					color:     pptxColor(item.RPr.xFills, theme),
 					link:      link,
+					tracking:  item.RPr.Spc,
+					upper:     item.RPr.Cap == "all",
+					mark:      pptxHighlight(item.RPr.Highlight, theme),
 				}))
 			}
 		}
@@ -754,11 +1132,22 @@ func pptxColor(f xFills, theme soml.Theme) string {
 		for i, gs := range f.GradFill.Gs {
 			stops[i] = pptxSolid(&gs, theme)
 		}
+		if f.GradFill.Path != nil {
+			return "radial(" + strings.Join(stops, ",") + ")"
+		}
 		return "gradient(" + strings.Join(stops, ",") + ")"
 	case f.SolidFill != nil:
 		return pptxSolid(f.SolidFill, theme)
 	}
 	return "?"
+}
+
+// pptxHighlight는 런의 `a:highlight` 색이다 (없으면 빈 문자열).
+func pptxHighlight(c *xColor, theme soml.Theme) string {
+	if c == nil {
+		return ""
+	}
+	return pptxSolid(c, theme)
 }
 
 // pptxSolid는 색 요소 하나를 토큰 이름(`schemeClr` → 테마 표의 Ref)이나 `#RRGGBB`로 되돌린다.
@@ -780,6 +1169,18 @@ func pptxSolid(c *xColor, theme soml.Theme) string {
 func pptxFill(f xFills, theme soml.Theme) string {
 	if f.NoFill != nil {
 		return "none"
+	}
+	if p := f.PattFill; p != nil {
+		// 되돌림 표는 렌더러의 표를 빌리지 않는다 — 같은 표로 쓰고 읽으면 틀린 짝도 맞아 보인다.
+		kind, ok := map[string]string{
+			"horz": "horizontal", "vert": "vertical", "upDiag": "diagonal-up", "dnDiag": "diagonal-down",
+			"wdUpDiag": "wide-diagonal-up", "wdDnDiag": "wide-diagonal-down", "cross": "cross",
+			"diagCross": "diagonal-cross", "pct20": "dots",
+		}[p.Prst]
+		if !ok {
+			kind = "prst=" + p.Prst
+		}
+		return "pattern(" + kind + "," + pptxSolid(&p.FgClr, theme) + "," + pptxSolid(&p.BgClr, theme) + ")"
 	}
 	return pptxColor(f, theme)
 }

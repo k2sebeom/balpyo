@@ -43,6 +43,7 @@ var relRefTypes = map[string]string{
 	"notesMasterId": "notesMaster",
 	"sldLayoutId":   "slideLayout",
 	"blip":          "image",
+	"svgBlip":       "image",
 	"hlinkClick":    "hyperlink",
 }
 

@@ -1,0 +1,33 @@
+# slide 1 lifecycle
+textbox "h2 s0.0"
+  ¶ start | "Instance lifecycle"{heading 27pt b fg}
+shape:roundRect "shape s0.1.0" fill=surface line=muted
+  ¶ center | "pending"{body 18pt fg}
+shape:roundRect "shape s0.1.1" fill=accent3 line=muted
+  ¶ center | "running"{body 18pt bg}
+shape:roundRect "shape s0.1.2" fill=surface line=muted
+  ¶ center | "stopped"{body 18pt fg}
+shape:ellipse "shape s0.2.0" fill=surface line=muted
+  ¶ center | "terminated"{body 18pt fg}
+connector:straightConnector1 "connector s0.3" line=muted rot=0 adj=50000 from="shape s0.1.0":3 to="shape s0.1.1":1 dash=solid ends=none/triangle
+connector:straightConnector1 "connector s0.4" line=accent1 rot=0 adj=50000 from="shape s0.1.1":3 to="shape s0.1.2":1 dash=dash ends=none/triangle
+connector:curvedConnector3 "connector s0.5" line=muted rot=90 adj=-12350000 from="shape s0.1.2":0 to="shape s0.1.0":0 dash=dash ends=none/triangle
+connector:bentConnector2 "connector s0.6" line=muted rot=90 flipV adj=50000 from="shape s0.1.1":2 to="shape s0.2.0":2 dash=solid ends=none/triangle
+textbox "connector-label s0.3"
+  ¶ center | "boot"{body 13.5pt muted}
+textbox "connector-label s0.4"
+  ¶ center | "stop"{body 13.5pt muted}
+textbox "connector-label s0.5"
+  ¶ center | "start"{body 13.5pt muted}
+textbox "connector-label s0.6"
+  ¶ center | "terminate"{body 13.5pt muted}
+# slide 2 icons
+pic "image s1.0"
+shape:chevron "shape s1.1" fill=surface line=muted
+shape:rect "shape s1.2" fill=surface line=muted
+shape:diamond "shape s1.3" fill=surface line=muted
+connector:straightConnector1 "connector s1.4" line=muted rot=0 flipV adj=50000 from="image s1.0":3 to=- dash=solid ends=oval/none enter=wipe@150+600
+connector:bentConnector3 "connector s1.5" line=accent1 rot=0 flipV adj=50000 from=- to="shape s1.2":1 dash=solid ends=none/triangle enter=wipe@240+600
+connector:bentConnector3 "connector s1.6" line=muted rot=0 adj=50000 from=- to="shape s1.3":1 dash=dash ends=triangle/triangle enter=fade@330+600
+textbox "connector-label s1.5" enter=fade@240+600
+  ¶ center | "https"{body 13.5pt muted}

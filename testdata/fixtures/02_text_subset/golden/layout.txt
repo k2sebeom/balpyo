@@ -48,7 +48,7 @@ textbox "p s4.3"
 textbox "h2 s5.0"
   ¶ start | "모르는 variant는 기본 외관으로 폴백한다"{heading 27pt b fg}
 textbox "text s5.1"
-  ¶ start | "KICKER — 작고 굵은 강조색"{body 13.5pt b accent1}
+  ¶ start | "KICKER — 작고 굵은 강조색"{body 13.5pt b tracking=1.35pt upper accent1}
 textbox "p s5.2"
   ¶ start | "lead — 본문보다 큰 도입 문단이다."{body 24pt fg}
 # slide 7 list-appearance
@@ -63,3 +63,10 @@ textbox "ul s6.1.1"
 textbox "ol s6.2"
   ¶ center ol | "정렬도 목록 단위다"{body 18pt fg}
   ¶ center ol | "번호는 엔진이 그린다"{body 18pt fg}
+# slide 8 runs
+textbox "h1 s7.0"
+  ¶ start | "750"{heading 42pt b fg} · "+"{heading 24pt b fg}
+textbox "p s7.1"
+  ¶ start | "청구 단위 1"{body 18pt fg} · "초"{body 12pt muted}
+textbox "p s7.2"
+  ¶ start | "EC2는 "{body 18pt fg} · "몇 분 안에 띄우고 "{body 18pt fg mark=accent4} · "초 단위로"{body 18pt b fg mark=accent4} · " 내는"{body 18pt fg mark=accent4} · " 가상 서버다."{body 18pt fg}

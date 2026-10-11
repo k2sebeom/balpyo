@@ -85,8 +85,14 @@ type Result struct {
 // 지오메트리를 인자로 받는다 — 좌표를 쓰는 렌더러가 어느 것인지 이 표에 드러나고, 좌표 없이
 // 만든 렌더러가 좌표가 필요한 덱을 만나면 렌더러 쪽에서 멈춘다 (pptx.Renderer.checkGeometry).
 func Renderers(g *geom.Geometry) map[render.Target]render.Renderer {
+	html := web.New()
+	if g != nil {
+		// 잰 빌드의 웹은 연결선을 굽는다 — 끝점이 잰 rect에서 나온다 (연결선은 흐름에 끼지 않으므로
+		// 측정한 HTML과 배치가 같다).
+		html = web.NewWithBoxes(g.RouteBox)
+	}
 	return map[render.Target]render.Renderer{
-		render.TargetHTML: web.New(),
+		render.TargetHTML: html,
 		render.TargetPPTX: pptx.NewWithGeometry(g),
 	}
 }
@@ -176,9 +182,15 @@ func LoadDeck(opts Options) (*soml.Deck, soml.Diagnostics, error) {
 			// justify도 layout처럼 원문·구간을 함께 옮긴다 — 어휘 검사는 core다.
 			Justify:     soml.BoxJustify(doc.Justify),
 			JustifySpan: doc.JustifySpan,
-			Notes:       doc.Notes,
-			Content:     doc.Content,
-			Tokens:      doc.Tokens,
+			Enter:       doc.Enter,
+			EnterSpan:   doc.EnterSpan,
+			// 전환도 원문 그대로 옮긴다 — 어휘 · 테마의 기본값은 core가 본다.
+			Invert:         doc.Invert,
+			Transition:     soml.SlideTransition(doc.Transition),
+			TransitionSpan: doc.TransitionSpan,
+			Notes:          doc.Notes,
+			Content:        doc.Content,
+			Tokens:         doc.Tokens,
 		})
 	}
 
@@ -273,11 +285,51 @@ func needsGeometry(deck *soml.Deck, targets []render.Target, checkLayout bool) b
 	if len(geom.Refs(deck)) == 0 && !deckHasChrome(deck) {
 		return false
 	}
-	if checkLayout {
+	if checkLayout || deckHasConnectors(deck) || deckHasMeasuredInk(deck) {
+		// 연결선의 끝점과 잰 박스로 그리는 도형(cube · 괄호)의 그림은 잰 rect에서 나오므로 HTML만 내는
+		// 빌드도 잰다.
 		return true
 	}
 	for _, target := range targets {
 		if target == render.TargetPPTX {
+			return true
+		}
+	}
+	return false
+}
+
+// deckHasConnectors는 연결선이 있는 슬라이드가 있는지다 (연결선은 슬라이드 직속뿐이다).
+func deckHasConnectors(deck *soml.Deck) bool {
+	for _, slide := range deck.Slides {
+		for _, node := range slide.Content {
+			if elem, ok := node.(*soml.Element); ok && elem.Name == soml.ConnectorElement {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// deckHasMeasuredInk는 잰 박스로 그림을 그리는 도형이 있는지다 (web.ShapeDrawnFromMeasuredBox).
+func deckHasMeasuredInk(deck *soml.Deck) bool {
+	var walk func(nodes []soml.Node) bool
+	walk = func(nodes []soml.Node) bool {
+		for _, node := range nodes {
+			elem, ok := node.(*soml.Element)
+			if !ok {
+				continue
+			}
+			if s := elem.ShapeStyle(); s != nil && web.ShapeDrawnFromMeasuredBox(*s) {
+				return true
+			}
+			if walk(elem.Children) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, slide := range deck.Slides {
+		if walk(slide.Content) {
 			return true
 		}
 	}
@@ -310,7 +362,9 @@ func deckHasChrome(deck *soml.Deck) bool {
 // 흐름을 읽는 것만으로 드러나는 쪽이 낫다.
 // measurer가 nil이면 geom.Measure다 — 브라우저를 한 번 띄우고 닫는다.
 func measure(deck *soml.Deck, measurer Measurer) (*geom.Geometry, error) {
-	files, err := web.New().Render(deck)
+	// 측정용 HTML에는 연결선이 없다 — 끝점이 이 측정의 결과에서 나온다. 연결선은 흐름에 끼지 않으므로
+	// 사용자가 받는 HTML(연결선을 구운 것)과 배치가 같다.
+	files, err := web.NewForMeasurement().Render(deck)
 	if err != nil {
 		return nil, fmt.Errorf("cannot prepare geometry pass input: %w", err)
 	}

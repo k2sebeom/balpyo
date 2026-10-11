@@ -300,7 +300,7 @@ func TestParseErrors(t *testing.T) {
 			// 가까운 이름이 있으면 후보를 하나 말한다.
 			name: "어휘 밖 태그는 부모의 자식 어휘를 싣는다",
 			src:  "<slide><h6>제목</h6></slide>",
-			want: []string{"1:9 unknown tag <h6> — did you mean <h3>? (tags available inside <slide>: <text>, <shape>, <image>, <table>, <chart>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
+			want: []string{"1:9 unknown tag <h6> — did you mean <h3>? (tags available inside <slide>: <text>, <shape>, <image>, <table>, <chart>, <connector>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
 		},
 		{
 			// `<ul>` 안의 오타에 답은 `<li>` 하나다.
@@ -320,7 +320,7 @@ func TestParseErrors(t *testing.T) {
 			// 습관이라 편집 거리 대신 별칭이 답한다 (거리로는 `<col>`에 닿는다).
 			name: "문단 안의 어휘 밖 태그",
 			src:  "<slide><p>a <bold>b</bold></p></slide>",
-			want: []string{"1:14 unknown tag <bold> — did you mean <strong>? (tags available inside <p>: <strong>, <em>, <code>, <a>, <br>, <span>)"},
+			want: []string{"1:14 unknown tag <bold> — did you mean <strong>? (tags available inside <p>: <strong>, <em>, <code>, <a>, <br>, <span>, <mark>)"},
 		},
 		{
 			// 자리 밖 후보는 거리 1까지만 — 멀리 있는 자리 밖 이름은 엉뚱한 답이 되기 쉽다.
@@ -342,12 +342,12 @@ func TestParseErrors(t *testing.T) {
 			// 속성 이름의 오타도 후보를 얻는다 — 목록은 그 태그의 속성이다.
 			name: "속성 이름의 오타",
 			src:  `<slide layot="title"></slide>`,
-			want: []string{"1:8 unknown attribute layot on <slide> — did you mean layout? (available attributes: layout, id, skip, justify)"},
+			want: []string{"1:8 unknown attribute layot on <slide> — did you mean layout? (available attributes: layout, id, skip, justify, enter, transition, invert)"},
 		},
 		{
 			name: "알 수 없는 속성",
 			src:  `<slide reveal="fade"></slide>`,
-			want: []string{"1:8 unknown attribute reveal on <slide> (available attributes: layout, id, skip, justify)"},
+			want: []string{"1:8 unknown attribute reveal on <slide> (available attributes: layout, id, skip, justify, enter, transition, invert)"},
 		},
 		{
 			name: "<note>에는 속성이 없다",

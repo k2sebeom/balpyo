@@ -46,6 +46,96 @@
     visibility: visible;
   }
 
+  /* Entrance — elements with an entrance wait at their start state **only in the presenter view**,
+     until the runtime marks the slide as entered; then they transition to where they already are.
+     The same gate as stepwise reveal: the document view, measure view, overview and print all see
+     the end state, so the geometry pass measures the same layout. The effects use the individual
+     translate / scale properties, not transform, so a rotated shape keeps its rotation. The delay
+     of each element comes from its data-balpyo-enter-delay (set by the runtime) and the duration
+     from the theme's motion token. */
+  html[data-balpyo-view="presenter"] [data-balpyo-enter] {
+    transition-property: opacity, translate, scale, clip-path;
+    transition-duration: var(--balpyo-motion-duration, 600ms);
+    transition-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter] {
+    opacity: 0;
+    transition: none;
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="rise"] { translate: 0 24px; }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="zoom"] { scale: 0.9; }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="wipe"] {
+    opacity: 1;
+    clip-path: inset(0 100% 0 0);
+  }
+  /* Drawn connectors: a solid line has pathLength="1" and its dash offset runs from 1 to 0; a
+     dashed line (its dash pattern is taken) is wiped in from the side it starts at. Their arrow
+     and dot markers fade in as the line arrives (they carry their own delay). */
+  html[data-balpyo-view="presenter"] [data-balpyo-enter^="draw"] {
+    opacity: 1;
+    transition-property: stroke-dashoffset, clip-path;
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide [data-balpyo-enter="draw"] { stroke-dasharray: 1; }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw"] {
+    opacity: 1;
+    stroke-dashoffset: 1;
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw-left"] { opacity: 1; clip-path: inset(0 100% 0 0); }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw-right"] { opacity: 1; clip-path: inset(0 0 0 100%); }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw-top"] { opacity: 1; clip-path: inset(0 0 100% 0); }
+  html[data-balpyo-view="presenter"] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter="draw-bottom"] { opacity: 1; clip-path: inset(100% 0 0 0); }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-instant [data-balpyo-enter] { transition: none; }
+  @media (prefers-reduced-motion: reduce) {
+    html[data-balpyo-view="presenter"] .balpyo-slide [data-balpyo-enter] {
+      opacity: 1;
+      translate: none;
+      scale: none;
+      clip-path: none;
+      stroke-dashoffset: 0;
+      transition: none;
+    }
+  }
+
+  /* Slide transition — only in the presenter view, only when stepping with next / previous (the
+     runtime sets the classes; deep links, the overview, print and the measure view switch slides
+     without one). fade: the arriving slide comes in from transparent. push: the arriving slide
+     slides in from one side while the leaving slide, kept visible for the length of the
+     transition, slides out to the other. The duration comes from the slide's markup. */
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-moving {
+    transition-property: opacity, translate;
+    transition-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-leaving { visibility: visible; }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-from-fade { opacity: 0; }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-from-right { translate: 100% 0; }
+  html[data-balpyo-view="presenter"] .balpyo-slide.balpyo-viewer-from-left { translate: -100% 0; }
+
+  /* Flowing connectors — the dashes run from start to end, one dash period every 1.2s, only in the
+     presenter view (everywhere else, PPTX included, the same dashed line stands still). */
+  @keyframes balpyo-flow { to { stroke-dashoffset: calc(-1 * var(--balpyo-flow-period, 14px)); } }
+  html[data-balpyo-view="presenter"] .balpyo-viewer-active [data-balpyo-flow] {
+    animation: balpyo-flow 1.2s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html[data-balpyo-view="presenter"] .balpyo-viewer-active [data-balpyo-flow] { animation: none; }
+  }
+
+  /* Progress bar — a thin line at the top of the screen in the presenter view, as wide as the
+     share of the deck shown so far. It is viewer chrome (like the control bar), not slide
+     content: it does not exist in the document view, print, the overview or the measure view.
+     Its color borrows the deck's first accent so the line belongs to the talk it measures. */
+  .balpyo-viewer-progress { display: none; }
+  html[data-balpyo-view="presenter"] .balpyo-viewer-progress {
+    display: block;
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 3px;
+    background: var(--balpyo-color-accent1, #888);
+    transition: width 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+    z-index: 2;
+  }
+
   /* The control bar is visible in the overview too — for someone who does not know the
      keyboard, it is the way out of the overview. A selector that ignores the value
      (html[data-balpyo-view]) is not used because of the measure view: if the chrome were drawn
@@ -175,6 +265,15 @@
        presenter-view gate and comes later, so it wins as is (the same technique as the slide
        restore above). */
     [data-balpyo-reveal], html[data-balpyo-view] [data-balpyo-reveal] { visibility: visible; }
+    /* Entrances are at their end state on paper — every slide prints, not only the entered one.
+       Same specificity as the presenter-view gate, later in the sheet. */
+    html[data-balpyo-view] .balpyo-slide:not(.balpyo-viewer-entered) [data-balpyo-enter] {
+      opacity: 1;
+      translate: none;
+      scale: none;
+      clip-path: none;
+      stroke-dashoffset: 0;
+    }
     /* Do not create an extra blank page after the last slide. */
     .balpyo-slide:last-child, html[data-balpyo-view] .balpyo-slide:last-child { break-after: auto; }
     /* The overview's active border does not carry over to paper (the border rule is one step
@@ -182,5 +281,6 @@
     .balpyo-slide.balpyo-viewer-active,
     html[data-balpyo-view] .balpyo-slide.balpyo-viewer-active { outline-color: transparent; }
     .balpyo-viewer-bar, html[data-balpyo-view] .balpyo-viewer-bar,
-    .balpyo-viewer-notes, html[data-balpyo-view] .balpyo-viewer-notes { display: none; }
+    .balpyo-viewer-notes, html[data-balpyo-view] .balpyo-viewer-notes,
+    .balpyo-viewer-progress, html[data-balpyo-view] .balpyo-viewer-progress { display: none; }
   }

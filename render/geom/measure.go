@@ -100,6 +100,10 @@ type boxMeasurement struct {
 const measureScript = `(() => {
   // 측정 뷰를 켠다 — 회전 선언이 무효화된 배치에서 rect를 읽는다 (위 주석).
   %s;
+  // 진행 중인 전환을 끝낸다 — 뷰어 런타임은 열리자마자 발표자 뷰에서 등장(enter)을 시작하고, 뷰를 바꿔도
+  // 이미 시작된 전환은 남을 수 있다 (전환은 캐스케이드에서 !important보다 위다). 등장의 시작 상태
+  // (떠오르기의 24px 등)를 재면 빌드마다 좌표가 달라진다. 취소하면 끝 상태 — 배치 그대로 — 가 남는다.
+  document.getAnimations().forEach((a) => a.cancel());
   try {
     const lineRects = (el) => {
       const range = document.createRange();
@@ -244,6 +248,12 @@ func (s *Session) Measure(deck *soml.Deck, htmlPath string) (*Geometry, error) {
 		return nil, fmt.Errorf("%s: %w", htmlPath, err)
 	}
 	g.MissingFonts = missing
+	// 대체 그림은 좌표를 다 읽은 **뒤에** 그린다 — 그리는 동안 문서가 바뀐다.
+	fallbacks, err := s.svgFallbacks(deck)
+	if err != nil {
+		return nil, err
+	}
+	g.Fallbacks = fallbacks
 	return g, nil
 }
 

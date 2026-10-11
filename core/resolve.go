@@ -80,7 +80,7 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 		r.layout = slide.Layout
 		// 크롬 확정도 layout이 정해진 **뒤**다 — 제외 규칙의 입력이 확정된 레이아웃이라서,
 		// 어휘 밖 이름이 content로 폴백한 슬라이드도 폴백된 레이아웃으로 판정된다.
-		slide.Chrome = slideChrome(chromePlan, pkg, slide)
+		slide.Chrome = slideChrome(chromePlan, pkg, slide, len(deck.Slides))
 		// 배경도 확정 레이아웃의 것이다. 값을 복사해 싣는 이유는 확정 모델이 슬라이드마다 독립이어야
 		// 한다는 것이다 — 테마의 선언 값을 슬라이드들이 나눠 가리키면 한 슬라이드를 고친 코드가 전부를 고친다.
 		if bg := pkg.backgrounds.For(slide.Layout); bg != nil {
@@ -96,6 +96,10 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 		// 정하고(slideUsesSlots), 테마가 못 받는 슬롯은 실리지 않으므로(resolveSlot) 그
 		// 슬라이드는 흐름 모드로 판정되어 justify가 유효해진다.
 		r.slideJustify(slide)
+		r.resolveConnectors()
+		// 등장은 콘텐츠가 다 확정된 뒤에 센다 — 차트가 펼쳐진 트리에서 문서 순서가 정해진다.
+		r.resolveEntrances(slide)
+		r.resolveTransition(slide)
 		// 진단은 파일 안에서 소스 순서로 낸다 — 저자가 위에서 아래로 고칠 수 있게. 역할을
 		// 먼저 해석하고 나머지 속성을 훑기 때문에 발견 순서가 소스 순서와 어긋난다.
 		sort.SliceStable(r.diags, func(i, j int) bool {
@@ -131,6 +135,11 @@ type resolver struct {
 	// 한다). 상태가 resolver에 있는 것이 곧 검사 범위가 슬라이드라는 뜻이다 — 근거는
 	// resolver.shapeID의 주석에 있다.
 	ids map[string]soml.Span
+	// idElems는 같은 이름의 요소다 — 연결선이 `from`·`to`를 푸는 표다 (resolveConnectors).
+	idElems map[string]*soml.Element
+	// connectors는 이 슬라이드의 연결선이다 (문서 순서). 슬라이드를 다 읽은 **뒤**에 푼다 — 뒤에서
+	// 선언한 상자도 가리킬 수 있어야 한다.
+	connectors []*soml.Element
 	// revealTurn은 이 슬라이드에서 지금까지 `reveal`을 가진 리스트 항목의 수다 — 값 없는
 	// `reveal`이 받을 차례다 (resolveReveal). 상태가 resolver에 있는 것이 곧 스텝 번호의
 	// 범위가 슬라이드라는 뜻이다 (ids와 같은 태도).
@@ -232,6 +241,12 @@ func (r *resolver) node(node soml.Node, parent *soml.Element) {
 	}
 	r.resolveLayout(elem, parent)
 	r.resolveSlot(elem, parent)
+	if elem.Name == soml.ConnectorElement {
+		// 연결선은 슬라이드를 다 읽은 뒤에 푼다 (resolveConnectors) — 앞에서 아직 보지 않은 `id`를
+		// 가리킬 수 있다. void이므로 아래 순회가 데려갈 자식이 없다.
+		r.connectors = append(r.connectors, elem)
+		return
+	}
 	if elem.Name == soml.ChartElement {
 		// 여덟 번째 갈래이고 **유일하게 트리를 바꾸는** 갈래다: `<chart>`는 확정
 		// 값을 얻는 대신 도형·텍스트의 하위 트리로 **펼쳐진다**. 끝나면 elem은 `<shape>`이므로
@@ -675,13 +690,20 @@ func (r *resolver) colorFunc(name, raw string, span soml.Span) (soml.Color, bool
 	switch fn {
 	case "gradient":
 		return r.gradientFunc(name, inner, span, raw)
+	case "radial":
+		return r.radialFunc(name, inner, span, raw)
 	case string(soml.ModShade), string(soml.ModTint):
 		return r.variantFunc(soml.ColorModKind(fn), name, inner, span, raw)
 	case string(soml.ModAlpha):
 		return r.alphaFunc(name, inner, span, raw)
+	case patternFunc:
+		// 무늬는 색이 아니라 두 색을 가진 채움이다 — 도형 fill이 colorValue보다 먼저 가로챈다 (shapeFill).
+		// 여기까지 왔다면 무늬를 받지 않는 자리다.
+		r.errorf(span, "%s cannot be a pattern (%q) — pattern(…) is only a shape fill", name, raw)
+		return soml.Color{}, false
 	}
-	r.errorf(span, "unknown color function %q%s (available functions: gradient, shade, tint, alpha) — %q",
-		fn, didYouMean(fn, "gradient, shade, tint, alpha"), raw)
+	r.errorf(span, "unknown color function %q%s (available functions: gradient, radial, shade, tint, alpha) — %q",
+		fn, didYouMean(fn, "gradient, radial, shade, tint, alpha"), raw)
 	return soml.Color{}, false
 }
 
@@ -699,16 +721,7 @@ func (r *resolver) gradientFunc(name, inner string, span soml.Span, raw string) 
 		r.errorf(span, "gradient needs at least two colors (%q) — e.g. gradient(accent1 surface), or with an angle gradient(accent1 surface, 45deg)", raw)
 		return soml.Color{}, false
 	}
-	ok := true
-	stops := make([]soml.Color, 0, len(fields))
-	for _, f := range fields {
-		c, cok := r.simpleColor(name, f, span)
-		if !cok {
-			ok = false
-			continue
-		}
-		stops = append(stops, c)
-	}
+	stops, ok := r.gradientStops(name, fields, span)
 	angle := gradientDefaultAngle
 	if anglePart != "" {
 		a, aok := r.gradientAngle(anglePart, span, raw)
@@ -722,6 +735,66 @@ func (r *resolver) gradientFunc(name, inner string, span soml.Span, raw string) 
 		return soml.Color{}, false
 	}
 	return soml.GradientColor(stops, angle), true
+}
+
+// gradientStops는 그라디언트의 스톱들이다 — 스톱은 단색이고, `/퍼센트`로 불투명도를 받는다 (`bg/0`은 투명한 bg).
+// 불투명도는 alpha 변형과 같은 확정 값이 된다 (PPTX 스톱의 `a:alpha`).
+func (r *resolver) gradientStops(name string, fields []string, span soml.Span) ([]soml.Color, bool) {
+	ok := true
+	stops := make([]soml.Color, 0, len(fields))
+	for _, f := range fields {
+		base, pct, hasPct := strings.Cut(f, "/")
+		c, cok := r.simpleColor(name, base, span)
+		if !cok {
+			ok = false
+			continue
+		}
+		if hasPct {
+			n, err := strconv.ParseFloat(pct, 64)
+			if err != nil || n < 0 || n > 100 || strings.HasSuffix(pct, "%") {
+				r.errorf(span, "a gradient stop opacity is a percentage from 0 to 100 without %% (%q) — e.g. bg/0 or fg/40", f)
+				ok = false
+				continue
+			}
+			c = soml.VariantColor(c, soml.ModAlpha, n/100)
+		}
+		stops = append(stops, c)
+	}
+	return stops, ok
+}
+
+// radialFunc는 `radial(색… [, at X% Y%])`다 — 첫 색이 중심, 마지막 색이 가장 먼 모서리다.
+func (r *resolver) radialFunc(name, inner string, span soml.Span, raw string) (soml.Color, bool) {
+	colorPart, atPart, hasAt := strings.Cut(inner, ",")
+	fields := strings.Fields(colorPart)
+	if len(fields) < 2 {
+		r.errorf(span, "radial needs at least two colors (%q) — e.g. radial(accent1 bg/0), or with a center radial(accent1 bg/0, at 20%% 80%%)", raw)
+		return soml.Color{}, false
+	}
+	stops, ok := r.gradientStops(name, fields, span)
+	cx, cy := 50.0, 50.0
+	if hasAt {
+		parts := strings.Fields(strings.TrimSpace(atPart))
+		valid := len(parts) == 3 && parts[0] == "at"
+		var x, y float64
+		if valid {
+			var errX, errY error
+			x, errX = strconv.ParseFloat(strings.TrimSuffix(parts[1], "%"), 64)
+			y, errY = strconv.ParseFloat(strings.TrimSuffix(parts[2], "%"), 64)
+			valid = errX == nil && errY == nil && strings.HasSuffix(parts[1], "%") && strings.HasSuffix(parts[2], "%") &&
+				x >= 0 && x <= 100 && y >= 0 && y <= 100
+		}
+		if !valid {
+			r.errorf(span, "a radial center has the form `at X%% Y%%` with 0–100%% (%q) — e.g. radial(accent1 bg/0, at 20%% 80%%)", raw)
+			ok = false
+		} else {
+			cx, cy = x, y
+		}
+	}
+	if !ok {
+		return soml.Color{}, false
+	}
+	return soml.RadialColor(stops, cx, cy), true
 }
 
 // gradientDefaultAngle은 각도를 생략한 그라디언트의 CSS 각도다 (위→아래).

@@ -54,6 +54,7 @@ func TestLoadBuiltinMinimal(t *testing.T) {
 		Shadows: []soml.ShadowToken{
 			{Name: "soft", Dist: 4, Dir: 90, Blur: 16, Color: soml.TokenColor("fg"), Alpha: 0.15},
 		},
+		Motion: &soml.MotionTokens{Duration: 600, Stagger: 90, Delay: 150, TransitionDuration: 600},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("로드된 minimal 토큰이 기대와 다르다:\ngot  %+v\nwant %+v", got, want)
@@ -102,7 +103,7 @@ func TestLoadBuiltinComponents(t *testing.T) {
 
 	wantTextVariants := []textVariant{
 		{name: "kicker", patch: textPatch{size: ptr(18.0), weight: ptr(700),
-			color: ptr(soml.TokenColor("accent1"))}},
+			color: ptr(soml.TokenColor("accent1")), tracking: ptr(0.1), textCase: ptr(soml.CaseUpper)}},
 		{name: "lead", patch: textPatch{size: ptr(32.0)}},
 	}
 	if !reflect.DeepEqual(comps.textVariants, wantTextVariants) {
@@ -335,6 +336,64 @@ func TestLoadComponentsSlotDefaults(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := loadTheme(memTheme(fullTokens, withDefaults(tc.defaults)), "t")
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("에러 = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// 자간·대소문자는 역할·컴포넌트 기본값·variant가 같은 진단으로 받는다. `none`은 아래 단의 upper를
+// 끄는 패치이고 확정 값으로는 원문 그대로(빈 값)다.
+func TestLoadComponentsTypography(t *testing.T) {
+	withDefaults := func(defaults string) string {
+		return strings.Replace(fullComponents, `"text": { "roles": [`,
+			`"text": { "componentDefaults": [`+defaults+`], "roles": [`, 1)
+	}
+	theme, err := loadTheme(memTheme(fullTokens, withDefaults(`{"tag":"h3","tracking":0.2,"case":"upper"},{"tag":"p","case":"none"}`)), "t")
+	if err != nil {
+		t.Fatalf("유효한 자간·대소문자가 실패했다: %v", err)
+	}
+	comps := theme.components
+	if got := comps.textComponentDefaults["h3"]; got.tracking == nil || *got.tracking != 0.2 || got.textCase == nil || *got.textCase != soml.CaseUpper {
+		t.Errorf("h3 기본값 = %+v, want tracking 0.2 · upper", got)
+	}
+	if got := comps.textComponentDefaults["p"]; got.textCase == nil || *got.textCase != "" {
+		t.Errorf("p 기본값 = %+v, want case none → 빈 값", got)
+	}
+	for _, tc := range []struct{ name, defaults, want string }{
+		{"자간 범위 밖", `{"tag":"h3","tracking":0.8}`, "tracking 0.8 is out of range"},
+		{"모르는 대소문자", `{"tag":"h3","case":"lower"}`, `case "lower" is unknown (available values: upper, none)`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := loadTheme(memTheme(fullTokens, withDefaults(tc.defaults)), "t")
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("에러 = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// 형광펜은 단색 토큰 참조다 — a:highlight는 색 하나만 담으므로 그라디언트는 에러이고, 리터럴은
+// 다른 컴포넌트 색과 같은 진단으로 멈춘다.
+func TestLoadComponentsMark(t *testing.T) {
+	withMark := func(mark string) string {
+		return strings.Replace(fullComponents, `"text": { "roles": [`,
+			`"text": { "mark": `+mark+`, "roles": [`, 1)
+	}
+	theme, err := loadTheme(memTheme(fullTokens, withMark(`{"highlight":"tint(accent1, 70%)"}`)), "t")
+	if err != nil {
+		t.Fatalf("유효한 형광펜이 실패했다: %v", err)
+	}
+	if hl := theme.components.markHighlight; hl == nil || hl.Token != "accent1" || hl.Mod == nil {
+		t.Errorf("markHighlight = %+v, want tint(accent1, 70%%)", hl)
+	}
+	for _, tc := range []struct{ name, mark, want string }{
+		{"그라디언트", `{"highlight":"gradient(accent1 fg)"}`, "cannot be a gradient"},
+		{"리터럴", `{"highlight":"#FFEE00"}`, "text.mark highlight"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := loadTheme(memTheme(fullTokens, withMark(tc.mark)), "t")
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("에러 = %v, want %q", err, tc.want)
 			}

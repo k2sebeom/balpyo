@@ -180,7 +180,7 @@ func TestResolveAssetsErrors(t *testing.T) {
 // 경로 문법에서 이미 실패한 `src`는 파일을 찾지 않는다 — 같은 그림에 두 번째 진단을 얹으면
 // 저자가 고칠 곳이 둘로 보인다 (값 층 전체의 정책).
 func TestResolveAssetsSkipsUnresolvedSrc(t *testing.T) {
-	deck, resolveDiags := resolveImageDeck(t, imageSlide(`src="assets/logo.svg"`))
+	deck, resolveDiags := resolveImageDeck(t, imageSlide(`src="assets/anim.gif"`))
 	if len(resolveDiags) != 1 {
 		t.Fatalf("진단 %d개, want 1개: %v", len(resolveDiags), resolveDiags)
 	}

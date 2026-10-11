@@ -334,7 +334,16 @@ func mergeTokensFile(parent, child tokensFile) tokensFile {
 		Space:  mergeNamed(parent.Space, child.Space, func(t spaceTok) string { return t.Name }),
 		Radius: mergeNamed(parent.Radius, child.Radius, func(t radiusTok) string { return t.Name }),
 		Shadow: mergeNamed(parent.Shadow, child.Shadow, func(t shadowTok) string { return t.Name }),
+		// 박자는 싱글톤 절이다 — 자식이 정하면 통째로 자식의 것 (세 수는 한 리듬이다).
+		Motion: firstMotion(child.Motion, parent.Motion),
 	}
+}
+
+func firstMotion(child, parent *motionTok) *motionTok {
+	if child != nil {
+		return child
+	}
+	return parent
 }
 
 // mergeComponentsFile은 컴포넌트 선언을 병합한다. 이름 붙은 표(역할·컴포넌트 기본값·variant·
@@ -355,6 +364,11 @@ func mergeComponentsFile(parent, child componentsFile) componentsFile {
 		func(d textComponentDefaultFile) string { return d.key() })
 	out.Text.Variants = mergeNamed(parent.Text.Variants, child.Text.Variants,
 		func(v textVariantFile) string { return v.Name })
+	// 형광펜은 싱글톤 절이다 — 자식이 정하면 자식의 것, 아니면 부모의 것.
+	out.Text.Mark = parent.Text.Mark
+	if child.Text.Mark != nil {
+		out.Text.Mark = child.Text.Mark
+	}
 
 	out.Shape.Comment = firstNonEmpty(child.Shape.Comment, parent.Shape.Comment)
 	out.Shape.Default = shapeStyleFile{
@@ -364,6 +378,15 @@ func mergeComponentsFile(parent, child componentsFile) componentsFile {
 	}
 	out.Shape.Variants = mergeNamed(parent.Shape.Variants, child.Shape.Variants,
 		func(v shapeVariantFile) string { return v.Name })
+
+	out.Connector.Comment = firstNonEmpty(child.Connector.Comment, parent.Connector.Comment)
+	out.Connector.Default = connectorStyleFile{
+		Line:  firstNonEmpty(child.Connector.Default.Line, parent.Connector.Default.Line),
+		Start: firstNonEmpty(child.Connector.Default.Start, parent.Connector.Default.Start),
+		End:   firstNonEmpty(child.Connector.Default.End, parent.Connector.Default.End),
+	}
+	out.Connector.Variants = mergeNamed(parent.Connector.Variants, child.Connector.Variants,
+		func(v connectorVariantFile) string { return v.Name })
 
 	out.Image.Comment = firstNonEmpty(child.Image.Comment, parent.Image.Comment)
 	out.Image.Variants = mergeNamed(parent.Image.Variants, child.Image.Variants,

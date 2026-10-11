@@ -77,19 +77,34 @@
 에러다. 산출물에서 테마의 그림은 그 파일을 가진 테마의 자리(`themes/<테마>/assets/…`)에 놓이고, 쓴 그림만
 나간다. 테마의 배경 · 로고와 같은 파일이면 산출물에 한 번 들어간다 (PPTX 미디어 파트도 하나다).
 
-### 포맷 2종 — PNG·JPEG
+### 포맷 3종 — PNG · JPEG · SVG
 
-쓸 수 있는 확장자는 `.png` · `.jpg` · `.jpeg` 셋이고 **포맷은 둘**이다 (PNG·JPEG).
+쓸 수 있는 확장자는 `.png` · `.jpg` · `.jpeg` · `.svg` 넷이고 **포맷은 셋**이다 (PNG · JPEG · SVG).
 
-어휘를 둘로 닫은 기준은 [`<shape type>`](shape.md)을 OOXML 프리셋으로 닫은 것과 같다 —
+어휘를 닫은 기준은 [`<shape type>`](shape.md)을 OOXML 프리셋으로 닫은 것과 같다 —
 **양 타깃이 그리는 것만 연다.** 진단이 확장자마다 그 이유를 말한다:
 
 | 확장자 | 왜 없는가 |
 |---|---|
-| `.svg` | PPTX는 벡터를 확장 요소(`svgBlip`) + 래스터 폴백으로 실어 소비자마다 다르게 열린다 — 벡터 그림은 PNG로 내보내 쓴다 |
 | `.gif` · `.apng` | 애니메이션에 양 타깃의 대응이 없다 |
 | `.webp` · `.avif` · `.heic` | PowerPoint 버전마다 지원이 갈려 **열리지 않는 기계**가 생긴다 |
 | `.bmp` · `.tif` | 브라우저의 지원이 갈린다 |
+
+### SVG 그림
+
+아이콘 · 로고 같은 벡터 그림은 SVG 그대로 쓴다. 웹은 파일을 그대로 그리고, PPTX는 SVG 원본(`asvg:svgBlip`)과
+**브라우저가 그린 PNG 대체 그림**(고유 크기의 2배 해상도, 투명 바탕)을 함께 싣는다. PowerPoint 2016 이후는 벡터를
+그리고, 벡터를 모르는 뷰어는 대체 그림을 그린다. 대체 그림은 웹을 그리는 같은 브라우저가 만들므로 두 그림이 같다.
+
+- **고유 크기는 뿌리 `<svg>`의 `width` · `height`다** (px 또는 단위 없는 수). 한쪽만 있으면 `viewBox`의 비율로 다른
+  쪽을 채운다. `viewBox`만 있는 SVG는 에러다 — 브라우저가 그런 그림에 고유 크기를 주지 않는다. 진단이 `viewBox`의
+  크기를 넣은 `width` · `height`를 제안한다.
+- 크기 규칙은 다른 그림과 같다 — 크기 속성이 없으면 고유 크기, `contain`은 키우지 않는다. 아이콘을 크게 그리려면
+  `w` · `h`와 `fit="cover"`를 함께 쓴다 (벡터라 흐려지지 않는다).
+- **자기 안에서 끝나는 SVG만 받는다.** `<script>` · `<foreignObject>` · `on…` 이벤트 속성, 파일 밖을 가리키는
+  `href` · `xlink:href` · CSS `url(…)` · `@import`는 에러다. 문서 안의 `#id` 참조와 PNG · JPEG를 담은 `data:` URI는 된다.
+- 테마의 배경 · 로고에는 쓸 수 없다 (PNG · JPEG). 테마의 `assets/`에 둔 SVG를 슬라이드에서 `theme:`으로 쓰는 것은 된다.
+- SVG 그림이 있는 덱은 PPTX를 낼 때 브라우저로 대체 그림을 그린다 (그림 하나에 한 번).
 
 **확장자는 선언이고 내용이 판정이다.** 엔진은 파일 헤더를 읽어 실제 포맷을 확인하고, 확장자만
 바꾼 파일을 빌드 에러로 막는다 — 통과시키면 산출물은 만들어지고 PowerPoint만 열지 못한다
@@ -102,6 +117,7 @@
 | 속성 | 값 | 기본값 | 뜻 |
 |---|---|---|---|
 | `src` | 프로젝트 루트 기준 경로, 또는 `theme:<경로>` | **필수** | 그림 파일 |
+| `id` | 임의 이름 | 없음 | [연결선](connector.md)이 가리키는 이름 — 도형의 `id`와 같은 표에서 슬라이드 안 유일하다 |
 | `fit` | `cover` `contain` | `contain` | 박스와 그림이 어긋날 때 (아래) |
 | `alt` | 임의 문자열 (빈 값 허용) | 없음 ≡ `alt=""` | 대체 텍스트 |
 
@@ -428,7 +444,7 @@
 | 내용을 담았다 | `void tag <image> cannot have content (write <image/>)` |
 | 문단·리스트 항목 안에 썼다 | `only character data and inline tags are allowed inside <p> (<image> is not allowed)` |
 | 도형의 **직속** 자식으로 썼다 | `<shape> cannot contain <image> (available tags: <text>, <h1>, …, <row>, <col>, <grid>, <stack>)` — 도형 안 그림은 컨테이너를 거쳐 들어온다 (`<shape><col><image/></col></shape>`) |
-| 어휘 밖의 속성 (`fill`·`frame`·`type`·`anchor` …) | `unknown attribute fill on <image> (available attributes: src, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| 어휘 밖의 속성 (`fill`·`frame`·`type`·`anchor` …) | `unknown attribute fill on <image> (available attributes: src, id, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
 
 값 해석(`core.Resolve`) — 경로 **문법**과 값 어휘. 디스크를 보지 않으므로 에디터가 프로젝트를
 열지 않고도 같은 진단을 낸다. `theme:` 그림만은 여기서 테마 패키지의 파일까지 판정한다 — 그 파일이
@@ -448,8 +464,13 @@
 | `theme:` 절대 경로 | `a theme: path is relative to the theme's assets/ ("theme:/x.png" is absolute)` |
 | `theme:` 경로가 `assets/` 밖 | `src points outside the theme's assets/ ("theme:../x.png") — a theme: image is a file inside the theme's assets/` |
 | `theme:` 그림이 테마 체인에 없다 | `cannot find theme:icons/x.png in theme "corp-dark"(→ "corp" → "minimal") (under assets/)` |
-| 확장자가 없다 | `src has no extension ("assets/photo") — the extension sets the PPTX content type (available: .png, .jpg, .jpeg)` |
-| 지원하지 않는 확장자 | `v1 cannot render ".svg" in src (available: .png, .jpg, .jpeg) — PPTX carries vectors as an extension element (svgBlip) with a raster fallback, so each consumer opens it differently — export as png or jpeg` |
+| 확장자가 없다 | `src has no extension ("assets/photo") — the extension sets the PPTX content type (available: .png, .jpg, .jpeg, .svg)` |
+| 지원하지 않는 확장자 | `v1 cannot render ".gif" in src (available: .png, .jpg, .jpeg, .svg) — animation has no equivalent in both targets — export as png or jpeg` |
+| SVG에 `viewBox`만 있다 | `assets/icon.svg has only a viewBox — give the <svg> width and height in px (e.g. width="48" height="48"); browsers give a viewBox-only SVG no intrinsic size` |
+| SVG 크기가 px가 아니다 | `assets/icon.svg has width="2em" — an SVG image gives its size in px (or a unitless number)` |
+| SVG에 스크립트가 있다 | `assets/icon.svg contains <script> — an SVG image cannot run code` |
+| SVG에 이벤트 속성이 있다 | `assets/icon.svg has an event attribute onload on <svg> — an SVG image cannot run code` |
+| SVG가 파일 밖을 가리킨다 | `assets/icon.svg refers to "logo.png" outside the file — an SVG image must be self-contained (embed it or use an #id reference)` |
 | CSS `object-fit` 값을 썼다 | `CSS object-fit "fill" has no PPTX equivalent (available values: cover, contain) — instead of stretching past the aspect ratio, match the box to the image with ratio` |
 | 어휘 밖의 `fit` | `unknown fit "crop" (available values: cover, contain)` |
 | `alt`에 값이 없다 | `the alt attribute needs a value (alt="chart") — write alt="" for a decorative image` |

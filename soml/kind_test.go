@@ -52,7 +52,7 @@ func TestElementKindCatalog(t *testing.T) {
 		{KindBlock, "h1 h2 h3 p blockquote pre", false},
 		{KindListContainer, "ul ol", false},
 		{KindListItem, "li", false},
-		{KindInline, "strong em code a br span", false},
+		{KindInline, "strong em code a br span mark", false},
 		{KindLayoutContainer, "row col grid stack", false},
 		{KindSpacer, "spacer", true},
 		{KindShape, "shape", false},
@@ -62,6 +62,8 @@ func TestElementKindCatalog(t *testing.T) {
 		{KindTableCell, "th td", false},
 		{KindChart, "chart", false},
 		{KindChartPoint, "point", true},
+		{KindChartSeries, "series", false},
+		{KindConnector, "connector", true},
 	}
 	if len(tests) != len(ElementKinds()) {
 		t.Errorf("표의 종류 %d개, ElementKinds() %d개 — 새 종류를 여기에 적는다", len(tests), len(ElementKinds()))
@@ -95,12 +97,12 @@ func TestElementKindCatalog(t *testing.T) {
 // 목록에 없는 속성은 진단이다. 고유 → 외관 → 박스 → 자식 배치 → 슬롯 순으로 이어진다.
 func TestElementAttrs(t *testing.T) {
 	const (
-		place = "grow shrink basis span self order at x y style slot"
+		place = "grow shrink basis span self order at x y style slot enter"
 		box   = "pad w h min-w min-h max-w max-h ratio"
 		block = "variant size color align anchor w min-w max-w " + place
 	)
 	want := map[string]string{
-		RootElement:  "layout id skip justify",
+		RootElement:  "layout id skip justify enter transition invert",
 		noteElement:  "",
 		TextElement:  "role " + block,
 		"h1":         block,
@@ -117,20 +119,23 @@ func TestElementAttrs(t *testing.T) {
 		"code":       "",
 		"a":          "href",
 		"br":         "",
-		"span":       "color weight",
+		"span":       "color weight size",
+		"mark":       "",
 		"row":        "gap align justify wrap " + box + " " + place,
 		"col":        "gap align justify wrap " + box + " " + place,
 		"grid":       "gap align justify wrap pad cols rows w h min-w min-h max-w max-h ratio " + place,
 		"stack":      "align justify " + box + " " + place,
 		"spacer":     place,
-		"shape":      "type id alt variant fill border radius shadow opacity rotate flip " + box + " " + place,
-		"image":      "src fit alt variant border radius shadow opacity rotate flip " + box + " " + place,
+		"shape":      "type id alt d variant fill border radius shadow opacity rotate flip " + box + " " + place,
+		"image":      "src id fit alt variant border radius shadow opacity rotate flip " + box + " " + place,
 		"table":      "alt variant " + place,
 		"tr":         "",
 		"th":         "colspan rowspan fill border color align anchor",
 		"td":         "colspan rowspan fill border color align anchor",
 		"chart":      "type unit max series alt " + box + " " + place,
 		"point":      "label value fill",
+		"series":     "name fill type",
+		"connector":  "from to route from-side to-side line start end variant label enter flow",
 	}
 	if len(want) != len(elementSpecs) {
 		t.Errorf("표의 태그 %d개, elementSpecs %d개", len(want), len(elementSpecs))
@@ -161,15 +166,15 @@ func TestCatalogAccessors(t *testing.T) {
 		{"ChildPlacementAttrs", ChildPlacementAttrs, "grow shrink basis span self order at x y style"},
 		{"ContainerAttrs(row)", func() []string { return ContainerAttrs(RowElement) }, "gap align justify wrap pad w h min-w min-h max-w max-h ratio"},
 		{"ContainerAttrs(stack)", func() []string { return ContainerAttrs(StackElement) }, "align justify pad w h min-w min-h max-w max-h ratio"},
-		{"ShapeTypes", ShapeTypes, "rect rounded-rect ellipse diamond cylinder chevron arrow-right hexagon parallelogram callout star cloud"},
-		{"ShapeAttrs", ShapeAttrs, "type id alt variant fill border radius shadow opacity rotate flip pad w h min-w min-h max-w max-h ratio"},
+		{"ShapeTypes", ShapeTypes, "rect rounded-rect ellipse diamond cylinder chevron arrow-right hexagon parallelogram callout star cloud triangle cube left-brace right-brace path"},
+		{"ShapeAttrs", ShapeAttrs, "type id alt d variant fill border radius shadow opacity rotate flip pad w h min-w min-h max-w max-h ratio"},
 		{"ShapeAppearanceAttrs", ShapeAppearanceAttrs, "variant fill border radius shadow opacity rotate flip"},
-		{"ImageAttrs", ImageAttrs, "src fit alt variant border radius shadow opacity rotate flip pad w h min-w min-h max-w max-h ratio"},
+		{"ImageAttrs", ImageAttrs, "src id fit alt variant border radius shadow opacity rotate flip pad w h min-w min-h max-w max-h ratio"},
 		{"ImageAppearanceAttrs", ImageAppearanceAttrs, "variant border radius shadow opacity rotate flip"},
 		{"TableCellAttrs", TableCellAttrs, "colspan rowspan fill border color align anchor"},
 		{"ChartAttrs", ChartAttrs, "type unit max series alt pad w h min-w min-h max-w max-h ratio"},
 		{"ChartPointAttrs", ChartPointAttrs, "label value fill"},
-		{"ChartTypes", ChartTypes, "bar"},
+		{"ChartTypes", ChartTypes, "bar line area step"},
 	}
 	for _, tc := range tests {
 		got := tc.get()
@@ -197,13 +202,13 @@ func TestKindRendered(t *testing.T) {
 // **셋째 범주**다: 카탈로그에 있고 파서가 통과시키지만 값 층이 도형·텍스트로
 // 펼치므로 렌더러가 **영원히** 보지 않는다. unrenderedKinds(갚을 빚)와 한 목록으로 묶지 않는다.
 func TestChartKindsAreDesugared(t *testing.T) {
-	desugared := map[ElementKind]bool{KindChart: true, KindChartPoint: true}
+	desugared := map[ElementKind]bool{KindChart: true, KindChartPoint: true, KindChartSeries: true}
 	for _, kind := range append(ElementKinds(), KindNone) {
 		if got := KindDesugared(kind); got != desugared[kind] {
 			t.Errorf("KindDesugared(%v) = %v, want %v", kind, got, desugared[kind])
 		}
 	}
-	if got := DesugaredKinds(); len(got) != len(desugared) || !desugared[got[0]] || !desugared[got[1]] {
-		t.Errorf("DesugaredKinds() = %v, want 차트 두 종류", got)
+	if got := DesugaredKinds(); len(got) != len(desugared) || !desugared[got[0]] || !desugared[got[1]] || !desugared[got[2]] {
+		t.Errorf("DesugaredKinds() = %v, want 차트 세 종류", got)
 	}
 }

@@ -42,6 +42,12 @@ func FontSize(px float64) int64 {
 	return int64(math.Round(px * PointsPerPixel * 100))
 }
 
+// Tracking은 자간 배수(em)와 글자 크기(논리 px)를 OOXML `a:rPr@spc`(1/100 pt)로 바꾼다 —
+// 웹의 `letter-spacing: <n>em`과 같은 길이다 (em은 그 런의 글자 크기).
+func Tracking(em, px float64) int64 {
+	return int64(math.Round(em * px * PointsPerPixel * 100))
+}
+
 // LineSpacing은 줄높이 배수와 폰트 크기(논리 px)를 OOXML `a:spcPts@val`(1/100 pt)로 바꾼다.
 //
 // 배수를 그대로 `spcPct`로 내지 않는 이유: 두 표기는

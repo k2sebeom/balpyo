@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/k2sebeom/balpyo/render/geom"
+	"github.com/k2sebeom/balpyo/render/route"
 	"github.com/k2sebeom/balpyo/render/web"
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -49,10 +50,25 @@ func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, st
 		return "", "", nil, fmt.Errorf("%s: background: %w", slide.Source, err)
 	}
 	id := firstShapeID
+	if bg := slide.Background; bg != nil && bg.Overlay != nil {
+		// 배경 덮개는 맨 뒤다 — `p:bg`는 채움 하나뿐이라 덮개를 담을 수 없으므로 잠근 전면 사각형으로 칠한다
+		// (웹은 배경의 윗겹이다). 콘텐츠보다 먼저 써야 그 아래에 칠해진다.
+		stage := geom.Rect{W: float64(deck.Stage.Width), H: float64(deck.Stage.Height)}
+		spec := spSpec{id: id, name: "background overlay", rect: stage, preset: rectPreset,
+			fill: *bg.Overlay, border: soml.NoBorder(), locked: true}
+		if err := writeSp(&b, spec, deck.Theme); err != nil {
+			return "", "", nil, fmt.Errorf("%s: background overlay: %w", slide.Source, err)
+		}
+		id++
+	}
 	for i, node := range slide.Content {
 		if err := writeShapeNode(&b, deck, slide, node, []int{i}, &id, g, rels); err != nil {
 			return "", "", nil, err
 		}
+	}
+	// 연결선은 콘텐츠 뒤 · 크롬 앞이다 (웹의 오버레이와 같은 자리).
+	if err := writeConnectorShapes(&b, deck, slide, &id, g, rels); err != nil {
+		return "", "", nil, err
 	}
 	// 덱 크롬은 콘텐츠 뒤다 — 확정 모델이 비어 있으면 아무것도 나가지 않으므로
 	// 크롬을 켜지 않은 덱의 바이트가 움직이지 않는다 (chrome.go).
@@ -78,6 +94,14 @@ func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, st
 // 카운터로 문서 순서대로 배정하면 그 어긋남을 만들 방법 자체가 없다.
 type slideRels struct {
 	items []slideRel
+	// shapeIDs는 이 슬라이드에서 도형 번호를 받은 요소다 — 연결선이 끝을 붙일 도형 id를 여기서 찾는다
+	// (연결선은 콘텐츠 뒤에 쓰므로 그때 이미 다 차 있다). 관계 목록과 같은 슬라이드 순회 상태라 같은
+	// 값에 둔다: 순회가 한 번이어야 번호와 붙는 대상이 어긋나지 않는다.
+	shapeIDs map[*soml.Element]int
+	// labelIDs는 연결선 라벨 글상자의 도형 번호이고, drawFrom은 그려지는 연결선이 시작하는 쪽이다 (등장 효과가
+	// 대상과 방향을 여기서 찾는다 — timing.go).
+	labelIDs map[*soml.Element]int
+	drawFrom map[*soml.Element]route.Side
 }
 
 // slideRel은 슬라이드 rels 파트에 실리는 관계 하나다 — 템플릿이 이 값을 그대로 쓴다
@@ -144,6 +168,7 @@ var renderedKinds = []soml.ElementKind{
 	soml.KindInline,          // 도형 0개        (writeRuns: 문단의 런이 된다)
 	soml.KindLayoutContainer, // 도형 0개        (자식으로 내려간다 — 좌표만 남는다)
 	soml.KindSpacer,          // 도형 0개        (공간은 이미 이웃 도형의 좌표에 들어갔다)
+	soml.KindConnector,       // 도형 하나       (writeConnectorShapes — 콘텐츠 뒤의 p:cxnSp)
 }
 
 // RenderedKinds는 이 렌더러가 다루는 종류다 (선언 순서). soml 카탈로그와 대조하는 테스트가
@@ -233,6 +258,10 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 		if err := write(b, deck, slide, elem, id, *shapeID, g, rels); err != nil {
 			return err
 		}
+		if rels.shapeIDs == nil {
+			rels.shapeIDs = map[*soml.Element]int{}
+		}
+		rels.shapeIDs[elem] = *shapeID
 		// 도형 id는 **도형을 실제로 낸 자리에서만** 오른다 (컨테이너는 id를 소비하지
 		// 않는다 — 도형 id는 도형에만 붙는다): 번호가 배치 구조에 따라 뛰면 슬라이드에
 		// `<row>` 하나를 더한 커밋의 diff에 도형 번호 전부가 잡음으로 실린다 — 노트가
@@ -259,6 +288,9 @@ func writeShapeNode(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, node
 		if err := writeChildShapes(b, deck, slide, elem, path, shapeID, g, rels); err != nil {
 			return err
 		}
+	case soml.KindConnector:
+		// 연결선은 콘텐츠 도형을 다 쓴 **뒤**에 쓴다 (writeConnectorShapes) — 끝을 붙일 도형 번호가
+		// 그때 다 정해져 있고, 웹의 오버레이와 같은 칠 순서(콘텐츠 위)가 된다.
 	case soml.KindSpacer:
 		// `<spacer/>`는 도형을 내지 않는다. 빈 박스이고 뜻은 "여기에 공간이 있다"이며, 그
 		// 공간은 이미 이웃 도형의 좌표에 들어가 있다 — 밀어내기의 결과가 형제의 rect다.
@@ -413,6 +445,10 @@ type spSpec struct {
 	body string
 	// ph는 이 도형이 채우는 슬롯 플레이스홀더다 (nil이면 `<p:nvPr/>` — 슬롯 아님).
 	ph *placeholder
+	// locked는 선택할 수 없게 잠근 도형이다 (`a:spLocks noSelect`) — 배경 덮개처럼 슬라이드의 내용이 아닌 칠.
+	locked bool
+	// path는 경로 도형의 명령이다 — 있으면 `prstGeom` 대신 `a:custGeom`을 쓴다 (0~100 상자 = 경로 상자 100000).
+	path []soml.PathCmd
 }
 
 // spAdjust는 `avLst`의 조정값 하나다 — 잰 박스로 평가가 끝난 값이다 (AdjustValue).
@@ -502,7 +538,7 @@ func shapeSp(id int, name string, rect geom.Rect, style soml.ShapeStyle) (spSpec
 		// 어서션만이 그것을 잡는다.
 		return spSpec{}, fmt.Errorf("no prstGeom mapping for shape type %q", style.Type)
 	}
-	spec := spSpec{id: id, name: name, descr: style.Alt, rect: rect, preset: preset}
+	spec := spSpec{id: id, name: name, descr: style.Alt, rect: rect, preset: preset, path: style.Path}
 	if style.Fill == nil {
 		return spSpec{}, fmt.Errorf("fill is unresolved")
 	}
@@ -591,7 +627,11 @@ func writeSp(b *strings.Builder, spec spSpec, theme soml.Theme) error {
 	if spec.textBox {
 		w(2, `<p:cNvSpPr txBox="1"/>`)
 	} else {
-		w(2, "<p:cNvSpPr/>")
+		if spec.locked {
+			w(2, `<p:cNvSpPr><a:spLocks noGrp="1" noSelect="1" noMove="1" noResize="1"/></p:cNvSpPr>`)
+		} else {
+			w(2, "<p:cNvSpPr/>")
+		}
 	}
 	writeNvPr(w, 2, spec.ph)
 	w(1, "</p:nvSpPr>")
@@ -604,7 +644,11 @@ func writeSp(b *strings.Builder, spec spSpec, theme soml.Theme) error {
 	w(3, fmt.Sprintf(`<a:off x="%d" y="%d"/>`, x, y))
 	w(3, fmt.Sprintf(`<a:ext cx="%d" cy="%d"/>`, cx, cy))
 	w(2, "</a:xfrm>")
-	writeGeom(w, 2, spec.preset, spec.adjust)
+	if len(spec.path) > 0 {
+		writeCustGeom(w, 2, spec.path)
+	} else {
+		writeGeom(w, 2, spec.preset, spec.adjust)
+	}
 	if err := writeFill(w, 2, spec.fill, spec.alpha, theme); err != nil {
 		return err
 	}
@@ -618,6 +662,39 @@ func writeSp(b *strings.Builder, spec spSpec, theme soml.Theme) error {
 	b.WriteString(spec.body)
 	w(0, "</p:sp>")
 	return nil
+}
+
+// writeCustGeom은 경로 도형의 `a:custGeom`이다 — 경로 상자는 100000 × 100000이고(SOML의 0~100 × 1000) 도형
+// 박스로 늘어난다: 웹의 정규 SVG(`preserveAspectRatio="none"`)와 같은 늘림이다. 텍스트 영역은 박스 전체다.
+func writeCustGeom(w func(depth int, line string), depth int, cmds []soml.PathCmd) {
+	pt := func(x, y float64) string {
+		return fmt.Sprintf(`<a:pt x="%d" y="%d"/>`, int64(math.Round(x*1000)), int64(math.Round(y*1000)))
+	}
+	w(depth, "<a:custGeom>")
+	w(depth+1, "<a:avLst/>")
+	w(depth+1, "<a:gdLst/>")
+	w(depth+1, "<a:ahLst/>")
+	w(depth+1, "<a:cxnLst/>")
+	w(depth+1, `<a:rect l="l" t="t" r="r" b="b"/>`)
+	w(depth+1, "<a:pathLst>")
+	w(depth+2, `<a:path w="100000" h="100000">`)
+	for _, c := range cmds {
+		switch c.Op {
+		case 'M':
+			w(depth+3, "<a:moveTo>"+pt(c.Pts[0], c.Pts[1])+"</a:moveTo>")
+		case 'L':
+			w(depth+3, "<a:lnTo>"+pt(c.Pts[0], c.Pts[1])+"</a:lnTo>")
+		case 'C':
+			w(depth+3, "<a:cubicBezTo>"+pt(c.Pts[0], c.Pts[1])+pt(c.Pts[2], c.Pts[3])+pt(c.Pts[4], c.Pts[5])+"</a:cubicBezTo>")
+		case 'Q':
+			w(depth+3, "<a:quadBezTo>"+pt(c.Pts[0], c.Pts[1])+pt(c.Pts[2], c.Pts[3])+"</a:quadBezTo>")
+		case 'Z':
+			w(depth+3, "<a:close/>")
+		}
+	}
+	w(depth+2, "</a:path>")
+	w(depth+1, "</a:pathLst>")
+	w(depth, "</a:custGeom>")
 }
 
 // writeGeom은 프리셋 지오메트리와 조정값을 쓴다 — **도형과 그림이 같은 함수를 지난다**
@@ -694,6 +771,9 @@ func writeFill(w func(depth int, line string), depth int, fill soml.Fill, alpha 
 		// 웹의 `fill: none`(그리지 않는다)과 정확히 짝이다 — 투명한 채움이 아니라 채움 없음이다.
 		w(depth, "<a:noFill/>")
 		return nil
+	}
+	if fill.Pattern != nil {
+		return writePattFill(w, depth, *fill.Pattern, alpha, theme)
 	}
 	if fill.Color.IsGradient() {
 		// 그라디언트 채움은 solidFill이 아니라 gradFill이다. 도형 불투명도는
@@ -1281,7 +1361,7 @@ func writeTextRuns(w func(depth int, line string), text string, style soml.TextS
 		if line == "" {
 			continue
 		}
-		attrs := fmt.Sprintf(`sz="%d" b="%s"`, FontSize(style.Size), boldValue(style.Weight))
+		attrs := fmt.Sprintf(`sz="%d" b="%s"`, FontSize(style.Size), boldValue(style.Weight)) + typographyAttrs(style)
 		if ctx.inline {
 			// 인라인 런은 i/u까지 전부 명시한다 — hlinkClick의 자동 밑줄·자동 색 같은 뷰어
 			// 기본값에 기대는 값은 뷰어가 바뀌면 움직이고, 그 움직임은 두 산출물을 나란히
@@ -1295,6 +1375,14 @@ func writeTextRuns(w func(depth int, line string), text string, style soml.TextS
 		// background-clip:text로 같은 결과를 낸다 (render/web).
 		if err := writeTextFill(w, 5, style.Color, theme); err != nil {
 			return err
+		}
+		if style.Highlight != nil {
+			// 형광펜은 채움 뒤 · 폰트 앞이다 (CT_TextCharacterProperties의 자식 순서).
+			w(5, "<a:highlight>")
+			if err := writeColor(w, 6, *style.Highlight, nil, theme); err != nil {
+				return err
+			}
+			w(5, "</a:highlight>")
 		}
 		w(5, latin)
 		w(5, ea)
@@ -1326,6 +1414,20 @@ func algnValue(align soml.TextAlign) (string, error) {
 		return "just", nil
 	}
 	return "", fmt.Errorf("align %q is not a known logical alignment", string(align))
+}
+
+// typographyAttrs는 자간·대소문자를 rPr 속성으로 만든다 — 정하지 않았으면 빈 문자열이라
+// 이 필드를 쓰지 않는 테마의 산출물이 그대로다. 자간은 em 배수 × 런의 크기(pt) × 100
+// (`spc`는 1/100pt)이고, 대문자는 `cap="all"`이다 (원문은 그대로 남는다).
+func typographyAttrs(style soml.TextStyle) string {
+	var attrs string
+	if style.Tracking != 0 {
+		attrs += fmt.Sprintf(` spc="%d"`, Tracking(style.Tracking, style.Size))
+	}
+	if style.Case == soml.CaseUpper {
+		attrs += ` cap="all"`
+	}
+	return attrs
 }
 
 // boldValue는 font-weight 수치를 rPr@b로 눕힌다.
@@ -1492,8 +1594,55 @@ func writeGradFill(w func(depth int, line string), depth int, grad soml.Gradient
 		w(depth+2, "</a:gs>")
 	}
 	w(depth+1, "</a:gsLst>")
-	w(depth+1, fmt.Sprintf(`<a:lin ang="%d" scaled="1"/>`, GradientAngle(grad.Angle)))
+	if grad.Radial {
+		// 방사형은 원 경로다 — fillToRect가 중심(으로 오그라든 사각형)을 박스의 1000분율 인셋으로 준다.
+		l, t := int64(math.Round(grad.CX*1000)), int64(math.Round(grad.CY*1000))
+		w(depth+1, `<a:path path="circle">`)
+		w(depth+2, fmt.Sprintf(`<a:fillToRect l="%d" t="%d" r="%d" b="%d"/>`, l, t, 100000-l, 100000-t))
+		w(depth+1, "</a:path>")
+	} else {
+		w(depth+1, fmt.Sprintf(`<a:lin ang="%d" scaled="1"/>`, GradientAngle(grad.Angle)))
+	}
 	w(depth, "</a:gradFill>")
+	return nil
+}
+
+// PatternPreset은 SOML 무늬 이름 → OOXML `a:pattFill@prst`다. 내보내는 이유는 ShapePreset과 같다 — 패리티
+// 읽기가 같은 표로 되돌린다.
+func PatternPreset(kind soml.PatternKind) (string, bool) {
+	prst, ok := map[soml.PatternKind]string{
+		soml.PatternHorizontal:       "horz",
+		soml.PatternVertical:         "vert",
+		soml.PatternDiagonalUp:       "upDiag",
+		soml.PatternDiagonalDown:     "dnDiag",
+		soml.PatternWideDiagonalUp:   "wdUpDiag",
+		soml.PatternWideDiagonalDown: "wdDnDiag",
+		soml.PatternCross:            "cross",
+		soml.PatternDiagonalCross:    "diagCross",
+		soml.PatternDots:             "pct20",
+	}[kind]
+	return prst, ok
+}
+
+// writePattFill은 무늬 채움을 `a:pattFill`로 쓴다 — 앞색이 fgClr, 뒷색이 bgClr이고 토큰은 schemeClr로 남는다.
+// 도형 불투명도는 두 색에 나눠 싣는다 (writeGradFill의 스톱과 같은 이유 — 알파는 색의 성질이다).
+func writePattFill(w func(depth int, line string), depth int, pat soml.Pattern, alpha *float64, theme soml.Theme) error {
+	prst, ok := PatternPreset(pat.Kind)
+	if !ok {
+		return fmt.Errorf("pattern %q has no OOXML preset", pat.Kind)
+	}
+	w(depth, fmt.Sprintf(`<a:pattFill prst="%s">`, prst))
+	for _, part := range []struct {
+		elem  string
+		color soml.Color
+	}{{"a:fgClr", pat.Fg}, {"a:bgClr", pat.Bg}} {
+		w(depth+1, "<"+part.elem+">")
+		if err := writeColor(w, depth+2, part.color, alpha, theme); err != nil {
+			return err
+		}
+		w(depth+1, "</"+part.elem+">")
+	}
+	w(depth, "</a:pattFill>")
 	return nil
 }
 

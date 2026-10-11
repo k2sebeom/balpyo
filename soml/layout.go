@@ -201,10 +201,12 @@ func ChildPlacementAttrs() []string {
 // (ChildPlacementAttrs를 소비하는 core의 Placement 해석과 섞이지 않게) 탈출구(style)보다도
 // 뒤, 목록의 맨 끝에 둔다 — 진단이 "이 태그다운 속성 → 배치 → 탈출구 → 슬롯" 순으로 읽힌다.
 func withChildPlacement(attrs []string) []string {
-	merged := make([]string, 0, len(attrs)+len(childPlacementAttrs)+1)
+	merged := make([]string, 0, len(attrs)+len(childPlacementAttrs)+2)
 	merged = append(merged, attrs...)
 	merged = append(merged, childPlacementAttrs...)
-	return append(merged, SlotAttr)
+	// 등장(EnterAttr)은 배치가 아니지만 같은 집합에 붙는다 — 슬라이드 · 컨테이너의 자식이 될 수 있는
+	// 콘텐츠 요소 전부가 받는 속성이라는 점이 같다 (그 요소들이 곧 슬라이드의 객체다).
+	return append(merged, SlotAttr, EnterAttr)
 }
 
 // layoutChildren은 레이아웃 컨테이너의 자식 어휘다 (순서 = 진단 순서).

@@ -46,6 +46,30 @@ type docVocabulary struct {
 // docVocabularies는 문서에 사본이 있는 어휘 일곱 벌이다.
 var docVocabularies = []docVocabulary{
 	{
+		Doc: "reference/soml/connector.md", Vocab: "연결선 등장",
+		Pattern: "\\| `enter` \\| (`[^|]+) \\| 없음 \\|", Sep: "·", Want: soml.ConnectorEnterEffects(),
+	},
+	{
+		Doc: "reference/soml/enter.md", Vocab: "슬라이드 전환",
+		Pattern: `unknown transition "cube" \(available values: ([^)]+)\)`, Sep: ", ", Want: soml.SlideTransitions(),
+	},
+	{
+		Doc: "reference/soml/enter.md", Vocab: "등장 효과",
+		Pattern: `unknown enter "spin" \(available values: ([^)]+)\)`, Sep: ", ", Want: soml.EnterEffects(),
+	},
+	{
+		Doc: "reference/soml/connector.md", Vocab: "연결선 경로",
+		Pattern: `unknown route "zigzag" \(available values: ([^)]+)\)`, Sep: ", ", Want: soml.ConnectorRoutes(),
+	},
+	{
+		Doc: "reference/soml/connector.md", Vocab: "연결선 면",
+		Pattern: `unknown to-side "north" \(available values: ([^)]+)\)`, Sep: ", ", Want: soml.ConnectorSides(),
+	},
+	{
+		Doc: "reference/soml/connector.md", Vocab: "연결선 표식",
+		Pattern: `unknown end "diamond" \(available values: ([^)]+)\)`, Sep: ", ", Want: soml.ConnectorEnds(),
+	},
+	{
 		Doc: "reference/soml/shape.md", Vocab: "도형 프리셋",
 		Pattern: `available types: ([^)]+)\)`, Sep: ", ", Want: soml.ShapeTypes(),
 	},

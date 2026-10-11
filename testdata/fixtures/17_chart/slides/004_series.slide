@@ -1,0 +1,35 @@
+<!-- <series> puts several series on one axis. Bars group per category (the series share the 70%
+     bar width); lines draw one path per series in the same band, areas first; a series may pick
+     its own line type. Both charts get a legend row under the category labels. -->
+<slide id="series">
+  <row gap="lg" h="fill">
+    <chart type="bar" alt="Revenue by quarter" unit="M" w="fill" h="fill">
+      <series name="2025">
+        <point label="Q1" value="12"/>
+        <point label="Q2" value="18"/>
+        <point label="Q3" value="15"/>
+      </series>
+      <series name="2026" fill="accent4">
+        <point label="Q1" value="16"/>
+        <point label="Q2" value="21"/>
+        <point label="Q3" value="24" fill="accent5"/>
+      </series>
+    </chart>
+    <chart type="line" alt="Demand and capacity" w="fill" h="fill" max="100">
+      <series name="Demand" type="area" fill="accent2">
+        <point label="6am" value="15"/>
+        <point label="9am" value="45"/>
+        <point label="noon" value="80"/>
+        <point label="6pm" value="60"/>
+        <point label="9pm" value="25"/>
+      </series>
+      <series name="Capacity" type="step" fill="accent5">
+        <point label="6am" value="30"/>
+        <point label="9am" value="60"/>
+        <point label="noon" value="90"/>
+        <point label="6pm" value="90"/>
+        <point label="9pm" value="40"/>
+      </series>
+    </chart>
+  </row>
+</slide>

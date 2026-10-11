@@ -146,15 +146,15 @@ func TestParseTextSubsetErrors(t *testing.T) {
 		},
 		{
 			name: "span의 속성 목록",
-			src:  `<slide><p><span size="20">x</span></p></slide>`,
-			want: []string{"1:17 unknown attribute size on <span> (available attributes: color, weight)"},
+			src:  `<slide><p><span align="center">x</span></p></slide>`,
+			want: []string{"1:17 unknown attribute align on <span> (available attributes: color, weight, size)"},
 		},
 		{
 			// 블록은 역할을 표에서만 얻는다 — role 속성을 열면 <p role="title">이 두 표기의
 			// 등가를 깬다.
 			name: "블록에는 role이 없다",
 			src:  `<slide><h1 role="body">제목</h1></slide>`,
-			want: []string{"1:12 unknown attribute role on <h1> (available attributes: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)"},
+			want: []string{"1:12 unknown attribute role on <h1> (available attributes: variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)"},
 		},
 		{
 			name: "인라인에는 속성이 없다",
@@ -171,7 +171,7 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			// 세로 축·pad·ratio는 텍스트에 닫혀 있다.
 			name: "text에는 h가 없다",
 			src:  `<slide><text h="56">x</text></slide>`,
-			want: []string{`1:14 unknown attribute h on <text> (available attributes: role, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)`},
+			want: []string{`1:14 unknown attribute h on <text> (available attributes: role, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)`},
 		},
 		{
 			name: "pre 안의 인라인은 아직이다",
@@ -186,7 +186,7 @@ func TestParseTextSubsetErrors(t *testing.T) {
 		{
 			name: "인라인이 슬라이드 직속 — 슬라이드의 자식 어휘",
 			src:  `<slide><strong>x</strong></slide>`,
-			want: []string{"1:9 <slide> cannot contain <strong> (available tags: <text>, <shape>, <image>, <table>, <chart>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
+			want: []string{"1:9 <slide> cannot contain <strong> (available tags: <text>, <shape>, <image>, <table>, <chart>, <connector>, <note>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <stack>, <spacer>)"},
 		},
 		{
 			name: "ul 안의 문자 데이터",

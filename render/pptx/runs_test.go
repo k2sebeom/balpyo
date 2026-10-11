@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/k2sebeom/balpyo/render/geom"
+	"github.com/k2sebeom/balpyo/soml"
 )
 
 // bodyRect는 이 파일의 테스트가 공유하는 rect다 — 관심은 txBody 안이라 좌표는 아무 값이어도 된다.
@@ -118,5 +119,48 @@ func TestRunPreNewlines(t *testing.T) {
 	}
 	if got := strings.Count(xml, "<a:p>"); got != 1 {
 		t.Errorf("문단 %d개, want 1 — pre는 한 문단의 여러 줄이다\n%s", got, xml)
+	}
+}
+
+// 자간은 em × 런 크기(pt) × 100 = `spc`(1/100pt)이고 대문자는 `cap="all"`이다. 원문은 저자가 쓴
+// 대소문자 그대로 `a:t`에 남는다 — 대문자는 표시 속성이다.
+func TestRunTrackingAndCase(t *testing.T) {
+	deck := resolvedDeck(t, `<slide>
+  <p>Kicker</p>
+</slide>`)
+	p := deck.Slides[0].Content[0].(*soml.Element)
+	p.Appearance.Text.Tracking = 0.16
+	p.Appearance.Text.Case = soml.CaseUpper
+	xml := slideXML(t, deck, measuredGeometry(t, deck, bodyRect))
+	// 본문 24px = 18pt → 0.16 × 18 × 100 = 288.
+	for _, want := range []string{`spc="288"`, `cap="all"`, "<a:t>Kicker</a:t>"} {
+		if !strings.Contains(xml, want) {
+			t.Errorf("런에 %q가 없다\n%s", want, xml)
+		}
+	}
+}
+
+// <mark> 안의 런은 전부 a:highlight를 갖는다 (PPTX 런은 평평하다). 색은 schemeClr 참조 + 변형이고
+// 자리는 채움 뒤 · latin 앞이다 (CT_TextCharacterProperties의 자식 순서).
+func TestRunMarkHighlight(t *testing.T) {
+	xml := singleShapeXML(t, `<slide>
+  <p>EC2는 <mark>몇 분 안에 <strong>초 단위로</strong></mark> 낸다</p>
+</slide>`)
+	for _, text := range []string{"몇 분 안에 ", "초 단위로"} {
+		at := strings.Index(xml, "<a:t>"+text+"</a:t>")
+		if at < 0 {
+			t.Fatalf("런 %q가 없다\n%s", text, xml)
+		}
+		run := xml[strings.LastIndex(xml[:at], "<a:r>"):at]
+		hl := strings.Index(run, `<a:highlight>`)
+		if hl < 0 || !strings.Contains(run[hl:], `<a:schemeClr val="accent4">`) {
+			t.Errorf("런 %q에 토큰 형광펜이 없다\n%s", text, run)
+		}
+		if hl > strings.Index(run, "<a:latin") || hl < strings.Index(run, "</a:solidFill>") {
+			t.Errorf("런 %q의 a:highlight 자리가 스키마 순서와 다르다\n%s", text, run)
+		}
+	}
+	if at := strings.Index(xml, "<a:t>EC2는 </a:t>"); strings.Contains(xml[strings.LastIndex(xml[:at], "<a:r>"):at], "highlight") {
+		t.Error("<mark> 밖의 런에 형광펜이 있다")
 	}
 }

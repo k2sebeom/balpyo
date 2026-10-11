@@ -61,6 +61,11 @@ func themeCSS(theme soml.Theme, feat features) string {
 		// 그림자도 같은 계약이다 (shadowVarsCSS) — 요소는 var()로 가리키고 표가 선언한다.
 		b.WriteString(shadowVarsCSS(theme))
 	}
+	if feat.entrances && theme.Motion != nil {
+		// 등장의 길이도 표에서 나온다 — PPTX 효과의 dur와 같은 값이다. 지연은 요소마다 다르므로 마크업이
+		// 나르고(EnterDelayAttr) 런타임이 건다.
+		fmt.Fprintf(&b, "    --balpyo-motion-duration: %dms;\n", theme.Motion.Duration)
+	}
 	b.WriteString("  }\n")
 	if _, ok := theme.Color(bgToken); ok {
 		// 슬라이드 바탕도 토큰에서 나온다. 렌더러가 배경색을 따로 갖고 있으면 테마를 바꿨을 때
@@ -69,8 +74,37 @@ func themeCSS(theme soml.Theme, feat features) string {
 		b.WriteString("\n")
 		fmt.Fprintf(&b, "  .balpyo-slide { background: var(%s%s); }\n", colorVarPrefix, bgToken)
 	}
+	if feat.inverse {
+		b.WriteString(inverseCSS(theme))
+	}
 	b.WriteString(layoutStagesCSS(theme, feat))
 	b.WriteString("}\n")
+	return b.String()
+}
+
+// InverseClass는 색 매핑을 뒤집은 슬라이드의 클래스다 (`<slide invert>`).
+const InverseClass = "balpyo-inverse"
+
+// inverseCSS는 반전된 장의 토큰 변수 재선언이다 — PPTX `overrideClrMapping`과 같은 매핑을 테마 표에서 푼다:
+// 배경 · 글자 자리(ref)를 가리키는 토큰은 짝 자리(slot)에 앉은 토큰의 색을 갖는다. 요소는 그대로 var()를
+// 가리키므로, 슬라이드에 선언한 변수가 그 장의 모든 색(바탕 포함)을 함께 뒤집는다.
+func inverseCSS(theme soml.Theme) string {
+	var b strings.Builder
+	b.WriteString("\n  /* Inverted slide — the background and text roles swap, as PPTX overrideClrMapping does. */\n")
+	fmt.Fprintf(&b, "  .balpyo-slide.%s {\n", InverseClass)
+	for _, token := range theme.Colors {
+		slot, ok := soml.InvertedRef[token.Ref]
+		if !ok {
+			continue
+		}
+		for _, pair := range theme.Colors {
+			if pair.Slot == slot {
+				fmt.Fprintf(&b, "    %s%s: #%s;\n", colorVarPrefix, token.Name, pair.RGB)
+				break
+			}
+		}
+	}
+	b.WriteString("  }\n")
 	return b.String()
 }
 
@@ -221,6 +255,15 @@ func textStyleCSS(style soml.TextStyle, theme soml.Theme) (string, error) {
 	fmt.Fprintf(&b, "line-height: %s; ", formatNumber(style.LineHeight))
 	fmt.Fprintf(&b, "%s; ", colorDecl)
 	fmt.Fprintf(&b, "text-align: %s", align)
+	// 자간·대소문자는 정했을 때만 낸다 — 이 필드를 쓰지 않는 테마의 산출물이 바이트 그대로
+	// 남는다. 자간은 em 그대로다: 런의 글자 크기가 기준이므로 PPTX가 런마다 크기 × 배수로
+	// spc를 환산하는 것과 같은 값이다.
+	if style.Tracking != 0 {
+		fmt.Fprintf(&b, "; letter-spacing: %sem", formatNumber(style.Tracking))
+	}
+	if style.Case == soml.CaseUpper {
+		b.WriteString("; text-transform: uppercase")
+	}
 	return b.String(), nil
 }
 
@@ -336,11 +379,18 @@ func gradientCSS(grad soml.Gradient, theme soml.Theme) (string, error) {
 	}
 	stops := make([]string, len(grad.Stops))
 	for i, stop := range grad.Stops {
-		v, err := baseColorValue(stop, theme)
+		// 스톱은 불투명도 변형을 가질 수 있다 (`bg/0`) — colorValue가 color-mix로 감싸 변수 참조를 살린다.
+		v, err := colorValue(stop, theme)
 		if err != nil {
 			return "", err
 		}
 		stops[i] = v
+	}
+	if grad.Radial {
+		// 방사형은 박스에 맞춰 늘어나는 타원이고 가장 먼 변에서 끝난다 — PPTX `a:path path="circle"`이 도형 박스로
+		// 늘어나 변에서 끝나는 것과 같은 모양이다.
+		return fmt.Sprintf("radial-gradient(ellipse farthest-side at %s%% %s%%, %s)",
+			formatNumber(grad.CX), formatNumber(grad.CY), strings.Join(stops, ", ")), nil
 	}
 	return fmt.Sprintf("linear-gradient(%sdeg, %s)", formatNumber(grad.Angle), strings.Join(stops, ", ")), nil
 }

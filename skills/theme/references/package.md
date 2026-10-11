@@ -10,7 +10,7 @@ Four file groups whose jobs do not overlap. The complete Korean original is
 | `tokens.json` | **the names of values** — what `accent1`, `md`, `heading` are |
 | `components.json` | **appearance of roles and variants** — how big `role="body"` is, what colour a code keyword gets |
 | `layouts/*.css` | **placement** — where a layout puts its children |
-| `assets/` | optional pictures the theme owns — background images and the logo (PNG/JPEG) |
+| `assets/` | optional pictures the theme owns — background images and the logo (PNG/JPEG), plus pictures slides use via `theme:` (PNG/JPEG/SVG) |
 
 ## `theme.json`
 
@@ -54,6 +54,7 @@ the theme's alone** — declaring it turns it on for every slide outside `skipLa
 | `role` | one of the five text roles | **mandatory** for `footer`/`pageNumber`, not used by `logo` — chrome has no size or colour of its own; reuse `caption` |
 | `skipLayouts` | layout names of **this** theme (optional) | a name that is not a layout here is an error |
 | `image` · `height` · `alt` | `logo` only — a picture under `assets/`, logical px height, alt text | `image` and `height` are required; width follows the picture's ratio. On a text kind these keys are an error |
+| `format` | `pageNumber` only (optional) — text holding `{n}` exactly once, optionally `{total}` | `"{n} / {total}"` renders `3 / 13` |
 
 ```json
 { "kind": "logo", "align": "center", "image": "assets/logo.png", "height": 24,
@@ -65,12 +66,19 @@ numbers count from 1 and **count excluded slides too** (the PPTX emits
 `<a:fld type="slidenum">`, and no viewer can count a cover out). `<slide skip>` is different:
 that slide leaves the deck entirely and the following numbers shift up.
 
+With `format`, only `{n}` stays a live PPTX field. The text around it, `{total}` included, is
+written at build time, so a slide added in PowerPoint renumbers but the total stays stale until
+the next build (DrawingML has no slide-count field). There is no zero-padding (`03`): a field
+cannot pad, and padding only the web would make the two outputs disagree. A bad format is a
+load error: `pageNumber format "{page}" needs {n} exactly once and may use {total} — …`.
+
 ### Backgrounds
 
 ```json
 "backgrounds": [
   { "layouts": ["title"], "image": "assets/cover.png" },
   { "layouts": ["section-divider"], "fill": "gradient(accent1 accent6, 135deg)" },
+  { "layouts": ["end"], "fill": "bg", "overlay": "radial(accent1/35 bg/0, at 0% 100%)" },
   { "fill": "surface" }
 ]
 ```
@@ -80,17 +88,27 @@ that slide leaves the deck entirely and the following numbers shift up.
 | `layouts` | layout names of this theme (optional) | **omitted = the default background** for every other layout |
 | `fill` | a token, a token variant, or a token gradient | the slide's base fill |
 | `image` | a picture under `assets/` | covers the slide (aspect kept, centre-cropped — like `fit="cover"`) |
+| `overlay` | a colour value — usually a gradient fading to transparent (optional) | one layer painted **over** the fill or picture: a dark band over a photo, a corner glow |
 
 - One declaration is `fill` **or** `image`, never both — a PPTX slide background holds one
   fill, so a fill under a picture would vanish there.
 - A layout appears in **one** declaration only, and there is one default. Overlaps are errors —
   there is no precedence rule to remember.
+- **`overlay` is how a picture gets a tint.** `{ "image": "assets/cover.jpg", "overlay":
+  "gradient(fg fg/0, 90deg)" }` darkens the photo from the left. On the web it is the top
+  background layer. In the PPTX it is a **locked full-slide rectangle** behind all content (the
+  slide background holds one fill only), and it cannot be selected or moved.
+- Gradient stops take an opacity as `colour/percent` (`fg/0`, `accent1/35` — 0–100, no `%`), and
+  `radial(c1 c2 … [, at X% Y%])` is a radial gradient (first colour at the centre). An
+  off-centre radial is drawn correctly by PowerPoint but **from the centre by OnlyOffice**, so
+  check corner glows in PowerPoint.
+- On a `<slide invert>` the background stays, but a token fill shows that token's swapped colour.
 - A layout with no background stays the `bg` colour.
 - On the web it is the slide's CSS background; in the PPTX it is the slide's `p:bg` ("Format
   Background" in PowerPoint), not a movable shape. Colours stay `schemeClr`.
 
 Pictures (backgrounds and the logo) must live under the theme's `assets/`, be real PNG/JPEG
-files whose extension matches the content, and are judged like `<image src>`. Only referenced
+files (SVG is not allowed there) whose extension matches the content, and are judged like `<image src>`. Only referenced
 pictures are shipped. An inherited declaration's picture belongs to the theme that has it; a
 child file at the same path wins.
 
@@ -100,7 +118,9 @@ installed themes alike. This is how a theme ships an icon or illustration librar
 overrides one icon by placing a file at the same path, and the deck's `src` never changes. The
 paths under `assets/` become public vocabulary — renaming or removing a file breaks every deck
 that uses it. Loading only indexes `assets/`; bytes are read for referenced files only, so a
-large library costs nothing until used.
+large library costs nothing until used. Icons may be **SVG**: self-contained (no script, no
+external references), with px `width`/`height` on the root `<svg>`. The PPTX carries the
+vector plus a browser-rendered PNG fallback.
 
 ## `tokens.json`
 
@@ -123,9 +143,20 @@ order names appear in diagnostics. Required *names* (the loader checks names, no
   "space":  [{ "name": "md", "px": 24 }],
   "radius": [{ "name": "md", "px": 12 }],
   "shadow": [{ "name": "soft", "dist": 4, "dir": 90, "blur": 16,
-               "color": "fg", "alpha": 0.15 }]
+               "color": "fg", "alpha": 0.15 }],
+  "motion": { "duration": 600, "stagger": 90, "delay": 150,
+              "transition": "fade", "transitionDuration": 400 }
 }
 ```
+
+**`motion` is the one optional section** — the deck's entrance rhythm in ms, plus the default
+slide transition. The nth `enter` on a slide starts at `delay + n × stagger` and runs for
+`duration`. `transition` (`fade` · `push`, omitted = none) is what every slide does unless it
+says `transition=`. `transitionDuration` defaults to `duration`; the PPTX folds it to the
+nearest speed (≤600ms fast, ≤875ms med, else slow). It is one object, not an array, so a child
+that writes it replaces it **whole**. A theme without `motion` loads, but any deck using
+`enter` then fails (`… defines no motion — add "motion": …`). All built-ins carry 600 / 90 / 150
+and no transition. The PPTX theme part has no place for it: each effect gets the timing baked in.
 
 A colour token's four fields are the token-colour-preservation contract: `name` is what authors
 write, `rgb` is the colour, `slot` is the `clrScheme` place it sits in, `ref` is what shapes and
@@ -180,15 +211,25 @@ error even when no slide uses that variant, because it cuts the PPTX theme refer
       { "layout": "stat",  "slot": "label", "size": 28, "weight": 700 }
     ],
     "variants": [
-      { "name": "kicker", "size": 18, "weight": 700, "color": "accent1" },
+      { "name": "kicker", "size": 18, "weight": 700, "color": "accent1",
+        "tracking": 0.1, "case": "upper" },
       { "name": "lead",   "size": 32 }
-    ]
+    ],
+    "mark": { "highlight": "tint(accent4, 75%)" }
   },
   "shape": {
     "default": { "fill": "surface", "border": "1 solid muted", "radius": "md" },
     "variants": [
       { "name": "card",          "fill": "bg", "radius": "lg" },
       { "name": "stat-card",     "border": "none", "radius": "lg", "shadow": "soft" }
+    ]
+  },
+  "connector": {
+    "default": { "line": "2 solid muted", "start": "none", "end": "arrow" },
+    "variants": [
+      { "name": "dashed", "line": "2 dashed muted" },
+      { "name": "accent", "line": "2 solid accent1" },
+      { "name": "plain",  "end": "none" }
     ]
   },
   "image": {
@@ -220,7 +261,28 @@ Things worth knowing about this file:
 
 - **`body` is 24px / 1.5 in every theme.** The 720px stage is exactly 20 body lines; that is a
   product fact, not a theme choice. What themes vary is the heading hierarchy and the fonts.
-- **Three separate variant namespaces** — text, shape, image. They do not know each other.
+- **Separate variant namespaces** — text, shape, image, table, connector. They do not know
+  each other.
+- **Tracking and case are theme typography**, with no author attribute, so every kicker in a
+  deck matches. Roles, component defaults, and variants take `tracking` (letter spacing as a
+  multiple of the font size, −0.1 to 0.5) and `case` (`upper`, or `none` to turn an inherited
+  `upper` off). Upper case is display-only (CSS `text-transform`, PPTX `cap="all"`): the text
+  stays as written, so editing in PowerPoint shows the original case. Out-of-range values are
+  load errors.
+- **`text.mark.highlight`** is the colour of `<mark>`, a single colour (token or tint/shade/alpha
+  of one; a gradient is an error because PPTX `a:highlight` holds one colour). Without it, any
+  `<mark>` in a deck is a build error. On a dark theme, `shade(accent4, 55%)` (as in `ink`) keeps
+  the light text readable.
+- **`connector`** sets the cascade for `<connector>`: inline > variant > `connector.default`.
+  `line` uses the border grammar (no gradient, no `none`). `start`/`end` are `none`, `arrow`,
+  or `dot`. With no default `line`, a connector without an inline `line=` is a build error.
+  Connector **labels** are `caption` text plus an optional `{ "tag": "connector", … }` entry in
+  `text.componentDefaults`.
+- **Shape fills may be pattern hatches**: `"fill": "pattern(wide-diagonal-up accent5/60 bg/0)"`
+  in `shape.default` or a shape variant (patterns: `horizontal` `vertical` `diagonal-up`
+  `diagonal-down` `wide-diagonal-up` `wide-diagonal-down` `cross` `diagonal-cross` `dots`). They
+  are a shape fill only: on text, borders, connectors, table cells, or backgrounds they are an
+  error.
 - **Colors in components.json use the authoring grammar.** A theme can own gradients and color
   variants (`"fill": "gradient(accent1 accent6, 135deg)"`, `"border": "4 gradient(accent6 accent1)"`,
   `"color": "tint(accent1, 40%)"`) so the deck only says `variant="hero"`. Every color must stay a
@@ -292,7 +354,8 @@ the list in an unknown-`variant` warning).
 | Merge unit | What | If the child writes it |
 |---|---|---|
 | **name** | colour/font/space/radius/shadow tokens, text roles, tag defaults, variants, code tokens (`class`), chrome declarations (`kind`) | that **whole entry** is the child's — none of the parent's other fields survive |
-| **field** | the unnamed sections — `shape.default`, `image.default`, table `cell`/`header`/`stripe`, `code.tabSize` | only the written fields change; the rest is inherited (`""` and `0` mean "unset") |
+| **whole** | `tokens.json`'s `motion` | the child's object replaces the parent's entirely |
+| **field** | the unnamed sections — `shape.default`, `image.default`, `connector.default`, table `cell`/`header`/`stripe`, `code.tabSize`, `text.mark` | only the written fields change; the rest is inherited (`""` and `0` mean "unset") |
 | **file** | `layouts/<name>.css`, `layouts/<name>.slots.css`, `assets/<path>` | that **one file** is the child's; files not present stay the parent's |
 | **list** | `theme.json`'s `layouts` and `backgrounds` | if written it wins (`layouts` must again be all eleven); if omitted the parent's list is inherited |
 
@@ -309,3 +372,7 @@ three-slide deck whose `themes/corp/` inherits `minimal` through four files
 and re-skins the cover, the title role, an accent, and the footer position. The other ten
 layouts, four roles, and five code colours are identical to the parent in the goldens — that
 sameness is the witness that inheritance worked.
+
+`${CLAUDE_PLUGIN_ROOT}/examples/decks/ec2-intro/themes/summit/` shows the newer keys in one small
+inheriting theme: a radial corner-glow `overlay`, a `"{n} / {total}"` page number, `motion` with
+a fade transition, tracked upper-case kickers, and a `text.mark` highlight.

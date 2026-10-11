@@ -166,7 +166,7 @@ func TestMergeShapeAndImageApplyOnlySetFields(t *testing.T) {
 	}
 	mergeShape(&got, shapePatch{fill: ptr(soml.NoFill()), border: ptr(soml.NoBorder()),
 		radius: ptr(soml.PxRadius(9)), shadow: soft, opacity: ptr(0.5), rotate: ptr(45.0), flip: ptr(soml.FlipBoth)})
-	assertFull(t, got, "Type", "ID", "Alt", "Box")
+	assertFull(t, got, "Type", "ID", "Alt", "Box", "Path")
 	if got.ID != "db" || !reflect.DeepEqual(got.Box, shapeBase.Box) {
 		t.Errorf("병합이 캐스케이드 밖 필드를 건드렸다: %s", show(got))
 	}
@@ -186,7 +186,7 @@ func TestMergeShapeAndImageApplyOnlySetFields(t *testing.T) {
 	}
 	mergeImage(&image, imagePatch{border: ptr(soml.NoBorder()), radius: ptr(soml.PxRadius(9)),
 		shadow: soft, opacity: ptr(0.5), rotate: ptr(45.0), flip: ptr(soml.FlipBoth)})
-	assertFull(t, image, "Src", "Fit", "Alt", "Box")
+	assertFull(t, image, "Src", "ID", "Fit", "Alt", "Box")
 	if image.Src != imageBase.Src || image.Fit != imageBase.Fit || image.Alt != imageBase.Alt ||
 		!reflect.DeepEqual(image.Box, imageBase.Box) {
 		t.Errorf("병합이 캐스케이드 밖 필드를 건드렸다: %s", show(image))

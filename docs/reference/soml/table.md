@@ -294,7 +294,7 @@
 | 셀 안에 블록을 썼다 | `block tag <p> is not allowed inside <td> (blocks do not nest)` |
 | `<table>` 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <table> (wrap it in <tr>)` |
 | `<tr>` 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <tr> (wrap it in <td>)` |
-| `<table>`에 `w`/`h`를 썼다 | `unknown attribute w on <table> (available attributes: alt, variant, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| `<table>`에 `w`/`h`를 썼다 | `unknown attribute w on <table> (available attributes: alt, variant, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
 | `<tr>`에 속성을 썼다 | `<tr> takes no attributes (fill)` |
 | 셀에 `variant`를 썼다 | `unknown attribute variant on <td> (available attributes: colspan, rowspan, fill, border, color, align, anchor)` |
 

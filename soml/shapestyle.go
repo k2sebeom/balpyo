@@ -16,6 +16,8 @@ package soml
 // "opacity를 말하지 않음"과 다르다 (ContainerLayout·textPatch가 포인터를 쓰는 것과 같은
 // 근거). 인라인 속성이 없는 도형은 값 필드가 비어 남고, 캐스케이드(컴포넌트 기본값·variant)가 그 빈 자리를 채운다.
 type ShapeStyle struct {
+	// Path는 `type="path"`의 경로다 — 절대 좌표 명령으로 정규화한 목록이다 (H · V는 L이 된다). 다른 종류에서는 nil이다.
+	Path []PathCmd
 	// Type은 프리셋 이름이다 (ShapeTypes의 12종). 생략할 수 없으므로 포인터가 아니다 —
 	// 도형의 종류는 추측할 수 없고, 없으면 값 층이 에러를 낸다 (core).
 	Type string
@@ -62,6 +64,38 @@ type ShapeStyle struct {
 type Fill struct {
 	None  bool
 	Color Color
+	// Pattern은 무늬 채움이다 (`pattern(…)`). nil이 아니면 Color는 쓰지 않는다 — 무늬는 두 색(앞 · 뒤)을 갖는
+	// 채움이라 한 색 자리에 담을 수 없다. 도형 채움에만 생긴다 (값 층이 다른 자리를 막는다).
+	Pattern *Pattern
+}
+
+// Pattern은 확정된 무늬 채움이다 — 프리셋 무늬 하나와 앞색(선 · 점) · 뒷색(바탕)이다. 두 색은 단색이고
+// 불투명도(alpha 변형)를 가질 수 있다.
+type Pattern struct {
+	Kind PatternKind
+	Fg   Color
+	Bg   Color
+}
+
+// PatternKind는 무늬 이름이다 — 닫힌 어휘 (PatternKinds).
+type PatternKind string
+
+const (
+	PatternHorizontal       PatternKind = "horizontal"
+	PatternVertical         PatternKind = "vertical"
+	PatternDiagonalUp       PatternKind = "diagonal-up"
+	PatternDiagonalDown     PatternKind = "diagonal-down"
+	PatternWideDiagonalUp   PatternKind = "wide-diagonal-up"
+	PatternWideDiagonalDown PatternKind = "wide-diagonal-down"
+	PatternCross            PatternKind = "cross"
+	PatternDiagonalCross    PatternKind = "diagonal-cross"
+	PatternDots             PatternKind = "dots"
+)
+
+// PatternKinds는 무늬 어휘 전체다 (순서 = 진단 메시지 순서).
+func PatternKinds() []PatternKind {
+	return []PatternKind{PatternHorizontal, PatternVertical, PatternDiagonalUp, PatternDiagonalDown,
+		PatternWideDiagonalUp, PatternWideDiagonalDown, PatternCross, PatternDiagonalCross, PatternDots}
 }
 
 // ColorFill은 색 채움이다.
@@ -143,4 +177,11 @@ func (e *Element) ShapeStyle() *ShapeStyle {
 		return nil
 	}
 	return e.Appearance.Shape
+}
+
+// PathCmd는 경로 명령 하나다 — 0~100 상자의 절대 좌표다. Op는 'M'(점 하나) · 'L'(점 하나) · 'C'(점 셋 — 제어점
+// 둘과 끝점) · 'Q'(점 둘 — 제어점과 끝점) · 'Z'(점 없음)이고, Pts는 x, y가 번갈아 놓인다.
+type PathCmd struct {
+	Op  byte
+	Pts []float64
 }

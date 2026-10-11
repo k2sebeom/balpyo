@@ -40,6 +40,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/k2sebeom/balpyo/render/route"
 	"github.com/k2sebeom/balpyo/render/web"
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -116,6 +117,18 @@ func Refs(deck *soml.Deck) []Ref {
 		for i, node := range slide.Content {
 			refs = collect(refs, slide, node, []int{i}, ctx)
 		}
+		// 연결선 라벨은 슬라이드의 마지막 박스들이다 — 웹이 라벨을 스테이지 **뒤**(오버레이 옆)에 두므로
+		// 문서 순서 맞대기가 이 자리를 기대한다. 라벨의 rect는 크기만 뜻이 있다: 측정용 HTML에서는
+		// 슬라이드 원점에 놓이고, 자리는 두 렌더러가 경로에서 정한다 (route.Path.LabelRect). 그래서
+		// 좌표로 놓인 요소처럼 배치 판정에서 빠진다 (Free · Overlap).
+		for i, node := range slide.Content {
+			if elem, ok := node.(*soml.Element); ok && soml.HasConnectorLabel(elem) {
+				refs = append(refs, Ref{
+					ID: web.ElementID(slide.Index, []int{i}), El: elem.Name, Slide: slide.Index,
+					Source: slide.Source, Span: elem.NameSpan, Free: true, Overlap: true,
+				})
+			}
+		}
 	}
 	return refs
 }
@@ -160,6 +173,11 @@ func collect(refs []Ref, slide *soml.Slide, node soml.Node, path []int, ctx plac
 		// 종류다: 잰 rect가 `pic`의 `xfrm`이 된다. 웹에서 재는 요소는 `<img>`이고 저자가 준
 		// 박스는 식별자를 갖지 않으므로(render/web/image.go), 덱 요소 하나 ↔ 식별자 하나가
 		// 유지되고 이 순회는 그림을 **다른 종류와 똑같이** 담으면 된다. 자손은 없다 (void).
+		return refs
+	}
+	if soml.KindOf(elem.Name) == soml.KindConnector {
+		// 연결선은 재지 않는다 — 흐름에 자리를 차지하지 않고, 끝점은 측정이 끝난 뒤 두 상자의 잰
+		// rect에서 유도된다 (render/route). 측정용 HTML에는 연결선이 없다 (web.NewForMeasurement).
 		return refs
 	}
 	id := web.ElementID(slide.Index, path)
@@ -217,6 +235,30 @@ type Box struct {
 	Lines []Rect `json:"lines,omitempty"`
 }
 
+// Fallback은 SVG 에셋 하나의 래스터 대체 그림이다.
+type Fallback struct {
+	// Key는 에셋 키다 (soml.Asset.Key).
+	Key string `json:"key"`
+	// PNG는 고유 크기 × FallbackScale 해상도의 투명 바탕 PNG다.
+	PNG []byte `json:"png"`
+}
+
+// FallbackScale은 SVG 대체 그림의 해상도 배율이다 — 1280 무대를 1920 · 2560 화면에 띄워도 흐려지지 않는 최소 배율이다.
+const FallbackScale = 2
+
+// Fallback은 이 키의 대체 그림이다.
+func (g *Geometry) Fallback(key string) ([]byte, bool) {
+	if g == nil {
+		return nil, false
+	}
+	for _, f := range g.Fallbacks {
+		if f.Key == key {
+			return f.PNG, true
+		}
+	}
+	return nil, false
+}
+
 // Geometry는 지오메트리 패스의 산출이다 — 식별자에서 슬라이드 상대 좌표로.
 //
 // 생성 시점에 덱과 대조가 끝나 있다 (newGeometry). 만든 뒤에는 읽기 전용이다.
@@ -247,6 +289,9 @@ type Geometry struct {
 	// PowerPoint는 테마에 적힌 글꼴로 그리므로 텍스트 박스가 그 차이만큼 어긋난다. 비어 있으면
 	// 다 있었거나 묻지 않은 측정이다 (Synthetic · JSON에서 되읽은 값).
 	MissingFonts []string `json:"missingFonts,omitempty"`
+	// Fallbacks는 SVG 에셋의 래스터 대체 그림이다 (에셋 표 순서 — SVG 에셋만). PPTX가 `svgBlip`과 함께 싣는 PNG다.
+	// 좌표와 같은 처지다: 덱에 없는 파생 값이고, 웹을 그린 같은 브라우저가 만든다 (RasterizeSVG).
+	Fallbacks []Fallback `json:"fallbacks,omitempty"`
 
 	// index는 식별자 → Boxes 위치다. 생성자가 채우고 그 뒤로는 읽기만 한다 — Box에서
 	// 지연 생성하면 지오메트리를 여러 goroutine이 읽는 순간(픽스처 병렬 실행) 경쟁이 된다.
@@ -281,6 +326,16 @@ func (g *Geometry) ChromeRect(slide int, kind soml.ChromeKind) (Rect, bool) {
 		}
 	}
 	return Rect{}, false
+}
+
+// RouteBox는 요소의 잰 rect를 연결선 경로 계산의 박스로 준다 — 웹 렌더러(web.BoxLookup)와 PPTX
+// 렌더러가 같은 조회를 쓴다 (web은 이 패키지를 임포트할 수 없어 함수로 받는다).
+func (g *Geometry) RouteBox(id string) (route.Rect, bool) {
+	box, ok := g.Box(id)
+	if !ok {
+		return route.Rect{}, false
+	}
+	return route.Rect{X: box.Rect.X, Y: box.Rect.Y, W: box.Rect.W, H: box.Rect.H}, true
 }
 
 // Box는 식별자로 측정 결과를 찾는다.

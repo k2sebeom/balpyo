@@ -92,7 +92,7 @@ SOML에는 선언 채널이 **둘**이다: 이 페이지가 담는 **외관 채�
 
 | 요소 | variant | 담는 것 |
 |---|---|---|
-| 텍스트 | `kicker` | 크기 18 + 굵기 700 + `accent1` |
+| 텍스트 | `kicker` | 크기 18 + 굵기 700 + `accent1` + 자간 0.1em + 대문자 |
 | 텍스트 | `lead` | 크기 32 |
 | 도형 | `card` | `fill: bg` · `radius: lg` |
 | 도형 | `card-header` | `border: none` · `radius: sm` (채움은 정하지 않는 **부분 패치**) |
@@ -187,6 +187,35 @@ slides/006_variant.slide:6:16: warning: variant "hero" is not in the theme — c
 | `heading` | 36px / 700 | 32px / 700 / **세리프** | 34px / 600 |
 | `body`·`caption`·`code` | 24 · 18 · 20px | 같다 | 같다 |
 
+### 자간과 대소문자 — 테마의 타이포그래피
+
+`components.json`의 역할 · 컴포넌트 기본값 · variant는 크기 · 굵기 · 색과 함께 두 필드를 더 받는다.
+**저자 속성은 없다** — 덱의 모든 키커가 같은 자간 · 같은 대소문자여야 키커로 읽히므로, 원고에는
+`variant` 이름만 남는다.
+
+| 필드 | 값 | 뜻 |
+|---|---|---|
+| `tracking` | −0.1 ~ 0.5 (글자 크기의 배수, em) | 자간 — 정하지 않으면 0 |
+| `case` | `upper` · `none` | 표시 대소문자 — `none`은 아래 단의 `upper`를 끈다 |
+
+```json
+{ "name": "kicker", "size": 18, "weight": 700, "color": "accent1", "tracking": 0.1, "case": "upper" }
+```
+
+- **대문자는 표시 속성이다.** 두 산출물의 글자 데이터는 저자가 쓴 대소문자 그대로이고, 대문자는
+  웹의 `text-transform`과 PPTX의 `cap="all"`이 보여 준다. 그래서 PowerPoint에서 글을 고치면 원문
+  대소문자로 편집되고, `case`가 없는 테마로 갈면 대문자가 사라진다.
+같은 `text` 절의 `mark`는 [`<mark>`](soml/text-subset.md)의 형광펜이다 — 색 하나(토큰 · 변형,
+그라디언트는 에러다: PPTX `a:highlight`가 색 하나만 담는다):
+
+```json
+"text": { "mark": { "highlight": "tint(accent4, 75%)" }, "roles": [ … ] }
+```
+
+- 범위 밖의 자간과 모르는 대소문자는 테마 로드 에러다:
+  `text variant "kicker" tracking 0.8 is out of range — tracking is a multiple of the font size (em) between -0.1 and 0.5` ·
+  `text variant "kicker" case "lower" is unknown (available values: upper, none)`.
+
 ## 토큰 색은 참조로 남는다 — 제품의 핵심 계약
 
 `color="accent1"`·`fill="surface"` 같은 토큰 색은 해석 후에도 **토큰 이름으로** 남고,
@@ -227,6 +256,8 @@ PowerPoint에서 확인한다**.
 | (역할에서) 굵기 | CSS font-weight 수치 | `font-weight: <n>` | `a:rPr@b` — 600 이상이면 `1` |
 | (역할에서) 줄높이 | 폰트 크기 배수 | `line-height: <배수>` | `a:lnSpc/a:spcPts@val` = 배수 × px × 0.75 × 100 — 배수(`spcPct`)는 폰트 메트릭을 타서 CSS `line-height`와 다르게 풀리므로 절대값으로 낸다 |
 | (역할에서) 폰트 | 폰트 토큰 이름 | `font-family: var(--balpyo-font-<토큰>)` | `a:latin`/`a:ea` 테마 참조 (`+mj-lt`·`+mj-ea` / `+mn-lt`·`+mn-ea`), mono는 리터럴 typeface |
+| (테마에서) 자간 | 글자 크기 배수 (em) | `letter-spacing: <배수>em` | `a:rPr@spc` = 배수 × px × 0.75 × 100 (1/100 pt — 런의 크기 기준) |
+| (테마에서) 대소문자 | `upper` | `text-transform: uppercase` | `a:rPr@cap="all"` — 원문은 그대로 |
 | `color` (토큰) | 토큰 이름 | `color: var(--balpyo-color-<토큰>)` | `a:solidFill/a:schemeClr@val` = 토큰의 Ref |
 | `color` (리터럴) | 대문자 6자리 hex | `color: #RRGGBB` | `a:solidFill/a:srgbClr@val="RRGGBB"` |
 | `color` (변형) | 밑색 + shade/tint/alpha | `color: hsl(from …)` · alpha는 `color-mix(…)` (밑색 var()/#hex 유지) | `a:solidFill/…Clr` + `a:lumMod`/`a:lumOff`/`a:alpha` |
@@ -293,7 +324,7 @@ PowerPoint에서 확인한다**.
 그라디언트 3종과 토큰 색 변형의 매핑은 실물 덱의 "디자인된 느낌"의 정체다.
 문법은 아래 "값 문법" 절에 있고, 여기서는 두 타깃의 매핑과 그 경계를 적는다.
 
-**그라디언트** — 채움·테두리·텍스트 색이 같은 `gradient(색… [, 각도deg])`를 받는다.
+**그라디언트** — 채움·테두리·텍스트 색이 같은 `gradient(색… [, 각도deg])`와 `radial(색… [, at X% Y%])`를 받는다.
 
 - **각도**: CSS(0deg = 아래→위, 시계방향)를 각 타깃으로 옮긴다. PPTX는
   `a:lin@ang = (css − 90) mod 360 × 60000` (0=왼→오)이라 기본 180deg는 `5400000`(위→아래)이
@@ -308,10 +339,44 @@ PowerPoint에서 확인한다**.
 - **테두리 그라디언트**는 웹에서 SVG `stroke`가 gradient def를 가리키고(CSS `border-image`는
   `border-radius`와 조합되지 않아 엔진이 SVG를 소유한다), PPTX에서 `a:ln` 안의 `a:gradFill`이다.
   축약은 `<굵기> gradient(…)` **2조각**이다 — 그라디언트가 스타일(실선)과 색을 함께 대신한다.
+- **스톱의 불투명도**: 스톱은 `색/퍼센트`로 불투명도를 받는다 — `gradient(fg fg/0, 90deg)`는 왼쪽의 `fg`에서 오른쪽의
+  투명으로 사라지는 덮개다. 퍼센트는 0~100이고 `%`를 붙이지 않는다 (`fg/40`). 리터럴도 같다 (`#000000/50`).
+  확정 값은 `alpha()` 변형과 같다 — PPTX 스톱의 `a:alpha`, 웹 CSS의 `color-mix(…, transparent)`, SVG의
+  `stop-opacity`다 (SVG는 미리 곱하지 않은 색으로 보간해 투명을 색에 섞으면 가운데가 회색으로 탁해진다).
+  어휘 밖이면 `a gradient stop opacity is a percentage from 0 to 100 without % ("fg/140") — e.g. bg/0 or fg/40`이다.
+- **방사형**: `radial(색… [, at X% Y%])` — 첫 색이 중심, 마지막 색이 가장 먼 변이다. 중심은 박스의 비율이고
+  생략하면 가운데다. 웹은 `radial-gradient(ellipse farthest-side at X% Y%, …)` · SVG `<radialGradient>`(박스로
+  늘어나는 원), PPTX는 `a:path path="circle"` + `a:fillToRect`(중심의 사각형)다. 번짐의 크기는 엔진마다 조금
+  다르다. 모서리 광채(`radial(accent4/30 bg/0, at 0% 100%)`)가 흔한 쓰임이다.
 - **다중 스톱의 뷰어 소관**: 3색 이상 그라디언트의 OOXML은 스펙대로 `a:gs`를 스톱 수만큼
   내지만, LibreOffice는 다중 스톱 `gradFill`을 근사해 그려 웹과 갈라진다. PowerPoint/Keynote는
   모든 스톱을 그대로 그린다 — 이 갈라짐은 산출물 결함이 아니라 뷰어 소관이다. 그림은
   PowerPoint로 확인한다.
+
+**무늬 채움** — 도형의 `fill`은 `pattern(<무늬> <앞색> <뒷색>)`도 받는다. 빗금 · 격자 · 점 같은 질감을 칠하는 채움이다.
+앞색이 선 · 점, 뒷색이 바탕이다. 두 색은 그라디언트 스톱과 같은 문법이라 `/퍼센트`로 불투명도를 받는다.
+`pattern(wide-diagonal-up accent5/60 bg/0)`은 바탕이 비치는 붉은 빗금이다.
+
+| 무늬 | 모양 | PPTX `a:pattFill@prst` |
+|---|---|---|
+| `horizontal` | 가는 가로줄 | `horz` |
+| `vertical` | 가는 세로줄 | `vert` |
+| `diagonal-up` | 가는 사선 (`/`) | `upDiag` |
+| `diagonal-down` | 가는 사선 (`\`) | `dnDiag` |
+| `wide-diagonal-up` | 굵은 사선 (`/`) | `wdUpDiag` |
+| `wide-diagonal-down` | 굵은 사선 (`\`) | `wdDnDiag` |
+| `cross` | 가로세로 격자 | `cross` |
+| `diagonal-cross` | 사선 격자 | `diagCross` |
+| `dots` | 점 | `pct20` |
+
+- 웹은 SVG `<pattern>`(8×8 px 타일)이고, PPTX는 `a:pattFill`이다. 토큰 색은 `fgClr` · `bgClr`의 `schemeClr`로 남는다.
+  PowerPoint의 "패턴 채우기"에서 그대로 고칠 수 있다.
+- 도형 `opacity`는 두 색에 함께 걸린다.
+- **도형 채움에만 쓴다.** 도형의 `fill`, 테마의 도형 기본값 · variant에 쓸 수 있다. 글자 색 · 테두리 · 연결선 · 표 칸 · 배경에
+  쓰면 `color cannot be a pattern ("pattern(dots fg bg)") — pattern(…) is only a shape fill`처럼 그 자리의 이름으로
+  진단이 난다.
+- 모르는 무늬는 `unknown pattern "zigzag" (available values: horizontal, vertical, diagonal-up, diagonal-down, wide-diagonal-up, wide-diagonal-down, cross, diagonal-cross, dots)`다.
+- 무늬의 촘촘함은 엔진마다 다르다. 웹 타일은 무대와 함께 커지고, PowerPoint는 무늬를 화면 픽셀로 그린다.
 
 **색 변형** — `shade`/`tint`/`alpha`는 밑색 하나에 얹혀 참조를 보존한다.
 
@@ -387,7 +452,8 @@ PowerPoint에서 확인한다**.
 | `em` | 이탤릭 | `font-style: italic` | `a:rPr@i="1"` |
 | `code` | mono 폰트 (크기는 부모) | `font-family: var(--balpyo-font-mono)` | `a:latin`/`a:ea` 리터럴 typeface (mono는 fontScheme 슬롯이 없다) |
 | `a` | 밑줄 + `accent1` 색 + 링크 | `text-decoration: underline; color: var(--balpyo-color-accent1)` + `<a href>` | `a:rPr@u="sng"` + `schemeClr accent1` + `a:hlinkClick r:id` + 슬라이드 rels의 External 관계 |
-| `span` | 자기 `color`/`weight`만 | 해당 선언 | 해당 rPr 속성/채움 |
+| `span` | 자기 `color`/`weight`/`size`만 (`size`는 감싼 텍스트 이하) | 해당 선언 | 해당 rPr 속성/채움 |
+| `mark` | 형광펜 = 테마의 `text.mark.highlight` (안의 런도 물려받는다) | `<mark>` 자신의 `background-color` (안의 런은 다시 칠하지 않는다 — 알파 있는 색이 겹친다) | 런마다 `a:rPr/a:highlight` + `schemeClr` (+ 변형) |
 | `br` | 없음 (void) | `<br>` | `a:br` — 문단을 쪼개지 않는다 |
 
 링크 색은 전용 토큰이 아니라 `accent1`이다 — 런의 `schemeClr` 참조와 테마

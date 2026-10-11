@@ -187,7 +187,7 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 	// 슬라이드보다 앞에 두는 이유는 패키지를 풀어 본 사람이 그림을 슬라이드보다 먼저 만나는
 	// 것이 자연스럽기 때문이고, 순서는 결정적이면 어디든 유효하다 (zipParts는 이 순서를
 	// 지킨다 — [Content_Types].xml만 첫 엔트리여야 한다).
-	media, err := mediaParts(deck)
+	media, err := mediaParts(deck, g)
 	if err != nil {
 		return nil, err
 	}
@@ -199,11 +199,22 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		if err != nil {
 			return nil, err
 		}
+		// 등장은 도형 번호가 다 정해진 뒤에 쓴다 — 효과는 도형 번호로 대상을 가리킨다.
+		timing, err := timingXML(slide, rels)
+		if err != nil {
+			return nil, fmt.Errorf("%s: timing: %w", slide.Source, err)
+		}
+		transition, err := transitionXML(slide)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", slide.Source, err)
+		}
 		rendered, err := renderTemplate(slidePart(n), slideTemplate, struct {
 			*soml.Slide
 			Shapes     string
 			Background string
-		}{slide, shapes, background})
+			Transition string
+			Timing     string
+		}{slide, shapes, background, transition, timing})
 		if err != nil {
 			return nil, err
 		}
@@ -628,9 +639,10 @@ const slideTemplate = xmlDecl + `<p:sld xmlns:a="http://schemas.openxmlformats.o
       </p:grpSpPr>{{.Shapes}}
     </p:spTree>
   </p:cSld>
-  <p:clrMapOvr>
-    <a:masterClrMapping/>
-  </p:clrMapOvr>
+  <p:clrMapOvr>{{if .Invert}}
+    <a:overrideClrMapping bg1="dk1" tx1="lt1" bg2="dk2" tx2="lt2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>{{else}}
+    <a:masterClrMapping/>{{end}}
+  </p:clrMapOvr>{{.Transition}}{{.Timing}}
 </p:sld>
 `
 

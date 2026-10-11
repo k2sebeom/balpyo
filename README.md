@@ -35,6 +35,10 @@ PowerPoint나 Keynote에서 열면 글자와 도형을 그대로 고칠 수 있�
 | 타임라인 — [`incident-postmortem`](examples/decks/incident-postmortem) | `<pre lang="go">` — 하이라이팅이 PPTX 글자 런으로 간다 |
 | ![막대 차트](examples/showcase/images/incident-postmortem-08.png) | ![그라디언트 콜아웃](examples/showcase/images/quarterly-review-05.png) |
 | `<chart>` — 도형과 텍스트로 펼친다 | 그라디언트 채움과 `<stack>` 배지 — [`quarterly-review`](examples/decks/quarterly-review) |
+| ![방사형 광채의 표지](examples/showcase/images/ec2-intro-01.png) | ![등축 층으로 쌓은 Nitro](examples/showcase/images/ec2-intro-06.png) |
+| 배경 덮개(`radial()`)와 그라디언트 글자 — [`ec2-intro`](examples/decks/ec2-intro) | `cube` · `right-brace` 프리셋 — PPTX에서도 같은 도형이다 |
+| ![인스턴스 상태 다이어그램](examples/showcase/images/ec2-intro-10.png) | ![고가용성 웹 계층](examples/showcase/images/ec2-intro-11.png) |
+| `<connector>` — PPTX에서 상자에 붙은 연결선이 된다 | 중첩한 영역과 흐르는 연결선(`flow`) |
 
 ### 같은 슬라이드, 다른 테마
 

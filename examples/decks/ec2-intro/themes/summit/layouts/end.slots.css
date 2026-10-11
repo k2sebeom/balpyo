@@ -1,0 +1,8 @@
+/* summit end slide — the closing words stand on the left at the same place as the cover title, so
+   the first and last slides frame the deck. */
+display: grid;
+grid-template-columns: minmax(0, 760px);
+grid-template-rows: auto auto;
+grid-template-areas: "title" "contact";
+row-gap: 24px;
+align-content: center;

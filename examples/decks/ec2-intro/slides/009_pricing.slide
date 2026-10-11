@@ -1,0 +1,32 @@
+<!-- Pricing — the left card is a hand-built chart in a <stack>: axes are thin rects, gridlines are
+     dashed rects, and each pricing model is a circle placed by percentage; the right column lists
+     the four models as cards with a colored side bar and the maximum discount. -->
+<slide id="pricing" enter="rise">
+  <text variant="kicker">04 · Paying for compute</text>
+  <h2>Trade commitment for savings — then mix and match</h2>
+  <row gap="lg" grow="1">
+    <shape type="rounded-rect" variant="card" w="520" h="fill" pad="lg">
+      <stack w="fill" h="fill">
+        <shape type="rect" fill="fg" border="none" w="2" h="fill" x="0" y="0"/>
+        <shape type="rect" fill="fg" border="none" w="fill" h="2" x="0" y="100%"/>
+        <shape type="path" fill="none" border="1 dashed muted" w="fill" h="2" x="0" y="10%" d="M0,50 H100"/>
+        <shape type="path" fill="none" border="1 dashed muted" w="fill" h="2" x="0" y="45%" d="M0,50 H100"/>
+        <shape type="rect" fill="tint(accent2, 92%)" border="none" w="56%" h="56%" x="40%" y="22%"/>
+        <shape type="ellipse" fill="fg" border="none" w="56" h="56" x="4%" y="82%"><p align="center" anchor="center" size="16" color="bg"><strong>OD</strong></p></shape>
+        <shape type="ellipse" fill="accent2" border="none" w="56" h="56" x="48%" y="16%"><p align="center" anchor="center" size="16" color="bg"><strong>SP</strong></p></shape>
+        <shape type="ellipse" fill="accent4" border="none" w="56" h="56" x="74%" y="16%"><p align="center" anchor="center" size="16" color="bg"><strong>RI</strong></p></shape>
+        <shape type="ellipse" fill="accent3" border="none" w="56" h="56" x="4%" y="4%"><p align="center" anchor="center" size="16" color="bg"><strong>Spot</strong></p></shape>
+        <text role="caption" x="16%" y="3%"><strong>Spot</strong> · spare capacity, 2-min notice</text>
+        <text role="caption" x="16%" y="84%"><strong>On-Demand</strong> · baseline, no commitment</text>
+        <text role="caption" color="accent2" x="42%" y="32%"><strong>SP &amp; RI: up to 72%</strong></text>
+      </stack>
+    </shape>
+    <col gap="sm" grow="1" basis="0">
+      <shape type="rounded-rect" variant="card" w="fill" pad="sm"><row gap="md" align="center"><shape type="rect" fill="fg" border="none" w="4" h="56"/><col gap="0" grow="1" basis="0"><h3 size="22">On-Demand</h3><p size="17" color="muted">Pay per second; start and stop anytime.</p></col><text role="caption" align="end" w="90">baseline</text></row></shape>
+      <shape type="rounded-rect" variant="card" w="fill" pad="sm"><row gap="md" align="center"><shape type="rect" fill="accent2" border="none" w="4" h="56"/><col gap="0" grow="1" basis="0"><h3 size="22">Savings Plans</h3><p size="17" color="muted">Commit to $/hour for 1 or 3 years.</p></col><text role="title" size="34" color="accent2" align="end" w="90">72%</text></row></shape>
+      <shape type="rounded-rect" variant="card" w="fill" pad="sm"><row gap="md" align="center"><shape type="rect" fill="accent4" border="none" w="4" h="56"/><col gap="0" grow="1" basis="0"><h3 size="22">Reserved Instances</h3><p size="17" color="muted">Commit to an instance configuration.</p></col><text role="title" size="34" color="accent4" align="end" w="90">72%</text></row></shape>
+      <shape type="rounded-rect" variant="card" w="fill" pad="sm"><row gap="md" align="center"><shape type="rect" fill="accent3" border="none" w="4" h="56"/><col gap="0" grow="1" basis="0"><h3 size="22">Spot Instances</h3><p size="17" color="muted">Unused capacity for fault-tolerant jobs.</p></col><text role="title" size="34" color="accent3" align="end" w="90">90%</text></row></shape>
+    </col>
+  </row>
+  <note>The further right you go — more commitment — the bigger the discount. Spot sits apart: the biggest discount, in exchange for interruption.</note>
+</slide>

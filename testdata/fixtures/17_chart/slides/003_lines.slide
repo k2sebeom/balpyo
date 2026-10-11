@@ -1,0 +1,22 @@
+<!-- line, area and step charts desugar to one path shape in the plot band (plus the area fill), a
+     1px baseline and a row of category labels. The points sit at the centers of equal category
+     columns, at value ÷ axis from the bottom of the band. -->
+<slide id="lines">
+  <row gap="lg" h="fill">
+    <chart type="line" alt="Demand" w="fill" h="fill" max="80">
+      <point label="6am" value="12"/>
+      <point label="noon" value="55"/>
+      <point label="6pm" value="70"/>
+    </chart>
+    <chart type="area" series="accent4" alt="Demand area" w="fill" h="fill" max="80">
+      <point label="6am" value="12"/>
+      <point label="noon" value="55"/>
+      <point label="6pm" value="70"/>
+    </chart>
+    <chart type="step" series="accent3" alt="Capacity" w="fill" h="fill" max="80">
+      <point label="6am" value="20"/>
+      <point label="noon" value="60"/>
+      <point label="6pm" value="80"/>
+    </chart>
+  </row>
+</slide>

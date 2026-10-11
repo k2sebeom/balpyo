@@ -229,3 +229,23 @@ func TestRenderCharRefsEscapeOnce(t *testing.T) {
 		t.Errorf("문자 참조가 두 번 이스케이프됐다:\n%s", stageOf(t, out))
 	}
 }
+
+// <mark>는 자기 배경에만 형광펜을 칠한다 — 안의 런은 같은 Highlight를 물려받지만 다시 칠하면
+// 알파 있는 색이 겹쳐 진해진다. 색은 토큰 참조(변형 포함)로 남는다.
+func TestRenderMarkPaintsItsOwnBackground(t *testing.T) {
+	out := renderString(t, subsetDeck(t, `<p>EC2는 <mark>몇 분 안에 <strong>초 단위로</strong></mark> 낸다</p>`))
+	start := strings.Index(out, "<mark ")
+	if start < 0 {
+		t.Fatalf("<mark>가 산출물에 없다:\n%s", stageOf(t, out))
+	}
+	open := out[start:]
+	open = open[:strings.Index(open, ">")+1]
+	if !strings.Contains(open, "background-color: hsl(from var(--balpyo-color-accent4)") {
+		t.Errorf("<mark>의 style에 토큰 형광펜이 없다: %s", open)
+	}
+	strong := out[strings.Index(out, "<strong "):]
+	strong = strong[:strings.Index(strong, ">")+1]
+	if strings.Contains(strong, "background-color") {
+		t.Errorf("<mark> 안의 런이 형광펜을 다시 칠한다: %s", strong)
+	}
+}

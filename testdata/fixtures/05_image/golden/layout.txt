@@ -75,3 +75,7 @@ textbox "text s6.1.1.1"
 pic "image s6.1.2.0" alt="액자에 테두리를 덮은 그림"
 textbox "text s6.1.2.1"
   ¶ start | "인라인 border가 이긴다"{body 13.5pt muted}
+# slide 8 svg
+pic "image s7.0.0" alt="Processor chip" svg
+pic "image s7.0.1" alt="Processor chip, large" svg
+pic "image s7.0.2" alt="Processor chip, faded" svg

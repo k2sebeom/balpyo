@@ -1,0 +1,12 @@
+<!-- Slide-level enter: every direct child rises in document order, one stagger apart. The row is
+     one entrance (its three cards appear together) except the card that brings its own zoom, and
+     the footnote opts out with enter="none". -->
+<slide id="stagger" enter="rise">
+  <h2>Pick a family by its bottleneck</h2>
+  <row gap="lg">
+    <shape type="rounded-rect" w="fill" h="120"><p>General purpose</p></shape>
+    <shape type="rounded-rect" w="fill" h="120" enter="zoom"><p>Compute optimized</p></shape>
+    <shape type="rounded-rect" w="fill" h="120"><p>Memory optimized</p></shape>
+  </row>
+  <p enter="none">Sizes double as you go up.</p>
+</slide>

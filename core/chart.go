@@ -49,6 +49,9 @@ const (
 	chartBaselineHeight = "1"
 	// chartLabelGap은 값 라벨과 막대 사이다 (공간 토큰 — 테마가 값을 갖는다).
 	chartLabelGap = "xs"
+	// chartLegendGap은 플롯과 범례 사이, chartLegendItemGap은 범례 항목 사이다 (공간 토큰).
+	chartLegendGap     = "sm"
+	chartLegendItemGap = "md"
 	// chartFillAxis는 "축을 채운다"는 길이 표기다 (`w="fill"`) — 값 층의 lengthValue가 같은
 	// 문자열을 판정한다 (core/layout.go). 합성 노드가 저자의 표기를 쓴다는 것이 펼침의 계약이다.
 	chartFillAxis = "fill"
@@ -70,18 +73,187 @@ const (
 // 빌드의 트리를 보는 코드가 `<chart>`를 만난다. 에러가 있으면 빌드는 산출물을 내지 않으므로
 // 껍데기 도형의 내용은 아무도 보지 않는다.
 func (r *resolver) resolveChart(elem *soml.Element) {
-	r.chartType(elem)
+	kind := r.chartType(elem)
 	r.chartFrameHeight(elem)
-	spec := chartSpec{unit: r.chartUnit(elem), series: r.chartSeries(elem)}
-	data, hasPoints := r.chartData(elem)
-	axis, axisOK := r.chartAxis(elem, data)
+	spec := chartSpec{unit: r.chartUnit(elem)}
+	series, grouped, hasPoints := r.chartAllSeries(elem, kind)
+	if kind != "" && kind != soml.ChartTypeBar {
+		r.chartLineEmphasis(elem, kind)
+	}
+	var all []chartDatum
+	for _, s := range series {
+		all = append(all, s.data...)
+	}
+	axis, axisOK := r.chartAxis(elem, all)
 	spec.axis = axis
 
 	elem.Name = soml.ShapeElement
 	elem.Attrs = chartRootAttrs(elem)
 	elem.Children = nil
-	if hasPoints && axisOK && len(data) > 0 {
-		elem.Children = []soml.Node{chartPlot(data, spec)}
+	if !hasPoints || !axisOK || len(series) == 0 || len(series[0].data) == 0 {
+		return
+	}
+	for _, s := range series {
+		if len(s.data) != len(series[0].data) {
+			return // 범주가 어긋났다 — 진단은 이미 냈다.
+		}
+	}
+	var plot *soml.Element
+	switch {
+	case !grouped && (kind == soml.ChartTypeBar || kind == ""):
+		spec.series = series[0].fill
+		plot = chartPlot(series[0].data, spec)
+	case kind == soml.ChartTypeBar || kind == "":
+		plot = chartGroupedPlot(series, spec)
+	default:
+		plot = chartLinePlot(series, spec)
+	}
+	if !grouped {
+		elem.Children = []soml.Node{plot}
+		return
+	}
+	// 계열 형식은 범례를 아래에 단다 — 플롯이 남은 높이를 먹고(grow) 범례는 자기 높이다.
+	setChartAttr(plot, "h", "")
+	plot.Attrs = append(plot.Attrs, chartAttr("grow", "1", plot.Span), chartAttr("basis", "0", plot.Span))
+	body := chartNode(soml.ColElement, elem.NameSpan, "gap", chartLegendGap, "w", chartFillAxis, "h", chartFillAxis)
+	body.Children = []soml.Node{plot, chartLegend(series)}
+	elem.Children = []soml.Node{body}
+}
+
+// chartSeries는 검증을 통과한 계열 하나다 — 단일 계열 차트(직계 점)도 이름 없는 계열 하나로 읽는다.
+type chartSeries struct {
+	name string
+	// fill은 계열색 표기다 (저자의 것 그대로 또는 기본 accentN).
+	fill string
+	// kind는 이 계열의 종류다 — 선 계열 차트에서 계열이 `type`으로 바꿀 수 있다.
+	kind string
+	data []chartDatum
+	span soml.Span
+}
+
+// chartSeriesDefaults는 계열색을 생략한 계열의 색이다 — 계열 순서대로 강조색 여섯을 돈다.
+var chartSeriesDefaults = []string{"accent1", "accent2", "accent3", "accent4", "accent5", "accent6"}
+
+// chartAllSeries는 차트의 계열들이다. grouped는 `<series>` 형식인지(범례 · 묶음 막대), hasPoints는 점을 하나라도
+// 적었는지다 (chartData와 같은 뜻).
+//
+// 한 차트는 점 아니면 계열이다 — 섞으면 직계 점이 어느 계열인지 정할 수 없다. 범주는 첫 계열의 라벨이고, 다른 계열은
+// 같은 순서로 같은 라벨을 적어야 한다 (어긋난 점을 진단이 가리킨다).
+func (r *resolver) chartAllSeries(elem *soml.Element, kind string) ([]chartSeries, bool, bool) {
+	var seriesElems []*soml.Element
+	directPoints := 0
+	for _, child := range elem.Children {
+		e, ok := child.(*soml.Element)
+		if !ok {
+			continue
+		}
+		switch e.Name {
+		case soml.ChartSeriesElement:
+			seriesElems = append(seriesElems, e)
+		case soml.ChartPointElement:
+			directPoints++
+		}
+	}
+	if len(seriesElems) == 0 {
+		data, hasPoints := r.chartData(elem)
+		return []chartSeries{{fill: r.chartSeries(elem), kind: kind, data: data, span: elem.NameSpan}}, false, hasPoints
+	}
+	if directPoints > 0 {
+		r.errorf(elem.NameSpan, "<%s> holds either <%s>s or <%s>, not both — put every point inside a <%s>",
+			soml.ChartElement, soml.ChartPointElement, soml.ChartSeriesElement, soml.ChartSeriesElement)
+		return nil, true, false
+	}
+	if attr, ok := elem.Attr("series"); ok {
+		r.errorf(attr.NameSpan, "<%s series> colors the only series — with <%s> each series takes its own fill",
+			soml.ChartElement, soml.ChartSeriesElement)
+	}
+	var out []chartSeries
+	hasPoints := true
+	for i, se := range seriesElems {
+		s := chartSeries{kind: kind, span: se.NameSpan, fill: chartSeriesDefaults[i%len(chartSeriesDefaults)]}
+		if attr, ok := se.Attr("name"); ok && attr.HasValue && attr.Value != "" {
+			s.name = attr.Value
+		} else {
+			r.errorf(se.NameSpan, "<%s> needs a name — it is the legend entry", soml.ChartSeriesElement)
+		}
+		if attr, ok := se.Attr("fill"); ok {
+			if color, ok := r.chartColor(attr); ok {
+				s.fill = color
+			}
+		}
+		if attr, ok := se.Attr("type"); ok {
+			s.kind = r.chartSeriesType(attr, kind)
+		}
+		data, ok := r.chartData(se)
+		hasPoints = hasPoints && ok
+		s.data = data
+		out = append(out, s)
+	}
+	r.chartCategories(out, seriesElems)
+	return out, true, hasPoints
+}
+
+// chartSeriesType은 계열의 종류다 — 선 계열 차트(line · area · step) 안에서만 셋 중 하나를 고른다. 막대는 칸을 나눠
+// 서는 다른 배치라 선과 한 밴드에 섞지 않는다.
+func (r *resolver) chartSeriesType(attr soml.Attr, kind string) string {
+	if kind == soml.ChartTypeBar {
+		r.errorf(attr.NameSpan, "<%s type> is for line, area and step charts — every series of a bar chart is bars", soml.ChartSeriesElement)
+		return kind
+	}
+	switch attr.Value {
+	case soml.ChartTypeLine, soml.ChartTypeArea, soml.ChartTypeStep:
+		return attr.Value
+	}
+	r.errorf(attr.ValueSpan, "unknown series type %q (available series types: line, area, step)", attr.Value)
+	return kind
+}
+
+// chartCategories는 모든 계열이 첫 계열과 같은 범주를 같은 순서로 적었는지 본다.
+func (r *resolver) chartCategories(series []chartSeries, elems []*soml.Element) {
+	if len(series) == 0 {
+		return
+	}
+	first := series[0]
+	for i, s := range series[1:] {
+		if len(s.data) != len(first.data) {
+			r.errorf(elems[i+1].NameSpan, "<%s name=%q> has %d points but the first series has %d — every series lists the same categories",
+				soml.ChartSeriesElement, s.name, len(s.data), len(first.data))
+			continue
+		}
+		for j, d := range s.data {
+			if d.label != first.data[j].label {
+				r.errorf(d.span, "<%s label=%q> is category %d — the first series has %q there (every series lists the same categories in the same order)",
+					soml.ChartPointElement, d.label, j+1, first.data[j].label)
+			}
+		}
+	}
+}
+
+// chartLineEmphasis는 선 · 영역 · 계단 차트의 점 강조를 막는다 — 강조색은 **막대 하나**를 칠하는 채널이고, 선은
+// 계열 하나가 한 경로라 점 하나만 다른 색으로 칠할 자리가 없다.
+func (r *resolver) chartLineEmphasis(elem *soml.Element, kind string) {
+	var points []*soml.Element
+	for _, child := range elem.Children {
+		e, ok := child.(*soml.Element)
+		if !ok {
+			continue
+		}
+		switch e.Name {
+		case soml.ChartPointElement:
+			points = append(points, e)
+		case soml.ChartSeriesElement:
+			for _, c := range e.Children {
+				if p, ok := c.(*soml.Element); ok && p.Name == soml.ChartPointElement {
+					points = append(points, p)
+				}
+			}
+		}
+	}
+	for _, point := range points {
+		if attr, ok := point.Attr("fill"); ok {
+			r.errorf(attr.NameSpan, "<%s fill> highlights one bar — a %s chart draws its series as one line, so a point cannot take its own color",
+				soml.ChartPointElement, kind)
+		}
 	}
 }
 
@@ -129,7 +301,7 @@ func chartRootAttrs(elem *soml.Element) []soml.Attr {
 // **필수**인 근거: `<chart/>`가 조용히 막대가 되면 저자의 오타(`tpye="bar"`)와 구별되지 않는다.
 // 값 없는 `type`도 같은 문구로 말한다 — hasValue의 일반 문구("값이 필요하다")는 어느 종류를
 // 쓸 수 있는지 말하지 않으므로 저자가 문서를 찾아야 한다.
-func (r *resolver) chartType(elem *soml.Element) bool {
+func (r *resolver) chartType(elem *soml.Element) string {
 	attr, ok := elem.Attr("type")
 	if !ok || !attr.HasValue || attr.Value == "" {
 		span := elem.NameSpan
@@ -138,15 +310,15 @@ func (r *resolver) chartType(elem *soml.Element) bool {
 		}
 		r.errorf(span, "<%s> needs a type (available types: %s) — without a type there is no way to guess what to draw",
 			soml.ChartElement, chartTypeList())
-		return false
+		return ""
 	}
 	for _, name := range soml.ChartTypes() {
 		if name == attr.Value {
-			return true
+			return name
 		}
 	}
 	r.errorf(attr.ValueSpan, "unknown chart type %q%s (available types: %s)", attr.Value, didYouMean(attr.Value, chartTypeList()), chartTypeList())
-	return false
+	return ""
 }
 
 // chartFrameHeight는 차트가 **자기 높이를 갖는지** 본다 — `h`나 `ratio` 중 하나가 있어야 한다.
@@ -240,6 +412,10 @@ type chartDatum struct {
 // 점이 있는 것과 아예 없는 것을 갈라야 "점이 없다"를 두 번 말하지 않는다 (값이 하나뿐이고
 // 그것이 음수인 차트는 진단이 하나여야 한다).
 func (r *resolver) chartData(elem *soml.Element) ([]chartDatum, bool) {
+	owner := soml.ChartElement
+	if elem.Name == soml.ChartSeriesElement {
+		owner = soml.ChartSeriesElement
+	}
 	var data []chartDatum
 	written := 0
 	for _, child := range elem.Children {
@@ -254,7 +430,7 @@ func (r *resolver) chartData(elem *soml.Element) ([]chartDatum, bool) {
 	}
 	if written == 0 {
 		r.errorf(elem.NameSpan, "<%s> has no <%s> — there is no data to draw (<%s label=\"May\" value=\"22\"/>)",
-			soml.ChartElement, soml.ChartPointElement, soml.ChartPointElement)
+			owner, soml.ChartPointElement, soml.ChartPointElement)
 		return nil, false
 	}
 	return data, true
@@ -402,7 +578,7 @@ func chartColumn(datum chartDatum, spec chartSpec) *soml.Element {
 		"align", string(soml.BoxAlignCenter),
 		"h", chartFillAxis)
 	col.Children = []soml.Node{
-		chartBand(datum, spec),
+		chartBand(datum, spec, chartBarWidth),
 		chartNode(soml.ShapeElement, datum.span,
 			"type", chartFrameType,
 			"fill", chartBaselineFill,
@@ -420,7 +596,7 @@ func chartColumn(datum chartDatum, spec chartSpec) *soml.Element {
 //
 // 값 0은 막대를 내지 않는다: 높이 0의 도형은 산출물에서 아무것도 아니므로 선언을 낼 이유가
 // 없다. 라벨은 남는다 — "0"이 데이터다.
-func chartBand(datum chartDatum, spec chartSpec) *soml.Element {
+func chartBand(datum chartDatum, spec chartSpec, barWidth string) *soml.Element {
 	band := chartNode(soml.ColElement, datum.span,
 		"grow", "1",
 		"basis", "0",
@@ -441,7 +617,7 @@ func chartBand(datum chartDatum, spec chartSpec) *soml.Element {
 		"type", chartFrameType,
 		"fill", fill,
 		"border", noneValue,
-		"w", chartBarWidth,
+		"w", barWidth,
 		"h", chartPercent(datum.value/spec.axis*100),
 		"shrink", "0"))
 	return band
@@ -491,6 +667,158 @@ func chartAttr(name, value string, span soml.Span) soml.Attr {
 // 사람이 쓰지 않는 표기다. 0.01pp의 차이는 1000px 높이에서 0.1px이다.
 func chartPercent(percent float64) string {
 	return strconv.FormatFloat(math.Round(percent*100)/100, 'f', -1, 64) + "%"
+}
+
+// 선 · 영역 · 계단 차트의 펼침 상수다.
+const (
+	// chartLineWidth는 계열 선의 굵기(px)다 — 막대 사이의 기준선(1px)보다 굵어야 데이터가 축으로 읽히지 않는다.
+	chartLineWidth = "3"
+	// chartAreaAlpha는 영역 차트의 칠 불투명도다 — 선 아래의 면은 선보다 물러나야 선이 읽힌다.
+	chartAreaAlpha = "0.2"
+)
+
+// chartLinePlot은 선 · 영역 · 계단 차트의 밴드다 — 위에서 아래로 플롯 밴드(경로 도형 하나) · 기준선 · 범주 라벨의 줄.
+//
+// 점의 가로 자리는 범주 칸의 **가운데**다 (i + ½) / n — 막대 차트와 같은 칸 나눔이라 범주 라벨이 같은 열에 선다.
+// 세로 자리는 막대 높이와 같은 비율(값 ÷ 축)을 밴드의 아래에서 위로 잰 것이다. 그래서 산수는 백분율뿐이고, 경로
+// 도형이 그 0~100 상자를 밴드 크기로 늘린다 — 픽셀은 여전히 브라우저가 잰다. 계단은 칸마다 수평인 한 단이다.
+// 영역은 같은 선 아래를 기준선까지 닫아 계열색 20%로 칠하고, 그 위에 선을 다시 긋는다 (`<stack>`으로 겹친다).
+func chartLinePlot(series []chartSeries, spec chartSpec) *soml.Element {
+	data := series[0].data
+	span := data[0].span
+	n := float64(len(data))
+	x := func(i int) float64 { return (float64(i) + 0.5) / n * 100 }
+	y := func(v float64) float64 { return 100 - v/spec.axis*100 }
+	num := func(v float64) string { return strconv.FormatFloat(math.Round(v*100)/100, 'f', -1, 64) }
+	path := func(kind string, data []chartDatum) string {
+		var line strings.Builder
+		for i, datum := range data {
+			switch {
+			case kind == soml.ChartTypeStep:
+				left, right := float64(i)/n*100, float64(i+1)/n*100
+				if i == 0 {
+					line.WriteString("M" + num(left) + "," + num(y(datum.value)))
+				} else {
+					line.WriteString(" V" + num(y(datum.value)))
+				}
+				line.WriteString(" H" + num(right))
+			case i == 0:
+				line.WriteString("M" + num(x(i)) + "," + num(y(datum.value)))
+			default:
+				line.WriteString(" L" + num(x(i)) + "," + num(y(datum.value)))
+			}
+		}
+		return line.String()
+	}
+	band := chartNode(soml.StackElement, span, "grow", "1", "basis", "0", "w", chartFillAxis)
+	// 영역의 면을 먼저 다 칠하고 선을 그 위에 긋는다 — 뒤 계열의 면이 앞 계열의 선을 덮지 않는다.
+	for _, s := range series {
+		if s.kind != soml.ChartTypeArea {
+			continue
+		}
+		area := path(s.kind, s.data) + " L" + num(x(len(s.data)-1)) + ",100 L" + num(x(0)) + ",100 Z"
+		band.Children = append(band.Children, chartNode(soml.ShapeElement, s.data[0].span,
+			"type", soml.PathShapeType, "d", area,
+			"fill", "alpha("+s.fill+", "+chartAreaAlpha+")", "border", noneValue,
+			"w", chartFillAxis, "h", chartFillAxis))
+	}
+	for _, s := range series {
+		band.Children = append(band.Children, chartNode(soml.ShapeElement, s.data[0].span,
+			"type", soml.PathShapeType, "d", path(s.kind, s.data),
+			"fill", noneValue, "border", chartLineWidth+" solid "+s.fill,
+			"w", chartFillAxis, "h", chartFillAxis))
+	}
+
+	labels := chartNode(soml.RowElement, span, "gap", "0", "w", chartFillAxis)
+	for _, datum := range data {
+		label := chartTextNode(datum.label, "", datum.span)
+		label.Attrs = append(label.Attrs, chartAttr("grow", "1", datum.span), chartAttr("basis", "0", datum.span))
+		labels.Children = append(labels.Children, label)
+	}
+	col := chartNode(soml.ColElement, span, "gap", "0", "w", chartFillAxis, "h", chartFillAxis)
+	col.Children = []soml.Node{
+		band,
+		chartNode(soml.ShapeElement, span,
+			"type", chartFrameType, "fill", chartBaselineFill, "border", noneValue,
+			"w", chartFillAxis, "h", chartBaselineHeight),
+		labels,
+	}
+	return col
+}
+
+// chartGroupedPlot은 묶음 막대 밴드다 — 범주 칸마다 계열 수만큼의 막대가 칸의 70% 폭을 나눠 붙어 선다. 칸 · 기준선 ·
+// 범주 라벨은 단일 계열의 칸과 같고, 플롯 밴드만 계열마다의 작은 밴드로 나뉜다 (막대 높이는 그 작은 밴드에 대한 비율 —
+// 작은 밴드가 칸의 밴드 높이를 그대로 갖는다).
+func chartGroupedPlot(series []chartSeries, spec chartSpec) *soml.Element {
+	first := series[0].data
+	row := chartNode(soml.RowElement, first[0].span,
+		"gap", "0",
+		"align", string(soml.BoxAlignStretch),
+		"h", chartFillAxis)
+	for i, category := range first {
+		col := chartNode(soml.ColElement, category.span,
+			"grow", "1", "basis", "0", "gap", "0",
+			"align", string(soml.BoxAlignCenter),
+			"h", chartFillAxis)
+		group := chartNode(soml.RowElement, category.span,
+			"grow", "1", "basis", "0", "w", chartBarWidth, "gap", "0",
+			"align", string(soml.BoxAlignStretch))
+		for _, s := range series {
+			datum := s.data[i]
+			group.Children = append(group.Children, chartBand(datum, chartSpec{axis: spec.axis, unit: spec.unit, series: s.fill}, chartFillAxis))
+		}
+		col.Children = []soml.Node{
+			group,
+			chartNode(soml.ShapeElement, category.span,
+				"type", chartFrameType,
+				"fill", chartBaselineFill,
+				"border", noneValue,
+				"w", chartFillAxis,
+				"h", chartBaselineHeight),
+			chartTextNode(category.label, "", category.span),
+		}
+		row.Children = append(row.Children, col)
+	}
+	return row
+}
+
+// chartLegend는 계열 형식의 범례다 — 계열마다 색 견본과 이름이 가운데 정렬된 한 줄이다. 견본은 막대 · 영역이면 사각형,
+// 선 · 계단이면 굵은 선이다 (그림에서 그 계열이 보이는 모양).
+func chartLegend(series []chartSeries) *soml.Element {
+	legend := chartNode(soml.RowElement, series[0].span,
+		"gap", chartLegendItemGap,
+		"justify", string(soml.BoxJustifyCenter),
+		"align", string(soml.BoxAlignCenter),
+		"w", chartFillAxis)
+	for _, s := range series {
+		w, h := "12", "12"
+		if s.kind == soml.ChartTypeLine || s.kind == soml.ChartTypeStep {
+			w, h = "18", chartLineWidth
+		}
+		item := chartNode(soml.RowElement, s.span, "gap", chartLabelGap, "align", string(soml.BoxAlignCenter))
+		name := chartNode(soml.TextElement, s.span, "role", string(soml.RoleCaption))
+		name.Children = []soml.Node{&soml.Text{Value: s.name, Span: s.span}}
+		item.Children = []soml.Node{
+			chartNode(soml.ShapeElement, s.span, "type", chartFrameType, "fill", s.fill, "border", noneValue, "w", w, "h", h),
+			name,
+		}
+		legend.Children = append(legend.Children, item)
+	}
+	return legend
+}
+
+// setChartAttr는 합성 노드의 속성 하나를 바꾼다 — 빈 값이면 지운다.
+func setChartAttr(elem *soml.Element, name, value string) {
+	attrs := elem.Attrs[:0]
+	for _, a := range elem.Attrs {
+		if a.Name != name {
+			attrs = append(attrs, a)
+		}
+	}
+	elem.Attrs = attrs
+	if value != "" {
+		elem.Attrs = append(elem.Attrs, chartAttr(name, value, elem.Span))
+	}
 }
 
 // chartTypeList는 진단에 실을 종류 목록이다 (어휘 순서 — soml.ChartTypes).

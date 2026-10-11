@@ -1,0 +1,35 @@
+<!-- Anatomy — six building blocks around the instance. The cards sit in two columns of a canvas
+     row; curved connectors join each card's inner side to the dark center card and end in dots.
+     The connectors draw themselves after the cards rise. -->
+<slide id="anatomy" enter="rise">
+  <text variant="kicker">02 · Anatomy of an instance</text>
+  <h2>Six building blocks make up every EC2 instance</h2>
+  <row gap="0" align="center" grow="1">
+    <col gap="md" w="360">
+      <shape type="rounded-rect" variant="card" id="ami" w="fill" h="112" pad="md"><h3 size="22">Amazon Machine Image</h3><p size="18" color="muted">OS + software template the instance boots from</p></shape>
+      <shape type="rounded-rect" variant="card" id="type" w="fill" h="112" pad="md"><h3 size="22">Instance type</h3><p size="18" color="muted">vCPU, memory, network bandwidth, accelerators</p></shape>
+      <shape type="rounded-rect" variant="card" id="key" w="fill" h="112" pad="md"><h3 size="22">Key pair &amp; access</h3><p size="18" color="muted">Secure login over SSH, RDP or keyless SSM</p></shape>
+    </col>
+    <spacer grow="1"/>
+    <shape type="rounded-rect" id="instance" fill="fg" border="none" radius="lg" shadow="soft" w="280" h="240" pad="md" enter="zoom">
+      <col gap="xs" align="center" justify="center" h="fill">
+        <text role="title" size="34" color="bg" align="center">EC2 instance</text>
+        <text role="code" size="16" color="muted" align="center">i-0a1b2c3d4e5f67890</text>
+        <shape type="rounded-rect" fill="shade(accent3, 40%)" border="none" radius="lg" pad="xs"><p size="16" color="bg" align="center"><strong>● running · m7g.large</strong></p></shape>
+      </col>
+    </shape>
+    <spacer grow="1"/>
+    <col gap="md" w="360">
+      <shape type="rounded-rect" variant="card" id="ebs" w="fill" h="112" pad="md"><h3 size="22" align="end">EBS volumes</h3><p size="18" color="muted" align="end">Persistent block storage, snapshots to S3</p></shape>
+      <shape type="rounded-rect" variant="card" id="eni" w="fill" h="112" pad="md"><h3 size="22" align="end">Network interface + SG</h3><p size="18" color="muted" align="end">Private IP in a VPC subnet; security group firewall</p></shape>
+      <shape type="rounded-rect" variant="card" id="iam" w="fill" h="112" pad="md"><h3 size="22" align="end">IAM role</h3><p size="18" color="muted" align="end">Temporary credentials for apps — no keys on disk</p></shape>
+    </col>
+  </row>
+  <connector from="ami" to="instance" route="curved" from-side="right" to-side="left" variant="plain" start="dot" end="dot" enter="draw"/>
+  <connector from="type" to="instance" route="curved" from-side="right" to-side="left" variant="plain" start="dot" end="dot" enter="draw"/>
+  <connector from="key" to="instance" route="curved" from-side="right" to-side="left" variant="plain" start="dot" end="dot" enter="draw"/>
+  <connector from="ebs" to="instance" route="curved" from-side="left" to-side="right" variant="plain" start="dot" end="dot" enter="draw"/>
+  <connector from="eni" to="instance" route="curved" from-side="left" to-side="right" variant="plain" start="dot" end="dot" enter="draw"/>
+  <connector from="iam" to="instance" route="curved" from-side="left" to-side="right" variant="plain" start="dot" end="dot" enter="draw"/>
+  <note>An instance is not one thing — it's an image, a size, storage, networking, an identity and an access path, all attached to a virtual machine running on Nitro.</note>
+</slide>

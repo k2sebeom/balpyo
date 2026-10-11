@@ -1,6 +1,6 @@
 # `<text>`
 
-텍스트 블록 하나다. 문자 데이터와 [인라인 태그](text-subset.md)(strong/em/code/a/br/span)를
+텍스트 블록 하나다. 문자 데이터와 [인라인 태그](text-subset.md)(strong/em/code/a/br/span/mark)를
 담을 수 있고, 외관은 `role` 기본값 위에 `variant`와 인라인 속성이 얹혀 확정된다
 (캐스케이드는 [외관 속성](../appearance.md) 참조).
 
@@ -123,7 +123,7 @@ CSS 선언(`font-family` `font-size` `font-weight` `line-height` `color` `text-a
 | 조건 | 진단 메시지 |
 |---|---|
 | 자식으로 블록·리스트 요소를 썼다 | `only character data and inline tags are allowed inside <text> (<…> is not allowed)` |
-| 어휘 밖의 속성 | `unknown attribute … on <text> (available attributes: role, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot)` |
+| 어휘 밖의 속성 | `unknown attribute … on <text> (available attributes: role, variant, size, color, align, anchor, w, min-w, max-w, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
 
 속성 목록의 뒤쪽 열한 개는 [자식 배치 속성](layout.md)과 슬롯 배정이다 — `<text>`는 레이아웃
 컨테이너의 자식이 될 수 있으므로 `<row><text grow="1">`이 유효하고, `at`·`x`/`y`는

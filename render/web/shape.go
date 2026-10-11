@@ -119,6 +119,11 @@ const (
 	// 늘린다. 선 굵기는 `vector-effect="non-scaling-stroke"`로 균일하게 남는다 (늘림이 선까지
 	// 늘리면 1px 테두리가 축마다 다른 굵기가 된다 — OOXML `a:ln`은 균일하다).
 	spaceNormalized
+	// spaceMeasured는 **잰 박스의 px 공간**이다 — 프리셋 공식이 `ss = min(w, h)`에 묶여 늘림으로는 두 축을
+	// 함께 맞출 수 없는 프리셋(cube · 괄호)이 산다. 측정이 끝난 렌더는 잰 rect로 공식을 그대로 평가하고,
+	// 잰 박스가 없는 렌더(측정용 HTML)는 정사각형에서 평가한 경로를 늘린 대체 그림을 낸다 — 그림은
+	// 흐름에 끼지 않으므로 측정한 배치가 같다.
+	spaceMeasured
 )
 
 // 도형 요소의 엔진 CSS 클래스다.
@@ -160,6 +165,21 @@ type shapePath struct {
 	// (cylinder의 뚜껑선, cloud의 안쪽 선). 테두리가 `none`인 도형에서는 아무것도 그리지
 	// 않으므로 그 프리셋의 세부는 사라진다 (알려진 갈라짐).
 	Overlay bool
+	// FillOnly면 선 없이 채움만 칠한다 — 프리셋의 `stroke="false"` 경로다 (cube의 면들 — 외곽선은 따로
+	// 한 경로가 긋는다).
+	FillOnly bool
+	// Shade는 그 면에 얹는 음영이다 — `darken`(검정 20%, 프리셋의 darkenLess) · `lighten`(흰색 20%,
+	// lightenLess). 같은 경로를 채움 위에 한 번 더 칠한다.
+	Shade string
+}
+
+// measuredInk는 잰 박스에서 평가한 프리셋 그림이다 — 경로는 px이고 텍스트 영역은 네 변의 px 인셋이다
+// (100×100에서 평가하면 px가 곧 백분율이다 — measuredGeometry가 그 값으로 대체 그림의 비율을 얻는다).
+type measuredInk struct {
+	Paths      []shapePath
+	L, T, R, B float64
+	// boxW · boxH는 평가한 박스 크기다 (svg viewBox) — 렌더가 채운다.
+	boxW, boxH float64
 }
 
 // shapeGeometry는 프리셋 하나의 기하다 — **12종의 유도표는 이 목록 하나뿐이다**.
@@ -183,8 +203,13 @@ type shapeGeometry struct {
 	// 보정이 한곳에 있어야 나중에 한쪽만 바뀌지 않기 때문이다 — 평가는 PPTX 렌더러가 잰
 	// 박스로 한다 (ShapeAdjusts → render/pptx.AdjustValue).
 	Adjust []ShapeAdjust
-	// TextRect는 프리셋의 **텍스트 영역**이다 — 비어 있으면 박스 전체다.
+	// TextRect는 프리셋의 **텍스트 영역**이다 — 비어 있으면 박스 전체다. 잰 박스로 그리는 프리셋은 정사각형에서
+	// 평가한 비율이다 (잰 박스가 있으면 Measured가 px로 대신한다).
 	TextRect ShapeInsets
+	// Measured는 잰 박스의 px로 프리셋 공식을 평가한다 (Space == spaceMeasured).
+	Measured func(w, h float64) measuredInk
+	// Custom이면 경로가 표가 아니라 도형의 확정 외관(ShapeStyle.Path)에서 온다 — `type="path"` 하나다.
+	Custom bool
 }
 
 // ShapeAdjustAxis는 조정값 비율의 분자다 — 늘린 정규 공간을 되돌리는 값의 출처.
@@ -474,6 +499,112 @@ func shapeGeometries() []shapeGeometry {
 			},
 			TextRect: ShapeInsets{L: 13.7824, T: 15.1019, R: 20.8935, B: 19.7361},
 		},
+		{
+			// triangle(이등변): `adj=50000` → 꼭짓점 `x2 = w·adj/100000` = 50, 경로는 (l,b) → (x2,t) → (r,b).
+			// `ss`에 묶이지 않아 정규 공간에 산다. 텍스트 영역은 `x1 = w·adj/200000`(25%) · `vc`(50%) ·
+			// `x3 = x1 + wd2`(75%) · `b`다.
+			Type: "triangle", Preset: "triangle", Space: spaceNormalized,
+			Paths:    []shapePath{{D: "M0,100 L50,0 L100,100 Z"}},
+			TextRect: ShapeInsets{L: 25, T: 50, R: 25},
+		},
+		// cube · 괄호: 공식이 `ss`에 묶여 잰 박스로 그린다 (spaceMeasured — 공식은 각 함수의 주석).
+		measuredGeometry("cube", "cube", cubeInk),
+		measuredGeometry("left-brace", "leftBrace", braceInk(true)),
+		measuredGeometry("right-brace", "rightBrace", braceInk(false)),
+		{
+			// path: 프리셋이 아니라 저자의 경로다 (`d` — 0~100 상자의 절대 좌표). 정규 공간에 그대로 놓이고, PPTX는
+			// 같은 상자를 늘리는 `a:custGeom`이다 (Preset은 그 원어의 이름이다 — `prstGeom` 이름이 아니다).
+			Type: soml.PathShapeType, Preset: CustomGeometry, Space: spaceNormalized, Custom: true,
+		},
+	}
+}
+
+// CustomGeometry는 경로 도형의 OOXML 원어 이름이다 — `prstGeom@prst`가 아니라 `a:custGeom`이다.
+const CustomGeometry = "custGeom"
+
+// PathData는 경로 명령을 SVG `d`로 쓴다 (0~100 상자 — 정규 공간 그대로).
+func PathData(cmds []soml.PathCmd) string {
+	var b strings.Builder
+	for i, c := range cmds {
+		if i > 0 {
+			b.WriteByte(' ')
+		}
+		b.WriteByte(c.Op)
+		for k := 0; k+1 < len(c.Pts); k += 2 {
+			if k > 0 {
+				b.WriteByte(' ')
+			}
+			b.WriteString(formatNumber(round4(c.Pts[k])) + "," + formatNumber(round4(c.Pts[k+1])))
+		}
+	}
+	return b.String()
+}
+
+// measuredGeometry는 잰 박스로 그리는 프리셋의 표 행이다 — 대체 그림과 텍스트 영역의 비율은 같은 공식을
+// 정사각형(100×100)에서 평가해 얻는다 (표에 수치를 두 번 적지 않는다).
+func measuredGeometry(shapeType, preset string, ink func(w, h float64) measuredInk) shapeGeometry {
+	square := ink(100, 100)
+	return shapeGeometry{
+		Type: shapeType, Preset: preset, Space: spaceMeasured, Measured: ink,
+		Paths:    square.Paths,
+		TextRect: ShapeInsets{L: square.L, T: square.T, R: square.R, B: square.B},
+	}
+}
+
+// cubeInk는 OOXML `cube`다 (기본 adj=25000): `y1 = ss·adj/100000`이 깊이이고 `x4 = r − y1` · `y4 = b − y1`이다.
+// 앞면은 채움만, 오른쪽 면은 darkenLess, 윗면은 lightenLess이고, 외곽선과 두 모서리 선은 채움 없는 경로 하나다.
+// 텍스트 영역은 앞면이다 (`<rect l="l" t="y1" r="x4" b="b"/>`).
+func cubeInk(w, h float64) measuredInk {
+	d := math.Min(w, h) * 0.25
+	x4, y4 := w-d, h-d
+	p := func(format string, args ...float64) string {
+		parts := make([]any, len(args))
+		for i, a := range args {
+			parts[i] = formatNumber(round4(a))
+		}
+		return fmt.Sprintf(format, parts...)
+	}
+	return measuredInk{
+		Paths: []shapePath{
+			{D: p("M0,%s L%s,%s L%s,%s L0,%s Z", d, x4, d, x4, h, h), FillOnly: true},
+			{D: p("M%s,%s L%s,0 L%s,%s L%s,%s Z", x4, d, w, w, y4, x4, h), FillOnly: true, Shade: "darken"},
+			{D: p("M0,%s L%s,0 L%s,0 L%s,%s Z", d, d, w, x4, d), FillOnly: true, Shade: "lighten"},
+			{D: p("M0,%s L%s,0 L%s,0 L%s,%s L%s,%s L0,%s Z M0,%s L%s,%s L%s,0 M%s,%s L%s,%s",
+				d, d, w, w, y4, x4, h, h, d, x4, d, w, x4, d, x4, h), Overlay: true},
+		},
+		T: d, R: d,
+	}
+}
+
+// braceInk는 OOXML `rightBrace`(mirror면 `leftBrace`)다 (기본 adj1=8333 · adj2=50000): `y1 = ss·adj1/100000`이
+// 모서리 원호의 세로 반지름, `y3 = h·adj2/100000`이 가운데 꼭짓점의 높이, `y2 = y3 − y1` · `y4 = b − y1`이다.
+// 원호 넷(wR = wd2, hR = y1)을 SVG `A`로 옮겼다 — sweep은 swAng의 부호다. 텍스트 영역은 박스 전체로 둔다.
+func braceInk(mirror bool) func(w, h float64) measuredInk {
+	return func(w, h float64) measuredInk {
+		y1 := math.Min(w, h) * 0.08333
+		y3 := h * 0.5
+		y2, y4, wd2 := y3-y1, h-y1, w/2
+		x := func(v float64) float64 {
+			if mirror {
+				return w - v
+			}
+			return v
+		}
+		s := func(sweep int) int {
+			if mirror {
+				return 1 - sweep
+			}
+			return sweep
+		}
+		n := func(v float64) string { return formatNumber(round4(v)) }
+		d := fmt.Sprintf("M%s,0 A%s,%s 0 0 %d %s,%s L%s,%s A%s,%s 0 0 %d %s,%s A%s,%s 0 0 %d %s,%s L%s,%s A%s,%s 0 0 %d %s,%s",
+			n(x(0)), n(wd2), n(y1), s(1), n(x(wd2)), n(y1),
+			n(x(wd2)), n(y2),
+			n(wd2), n(y1), s(0), n(x(w)), n(y3),
+			n(wd2), n(y1), s(0), n(x(wd2)), n(y3+y1),
+			n(x(wd2)), n(y4),
+			n(wd2), n(y1), s(1), n(x(0)), n(h))
+		return measuredInk{Paths: []shapePath{{D: d + " Z", FillOnly: true}, {D: d, Overlay: true}}}
 	}
 }
 
@@ -489,6 +620,16 @@ func shapeGeometryOf(shapeType string) (shapeGeometry, error) {
 	}
 	return shapeGeometry{}, fmt.Errorf("no geometry for shape type %q (presets: %s)",
 		shapeType, strings.Join(soml.ShapeTypes(), ", "))
+}
+
+// ShapeDrawnFromMeasuredBox는 이 프리셋의 그림이 잰 박스로 그려지는지다 (spaceMeasured) — 파이프라인이
+// HTML만 내는 빌드에서도 재야 하는지 묻는다.
+func ShapeDrawnFromMeasuredBox(style soml.ShapeStyle) bool {
+	geom, err := shapeGeometryOf(style.Type)
+	if err != nil {
+		return false
+	}
+	return geom.Space == spaceMeasured || (geom.Space == spaceNormalized && style.Fill != nil && style.Fill.Pattern != nil)
 }
 
 // ShapePreset은 SOML `type` → OOXML `prstGeom@prst` 이름이다.
@@ -595,6 +736,24 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	// 패딩이 남아 정작 텍스트가 어디 놓였는지가 묻힌다 (`anchor`가 첫 자식에서 오는 것과 같은
 	// 자리: 박스 CSS의 일부는 내용이 있을 때만 뜻이 있다).
 	text := geom.TextRect
+	// 잰 박스로 그리는 프리셋은 이 렌더가 그 박스를 알면 공식을 px로 평가한다 — 텍스트 영역도 같은 평가의
+	// 인셋이다 (잰 박스의 비율로 옮겨 같은 래퍼에 싣는다).
+	var ink *measuredInk
+	if geom.Space == spaceMeasured {
+		if box, ok := measuredBox(deck, ElementID(slide.Index, path)); ok && box.W > 0 && box.H > 0 {
+			m := geom.Measured(box.W, box.H)
+			ink = &m
+			ink.boxW, ink.boxH = box.W, box.H
+			text = ShapeInsets{L: m.L / box.W * 100, T: m.T / box.H * 100, R: m.R / box.W * 100, B: m.B / box.H * 100}
+		}
+	}
+	// 늘린 공간(정규 100×100)의 무늬는 타일까지 늘어난다 — 잰 박스를 알면 무늬를 그 늘림의 역으로 되돌린다.
+	patternScale := [2]float64{1, 1}
+	if geom.Space == spaceNormalized && style.Fill != nil && style.Fill.Pattern != nil {
+		if box, ok := measuredBox(deck, ElementID(slide.Index, path)); ok && box.W > 0 && box.H > 0 {
+			patternScale = [2]float64{100 / box.W, 100 / box.H}
+		}
+	}
 	if !shapeHasContent(elem) {
 		text = ShapeInsets{}
 	}
@@ -611,9 +770,9 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	if style.Rotate != nil {
 		class += " " + shapeRotateClass
 	}
-	fmt.Fprintf(b, "<div class=%q %s=%q %s=%q%s>\n",
-		class, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, styleAttr(decls))
-	if err := writeShapeInk(b, geom, *style, deck.Theme, ElementID(slide.Index, path)); err != nil {
+	fmt.Fprintf(b, "<div class=%q %s=%q %s=%q%s%s>\n",
+		class, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name, enterAttr(elem), styleAttr(decls))
+	if err := writeShapeInk(b, geom, ink, patternScale, *style, deck.Theme, ElementID(slide.Index, path)); err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
 	// 백분율 인셋 프리셋은 텍스트를 그 사각형에 담는 래퍼를 하나 더 갖는다 —
@@ -643,8 +802,8 @@ func writeShape(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 // 기본이 `aria-hidden`인 이유: 그림은 장식이고 내용은 안의 텍스트다. 스크린 리더가 읽을 것이
 // 없는 요소를 접근성 트리에 남기면 도형마다 빈 그래픽이 읽힌다. **저자의 `alt`이 그 판단의
 // 예외를 선언한다** — 그러면 같은 자리가 `role="img" aria-label`이 된다 (inkAccessAttrs).
-func writeShapeInk(b *strings.Builder, geom shapeGeometry, style soml.ShapeStyle, theme soml.Theme, id string) error {
-	decls, defs, err := shapeInkCSS(style, theme, id)
+func writeShapeInk(b *strings.Builder, geom shapeGeometry, ink *measuredInk, patternScale [2]float64, style soml.ShapeStyle, theme soml.Theme, id string) error {
+	decls, defs, err := shapeInkCSS(style, theme, id, patternScale)
 	if err != nil {
 		return err
 	}
@@ -676,21 +835,44 @@ func writeShapeInk(b *strings.Builder, geom shapeGeometry, style soml.ShapeStyle
 	if style.Radius != nil {
 		return fmt.Errorf("type=%q has no place for a radius", geom.Type)
 	}
-	fmt.Fprintf(b, "<svg class=%q viewBox=\"0 0 100 100\" preserveAspectRatio=\"none\"%s%s>",
-		shapeInkClass, inkAccessAttrs(style.Alt), styleAttr(decls))
+	// 잰 박스로 평가한 그림은 그 박스의 px 공간이고(늘림이 없다), 아니면 정규 100×100 공간을 늘린다 —
+	// 잰 박스로 그리는 프리셋의 대체 그림(측정용 HTML)도 후자다.
+	viewBox, paths := "0 0 100 100", geom.Paths
+	if geom.Custom {
+		if len(style.Path) == 0 {
+			return fmt.Errorf("type=%q has no path — the deck did not go through core.Resolve", geom.Type)
+		}
+		paths = []shapePath{{D: PathData(style.Path)}}
+	}
+	if ink != nil {
+		viewBox, paths = "0 0 "+formatNumber(round4(ink.boxW))+" "+formatNumber(round4(ink.boxH)), ink.Paths
+	}
+	fmt.Fprintf(b, "<svg class=%q viewBox=%q preserveAspectRatio=\"none\"%s%s>",
+		shapeInkClass, viewBox, inkAccessAttrs(style.Alt), styleAttr(decls))
 	b.WriteString(defs)
-	for _, p := range geom.Paths {
+	for _, p := range paths {
 		b.WriteString("<path")
 		if p.Overlay {
 			b.WriteString(` fill="none"`)
 		}
+		if p.FillOnly {
+			b.WriteString(` stroke="none"`)
+		}
 		// 늘린 공간에서 선 굵기를 균일하게 유지한다 (spaceNormalized의 주석). 상속되지 않는
 		// 프로퍼티라 경로마다 붙는다.
 		fmt.Fprintf(b, ` d=%q vector-effect="non-scaling-stroke"/>`, p.D)
+		if shade, ok := shadeFills[p.Shade]; ok {
+			// 면의 음영은 같은 면 위에 한 번 더 칠한 검정 · 흰색 20%다 — 프리셋의 darkenLess(80% 음영) ·
+			// lightenLess(80% 틴트)와 같은 결과다. 채움이 그라디언트여도 그 위에 얹힌다.
+			fmt.Fprintf(b, `<path d=%q style="fill: %s; stroke: none"/>`, p.D, shade)
+		}
 	}
 	b.WriteString("</svg>\n")
 	return nil
 }
+
+// shadeFills는 프리셋 면 음영 → 그 면 위에 얹는 겹이다.
+var shadeFills = map[string]string{"darken": "rgb(0 0 0 / 0.2)", "lighten": "rgb(255 255 255 / 0.2)"}
 
 // shapeBoxCSS는 도형 박스의 CSS 선언이다 — 안쪽 여백·크기·비율·회전 각도·세로 앵커.
 //
@@ -827,7 +1009,7 @@ func anchorValue(anchor soml.TextAnchor) (string, error) {
 //
 // 정하지 않은 속성은 선언을 **하나도** 내지 않는다 — `shadow`·`opacity`·`flip`의 nil은
 // "선언 없음"이고 두 타깃의 암묵 기본값이 같다 (soml.ShapeStyle의 계약).
-func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, string, error) {
+func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string, patternScale [2]float64) ([]string, string, error) {
 	var decls []string
 	var defs []string
 	// fill: 토큰은 변수 참조, 리터럴은 #RRGGBB, `none`은 SVG의 `none`이다 (투명한 채움을
@@ -840,6 +1022,14 @@ func shapeInkCSS(style soml.ShapeStyle, theme soml.Theme, id string) ([]string, 
 	}
 	if style.Fill.None {
 		decls = append(decls, "fill: none")
+	} else if style.Fill.Pattern != nil {
+		patID := id + "-fill-pattern"
+		def, err := patternDef(patID, *style.Fill.Pattern, patternScale, theme)
+		if err != nil {
+			return nil, "", err
+		}
+		defs = append(defs, def)
+		decls = append(decls, fmt.Sprintf("fill: url(#%s)", patID))
 	} else if style.Fill.Color.IsGradient() {
 		gradID := id + "-fill-grad"
 		def, err := linearGradientDef(gradID, *style.Fill.Color.Gradient, theme)
@@ -951,20 +1141,95 @@ func linearGradientDef(id string, grad soml.Gradient, theme soml.Theme) (string,
 	if len(grad.Stops) < 2 {
 		return "", fmt.Errorf("gradient has fewer than two stops (%d)", len(grad.Stops))
 	}
-	x1, y1, x2, y2 := gradientVector(grad.Angle)
 	var b strings.Builder
-	fmt.Fprintf(&b, `<linearGradient id=%q x1=%q y1=%q x2=%q y2=%q>`,
-		id, formatNumber(x1), formatNumber(y1), formatNumber(x2), formatNumber(y2))
+	tag := "linearGradient"
+	if grad.Radial {
+		// 방사형: 중심은 박스의 비율이고 반지름은 가장 먼 변까지다 — objectBoundingBox가 원을 박스로 늘려 CSS
+		// `ellipse farthest-side`와 같은 타원이 된다.
+		tag = "radialGradient"
+		cx, cy := grad.CX/100, grad.CY/100
+		r := math.Max(math.Max(cx, 1-cx), math.Max(cy, 1-cy))
+		fmt.Fprintf(&b, `<radialGradient id=%q cx=%q cy=%q r=%q>`,
+			id, formatNumber(round4(cx)), formatNumber(round4(cy)), formatNumber(round4(r)))
+	} else {
+		x1, y1, x2, y2 := gradientVector(grad.Angle)
+		fmt.Fprintf(&b, `<linearGradient id=%q x1=%q y1=%q x2=%q y2=%q>`,
+			id, formatNumber(x1), formatNumber(y1), formatNumber(x2), formatNumber(y2))
+	}
 	last := len(grad.Stops) - 1
 	for i, stop := range grad.Stops {
 		offset := formatNumber(round4(float64(i) / float64(last)))
-		color, err := baseColorValue(stop, theme)
+		// 불투명도는 stop-opacity로 싣는다 — SVG 그라디언트는 미리 곱하지 않은 색으로 보간하므로, 투명을 색에
+		// 섞으면(color-mix … transparent) 투명한 검정 쪽으로 보간되어 가운데가 회색으로 탁해진다.
+		opacity := ""
+		if stop.Mod != nil && stop.Mod.Kind == soml.ModAlpha {
+			opacity = "; stop-opacity: " + formatNumber(stop.Mod.Amount)
+			stop.Mod = nil
+		}
+		color, err := colorValue(stop, theme)
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(&b, `<stop offset=%q style="stop-color: %s"/>`, offset, color)
+		fmt.Fprintf(&b, `<stop offset=%q style="stop-color: %s%s"/>`, offset, color, opacity)
 	}
-	b.WriteString("</linearGradient>")
+	b.WriteString("</" + tag + ">")
+	return b.String(), nil
+}
+
+// patternTile은 무늬 타일 한 변의 논리 px다 — OOXML 프리셋 무늬가 8×8 비트맵이라 같은 주기를 쓴다.
+const patternTile = 8
+
+// patternInk는 무늬 하나의 타일 그림이다 — 앞색으로 긋는 경로와 그 굵기, 또는 앞색 점들이다. 사선은 타일 모서리에
+// 걸친 토막을 함께 그어 이웃 타일과 이어지게 한다. 가는 선 무늬(가로 · 세로 · 사선 · 격자)는 OOXML 프리셋처럼 4px마다
+// 한 줄이고, 굵은 사선과 사선 격자는 8px마다다.
+type patternInk struct {
+	d      string
+	stroke float64
+	dots   [][2]float64
+}
+
+var patternInks = map[soml.PatternKind]patternInk{
+	soml.PatternHorizontal:       {d: "M0,0.5 H8 M0,4.5 H8", stroke: 1},
+	soml.PatternVertical:         {d: "M0.5,0 V8 M4.5,0 V8", stroke: 1},
+	soml.PatternDiagonalUp:       {d: "M0,4 L4,0 M0,8 L8,0 M4,8 L8,4 M-1,1 L1,-1 M7,9 L9,7", stroke: 1},
+	soml.PatternDiagonalDown:     {d: "M0,0 L8,8 M4,0 L8,4 M0,4 L4,8 M-1,7 L1,9 M7,-1 L9,1", stroke: 1},
+	soml.PatternWideDiagonalUp:   {d: "M0,8 L8,0 M-1,1 L1,-1 M7,9 L9,7", stroke: 3},
+	soml.PatternWideDiagonalDown: {d: "M0,0 L8,8 M-1,7 L1,9 M7,-1 L9,1", stroke: 3},
+	soml.PatternCross:            {d: "M0,0.5 H8 M0,4.5 H8 M0.5,0 V8 M4.5,0 V8", stroke: 1},
+	soml.PatternDiagonalCross:    {d: "M0,8 L8,0 M-1,1 L1,-1 M7,9 L9,7 M0,0 L8,8 M-1,7 L1,9 M7,-1 L9,1", stroke: 1},
+	soml.PatternDots:             {dots: [][2]float64{{2, 2}, {6, 6}}},
+}
+
+// patternDef는 무늬 채움의 SVG `<pattern>` def다 — 8×8 px 타일에 뒷색 사각형을 깔고 앞색 선 · 점을 얹는다.
+// 타일은 사용자 공간(userSpaceOnUse)이라 도형 크기와 무관한 주기를 갖는다. scale은 늘린 공간(정규 100×100)의
+// 늘림을 되돌리는 배율이다 (px 공간이면 1). 색은 CSS 프로퍼티로 내어 토큰 변수가 풀린다 (그라디언트 스톱과 같다).
+func patternDef(id string, pat soml.Pattern, scale [2]float64, theme soml.Theme) (string, error) {
+	ink, ok := patternInks[pat.Kind]
+	if !ok {
+		return "", fmt.Errorf("pattern %q has no web tile", pat.Kind)
+	}
+	fg, err := colorValue(pat.Fg, theme)
+	if err != nil {
+		return "", err
+	}
+	bg, err := colorValue(pat.Bg, theme)
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, `<pattern id=%q patternUnits="userSpaceOnUse" width="%d" height="%d"`, id, patternTile, patternTile)
+	if scale != [2]float64{1, 1} {
+		fmt.Fprintf(&b, ` patternTransform="scale(%s %s)"`, formatNumber(round4(scale[0])), formatNumber(round4(scale[1])))
+	}
+	fmt.Fprintf(&b, `><rect width="%d" height="%d" style="fill: %s; stroke: none"/>`, patternTile, patternTile, bg)
+	if ink.d != "" {
+		fmt.Fprintf(&b, `<path d=%q style="fill: none; stroke: %s; stroke-width: %spx"/>`, ink.d, fg, formatNumber(ink.stroke))
+	}
+	for _, dot := range ink.dots {
+		fmt.Fprintf(&b, `<circle cx="%s" cy="%s" r="1.2" style="fill: %s; stroke: none"/>`,
+			formatNumber(dot[0]), formatNumber(dot[1]), fg)
+	}
+	b.WriteString("</pattern>")
 	return b.String(), nil
 }
 

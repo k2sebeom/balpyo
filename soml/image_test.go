@@ -68,7 +68,7 @@ func TestParseImageErrors(t *testing.T) {
 			// 그림 뒤의 칠이 보이는 자리는 contain의 여백뿐이고 PPTX에서 pic 박스 밖이다.
 			name: "이미지에 fill은 없다",
 			src:  `<slide><image src="assets/wide.png" fill="surface"/></slide>`,
-			want: []string{`1:37 unknown attribute fill on <image> (available attributes: src, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot)`},
+			want: []string{`1:37 unknown attribute fill on <image> (available attributes: src, id, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)`},
 		},
 	})
 }

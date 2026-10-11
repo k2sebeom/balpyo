@@ -55,7 +55,7 @@ minimal/
 │   ├── content.css       # 레이아웃 배치 CSS (흐름 모드)
 │   ├── content.slots.css #   같은 레이아웃의 슬롯 영역 CSS (슬롯 모드 — 선택)
 │   └── ...               #   theme.json의 layouts에 적힌 이름마다 .css 하나
-└── assets/               # 테마가 소유한 그림 — 배경 · 로고 · 슬라이드가 theme:으로 쓰는 그림 (선택, PNG · JPEG)
+└── assets/               # 테마가 소유한 그림 — 배경 · 로고 · 슬라이드가 theme:으로 쓰는 그림 (선택, 배경 · 로고는 PNG · JPEG)
 ```
 
 네 파일의 역할이 겹치지 않는다는 것이 이 구조의 요점이다.
@@ -163,6 +163,12 @@ surface, accent1, …)`). 그래서 **토큰 이름은 테마가 소유하는 �
 | `radius` | `sm` · `md` · `lg` | `radius` | **없음** (OOXML에 반경 개념이 없다) |
 | `shadow` | `soft` | `shadow` | 없음 (도형마다 `outerShdw`를 굽고 **색만** 참조로 남는다) |
 
+다섯 범주 밖에 **선택 절** 하나가 있다: `motion` — [등장](soml/enter.md)의 박자(ms)와 기본 슬라이드
+전환이다 (`{ "duration": 600, "stagger": 90, "delay": 150, "transition": "fade", "transitionDuration": 400 }` —
+`transition`은 생략하면 전환 없음). 배열이 아니라 객체 하나이고, 상속에서는 통째로
+갈린다. 정하지 않은 테마도 로드되지만, 그 테마에서 `enter`를 쓴 덱은 에러다. PPTX 테마 파트에는 자리가
+없다 — 효과마다 길이 · 지연으로 구워진다.
+
 `minimal`의 실제 값과 각 수치의 근거(수직 리듬·대비·극좌표 그림자)는
 [외관 속성](appearance.md)의 "내장 테마 `minimal`의 토큰" 절에 있다 — 그 문서의 값 표는
 **`minimal`의 것**이고, 다른 테마의 값은 그 테마의 `tokens.json`·`components.json`이다
@@ -261,10 +267,14 @@ LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`�
 | `layouts` | 이 테마의 레이아웃 이름 목록 (생략 가능) | 이 배경을 받는 레이아웃. **생략하면 기본 배경**이다 (나머지 모든 레이아웃) |
 | `fill` | 색 값 — 토큰 · 변형 · 토큰 그라디언트 | 바탕 채움 |
 | `image` | `assets/` 아래 그림 경로 | 바탕 그림. 슬라이드를 **덮는다** — 비율을 지키고 넘치는 쪽을 가운데 기준으로 잘라 낸다 (`<image fit="cover">`와 같은 규칙) |
+| `overlay` | 색 값 — 흔히 투명해지는 그라디언트 (생략 가능) | 바탕(채움 · 그림) **위**에 칠하는 덮개 — 사진 위의 어두운 띠, 모서리의 광채 |
 
 - 배경 하나는 `fill` **또는** `image`다 — 둘을 함께 쓰면 에러다. PPTX의 슬라이드 배경은 채움 하나만
   담으므로, 그림 아래 깐 채움이 PPTX에서는 사라져 투명한 자리마다 두 산출물이 갈린다. 그라디언트 위의
   그림이 필요하면 둘을 그림 한 장으로 합친다.
+- **덮개(`overlay`)는 바탕 위의 한 겹이다** — `{ "image": "assets/cover.jpg", "overlay": "gradient(fg fg/0, 90deg)" }`는
+  사진 위에 왼쪽부터 투명해지는 어두운 띠를 칠한다. 웹은 슬라이드 배경의 윗겹이고, PPTX는 슬라이드 맨 뒤의
+  **잠긴 전면 사각형**(`background overlay` — 선택 · 이동할 수 없다)이다: 슬라이드 배경은 채움 하나만 담는다.
 - 레이아웃 하나는 **한 선언에만** 나온다. 기본 배경도 하나다. 겹치면 에러다 — 어느 것이 이기는지 외울
   순서 규칙을 두지 않는다.
 - 배경을 정하지 않은 레이아웃은 지금처럼 `bg` 색이다. `backgrounds`를 쓰지 않는 테마의 산출물은 이
@@ -273,7 +283,8 @@ LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`�
   `p:bg`다 — PowerPoint의 "배경 서식"으로 고치는 자리이고, 끌어 옮길 수 있는 도형이 아니다. 색은
   `schemeClr`로 남는다.
 
-그림은 테마 패키지의 `assets/` 아래에 둔다. `<image>`의 파일과 **같은 판정**을 받는다 — PNG · JPEG,
+그림은 테마 패키지의 `assets/` 아래에 둔다. `<image>`의 파일과 **같은 판정**을 받는다 — 배경 · 로고는 PNG · JPEG
+(SVG는 슬라이드가 `theme:`으로 쓰는 그림에만 된다),
 확장자와 내용이 같아야 하고, 고유 크기가 있어야 한다. 선언이 가리키는 그림만 산출물에 들어간다(웹은
 `themes/<테마>/assets/…`, PPTX는 미디어 파트). `extends`로 물려받은 선언의 그림은 그 그림을 가진 테마의
 것이고, 자식이 같은 경로에 파일을 두면 자식의 파일이 이긴다 (파일 단위 병합).
@@ -318,6 +329,7 @@ LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`�
 | `role` | [텍스트 역할](appearance.md) 5종 | 글자의 외관. 크롬은 자기 크기·색을 갖지 않는다 (`logo`에는 쓰지 않는다) |
 | `skipLayouts` | 이 테마의 레이아웃 이름 목록 (생략 가능) | 이 크롬을 **싣지 않을** 레이아웃 |
 | `image` · `height` · `alt` | `logo` 전용 — `assets/` 아래 그림 · 논리 px 높이 · 대체 텍스트 | 로고 그림. 폭은 그림의 비율이 정하고, 띠 가운데에 놓인다 |
+| `format` | `pageNumber` 전용 — `{n}` 하나와 `{total}`을 담는 글 (생략 가능) | 쪽번호의 모양. `"{n} / {total}"`이면 `3 / 13`이다 |
 
 **로고는 테마가 켠다.** 푸터 · 번호와 달리 그림도 자리도 테마의 것이라 `balpyo.json`이 정할 것이 없다 —
 선언하면 모든 슬라이드(`skipLayouts`를 뺀)에 나온다. 웹은 띠 위의 `<img>`, PPTX는 그 자리의 그림(`p:pic`)이고
@@ -343,6 +355,11 @@ LibreOffice·PowerPoint는 `a:ea`에 적힌 이름을 그대로 쓴다. `mono`�
 따라온다 — 정적 글자면 그 순간 번호가 거짓말을 시작한다. 파일에는 값 층이 센 숫자가 `a:t`에
 **캐시**로 함께 들어간다: 필드를 계산하지 않는 소비자(썸네일 생성기·변환기)도 맞는 숫자를 보여야
 하기 때문이다.
+
+**모양(`format`)의 번호만 필드다.** `{n}` 앞뒤의 글자는 같은 서식의 보통 런이고, `{total}`은 **빌드할 때의 장 수**로
+구워진다 — PowerPoint에서 장을 더하면 번호는 따라오지만 전체 쪽수는 다시 빌드할 때까지 옛 수다 (전체 쪽수의
+필드가 DrawingML에 없다). 0을 채운 번호(`03`)는 없다: 필드는 자릿수를 정할 수 없고, 웹만 채우면 두 산출물이
+다른 번호를 보여 준다. 어휘 밖이면 `pageNumber format "{page}" needs {n} exactly once and may use {total} — e.g. "{n} / {total}"`이다.
 
 `<slide skip>`으로 뺀 장과 `skipLayouts`로 제외된 장은 다르다. skip은 덱에서 **아예 빠지므로**
 뒤 장의 번호가 당겨지고, 제외는 자리를 지키고 크롬만 없다.
@@ -443,7 +460,7 @@ minimal"), 테마를 프로젝트 파일시스템 안에서만 읽으므로 `..`
 | 병합 단위 | 무엇 | 자식이 적으면 |
 |---|---|---|
 | **이름** | 색·폰트·공간·반경·그림자 토큰, 텍스트 역할, 태그·슬롯 기본값, `variant`, 코드 토큰(`class`), 크롬 선언(`kind`) | 그 **한 벌이 통째로** 자식 것이다 (부모의 나머지 필드는 남지 않는다) |
-| **필드** | 이름이 없는 절 — `shape.default`·`image.default`, 표의 `cell`·`header`·`stripe`, `code.tabSize` | 적은 필드만 갈리고 나머지는 물려받는다 (빈 문자열·0은 "정하지 않음"이다) |
+| **필드** | 이름이 없는 절 — `shape.default`·`image.default`·`connector.default`, 표의 `cell`·`header`·`stripe`, `code.tabSize`, `text.mark` | 적은 필드만 갈리고 나머지는 물려받는다 (빈 문자열·0은 "정하지 않음"이다) |
 | **파일** | `layouts/<이름>.css`, `layouts/<이름>.slots.css`, `assets/` 아래 그림 | 그 **파일 하나가** 자식 것이다. 두지 않은 파일은 부모 것이 그대로 실린다 |
 | **목록** | `theme.json`의 `layouts` · `backgrounds` | 적으면 그 목록이 이기고, 적지 않으면 부모의 것을 물려받는다 |
 
@@ -583,6 +600,8 @@ theme "acme" exists both in the project's themes/acme/ and among installed theme
 | 역할의 `size`·`lineHeight`가 0 이하이거나 `align`이 없다 | **에러** | `roles are the bottom of the cascade and must be complete` |
 | 역할의 `font`·`color`가 이 테마의 토큰이 아니다 | **에러** | 이 테마가 가진 이름을 함께 나열한다 |
 | 컴포넌트 기본값·variant·이미지·표의 `color`·`fill`·`border` 색이 이 테마의 색 토큰 참조가 아니다 (`#RRGGBB` 리터럴, 리터럴 스톱이 섞인 그라디언트) | **에러** | 자리와 문제의 조각을 가리키고 이 테마의 색 토큰을 나열한다 — 그 variant를 쓴 슬라이드가 없어도 로딩에서 멈춘다 |
+| 역할·컴포넌트 기본값·variant의 `tracking`이 −0.1 ~ 0.5 밖이거나 `case`가 `upper`·`none`이 아니다 | **에러** | `… tracking 0.8 is out of range …` · `… case "lower" is unknown (available values: upper, none)` |
+| `text.mark.highlight`가 그라디언트다 | **에러** | `text.mark highlight "gradient(…)" cannot be a gradient — a highlight is one color (PPTX a:highlight holds a single color)` |
 | `components.json`에 모르는 키가 있다 | **에러** | 미지원 키를 가리킨다 (오타·미구현 키) |
 | `code.tabSize`가 1 미만이다 | **에러** | `tabSize must be at least 1` |
 | `code.tokens`에 모르는 종류가 있다 | **에러** | `unknown code token class "kw" (available types: keyword, name, attr, string, number, comment, punct)` |

@@ -61,9 +61,9 @@ func writeTable(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
 	// 저자의 `alt`은 **표의 이름**이다 — 셀은 그대로 항해 가능하다 (labelAttr).
-	fmt.Fprintf(b, "<table class=%q %s=%q %s=%q%s%s>\n",
+	fmt.Fprintf(b, "<table class=%q %s=%q %s=%q%s%s%s>\n",
 		class, IDAttr, ElementID(slide.Index, path), ElAttr, elem.Name,
-		labelAttr(style.Alt), styleAttr(decls))
+		labelAttr(style.Alt), enterAttr(elem), styleAttr(decls))
 	for i, child := range elem.Children {
 		row, ok := child.(*soml.Element)
 		if !ok || row.Name != soml.TableRowElement {

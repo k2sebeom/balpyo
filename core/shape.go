@@ -43,6 +43,11 @@ func (r *resolver) resolveShape(elem *soml.Element) {
 	mergeShape(&style, themeShapePatch(r.comps.shapeDefault, style.Type, backdrop))
 	mergeShape(&style, themeShapePatch(r.shapeVariant(elem), style.Type, backdrop))
 	mergeShape(&style, inline)
+	if style.Type == soml.PathShapeType && style.Path == nil {
+		if _, ok := elem.Attr("d"); !ok {
+			r.errorf(elem.NameSpan, "a type=%q shape needs d — its outline in a 0–100 box (e.g. d=%q)", soml.PathShapeType, "M0,100 L50,0 L100,100 Z")
+		}
+	}
 	elemAppearance(elem).Shape = &style
 	r.shapeInsetTextHeight(elem, &style)
 }
@@ -145,7 +150,7 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 		case "type":
 			// 위에서 해석했다 — 여기서 다시 보면 진단이 두 번 난다.
 		case "id":
-			if id, ok := r.shapeID(attr); ok {
+			if id, ok := r.shapeID(attr, elem); ok {
 				style.ID = id
 			}
 		case "alt":
@@ -153,11 +158,21 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 			if alt, ok := r.altName(attr); ok {
 				style.Alt = alt
 			}
+		case "d":
+			// 경로는 `type="path"`의 기하다 — 다른 종류에는 그릴 자리가 없다 (프리셋의 기하는 프리셋이 정한다).
+			if style.Type != soml.PathShapeType {
+				r.errorf(attr.NameSpan, "d is the outline of type=%q shapes — this shape is type=%q (use type=%q to draw a custom outline)",
+					soml.PathShapeType, style.Type, soml.PathShapeType)
+				continue
+			}
+			if cmds, ok := r.pathData(attr); ok {
+				style.Path = cmds
+			}
 		case "variant":
 			// 캐스케이드 둘째 단이라 shapeVariant가 소유한다 — 여기서 또 보면 모르는 variant
 			// 경고가 두 번 난다.
 		case "fill":
-			if fill, ok := r.fill(attr); ok {
+			if fill, ok := r.shapeFill(attr); ok {
 				patch.fill = &fill
 			}
 		case "border":
@@ -202,7 +217,7 @@ func (r *resolver) shapeAttrs(elem *soml.Element, style *soml.ShapeStyle) shapeP
 			// 그래서 배치 목록만 면제하면 슬롯을 쓴 도형이 엔진 버그 진단을 받는다.
 			if r.boxAttr(&style.Box, attr) ||
 				containsName(soml.ChildPlacementAttrs(), attr.Name) ||
-				attr.Name == soml.SlotAttr {
+				attr.Name == soml.SlotAttr || attr.Name == soml.EnterAttr {
 				continue
 			}
 			r.catalogGap(elem, attr)
@@ -248,7 +263,7 @@ func (r *resolver) shapeType(elem *soml.Element) string {
 //
 // 참조가 붙기 전에 검사하는 이유: 그때 처음 막으면 중복 id로 이미 쓴 덱이 깨진다. 지금은
 // id가 산출물에 아무것도 그리지 않아 고치는 비용이 이름 하나다.
-func (r *resolver) shapeID(attr soml.Attr) (string, bool) {
+func (r *resolver) shapeID(attr soml.Attr, elem *soml.Element) (string, bool) {
 	if !r.hasValue(attr) {
 		return "", false
 	}
@@ -261,6 +276,10 @@ func (r *resolver) shapeID(attr soml.Attr) (string, bool) {
 		r.ids = map[string]soml.Span{}
 	}
 	r.ids[attr.Value] = attr.ValueSpan
+	if r.idElems == nil {
+		r.idElems = map[string]*soml.Element{}
+	}
+	r.idElems[attr.Value] = elem
 	return attr.Value, true
 }
 
@@ -282,6 +301,50 @@ func (r *resolver) fill(attr soml.Attr) (soml.Fill, bool) {
 		return soml.Fill{}, false
 	}
 	return soml.ColorFill(color), true
+}
+
+// patternFunc는 무늬 채움의 함수 이름이다.
+const patternFunc = "pattern"
+
+// shapeFill은 도형의 채움이다 — fill의 모든 값에 더해 무늬(`pattern(<무늬> <앞색> <뒷색>)`)를 받는다.
+// 무늬를 도형에만 여는 이유: 글자 · 선 · 표 칸 · 배경에는 두 타깃에 같은 원어가 없거나 길이 하나 더 생긴다.
+func (r *resolver) shapeFill(attr soml.Attr) (soml.Fill, bool) {
+	if r.hasValue(attr) && strings.HasPrefix(attr.Value, patternFunc+"(") {
+		return r.patternFill(attr.Value, attr.ValueSpan)
+	}
+	return r.fill(attr)
+}
+
+// patternFill은 `pattern(<무늬> <앞색> <뒷색>)`을 해석한다. 두 색은 그라디언트 스톱과 같은 문법이다 (`bg/0`).
+func (r *resolver) patternFill(raw string, span soml.Span) (soml.Fill, bool) {
+	if !strings.HasSuffix(raw, ")") {
+		r.errorf(span, "color function %s(…) is missing the closing %q (%q)", patternFunc, ")", raw)
+		return soml.Fill{}, false
+	}
+	inner := raw[len(patternFunc)+1 : len(raw)-1]
+	fields := strings.Fields(inner)
+	if len(fields) != 3 || strings.ContainsAny(inner, "(,") {
+		r.errorf(span, "pattern takes a pattern name and two colors, `pattern(<pattern> <foreground> <background>)` (%q) — e.g. pattern(diagonal-up accent5 bg/0)", raw)
+		return soml.Fill{}, false
+	}
+	kinds := soml.PatternKinds()
+	names := make([]string, len(kinds))
+	known := false
+	for i, k := range kinds {
+		names[i] = string(k)
+		known = known || string(k) == fields[0]
+	}
+	ok := true
+	if !known {
+		list := strings.Join(names, ", ")
+		r.errorf(span, "unknown pattern %q%s (available values: %s)", fields[0], didYouMean(fields[0], list), list)
+		ok = false
+	}
+	colors, cok := r.gradientStops("fill", fields[1:], span)
+	if !ok || !cok {
+		return soml.Fill{}, false
+	}
+	return soml.Fill{Pattern: &soml.Pattern{Kind: soml.PatternKind(fields[0]), Fg: colors[0], Bg: colors[1]}}, true
 }
 
 // noneValue는 "그리지 않음"이다 — `fill`·`border`가 공유한다. 상수로 두는 이유는 두 곳의

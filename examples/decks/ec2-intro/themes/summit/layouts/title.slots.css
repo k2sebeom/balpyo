@@ -1,0 +1,9 @@
+/* summit cover — the title group stands on the left, vertically centered, like a keynote cover:
+   kicker, a large two-line title, a subtitle at reading width, then the speaker below a gap.
+   Left is the default alignment, so nothing horizontal is declared. */
+display: grid;
+grid-template-columns: minmax(0, 760px);
+grid-template-rows: auto auto auto 56px auto auto;
+grid-template-areas: "kicker" "title" "subtitle" "." "author" "date";
+row-gap: 12px;
+align-content: center;

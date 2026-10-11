@@ -16,8 +16,9 @@
       { "layout": "stat",  "slot": "value", "size": 96, "weight": 700, "color": "accent1" },
       { "layout": "stat",  "slot": "label", "size": 28, "weight": 700 }
     ],
+    "mark": { "highlight": "tint(accent4, 75%)" },
     "variants": [
-      { "name": "kicker", "size": 18, "weight": 800, "color": "accent5" },
+      { "name": "kicker", "size": 18, "weight": 800, "color": "accent5", "tracking": 0.1, "case": "upper" },
       { "name": "lead",   "size": 30, "color": "muted" }
     ]
   },
@@ -34,6 +35,15 @@
     ]
   },
 
+  "connector": {
+    "$comment": "연결선. 기본은 muted 2px 실선 + 끝 화살표다 — 도식의 선은 상자보다 물러나야 상자가 읽힌다. dashed는 '조건부 · 선택' 경로, accent는 강조된 흐름이다.",
+    "default": { "line": "2 solid muted", "start": "none", "end": "arrow" },
+    "variants": [
+      { "name": "dashed", "line": "2 dashed muted" },
+      { "name": "accent", "line": "2 solid accent1" },
+      { "name": "plain",  "end": "none" }
+    ]
+  },
   "image": {
     "default": {},
     "variants": [

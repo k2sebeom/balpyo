@@ -40,7 +40,7 @@ qa: ## web | PPTX review gallery for every example deck and fixture → preview/
 # 커밋하는 산출물이라 렌더 결과가 바뀌면 이 타깃을 다시 돌려 함께 커밋한다. 스크린샷은 웹 렌더다
 # (balpyo preview --target html — 브라우저만 있으면 된다). 예제 테마는 덱마다 themes/에 넣어 둔다.
 SHOWCASE        := examples/showcase
-SHOWCASE_SLIDES := balpyo-intro:04 balpyo-intro:07 incident-postmortem:03 incident-postmortem:05 incident-postmortem:08 quarterly-review:05
+SHOWCASE_SLIDES := balpyo-intro:04 balpyo-intro:07 incident-postmortem:03 incident-postmortem:05 incident-postmortem:08 quarterly-review:05 ec2-intro:01 ec2-intro:06 ec2-intro:10 ec2-intro:11
 SHOWCASE_THEMED := balpyo-intro:01 balpyo-intro:06
 SHOWCASE_THEMES := minimal editorial ink harbor
 

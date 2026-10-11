@@ -171,6 +171,20 @@ type Slide struct {
 	Justify BoxJustify
 	// JustifySpan은 justify 값 구간이다 (LayoutSpan과 같은 근거).
 	JustifySpan Span
+	// Enter는 `<slide enter>`의 원문이다 — 직속 자식마다 같은 등장을 준다. 어휘는 core.Resolve가 본다.
+	Enter string
+	// EnterSpan은 enter 값 구간이다.
+	EnterSpan Span
+	// Invert는 이 장의 색 매핑을 뒤집는지다 (`<slide invert>`) — 배경 · 글자 네 자리(bg1↔tx1, bg2↔tx2)가 서로
+	// 바뀐다. 렌더러는 이 값 하나로 PPTX `overrideClrMapping`과 웹 토큰 변수의 재선언을 낸다.
+	Invert bool
+	// Transition은 이 장에 들어올 때의 전환이다. 파이프라인이 원문을 옮기고 core.Resolve가 테마의 기본값과
+	// 합쳐 **확정 값**(fade · push · 빈 값)으로 바꾼다 — 렌더러는 확정 값만 읽는다.
+	Transition SlideTransition
+	// TransitionSpan은 transition 값 구간이다.
+	TransitionSpan Span
+	// TransitionDuration은 확정된 전환의 길이(ms)다 (전환이 없으면 0).
+	TransitionDuration int
 	// Notes는 발표자 노트다 (`<note>`). PPTX에서는 노트 슬라이드가 된다.
 	Notes string
 	// Chrome은 이 슬라이드에 실릴 확정된 덱 크롬이다 — 테마 선언 순서를 지킨다.
@@ -208,4 +222,7 @@ type Background struct {
 	// Image는 바탕 그림의 에셋 키다 (비면 그림 없음). 그림은 슬라이드를 **덮는다**(cover):
 	// 비율을 지키고 넘치는 쪽을 가운데 기준으로 잘라 낸다.
 	Image string
+	// Overlay는 바탕 위에 칠하는 채움이다 (nil이면 없음) — 웹은 배경의 윗겹, PPTX는 슬라이드 맨 뒤의 잠긴 전면
+	// 사각형이다 (`p:bg`는 채움 하나뿐이다).
+	Overlay *Fill
 }

@@ -1,0 +1,4 @@
+<!-- The title layout: photo background with a fading overlay above it. -->
+<slide id="cover" layout="title">
+  <h1 slot="title" color="bg">What is Amazon EC2?</h1>
+</slide>

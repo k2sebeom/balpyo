@@ -85,6 +85,18 @@
 | [0076](0076-an-installed-theme-can-be-copied-from-a-local-directory.md) | 설치한 테마는 로컬 디렉토리에서 복사해 올 수도 있다 | 백로그 | 확정 (0075의 설치 출처를 넓힌다) |
 | [0077](0077-a-slide-can-point-at-a-theme-picture-with-theme-src.md) | 슬라이드는 `src="theme:…"`으로 활성 테마의 그림을 가리킨다 | 백로그 | 확정 (0073의 테마 자산을 슬라이드에 연다) |
 | [0078](0078-program-output-is-written-in-english.md) | 프로그램이 내는 글은 영어로 쓴다 | — | 확정 |
+| [0079](0079-tracking-and-case-are-theme-typography-and-a-run-can-shrink-or-be-marked.md) | 자간 · 대소문자는 테마의 타이포그래피이고, 런은 작아지거나 형광펜을 받는다 | 백로그 Q7 | 확정 |
+| [0080](0080-a-connector-joins-two-measured-boxes-and-is-drawn-after-measurement.md) | 연결선은 잰 두 박스를 잇고, 측정이 끝난 뒤에 그려진다 | 백로그 Q1 | 확정 |
+| [0081](0081-entrance-is-a-native-effect-staggered-by-the-theme.md) | 등장은 두 타깃의 원어 효과이고, 엇갈림은 테마가 정한다 | 백로그 Q10 | 확정 |
+| [0082](0082-a-slide-transition-is-the-theme-rhythm-and-a-slide-may-override-it.md) | 슬라이드 전환은 테마의 리듬이고, 슬라이드가 덮어쓸 수 있다 | 백로그 Q12 | 확정 |
+| [0083](0083-an-inverted-slide-swaps-the-color-mapping.md) | 반전 슬라이드는 색 매핑을 뒤집는다 | 백로그 Q5 | 확정 |
+| [0084](0084-gradients-take-alpha-stops-and-a-radial-form-and-a-background-takes-an-overlay.md) | 그라디언트는 투명 스톱과 방사형을 받고, 배경은 덮개 하나를 받는다 | 백로그 Q6 | 확정 |
+| [0085](0085-presets-that-depend-on-the-short-side-are-drawn-from-the-measured-box.md) | 짧은 변에 묶인 프리셋은 잰 박스로 그린다 | 백로그 Q3 | 확정 (0017의 늘림을 cube · 괄호에서 대신한다) |
+| [0086](0086-a-path-shape-is-custom-geometry-in-a-stretched-box.md) | 경로 도형은 늘어나는 상자 안의 사용자 지오메트리다 | 백로그 Q2 | 확정 (0017의 닫힌 어휘에 출구를 연다) |
+| [0087](0087-a-flowing-connector-moves-on-the-web-and-is-a-still-dashed-line-in-pptx.md) | 흐르는 연결선은 웹에서 움직이고 PPTX에서는 멈춘 파선이다 | 백로그 Q13 | 확정 |
+| [0088](0088-a-pattern-fill-is-a-preset-hatch-on-shapes.md) | 무늬 채움은 도형에만 쓰는 프리셋 빗금이다 | 백로그 Q15 | 확정 |
+| [0089](0089-a-chart-takes-several-series-that-share-its-categories.md) | 차트는 범주를 함께 쓰는 여러 계열을 받는다 | 백로그 Q15 | 확정 |
+| [0090](0090-svg-images-carry-a-browser-rasterized-fallback-in-pptx.md) | SVG 그림은 PPTX에서 브라우저가 래스터화한 대체 그림을 함께 싣는다 | 백로그 Q8 | 확정 (0025의 포맷 어휘를 대체한다) |
 
 0066까지의 ADR에 나오는 `PRD §…` 인용은 커밋 `2121a0b`의 `PRD.md`를 뜻한다. 그 절이 지금 어디에
 있는지는 [0067](0067-prd-is-retired-and-its-standing-decisions-move-here.md)의 대응표가 적는다.

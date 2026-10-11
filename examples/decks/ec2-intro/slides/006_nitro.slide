@@ -1,0 +1,38 @@
+<!-- Nitro — the system as a stack of isometric layers (cube shapes; the web draws them from the
+     measured box so the depth is the same on both axes), with three instances on top. A brace on
+     the right marks what is offloaded; on the right, four benefits with tinted icon tiles. -->
+<slide id="nitro" enter="rise">
+  <text variant="kicker">02 · Under the hood</text>
+  <h2>The Nitro System: virtualization rebuilt in hardware</h2>
+  <row gap="xl" align="center" grow="1">
+    <stack w="600" h="430">
+      <shape type="cube" fill="tint(accent4, 70%)" border="1 solid tint(accent4, 40%)" w="110" h="96" x="40" y="0"/>
+      <shape type="cube" fill="tint(accent4, 70%)" border="1 solid tint(accent4, 40%)" w="110" h="96" x="180" y="0"/>
+      <shape type="cube" fill="tint(accent4, 70%)" border="1 solid tint(accent4, 40%)" w="110" h="96" x="320" y="0"/>
+      <shape type="cube" fill="accent4" border="none" w="560" h="96" pad="md" x="0" y="90"><p size="18" color="bg"><strong>Nitro Hypervisor</strong> — memory &amp; CPU allocation only</p></shape>
+      <shape type="cube" fill="accent5" border="none" w="560" h="96" pad="md" x="0" y="170"><p size="18" color="bg"><strong>Nitro Security Chip</strong> — hardware root of trust</p></shape>
+      <shape type="cube" fill="accent1" border="none" w="560" h="96" pad="md" x="0" y="250"><p size="18" color="bg"><strong>Nitro Cards</strong> — VPC · EBS · instance storage</p></shape>
+      <shape type="cube" fill="fg" border="none" w="560" h="96" pad="md" x="0" y="330"><p size="18" color="bg"><strong>Host hardware</strong> — Graviton · Intel · AMD · GPUs</p></shape>
+      <shape type="right-brace" fill="none" border="2 solid muted" w="22" h="250" x="570" y="160"/>
+    </stack>
+    <col gap="lg" grow="1" basis="0">
+      <row gap="md" align="start">
+        <shape type="rounded-rect" fill="tint(accent1, 85%)" border="none" radius="md" w="52" h="52"><p align="center" anchor="center" color="accent1" size="22"><strong>⚡</strong></p></shape>
+        <col gap="0" grow="1" basis="0"><h3 size="22">Near bare-metal performance</h3><p size="18" color="muted">Networking and storage run on dedicated Nitro Cards.</p></col>
+      </row>
+      <row gap="md" align="start">
+        <shape type="rounded-rect" fill="tint(accent5, 85%)" border="none" radius="md" w="52" h="52"><p align="center" anchor="center" color="accent5" size="22"><strong>✓</strong></p></shape>
+        <col gap="0" grow="1" basis="0"><h3 size="22">Security by design</h3><p size="18" color="muted">No operator access to the host; firmware verified at boot.</p></col>
+      </row>
+      <row gap="md" align="start">
+        <shape type="rounded-rect" fill="tint(accent4, 85%)" border="none" radius="md" w="52" h="52"><p align="center" anchor="center" color="accent4" size="22"><strong>+</strong></p></shape>
+        <col gap="0" grow="1" basis="0"><h3 size="22">Faster innovation</h3><p size="18" color="muted">Modular blocks ship new instance types quickly.</p></col>
+      </row>
+      <row gap="md" align="start">
+        <shape type="rounded-rect" fill="surface" border="none" radius="md" w="52" h="52"><p align="center" anchor="center" color="fg" size="22"><strong>◇</strong></p></shape>
+        <col gap="0" grow="1" basis="0"><h3 size="22">Nitro Enclaves</h3><p size="18" color="muted">Isolated environments for highly sensitive data.</p></col>
+      </row>
+    </col>
+  </row>
+  <note>Nitro moves the hypervisor's I/O work to dedicated cards and a security chip, so almost all of the host goes to your instance — and the host has no interactive operator access.</note>
+</slide>

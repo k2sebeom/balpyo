@@ -1,0 +1,9 @@
+<!-- Cover — the title layout on an inverted (dark) slide; the theme's title background adds an
+     orange glow in the lower-left corner. The second title line is a gradient across the accents. -->
+<slide id="cover" layout="title" invert enter="rise">
+  <text slot="kicker" variant="kicker">AWS compute fundamentals</text>
+  <h1 slot="title" size="72">What is<br/><span color="gradient(accent1 accent5 accent4, 90deg)">Amazon EC2?</span></h1>
+  <text slot="subtitle" size="24" color="muted">Secure, resizable compute capacity in the cloud — from a single instance to planet-scale fleets.</text>
+  <text slot="author" role="body"><strong>SeBeom Lee</strong> · Solutions Architect</text>
+  <note>Welcome. In the next twenty minutes: what EC2 is, how an instance is put together, how to choose and pay for one, and how to run it in production.</note>
+</slide>

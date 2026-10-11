@@ -1,0 +1,22 @@
+<!-- Takeaways — an inverted (dark) slide: the four sentences to remember on the left, the closing
+     "Thank you" on the right. Every color is still a theme token; the inversion swaps them. -->
+<slide id="takeaways" invert enter="rise">
+  <row gap="xl" grow="1" align="center">
+    <col gap="md" grow="1" basis="0">
+      <text variant="kicker">Key takeaways</text>
+      <h1 size="48">EC2 in four sentences</h1>
+      <ul size="22">
+        <li><strong>Elastic:</strong> capacity follows demand in minutes, billed per second.</li>
+        <li><strong>Composable:</strong> AMI + type + storage + network + identity, on Nitro.</li>
+        <li><strong>Purpose-built:</strong> choose a family by bottleneck; the name is the spec.</li>
+        <li><strong>Cost-aware:</strong> blend Savings Plans, On-Demand and Spot across AZs.</li>
+      </ul>
+    </col>
+    <col gap="sm" w="360">
+      <text role="title" size="64">Thank you</text>
+      <text color="muted">Questions?</text>
+      <text role="code" size="18" color="accent1">aws.amazon.com/ec2</text>
+    </col>
+  </row>
+  <note>Four sentences to take home. Thank you — happy to take questions.</note>
+</slide>

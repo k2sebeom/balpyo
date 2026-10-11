@@ -150,7 +150,7 @@ func writeImage(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *so
 	if style.Rotate != nil || style.Flip != "" {
 		class += " " + imageTransformClass
 	}
-	fmt.Fprintf(b, "<div class=%q%s>\n", imageClass, styleAttr(boxDecls))
+	fmt.Fprintf(b, "<div class=%q%s%s>\n", imageClass, enterAttr(elem), styleAttr(boxDecls))
 	// `alt`은 **언제나** 낸다: 없을 때 `alt=""`(장식 이미지)를 내는 것과 속성 자체를 빼는 것은
 	// 스크린 리더에 다른 뜻이고, 후자는 리더가 파일 이름을 읽는 상태다 (soml.imageOwnAttrs).
 	fmt.Fprintf(b, "<img class=%q %s=%q %s=%q src=%q alt=%q%s>\n",

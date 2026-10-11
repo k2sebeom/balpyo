@@ -1,0 +1,11 @@
+# slide 1 cover
+bg image
+shape:rect "background overlay" fill=gradient(fg,fg) line=none
+textbox "h1 s0.0" ph=ctrTitle/0
+  ¶ start | "What is Amazon EC2?"{heading 42pt b bg}
+# slide 2 glow
+bg fill=bg
+shape:rect "background overlay" fill=radial(accent4,bg) line=none
+textbox "h2 s1.0"
+  ¶ start | "Radial and alpha stops"{heading 27pt b fg}
+shape:ellipse "shape s1.1" fill=radial(accent1,accent1) line=none

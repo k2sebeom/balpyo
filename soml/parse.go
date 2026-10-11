@@ -36,7 +36,9 @@ func buildElementSpecs() map[string]elementSpec {
 			// `justify`는 **흐름 모드 슬라이드의 세로 분배**다 — 저자에게
 			// 세로 리듬 채널이 없어서 `<col h="fill" justify="between">` 랩퍼가 그 자리를
 			// 대신하고 있었다. 값 어휘는 컨테이너와 같은 6종이고 검사는 core다.
-			attrs: []string{"layout", "id", "skip", "justify"},
+			// `enter`는 직속 자식마다 같은 등장을 준다 (자식의 `enter`가 이긴다 — core).
+			// `invert`는 그 장의 색 매핑을 뒤집는다 (배경 · 글자 네 자리 — 어두운 장).
+			attrs: []string{"layout", "id", "skip", "justify", EnterAttr, TransitionAttr, InvertAttr},
 			model: modelElements,
 			// `<slide>`에는 `reveal` 속성을 열지 않는다 — 웹 런타임의 reveal은 Phase 2이고,
 			// 렌더가 없는 속성을 어휘에 열면 닫힌 어휘가 막으려던 조용한 무시가 된다.
@@ -97,6 +99,12 @@ func buildElementSpecs() map[string]elementSpec {
 			model:    modelElements,
 			children: chartChildren(),
 		},
+		ChartSeriesElement: {
+			// 계열은 점만 담는다 — 차트 프레임의 자식 어휘를 한 겹 안으로 옮긴 것이다. 배치 · 슬롯은 없다 (점과 같은 근거).
+			attrs:    ChartSeriesAttrs(),
+			model:    modelElements,
+			children: chartSeriesChildren(),
+		},
 		ChartPointElement: {
 			// 점은 void다 — 라벨·값·강조색이 전부 속성이고 담을 것이 없다 (`<image>`와 같은
 			// 근거). 자식 배치·슬롯도 없다: 점은 flex 항목이 아니라 데이터 한 칸이고, 막대의
@@ -105,6 +113,12 @@ func buildElementSpecs() map[string]elementSpec {
 			model: modelVoid,
 		},
 		noteElement: {model: modelText},
+		ConnectorElement: {
+			// 연결선은 void이고 박스·배치 속성이 없다 — 자리는 잇는 두 상자가 정한다. 슬라이드
+			// 직속뿐이다 (slideChildren): 렌더러가 슬라이드마다 오버레이 하나에 문서 순서로 그린다.
+			attrs: ConnectorAttrs(),
+			model: modelVoid,
+		},
 	}
 	for _, name := range tableCellElements {
 		// 셀은 텍스트+인라인을 담는다 (modelInline — `<li>`와 같은 콘텐츠 모델. 셀은 텍스트
@@ -186,10 +200,11 @@ func buildElementSpecs() map[string]elementSpec {
 			// 이름 allowlist만 보고, "속성이 있어야 한다"는 값의 요구이기 때문이다.
 			spec.attrs = []string{"href"}
 		case "span":
-			// color·weight만 연다. size를 막는 이유: 런 하나가 커지면 웹의 줄 박스 높이가
-			// 변하는데 PPTX 줄간격은 문단 절대값(spcPts)이라 두 타깃의 글줄이 갈라진다 —
-			// core가 size="%"를 막은 것과 같은 종류의 근거다 (core/resolve.go).
-			spec.attrs = []string{"color", "weight"}
+			// color·weight·size를 연다. size는 **감싼 텍스트보다 작거나 같은 값만** 뜻이 있고
+			// 그 판정은 값 층(core)의 것이다: 런 하나가 커지면 웹의 줄 박스가 커지는데 PPTX
+			// 줄간격은 문단 절대값(spcPts)이라 두 타깃의 글줄이 갈라진다. 작은 런은 블록의 줄
+			// 박스 안에 앉으므로 그 근거가 성립하지 않는다 (`750+`의 작은 `+`).
+			spec.attrs = []string{"color", "weight", "size"}
 		case BreakElement:
 			spec.model = modelVoid
 		}
@@ -208,7 +223,7 @@ func buildElementSpecs() map[string]elementSpec {
 // 레이아웃 컨테이너와 `<spacer>`가 들어 있다: 슬라이드 직속 `<spacer>`는 세로 스택에서
 // 밀어내기가 되므로 뜻이 있다 (머리글 아래 여백을 늘려 꼬리글을 바닥에 붙이는 배치).
 func slideChildren() []string {
-	children := []string{TextElement, ShapeElement, ImageElement, TableElement, ChartElement, noteElement}
+	children := []string{TextElement, ShapeElement, ImageElement, TableElement, ChartElement, ConnectorElement, noteElement}
 	children = append(children, blockElements...)
 	children = append(children, listContainerElements...)
 	children = append(children, layoutContainerElements...)
@@ -275,6 +290,16 @@ type SlideDoc struct {
 	Justify string
 	// JustifySpan은 justify 값 구간이다 (LayoutSpan과 같은 근거).
 	JustifySpan Span
+	// Enter는 `<slide enter>`의 값이다 (원문 그대로). 어휘는 core가 본다 — justify와 같은 경계.
+	Enter string
+	// EnterSpan은 enter 값 구간이다.
+	EnterSpan Span
+	// Invert는 `<slide invert>`다 — 그 장의 색 매핑(배경 · 글자 네 자리)을 뒤집는다.
+	Invert bool
+	// Transition은 `<slide transition>`의 값이다 (원문 그대로 — 어휘는 core가 본다).
+	Transition string
+	// TransitionSpan은 transition 값 구간이다.
+	TransitionSpan Span
 	// Notes는 `<note>`의 텍스트다.
 	Notes string
 	// Content는 `<slide>`의 콘텐츠 자식이다 (`<note>` 제외).
@@ -471,7 +496,7 @@ func (p *parser) charData(tok Token, parent *Element) {
 		p.errorf(dataSpan(tok), "character data cannot appear directly inside <%s> (wrap it in <%s>)", parent.Name, TableRowElement)
 	case KindTableRow:
 		p.errorf(dataSpan(tok), "character data cannot appear directly inside <%s> (wrap it in <%s>)", parent.Name, TableDataCellElement)
-	case KindChart:
+	case KindChart, KindChartSeries:
 		// 차트 안의 글자는 라벨이고 라벨은 점의 속성이다 — `<text>로 감싼다`고 말하면 저자가
 		// 차트 안에 텍스트를 놓을 수 있다고 듣는다 (자식은 점뿐이다).
 		p.errorf(dataSpan(tok), "character data cannot appear directly inside <%s> (wrap it in <%s>)", parent.Name, ChartPointElement)
@@ -682,8 +707,12 @@ func (p *parser) checkPlacement(elem *Element, stack []*Element, root *Element) 
 	}
 	// <point>도 같은 규칙이다 — 어디에 있든 차트의 자식이어야 한다. 자리별 일반 메시지
 	// ("<slide>의 자식으로 <point>는 올 수 없다")는 저자가 붙여 놓을 곳을 말하지 않는다.
-	if KindOf(elem.Name) == KindChartPoint && KindOf(parent.Name) != KindChart {
-		p.errorf(elem.NameSpan, "<%s> can only be a child of <%s>", ChartPointElement, ChartElement)
+	if KindOf(elem.Name) == KindChartPoint && KindOf(parent.Name) != KindChart && KindOf(parent.Name) != KindChartSeries {
+		p.errorf(elem.NameSpan, "<%s> can only be a child of <%s> or <%s>", ChartPointElement, ChartElement, ChartSeriesElement)
+		return
+	}
+	if KindOf(elem.Name) == KindChartSeries && KindOf(parent.Name) != KindChart {
+		p.errorf(elem.NameSpan, "<%s> can only be a child of <%s>", ChartSeriesElement, ChartElement)
 		return
 	}
 	if KindOf(elem.Name) == KindTableCell && KindOf(parent.Name) != KindTableRow {
@@ -840,6 +869,16 @@ func (p *parser) fillSlide(doc *SlideDoc) {
 			p.errorf(attr.ValueSpan, "skip must be true or false (%q)", attr.Value)
 		}
 	}
+	if attr, ok := root.Attr(InvertAttr); ok {
+		switch {
+		case !attr.HasValue, attr.Value == "true":
+			// skip과 같은 HTML 불리언 관례다.
+			doc.Invert = true
+		case attr.Value == "false":
+		default:
+			p.errorf(attr.ValueSpan, "invert must be true or false (%q)", attr.Value)
+		}
+	}
 	if attr, ok := root.Attr("layout"); ok {
 		// 파서는 문법만 본다 — 값 없는 `<slide layout>`과 빈 값 `layout=""`은 뜻을 정할 수
 		// 없는 형태이므로 여기서 진단하고, **어휘(content·canvas) 검사는 core**다 (레이아웃
@@ -864,6 +903,28 @@ func (p *parser) fillSlide(doc *SlideDoc) {
 		default:
 			doc.Justify = attr.Value
 			doc.JustifySpan = attr.ValueSpan
+		}
+	}
+	if attr, ok := root.Attr(EnterAttr); ok {
+		switch {
+		case !attr.HasValue:
+			p.errorf(attr.NameSpan, "the enter attribute needs a value (enter=\"rise\")")
+		case attr.Value == "":
+			p.errorf(attr.ValueSpan, "the enter attribute is empty (remove it for no entrance)")
+		default:
+			doc.Enter = attr.Value
+			doc.EnterSpan = attr.ValueSpan
+		}
+	}
+	if attr, ok := root.Attr(TransitionAttr); ok {
+		switch {
+		case !attr.HasValue:
+			p.errorf(attr.NameSpan, "the transition attribute needs a value (transition=\"fade\")")
+		case attr.Value == "":
+			p.errorf(attr.ValueSpan, "the transition attribute is empty (remove it to use the theme's transition)")
+		default:
+			doc.Transition = attr.Value
+			doc.TransitionSpan = attr.ValueSpan
 		}
 	}
 

@@ -165,7 +165,7 @@ func TestResolveBlockRoleEquivalence(t *testing.T) {
 
 // 텍스트 캐스케이드 우선순위: 인라인 > variant > 태그 기본값 > 역할 기본값. 각 단은 부분 패치라
 // 기대값은 역할 기본값에 그 단이 정한 필드만 얹은 전체 외관이다 (말하지 않은 필드는 아래 단).
-// 값은 단마다 구별된다: kicker(18/700/accent1)·lead(32)·h3(28)·blockquote(muted).
+// 값은 단마다 구별된다: kicker(18/700/accent1, 자간 0.1 · 대문자)·lead(32)·h3(28)·blockquote(muted).
 func TestResolveTextCascadePrecedence(t *testing.T) {
 	cases := []struct {
 		name, src, tag string
@@ -178,13 +178,14 @@ func TestResolveTextCascadePrecedence(t *testing.T) {
 			func(s *soml.TextStyle) { s.Color = soml.TokenColor("muted") }},
 		{"variant > 역할", `<text variant="kicker">x</text>`, "text", soml.RoleBody, func(s *soml.TextStyle) {
 			s.Size, s.Weight, s.Color = 18, 700, soml.TokenColor("accent1")
+			s.Tracking, s.Case = 0.1, soml.CaseUpper
 		}},
 		{"variant는 부분 패치", `<text role="title" variant="lead">x</text>`, "text", soml.RoleTitle,
 			func(s *soml.TextStyle) { s.Size = 32 }},
 		{"variant > 역할 (블록)", `<p variant="lead">x</p>`, "p", soml.RoleBody, func(s *soml.TextStyle) { s.Size = 32 }},
 		{"variant > 태그 기본값", `<h3 variant="lead">x</h3>`, "h3", soml.RoleHeading, func(s *soml.TextStyle) { s.Size = 32 }},
 		{"인라인 > variant", `<text variant="kicker" size="40" color="fg">x</text>`, "text", soml.RoleBody,
-			func(s *soml.TextStyle) { s.Size, s.Weight = 40, 700 }},
+			func(s *soml.TextStyle) { s.Size, s.Weight, s.Tracking, s.Case = 40, 700, 0.1, soml.CaseUpper }},
 		{"인라인 > variant > 태그 기본값", `<h3 variant="lead" size="40">x</h3>`, "h3", soml.RoleHeading,
 			func(s *soml.TextStyle) { s.Size = 40 }},
 		{"인라인 > 역할", `<text role="caption" size="40" color="accent1" align="center">x</text>`, "text", soml.RoleCaption,
@@ -399,5 +400,58 @@ func TestThemeFontTokensMapToFontScheme(t *testing.T) {
 	}
 	if len(seen) != 2 {
 		t.Errorf("major·minor 슬롯이 모두 채워져야 한다: %v", seen)
+	}
+}
+
+// 스톱의 불투명도(`색/퍼센트`)는 alpha 변형이 되고, radial은 중심을 박스의 비율로 받는다.
+func TestResolveGradientStopsAndRadial(t *testing.T) {
+	r := &resolver{theme: loadBuiltinTheme("minimal").tokens}
+	c, ok := r.colorValue("fill", "gradient(fg fg/0, 90deg)", soml.Span{})
+	if !ok || c.Gradient == nil || c.Gradient.Stops[1].Mod == nil || c.Gradient.Stops[1].Mod.Kind != soml.ModAlpha || c.Gradient.Stops[1].Mod.Amount != 0 {
+		t.Fatalf("투명 스톱 = %+v (진단 %v)", c, r.diags)
+	}
+	c, ok = r.colorValue("fill", "radial(accent4/30 bg/0, at 0% 100%)", soml.Span{})
+	if !ok || !c.Gradient.Radial || c.Gradient.CX != 0 || c.Gradient.CY != 100 || c.Gradient.Stops[0].Mod.Amount != 0.3 {
+		t.Fatalf("방사형 = %+v (진단 %v)", c.Gradient, r.diags)
+	}
+	if c, _ := r.colorValue("fill", "radial(accent1 bg)", soml.Span{}); c.Gradient == nil || c.Gradient.CX != 50 || c.Gradient.CY != 50 {
+		t.Errorf("중심 생략 = %+v, want 50%% 50%%", c.Gradient)
+	}
+	for _, tc := range []struct{ raw, want string }{
+		{"gradient(fg fg/140)", "a gradient stop opacity is a percentage from 0 to 100"},
+		{"gradient(fg fg/40%)", "without %"},
+		{"radial(fg)", "radial needs at least two colors"},
+		{"radial(fg bg, at left)", "a radial center has the form `at X% Y%`"},
+	} {
+		r := &resolver{theme: loadBuiltinTheme("minimal").tokens}
+		if _, ok := r.colorValue("fill", tc.raw, soml.Span{}); ok || len(r.diags) == 0 || !strings.Contains(r.diags[0].Message, tc.want) {
+			t.Errorf("%s: 진단 = %v, want %q", tc.raw, r.diags, tc.want)
+		}
+	}
+}
+
+// 무늬는 도형 채움에만 열린다 — 무늬 이름 하나와 두 색(스톱 문법)이다. 다른 색 자리는 진단이다.
+func TestResolvePatternFill(t *testing.T) {
+	r := &resolver{theme: loadBuiltinTheme("minimal").tokens}
+	f, ok := r.shapeFill(soml.Attr{Name: "fill", Value: "pattern(diagonal-up accent1 bg/0)", HasValue: true})
+	if !ok || f.Pattern == nil || f.Pattern.Kind != soml.PatternDiagonalUp || f.Pattern.Fg.Token != "accent1" ||
+		f.Pattern.Bg.Token != "bg" || f.Pattern.Bg.Mod == nil || f.Pattern.Bg.Mod.Amount != 0 {
+		t.Fatalf("무늬 = %+v (진단 %v)", f.Pattern, r.diags)
+	}
+	for _, tc := range []struct{ raw, want string }{
+		{"pattern(zigzag fg bg)", `unknown pattern "zigzag" (available values: horizontal, vertical, diagonal-up, diagonal-down, wide-diagonal-up, wide-diagonal-down, cross, diagonal-cross, dots)`},
+		{"pattern(dots fg)", "pattern takes a pattern name and two colors"},
+		{"pattern(dots fg, bg)", "pattern takes a pattern name and two colors"},
+		{"pattern(dots fg nope)", `color token "nope" is not in the theme`},
+	} {
+		r := &resolver{theme: loadBuiltinTheme("minimal").tokens}
+		if _, ok := r.shapeFill(soml.Attr{Name: "fill", Value: tc.raw, HasValue: true}); ok || len(r.diags) == 0 || !strings.Contains(r.diags[0].Message, tc.want) {
+			t.Errorf("%s: 진단 = %v, want %q", tc.raw, r.diags, tc.want)
+		}
+	}
+	r = &resolver{theme: loadBuiltinTheme("minimal").tokens}
+	if _, ok := r.colorValue("color", "pattern(dots fg bg)", soml.Span{}); ok || len(r.diags) == 0 ||
+		!strings.Contains(r.diags[0].Message, "color cannot be a pattern") {
+		t.Errorf("글자 색의 무늬: 진단 = %v", r.diags)
 	}
 }

@@ -26,7 +26,12 @@ const ShapeElement = "shape"
 var shapeTypes = []string{
 	"rect", "rounded-rect", "ellipse", "diamond", "cylinder", "chevron",
 	"arrow-right", "hexagon", "parallelogram", "callout", "star", "cloud",
+	"triangle", "cube", "left-brace", "right-brace", PathShapeType,
 }
+
+// PathShapeType은 사용자 지오메트리 도형이다 — 프리셋이 아니라 `d`의 경로를 0~100 상자에서 그리고 그 상자를
+// 박스로 늘린다 (웹 정규 SVG · PPTX `a:custGeom`).
+const PathShapeType = "path"
 
 // ShapeTypes는 도형 프리셋 이름 목록이다 (순서 = 진단·문서 순서). 값 층과 렌더러가
 // 소비하도록 복사본을 준다 — 카탈로그가 호출자에 의해 흔들리면 표를 한 곳에 둔 뜻이 없다.
@@ -49,6 +54,7 @@ func ShapeTypes() []string {
 // `TextRect.HasPercent()`가 같은지 단정한다 (프리셋을 더할 때 한쪽만 고치면 멈춘다).
 var shapeInsetTextTypes = []string{
 	"ellipse", "diamond", "cylinder", "arrow-right", "hexagon", "parallelogram", "star", "cloud",
+	"triangle", "cube",
 }
 
 // ShapeInsetText는 이 프리셋의 텍스트 영역이 박스보다 좁은지다 (shapeInsetTextTypes).
@@ -122,7 +128,9 @@ var (
 	// 같은 기준으로 열었다: 양 타깃에 실을 자리가 있다 (웹은 잉크 `<svg role="img">`,
 	// PPTX는 `p:cNvPr@descr`). 외관이 아니므로 외관 목록이 아니라 여기 있다 — 테마도
 	// `variant`도 얹지 않는다.
-	shapeOwnAttrs = []string{"type", "id", "alt"}
+	//
+	// `d`는 `type="path"`의 경로다 (0~100 상자의 절대 좌표 — 다른 종류에서는 진단이다).
+	shapeOwnAttrs = []string{"type", "id", "alt", "d"}
 	// shapeAppearanceAttrs는 외관 채널이다. `stroke`/`cap`/
 	// `dash`는 line·arrow의 것이라 열지 않는다 — 도형에 받아 놓고 버리는 선언이 되고, 그
 	// 침묵이 닫힌 어휘가 막으려던 실패다.

@@ -116,18 +116,35 @@ func chromeBodyXML(item soml.ChromeItem, theme soml.Theme) (string, error) {
 // 두 요소의 내용 모형은 같다 (rPr + t): 그래서 서식을 한 번만 쓰고 감싸는 태그만 갈라진다.
 // 푸터를 필드로 낼 수는 없다 — 설정의 문자열에 대응하는 필드 종류가 DrawingML에 없다.
 func writeChromeRun(w func(depth int, line string), item soml.ChromeItem, theme soml.Theme) error {
-	style := item.Style
-	latin, ea, err := typefaces(style.Font, theme)
-	if err != nil {
-		return err
+	// 쪽번호 모양의 앞뒤 글자는 같은 서식의 보통 런이다 — 번호만 필드다 (전체 쪽수는 필드가 아니다).
+	if item.Prefix != "" {
+		if err := writeChromeText(w, item, "a:r", "<a:r>", item.Prefix, theme); err != nil {
+			return err
+		}
 	}
 	tag, open := "a:r", "<a:r>"
 	if item.Kind == soml.ChromePageNumber {
 		tag = "a:fld"
 		open = fmt.Sprintf(`<a:fld id="%s" type="slidenum">`, chromeFieldID)
 	}
+	if err := writeChromeText(w, item, tag, open, item.Text, theme); err != nil {
+		return err
+	}
+	if item.Suffix != "" {
+		return writeChromeText(w, item, "a:r", "<a:r>", item.Suffix, theme)
+	}
+	return nil
+}
+
+// writeChromeText는 크롬 글자 한 조각이다 — 보통 런(`a:r`)이거나 번호 필드(`a:fld`)다.
+func writeChromeText(w func(depth int, line string), item soml.ChromeItem, tag, open, text string, theme soml.Theme) error {
+	style := item.Style
+	latin, ea, err := typefaces(style.Font, theme)
+	if err != nil {
+		return err
+	}
 	w(3, open)
-	w(4, fmt.Sprintf(`<a:rPr sz="%d" b="%s">`, FontSize(style.Size), boldValue(style.Weight)))
+	w(4, fmt.Sprintf(`<a:rPr sz="%d" b="%s"%s>`, FontSize(style.Size), boldValue(style.Weight), typographyAttrs(style)))
 	if err := writeTextFill(w, 5, style.Color, theme); err != nil {
 		return err
 	}
@@ -136,7 +153,7 @@ func writeChromeRun(w func(depth int, line string), item soml.ChromeItem, theme 
 	w(4, "</a:rPr>")
 	// 필드의 `a:t`는 **캐시**다 (뷰어가 계산하면 덮어쓴다). 보통 런의 `a:t`는 내용 자체다 —
 	// 같은 태그가 두 뜻을 갖는 자리이고, 어느 쪽이든 값 층이 정한 문자열 하나다.
-	w(4, fmt.Sprintf("<a:t>%s</a:t>", escapeXML(item.Text)))
+	w(4, fmt.Sprintf("<a:t>%s</a:t>", escapeXML(text)))
 	w(3, "</"+tag+">")
 	return nil
 }

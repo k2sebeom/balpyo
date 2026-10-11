@@ -1,0 +1,9 @@
+{
+  "$comment": "talk extends minimal and gives the page number a shape: {n} followed by the deck total. Only the number is a PPTX field; the total is plain text written at build time.",
+  "name": "talk",
+  "extends": "minimal",
+  "chrome": [
+    { "kind": "footer", "align": "start", "role": "caption" },
+    { "kind": "pageNumber", "align": "end", "role": "caption", "format": "{n} / {total}" }
+  ]
+}

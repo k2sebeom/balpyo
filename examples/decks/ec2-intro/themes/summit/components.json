@@ -1,0 +1,20 @@
+{
+  "$comment": "summit keeps minimal's roles and variant names and changes their look: kickers are small, tracked and orange; cards are white with a hairline and a soft shadow; the highlighter is a light orange.",
+  "text": {
+    "mark": { "highlight": "tint(accent1, 75%)" },
+    "variants": [
+      { "name": "kicker", "size": 14, "weight": 700, "color": "accent1", "tracking": 0.16, "case": "upper" },
+      { "name": "lead",   "size": 26, "color": "muted" }
+    ]
+  },
+  "shape": {
+    "variants": [
+      { "name": "card",          "fill": "bg", "border": "1 solid surface", "radius": "md", "shadow": "soft" },
+      { "name": "card-header",   "border": "none", "radius": "sm" },
+      { "name": "card-body",     "fill": "bg" },
+      { "name": "card-backdrop", "fill": "none", "border": "2 solid accent1", "radius": "md" },
+      { "name": "stat-card",     "fill": "surface", "border": "none", "radius": "md" },
+      { "name": "badge",         "fill": "accent1", "border": "none", "radius": "lg" }
+    ]
+  }
+}

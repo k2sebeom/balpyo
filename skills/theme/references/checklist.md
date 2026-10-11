@@ -32,6 +32,7 @@ Chrome
 - [ ] Every declaration has `kind` and `align`; `footer`/`pageNumber` also need `role`.
 - [ ] A `logo` has `image` and `height` (and should have `alt`); text kinds carry none of the
       three.
+- [ ] A `pageNumber` `format`, if any, holds `{n}` exactly once (and at most uses `{total}`).
 - [ ] No `kind` declared twice.
 - [ ] Every `skipLayouts` name is a layout of *this* theme.
 
@@ -40,9 +41,12 @@ Backgrounds and assets
 - [ ] Each `backgrounds` entry has `fill` **or** `image`, not both and not neither.
 - [ ] No layout in two entries, at most one default (an entry without `layouts`), and every
       listed name is a layout of this theme.
-- [ ] Every background and logo picture is a real PNG/JPEG under the theme's `assets/`.
-- [ ] Pictures meant for slides (`theme:` paths) are PNG/JPEG with matching content, and a child
-      theme that overrides one keeps the parent's path.
+- [ ] An `overlay` is a colour value (usually a gradient fading to `…/0`); stop opacities are
+      0–100 with no `%`.
+- [ ] Every background and logo picture is a real PNG/JPEG under the theme's `assets/` (no SVG).
+- [ ] Pictures meant for slides (`theme:` paths) are PNG/JPEG/SVG with matching content, and a
+      child theme that overrides one keeps the parent's path. SVGs are self-contained and give
+      px `width`/`height` on the root `<svg>`.
 
 Tokens
 
@@ -50,6 +54,8 @@ Tokens
       fonts `heading` `body` `mono`; spaces `xs` `sm` `md` `lg` `xl` `2xl`; radii `sm` `md` `lg`;
       shadow `soft`.
 - [ ] Every colour token has a `clrScheme` `slot`, and no two share one.
+- [ ] `motion`, if written, has `duration` > 0 and `stagger`, `delay` ≥ 0 (ms), and
+      `transition` is `fade` or `push` (or absent).
 - [ ] Adding a *new* colour name only where a slot is free — built-ins use 10 of 12, leaving
       `hlink` and `folHlink`. Otherwise recolour an existing name.
 
@@ -62,6 +68,11 @@ Components
       `tint`/`shade`/`alpha` of one, or a gradient of tokens) — table cells single tokens only.
       This is checked even for variants no slide uses.
 - [ ] A component default names a `tag` **or** a `layout` + `slot`, never both.
+- [ ] Every `tracking` is within −0.1 … 0.5 and every `case` is `upper` or `none`.
+- [ ] `text.mark.highlight` is one colour, not a gradient.
+- [ ] `connector` lines use the border grammar with a token colour (no gradient, no `none`);
+      `start`/`end` are `none`, `arrow`, or `dot`.
+- [ ] `pattern(…)` appears only in shape fills (`shape.default` / shape variants).
 - [ ] No unknown keys anywhere in `components.json` (`$comment` is the only exception).
 - [ ] `code.tabSize` ≥ 1; every `code.tokens` class is one of `keyword` `name` `attr` `string`
       `number` `comment` `punct`, none repeated, each colour a token name.
@@ -84,8 +95,12 @@ Warnings (which `--strict` promotes to errors)
       and show them; `core/palette_test.go` will not do it for a local theme.
 - [ ] **The variant vocabulary matches the built-ins** — names *and* order: text `kicker`
       `lead`; shape `card` `card-header` `card-body` `card-backdrop` `stat-card` `badge`;
-      image `framed`; table `striped`. Add on top; never rename, or a deck that moves between
-      themes starts emitting warnings.
+      image `framed`; table `striped`; connector `dashed` `accent` `plain`. Add on top; never
+      rename, or a deck that moves between themes starts emitting warnings.
+- [ ] **The sections decks depend on are present** (inherited or written): `motion` in
+      `tokens.json`, `text.mark.highlight`, and `connector.default` with a `line`. The loader
+      accepts a theme without them, but every deck using `enter`, `<mark>`, or `<connector>`
+      then fails to build.
 - [ ] **`body` is 24px / line-height 1.5.** The 720px stage is exactly 20 body lines.
 - [ ] **The three slot contracts hold**: `quote`/`quote` ≥ 32px, `stat`/`value` larger than
       the title, `stat`/`label` ≥ body. A standalone theme must write these slot defaults
@@ -106,6 +121,10 @@ Warnings (which `--strict` promotes to errors)
       in `dk1` and `bg` in `lt1`, or PowerPoint's theme-colour editor comes out inverted.
 - [ ] On a dark background, fills and lines use `surface`, not `muted` (as `ink`'s table borders
       do) — grey on black outshines the text.
+- [ ] The accents still read on an **inverted** slide (`<slide invert>` puts them on `fg`), and
+      the `mark` highlight works under both light and dark text.
+- [ ] An off-centre `radial(…, at X% Y%)` background or overlay was checked in PowerPoint:
+      OnlyOffice ignores the focus and draws it from the centre.
 - [ ] Code-token colours were chosen **by eye**, not by accent number: comment recedes to
       `muted`, and name/attr/string/number take four accents that sit apart on the wheel.
 
@@ -117,6 +136,8 @@ Warnings (which `--strict` promotes to errors)
       `--out`), and the same deck under the parent theme in a second gallery. What is identical
       is what you did not claim. The PPTX column needs OnlyOffice or LibreOffice + `pdftoppm`.
 - [ ] Backgrounds and the logo show on the layouts you meant, and nowhere in `skipLayouts`.
+- [ ] Build a deck that uses `enter`, `<mark>`, `<connector>`, and one `<slide invert>` (the
+      `ec2-intro` example deck does) under the theme — that exercises every section above.
 - [ ] Open the PPTX in PowerPoint or Keynote and check the theme colour editor shows your
       palette in sane places.
 - [ ] Only then write the name into `balpyo.json`.

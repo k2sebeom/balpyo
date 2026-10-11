@@ -36,6 +36,18 @@ var (
 // 이유는 테마 제작자가 파일 하나를 고치는 흐름이라는 것이다 — 전부 모으면 첫 오류를 읽기 전에
 // 목록을 읽어야 한다.
 func requireTokens(theme soml.Theme) error {
+	if m := theme.Motion; m != nil && (m.Duration <= 0 || m.Stagger < 0 || m.Delay < 0) {
+		return fmt.Errorf("tokens.json motion needs duration > 0 and stagger, delay ≥ 0 (ms) — got duration %d, stagger %d, delay %d",
+			m.Duration, m.Stagger, m.Delay)
+	}
+	if m := theme.Motion; m != nil {
+		switch m.Transition {
+		case "", soml.TransitionFade, soml.TransitionPush:
+		default:
+			return fmt.Errorf("tokens.json motion transition %q is unknown (available values: %s)",
+				string(m.Transition), strings.Join(soml.SlideTransitions(), ", "))
+		}
+	}
 	for _, name := range requiredColors {
 		if _, ok := theme.Color(name); !ok {
 			return fmt.Errorf("tokens.json has no color token %q (required: %s)",
@@ -201,6 +213,13 @@ func requireComponentColors(theme soml.Theme, comps components) error {
 		if f == nil || f.None {
 			return nil
 		}
+		if p := f.Pattern; p != nil {
+			// 무늬의 두 색도 토큰 참조여야 한다 — PPTX의 fgClr · bgClr가 schemeClr로 남는다.
+			if err := check(where+" fill pattern foreground", &p.Fg); err != nil {
+				return err
+			}
+			return check(where+" fill pattern background", &p.Bg)
+		}
 		return check(where+" fill", &f.Color)
 	}
 	border := func(where string, b *soml.Border) error {
@@ -229,6 +248,15 @@ func requireComponentColors(theme soml.Theme, comps components) error {
 	}
 	for _, v := range comps.textVariants {
 		errs = append(errs, check(fmt.Sprintf("text variant %q color", v.name), v.patch.color))
+	}
+	errs = append(errs, check("text.mark highlight", comps.markHighlight))
+	if l := comps.connectorDefault.line; l != nil {
+		errs = append(errs, check("connector.default line", &l.Color))
+	}
+	for _, v := range comps.connectorVariants {
+		if l := v.patch.line; l != nil {
+			errs = append(errs, check(fmt.Sprintf("connector variant %q line", v.name), &l.Color))
+		}
 	}
 	errs = append(errs, fill("shape.default", comps.shapeDefault.fill),
 		border("shape.default", comps.shapeDefault.border))

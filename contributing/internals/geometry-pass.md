@@ -24,9 +24,10 @@ Yoga는 156배 빨랐지만 텍스트 엔진이 없어 최대 34px 어긋났고,
 
 ```
 pipeline.Render
-  │ needsGeometry?  ← PPTX 타깃이 있고, 잴 요소(geom.Refs)가 있을 때만
+  │ needsGeometry?  ← PPTX 타깃이나 연결선이 있고, 잴 요소(geom.Refs)가 있을 때만
   ↓
-web.New().Render(deck)          웹 렌더 (임시 디렉토리 — 산출물 쓰기 전에 측정을 끝낸다)
+web.NewForMeasurement()         웹 렌더 (임시 디렉토리 — 산출물 쓰기 전에 측정을 끝낸다).
+  .Render(deck)                 연결선은 내지 않는다 — 흐름에 끼지 않으므로 배치가 같다
   ↓
 geom.Launch → Session.Open      브라우저 기동, 폰트 로드·이미지 디코드 완료까지 대기
   ↓
@@ -35,7 +36,13 @@ measureScript 평가 (1회)         페이지 전체를 스크립트 한 번으�
 geom.newGeometry                덱과 대조 → geom.Geometry (곁 표)
   ↓
 pptx.NewWithGeometry(g).Render  xfrm = TextBoxRect(측정 rect, 정렬) → EMU
+web.NewWithBoxes(g.RouteBox)    사용자가 받는 HTML — 연결선의 끝점이 잰 rect에서 나온다
+  .Render(deck)                 (render/route가 두 렌더러의 경로를 한 번 계산한다)
 ```
+
+- **연결선은 측정의 출력이다** ([ADR 0080](../decisions/0080-a-connector-joins-two-measured-boxes-and-is-drawn-after-measurement.md)).
+  측정용 HTML과 사용자가 받는 HTML은 연결선 오버레이 하나만 다르다 — 그래서 연결선이 있는 덱은
+  `--target html`만 써도 잰다.
 
 - `Session.Open`은 페이지를 연 직후 **문서 뷰로 되돌린다** (`web.DocumentViewExpr`).
   산출물의 뷰어 런타임은 로드 즉시 발표자 뷰 — 슬라이드를 겹치고 화면에 맞춰 스케일한
@@ -170,6 +177,14 @@ pptx.NewWithGeometry(g).Render  xfrm = TextBoxRect(측정 rect, 정렬) → EMU
 측정값은 덱 모델의 필드가 아니라 별도 타입(`geom.Geometry`)으로 PPTX 렌더러 생성자에
 주입된다 — 덱은 공개 계약이고, 덱에 실으면 값이 채워지는 시점이 `--target` 순서에
 의존한다. [ADR 0004](../decisions/0004-geometry-side-table.md)에 결정 전체가 있다.
+
+## SVG 대체 그림도 같은 세션이 그린다
+
+좌표와 글꼴을 다 읽은 뒤, 같은 브라우저 세션이 덱의 SVG 에셋마다 PNG 대체 그림을 그린다
+(`Session.RasterizeSVG` — 빈 문서에 `<img>` 하나를 고유 크기로 놓고 2배 배율 · 투명 바탕으로 찍는다).
+결과는 `geom.Geometry.Fallbacks`(에셋 표 순서)이고, PPTX 렌더러가 `asvg:svgBlip` 옆의 `blip`으로 싣는다.
+대체 그림도 측정값처럼 파생 값이라 덱에 넣지 않는다. SVG `<image>`는 재는 요소라서, PPTX를 내는 빌드는
+어차피 브라우저를 띄운다 — 따로 켤 조건이 없다.
 
 ## 단위 경계 — EMU·pt는 render/pptx만 안다
 

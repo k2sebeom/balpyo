@@ -44,8 +44,11 @@ needs `sudo`.
 **A `pptx` target and `--check-layout` need Chromium or Chrome installed** — a headless browser
 measures every box, and the PPTX uses those exact rects. Without one you get
 `지오메트리 패스 실패: 브라우저를 찾을 수 없다`; point `BALPYO_CHROMIUM` at a binary to fix it.
-An HTML-only build never launches a browser. If no browser is available, say so and build
-`--target html`; do not quietly drop the PPTX the user asked for.
+An HTML-only build launches a browser only when the web output itself needs measured boxes:
+a `<connector>` (its ends come from the measured boxes) or a `cube` / `left-brace` / `right-brace`
+shape (drawn from the measured box). A PPTX with SVG images also uses the browser to render
+their PNG fallbacks. If no browser is available, say so and build `--target html` (with no
+connectors or measured-box shapes); do not quietly drop the PPTX the user asked for.
 
 **The theme's fonts must be installed where the build runs.** A measuring build checks every
 font token against the browser and warns about each missing one (`테마 "minimal"의 글꼴 "…"가
@@ -127,6 +130,23 @@ Standing rules while writing:
 - `style=` is a web-only escape hatch — it does **not** reach the PPTX. Two targets diverging
   is almost never what the user wants.
 
+Diagrams, charts and motion all become native, editable PowerPoint objects. Reach for these
+before faking them with images or hand-placed rectangles:
+
+- **Lines between boxes** → give the boxes an `id` and add `<connector from to>` as a direct child
+  of `<slide>`. It takes no space in the flow, so lay the boxes out first and then add the lines.
+  It becomes a real PowerPoint connector glued to the boxes.
+- **Curves, steps, filled areas, odd silhouettes** → `<shape type="path" d="…">` in a 0–100 box;
+  overlay several in a `<stack>`. Hatching is `fill="pattern(…)"`.
+- **Data** → `<chart>` (`bar` / `line` / `area` / `step`, several `<series>` with a legend).
+- **Icons** → SVG files via `<image src="assets/x.svg">` (or `theme:icons/…`).
+- **A dark slide mid-deck** → `<slide invert>`, not literal colours.
+- **Highlighted words / a big number with a small unit** → `<mark>` and `<span size="…">` (smaller only).
+- **Motion** → `enter="rise"` (or `fade` / `zoom` / `wipe`) on `<slide>` staggers its children;
+  `enter="draw"` on a connector draws it in; `transition="fade|push"` on `<slide>`. Use motion
+  to build up an argument, not on every slide. It never changes layout, so it cannot break the
+  gate.
+
 ## 4. The gate loop — run this after every batch of edits
 
 ```bash
@@ -180,11 +200,15 @@ Look for what *is* in the contract: a missing or misplaced object, a wrong colou
 ## Reference files
 
 - `references/vocabulary.md` — the complete closed vocabulary: 11 layouts and their slots,
-  every tag with its legal attributes, and the value sets. Read it before writing markup.
+  every tag with its legal attributes, the value sets, colour functions and pattern fills, and
+  worked snippets for charts, connectors, paths, and motion. Read it before writing markup.
 - `references/pitfalls.md` — what the build will not catch (centred slots, line breaking
   in PPTX), what diagnostics tell you, how to fix overflow, and CLI traps.
 
 Deeper detail lives in the Korean reference docs shipped with this plugin:
-`${CLAUDE_PLUGIN_ROOT}/docs/reference/` (one page per tag under `soml/`, plus `appearance.md`,
-`layouts.md`, `cli.md`). Worked decks: `${CLAUDE_PLUGIN_ROOT}/examples/decks/` and
-`${CLAUDE_PLUGIN_ROOT}/testdata/fixtures/`.
+`${CLAUDE_PLUGIN_ROOT}/docs/reference/` (one page per tag under `soml/` — including
+`connector.md` and `enter.md` — plus `appearance.md`, `layouts.md`, `cli.md`). Worked decks:
+`${CLAUDE_PLUGIN_ROOT}/examples/decks/` and `${CLAUDE_PLUGIN_ROOT}/testdata/fixtures/`.
+`examples/decks/ec2-intro/` uses every diagram feature: connector state machines and
+architectures, path-drawn and hatched charts, `cube` stacks, SVG icons, `<mark>`, an inverted
+closing slide, and staggered entrances. Read it before building anything diagram-heavy.

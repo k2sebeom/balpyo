@@ -109,6 +109,8 @@ type chromeDeclFile struct {
 	Image  string  `json:"image"`
 	Height float64 `json:"height"`
 	Alt    string  `json:"alt"`
+	// Format은 쪽번호의 모양이다 — `{n}`(번호) 하나와 `{total}`(전체 쪽수)을 담는 글 (pageNumber 전용).
+	Format string `json:"format"`
 }
 
 // chromeDecl은 검사가 끝난 크롬 선언 하나다.
@@ -123,6 +125,8 @@ type chromeDecl struct {
 	image  string
 	height float64
 	alt    string
+	// format은 쪽번호의 모양이다 (빈 값은 `{n}`).
+	format string
 }
 
 // themePackage는 로드된 테마 하나다 — 토큰 표(soml.Theme)와 매니페스트를 함께 담는다.
@@ -210,6 +214,19 @@ type tokensFile struct {
 	Space  []spaceTok  `json:"space"`
 	Radius []radiusTok `json:"radius"`
 	Shadow []shadowTok `json:"shadow"`
+	// Motion은 등장의 박자(ms)다 — 선택 절이다 (정하지 않은 테마에서 `enter`를 쓰면 에러).
+	Motion *motionTok `json:"motion"`
+}
+
+// motionTok은 등장 박자 절이다.
+type motionTok struct {
+	Comment  string `json:"$comment"`
+	Duration int    `json:"duration"`
+	Stagger  int    `json:"stagger"`
+	Delay    int    `json:"delay"`
+	// Transition은 덱의 기본 슬라이드 전환이고 TransitionDuration은 그 길이(ms — 0이면 Duration)다.
+	Transition         string `json:"transition"`
+	TransitionDuration int    `json:"transitionDuration"`
 }
 
 type colorTok struct {
@@ -259,6 +276,8 @@ type componentsFile struct {
 	Image   imageComponentsFile `json:"image"`
 	Table   tableComponentsFile `json:"table"`
 	Code    codeComponentsFile  `json:"code"`
+	// Connector는 연결선의 기본값 · variant다 (connector.go) — 선택 절이다.
+	Connector connectorComponentsFile `json:"connector"`
 }
 
 // codeComponentsFile은 코드 블록의 테마 절이다. 표가 **종류 → 색 토큰**이고,
@@ -286,6 +305,16 @@ type textComponentsFile struct {
 	Roles             []textRoleFile             `json:"roles"`
 	ComponentDefaults []textComponentDefaultFile `json:"componentDefaults"`
 	Variants          []textVariantFile          `json:"variants"`
+	// Mark는 `<mark>`의 형광펜이다 — 선택 절이다 (정하지 않은 테마의 덱이 `<mark>`를 쓰면
+	// 값 층의 에러다: 어느 색으로도 조용히 칠하지 않는다).
+	Mark *textMarkFile `json:"mark"`
+}
+
+// textMarkFile은 형광펜 절이다. 색은 **단색** 토큰 참조다 (변형 포함) — PPTX `a:highlight`가
+// 색 하나(`CT_Color`)만 담으므로 그라디언트는 에러다.
+type textMarkFile struct {
+	Comment   string `json:"$comment"`
+	Highlight string `json:"highlight"`
 }
 
 type textRoleFile struct {
@@ -296,6 +325,10 @@ type textRoleFile struct {
 	LineHeight float64 `json:"lineHeight"`
 	Color      string  `json:"color"`
 	Align      string  `json:"align"`
+	// Tracking·Case는 역할에서도 선택이다 — 정하지 않으면 자간 0 · 원문 대소문자다 (역할이
+	// "완전한 바닥"이어야 하는 필드는 크기·줄높이·색·정렬·폰트이고, 이 둘은 0이 곧 뜻이다).
+	Tracking *float64 `json:"tracking"`
+	Case     *string  `json:"case"`
 }
 
 // textComponentDefaultFile은 컴포넌트 기본값 한 줄이다 — 주인은 **태그**(`tag`)이거나 레이아웃의
@@ -306,12 +339,14 @@ type textRoleFile struct {
 // 인용이라 본문 크기여야 한다 — 태그 기본값으로는 둘을 가를 수 없다. 키에 레이아웃이 들어가는
 // 이유는 슬롯 이름이 레이아웃마다 겹치기 때문이다 (`body`는 content · image-text · stat에 있다).
 type textComponentDefaultFile struct {
-	Tag    string   `json:"tag"`
-	Layout string   `json:"layout"`
-	Slot   string   `json:"slot"`
-	Size   *float64 `json:"size"`
-	Weight *int     `json:"weight"`
-	Color  *string  `json:"color"`
+	Tag      string   `json:"tag"`
+	Layout   string   `json:"layout"`
+	Slot     string   `json:"slot"`
+	Size     *float64 `json:"size"`
+	Weight   *int     `json:"weight"`
+	Color    *string  `json:"color"`
+	Tracking *float64 `json:"tracking"`
+	Case     *string  `json:"case"`
 }
 
 // key는 기본값 한 줄의 주인 이름이다 — 상속 병합과 로드가 같은 열쇠를 쓴다.
@@ -328,10 +363,12 @@ func slotDefaultKey(layout soml.SlideLayout, slot string) string {
 }
 
 type textVariantFile struct {
-	Name   string   `json:"name"`
-	Size   *float64 `json:"size"`
-	Weight *int     `json:"weight"`
-	Color  *string  `json:"color"`
+	Name     string   `json:"name"`
+	Size     *float64 `json:"size"`
+	Weight   *int     `json:"weight"`
+	Color    *string  `json:"color"`
+	Tracking *float64 `json:"tracking"`
+	Case     *string  `json:"case"`
 }
 
 type shapeComponentsFile struct {
@@ -429,6 +466,11 @@ type components struct {
 	imageVariants    []imageVariant
 	table            tableComponents
 	code             codeComponents
+	// markHighlight는 `<mark>`의 형광펜 색이다 (text.mark.highlight). 테마가 정하지 않으면 nil이다.
+	markHighlight *soml.Color
+	// connectorDefault · connectorVariants는 연결선 캐스케이드의 테마 단이다 (connector.go).
+	connectorDefault  connectorPatch
+	connectorVariants []connectorVariant
 }
 
 // tableComponents는 변환된 표 셀 외관 표다 (캐스케이드 내부 타입). shape/image의 default·
@@ -658,6 +700,16 @@ func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool, assets *assetReso
 	if raw.Image != "" || raw.Height != 0 || raw.Alt != "" {
 		return decl, fmt.Errorf("%s cannot have image · height · alt — those belong to picture chrome (logo)", decl.kind)
 	}
+	if raw.Format != "" {
+		if decl.kind != soml.ChromePageNumber {
+			return decl, fmt.Errorf("%s cannot have a format — only pageNumber has one", decl.kind)
+		}
+		rest := strings.ReplaceAll(strings.Replace(raw.Format, "{n}", "", 1), "{total}", "")
+		if strings.Count(raw.Format, "{n}") != 1 || strings.ContainsAny(rest, "{}") {
+			return decl, fmt.Errorf("pageNumber format %q needs {n} exactly once and may use {total} — e.g. \"{n} / {total}\"", raw.Format)
+		}
+		decl.format = raw.Format
+	}
 
 	roles := make([]string, 0, len(soml.TextRoles()))
 	for _, role := range soml.TextRoles() {
@@ -745,6 +797,16 @@ func tokensFromFile(file tokensFile, name string) soml.Theme {
 			Color: soml.TokenColor(s.Color), Alpha: s.Alpha,
 		})
 	}
+	if m := file.Motion; m != nil {
+		theme.Motion = &soml.MotionTokens{Duration: m.Duration, Stagger: m.Stagger, Delay: m.Delay,
+			Transition: soml.SlideTransition(m.Transition), TransitionDuration: m.TransitionDuration}
+		if theme.Motion.TransitionDuration == 0 {
+			theme.Motion.TransitionDuration = m.Duration
+		}
+		if theme.Motion.Transition == soml.TransitionNone {
+			theme.Motion.Transition = ""
+		}
+	}
 	return theme
 }
 
@@ -774,11 +836,17 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 	var comps components
 	comps.textRoles = map[soml.TextRole]soml.TextStyle{}
 	for _, r := range file.Text.Roles {
-		comps.textRoles[soml.TextRole(r.Name)] = soml.TextStyle{
+		style := soml.TextStyle{
 			Role: soml.TextRole(r.Name), Font: soml.FontRole(r.Font), Size: r.Size,
 			Weight: r.Weight, LineHeight: r.LineHeight,
 			Color: soml.TokenColor(r.Color), Align: soml.TextAlign(r.Align),
 		}
+		var typo textPatch
+		if err := typographyPatch(&typo, fmt.Sprintf("text role %q", r.Name), r.Tracking, r.Case); err != nil {
+			return comps, err
+		}
+		mergeText(&style, typo)
+		comps.textRoles[soml.TextRole(r.Name)] = style
 	}
 
 	comps.textComponentDefaults = map[string]textPatch{}
@@ -790,6 +858,9 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 		}
 		if d.Weight != nil {
 			patch.weight = d.Weight
+		}
+		if err := typographyPatch(&patch, fmt.Sprintf("text.componentDefaults %q", d.key()), d.Tracking, d.Case); err != nil {
+			return comps, err
 		}
 		if d.Color != nil {
 			c, err := themeColor(theme, fmt.Sprintf("text.componentDefaults %q color", d.key()), *d.Color)
@@ -816,6 +887,17 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 		}
 	}
 
+	if m := file.Text.Mark; m != nil && m.Highlight != "" {
+		c, err := themeColor(theme, "text.mark highlight", m.Highlight)
+		if err != nil {
+			return comps, err
+		}
+		if c.IsGradient() {
+			return comps, fmt.Errorf("text.mark highlight %q cannot be a gradient — a highlight is one color (PPTX a:highlight holds a single color)", m.Highlight)
+		}
+		comps.markHighlight = &c
+	}
+
 	for _, v := range file.Text.Variants {
 		var patch textPatch
 		if v.Size != nil {
@@ -823,6 +905,9 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 		}
 		if v.Weight != nil {
 			patch.weight = v.Weight
+		}
+		if err := typographyPatch(&patch, fmt.Sprintf("text variant %q", v.Name), v.Tracking, v.Case); err != nil {
+			return comps, err
 		}
 		if v.Color != nil {
 			c, err := themeColor(theme, fmt.Sprintf("text variant %q color", v.Name), *v.Color)
@@ -854,6 +939,18 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 			return comps, fmt.Errorf("image variant %q: %w", v.Name, err)
 		}
 		comps.imageVariants = append(comps.imageVariants, imageVariant{name: v.Name, patch: patch})
+	}
+
+	cd := file.Connector.Default
+	if comps.connectorDefault, err = connectorPatchFromFile(theme, "connector.default", cd.Line, cd.Start, cd.End); err != nil {
+		return comps, err
+	}
+	for _, v := range file.Connector.Variants {
+		patch, err := connectorPatchFromFile(theme, fmt.Sprintf("connector variant %q", v.Name), v.Line, v.Start, v.End)
+		if err != nil {
+			return comps, err
+		}
+		comps.connectorVariants = append(comps.connectorVariants, connectorVariant{name: v.Name, patch: patch})
 	}
 
 	table, err := tableComponentsFromFile(file.Table)
@@ -964,7 +1061,7 @@ func shadowToken(theme soml.Theme, name string) *soml.ShadowToken {
 func shapePatchFromFile(theme soml.Theme, fill, border, radius, shadow string) (shapePatch, error) {
 	var patch shapePatch
 	if fill != "" {
-		f, err := themeFill(theme, fill)
+		f, err := themeShapeFill(theme, fill)
 		if err != nil {
 			return patch, err
 		}
@@ -1032,6 +1129,16 @@ func imageVariantPatchFromFile(theme soml.Theme, v imageVariantFile) (imagePatch
 func themeFill(theme soml.Theme, raw string) (*soml.Fill, error) {
 	r := &resolver{theme: theme}
 	f, ok := r.fill(soml.Attr{Name: "fill", Value: raw, HasValue: true})
+	if err := themeValueErr(r, ok); err != nil {
+		return nil, err
+	}
+	return &f, nil
+}
+
+// themeShapeFill은 테마의 도형 채움이다 — 도형 자리라 무늬를 받는다 (shapeFill).
+func themeShapeFill(theme soml.Theme, raw string) (*soml.Fill, error) {
+	r := &resolver{theme: theme}
+	f, ok := r.shapeFill(soml.Attr{Name: "fill", Value: raw, HasValue: true})
 	if err := themeValueErr(r, ok); err != nil {
 		return nil, err
 	}
@@ -1196,4 +1303,35 @@ func loadBuiltinTheme(name string) themePackage {
 		panic(fmt.Sprintf("cannot load built-in theme %q: %v", name, err))
 	}
 	return pkg
+}
+
+// 자간의 범위다 (em). 음수 쪽은 큰 제목을 조이는 자리(−0.02em 안팎)를 넉넉히 덮고, 양수 쪽은
+// 키커·라벨의 벌린 글자(0.1~0.2em)를 덮는다. 그 밖은 글자가 겹치거나 단어가 흩어져 읽히지 않는다.
+const (
+	minTracking = -0.1
+	maxTracking = 0.5
+)
+
+// typographyPatch는 테마 파일의 `tracking`·`case`를 패치에 얹는다 — 역할·컴포넌트 기본값·
+// variant가 같은 함수를 지나 진단이 한 벌이다. owner는 진단의 주어다.
+func typographyPatch(patch *textPatch, owner string, tracking *float64, textCase *string) error {
+	if tracking != nil {
+		if *tracking < minTracking || *tracking > maxTracking {
+			return fmt.Errorf("%s tracking %g is out of range — tracking is a multiple of the font size (em) between %g and %g",
+				owner, *tracking, minTracking, maxTracking)
+		}
+		patch.tracking = ptr(*tracking)
+	}
+	if textCase != nil {
+		switch *textCase {
+		case string(soml.CaseUpper):
+			patch.textCase = ptr(soml.CaseUpper)
+		case "none":
+			// "none"은 아래 단의 upper를 끈다 — 확정 값으로는 원문 그대로(빈 값)다.
+			patch.textCase = ptr(soml.TextCase(""))
+		default:
+			return fmt.Errorf("%s case %q is unknown (available values: upper, none)", owner, *textCase)
+		}
+	}
+	return nil
 }

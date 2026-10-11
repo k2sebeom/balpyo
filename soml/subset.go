@@ -84,6 +84,12 @@ const (
 	// `<tr>`처럼 도형이 되지 않지만 갈라지는 자리가 있다: 행은 프레임 안에 `a:tr`로 **접히고**
 	// 점은 아예 **사라진다** (점 하나가 도형 1 + 텍스트 2가 된다).
 	KindChartPoint
+	// KindChartSeries는 `<series>`다 (chart.go) — 점들을 담는 계열이고, KindChart와 함께 펼쳐진다.
+	KindChartSeries
+	// KindConnector는 `<connector>`다 (connector.go). 별도 종류인 근거는 네 층의 산출이 전부
+	// 다르다는 것이다: 콘텐츠 모델이 void이고 슬라이드 직속뿐이며, **재지 않는 첫 그려지는 종류**다
+	// (끝점은 측정 결과에서 유도된다), 웹은 슬라이드 오버레이의 SVG 경로를, PPTX는 `p:cxnSp`를 낸다.
+	KindConnector
 )
 
 // ElementKinds는 카탈로그의 모든 종류다 (KindNone은 카탈로그 밖이므로 빠진다).
@@ -98,7 +104,7 @@ func ElementKinds() []ElementKind {
 		KindBlock, KindListContainer, KindListItem, KindInline,
 		KindLayoutContainer, KindSpacer, KindShape, KindImage,
 		KindTable, KindTableRow, KindTableCell,
-		KindChart, KindChartPoint,
+		KindChart, KindChartPoint, KindChartSeries, KindConnector,
 	}
 }
 
@@ -118,6 +124,8 @@ var elementKindNames = map[ElementKind]string{
 	KindTableCell:       "TableCell",
 	KindChart:           "Chart",
 	KindChartPoint:      "ChartPoint",
+	KindChartSeries:     "ChartSeries",
+	KindConnector:       "Connector",
 }
 
 // String은 종류 이름을 돌려준다.
@@ -151,7 +159,7 @@ func allElementNames() []string {
 	names = append(names, layoutContainerElements...)
 	names = append(names, SpacerElement, ShapeElement, ImageElement, TableElement, TableRowElement)
 	names = append(names, tableCellElements...)
-	return append(names, ChartElement, ChartPointElement)
+	return append(names, ChartElement, ChartPointElement, ChartSeriesElement, ConnectorElement)
 }
 
 // unrenderedKinds는 **파서와 값 층은 아는데 어느 렌더러도 그리지 못하는** 종류다.
@@ -208,7 +216,7 @@ var plannedAttrs = []plannedAttr{}
 // 목록이 언어 층에 있는 이유는 unrenderedKinds와 같다 — 파서가 아는 종류의 운명을 파서 옆에
 // 적어야 세 층의 대조가 한 곳을 읽는다. 값 층도 이 목록을 읽는다: 확정 트리에 펼쳐지는 종류가
 // 하나도 없다는 것을 core의 테스트가 이 목록으로 확인한다 (TestResolvedTreeHasNoDesugaredKinds).
-var desugaredKinds = []ElementKind{KindChart, KindChartPoint}
+var desugaredKinds = []ElementKind{KindChart, KindChartPoint, KindChartSeries}
 
 // DesugaredKinds는 펼쳐지는 종류 전부다 (카탈로그 순서). ElementKinds의 부분집합이다.
 func DesugaredKinds() []ElementKind {
@@ -249,7 +257,7 @@ func KindRendered(kind ElementKind) bool {
 var (
 	blockElements         = []string{"h1", "h2", "h3", "p", "blockquote", "pre"}
 	listContainerElements = []string{"ul", "ol"}
-	inlineElements        = []string{"strong", "em", "code", "a", "br", "span"}
+	inlineElements        = []string{"strong", "em", "code", "a", "br", "span", MarkElement}
 )
 
 // ListItemElement는 리스트 항목 태그 이름이다.
@@ -262,6 +270,10 @@ const ListItemElement = "li"
 // 이 속성이 외관 어휘가 아니라 **발표 순서**라는 점이 중요하다: 숨김은 발표자 뷰 하나의
 // 성질이고, 문서 뷰·측정·인쇄·PPTX는 전부 전개된 상태를 본다.
 const RevealAttr = "reveal"
+
+// MarkElement는 형광펜 태그 이름이다 — 색은 테마의 것이라 속성이 없고, 값 층이 런의
+// Highlight를 채운다. 웹 렌더러가 이 이름에만 배경을 칠한다 (안의 런은 같은 색을 물려받는다).
+const MarkElement = "mark"
 
 // BreakElement는 줄바꿈 태그 이름이다. 서브셋의 유일한 void 요소다 — 내용을 갖지 않고
 // `<br/>`(자기 닫힘)로만 쓴다. 렌더러가 런 분할에서 이 이름을 특별 취급한다.
@@ -305,6 +317,8 @@ func buildElementKinds() map[string]ElementKind {
 	}
 	kinds[ChartElement] = KindChart
 	kinds[ChartPointElement] = KindChartPoint
+	kinds[ChartSeriesElement] = KindChartSeries
+	kinds[ConnectorElement] = KindConnector
 	return kinds
 }
 
@@ -320,7 +334,7 @@ func KindOf(name string) ElementKind {
 // (`<shape>` 안 `<text>`) 그림 **위** 글자는 겹침(`<stack>`)의 일이다.
 func IsVoidElement(name string) bool {
 	return name == BreakElement || name == SpacerElement || name == ImageElement ||
-		name == ChartPointElement
+		name == ChartPointElement || name == ConnectorElement
 }
 
 // TagTextRole은 블록·리스트 항목 태그의 텍스트 역할이다 — 역할 등가 표

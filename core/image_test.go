@@ -41,7 +41,7 @@ func wantImageStyle(delta soml.ImageStyle) soml.ImageStyle {
 	}
 	mergeImage(&style, imagePatch{border: delta.Border, radius: delta.Radius, shadow: delta.Shadow,
 		opacity: delta.Opacity, rotate: delta.Rotate, flip: flip})
-	style.Src, style.Alt, style.Box = delta.Src, delta.Alt, delta.Box
+	style.Src, style.ID, style.Alt, style.Box = delta.Src, delta.ID, delta.Alt, delta.Box
 	if delta.Fit != "" {
 		style.Fit = delta.Fit
 	}
@@ -59,6 +59,7 @@ func TestResolveImageStyle(t *testing.T) {
 		want  soml.ImageStyle
 	}{
 		{"src", "src", src, soml.ImageStyle{Src: "assets/wide.png"}},
+		{"id", "id", src + ` id="icon"`, soml.ImageStyle{Src: "assets/wide.png", ID: "icon"}},
 		{"fit cover", "fit", src + ` fit="cover"`,
 			soml.ImageStyle{Src: "assets/wide.png", Fit: soml.FitCover}},
 		{"alt", "alt", src + ` alt="a chart"`,
@@ -169,7 +170,6 @@ func TestResolveImageDiagnostics(t *testing.T) {
 		{name: "data URL", attrs: `src="data:image/png;base64,iVBORw0KGgo="`, needle: "data:",
 			contains: []string{"cannot be a data: URL", "commit the image as a file"}},
 		{name: "확장자 없음", attrs: `src="assets/photo"`, needle: "assets/photo", contains: []string{"has no extension", ".png"}},
-		{name: "svg", attrs: `src="assets/logo.svg"`, needle: "assets/logo.svg", contains: []string{"v1 cannot render", "png", "jpeg"}},
 		{name: "gif", attrs: `src="assets/anim.gif"`, needle: "assets/anim.gif", contains: []string{"v1 cannot render"}},
 		{name: "webp", attrs: `src="assets/photo.webp"`, needle: "assets/photo.webp", contains: []string{"v1 cannot render"}},
 		// CSS object-fit의 나머지 값은 PPTX에 대응이 없다는 사실까지 진단이 말한다.
