@@ -28,6 +28,7 @@ type box struct {
 
 	minCache, maxCache *float64
 	contentMinCache    *float64
+	firstLine          int // flex 컨테이너의 첫 줄 항목 수 (order 순서) — 컨테이너 기준선을 고를 때 쓴다
 	// sizeless면 layout이 지정 높이를 auto로 본다 (내용 높이를 잴 때만 잠깐 켠다).
 	sizeless bool
 	last     *layoutKey // 직전 layout 호출의 입력 — 같으면 결과가 이미 box에 있다
