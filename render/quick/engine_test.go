@@ -155,3 +155,19 @@ func TestKeepAllBreaksAtSpaces(t *testing.T) {
 		}
 	}
 }
+
+// 두 문자가 모두 ASCII일 때 Chromium은 '/' 뒤에서 줄을 바꾸지 않는다 — 200px 칸의 긴 URL은
+// 넘쳐도 한 줄이다. ASCII가 아닌 글자 앞에서는 UAX #14대로 끊는다.
+func TestNoBreakAfterSlashBeforeASCII(t *testing.T) {
+	const font = `font-size: 20px; line-height: 30px; font-family: 'Noto Sans'`
+	_, b := layoutBody(t, baseCSS,
+		`<div id="u" style="width: 200px; `+font+`">aaaaaaaaaa/bbbbbbbbbb</div>`+
+			`<div id="v" style="width: 200px; `+font+`">https://example.com/path/to/some/long/resource</div>`+
+			`<div id="w" style="width: 30px; `+font+`">1/a</div>`+
+			`<div id="x" style="width: 40px; `+font+`">aaaaa/éaaaaa</div>`)
+	for id, want := range map[string]float64{"u": 30, "v": 30, "w": 30, "x": 60} {
+		if !near(b[id].h, want) {
+			t.Errorf("%s: height %.1f, want %.1f", id, b[id].h, want)
+		}
+	}
+}

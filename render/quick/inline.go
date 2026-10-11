@@ -178,6 +178,9 @@ func isWordChar(r rune) bool {
 	return unicode.IsLetter(r) || unicode.IsNumber(r) || unicode.Is(unicode.Mn, r)
 }
 
+// isTableASCII는 브라우저의 ASCII 줄바꿈 표가 다루는 범위('!'부터 DEL까지)다.
+func isTableASCII(r rune) bool { return r >= '!' && r <= 0x7F }
+
 // words는 단락을 줄바꿈 기회로 자른다.
 func (p *para) words() []word {
 	if len(p.runes) == 0 {
@@ -198,6 +201,12 @@ func (p *para) words() []word {
 		prev, next := p.runes[pos-1], p.runes[pos]
 		st := p.styles[pos]
 		if !wraps(whiteSpace(st)) || !wraps(whiteSpace(p.styles[pos-1])) {
+			delete(breaks, pos)
+			continue
+		}
+		// 앞뒤가 모두 출력 가능한 ASCII인 쌍은 브라우저가 UAX #14 대신 자기 표로 판정하고, 그 표는
+		// '/' 뒤를 끊지 않는다 (URL · 경로가 한 단어로 남는다). ASCII가 아닌 글자 앞은 UAX #14대로다.
+		if prev == '/' && isTableASCII(next) {
 			delete(breaks, pos)
 			continue
 		}
