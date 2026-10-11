@@ -1,6 +1,7 @@
 package geom
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/k2sebeom/balpyo/render/web"
@@ -273,4 +274,15 @@ func ThemeFontProbes(theme soml.Theme) []FontProbe {
 		}
 	}
 	return probes
+}
+
+// FromMeasurement는 브라우저 밖에서 잰 측정값으로 Geometry를 만든다 — 내장 렌더러(render/quick)가
+// 쓴다. raw는 측정 스크립트가 돌려주는 것과 같은 JSON이다: 같은 꼴을 받아 같은 대조(newGeometry)를
+// 거치므로, 어느 쪽이 쟀든 소비 측(배치 진단 · PPTX)은 같은 계약의 지오메트리를 받는다.
+func FromMeasurement(deck *soml.Deck, raw []byte) (*Geometry, error) {
+	var m measurement
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, fmt.Errorf("cannot read the measurement: %w", err)
+	}
+	return newGeometry(deck, m)
 }
