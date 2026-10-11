@@ -148,6 +148,17 @@ go test ./core -run TestDocsVocabularyListsMatchCode   # 도구 없이 밀리초
 API를 늘리지 않는다), `internal/testkit`은 `internal/pipeline`을 임포트하므로 거기 두면 순환이다.
 문서만 고치는 커밋은 이 판정만 돌리면 된다 — 브라우저도, 픽스처 스위트도 필요하지 않다.
 
+## 스킬 게이트 — 스킬은 저장소 없이 읽힌다
+
+`skills/`의 에이전트 스킬은 바이너리 · 설치한 테마와 함께 배포되는 **유일한 문서**다. 사용자의
+에이전트에게는 저장소가 없으므로, 스킬이 `docs/`나 픽스처를 가리키면 그 길은 막혀 있다.
+`core/skills_test.go`가 두 가지를 판정한다.
+
+| 판정 | 어떻게 |
+|---|---|
+| 스킬이 저장소 경로를 말하지 않는다 | `TestSkillsStaySelfContained` — 저장소 디렉토리 경로·테스트 파일·골든을 말하는 줄을 실패로 낸다. 사실은 스킬에 직접 적는다 |
+| 스킬의 내장 테마 사본이 임베드된 테마와 같다 | `TestGoldenSkillBuiltinThemes` — `skills/theme/references/builtin-themes.md`를 임베드된 테마에서 (주석을 빼고) 다시 만들어 비교한다. 내장 테마를 고치면 `make golden`으로 다시 쓴다 |
+
 ## 골든
 
 골든은 **두 종뿐이다** — 산출물 스냅샷이 아니라 사람이 diff로 읽는 구조 기록이다.
