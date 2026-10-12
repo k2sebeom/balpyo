@@ -14,12 +14,34 @@ are in `builtin-themes.md`.
 
 A theme is data only — JSON, CSS, pictures. It cannot run code and cannot bundle fonts.
 
-**Key checking.** `tokens.json` and `components.json` reject unknown keys (the error names the
-file, `line:col`, and the JSON path, e.g. `unknown key "lineHeight" at text.variants["stat"].lineHeight`);
-any key starting with `$comment` is a comment, anywhere. `theme.json` is **not** checked — a
-misspelt key there is silently ignored. Key names match case-insensitively. Wrong value types are
+**Key checking.** `theme.json`, `tokens.json` and `components.json` all reject unknown keys,
+inside `chrome` and `backgrounds` declarations too (the error names the file, `line:col`, and the
+JSON path, e.g. `unknown key "lineHeight" at text.variants["stat"].lineHeight` or
+`unknown key "skipLayout" at chrome[0].skipLayout`); any key starting with `$comment` is a
+comment, anywhere. Key names match case-insensitively. A leading UTF-8 BOM is ignored. Wrong value types are
 errors (`shape.variants["card"].fill must be a string, not number`); `weight`, `tabSize` and the
 motion numbers must be integers.
+
+**Value checking.** Values are checked when the theme loads, so `check` and `build` agree and an
+unused variant still fails:
+
+- colour `rgb` is six hex digits without `#`
+  (`tokens.json color token "accent1" has rgb "#A10" — rgb must be 6 hex digits without # (RRGGBB)`);
+  `ref` is the slot's reference name — `tx1` for `dk1`, `bg1` for `lt1`, `tx2` for `dk2`, `bg2`
+  for `lt2`, the slot name itself for the rest;
+- shadow `alpha` is 0–1 and its `color` a colour token of this theme;
+- `weight` is 1–1000 everywhere (`text role "title" weight 6000 is out of range — weight is a CSS font-weight from 1 to 1000`);
+- role `align` is `start` `center` `end` `justify`;
+- `radius`/`shadow` names in components are this theme's tokens
+  (`shape variant "card": unknown shadow token "nope" (available tokens: soft)`);
+- font `scheme` is `major`, `minor`, or omitted, with exactly one font in each slot;
+- `motion` `duration` > 0, `stagger`/`delay`/`transitionDuration` ≥ 0.
+
+**Where errors point.** A theme error points at the file and `line:col` that declares the bad
+value — in an `extends` chain, the theme that actually wrote it (a name the child rewrites is the
+child's file, an inherited one the parent's); a missing name points at the section to add it to.
+An installed theme's error is prefixed with its name:
+`balpyo.json: error: theme "acme": themes/acme/components.json:1:47: shape variant "card": unknown shadow token "nope" (available tokens: soft)`.
 
 ## `theme.json`
 
@@ -144,11 +166,17 @@ Chrome merges by `kind`: a child that writes `footer` replaces the parent's whol
 - A layout with no background stays the `bg` colour.
 - On the web it is the slide's CSS background; in the PPTX it is the slide's background ("Format
   Background" in PowerPoint), not a movable shape. Colours stay theme colours.
+- Gradient angles are true angles on both targets here (backgrounds and overlays): a `210deg`
+  band leans the same way on the web and in the PPTX on a 16:9 slide. Shape-fill variants
+  (`"hero"` with `gradient(…, 135deg)`) instead stretch with the shape's box.
 
 Pictures (backgrounds and the logo) must live under the theme's `assets/` (paths written
 `assets/…`), be real PNG/JPEG files (SVG is not allowed there) whose extension matches the
 content and that have an intrinsic size. Only referenced pictures are shipped (the web output
-puts them under `themes/<theme>/assets/`). An inherited declaration's picture belongs to the
+puts them under `themes/<theme>/assets/`). A JPEG background with an EXIF orientation is
+re-encoded upright (lossy, under `themes/<theme>/upright/assets/`), because a PPTX background
+cannot rotate; the logo and `theme:` pictures keep their bytes. Commit photos already upright to
+avoid the re-encode. An inherited declaration's picture belongs to the
 theme that has it; a child file at the same path wins.
 
 ### Pictures for slides — `theme:`

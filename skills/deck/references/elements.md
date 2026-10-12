@@ -32,17 +32,15 @@ otherwise.
 Free placement. The stage is one overlapping cell: direct children are placed by `x`/`y`
 (numbers, `%` of the stage axis, or negative) measured from the inside of the 64px margin —
 `x="0" y="0"` is the content box's top-left, `x="-64"` reaches the slide edge. Document order is
-z-order. `at` is **not** legal directly on canvas children — put them in a `<stack>` for anchors.
-Canvas content is never warned about for overlap or for using the margin, but it is still
+z-order. `at` anchors a direct child to one of the 9 points of the content box, like a stack
+child. Canvas content is never warned about for overlap or for using the margin, but it is still
 warned about **leaving the stage**.
 
 ```html
 <slide id="diagram" layout="canvas">
   <shape type="ellipse" fill="accent1" w="96" h="96" x="50%" y="40%"/>
   <text w="140" align="center" x="106" y="216">placed by hand</text>
-  <stack w="fill" h="fill">
-    <text at="bottom-right" role="caption">anchored in a stack</text>
-  </stack>
+  <text at="bottom-right" role="caption">anchored to the content box</text>
 </slide>
 ```
 
@@ -58,7 +56,9 @@ note.
 - **Role** sets the whole baseline (font, size, weight, line height, colour). Tag defaults:
   `h1` title, `h2` heading, `h3` heading at 28px, `p` body, `blockquote` body in `muted`, `pre`
   code, `li` body. Only `<text>` takes `role` (default `body`).
-- **`size`** — a unitless number > 0 (no `px`, no `%`).
+- **`size`** — a unitless number > 0 (no `px`, no `%`). Every numeric attribute takes a plain
+  decimal only — `12`, `-3`, `0.5`, `.5`; `1e3`, `NaN`, `Inf`, `+5`, `1_000` are
+  `size value is not a number ("1e3")`.
 - **`color`** — a token, a colour function, `#RRGGBB`, or `#RGB`.
 - **`align`** — `start` (default) `center` `end` `justify`; `left`/`right` are errors (the
   meaning holds in right-to-left text too).
@@ -72,7 +72,8 @@ note.
   trimmed. Spaces at the inside edges of an inline tag are trimmed too — write
   `<strong>deploy</strong> pipeline`, not `<strong>deploy </strong>pipeline`. `&#32;` survives
   collapsing.
-- With `lang: "ko"`, the web breaks lines at word boundaries, not inside words.
+- With `lang: "ko"` (or any `ko-…` tag), the web breaks lines at word boundaries, not inside
+  words; a word longer than its box still breaks.
 - An empty `<text></text>` still produces a text box in the PPTX.
 
 ## Inline markup
@@ -82,7 +83,7 @@ note.
 | `strong` | bold (weight at least 700) |
 | `em` | italic |
 | `code` | the `mono` font at the surrounding size |
-| `a href="…"` | underlined, `accent1`, a real hyperlink in both targets (`href` required, not validated) |
+| `a href="…"` | underlined, `accent1`, a real hyperlink in both targets (`href` required). `#<slide id>`, `#/<slide id>` or `#/<number>` links inside the deck — a PPTX slide jump; a target not in the deck (skipped slides aren't) is a warning |
 | `span color weight size` | recolour, `weight="bold"`/`"normal"` (no numbers), or a **smaller or equal** size (`<span size="28">` inside 56px text — a bigger span is an error) |
 | `mark` | highlighter in the theme's highlight colour (no attributes; a theme without one makes `<mark>` an error) |
 | `br` | a line break within the paragraph — `<br/>` |
@@ -111,7 +112,8 @@ note.
   revealing never moves anything. Only the web presenter view steps; the overview, print and
   the PPTX show every item (use `enter` for PowerPoint motion).
 - Presenter: next (→, Space) uses up the steps before changing slide; back (←) rewinds one step.
-  A slide entered backwards is fully revealed; a deep link starts at step 0.
+  A slide entered backwards is fully revealed; a deep link starts at step 0. Home/End restart
+  the steps even on the slide already shown; arrows in the overview move tiles, not steps.
 
 ## Code: `<pre>`
 
@@ -127,7 +129,9 @@ note.
   Tabs expand to the theme's tab stops (2 columns in the built-ins), so pasted tab-indented code
   is fine.
 - `lang`: `go` `xml` `soml` `json` `bash`, or omit it. Any other value is an error. Token
-  colours come from the theme and stay theme-colour references in the PPTX.
+  colours come from the theme and stay theme-colour references in the PPTX. This is the code's
+  language and unrelated to the deck's `lang` in `balpyo.json` (`<pre lang="ko">` is an error).
+  For an unlisted language (`yaml`, `python` …) omit `lang` rather than borrowing a neighbour's.
 - A code block does not wrap, on either target: long lines run past the box (a layout warning:
   `… text that cannot wrap (a long word, URL or pre)`). Break lines by hand or lower `size`.
 
@@ -170,7 +174,8 @@ sizes to its **largest child**, so give it `w`/`h` or `ratio` when anchors need 
   is not a value, write `center`.
 - `x`/`y` offset a child from the stack's top-left (negative allowed, `%` of the stack axis);
   you may set only one axis.
-- Children with neither follow the stack's `align` (vertical) and `justify` (horizontal).
+- Children with neither follow the stack's `align` (vertical) and `justify` (horizontal). A
+  stack has one cell, so `justify="between"` is `start` and `around`/`evenly` are `center`.
 - In the PPTX a stack is nothing — no group; each child is its own shape.
 - Overlap inside a stack is never warned about.
 
@@ -243,6 +248,9 @@ more), then `pad` applies inside that — so a labelled diamond needs room.
   (axes stretch independently). Absolute commands only: `M L H V C Q Z` (lowercase, `A`, `S`, `T`
   are errors), numbers separated by spaces or commas, coordinates may leave 0–100. An open path
   is still filled, so lines need `fill="none"`. It is editable with PowerPoint's Edit Points.
+  Several subpaths (each new `M`) fill **even-odd** on both targets, whatever their direction,
+  so an inner outline cuts a hole: `d="M0,0 L100,0 L100,100 L0,100 Z M25,25 L75,25 L75,75 L25,75 Z"`
+  is a frame.
 
 ```html
 <stack w="560" h="280">
@@ -262,13 +270,17 @@ more), then `pad` applies inside that — so a labelled diamond needs room.
 - **`src`** — a path from the **project root** (not from the slide file), one file, `.png`
   `.jpg` `.jpeg` `.svg`. Absolute paths, `../` outside the project, URLs, `data:`, backslashes,
   directories, and a missing extension are errors. `.gif`, `.webp`, `.avif`, `.heic`, `.bmp`,
-  `.tif` are rejected — export PNG or JPEG. The extension must match the content.
+  `.tif` are rejected — export PNG or JPEG. The extension must match the content. A symbolic
+  link pointing outside the project is an error too (`src goes through a symbolic link that
+  points outside the project (…)`) — the commit would hold only the link.
 - **`theme:<path>`** — a picture from the active theme's `assets/`, looked up child-first
   through its `extends` chain (`theme:icons/lambda.png`). Works for installed themes with no
   copy in the project; a missing file lists the chain it searched.
 - **Size** — intrinsic pixels are logical px (a 2× screenshot draws twice as large); scale with
-  `w`/`h`/`ratio`. Bytes are never resized or recompressed, and EXIF rotation is not applied —
-  shrink big photos first.
+  `w`/`h`/`ratio`. Bytes are never resized or recompressed — shrink big photos first. A JPEG's
+  EXIF orientation is honoured on both targets (the PPTX keeps the stored pixels and adds a
+  rotation/flip), so the intrinsic size and `rotate`/`flip` are those of the upright picture;
+  PowerPoint's rotation box shows the EXIF turn added in.
 - **`fit`** — `contain` (default) shrinks the box to the picture (no letterbox); `cover` crops
   the overflow equally on both sides. Without a size, `fit` does nothing. In the `media` slot of
   `image-full` / `image-text`, an image without a size fills the slot, so
@@ -311,6 +323,8 @@ plus a PNG fallback at 2× intrinsic size.
   four sides), `align`, `anchor` (`top` default). `border="none"` removes the theme's border.
 - Column widths follow content. Cells are exempt from overflow judgement; a table that does not
   fit shows up as the `<table>` frame overflowing.
+- An empty cell (or one holding only spaces or empty inlines) still keeps one line at the cell
+  font size, so an empty row is as tall as a one-line row.
 
 ## `<chart>`
 
@@ -335,7 +349,9 @@ data sheet).
 </chart>
 ```
 
-- `h` or `ratio` is required (`h="fill"` counts). `type` is required.
+- `h` or `ratio` is required (`h="fill"` counts). `type` is required. `line` and `area` need at
+  least two points (`a line chart needs at least 2 points — …`); for one value use `bar` or
+  `step`.
 - `<point>`: `label` and `value` (a number ≥ 0, no unit — the unit goes in `<chart unit>`).
   `value="0"` draws no bar but keeps the label. `max` defaults to the data maximum ÷ 0.9; a
   value above an explicit `max` is an error.
@@ -344,13 +360,19 @@ data sheet).
   colour here.
 - **Several series**: each `<series name>` lists the same categories in the same order; bars
   group, `line`/`area`/`step` overlay, and a series may pick its own `type` on a line-family
-  chart. Series colours default to `accent1`…`accent6`. A legend appears under the categories.
+  chart. Series colours default to `accent1`…`accent6`. A legend appears under the categories;
+  it wraps onto more lines when the names don't fit (swatches keep their size) and the plot
+  gets shorter by that much.
   With `<series>`, the frame's `series=` is an error; never mix bare `<point>`s and `<series>`.
 - Line-family charts draw a 3px line through category centres (`area` fills under it at 20%);
   they have no value labels and no `<point fill>`.
 - The chart frame has no `fill`, `border`, `radius`, `shadow` or `variant` — wrap it in a
-  `<shape>` (through a container) for a card. Labels use the caption role; a chart too short for
-  its labels warns about the label (`<point> overflows its parent <chart> …`).
+  `<shape>` (through a container) for a card. Labels use the caption role.
+- Every category column is the same width: a label wider than its column overflows in place (a
+  text-overflow warning on that `<point>`) instead of pushing its neighbours off their bars.
+- A chart too small for its labels and legend gets one warning on the `<chart>` naming the part
+  that overflows, and says so when no height is left for the data:
+  `<chart> is too small for its content — the plot and legend overflow the chart at the bottom by 41px and nothing is left for the bars (give the chart more room or shorten its labels)`.
 
 ## `<connector>`
 
@@ -377,7 +399,9 @@ to the boxes.
 - `auto` sides face the other box (left/right when the boxes are further apart horizontally,
   else top/bottom); ends attach at side midpoints. `elbow`/`curved` between opposite sides is a
   mid-step, between perpendicular sides an L, and between the same side (top → top) a U outside
-  both boxes.
+  both boxes. A line that would cut through a box goes around instead: sides facing away from
+  each other (right → left with the target on the left) get an S that leaves each side by 32px,
+  and a U blocked by the other box detours 32px past both — leave that room around the boxes.
 - `line` is the border grammar (`"2 dashed accent1"`) — one colour, no gradient, no `none`.
   Theme default: `2 solid muted` with an end arrow; `start`/`end` markers are `none` `arrow`
   `dot`.
@@ -402,7 +426,8 @@ to the boxes.
 - `enter` on `<slide>` applies the effect to every direct child (connectors excepted), staggered
   in document order. On any content element it applies to that element and everything inside
   it; a nested `enter` arrives on its own; `enter="none"` opts out. An element belongs to its
-  nearest ancestor with `enter`.
+  nearest ancestor with `enter`. Inside a `<shape>`, a paragraph with its own `enter` arrives
+  separately from the shape (PPTX builds that shape by paragraph).
 - Effects: `fade`; `rise` (fade + up from 24px below; PowerPoint Float In); `zoom` (fade + from
   90%); `wipe` (left to right). Connectors take `draw` (a wipe in PPTX) or `fade`.
 - Timing comes from the theme (built-ins: each 600ms, 90ms apart, after 150ms). A theme without

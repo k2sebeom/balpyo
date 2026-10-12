@@ -15,6 +15,8 @@ font and colour-reference problems only surface when the PPTX is assembled.
 Identity and resolution
 
 - [ ] `theme.json` has a non-empty `name`, and it **equals the directory name**.
+- [ ] No unknown keys anywhere in `theme.json`, including inside `chrome` and `backgrounds`
+      (`skipLayout` for `skipLayouts` is an error, not a footer on the wrong layouts).
 - [ ] The local theme does not shadow a built-in name (`themes/minimal/` is an error even when
       building another theme), and no installed theme has the same name.
 - [ ] `extends` names an existing theme and the chain does not cycle (an installed theme may
@@ -60,18 +62,26 @@ Tokens
 - [ ] All required names present: colours `fg` `bg` `muted` `surface` `accent1`…`accent6`;
       fonts `heading` `body` `mono`; spaces `xs` `sm` `md` `lg` `xl` `2xl`; radii `sm` `md` `lg`;
       shadow `soft` (inherited ones count).
-- [ ] Every colour token has a known `clrScheme` `slot`, and no two share one.
+- [ ] Every colour token has a known `clrScheme` `slot`, and no two share one; `rgb` is six hex
+      digits without `#`; `ref` is the slot's reference name (`tx1` for `dk1`, `bg1` for `lt1`,
+      `tx2` for `dk2`, `bg2` for `lt2`, else the slot name).
 - [ ] Adding a *new* colour name only where a slot is free — built-ins use 10 of 12, leaving
       `hlink` and `folHlink`. Otherwise recolour an existing name.
-- [ ] Exactly one font token with `"scheme": "major"` and one with `"minor"` (PPTX build).
-- [ ] `motion`, if written, has integer `duration` > 0 and `stagger`, `delay` ≥ 0 (ms), and
+- [ ] Exactly one font token with `"scheme": "major"` and one with `"minor"`; any other
+      `scheme` value is an error.
+- [ ] Shadow `alpha` is 0–1 and its `color` is a colour token of this theme.
+- [ ] `motion`, if written, has integer `duration` > 0 and `stagger`, `delay`,
+      `transitionDuration` ≥ 0 (ms), and
       `transition` is `fade`, `push`, `none`, or absent.
 - [ ] No unknown keys anywhere in `tokens.json` (keys starting with `$comment` excepted).
 
 Components
 
 - [ ] All five text roles present: `title` `heading` `body` `caption` `code`.
-- [ ] Each role has `size` > 0, `lineHeight` > 0, and an `align`.
+- [ ] Each role has `size` > 0, `lineHeight` > 0, and an `align` (`start` `center` `end`
+      `justify`).
+- [ ] Every `weight` (roles, defaults, variants, table cells) is 1–1000.
+- [ ] Every `radius`/`shadow` a shape or image names is a token of this theme.
 - [ ] Every `font` and `color` on a role names a token **this theme has**; no literal colours.
 - [ ] Every colour in defaults, variants, images, and tables is a token reference (a name,
       `tint`/`shade`/`alpha` of one, or a gradient of tokens) — table cells, roles, and code
