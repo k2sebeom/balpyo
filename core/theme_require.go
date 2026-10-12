@@ -40,12 +40,26 @@ func requireTokens(theme soml.Theme) error {
 		return declAt(fmt.Errorf("tokens.json motion needs duration > 0 and stagger, delay ≥ 0 (ms) — got duration %d, stagger %d, delay %d",
 			m.Duration, m.Stagger, m.Delay), atKey("motion"))
 	}
+	// 전환 길이는 0이면 등장 길이를 따르므로(로더가 채운다) 여기 남은 음수만 테마의 오류다.
+	if m := theme.Motion; m != nil && m.TransitionDuration < 0 {
+		return declAt(fmt.Errorf("tokens.json motion transitionDuration must be ≥ 0 (ms; 0 follows duration) — got %d",
+			m.TransitionDuration), atKey("motion"), atKey("transitionDuration"))
+	}
 	if m := theme.Motion; m != nil {
 		switch m.Transition {
 		case "", soml.TransitionFade, soml.TransitionPush:
 		default:
 			return declAt(fmt.Errorf("tokens.json motion transition %q is unknown (available values: %s)",
 				string(m.Transition), strings.Join(soml.SlideTransitions(), ", ")), atKey("motion"), atKey("transition"))
+		}
+	}
+	// 색 값은 두 타깃에 **그대로** 실린다 — 웹은 `#` + rgb로, PPTX는 `srgbClr@val`(16진 6자리)로.
+	// 고쳐 읽지 않으므로 그 모양이 아니면 여기서 멈춘다 (그대로 두면 깨진 CSS 변수와 스키마
+	// 위반 테마 파트가 된다).
+	for _, token := range theme.Colors {
+		if !isHexRGB(token.RGB) {
+			return declAt(fmt.Errorf("tokens.json color token %q has rgb %q — rgb must be 6 hex digits without # (RRGGBB)",
+				token.Name, token.RGB), atKey("color"), atEntry("name", token.Name), atKey("rgb"))
 		}
 	}
 	for _, name := range requiredColors {
@@ -78,7 +92,46 @@ func requireTokens(theme soml.Theme) error {
 				name, strings.Join(requiredShadows, ", ")), atKey("shadow"))
 		}
 	}
+	// 그림자의 불투명도는 0~1이다 — 렌더러가 범위 밖을 조용히 잘라 내면 테마가 적은 값과 그려진
+	// 값이 갈린다.
+	for _, s := range theme.Shadows {
+		if s.Alpha < 0 || s.Alpha > 1 {
+			return declAt(fmt.Errorf("tokens.json shadow token %q has alpha %g — alpha is an opacity from 0 to 1",
+				s.Name, s.Alpha), atKey("shadow"), atEntry("name", s.Name), atKey("alpha"))
+		}
+	}
 	return nil
+}
+
+// isHexRGB는 s가 16진수 6자리(`#` 없음)인지 본다.
+func isHexRGB(s string) bool {
+	if len(s) != 6 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !(c >= '0' && c <= '9' || c >= 'A' && c <= 'F' || c >= 'a' && c <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+// colorSlotRef는 clrScheme 자리를 도형·런이 가리킬 때 쓰는 `schemeClr` 이름이다. 마스터의
+// clrMap이 배경·글자 네 자리를 bg1/tx1/bg2/tx2로 잇고 나머지는 자리 이름 그대로 잇는다 — 반전된
+// 장이 참조를 짝과 바꾸는 것도 이 이름 위에서다.
+func colorSlotRef(slot string) string {
+	switch slot {
+	case "dk1":
+		return "tx1"
+	case "lt1":
+		return "bg1"
+	case "dk2":
+		return "tx2"
+	case "lt2":
+		return "bg2"
+	}
+	return slot
 }
 
 // requireColorSlots는 색 토큰 표가 clrScheme에 **실릴 수 있는 모양**인지 본다.
@@ -113,6 +166,54 @@ func requireColorSlots(theme soml.Theme) error {
 		if !knownColorSlot(token.Slot) {
 			return declAt(fmt.Errorf("tokens.json color token %q has an unknown clrScheme slot %q (available slots: %s)",
 				token.Name, token.Slot, strings.Join(soml.ColorSlots(), ", ")), atKey("color"), atEntry("name", token.Name), atKey("slot"))
+		}
+		// ref는 자리에서 정해진다 — 다른 이름이면 슬라이드의 schemeClr가 이 색이 아닌 자리를
+		// 가리키거나(다른 자리 이름) 스키마 밖 값이 된다.
+		if want := colorSlotRef(token.Slot); token.Ref != want {
+			return declAt(fmt.Errorf("tokens.json color token %q has ref %q — a color in clrScheme slot %q is referenced as %q",
+				token.Name, token.Ref, token.Slot, want), atKey("color"), atEntry("name", token.Name), atKey("ref"))
+		}
+	}
+	return nil
+}
+
+// requireTokenWiring은 토큰 표가 **두 타깃에 배선될 수 있는지** 본다 — 폰트의 fontScheme 자리와
+// 그림자의 색. 색의 schemeClr 참조(ref)는 requireColorSlots가 자리와 함께 이미 판정했다.
+//
+// 이 판정은 렌더러도 한다 (render/pptx가 색 요소와 fontScheme을 조립할 때). 그 자리에서만
+// 멈추면 렌더하지 않는 `check`는 통과하고 `build`만 실패하며, 진단이 "pptx 렌더 실패"나 그 토큰을
+// 처음 쓴 슬라이드를 가리켜 고칠 파일(tokens.json)에서 멀어진다. 그래서 로드 시점에 같은 판정을
+// 먼저 한다 — 렌더러의 검사는 자기 계약을 스스로 지키는 방어로 남는다.
+func requireTokenWiring(theme soml.Theme) error {
+	// fontScheme에는 major·minor 두 자리가 있고 rPr의 +mj-lt/+mn-lt가 각각을 가리킨다. 한 자리에
+	// 둘이 앉으면 어느 폰트가 실릴지 정할 수 없고, 빈 자리는 그 참조를 허공에 남긴다.
+	owner := map[string]soml.FontRole{}
+	for _, token := range theme.Fonts {
+		switch token.Scheme {
+		case "":
+			continue
+		case "major", "minor":
+		default:
+			return declAt(fmt.Errorf("tokens.json font token %q has an unknown fontScheme slot %q (available values: major, minor — or omit it for a literal typeface)",
+				string(token.Name), token.Scheme), atKey("font"), atEntry("name", string(token.Name)), atKey("scheme"))
+		}
+		if first, dup := owner[token.Scheme]; dup {
+			return declAt(fmt.Errorf("tokens.json font tokens %q and %q both take the fontScheme slot %q — each slot holds exactly one font",
+				string(first), string(token.Name), token.Scheme), atKey("font"), atEntry("name", string(token.Name)), atKey("scheme"))
+		}
+		owner[token.Scheme] = token.Name
+	}
+	for _, slot := range []string{"major", "minor"} {
+		if _, ok := owner[slot]; !ok {
+			return declAt(fmt.Errorf("tokens.json has no font token in the fontScheme slot %q — every theme needs one major and one minor font",
+				slot), atKey("font"))
+		}
+	}
+	// 그림자의 색도 토큰 참조다 — 도형마다 구운 outerShdw에 색만 schemeClr로 남는다.
+	for _, token := range theme.Shadows {
+		if _, ok := theme.Color(token.Color.Token); !token.Color.IsToken() || !ok {
+			return declAt(fmt.Errorf("tokens.json shadow token %q color %q is not a color token of this theme (this theme: %s)",
+				token.Name, token.Color.Token, strings.Join(theme.ColorNames(), ", ")), atKey("shadow"), atEntry("name", token.Name), atKey("color"))
 		}
 	}
 	return nil
@@ -187,6 +288,12 @@ func requireComponents(theme soml.Theme, comps components) error {
 		if style.Align == "" {
 			return at(fmt.Errorf("role %q has no align (available aligns: %s)",
 				role, textAlignList(soml.TextAligns())), "align")
+		}
+		// 어휘 밖의 정렬은 웹 CSS로도 PPTX algn으로도 옮길 수 없다 — 여기서 보지 않으면 그 역할을
+		// 쓴 첫 슬라이드에서야 멈춘다.
+		if !knownTextAlign(style.Align) {
+			return fmt.Errorf("role %q has an unknown align %q (available aligns: %s)",
+				role, string(style.Align), textAlignList(soml.TextAligns()))
 		}
 	}
 	return nil
@@ -324,6 +431,15 @@ func textRoleList(roles []soml.TextRole) string {
 		names = append(names, string(r))
 	}
 	return strings.Join(names, ", ")
+}
+
+func knownTextAlign(align soml.TextAlign) bool {
+	for _, known := range soml.TextAligns() {
+		if align == known {
+			return true
+		}
+	}
+	return false
 }
 
 func textAlignList(aligns []soml.TextAlign) string {

@@ -67,6 +67,46 @@ func TestLoadConfigRejectsClosedVocabularyViolations(t *testing.T) {
 	}
 }
 
+func TestLoadConfigRejectsUnimplementedPPTXMode(t *testing.T) {
+	// 구현되지 않은 모드를 받아 주면 저자는 네이티브와 같은 바이트를 받고도 모른다.
+	dir := writeConfig(t, `{"targets": {"pptx": {"mode": "image"}}}`)
+	_, err := LoadConfig(dir)
+	if err == nil {
+		t.Fatal(`mode "image"는 구현되지 않았으므로 에러여야 한다`)
+	}
+	want := `targets.pptx.mode: unknown mode "image" ("native" is the only mode)`
+	if !strings.Contains(err.Error(), want) {
+		t.Errorf("에러 = %q, want %q 포함", err, want)
+	}
+}
+
+func TestLoadConfigSlidesDirStaysInsideProject(t *testing.T) {
+	for _, tc := range []struct{ body, want string }{
+		{`{"slidesDir": "deck/slides"}`, "deck/slides"},
+		{`{"slidesDir": "./talk/"}`, "talk"},
+	} {
+		cfg, err := LoadConfig(writeConfig(t, tc.body))
+		if err != nil {
+			t.Errorf("%s: %v", tc.body, err)
+			continue
+		}
+		if cfg.SlidesDir != tc.want {
+			t.Errorf("%s: SlidesDir = %q, want %q", tc.body, cfg.SlidesDir, tc.want)
+		}
+	}
+	for _, dir := range []string{"../t1/slides", "slides/../../x", "/abs/slides"} {
+		_, err := LoadConfig(writeConfig(t, `{"slidesDir": "`+dir+`"}`))
+		if err == nil {
+			t.Errorf("slidesDir %q는 프로젝트 밖이므로 에러여야 한다", dir)
+			continue
+		}
+		want := `slidesDir: "` + dir + `" must be a relative path inside the project`
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("에러 = %q, want %q 포함", err, want)
+		}
+	}
+}
+
 func TestValidateFillsBlanks(t *testing.T) {
 	cfg := Config{Title: "t"}
 	if err := cfg.Validate(); err != nil {

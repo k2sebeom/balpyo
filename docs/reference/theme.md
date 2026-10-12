@@ -42,6 +42,10 @@ project's themes/, or an installed theme (available themes: editorial, ink, mini
 슬라이드에서 찾는다. 모르는 `variant`가 경고 + 폴백인 것과 갈라지는 자리이기도 하다: variant
 어휘는 테마의 사유물이지만 테마 **이름**의 어휘는 프로젝트가 소유한다.
 
+검사하는 이름은 **이 실행이 쓸 이름 하나**다. `--theme`를 주면 `balpyo.json`의 `theme`는 버려지므로
+검사하지 않는다 — 설정에 `"inkk"`가 적혀 있어도 `balpyo build --theme ink`는 빌드된다. 대신
+플래그의 이름이 어휘 밖이면 `--theme`를 가리키며 멈춘다.
+
 슬라이드마다 다른 테마, 시스템 다크 모드 자동 전환, 테마를 가리키는 **경로** 문법은 열지 않았다.
 
 ## 패키지 구조
@@ -74,9 +78,10 @@ minimal/
 있는데 선언에 없어도 에러다), 크롬 선언의 `skipLayouts`는 이 테마가 구현하는 레이아웃
 이름이어야 한다. 슬롯 영역 파일(`<이름>.slots.css`)만 대조가 **단방향**이다 — 슬롯이 없는
 레이아웃(`canvas`)은 파일이 없어도 되지만, 선언에 없는 레이아웃의 슬롯 파일은 에러다.
-`tokens.json`·`components.json`의 모르는 키도 에러다 (닫힌 어휘). 예외는 `$comment`로 시작하는 키
-(`$comment`, `$comment-accent` …)뿐이고, 두 파일의 어느 객체에 두어도 된다 — 값 옆에 그 값을 고른
-이유를 적는 자리다.
+`theme.json`·`tokens.json`·`components.json`의 모르는 키도 에러다 (닫힌 어휘 — `theme.json`의
+`chrome`·`backgrounds` 선언 안도 같다: `skipLayout` 오타를 버리면 푸터가 빼려던 레이아웃에 실린다).
+예외는 `$comment`로 시작하는 키(`$comment`, `$comment-accent` …)뿐이고, 세 파일의 어느 객체에
+두어도 된다 — 값 옆에 그 값을 고른 이유를 적는 자리다.
 
 `components.json`의 색 · 채움 · 테두리 값은 **저자가 인라인으로 쓰는 문법과 같다**. 그래서 테마가
 그라디언트와 색 변형을 소유할 수 있다 — `"fill": "gradient(accent1 accent6, 135deg)"`,
@@ -585,7 +590,9 @@ acme/slide-themes
 | 로드되지 않는 테마 | `…: theme "acme" cannot be loaded, so nothing was installed: …` |
 
 설치한 테마의 레이아웃 CSS 경고(외관 프로퍼티)는 **설치할 때** 나오고 빌드에서는 나오지 않는다 —
-덱 저자가 고칠 수 없는 파일이 `--strict` 빌드를 막지 않게 하기 위해서다. 명령의 전체 표면
+덱 저자가 고칠 수 없는 파일이 `--strict` 빌드를 막지 않게 하기 위해서다. 경고는 고칠 원본 파일을
+가리킨다 — 로컬 디렉토리에서 설치했다면 그 디렉토리 안의 경로(`/work/src2/w/layouts/content.css`),
+GitHub에서 받았다면 저장소 안의 자리(`github.com/acme/themes/dark/layouts/title.css`)다. 부모와 자식을 같이 설치해도 각 경고는 설치 한 번에 **한 번만** 나온다. 명령의 전체 표면
 (`list`·`info`·`remove`·`update`, 받는 주소 모양)은 [CLI](cli.md#balpyo-theme)에 있다.
 
 ### 이름이 겹칠 때
@@ -622,14 +629,23 @@ theme "acme" exists both in the project's themes/acme/ and among installed theme
 | `layouts/<이름>.css`가 있는데 선언에 없다 | **에러** | `layouts/….css exists but is not declared in theme.json layouts` |
 | `tokens.json`에 필수 토큰 이름이 없다 | **에러** | `tokens.json has no color token "accent6" (required: fg, bg, muted, surface, accent1, …)` |
 | 색 토큰에 `clrScheme` 슬롯이 없다 | **에러** | 남은 자리를 나열한다 — `… has no clrScheme slot … (free slots: hlink, folHlink)`. 자리가 다 찼으면 `no free slots — replace the value of an existing name instead of adding a new color name` |
+| 색 토큰의 `rgb`가 `#` 없는 16진수 6자리가 아니다 | **에러** | `tokens.json color token "accent1" has rgb "#A10" — rgb must be 6 hex digits without # (RRGGBB)` |
+| 색 토큰의 `ref`가 그 슬롯의 참조 이름이 아니다 (`dk1`→`tx1` · `lt1`→`bg1` · `dk2`→`tx2` · `lt2`→`bg2`, 나머지는 슬롯 이름 그대로) | **에러** | `tokens.json color token "accent1" has ref "bogus" — a color in clrScheme slot "accent1" is referenced as "accent1"` |
+| 그림자 토큰의 `alpha`가 0 ~ 1 밖이다 | **에러** | `tokens.json shadow token "soft" has alpha 3.3 — alpha is an opacity from 0 to 1` |
+| `motion`의 `duration`이 0 이하이거나 `stagger`·`delay`·`transitionDuration`이 음수다 | **에러** | `tokens.json motion transitionDuration must be ≥ 0 (ms; 0 follows duration) — got -5` |
 | 두 색 토큰이 같은 슬롯을 쓴다 | **에러** | `tokens.json clrScheme slot "accent1" is shared by color tokens "accent1" and "brand" — cannot tell which color owns the slot` |
+| 폰트 토큰의 `scheme`이 `major`·`minor`·생략 밖이다 · 두 폰트가 같은 자리를 쓴다 · `major`나 `minor` 자리가 비었다 | **에러** | `… has an unknown fontScheme slot "middle" …` · `tokens.json font tokens "heading" and "body" both take the fontScheme slot "major" — each slot holds exactly one font` · `tokens.json has no font token in the fontScheme slot "minor" — …` |
+| 그림자 토큰의 `color`가 이 테마의 색 토큰이 아니다 | **에러** | `tokens.json shadow token "soft" color "nope" is not a color token of this theme (this theme: …)` |
 | `components.json`의 `text.roles`에 역할 5종 중 하나가 없다 | **에러** | `components.json text.roles has no role "code" (required: title, heading, body, caption, code)` |
 | 역할의 `size`·`lineHeight`가 0 이하이거나 `align`이 없다 | **에러** | `roles are the bottom of the cascade and must be complete` |
+| 역할의 `align`이 `start`·`center`·`end`·`justify` 밖이다 | **에러** | `role "title" has an unknown align "middle" (available aligns: start, center, end, justify)` |
 | 역할의 `font`·`color`가 이 테마의 토큰이 아니다 | **에러** | 이 테마가 가진 이름을 함께 나열한다 |
 | 컴포넌트 기본값·variant·이미지·표의 `color`·`fill`·`border` 색이 이 테마의 색 토큰 참조가 아니다 (`#RRGGBB` 리터럴, 리터럴 스톱이 섞인 그라디언트) | **에러** | 자리와 문제의 조각을 가리키고 이 테마의 색 토큰을 나열한다 — 그 variant를 쓴 슬라이드가 없어도 로딩에서 멈춘다 |
+| 역할·컴포넌트 기본값·variant·표 셀의 `weight`가 1 ~ 1000 밖이다 (역할에서 생략하면 0이다) | **에러** | `text role "title" weight 6000 is out of range — weight is a CSS font-weight from 1 to 1000` |
+| 도형·이미지의 `radius`·`shadow`가 이 테마의 토큰 이름이 아니다 | **에러** | `shape variant "card": unknown shadow token "nope" (available tokens: soft)` — 그 variant를 쓴 슬라이드가 없어도 로딩에서 멈춘다 |
 | 역할·컴포넌트 기본값·variant의 `tracking`이 −0.1 ~ 0.5 밖이거나 `case`가 `upper`·`none`이 아니다 | **에러** | `… tracking 0.8 is out of range …` · `… case "lower" is unknown (available values: upper, none)` |
 | `text.mark.highlight`가 그라디언트다 | **에러** | `text.mark highlight "gradient(…)" cannot be a gradient — a highlight is one color (PPTX a:highlight holds a single color)` |
-| `tokens.json`·`components.json`에 모르는 키가 있다 (`$comment*` 밖) | **에러** | 그 파일의 줄:칸과 JSON 안의 경로를 가리킨다 — `themes/corp/components.json:4:24: unknown key "lineHeight" at text.variants["stat"].lineHeight`. 이름이 있는 배열 원소는 이름으로, 없으면 순번(`componentDefaults[1]`)으로 부른다 |
+| `theme.json`·`tokens.json`·`components.json`에 모르는 키가 있다 (`$comment*` 밖) | **에러** | 그 파일의 줄:칸과 JSON 안의 경로를 가리킨다 — `themes/corp/components.json:4:24: unknown key "lineHeight" at text.variants["stat"].lineHeight`. 이름이 있는 배열 원소는 이름으로, 없으면 순번(`componentDefaults[1]`)으로 부른다 |
 | 테마 JSON 파일의 값 타입이 틀렸거나 문법이 깨졌다 | **에러** | 같은 방식으로 파일 · 줄:칸 · 경로를 가리킨다 — `shape.variants["card"].fill must be a string, not number` · `invalid JSON: …` |
 | `code.tabSize`가 1 미만이다 | **에러** | `tabSize must be at least 1` |
 | `code.tokens`에 모르는 종류가 있다 | **에러** | `unknown code token class "kw" (available types: keyword, name, attr, string, number, comment, punct)` |

@@ -80,14 +80,25 @@ func TestThemeValueErrorsNameTheDeclaringFile(t *testing.T) {
 				`{"shape":{"variants":[{"name":"card-body","fill":"surface"}]}}`, nil)),
 			"themes/b/components.json", "4:37", `shape variant "card-body"`},
 		{"역할 색", "corp", localTheme("corp", `{"name":"corp","extends":"minimal"}`, "",
-			"{\"text\": {\"roles\": [\n  {\"name\": \"title\", \"font\": \"heading\", \"size\": 60, \"lineHeight\": 1.1, \"color\": \"brand\", \"align\": \"start\"}\n]}}", nil),
-			"themes/corp/components.json", "2:80", `role "title" color "brand" is not a color token of this theme`},
+			"{\"text\": {\"roles\": [\n  {\"name\": \"title\", \"font\": \"heading\", \"size\": 60, \"weight\": 700, \"lineHeight\": 1.1, \"color\": \"brand\", \"align\": \"start\"}\n]}}", nil),
+			"themes/corp/components.json", "2:95", `role "title" color "brand" is not a color token of this theme`},
 		{"겹친 clrScheme 슬롯", "corp", localTheme("corp", `{"name":"corp","extends":"minimal"}`,
 			"{\"color\": [\n  {\"name\": \"brand\", \"rgb\": \"445566\", \"slot\": \"accent1\", \"ref\": \"accent1\"}\n]}", "", nil),
 			"themes/corp/tokens.json", "2:46", `clrScheme slot "accent1" is shared`},
 		{"크롬 선언", "corp", localTheme("corp",
 			"{\"name\": \"corp\", \"extends\": \"minimal\",\n \"chrome\": [{\"kind\": \"footer\", \"align\": \"middle\", \"role\": \"caption\"}]}", "", "", nil),
 			"themes/corp/theme.json", "2:41", `unknown align "middle"`},
+		{"부모가 적은 rgb", "b", mergeFS(
+			localTheme("b", `{"name":"b","extends":"brine"}`, "", "", nil),
+			localTheme("brine", `{"name":"brine","extends":"minimal"}`,
+				"{\"color\": [\n  {\"name\": \"accent1\", \"rgb\": \"#123456\", \"slot\": \"accent1\", \"ref\": \"accent1\"}\n]}", "", nil)),
+			"themes/brine/tokens.json", "2:30", `has rgb "#123456"`},
+		{"variant 굵기", "corp", localTheme("corp", `{"name":"corp","extends":"minimal"}`, "",
+			"{\"text\": {\"variants\": [\n  {\"name\": \"lead\", \"weight\": 6000}\n]}}", nil),
+			"themes/corp/components.json", "2:30", `text variant "lead" weight 6000 is out of range`},
+		{"fontScheme 자리", "corp", localTheme("corp", `{"name":"corp","extends":"minimal"}`,
+			"{\"font\": [\n  {\"name\": \"heading\", \"latin\": \"Inter\", \"scheme\": \"mid\"}\n]}", "", nil),
+			"themes/corp/tokens.json", "2:51", `unknown fontScheme slot "mid"`},
 		{"상속 없는 테마의 빠진 토큰", "corp", localTheme("corp", `{"name":"corp","layouts":["content"]}`,
 			`{"color":[{"name":"fg","rgb":"000000","slot":"dk1","ref":"tx1"}]}`, fullComponents,
 			map[string]string{"content.css": ""}),
@@ -143,5 +154,40 @@ func TestThemeColorErrorsDoNotSuggestLiterals(t *testing.T) {
 	_, diags = themeDeck(t, "minimal", `<slide id="s"><text color="nope2">x</text></slide>`)
 	if len(diags) != 1 || !strings.Contains(diags[0].Message, "or #RRGGBB") {
 		t.Errorf("슬라이드 색 진단은 #RRGGBB를 권해야 한다: %v", diags)
+	}
+}
+
+// theme.json도 닫힌 어휘다 — 크롬 선언의 `skipLayout`(s 빠짐) 같은 오타를 조용히 버리면 푸터가
+// 빼려던 레이아웃에 그대로 실리고, 빌드는 아무 말도 하지 않는다. 자리는 다른 테마 파일과 같이
+// 그 파일의 줄:칸과 JSON 경로로 말하고, `$comment*` 키는 여기서도 문서 주석이다.
+func TestThemeManifestUnknownKeysAreErrors(t *testing.T) {
+	cases := []struct {
+		name, manifest, pos, want string
+	}{
+		{"크롬 선언의 오타",
+			"{\"name\": \"corp\", \"extends\": \"minimal\",\n  \"chrome\": [{\"kind\": \"footer\", \"align\": \"start\", \"role\": \"caption\", \"skipLayout\": [\"title\"]}]}",
+			"2:70", `unknown key "skipLayout" at chrome[0].skipLayout`},
+		{"배경 선언의 모르는 키",
+			"{\"name\": \"corp\", \"extends\": \"minimal\",\n  \"backgrounds\": [{\"fill\": \"bg\", \"bogus\": 1}]}",
+			"2:34", `unknown key "bogus" at backgrounds[0].bogus`},
+		{"최상위의 모르는 키",
+			"{\"$comment\": \"a\", \"name\": \"corp\", \"extends\": \"minimal\",\n  \"background\": [{\"fill\": \"bg\"}]}",
+			"2:3", `unknown key "background" at background`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			project := localTheme("corp", tc.manifest, "", "", nil)
+			_, diags := themeDeckIn(t, project, "corp", themeProbe)
+			if len(diags) != 1 {
+				t.Fatalf("진단 %d개, want 1: %v", len(diags), diags)
+			}
+			d := diags[0]
+			if d.File != "themes/corp/theme.json" || d.Span.Start.String() != tc.pos {
+				t.Errorf("자리 = %s:%s, want themes/corp/theme.json:%s", d.File, d.Span.Start, tc.pos)
+			}
+			if !strings.Contains(d.Message, tc.want) {
+				t.Errorf("진단이 %q를 말하지 않는다: %s", tc.want, d.Message)
+			}
+		})
 	}
 }
