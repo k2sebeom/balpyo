@@ -256,7 +256,7 @@ func TestChartDiagnostics(t *testing.T) {
 	}{
 		{"type이 없다", `h="420"`, p, []string{"<chart> needs a type", "available types: bar", "no way to guess"}},
 		{"어휘 밖의 type", `type="pie" h="420"`, p, []string{`unknown chart type "pie"`, "available types: bar, line, area, step"}},
-		{"선 차트의 점 강조", `type="line" h="420"`, chartPoint(`label="May" value="22" fill="accent4"`), []string{"<point fill> highlights one bar — a line chart"}},
+		{"선 차트의 점 강조", `type="line" h="420"`, p + chartPoint(`label="May" value="22" fill="accent4"`), []string{"<point fill> highlights one bar — a line chart"}},
 		// 막대 높이가 축에 대한 백분율이라 차트 높이를 내용이 정하면 순환한다.
 		{"h도 ratio도 없다", `type="bar"`, p, []string{"<chart> needs h or ratio", "would be circular"}},
 		{"점이 없다", `type="bar" h="420"`, "", []string{"<chart> has no <point>", "no data to draw"}},
@@ -281,6 +281,14 @@ func TestChartDiagnostics(t *testing.T) {
 		{"series가 none이다", `type="bar" series="none" h="420"`, p, []string{`series cannot be none`, `value="0"`}},
 		{"점의 fill이 none이다", `type="bar" h="420"`, chartPoint(`label="5월" value="22" fill="none"`), []string{`fill cannot be none`}},
 		{"series에 값이 없다", `type="bar" series h="420"`, p, []string{"the series attribute needs a value"}},
+		// 선은 점을 잇는 것이라 점 하나는 아무것도 그리지 않는다 (경로가 `M` 하나다).
+		{"점 하나인 선 차트", `type="line" h="420"`, p, []string{"a line chart needs at least 2 points", "draws nothing", `type="step"`}},
+		{"점 하나인 영역 차트", `type="area" h="420"`, p, []string{"an area chart needs at least 2 points"}},
+		{"점 하나인 계열 선", `type="step" h="420"`,
+			"    <series name=\"a\" type=\"line\">\n" + p + "    </series>\n    <series name=\"b\">\n" + p + "    </series>\n",
+			[]string{"a line chart needs at least 2 points"}},
+		// 점을 둘 적었고 하나가 틀렸다면 진단은 그 점의 것 하나다.
+		{"둘 중 하나가 틀린 선 차트", `type="line" h="420"`, p + chartPoint(`label="6월" value="-3"`), []string{"value cannot be negative"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
