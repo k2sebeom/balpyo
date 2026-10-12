@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -627,8 +628,8 @@ func (r *resolver) size(attr soml.Attr) (float64, bool) {
 		r.errorf(attr.ValueSpan, "size is a unitless number in logical px (drop the %[2]q from %[1]q) — px, pt and em suffixes are not allowed", raw, unit)
 		return 0, false
 	}
-	px, err := strconv.ParseFloat(raw, 64)
-	if err != nil {
+	px, ok := parseNumber(raw)
+	if !ok {
 		r.errorf(attr.ValueSpan, "size value is not a number (%q)", raw)
 		return 0, false
 	}
@@ -774,8 +775,8 @@ func (r *resolver) gradientStops(name string, fields []string, span soml.Span) (
 			continue
 		}
 		if hasPct {
-			n, err := strconv.ParseFloat(pct, 64)
-			if err != nil || n < 0 || n > 100 || strings.HasSuffix(pct, "%") {
+			n, nok := parseNumber(pct)
+			if !nok || n < 0 || n > 100 || strings.HasSuffix(pct, "%") {
 				r.errorf(span, "a gradient stop opacity is a percentage from 0 to 100 without %% (%q) — e.g. bg/0 or fg/40", f)
 				ok = false
 				continue
@@ -802,10 +803,10 @@ func (r *resolver) radialFunc(name, inner string, span soml.Span, raw string) (s
 		valid := len(parts) == 3 && parts[0] == "at"
 		var x, y float64
 		if valid {
-			var errX, errY error
-			x, errX = strconv.ParseFloat(strings.TrimSuffix(parts[1], "%"), 64)
-			y, errY = strconv.ParseFloat(strings.TrimSuffix(parts[2], "%"), 64)
-			valid = errX == nil && errY == nil && strings.HasSuffix(parts[1], "%") && strings.HasSuffix(parts[2], "%") &&
+			var okX, okY bool
+			x, okX = parseNumber(strings.TrimSuffix(parts[1], "%"))
+			y, okY = parseNumber(strings.TrimSuffix(parts[2], "%"))
+			valid = okX && okY && strings.HasSuffix(parts[1], "%") && strings.HasSuffix(parts[2], "%") &&
 				x >= 0 && x <= 100 && y >= 0 && y <= 100
 		}
 		if !valid {
@@ -830,8 +831,8 @@ func (r *resolver) gradientAngle(part string, span soml.Span, raw string) (float
 		r.errorf(span, "a gradient angle has the form `<number>deg` (%[2]q in %[1]q) — e.g. 45deg", raw, part)
 		return 0, false
 	}
-	deg, err := strconv.ParseFloat(strings.TrimSpace(strings.TrimSuffix(part, "deg")), 64)
-	if err != nil {
+	deg, ok := parseNumber(strings.TrimSpace(strings.TrimSuffix(part, "deg")))
+	if !ok {
 		r.errorf(span, "gradient angle is not a number (%[2]q in %[1]q)", raw, part)
 		return 0, false
 	}
@@ -860,8 +861,8 @@ func (r *resolver) variantPercent(kind soml.ColorModKind, part string, span soml
 		r.errorf(span, "the second argument of %s is a percentage (`%%`) (%[3]q in %[2]q) — e.g. %[4]s(accent1, 40%%)", kind, raw, part, kind)
 		return 0, false
 	}
-	pct, err := strconv.ParseFloat(strings.TrimSpace(strings.TrimSuffix(part, "%")), 64)
-	if err != nil {
+	pct, ok := parseNumber(strings.TrimSpace(strings.TrimSuffix(part, "%")))
+	if !ok {
 		r.errorf(span, "the percentage of %s is not a number (%[3]q in %[2]q)", kind, raw, part)
 		return 0, false
 	}
@@ -881,8 +882,8 @@ func (r *resolver) alphaFunc(name, inner string, span soml.Span, raw string) (so
 	}
 	base, bok := r.simpleColor(name, strings.TrimSpace(inner[:comma]), span)
 	aStr := strings.TrimSpace(inner[comma+1:])
-	a, err := strconv.ParseFloat(aStr, 64)
-	if err != nil {
+	a, aok := parseNumber(aStr)
+	if !aok {
 		r.errorf(span, "the alpha opacity is not a number (%[2]q in %[1]q) — it is a real number from 0 to 1", raw, aStr)
 		return soml.Color{}, false
 	}
@@ -1067,6 +1068,13 @@ func numberSuffix(raw string) string {
 	}
 	if end == 0 {
 		return ""
+	}
+	// 꼬리가 글자로만 되어 있어야 단위다 (`px`·`pt`·`em`·`분`). `1e3`·`1_000`·`0x1p4`의 꼬리는
+	// 단위가 아니라 받지 않는 수 표기라서, "단위를 떼라"가 아니라 "수치가 아니다"로 진단한다.
+	for _, c := range raw[end:] {
+		if !unicode.IsLetter(c) {
+			return ""
+		}
 	}
 	return raw[end:]
 }

@@ -509,8 +509,8 @@ func (r *resolver) chartValue(point *soml.Element) (float64, string, bool) {
 		r.errorf(span, "<%s> needs a value — it is the bar height", soml.ChartPointElement)
 		return 0, "", false
 	}
-	value, err := strconv.ParseFloat(attr.Value, 64)
-	if err != nil {
+	value, ok := parseNumber(attr.Value)
+	if !ok {
 		r.errorf(attr.ValueSpan, "value is not a number (%q) — put the unit in <%s unit> (value=\"22\" unit=\"min\")",
 			attr.Value, soml.ChartElement)
 		return 0, "", false
@@ -549,8 +549,8 @@ func (r *resolver) chartAxis(elem *soml.Element, data []chartDatum) (float64, bo
 	if !r.hasValue(attr) {
 		return 0, false
 	}
-	axis, err := strconv.ParseFloat(attr.Value, 64)
-	if err != nil {
+	axis, ok := parseNumber(attr.Value)
+	if !ok {
 		r.errorf(attr.ValueSpan, "max is not a number (%q) — write the value axis maximum as a number", attr.Value)
 		return 0, false
 	}

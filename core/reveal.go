@@ -1,8 +1,6 @@
 package core
 
 import (
-	"strconv"
-
 	"github.com/k2sebeom/balpyo/soml"
 )
 
@@ -51,8 +49,8 @@ func (r *resolver) revealStep(attr soml.Attr) (int, bool) {
 		r.errorf(attr.ValueSpan, "the %s attribute is empty (remove the value to take the next step in order)", attr.Name)
 		return 0, false
 	}
-	n, err := strconv.Atoi(attr.Value)
-	if err != nil || n < 1 {
+	n, ok := parseInteger(attr.Value)
+	if !ok || n < 1 {
 		r.errorf(attr.ValueSpan, "%s is an integer of at least 1 (%q)", attr.Name, attr.Value)
 		return 0, false
 	}

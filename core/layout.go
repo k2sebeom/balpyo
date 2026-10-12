@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/k2sebeom/balpyo/soml"
@@ -340,8 +339,8 @@ func (r *resolver) lengthValue(name, raw string, span soml.Span, syntax lengthSy
 			name, raw, unit)
 		return soml.Length{}, false
 	}
-	n, err := strconv.ParseFloat(value, 64)
-	if err != nil {
+	n, ok := parseNumber(value)
+	if !ok {
 		r.errorf(span, "%s value is not a number (%q) — use %s", name, raw, lengthForms(syntax))
 		return soml.Length{}, false
 	}
@@ -423,8 +422,8 @@ func (r *resolver) tracks(attr soml.Attr) (soml.Tracks, bool) {
 		// 200px 트랙 하나로 읽는 길과 저울질했고 개수를 골랐다: 격자를 균등 분할하는 것이
 		// 이 속성의 압도적인 용례다. 트랙 하나를 크기로 적으려는 저자는 `1fr`·`100%`·`auto`처럼
 		// 형태를 붙인다 — 그 애매함은 문서가 말한다.
-		n, err := strconv.Atoi(parts[0].text)
-		if err != nil || n < 1 {
+		n, ok := parseInteger(parts[0].text)
+		if !ok || n < 1 {
 			r.errorf(parts[0].span(attr), "the track count of %s is an integer of at least 1 (%q)", attr.Name, attr.Value)
 			return soml.Tracks{}, false
 		}
@@ -456,8 +455,8 @@ func (r *resolver) track(name, raw string, span soml.Span) (soml.Track, bool) {
 	case strings.HasSuffix(raw, "%"):
 		value, kind = strings.TrimSuffix(raw, "%"), soml.TrackPercent
 	}
-	n, err := strconv.ParseFloat(value, 64)
-	if err != nil {
+	n, ok := parseNumber(value)
+	if !ok {
 		r.errorf(span, "unknown track value %[2]q in %[1]s (available forms: a number, Nfr, N%%, auto, or a single integer track count)",
 			name, raw)
 		return soml.Track{}, false
@@ -481,9 +480,9 @@ func (r *resolver) ratio(attr soml.Attr) (soml.Ratio, bool) {
 		r.errorf(attr.ValueSpan, "ratio is a W:H pair of integers (%q) — e.g. 16:9", raw)
 		return soml.Ratio{}, false
 	}
-	width, errW := strconv.Atoi(w)
-	height, errH := strconv.Atoi(h)
-	if errW != nil || errH != nil {
+	width, okW := parseInteger(w)
+	height, okH := parseInteger(h)
+	if !okW || !okH {
 		r.errorf(attr.ValueSpan, "ratio is a W:H pair of integers (%q) — e.g. 16:9", raw)
 		return soml.Ratio{}, false
 	}
@@ -572,8 +571,8 @@ func (r *resolver) integer(attr soml.Attr) (int, bool) {
 	if !r.hasValue(attr) {
 		return 0, false
 	}
-	n, err := strconv.Atoi(attr.Value)
-	if err != nil {
+	n, ok := parseInteger(attr.Value)
+	if !ok {
 		r.errorf(attr.ValueSpan, "%s is an integer (%q)", attr.Name, attr.Value)
 		return 0, false
 	}
