@@ -77,6 +77,26 @@ go build -trimpath -ldflags "-X main.version=v0.3.0" ./cmd/balpyo
 - 포뮬러에 `license` 스탠자가 없다 — 이 저장소에 `LICENSE` 파일이 아직 없기 때문이다
   (Homebrew의 audit은 그것을 기대한다). 라이선스를 정하면 포뮬러 생성기에 한 줄이 늘어난다.
 
+## 설치 스크립트는 릴리스 자산을 읽는다
+
+저장소 루트의 `install.sh`가 `curl -fsSL https://raw.githubusercontent.com/k2sebeom/balpyo/main/install.sh | sh`의
+그 스크립트다. 근거는 [ADR 0094](../decisions/0094-an-install-script-reads-the-release-assets-and-refuses-an-unverified-binary.md)에
+있고, 사용자 쪽 설명은 [시작하기](../../docs/guides/getting-started.md#설치-스크립트)에 있다.
+
+- **POSIX `sh`다** (dash · macOS의 sh에서 돈다). `curl`이 없으면 `wget`, 해시는 `sha256sum` →
+  `shasum -a 256` → `openssl`. `jq`도 GitHub API도 쓰지 않는다.
+- 최신 버전은 `releases/latest/download/SHA256SUMS` 안의 아카이브 이름에서 읽고, 아카이브는 그 태그의
+  URL(`releases/download/<태그>/…`)에서 받는다. `releases/latest`는 초안·사전 릴리스를 가리키지 않으므로
+  **초안 릴리스를 발행해야** 스크립트가 그것을 본다.
+- 체크섬이 다르거나 해시 도구가 없으면 **아무것도 설치하지 않고** 멈춘다. `PATH`·브라우저(빌드와 같은
+  `BALPYO_CHROMIUM` → `chromium` · `chromium-browser` · `google-chrome` → macOS 설치 경로)는 경고만 한다.
+- 받히는 것은 `main`의 스크립트다 — `develop`에서 고친 것은 다음 릴리스 머지에서 나간다.
+- **아카이브 이름과 `SHA256SUMS` 형식은 이 스크립트의 입력이다.** `internal/release/install_test.go`가
+  `release.Build`로 호스트 타깃의 실물을 만들고 httptest가 GitHub Releases의 경로로 내준 뒤,
+  스크립트를 표준 입력으로 `sh`에 흘려 넣는다 (`BALPYO_DOWNLOAD_URL`이 기준 URL을 바꾼다). 판정은
+  태그 고정 설치 · 최신 해석 · 체크섬 변조 거부 · 없는 태그다. `sh`·`curl`/`wget`이 없으면 건너뛴다.
+- 스크립트를 고치면 `shellcheck install.sh`도 돌린다 (게이트에는 없다 — CI에 설치하지 않는다).
+
 ## 브랜치는 git flow를 따른다
 
 - `develop`이 통합 브랜치다. `feature/*` · `fix/*` · `doc/*`는 `develop`에서 갈라지고, PR도

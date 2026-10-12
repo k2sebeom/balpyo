@@ -18,6 +18,34 @@ go build -o balpyo ./cmd/balpyo
 찍는다). 버그 리포트에는 그 세 줄을 그대로 붙인다:
 [`balpyo version`](../reference/cli.md#balpyo-version).
 
+### 설치 스크립트
+
+Linux와 macOS에서는 한 줄로 설치한다:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/k2sebeom/balpyo/main/install.sh | sh
+```
+
+스크립트가 하는 일은 아래 "릴리스에서 받기"의 손 절차와 같다: 플랫폼(`uname`)에 맞는
+아카이브와 `SHA256SUMS`를 GitHub Releases에서 임시 디렉토리로 받고, **체크섬을 맞춘 뒤에만**
+압축을 풀어 설치한다. 체크섬이 다르면 아무것도 설치하지 않고 멈춘다. 끝에서 설치한 바이너리의
+`balpyo version`을 찍는다. `curl`이 없으면 `wget`을 쓴다.
+
+| 환경 변수 | 기본값 | 뜻 |
+| --- | --- | --- |
+| `BALPYO_VERSION` | 최신 릴리스 | 설치할 태그 (예: `v0.1.0`) |
+| `BALPYO_INSTALL_DIR` | `$HOME/.local/bin` | 바이너리를 놓을 디렉토리 |
+| `BALPYO_DOWNLOAD_URL` | `https://github.com/k2sebeom/balpyo/releases` | 릴리스를 받는 기준 URL (미러용) |
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/k2sebeom/balpyo/main/install.sh \
+  | BALPYO_VERSION=v0.1.0 BALPYO_INSTALL_DIR=/usr/local/bin sh
+```
+
+설치 디렉토리가 `PATH`에 없거나 Chromium/Chrome을 찾지 못하면 **경고만** 하고 설치는
+끝낸다 (브라우저는 아래처럼 PPTX 타깃과 `--check-layout`에만 필요하다). 윈도우에서는
+스크립트가 멈춘다 — 릴리스 페이지에서 아카이브를 직접 받는다.
+
 ### 태그된 릴리스에서 받기
 
 `v*` 태그마다 네 플랫폼(`darwin/arm64`·`darwin/amd64`·`linux/amd64`·`linux/arm64`)의 아카이브와
@@ -34,7 +62,7 @@ Homebrew tap(`brew install k2sebeom/balpyo/balpyo`)의 포뮬러도 릴리스마
 
 !!! note "아직 첫 태그가 없다"
 
-    이 저장소에는 아직 `v*` 태그가 없으므로 위 두 경로(아카이브·tap)는 **첫 릴리스부터**
+    이 저장소에는 아직 `v*` 태그가 없으므로 위 세 경로(설치 스크립트·아카이브·tap)는 **첫 릴리스부터**
     열린다. 그때까지는 위의 `go build`가 유일한 길이다. 윈도우 아카이브는 없다 — 그 플랫폼에서
     검증한 적이 없기 때문이다.
 
