@@ -145,7 +145,7 @@ func TestResolveContainerLayout(t *testing.T) {
 	}
 }
 
-// 자식 속성 표. span은 grid, at은 stack, x/y는 stack 또는
+// 자식 속성 표. span은 grid, at·x/y는 stack 또는
 // canvas 직속에서만 뜻이 있다.
 func TestResolvePlacement(t *testing.T) {
 	cases := []struct {
@@ -199,6 +199,11 @@ func TestResolvePlacement(t *testing.T) {
 	if p := resolvedElement(t, canvasSlide(`<p x="40">내용</p>`), "p").Placement(); p == nil ||
 		p.X == nil || *p.X != soml.Px(40) {
 		t.Fatalf("canvas 직속 x가 해석되지 않았다: %+v", p)
+	}
+	// 캔버스 스테이지는 stack과 같은 단일 셀 grid라 직속 자식의 at도 같은 뜻으로 받는다.
+	if p := resolvedElement(t, canvasSlide(`<p at="center">내용</p>`), "p").Placement(); p == nil ||
+		p.At != soml.StackCenter {
+		t.Fatalf("canvas 직속 at이 해석되지 않았다: %+v", p)
 	}
 }
 
@@ -409,8 +414,9 @@ func TestResolveLayoutDiagnostics(t *testing.T) {
 		{"값 없는 y", l(`<stack><p y>내용</p></stack>`), 2, 13, []string{"needs a value"}},
 		// 부모 한정 — 진단은 속성 이름을 가리킨다. canvas의 <row> 자식이 경계의 요점이다
 		// (캔버스 전체가 절대 배치 지대가 되면 안 된다).
-		{"at: flex 자식", l(`<row><p at="center">내용</p></row>`), 2, 11, []string{"at is only for children of <stack>"}},
-		{"at: 슬라이드 직속", l(`<p at="center">내용</p>`), 2, 6, []string{"at is only for children of <stack>"}},
+		{"at: flex 자식", l(`<row><p at="center">내용</p></row>`), 2, 11, []string{"at is only for children of <stack>", "canvas"}},
+		{"at: content 직속", l(`<p at="center">내용</p>`), 2, 6, []string{"at is only for children of <stack>", "canvas"}},
+		{"at: canvas의 row 자식", c(`<row><p at="center">내용</p></row>`), 2, 11, []string{"canvas", soml.StackElement}},
 		{"x: content 직속", l(`<p x="40">내용</p>`), 2, 6, []string{"canvas", soml.StackElement}},
 		{"x: content의 row 자식", l(`<row><p x="40">내용</p></row>`), 2, 11, []string{"canvas", soml.StackElement}},
 		{"x: canvas의 row 자식", c(`<row><p x="40">내용</p></row>`), 2, 11, []string{"canvas", soml.StackElement}},
