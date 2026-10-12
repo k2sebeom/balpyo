@@ -1,6 +1,7 @@
 package quick
 
 import (
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -129,6 +130,78 @@ func TestGridRowMinContributionUsesMinHeight(t *testing.T) {
 	}
 }
 
+// 여러 auto 행에 걸친 항목이 모자란 높이를 채울 때 행은 성장 한계(내용 높이)까지만 먼저 자라고,
+// 항목이 없는 행은 한계가 없어 나머지를 다 받는다. 모든 행이 한계에 닿았을 때만 고르게 넘친다.
+// 기대값은 Chromium이 잰 값이다.
+func TestGridSpanningItemGrowsRowsUpToLimits(t *testing.T) {
+	_, b := layoutBody(t, baseCSS,
+		// 둘째 행이 비었다: 첫 행은 내용 높이 40에 머물고 빈 행이 150을 받는다.
+		`<div id="g1" style="display: grid; width: 400px; gap: 10px; grid-template-columns: 1fr 1fr">`+
+			`<div style="grid-row: span 2; height: 200px"></div><div id="a1"><div style="height: 40px"></div></div></div>`+
+			// 세 행 중 가운데만 비었다: 40 · 240 · 20.
+			`<div id="g2" style="display: grid; width: 400px; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: auto auto auto">`+
+			`<div style="grid-row: span 3; height: 300px"></div><div id="a2" style="height: 40px"></div>`+
+			`<div id="c2" style="grid-column: 3; grid-row: 3; height: 20px"></div></div>`+
+			// 두 행 모두 한계(40 · 0)에 닿으면 남는 160을 고르게 나눈다: 120 · 80.
+			`<div id="g3" style="display: grid; width: 400px; grid-template-columns: 1fr 1fr">`+
+			`<div style="grid-row: span 2; height: 200px"></div><div style="height: 40px"></div><div id="b3"></div></div>`)
+	if !near(b["a1"].h, 40) {
+		t.Errorf("empty second row: first row item h=%.1f, want 40", b["a1"].h)
+	}
+	if !near(b["a2"].h, 40) || !near(b["c2"].y, 280) {
+		t.Errorf("empty middle row: a h=%.1f, c y=%.1f; want 40, 280", b["a2"].h, b["c2"].y)
+	}
+	if !near(b["b3"].y, 120) || !near(b["b3"].h, 80) {
+		t.Errorf("both rows at limit: second row y=%.1f h=%.1f; want 120, 80", b["b3"].y, b["b3"].h)
+	}
+}
+
+// grid-auto-flow는 자동 배치의 방향과 채우기를 정한다: column은 열 우선으로 채우고, dense는 앞에 남은
+// 빈칸으로 되돌아가 채운다. 한 축이 정해진 항목은 그 축이 흐름 방향의 줄이면 자동 항목보다 먼저 놓인다.
+// 기대값은 Chromium이 잰 값이다 (x/y는 컨테이너 기준).
+func TestGridAutoFlow(t *testing.T) {
+	_, b := layoutBody(t, baseCSS,
+		`<div style="display: grid; width: 600px; grid-template-columns: repeat(3, 1fr); grid-auto-flow: column; grid-template-rows: repeat(2, 60px)">`+
+			`<div id="i1"></div><div id="i2"></div><div id="i3"></div><div id="i4"></div><div id="i5"></div></div>`+
+			`<div style="display: grid; width: 600px; grid-auto-flow: column; grid-template-rows: repeat(2, 50px)">`+
+			`<div id="j1"></div><div id="j2" style="grid-row: span 2"></div><div id="j3"></div><div id="j4" style="grid-row: 2"></div><div id="j5"></div></div>`+
+			`<div style="display: grid; width: 600px; grid-template-columns: repeat(3, 1fr); grid-auto-flow: row dense">`+
+			`<div id="d1" style="height: 24px"></div><div id="d2" style="grid-column: span 3; height: 24px"></div><div id="d3" style="height: 24px"></div>`+
+			`<div id="d4" style="grid-column: span 2; height: 24px"></div><div id="d5" style="height: 24px"></div></div>`+
+			`<div style="display: grid; width: 600px; grid-template-rows: repeat(3, 30px); grid-auto-flow: column dense">`+
+			`<div id="e1"></div><div id="e2" style="grid-row: span 3"></div><div id="e3"></div><div id="e4" style="grid-column: 1"></div><div id="e5" style="grid-row: 3"></div></div>`+
+			// 기본 흐름(row)에서도 행이 정해진 항목(f2 · f3)이 앞선 자동 항목보다 먼저 첫 행을 차지한다.
+			`<div style="display: grid; width: 400px; grid-template-columns: 1fr 1fr; grid-auto-rows: 20px">`+
+			`<div id="f1"></div><div id="f2" style="grid-row: 1"></div><div id="f3" style="grid-row: 1"></div><div id="f4" style="grid-column: 1"></div><div id="f5"></div></div>`)
+	want := map[string][4]float64{
+		"i1": {0, 0, 200, 60}, "i2": {0, 60, 200, 60}, "i3": {200, 0, 200, 60}, "i4": {200, 60, 200, 60}, "i5": {400, 0, 200, 60},
+		"j1": {0, 0, 150, 50}, "j2": {150, 0, 150, 100}, "j3": {300, 0, 150, 50}, "j4": {300, 50, 150, 50}, "j5": {450, 0, 150, 50},
+		"d1": {0, 0, 200, 24}, "d2": {0, 24, 600, 24}, "d3": {200, 0, 200, 24}, "d4": {0, 48, 400, 24}, "d5": {400, 0, 200, 24},
+		"e1": {0, 30, 200, 30}, "e2": {200, 0, 200, 90}, "e3": {0, 60, 200, 30}, "e4": {0, 0, 200, 30}, "e5": {400, 60, 200, 30},
+		"f1": {0, 20, 200, 20}, "f2": {0, 0, 200, 20}, "f3": {200, 0, 200, 20}, "f4": {0, 40, 200, 20}, "f5": {200, 40, 200, 20},
+	}
+	for id, r := range want {
+		k := b[id]
+		if !near(k.x, r[0]) || !near(k.y, r[1]) || !near(k.w, r[2]) || !near(k.h, r[3]) {
+			t.Errorf("%s = (%.1f,%.1f %.1fx%.1f), want (%.0f,%.0f %.0fx%.0f)", id, k.x, k.y, k.w, k.h, r[0], r[1], r[2], r[3])
+		}
+	}
+}
+
+// 행의 최소 기여에 들어가는 퍼센트 padding은 항목의 grid 영역 폭에 대해 푼다 (CSS에서 퍼센트
+// padding은 포함 블록의 inline 크기를 기준으로 한다). 0에 대해 풀면 padding이 빠져 `1fr` 행이
+// 항목의 padding box보다 작아지고, 항목이 아래 auto 행과 겹친다.
+func TestGridRowMinContributionResolvesPercentPadding(t *testing.T) {
+	_, b := layoutBody(t, baseCSS, `<div id="g" style="display: grid; width: 1280px; height: 150px; row-gap: 24px; `+
+		`grid-template-rows: 1fr auto; grid-template-areas: 'media' 'caption'">`+
+		`<div id="m" style="grid-area: media; height: 100%; min-height: 0; padding-top: 10%"><div style="height: 900px"></div></div>`+
+		`<div id="c" style="grid-area: caption; height: 25px"></div></div>`)
+	if !near(b["m"].y, 0) || !near(b["m"].h, 128) || !near(b["c"].y, 152) || !near(b["c"].h, 25) {
+		t.Errorf("media y=%.1f h=%.1f, caption y=%.1f h=%.1f; want media 0+128, caption 152+25",
+			b["m"].y, b["m"].h, b["c"].y, b["c"].h)
+	}
+}
+
 // grid 컨테이너의 절대 배치 자식은 grid-area가 정한 영역을 포함 블록으로 쓴다 — 끝 줄이 auto인
 // 변은 padding box 끝까지 간다.
 func TestAbsoluteInGridArea(t *testing.T) {
@@ -152,6 +225,131 @@ func TestKeepAllBreaksAtSpaces(t *testing.T) {
 		word := strings.TrimSpace(string(para.runes[w.start:w.end]))
 		if strings.Contains(word, " ") || (word != "슬라이드를" && word != "한" && word != "번" && word != "쓰면") {
 			t.Errorf("break opportunity inside a word: %q", word)
+		}
+	}
+}
+
+// spanXs는 블록의 줄에서 인라인 요소(span)가 시작하는 x를 문서 순서대로 모은다 — 한 span이
+// 여러 조각(CJK는 글자마다 끊을 수 있다)이면 첫 조각의 x다.
+func spanXs(b *box) []float64 {
+	var xs []float64
+	prev := b.st
+	for _, l := range b.lines {
+		for _, f := range l.frags {
+			if f.atomic == nil && f.st != b.st && f.st != prev && !f.space {
+				xs = append(xs, f.x)
+			}
+			prev = f.st
+		}
+	}
+	return xs
+}
+
+// text-align: justify는 마지막 줄과 강제 줄바꿈 앞 줄을 빼고 남는 폭을 확장 기회(공백, 한자 ·
+// 가나 사이)에 고루 나눈다. 기댓값은 Chromium이 잰 span의 x다.
+func TestJustifyDistributesSpace(t *testing.T) {
+	const font = `width: 300px; font-size: 20px; line-height: 30px; text-align: justify; font-family: 'Noto Sans'`
+	_, b := layoutBody(t, baseCSS,
+		`<div id="j" style="`+font+`">one <span>two</span> three four <span>five</span> six seven <span>eight</span> nine</div>`+
+			`<div id="k" style="`+font+`">one <span>two</span> three<br>four <span>five</span> six seven eight nine ten <span>eleven</span></div>`+
+			`<div id="m" style="`+font+`, 'Noto Sans CJK KR'">슬라이드를 한 번 쓰면 <span>웹과</span> 편집 가능한 파워포인트가 <span>나온다</span></div>`+
+			`<div id="n" style="`+font+`, 'Noto Sans CJK JP'; width: 290px">日本語の文章を<span>両端</span>揃えにすると文字の間が広がります</div>`+
+			`<div id="r" style="`+font+`">one&nbsp;<span>two</span> three four five six seven eight nine</div>`+
+			`<div style="`+font+`">one two<span id="ib" style="display: inline-block; width: 20px; height: 10px"></span>three four five six seven eight</div>`)
+	for _, tc := range []struct {
+		id   string
+		want []float64
+	}{
+		// 첫 줄은 양 끝에 붙고, 마지막 줄은 시작 쪽에 붙는다.
+		{"j", []float64{51.9, 225.0, 59.5}},
+		// <br> 앞 줄과 마지막 줄은 늘리지 않는다.
+		{"k", []float64{41.0, 51.2, 36.1}},
+		// 한글은 어절 사이 공백만 늘어난다.
+		{"m", []float64{193.9, 157.6}},
+		// 한자 · 가나는 글자 사이가 늘어난다 (290px에 14자, 남는 10px을 13곳에).
+		{"n", []float64{145.3}},
+		// 줄바꿈 없는 공백도 늘어나는 자리다.
+		{"r", []float64{51.9}},
+	} {
+		got := spanXs(b[tc.id])
+		if len(got) != len(tc.want) {
+			t.Errorf("%s: %d span fragments, want %d", tc.id, len(got), len(tc.want))
+			continue
+		}
+		for i := range got {
+			if math.Abs(got[i]-tc.want[i]) > 0.5 {
+				t.Errorf("%s: span %d at x=%.1f, want %.1f", tc.id, i, got[i], tc.want[i])
+			}
+		}
+	}
+	// 인라인 블록은 늘어나는 자리가 아니고, 앞의 공백이 늘어난 만큼 밀린다.
+	if math.Abs(b["ib"].x-86.0) > 0.5 {
+		t.Errorf("inline-block at x=%.1f, want 86.0", b["ib"].x)
+	}
+	if r := b["j"].lines[0].textRect; math.Abs(r.right()-300) > 0.5 {
+		t.Errorf("justified line ends at %.1f, want 300", r.right())
+	}
+}
+
+// 두 문자가 모두 ASCII일 때 Chromium은 '/' 뒤에서 줄을 바꾸지 않는다 — 200px 칸의 긴 URL은
+// 넘쳐도 한 줄이다. ASCII가 아닌 글자 앞에서는 UAX #14대로 끊는다.
+func TestNoBreakAfterSlashBeforeASCII(t *testing.T) {
+	const font = `font-size: 20px; line-height: 30px; font-family: 'Noto Sans'`
+	_, b := layoutBody(t, baseCSS,
+		`<div id="u" style="width: 200px; `+font+`">aaaaaaaaaa/bbbbbbbbbb</div>`+
+			`<div id="v" style="width: 200px; `+font+`">https://example.com/path/to/some/long/resource</div>`+
+			`<div id="w" style="width: 30px; `+font+`">1/a</div>`+
+			`<div id="x" style="width: 40px; `+font+`">aaaaa/éaaaaa</div>`)
+	for id, want := range map[string]float64{"u": 30, "v": 30, "w": 30, "x": 60} {
+		if !near(b[id].h, want) {
+			t.Errorf("%s: height %.1f, want %.1f", id, b[id].h, want)
+		}
+	}
+}
+
+// 줄에 꼭 맞는 내용. Chromium은 글리프 진행 폭을 1/64px보다 곱게 더한 내용 폭을 1/64px로 올리고,
+// 줄 폭에는 1/64px을 더 허용해 견준다. 줄바꿈 기회 너머의 커닝(に와 す 사이 +0.2px)도 폭에 들고,
+// 줄이 거기서 끝나면 빠진다. 기댓값은 Chromium이 잰 줄 수와 첫 줄의 텍스트 폭이다.
+func TestExactFitLine(t *testing.T) {
+	const jp = `日本語の文章を両端揃えにすると`
+	const plain = `日本語日本語日本語日本語日本語`
+	cases := []struct {
+		w, family, text string
+		lines           int
+		first           float64 // 0이면 보지 않는다
+	}{
+		// 커닝 때문에 15자가 300px을 넘친다 — 정렬과 상관없다.
+		{"300px", "'Noto Sans CJK JP'", jp, 2, 280.2},
+		{"300px", "'Noto Sans CJK JP'; text-align: center", jp, 2, 280.2},
+		// に가 들어가는지 볼 때도 뒤 글자와의 커닝이 든다.
+		{"240px", "'Noto Sans CJK JP'", jp, 2, 220},
+		// 줄이 に에서 끝나면 다음 줄 글자와의 커닝은 빠진다.
+		{"250px", "'Noto Sans CJK JP'", jp, 2, 240},
+		// 꼭 맞으면 한 줄이고, 1/64px 넘침까지는 봐준다.
+		{"300px", "'Noto Sans CJK JP'", plain, 1, 300},
+		{"299.984375px", "'Noto Sans CJK JP'", plain, 1, 300},
+		{"299.96875px", "'Noto Sans CJK JP'", plain, 2, 0},
+		// 1/64px보다 작은 진행 폭의 끝자리가 쌓인다.
+		{"143.5px", "'Noto Sans'", "Hello world foo", 2, 0},
+		{"143.515625px", "'Noto Sans'", "Hello world foo", 2, 0},
+		{"143.53125px", "'Noto Sans'", "Hello world foo", 1, 0},
+		{"99.25px", "'Noto Sans'", "aaaa bbbb", 2, 0},
+		{"99.265625px", "'Noto Sans'", "aaaa bbbb", 1, 0},
+	}
+	var body string
+	for i, c := range cases {
+		body += fmt.Sprintf(`<div id="f%d" style="width: %s; font-size: 20px; line-height: 30px; font-family: %s">%s</div>`,
+			i, c.w, c.family, c.text)
+	}
+	_, b := layoutBody(t, baseCSS, body)
+	for i, c := range cases {
+		box := b[fmt.Sprintf("f%d", i)]
+		if len(box.lines) != c.lines {
+			t.Errorf("%q in %s: %d lines, want %d", c.text, c.w, len(box.lines), c.lines)
+			continue
+		}
+		if c.first != 0 && math.Abs(box.lines[0].textRect.w-c.first) > 0.05 {
+			t.Errorf("%q in %s: first line %.3fpx wide, want %.1f", c.text, c.w, box.lines[0].textRect.w, c.first)
 		}
 	}
 }
@@ -214,5 +412,46 @@ func TestFlexAlignBaseline(t *testing.T) {
 	}
 	if math.Abs(b["r2"].h-64) > 1 {
 		t.Errorf("row height = %.2f; want about 64 (the baseline group's extent)", b["r2"].h)
+	}
+}
+
+// fill-rule="evenodd"인 경로는 하위 경로가 겹친 곳을 비운다 — 같은 방향으로 감은 안쪽 사각형이
+// 액자의 구멍이 된다. 규칙이 없으면(nonzero) 같은 경로가 꽉 찬다.
+func TestSVGFillRuleEvenOdd(t *testing.T) {
+	const frame = `M0,0 L100,0 L100,100 L0,100 Z M25,25 L75,25 L75,75 L25,75 Z`
+	for _, tc := range []struct {
+		name, svg string
+		hole      bool
+	}{
+		{"attribute", `<path d="` + frame + `" fill="#000" fill-rule="evenodd"/>`, true},
+		{"inherited property", `<g style="fill-rule: evenodd"><path d="` + frame + `" fill="#000"/></g>`, true},
+		{"nonzero default", `<path d="` + frame + `" fill="#000"/>`, false},
+	} {
+		doc, _ := layoutBody(t, baseCSS, `<svg style="position: absolute; left: 0; top: 0" width="100" height="100" viewBox="0 0 100 100">`+
+			tc.svg+`</svg>`)
+		img := doc.Render(doc.Slides[0], 1)
+		ring, center := img.RGBAAt(10, 50), img.RGBAAt(50, 50)
+		if ring.A != 255 {
+			t.Errorf("%s: ring not filled: %v", tc.name, ring)
+		}
+		if gotHole := center != ring; gotHole != tc.hole {
+			t.Errorf("%s: center %v, ring %v; want hole %v", tc.name, center, ring, tc.hole)
+		}
+	}
+}
+
+// 걸친 트랙 수가 다른 무리 둘이 같은 트랙을 지날 때, 앞 무리(2행)가 성장 한계를 정해 준 트랙은 뒤
+// 무리(3행)에서 다시 한계 없이 자라지 않는다 — 뒤 무리의 남는 높이는 아직 한계가 없던 셋째 행이
+// 다 받는다. 행의 시작은 그 행에 놓은 absolute 상자로 잰다 (크기 계산에 끼지 않는다). 기대값은
+// Chromium이 잰 값이다: 행 50 · 50 · 200.
+func TestGridSpanGroupsDoNotShareGrowableTracks(t *testing.T) {
+	_, b := layoutBody(t, baseCSS, `<div style="position: relative; display: grid; width: 300px; `+
+		`grid-template-columns: 100px 100px 100px; grid-template-rows: minmax(10px, auto) minmax(10px, auto) minmax(10px, auto)">`+
+		`<div style="grid-column: 1; grid-row: 1 / span 2; height: 100px"></div>`+
+		`<div style="grid-column: 2; grid-row: 1 / span 3; height: 300px"></div>`+
+		`<div id="r1" style="position: absolute; top: 0; grid-column: 3; grid-row: 2"></div>`+
+		`<div id="r2" style="position: absolute; top: 0; grid-column: 3; grid-row: 3"></div></div>`)
+	if !near(b["r1"].y, 50) || !near(b["r2"].y, 100) {
+		t.Errorf("row starts = %.1f, %.1f; want 50, 100", b["r1"].y, b["r2"].y)
 	}
 }

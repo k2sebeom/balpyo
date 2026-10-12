@@ -24,3 +24,10 @@ textbox "ul s1.3" enter=rise@420+600
   ¶ start ul | "Wipe"{body 18pt fg}
 textbox "p s1.4"
   ¶ start | "Static caption"{body 18pt fg}
+# slide 3 inside
+shape:rect "shape s2.0" fill=surface line=muted
+  ¶ start enter=fade@150+600 | "Fades on its own"{body 18pt fg}
+  ¶ start | "Static line"{body 18pt fg}
+shape:roundRect "shape s2.1" fill=surface line=muted enter=rise@240+600
+  ¶ start | "Rises with the card"{body 18pt fg}
+  ¶ start enter=zoom@330+600 | "Zooms after the card"{body 18pt fg}

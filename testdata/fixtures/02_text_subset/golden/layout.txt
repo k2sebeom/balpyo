@@ -70,3 +70,10 @@ textbox "p s7.1"
   ¶ start | "청구 단위 1"{body 18pt fg} · "초"{body 12pt muted}
 textbox "p s7.2"
   ¶ start | "EC2는 "{body 18pt fg} · "몇 분 안에 띄우고 "{body 18pt fg mark=accent4} · "초 단위로"{body 18pt b fg mark=accent4} · " 내는"{body 18pt fg mark=accent4} · " 가상 서버다."{body 18pt fg}
+# slide 9 slide-links
+textbox "h2 s8.0"
+  ¶ start | "덱 안 링크"{heading 27pt b fg}
+textbox "p s8.1"
+  ¶ start | "인라인 서식"{body 18pt u accent1 →#inline} · "으로 돌아가거나 "{body 18pt fg} · "첫 슬라이드"{body 18pt u accent1 →#headings} · "로 간다."{body 18pt fg}
+textbox "p s8.2"
+  ¶ start | "오타 난 목적지"{body 18pt u accent1 →#headings} · "는 경고가 된다."{body 18pt fg}

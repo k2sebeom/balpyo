@@ -10,6 +10,8 @@ import (
 	"net/url"
 	pathpkg "path"
 	"strings"
+
+	"github.com/k2sebeom/balpyo/soml"
 )
 
 // decodedImage는 에셋 하나다. SVG는 래스터가 아니라 문서 트리로 들고 그릴 때 래스터화한다.
@@ -51,6 +53,8 @@ func (e *engine) image(src string) *decodedImage {
 			w, h := svgNaturalSize(svg)
 			out = &decodedImage{svg: svg, w: w, h: h}
 		} else if img, _, err := image.Decode(bytes.NewReader(data)); err == nil {
+			// 브라우저는 EXIF 방향대로 세운 그림을 그리고 잰다 — 고유 크기도 세운 그림의 것이어야 측정이 같다.
+			img = soml.JPEGOrientation(data).Upright(img)
 			b := img.Bounds()
 			out = &decodedImage{img: img, w: float64(b.Dx()), h: float64(b.Dy())}
 		}

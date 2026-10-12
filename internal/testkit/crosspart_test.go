@@ -34,6 +34,7 @@ func TestCrossPartsRejectsMutations(t *testing.T) {
 		{"마스터의 레이아웃 목록", master, `<p:sldLayoutId [^>]*/>`, "", "sldLayoutIdLst"},
 		{"마스터 id 공간", master, `(<p:sldLayoutId id=")\d+`, "${1}2147483648", "one id space"},
 		{"마스터끼리 테마 공유", nmRels, `theme2\.xml`, "theme1.xml", "share theme ppt/theme/theme1.xml"},
+		{"슬라이드 이동의 관계 종류", slide, ` action="ppaction://hlinksldjump"`, "", "slide relationship rId3 — must be hyperlink"},
 		{"노트의 슬라이드", notesRels, strings.Replace(relPattern, "%s", "slide", 1), "", "0 slide relationships"},
 	} {
 		t.Run(m.name, func(t *testing.T) {

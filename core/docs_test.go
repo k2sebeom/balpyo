@@ -175,6 +175,16 @@ var docVocabularies = []docVocabulary{
 		Doc: "reference/soml/chart.md", Vocab: "차트 종류",
 		Pattern: `available types: ([^)]+)\)`, Sep: ", ", Want: soml.ChartTypes(),
 	},
+	// `<pre lang>`의 값은 엔진 어휘(codeLangs)다 — 언어를 하나 더하면 진단은 저절로 따라오지만
+	// 문서의 산문 목록은 손으로 적은 사본이라 따로 낡는다.
+	{
+		Doc: "reference/soml/text-subset.md", Vocab: "코드 언어",
+		Pattern: "`lang` 어휘는 (`[^가-힣]+`)이고", Sep: "·", Want: codeLangNames(),
+	},
+	{
+		Doc: "reference/soml/text-subset.md", Vocab: "코드 언어",
+		Pattern: `unknown lang "[^"]*" \(available values: ([^)]+)\)`, Sep: ", ", Want: codeLangNames(),
+	},
 	{
 		Doc: "reference/soml/text-subset.md", Vocab: "<li>의 속성",
 		Pattern: `unknown attribute [a-z-]+ on <li>[^(]*\(available attributes: ([^)]+)\)`,

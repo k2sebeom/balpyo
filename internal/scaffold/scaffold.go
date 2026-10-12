@@ -138,6 +138,14 @@ func Write(opts Options) (*Result, error) {
 		return nil, fmt.Errorf("aspect: %w", err)
 	}
 
+	// 언어도 core.Config.Validate와 같은 판정이다 — 빌드가 거부할 값을 balpyo.json에 쓰지
+	// 않고, 받아들인 값은 정규형으로 쓴다.
+	lang, err := core.CanonicalLang(file.Lang)
+	if err != nil {
+		return nil, fmt.Errorf("lang: %w", err)
+	}
+	file.Lang = lang
+
 	planned, err := plan(file)
 	if err != nil {
 		return nil, err
