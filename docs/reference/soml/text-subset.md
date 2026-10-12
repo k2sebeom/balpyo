@@ -405,6 +405,7 @@ CSS가 0으로 명시하므로 **브라우저 기본 스타일에 기대는 값�
 | 블록 안의 블록·리스트 | `block tag <h2> is not allowed inside <p> (blocks do not nest)` |
 | `<a>` 안의 `<a>` (중첩 포함) | `<a> cannot be nested inside <a>` |
 | `<br>`을 여닫아 썼다 | `void tag <br> cannot have content (write <br/>)` |
+| HTML처럼 `<br>`만 쓰고 닫지 않았다 | `void tag <br> must be self-closed (write <br/>)` |
 | `<pre>` 안에 요소를 썼다 | `only character data is allowed inside <pre> (<strong> is not allowed)` |
 | `<pre>` 아닌 블록에 `lang`을 썼다 | `unknown attribute lang on <p> (available attributes: variant, size, …)` — `lang`은 `<pre>` 고유 속성이다 |
 | 어휘 밖의 문자 참조 (`&nbsp;`) | `` unsupported character reference &nbsp; (available: &amp;, &apos;, &gt;, &lt;, &quot;, `&#decimal;`, `&#xhex;`) `` |

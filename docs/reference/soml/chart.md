@@ -345,6 +345,7 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 | `<chart>`에 점이 아닌 자식을 썼다 | `<chart> cannot contain <p> (available tags: <point>, <series>)` |
 | `<chart>` 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <chart> (wrap it in <point>)` |
 | `<point>`에 내용을 담았다 | `void tag <point> cannot have content (write <point/>)` |
+| `<point>`를 `/` 없이 닫았다 | `void tag <point> must be self-closed (write <point/>)` |
 | `<chart>`를 도형의 직속 자식으로 썼다 | `<shape> cannot contain <chart> (available tags: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)` |
 | `<chart>`에 `fill`을 썼다 | `unknown attribute fill on <chart> (available attributes: type, unit, max, series, alt, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
 | `<point>`에 `w`를 썼다 | `unknown attribute w on <point> (available attributes: label, value, fill)` |
