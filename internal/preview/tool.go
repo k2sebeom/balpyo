@@ -19,6 +19,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/k2sebeom/balpyo/render/geom"
 )
 
 // 도구 경로를 지정하는 환경 변수. PATH에 없는 설치를 가리킬 때 쓴다.
@@ -77,17 +79,6 @@ func LookTool(env string, candidates []string) (string, error) {
 	return "", fmt.Errorf("cannot find executable (candidates: %s)", strings.Join(candidates, ", "))
 }
 
-// executable은 경로가 실행 가능한 파일인지 본다.
-func executable(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-	if info.IsDir() {
-		return fmt.Errorf("is a directory")
-	}
-	if info.Mode()&0o111 == 0 {
-		return fmt.Errorf("not executable")
-	}
-	return nil
-}
+// executable은 경로가 실행 가능한 파일인지 본다. 판정은 브라우저 탐색(render/geom)과 같은
+// 하나다 — 윈도우에는 실행 권한 비트가 없어서 운영체제마다 다르게 봐야 한다.
+func executable(path string) error { return geom.Executable(path) }
