@@ -361,6 +361,9 @@ func (s *Store) install(ctx context.Context, src Source, force bool,
 		}
 		moved = append(moved, name)
 	}
+	// 테마마다 상속 사슬 전체를 검사하므로, 부모와 자식을 같이 설치하면 부모의 파일은 두 번 읽힌다 —
+	// 같은 파일·같은 자리·같은 문장의 경고는 이번 설치에서 한 번만 낸다.
+	seen := map[soml.Diagnostic]bool{}
 	for _, c := range picked {
 		lint, err := core.CheckInstalledTheme(s.ThemesFS(), c.header.Name)
 		if err != nil {
@@ -368,7 +371,12 @@ func (s *Store) install(ctx context.Context, src Source, force bool,
 			return res, fmt.Errorf("%s: theme %q cannot be loaded, so nothing was installed: %w",
 				src.at(c.dir), c.header.Name, err)
 		}
-		res.Lint = append(res.Lint, lint...)
+		for _, d := range s.sourceLint(lint, src, picked) {
+			if !seen[d] {
+				seen[d] = true
+				res.Lint = append(res.Lint, d)
+			}
+		}
 	}
 	for _, c := range picked {
 		r := Record{Name: c.header.Name, Path: c.dir, Ref: src.Ref, Commit: snap.commit}
@@ -386,6 +394,31 @@ func (s *Store) install(ctx context.Context, src Source, force bool,
 	}
 	sort.Slice(res.Themes, func(i, j int) bool { return res.Themes[i].Name < res.Themes[j].Name })
 	return res, nil
+}
+
+// sourceLint는 설치 검사의 진단 경로를 저자가 열 수 있는 파일로 바꾼다. 로더는 테마 파일을
+// `themes/<이름>/…`(프로젝트 상대 경로)로 부르는데, 설치에서는 그 자리가 원본에도 홈에도 없다 —
+// 원본 디렉토리 이름은 테마 이름과 다를 수 있고, 홈의 사본은 `<홈>/themes/<이름>/`이다. 이번에 설치한
+// 테마의 파일은 원본 안의 자리(src.at)로, 이미 홈에 있던 조상 테마의 파일은 홈의 사본으로 바꾼다.
+func (s *Store) sourceLint(lint soml.Diagnostics, src Source, picked []candidate) soml.Diagnostics {
+	dirs := map[string]string{}
+	for _, c := range picked {
+		dirs[c.header.Name] = c.dir
+	}
+	out := make(soml.Diagnostics, 0, len(lint))
+	for _, d := range lint {
+		rest, ok := strings.CutPrefix(d.File, themesDir+"/")
+		name, file, ok2 := strings.Cut(rest, "/")
+		if ok && ok2 {
+			if dir, inBatch := dirs[name]; inBatch {
+				d.File = src.at(path.Join(dir, file))
+			} else {
+				d.File = filepath.Join(s.themePath(name), filepath.FromSlash(file))
+			}
+		}
+		out = append(out, d)
+	}
+	return out
 }
 
 // checkInstallable은 받은 테마 하나를 홈에 둘 수 있는지 본다.
@@ -417,15 +450,13 @@ func (s *Store) checkInstallable(src Source, c candidate, links []string, record
 }
 
 // sameOrigin은 기록 r이 src의 테마 디렉토리 dir에서 온 것인지다 — 같은 자리에서 다시 설치하는 것은
-// 갈아 끼우기가 아니다.
+// 갈아 끼우기가 아니다. 로컬 출처는 루트와 테마 경로로 나누는 방법이 여럿이므로(`./src`의 `brine`과
+// `./src/brine`의 `.`) 합친 절대 테마 디렉토리를 비교한다.
 func sameOrigin(r Record, src Source, dir string) bool {
-	if r.Path != dir {
-		return false
-	}
 	if src.IsLocal() {
-		return r.Local == src.Dir
+		return r.Local != "" && r.Origin() == src.at(dir)
 	}
-	return r.Local == "" && r.Repo == src.RepoID()
+	return r.Path == dir && r.Local == "" && r.Repo == src.RepoID()
 }
 
 // insideTheme은 저장소 상대 경로 p가 테마 디렉토리 dir 안인지다. 루트가 테마면 `.`으로 시작하는

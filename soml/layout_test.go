@@ -44,6 +44,11 @@ func TestParseLayoutErrors(t *testing.T) {
 			want: []string{"1:9 void tag <spacer> cannot have content (write <spacer/>)"},
 		},
 		{
+			name: "자기 닫힘이 빠진 spacer",
+			src:  `<slide><row><text>a</text><spacer><text>b</text></row></slide>`,
+			want: []string{"1:28 void tag <spacer> must be self-closed (write <spacer/>)"},
+		},
+		{
 			name: "컨테이너 안의 문자 데이터",
 			src:  `<slide><row>글자</row></slide>`,
 			want: []string{"1:13 character data cannot appear directly inside <row> (wrap it in <text>)"},

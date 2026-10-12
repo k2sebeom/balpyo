@@ -87,6 +87,8 @@ PPTX에서는 PowerPoint의 기본 등장 효과다 — 애니메이션 창에 �
 |---|---|
 | 어휘 밖의 효과 | `unknown enter "spin" (available values: fade, rise, zoom, wipe, none)` |
 | `enter`에 값이 없다 (`<slide enter>`) | `the enter attribute needs a value (enter="rise")` |
+| `enter`에 값이 없다 (`<p enter>` · `<connector enter>`) | `the enter attribute needs a value (enter="fade")` |
 | 테마에 박자가 없다 | `<p> has enter="rise", but theme "corp" defines no motion — add "motion": { "duration": 600, "stagger": 90, "delay": 150 } to its tokens.json` |
 | `motion`의 수가 틀렸다 | `tokens.json motion needs duration > 0 and stagger, delay ≥ 0 (ms) — …` |
+| `motion.transitionDuration`이 음수다 | `tokens.json motion transitionDuration must be ≥ 0 (ms; 0 follows duration) — got -5` |
 | 어휘 밖의 전환 | `unknown transition "cube" (available values: fade, push, none)` |

@@ -283,7 +283,9 @@ func warm(ctx context.Context, ids []string) error {
 조작은 [발표 조작](../cli.md#웹-산출물에서의-발표-조작)과 같다: **다음**(→·Space·›)은 스텝을
 먼저 먹고 남은 스텝이 없을 때 다음 슬라이드로 가고, **이전**(←·‹)은 스텝을 하나 되감는다.
 뒤로 들어온 슬라이드는 전부 전개된 상태이고, 딥링크·오버뷰 타일·Home/End로 곧장 들어간
-슬라이드는 스텝 0에서 시작한다.
+슬라이드는 스텝 0에서 시작한다. Home/End는 이미 첫(마지막) 슬라이드에 있을 때 눌러도 그 장의
+스텝을 0으로 되돌린다. 오버뷰에서는 항목이 전부 보이므로 같은 키가 스텝을 먹지 않고 타일 사이를
+옮기며, 그렇게 옮겨 간 슬라이드도 스텝 0에서 시작한다.
 
 ## 예제
 
@@ -403,6 +405,7 @@ CSS가 0으로 명시하므로 **브라우저 기본 스타일에 기대는 값�
 | 블록 안의 블록·리스트 | `block tag <h2> is not allowed inside <p> (blocks do not nest)` |
 | `<a>` 안의 `<a>` (중첩 포함) | `<a> cannot be nested inside <a>` |
 | `<br>`을 여닫아 썼다 | `void tag <br> cannot have content (write <br/>)` |
+| HTML처럼 `<br>`만 쓰고 닫지 않았다 | `void tag <br> must be self-closed (write <br/>)` |
 | `<pre>` 안에 요소를 썼다 | `only character data is allowed inside <pre> (<strong> is not allowed)` |
 | `<pre>` 아닌 블록에 `lang`을 썼다 | `unknown attribute lang on <p> (available attributes: variant, size, …)` — `lang`은 `<pre>` 고유 속성이다 |
 | 어휘 밖의 문자 참조 (`&nbsp;`) | `` unsupported character reference &nbsp; (available: &amp;, &apos;, &gt;, &lt;, &quot;, `&#decimal;`, `&#xhex;`) `` |

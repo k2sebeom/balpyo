@@ -150,6 +150,10 @@ type resolver struct {
 	// `reveal`이 받을 차례다 (resolveReveal). 상태가 resolver에 있는 것이 곧 스텝 번호의
 	// 범위가 슬라이드라는 뜻이다 (ids와 같은 태도).
 	revealTurn int
+	// tokensOnly는 테마 파일의 값을 읽는 resolver다 — 테마 데이터는 색을 토큰 참조로만 적으므로
+	// (리터럴은 PPTX의 테마 색 편집을 끊는다) 모르는 토큰 진단이 `#RRGGBB`를 권하지 않는다. 권하면
+	// 그 권고를 따른 값이 다음 검사(requireComponentColors)에서 막힌다.
+	tokensOnly bool
 }
 
 func (r *resolver) errorf(span soml.Span, format string, args ...any) {
@@ -343,7 +347,17 @@ func (r *resolver) resolveSlot(elem *soml.Element, parent *soml.Element) {
 		return
 	}
 	if parent != nil {
-		r.errorf(attr.ValueSpan, "slot is only allowed on direct children of the slide (<%s> is nested)", elem.Name)
+		// 값 없는 slot에는 값 구간이 없다 — 이름 구간으로 물러나야 진단이 line:col을 잃지 않는다.
+		span := attr.ValueSpan
+		if !attr.HasValue {
+			span = attr.NameSpan
+		}
+		r.errorf(span, "slot is only allowed on direct children of the slide (<%s> is nested)", elem.Name)
+		return
+	}
+	// 값 없음·빈 값은 다른 외관 속성과 같은 진단이다 — 슬롯 이름 ""으로 어휘를 찾으면 저자가
+	// 쓰지도 않은 이름을 "없는 슬롯"이라 부르게 된다.
+	if !r.hasValue(attr) {
 		return
 	}
 	if _, ok := soml.LayoutSlot(r.layout, attr.Value); !ok {
@@ -667,8 +681,12 @@ func (r *resolver) simpleColor(name, raw string, span soml.Span) (soml.Color, bo
 	}
 	if _, known := r.theme.Color(raw); !known {
 		names := strings.Join(r.theme.ColorNames(), ", ")
-		r.errorf(span, "%s: color token %q is not in the theme%s (available tokens: %s, or #RRGGBB)",
-			name, raw, didYouMean(raw, names), names)
+		literal := ", or #RRGGBB"
+		if r.tokensOnly {
+			literal = ""
+		}
+		r.errorf(span, "%s: color token %q is not in the theme%s (available tokens: %s%s)",
+			name, raw, didYouMean(raw, names), names, literal)
 		return soml.Color{}, false
 	}
 	return soml.TokenColor(raw), true
@@ -926,6 +944,8 @@ func attrExample(name string) string {
 		return "accent1"
 	case "align":
 		return "center"
+	case soml.SlotAttr:
+		return "body"
 	case soml.AnchorAttr:
 		return "center"
 	// `<pre>` 고유 속성. 예시가 어휘의 첫 이름인 이유: 값 없음 진단은 "쓸 수 있는
@@ -1009,6 +1029,24 @@ func attrExample(name string) string {
 		return "May"
 	case "value":
 		return "22"
+	// 표 셀 병합 속성.
+	case "colspan", "rowspan":
+		return "2"
+	// 등장 속성. `fade`인 이유: 콘텐츠와 연결선의 어휘가 갈라지는데, 둘 다 받는 이름이어야
+	// 어느 태그에서 난 진단이든 예시를 그대로 적으면 끝난다.
+	case soml.EnterAttr:
+		return "fade"
+	// 연결선 속성.
+	case "from", "to":
+		return "db"
+	case "route":
+		return "elbow"
+	case "from-side", "to-side":
+		return "right"
+	case "line":
+		return "2 solid muted"
+	case "start", "end":
+		return "arrow"
 	}
 	return ""
 }
