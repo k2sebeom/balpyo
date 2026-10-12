@@ -96,8 +96,13 @@ func buildParts(deck *soml.Deck, g *geom.Geometry) ([]part, error) {
 		MediaDefaults    []mediaDefault
 		SlotLayouts      []slotLayoutPart
 		MasterPh         masterPlaceholders
+		// Lang은 덱 언어의 OOXML 문화권 이름이다. 런마다 `lang`을 싣는 대신 상속의 뿌리에
+		// 한 번 둔다 — 글상자는 presentation.xml의 defaultTextStyle, 플레이스홀더는 마스터
+		// txStyles, 노트는 notesStyle에서 물려받는다. 빈 값이면 어느 파트도 `lang`을 싣지 않는다.
+		Lang string
 	}{
 		Deck:       deck,
+		Lang:       cultureTag(deck.Lang),
 		SlideCX:    cx,
 		SlideCY:    cy,
 		SlideCount: len(deck.Slides),
@@ -366,9 +371,13 @@ const rootRelsTemplate = xmlDecl + `<Relationships xmlns="http://schemas.openxml
 `
 
 // 날짜를 넣지 않는다 — 같은 입력이 같은 바이트를 내야 골든 비교가 성립한다.
+// dc:language는 문서 속성 창과 검색 색인이 읽는 덱 언어다 (텍스트의 `lang`과 같은 값).
 const corePropsTemplate = xmlDecl + `<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <dc:title>{{xml .Deck.Title}}</dc:title>
   <dc:creator>{{xml .Deck.Author}}</dc:creator>
+{{- if .Lang}}
+  <dc:language>{{xml .Lang}}</dc:language>
+{{- end}}
   <cp:lastModifiedBy>balpyo</cp:lastModifiedBy>
   <cp:revision>1</cp:revision>
 </cp:coreProperties>
@@ -400,6 +409,11 @@ const presentationTemplate = xmlDecl + `<p:presentation xmlns:a="http://schemas.
   </p:sldIdLst>
   <p:sldSz cx="{{.SlideCX}}" cy="{{.SlideCY}}"/>
   <p:notesSz cx="{{.NotesCX}}" cy="{{.NotesCY}}"/>
+{{- if .Lang}}
+  <p:defaultTextStyle>
+    <a:defPPr><a:defRPr lang="{{xml .Lang}}"/></a:defPPr>
+  </p:defaultTextStyle>
+{{- end}}
 </p:presentation>
 `
 
@@ -514,12 +528,24 @@ const masterTemplate = xmlDecl + `<p:sldMaster xmlns:a="http://schemas.openxmlfo
 {{- if .SlotLayouts}}
   <p:txStyles>
     <p:titleStyle>
+{{- if .Lang}}
+      <a:defPPr><a:defRPr lang="{{xml .Lang}}"/></a:defPPr>
+{{- end}}
       <a:lvl1pPr algn="l"><a:defRPr sz="4400"/></a:lvl1pPr>
     </p:titleStyle>
     <p:bodyStyle>
+{{- if .Lang}}
+      <a:defPPr><a:defRPr lang="{{xml .Lang}}"/></a:defPPr>
+{{- end}}
       <a:lvl1pPr><a:defRPr sz="2400"/></a:lvl1pPr>
     </p:bodyStyle>
+{{- if .Lang}}
+    <p:otherStyle>
+      <a:defPPr><a:defRPr lang="{{xml .Lang}}"/></a:defPPr>
+    </p:otherStyle>
+{{- else}}
     <p:otherStyle/>
+{{- end}}
   </p:txStyles>
 {{- end}}
 </p:sldMaster>
@@ -742,6 +768,9 @@ const notesMasterTemplate = xmlDecl + `<p:notesMaster xmlns:a="http://schemas.op
   </p:cSld>
   <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
   <p:notesStyle>
+{{- if .Lang}}
+    <a:defPPr><a:defRPr lang="{{xml .Lang}}"/></a:defPPr>
+{{- end}}
     <a:lvl1pPr>
       <a:defRPr sz="1200"/>
     </a:lvl1pPr>

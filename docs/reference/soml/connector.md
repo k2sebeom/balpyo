@@ -126,6 +126,7 @@ PPTX에서 양 끝이 상자의 **연결점**에 붙는 것은 연결점 순서�
 | 어휘 밖의 경로 | `unknown route "zigzag" (available values: straight, elbow, curved)` |
 | 어휘 밖의 면 | `unknown to-side "north" (available values: auto, top, right, bottom, left)` |
 | 어휘 밖의 표식 | `unknown end "diamond" (available values: none, arrow, dot)` |
+| 속성에 값이 없다 (`<connector … line/>`) | `the line attribute needs a value (line="2 solid muted")` — `route` · `from-side` · `to-side` · `start` · `end`도 쓸 수 있는 값 하나를 예시로 싣는다 |
 | `line="none"` | `a connector line cannot be none — remove the connector instead` |
 | 그라디언트 선 | `a connector line is one color — gradients are not supported on connectors` |
 | 선이 정해지지 않았다 | `<connector> has no line — theme "corp" defines no connector.default line, so write line="2 solid muted"` |
