@@ -55,7 +55,7 @@ func shapesXML(deck *soml.Deck, slide *soml.Slide, g *geom.Geometry) (string, st
 		// (웹은 배경의 윗겹이다). 콘텐츠보다 먼저 써야 그 아래에 칠해진다.
 		stage := geom.Rect{W: float64(deck.Stage.Width), H: float64(deck.Stage.Height)}
 		spec := spSpec{id: id, name: "background overlay", rect: stage, preset: rectPreset,
-			fill: *bg.Overlay, border: soml.NoBorder(), locked: true}
+			fill: *bg.Overlay, border: soml.NoBorder(), locked: true, gradScale: gradTrueAngle}
 		if err := writeSp(&b, spec, deck.Theme); err != nil {
 			return "", "", nil, fmt.Errorf("%s: background overlay: %w", slide.Source, err)
 		}
@@ -396,11 +396,23 @@ func writeShapeSp(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
 	spec.body = body
-	spec.ph = slotPlaceholder(slide, elem)
+	if shapeCarriesText(elem) {
+		// 글자 없는 도형(자식 없는 도형, 배경 모드 도형 — 슬롯을 채운 차트의 뿌리가 이것이다)은
+		// 슬롯을 채워도 플레이스홀더로 표시하지 않는다: 빈 본문을 가진 `<p:ph>`는 PowerPoint
+		// 편집 보기에서 "클릭해 텍스트 입력" 안내문을 도형 위에 띄운다. 자리는 잰 rect가
+		// 소유하므로 표식을 빼도 좌표·외관은 그대로다.
+		spec.ph = slotPlaceholder(slide, elem)
+	}
 	if err := writeSp(b, spec, deck.Theme); err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
 	return nil
+}
+
+// shapeCarriesText는 도형이 자기 본문에 글자를 흡수하는가다 — 자식이 있고 그 자식이
+// 형제 도형으로 펼쳐지지 않을 때다 (shapeBodyXML의 빈 문단 분기의 반대).
+func shapeCarriesText(elem *soml.Element) bool {
+	return len(elem.Children) > 0 && !soml.ShapeHoldsLayout(elem)
 }
 
 // spSpec은 p:sp 하나의 조립 명세다 — **텍스트 박스와 프리셋 도형이 같은 함수를 지난다**
@@ -447,6 +459,9 @@ type spSpec struct {
 	ph *placeholder
 	// locked는 선택할 수 없게 잠근 도형이다 (`a:spLocks noSelect`) — 배경 덮개처럼 슬라이드의 내용이 아닌 칠.
 	locked bool
+	// gradScale은 채움 그라디언트의 각도가 박스 비율을 따라 늘어나는지다. 영값은 도형의 결정(gradBoxScaled)이고,
+	// 웹에서 CSS 배경으로 칠하는 배경 덮개만 gradTrueAngle을 준다.
+	gradScale gradScale
 	// path는 경로 도형의 명령이다 — 있으면 `prstGeom` 대신 `a:custGeom`을 쓴다 (0~100 상자 = 경로 상자 100000).
 	path []soml.PathCmd
 }
@@ -649,7 +664,7 @@ func writeSp(b *strings.Builder, spec spSpec, theme soml.Theme) error {
 	} else {
 		writeGeom(w, 2, spec.preset, spec.adjust)
 	}
-	if err := writeFill(w, 2, spec.fill, spec.alpha, theme); err != nil {
+	if err := writeFill(w, 2, spec.fill, spec.alpha, spec.gradScale, theme); err != nil {
 		return err
 	}
 	if err := writeLine(w, 2, spec.border, spec.alpha, theme); err != nil {
@@ -766,7 +781,7 @@ func (t xfrm) attrs() string {
 }
 
 // writeFill은 확정 채움을 spPr의 채움 요소로 쓴다 — `none`은 `a:noFill`, 색은 `a:solidFill`이다.
-func writeFill(w func(depth int, line string), depth int, fill soml.Fill, alpha *float64, theme soml.Theme) error {
+func writeFill(w func(depth int, line string), depth int, fill soml.Fill, alpha *float64, scale gradScale, theme soml.Theme) error {
 	if fill.None {
 		// 웹의 `fill: none`(그리지 않는다)과 정확히 짝이다 — 투명한 채움이 아니라 채움 없음이다.
 		w(depth, "<a:noFill/>")
@@ -778,7 +793,7 @@ func writeFill(w func(depth int, line string), depth int, fill soml.Fill, alpha 
 	if fill.Color.IsGradient() {
 		// 그라디언트 채움은 solidFill이 아니라 gradFill이다. 도형 불투명도는
 		// 스톱 색마다 알파로 실린다 (writeGradFill).
-		return writeGradFill(w, depth, *fill.Color.Gradient, alpha, theme)
+		return writeGradFill(w, depth, *fill.Color.Gradient, alpha, scale, theme)
 	}
 	w(depth, "<a:solidFill>")
 	if err := writeColor(w, depth+1, fill.Color, alpha, theme); err != nil {
@@ -824,7 +839,7 @@ func writeLineElem(w func(depth int, line string), depth int, name string, borde
 	if border.Color.IsGradient() {
 		// 그라디언트 테두리는 `ln` 안의 `gradFill`이다 (외관 매핑 표의 `border` (그라디언트) 행).
 		// 웹은 SVG stroke가 gradient def를 참조한다 (render/web).
-		if err := writeGradFill(w, depth+1, *border.Color.Gradient, alpha, theme); err != nil {
+		if err := writeGradFill(w, depth+1, *border.Color.Gradient, alpha, gradBoxScaled, theme); err != nil {
 			return err
 		}
 	} else {
@@ -1463,7 +1478,7 @@ func underlineValue(underline bool) string {
 // 불투명도가 없어 외부 알파는 nil이다 (변형 `alpha()`는 색 자신이 싣는다).
 func writeTextFill(w func(depth int, line string), depth int, color soml.Color, theme soml.Theme) error {
 	if color.IsGradient() {
-		return writeGradFill(w, depth, *color.Gradient, nil, theme)
+		return writeGradFill(w, depth, *color.Gradient, nil, gradTrueAngle, theme)
 	}
 	w(depth, "<a:solidFill>")
 	if err := writeColor(w, depth+1, color, nil, theme); err != nil {
@@ -1562,12 +1577,12 @@ func writeColor(w func(depth int, line string), depth int, color soml.Color, alp
 //
 // 스톱은 균등 배치다 (soml.Gradient): n개 스톱이 0, 1/(n-1), …, 1(100000분율)에 놓인다.
 // 각 스톱 색은 `schemeClr`/`srgbClr`를 유지하므로(colorElem) 토큰 스톱이 테마 편집을
-// 따라간다. 각도는 GradientAngle이 OOXML `a:lin@ang`으로 바꾸고, `scaled="1"`은 그라디언트가
-// 도형 크기에 맞춰 늘어난다는 뜻이다 (웹의 objectBoundingBox와 같은 결정).
+// 따라간다. 각도는 GradientAngle이 OOXML `a:lin@ang`으로 바꾸고, `a:lin@scaled`는 scale이 정한다
+// (gradScale — 웹이 같은 그라디언트를 그리는 방식을 따른다).
 //
 // 외부 불투명도(도형 opacity)는 스톱마다 `a:alpha`로 실린다 — 도형 전체 알파를 gradFill이
 // 통째로 받는 표기가 없어(alpha는 색의 성질이다) 스톱 색에 나눠 싣는다.
-func writeGradFill(w func(depth int, line string), depth int, grad soml.Gradient, alpha *float64, theme soml.Theme) error {
+func writeGradFill(w func(depth int, line string), depth int, grad soml.Gradient, alpha *float64, scale gradScale, theme soml.Theme) error {
 	if len(grad.Stops) < 2 {
 		return fmt.Errorf("gradient has fewer than two stops (%d)", len(grad.Stops))
 	}
@@ -1601,11 +1616,31 @@ func writeGradFill(w func(depth int, line string), depth int, grad soml.Gradient
 		w(depth+2, fmt.Sprintf(`<a:fillToRect l="%d" t="%d" r="%d" b="%d"/>`, l, t, 100000-l, 100000-t))
 		w(depth+1, "</a:path>")
 	} else {
-		w(depth+1, fmt.Sprintf(`<a:lin ang="%d" scaled="1"/>`, GradientAngle(grad.Angle)))
+		scaled := 1
+		if scale == gradTrueAngle {
+			scaled = 0
+		}
+		w(depth+1, fmt.Sprintf(`<a:lin ang="%d" scaled="%d"/>`, GradientAngle(grad.Angle), scaled))
 	}
 	w(depth, "</a:gradFill>")
 	return nil
 }
+
+// gradScale은 선형 그라디언트의 각도가 박스 비율을 따라 늘어나는지다 (`a:lin@scaled`).
+//
+// 웹은 그라디언트를 두 길로 그리고 두 길의 각도는 뜻이 다르다. 도형 채움·테두리는 SVG
+// objectBoundingBox라 정사각형에서 잡은 각이 박스 비율로 늘어난다 — `scaled="1"`과 같다. 배경·덮개·텍스트
+// 색은 CSS `linear-gradient`라 각도가 박스 위의 참 각도다 — `scaled="0"`과 같다. 한 값으로 묶으면 정사각형이
+// 아닌 박스에서 대각 각도가 갈라진다: 16:9 슬라이드의 210deg 띠가 참 각도로는 세로에서 30도, 늘어난 각으로는
+// 약 18도 기운다. 세로·가로(0/90/180/270deg)는 두 뜻이 같다.
+type gradScale int
+
+const (
+	// gradBoxScaled는 각도가 박스 비율로 늘어난다 (`scaled="1"`) — 웹 SVG 도형의 그라디언트.
+	gradBoxScaled gradScale = iota
+	// gradTrueAngle은 각도가 박스 위의 참 각도다 (`scaled="0"`) — 웹 CSS 그라디언트.
+	gradTrueAngle
+)
 
 // PatternPreset은 SOML 무늬 이름 → OOXML `a:pattFill@prst`다. 내보내는 이유는 ShapePreset과 같다 — 패리티
 // 읽기가 같은 표로 되돌린다.
@@ -1727,7 +1762,7 @@ func backgroundXML(deck *soml.Deck, slide *soml.Slide, rels *slideRels) (string,
 		if bg.Fill.None {
 			return "", fmt.Errorf("none is meaningless as a background fill")
 		}
-		if err := writeFill(w, 2, *bg.Fill, nil, deck.Theme); err != nil {
+		if err := writeFill(w, 2, *bg.Fill, nil, gradTrueAngle, deck.Theme); err != nil {
 			return "", err
 		}
 	} else {

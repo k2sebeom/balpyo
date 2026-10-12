@@ -7,6 +7,9 @@ import (
 	"image/color"
 	"image/jpeg"
 	"image/png"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -202,6 +205,77 @@ func TestResolveAssetsWithoutFS(t *testing.T) {
 	}
 	if !strings.Contains(diags[0].Message, "engine bug") {
 		t.Errorf("진단 = %q, want 엔진 버그", diags[0].String())
+	}
+}
+
+// 프로젝트 밖을 가리키는 심볼릭 링크는 `..`로 나간 src와 같은 에러다 — 링크를 따라가 읽으면 빌드가
+// 이 기계의 디렉토리에 묶이고, 커밋된 것은 링크뿐이라 다른 기계에서는 그림이 사라진다. 프로젝트 안을
+// 가리키는 링크는 그대로 읽는다 (같은 파일을 두 이름으로 부를 뿐이다).
+//
+// 디스크에 진짜 링크를 만든다: 밖을 가리키는 링크의 대상은 fstest.MapFS로는 만들 수 없다 (맵 밖은 없다).
+func TestResolveAssetsSymlinks(t *testing.T) {
+	base := t.TempDir()
+	project := filepath.Join(base, "project")
+	outside := filepath.Join(base, "outside")
+	for _, dir := range []string{filepath.Join(project, "assets"), outside} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	data := pngBytes(t, 4, 4)
+	for _, file := range []string{filepath.Join(project, "assets", "ok.png"), filepath.Join(outside, "a.png")} {
+		if err := os.WriteFile(file, data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	links := map[string]string{
+		"assets/out.png":   "../../outside/a.png",
+		"assets/abs.png":   filepath.Join(outside, "a.png"),
+		"shared":           "../outside",
+		"assets/alias.png": "ok.png",
+		"assets/hop.png":   "alias.png",
+		"assets/up.png":    "../assets/ok.png",
+	}
+	for name, target := range links {
+		if err := os.Symlink(target, filepath.Join(project, filepath.FromSlash(name))); err != nil {
+			t.Skipf("이 파일 시스템은 심볼릭 링크를 만들 수 없다: %v", err)
+		}
+	}
+	// 파이프라인처럼 설치한 테마의 홈을 붙인 FS로도 같은 판정이어야 한다 — 감싼 FS가 링크를 숨기면
+	// 빌드만 검사를 건너뛴다.
+	systems := map[string]fs.FS{
+		"DirFS":               os.DirFS(project),
+		"WithInstalledThemes": WithInstalledThemes(os.DirFS(project), fstest.MapFS{}),
+	}
+	for fsName, fsys := range systems {
+		for _, src := range []string{"assets/out.png", "assets/abs.png", "shared/a.png"} {
+			t.Run(fsName+"/밖/"+src, func(t *testing.T) {
+				attrs := `src="` + src + `"`
+				deck, resolveDiags := resolveImageDeck(t, imageSlide(attrs))
+				if len(resolveDiags) != 0 {
+					t.Fatalf("외관 해석은 통과해야 한다: %v", resolveDiags)
+				}
+				diags := ResolveAssets(deck, fsys)
+				if len(diags) != 1 {
+					t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+				}
+				assertDiag(t, diags[0], 2, imageCol(attrs, src), "symbolic link", "outside the project")
+				if len(deck.Assets) != 0 {
+					t.Errorf("밖을 가리키는 에셋이 표에 실렸다: %v", deck.Assets.Keys())
+				}
+			})
+		}
+		for _, src := range []string{"assets/alias.png", "assets/hop.png", "assets/up.png"} {
+			t.Run(fsName+"/안/"+src, func(t *testing.T) {
+				deck, _ := resolveImageDeck(t, imageSlide(`src="`+src+`"`))
+				if diags := ResolveAssets(deck, fsys); len(diags) != 0 {
+					t.Fatalf("프로젝트 안의 링크는 통과해야 한다: %v", diags)
+				}
+				if _, ok := deck.Assets.Get(src); !ok || len(deck.Assets) != 1 {
+					t.Errorf("에셋 표 = %v, want [%s]", deck.Assets.Keys(), src)
+				}
+			})
+		}
 	}
 }
 

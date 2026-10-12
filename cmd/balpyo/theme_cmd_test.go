@@ -77,7 +77,7 @@ func TestThemeInstallBuildListRemove(t *testing.T) {
 			t.Errorf("설치 출력에 %q가 없다:\n%s", want, stdout.String())
 		}
 	}
-	if !strings.Contains(stderr.String(), "themes/acme-dark/layouts/title.css") {
+	if !strings.Contains(stderr.String(), "github.com/acme/themes/dark/layouts/title.css") {
 		t.Errorf("설치가 CSS 경고를 내지 않았다:\n%s", stderr.String())
 	}
 

@@ -129,6 +129,46 @@ func TestGridRowMinContributionUsesMinHeight(t *testing.T) {
 	}
 }
 
+// 여러 auto 행에 걸친 항목이 모자란 높이를 채울 때 행은 성장 한계(내용 높이)까지만 먼저 자라고,
+// 항목이 없는 행은 한계가 없어 나머지를 다 받는다. 모든 행이 한계에 닿았을 때만 고르게 넘친다.
+// 기대값은 Chromium이 잰 값이다.
+func TestGridSpanningItemGrowsRowsUpToLimits(t *testing.T) {
+	_, b := layoutBody(t, baseCSS,
+		// 둘째 행이 비었다: 첫 행은 내용 높이 40에 머물고 빈 행이 150을 받는다.
+		`<div id="g1" style="display: grid; width: 400px; gap: 10px; grid-template-columns: 1fr 1fr">`+
+			`<div style="grid-row: span 2; height: 200px"></div><div id="a1"><div style="height: 40px"></div></div></div>`+
+			// 세 행 중 가운데만 비었다: 40 · 240 · 20.
+			`<div id="g2" style="display: grid; width: 400px; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: auto auto auto">`+
+			`<div style="grid-row: span 3; height: 300px"></div><div id="a2" style="height: 40px"></div>`+
+			`<div id="c2" style="grid-column: 3; grid-row: 3; height: 20px"></div></div>`+
+			// 두 행 모두 한계(40 · 0)에 닿으면 남는 160을 고르게 나눈다: 120 · 80.
+			`<div id="g3" style="display: grid; width: 400px; grid-template-columns: 1fr 1fr">`+
+			`<div style="grid-row: span 2; height: 200px"></div><div style="height: 40px"></div><div id="b3"></div></div>`)
+	if !near(b["a1"].h, 40) {
+		t.Errorf("empty second row: first row item h=%.1f, want 40", b["a1"].h)
+	}
+	if !near(b["a2"].h, 40) || !near(b["c2"].y, 280) {
+		t.Errorf("empty middle row: a h=%.1f, c y=%.1f; want 40, 280", b["a2"].h, b["c2"].y)
+	}
+	if !near(b["b3"].y, 120) || !near(b["b3"].h, 80) {
+		t.Errorf("both rows at limit: second row y=%.1f h=%.1f; want 120, 80", b["b3"].y, b["b3"].h)
+	}
+}
+
+// 행의 최소 기여에 들어가는 퍼센트 padding은 항목의 grid 영역 폭에 대해 푼다 (CSS에서 퍼센트
+// padding은 포함 블록의 inline 크기를 기준으로 한다). 0에 대해 풀면 padding이 빠져 `1fr` 행이
+// 항목의 padding box보다 작아지고, 항목이 아래 auto 행과 겹친다.
+func TestGridRowMinContributionResolvesPercentPadding(t *testing.T) {
+	_, b := layoutBody(t, baseCSS, `<div id="g" style="display: grid; width: 1280px; height: 150px; row-gap: 24px; `+
+		`grid-template-rows: 1fr auto; grid-template-areas: 'media' 'caption'">`+
+		`<div id="m" style="grid-area: media; height: 100%; min-height: 0; padding-top: 10%"><div style="height: 900px"></div></div>`+
+		`<div id="c" style="grid-area: caption; height: 25px"></div></div>`)
+	if !near(b["m"].y, 0) || !near(b["m"].h, 128) || !near(b["c"].y, 152) || !near(b["c"].h, 25) {
+		t.Errorf("media y=%.1f h=%.1f, caption y=%.1f h=%.1f; want media 0+128, caption 152+25",
+			b["m"].y, b["m"].h, b["c"].y, b["c"].h)
+	}
+}
+
 // grid 컨테이너의 절대 배치 자식은 grid-area가 정한 영역을 포함 블록으로 쓴다 — 끝 줄이 auto인
 // 변은 padding box 끝까지 간다.
 func TestAbsoluteInGridArea(t *testing.T) {
@@ -179,5 +219,46 @@ func TestFlexAutoMinimumKeepsContentMinimum(t *testing.T) {
 		`<div id="a" style="width: 300px">abcdefghij</div><div id="b" style="width: 300px">x</div></div>`)
 	if math.Abs(b["a"].w-98.6) > 0.5 || math.Abs(b["b"].w-10.6) > 0.5 {
 		t.Errorf("a w=%.2f, b w=%.2f; want about 98.6 and 10.6", b["a"].w, b["b"].w)
+	}
+}
+
+// fill-rule="evenodd"인 경로는 하위 경로가 겹친 곳을 비운다 — 같은 방향으로 감은 안쪽 사각형이
+// 액자의 구멍이 된다. 규칙이 없으면(nonzero) 같은 경로가 꽉 찬다.
+func TestSVGFillRuleEvenOdd(t *testing.T) {
+	const frame = `M0,0 L100,0 L100,100 L0,100 Z M25,25 L75,25 L75,75 L25,75 Z`
+	for _, tc := range []struct {
+		name, svg string
+		hole      bool
+	}{
+		{"attribute", `<path d="` + frame + `" fill="#000" fill-rule="evenodd"/>`, true},
+		{"inherited property", `<g style="fill-rule: evenodd"><path d="` + frame + `" fill="#000"/></g>`, true},
+		{"nonzero default", `<path d="` + frame + `" fill="#000"/>`, false},
+	} {
+		doc, _ := layoutBody(t, baseCSS, `<svg style="position: absolute; left: 0; top: 0" width="100" height="100" viewBox="0 0 100 100">`+
+			tc.svg+`</svg>`)
+		img := doc.Render(doc.Slides[0], 1)
+		ring, center := img.RGBAAt(10, 50), img.RGBAAt(50, 50)
+		if ring.A != 255 {
+			t.Errorf("%s: ring not filled: %v", tc.name, ring)
+		}
+		if gotHole := center != ring; gotHole != tc.hole {
+			t.Errorf("%s: center %v, ring %v; want hole %v", tc.name, center, ring, tc.hole)
+		}
+	}
+}
+
+// 걸친 트랙 수가 다른 무리 둘이 같은 트랙을 지날 때, 앞 무리(2행)가 성장 한계를 정해 준 트랙은 뒤
+// 무리(3행)에서 다시 한계 없이 자라지 않는다 — 뒤 무리의 남는 높이는 아직 한계가 없던 셋째 행이
+// 다 받는다. 행의 시작은 그 행에 놓은 absolute 상자로 잰다 (크기 계산에 끼지 않는다). 기대값은
+// Chromium이 잰 값이다: 행 50 · 50 · 200.
+func TestGridSpanGroupsDoNotShareGrowableTracks(t *testing.T) {
+	_, b := layoutBody(t, baseCSS, `<div style="position: relative; display: grid; width: 300px; `+
+		`grid-template-columns: 100px 100px 100px; grid-template-rows: minmax(10px, auto) minmax(10px, auto) minmax(10px, auto)">`+
+		`<div style="grid-column: 1; grid-row: 1 / span 2; height: 100px"></div>`+
+		`<div style="grid-column: 2; grid-row: 1 / span 3; height: 300px"></div>`+
+		`<div id="r1" style="position: absolute; top: 0; grid-column: 3; grid-row: 2"></div>`+
+		`<div id="r2" style="position: absolute; top: 0; grid-column: 3; grid-row: 3"></div></div>`)
+	if !near(b["r1"].y, 50) || !near(b["r2"].y, 100) {
+		t.Errorf("row starts = %.1f, %.1f; want 50, 100", b["r1"].y, b["r2"].y)
 	}
 }

@@ -32,6 +32,18 @@ func TestRunWritesImagesAndGIF(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	// 프레임을 흘려 쓰던 임시 파일은 남지 않는다.
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != len(want) {
+		var names []string
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		t.Errorf("directory holds %v, want only %v", names, want)
+	}
 	f, err := os.Open(filepath.Join(dir, GIFName))
 	if err != nil {
 		t.Fatal(err)

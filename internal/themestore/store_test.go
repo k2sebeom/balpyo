@@ -379,7 +379,11 @@ func TestInstallReportsLint(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(res.Lint) != 1 {
-		t.Errorf("설치가 CSS 경고 하나를 내야 한다: %v", res.Lint)
+		t.Fatalf("설치가 CSS 경고 하나를 내야 한다: %v", res.Lint)
+	}
+	// 경고는 고칠 수 있는 원본 파일(저장소 안의 자리)을 가리킨다 — 설치 홈의 이름 기준 경로가 아니다.
+	if got, want := res.Lint[0].File, "github.com/acme/theme/layouts/title.css"; got != want {
+		t.Errorf("경고 파일 = %q, want %q", got, want)
 	}
 }
 

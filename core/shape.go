@@ -328,7 +328,8 @@ const patternFunc = "pattern"
 // shapeFill은 도형의 채움이다 — fill의 모든 값에 더해 무늬(`pattern(<무늬> <앞색> <뒷색>)`)를 받는다.
 // 무늬를 도형에만 여는 이유: 글자 · 선 · 표 칸 · 배경에는 두 타깃에 같은 원어가 없거나 길이 하나 더 생긴다.
 func (r *resolver) shapeFill(attr soml.Attr) (soml.Fill, bool) {
-	if r.hasValue(attr) && strings.HasPrefix(attr.Value, patternFunc+"(") {
+	// 값 없음·빈 값은 접두사가 붙을 수 없어 fill로 넘어가고, 진단은 그쪽 hasValue가 한 번만 낸다.
+	if strings.HasPrefix(attr.Value, patternFunc+"(") {
 		return r.patternFill(attr.Value, attr.ValueSpan)
 	}
 	return r.fill(attr)
