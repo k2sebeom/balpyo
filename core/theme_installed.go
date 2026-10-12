@@ -43,6 +43,25 @@ func (p *projectFS) Open(name string) (fs.File, error) {
 	return p.root.Open(name)
 }
 
+// ReadLink와 Lstat은 프로젝트 루트의 링크를 그대로 보인다 — 감싼 FS가 링크를 숨기면 에셋 패스가
+// 프로젝트 밖을 가리키는 링크를 빌드에서만 놓친다. 루트가 링크를 모르는 FS이면 링크가 없는 것과 같다.
+func (p *projectFS) ReadLink(name string) (string, error) {
+	if sym, ok := p.root.(fs.ReadLinkFS); ok {
+		return sym.ReadLink(name)
+	}
+	return "", &fs.PathError{Op: "readlink", Path: name, Err: fs.ErrInvalid}
+}
+
+func (p *projectFS) Lstat(name string) (fs.FileInfo, error) {
+	if sym, ok := p.root.(fs.ReadLinkFS); ok {
+		return sym.Lstat(name)
+	}
+	if p.root == nil {
+		return nil, &fs.PathError{Op: "lstat", Path: name, Err: fs.ErrNotExist}
+	}
+	return fs.Stat(p.root, name)
+}
+
 // installedFS는 fsys에 붙은 설치한 테마의 홈이다 (없으면 nil).
 func installedFS(fsys fs.FS) fs.FS {
 	if p, ok := fsys.(*projectFS); ok {
