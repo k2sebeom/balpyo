@@ -2,6 +2,7 @@ package quick
 
 import (
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -142,91 +143,144 @@ func resolveAxis(startV, endV string, areas map[string]area, rows bool) axisPlac
 	return axisPlace{-1, 1}
 }
 
-// placeItems는 항목을 격자 칸에 놓는다 (명시 위치 → 행 우선 sparse 자동 배치).
-func placeItems(kids []*box, areas map[string]area, cols int) ([]*gridItem, int, int) {
-	occupied := map[[2]int]bool{}
-	mark := func(it *gridItem) {
-		for r := it.r0; r < it.r1; r++ {
-			for c := it.c0; c < it.c1; c++ {
-				occupied[[2]int{r, c}] = true
-			}
+// placeItems는 항목을 격자 칸에 놓는다 — CSS 격자 자동 배치 알고리즘이다. cols · rows는 명시 격자의
+// 열 · 행 수, flow는 grid-auto-flow다 (row | column, dense).
+//
+// 알고리즘은 흐름 방향을 기준으로 적는다: 흐름이 row면 "줄"은 행이고 커서는 줄 안에서 열을 따라
+// 걷는다. column이면 둘이 바뀐다. 순서는 1) 두 축이 다 정해진 항목 2) 줄만 정해진 항목 3) 줄 안의
+// 트랙 수 확정 4) 나머지를 커서로 놓기다. sparse는 커서가 뒤로 가지 않고, dense는 항목마다 맨 앞에서
+// 다시 찾아 앞에 남은 빈칸을 채운다.
+func placeItems(kids []*box, areas map[string]area, cols, rows int, flow string) ([]*gridItem, int, int) {
+	column, dense := false, false
+	for _, f := range strings.Fields(flow) {
+		switch f {
+		case "column":
+			column = true
+		case "dense":
+			dense = true
 		}
 	}
-	fits := func(r0, c0, rs, cs int) bool {
-		for r := r0; r < r0+rs; r++ {
+	// (줄, 칸) 좌표: 줄은 흐름이 넘어가는 축, 칸은 커서가 줄 안에서 걷는 축이다.
+	type placed struct{ line, cell axisPlace }
+	occupied := map[[2]int]bool{}
+	fits := func(l0, c0, ls, cs int) bool {
+		for l := l0; l < l0+ls; l++ {
 			for c := c0; c < c0+cs; c++ {
-				if occupied[[2]int{r, c}] {
+				if occupied[[2]int{l, c}] {
 					return false
 				}
 			}
 		}
 		return true
 	}
-	type pending struct {
-		it       *gridItem
-		row, col axisPlace
+	mark := func(p placed) {
+		for l := p.line.start; l < p.line.start+p.line.span; l++ {
+			for c := p.cell.start; c < p.cell.start+p.cell.span; c++ {
+				occupied[[2]int{l, c}] = true
+			}
+		}
 	}
-	var items []*gridItem
-	var autos []pending
-	rows := 0
-	for _, k := range kids {
-		it := &gridItem{b: k}
+	nCells := cols
+	if column {
+		nCells = rows
+	}
+	items := make([]*gridItem, len(kids))
+	pos := make([]placed, len(kids))
+	for i, k := range kids {
+		items[i] = &gridItem{b: k}
 		row := resolveAxis(k.st.get("grid-row-start"), k.st.get("grid-row-end"), areas, true)
 		col := resolveAxis(k.st.get("grid-column-start"), k.st.get("grid-column-end"), areas, false)
-		items = append(items, it)
-		if row.start >= 0 && col.start >= 0 {
-			it.r0, it.r1, it.c0, it.c1 = row.start, row.start+row.span, col.start, col.start+col.span
-			mark(it)
-			rows, cols = max(rows, it.r1), max(cols, it.c1)
+		if column {
+			pos[i] = placed{col, row}
+		} else {
+			pos[i] = placed{row, col}
+		}
+	}
+	// 1. 두 축이 다 정해진 항목
+	for i := range pos {
+		if p := pos[i]; p.line.start >= 0 && p.cell.start >= 0 {
+			mark(p)
+		}
+	}
+	// 2. 줄만 정해진 항목: 그 줄에서 겹치지 않는 첫 칸. sparse면 이 단계가 그 줄에 앞서 놓은 항목 뒤에서
+	// 찾는다.
+	after := map[int]int{}
+	for i := range pos {
+		p := &pos[i]
+		if p.line.start < 0 || p.cell.start >= 0 {
 			continue
 		}
-		cols = max(cols, col.span)
-		if col.start >= 0 {
-			cols = max(cols, col.start+col.span)
+		c := 0
+		if !dense {
+			c = after[p.line.start]
 		}
-		autos = append(autos, pending{it, row, col})
+		for !fits(p.line.start, c, p.line.span, p.cell.span) {
+			c++
+		}
+		p.cell.start = c
+		after[p.line.start] = c + p.cell.span
+		mark(*p)
 	}
-	cols = max(cols, 1)
-	curR, curC := 0, 0
-	for _, p := range autos {
-		it := p.it
-		switch {
-		case p.row.start >= 0:
-			// 행이 정해졌다: 그 행에서 들어갈 첫 열
-			c := 0
-			for !fits(p.row.start, c, p.row.span, p.col.span) {
-				c++
+	// 3. 줄 안의 트랙 수: 명시 격자, 칸이 정해진 항목의 끝, 자동 항목의 가장 긴 span 가운데 큰 것.
+	for _, p := range pos {
+		if p.cell.start >= 0 {
+			nCells = max(nCells, p.cell.start+p.cell.span)
+		} else {
+			nCells = max(nCells, p.cell.span)
+		}
+	}
+	nCells = max(nCells, 1)
+	// 4. 나머지 — 줄이 auto인 항목. 커서는 마지막에 놓은 항목의 시작 자리다.
+	curL, curC := 0, 0
+	for i := range pos {
+		p := &pos[i]
+		if p.line.start >= 0 {
+			continue
+		}
+		if dense {
+			curL, curC = 0, 0
+		}
+		if p.cell.start >= 0 {
+			// 칸이 정해졌다: 커서가 그 칸보다 뒤에 있으면 다음 줄로 넘어가 겹치지 않는 줄을 찾는다.
+			if !dense && p.cell.start < curC {
+				curL++
 			}
-			it.r0, it.c0 = p.row.start, c
-		case p.col.start >= 0:
-			if p.col.start < curC {
-				curR++
+			curC = p.cell.start
+			for !fits(curL, curC, p.line.span, p.cell.span) {
+				curL++
 			}
-			for !fits(curR, p.col.start, p.row.span, p.col.span) {
-				curR++
-			}
-			it.r0, it.c0 = curR, p.col.start
-			curC = p.col.start + p.col.span
-		default:
+		} else {
 			for {
-				if curC+p.col.span > cols {
-					curR++
+				if curC+p.cell.span > nCells {
+					curL++
 					curC = 0
 					continue
 				}
-				if fits(curR, curC, p.row.span, p.col.span) {
+				if fits(curL, curC, p.line.span, p.cell.span) {
 					break
 				}
 				curC++
 			}
-			it.r0, it.c0 = curR, curC
-			curC += p.col.span
+			p.cell.start = curC
 		}
-		it.r1, it.c1 = it.r0+p.row.span, it.c0+p.col.span
-		mark(it)
-		rows, cols = max(rows, it.r1), max(cols, it.c1)
+		p.line.start = curL
+		mark(*p)
 	}
-	return items, rows, cols
+	nRows, nCols := 0, 0
+	for i, it := range items {
+		row, col := pos[i].line, pos[i].cell
+		if column {
+			row, col = col, row
+		}
+		it.r0, it.r1, it.c0, it.c1 = row.start, row.start+row.span, col.start, col.start+col.span
+		nRows, nCols = max(nRows, it.r1), max(nCols, it.c1)
+	}
+	if column {
+		nRows = max(nRows, nCells)
+	} else {
+		nCols = max(nCols, nCells)
+	}
+	return items, nRows, nCols
 }
 
 func (e *engine) gridSetup(b *box) ([]*gridItem, []track, []track) {
@@ -235,7 +289,7 @@ func (e *engine) gridSetup(b *box) ([]*gridItem, []track, []track) {
 	rows := parseTrackList(b.st.get("grid-template-rows"), fs)
 	areas, areaRows, areaCols := parseAreas(b.st.get("grid-template-areas"))
 	nCols := max(len(cols), areaCols)
-	items, nr, nc := placeItems(ordered(b.kids), areas, nCols)
+	items, nr, nc := placeItems(ordered(b.kids), areas, nCols, max(len(rows), areaRows), b.st.get("grid-auto-flow"))
 	// 항목이 모두 절대 배치여도 격자는 한 칸을 가진다 — 절대 배치 자식의 `grid-area: 1 / 1`이 그 칸을
 	// 포함 블록으로 쓴다 (브라우저가 그렇게 잰다).
 	nr = max(nr, max(len(rows), areaRows), 1)
@@ -303,7 +357,9 @@ func (e *engine) sizeTracks(tracks []track, items []*gridItem, columns bool, ava
 		case "fr":
 			limit[i] = math.Inf(1)
 		default:
-			limit[i] = -1 // 내용에서 정한다
+			// 내재 최대(auto · min/max-content)는 내용이 정한다. 항목이 하나도 없는 트랙은 여러 트랙에
+			// 걸친 항목을 나누는 동안 한계가 없는 채로 남는다.
+			limit[i] = math.Inf(1)
 		}
 	}
 	span := func(it *gridItem) (int, int) {
@@ -320,6 +376,8 @@ func (e *engine) sizeTracks(tracks []track, items []*gridItem, columns bool, ava
 		}
 		return false
 	}
+	intrinsicMin := func(t track) bool { return t.minKind == "auto" || t.minKind == "min" || t.minKind == "max" }
+	intrinsicMax := func(t track) bool { return t.maxKind == "auto" || t.maxKind == "min" || t.maxKind == "max" }
 	// 1. 한 트랙 항목의 기여
 	for _, it := range items {
 		a, b := span(it)
@@ -338,9 +396,9 @@ func (e *engine) sizeTracks(tracks []track, items []*gridItem, columns bool, ava
 		} else if t.minKind == "max" {
 			base[a] = math.Max(base[a], contrib(it, false))
 		}
-		if limit[a] < 0 || (t.maxKind == "auto" || t.maxKind == "max" || t.maxKind == "min") {
+		if intrinsicMax(t) {
 			c := contrib(it, t.maxKind == "min")
-			if limit[a] < 0 {
+			if math.IsInf(limit[a], 1) {
 				limit[a] = c
 			} else {
 				limit[a] = math.Max(limit[a], c)
@@ -348,45 +406,135 @@ func (e *engine) sizeTracks(tracks []track, items []*gridItem, columns bool, ava
 		}
 	}
 	for i := range limit {
-		if limit[i] < 0 {
-			limit[i] = base[i]
-		}
 		if limit[i] < base[i] {
 			limit[i] = base[i]
 		}
 	}
-	// 2. 여러 트랙에 걸친 항목 — fr이 없는 구간에서 모자라는 만큼 auto 트랙에 고르게 더한다.
+	// 2. 여러 트랙에 걸친 항목 (fr 트랙을 지나지 않는 것) — 걸친 트랙 수가 작은 무리부터 차례로.
+	// 모자라는 공간은 고르게 나누되 트랙마다 한계에서 멈춘다: base는 성장 한계까지, 성장 한계는
+	// 제자리까지(무한히 자랄 수 있다고 표시된 트랙만 계속). 모두 멈추고도 남으면 그때 넘쳐서 나눈다.
+	// 한계가 무한한 트랙(항목이 없는 auto 트랙)은 그래서 다른 트랙이 내용 크기에 머무는 동안 나머지를
+	// 다 받는다. 한 무리 안에서는 항목마다 낸 증가분 가운데 큰 쪽을 트랙에 더한다.
+	var spanning []*gridItem
 	for _, it := range items {
-		a, b := span(it)
-		if b-a <= 1 || hasFr(a, b) {
-			continue
+		if a, b := span(it); b-a > 1 && !hasFr(a, b) {
+			spanning = append(spanning, it)
 		}
-		need := contrib(it, true) - gap*float64(b-a-1)
-		have := 0.0
-		var autos []int
-		for i := a; i < b; i++ {
-			have += base[i]
-			if tracks[i].minKind == "auto" {
-				autos = append(autos, i)
+	}
+	spanLen := func(it *gridItem) int { a, b := span(it); return b - a }
+	sort.SliceStable(spanning, func(i, j int) bool { return spanLen(spanning[i]) < spanLen(spanning[j]) })
+	growable := make([]bool, n)
+	// fill은 space를 idx 트랙에 고르게 나눈다 — room(i)에 닿은 트랙은 멈춘다. 다 나누지 못한 몫을 낸다.
+	fill := func(space float64, idx []int, inc []float64, room func(i int) float64) float64 {
+		active := idx
+		for space > 1e-9 && len(active) > 0 {
+			share := space / float64(len(active))
+			var next []int
+			for _, i := range active {
+				if r := math.Max(0, room(i)-inc[i]); r <= share {
+					inc[i] += r
+					space -= r
+				} else {
+					next = append(next, i)
+				}
+			}
+			if len(next) == len(active) {
+				for _, i := range next {
+					inc[i] += share
+				}
+				return 0
+			}
+			active = next
+		}
+		return space
+	}
+	// grow는 한 무리의 항목을 받아 affected 트랙의 base(growth=false) 또는 성장 한계(growth=true)를
+	// 키운다. minC는 최소 기여를 쓸지, beyond는 한계를 넘쳐 받을 트랙이다 (없으면 affected 전부).
+	grow := func(group []*gridItem, affected func(t track) bool, minC, growth bool, beyond func(t track) bool, markGrowable bool) {
+		planned := make([]float64, n)
+		for _, it := range group {
+			a, b := span(it)
+			space := contrib(it, minC) - gap*float64(b-a-1)
+			var idx []int
+			for i := a; i < b; i++ {
+				if growth && !math.IsInf(limit[i], 1) {
+					space -= limit[i]
+				} else {
+					space -= base[i]
+				}
+				if affected(tracks[i]) {
+					idx = append(idx, i)
+				}
+			}
+			if space <= 1e-9 || len(idx) == 0 {
+				continue
+			}
+			inc := make([]float64, n)
+			space = fill(space, idx, inc, func(i int) float64 {
+				if !growth {
+					return limit[i] - base[i]
+				}
+				if growable[i] || math.IsInf(limit[i], 1) {
+					return math.Inf(1)
+				}
+				return 0
+			})
+			if space > 1e-9 {
+				var over []int
+				for _, i := range idx {
+					if beyond(tracks[i]) {
+						over = append(over, i)
+					}
+				}
+				if len(over) == 0 {
+					over = idx
+				}
+				fill(space, over, inc, func(int) float64 { return math.Inf(1) })
+			}
+			for i := range planned {
+				planned[i] = math.Max(planned[i], inc[i])
 			}
 		}
-		if need > have && len(autos) > 0 {
-			add := (need - have) / float64(len(autos))
-			for _, i := range autos {
-				base[i] += add
-				limit[i] = math.Max(limit[i], base[i])
+		for i, p := range planned {
+			switch {
+			case p <= 0:
+			case !growth:
+				base[i] += p
+			case math.IsInf(limit[i], 1):
+				limit[i] = base[i] + p
+				growable[i] = markGrowable
+			default:
+				limit[i] += p
 			}
 		}
-		needMax := contrib(it, false) - gap*float64(b-a-1)
-		haveMax := 0.0
-		for i := a; i < b; i++ {
-			haveMax += limit[i]
+	}
+	all := func(track) bool { return true }
+	maxContentMax := func(t track) bool { return t.maxKind == "auto" || t.maxKind == "max" }
+	for g := 0; g < len(spanning); {
+		h := g
+		for h < len(spanning) && spanLen(spanning[h]) == spanLen(spanning[g]) {
+			h++
 		}
-		if needMax > haveMax && len(autos) > 0 {
-			add := (needMax - haveMax) / float64(len(autos))
-			for _, i := range autos {
-				limit[i] += add
+		group := spanning[g:h]
+		g = h
+		// "무한히 자랄 수 있다" 표시는 그 무리의 다음 걸음에만 뜻이 있다 — 앞 무리가 남긴 표시가
+		// 다음 무리의 성장 한계 걸음에서 트랙을 한계 없이 키우면 안 된다.
+		clear(growable)
+		grow(group, intrinsicMin, true, false, intrinsicMax, false)
+		grow(group, func(t track) bool { return t.minKind == "min" || t.minKind == "max" }, true, false, intrinsicMax, false)
+		grow(group, func(t track) bool { return t.minKind == "max" }, false, false, maxContentMax, false)
+		for i := range limit {
+			if limit[i] < base[i] {
+				limit[i] = base[i]
 			}
+		}
+		grow(group, intrinsicMax, true, true, all, true)
+		grow(group, maxContentMax, false, true, all, false)
+	}
+	// 끝까지 한계가 무한한 내재 트랙(항목이 없는 트랙)은 base에서 멈춘다.
+	for i, t := range tracks {
+		if intrinsicMax(t) && math.IsInf(limit[i], 1) {
+			limit[i] = base[i]
 		}
 	}
 	gaps := gap * float64(max(n-1, 0))
@@ -562,7 +710,7 @@ func (e *engine) layoutGrid(b *box, innerW float64, innerH *float64, fr edges) f
 	}
 	rowSizes := e.sizeTracks(rows, items, false, availH, hKnown, rowGap, func(it *gridItem, min bool) float64 {
 		if min {
-			if v, ok := rowMinContribution(it); ok {
+			if v, ok := rowMinContribution(it, areaW(it)); ok {
 				return v
 			}
 		}
@@ -685,7 +833,10 @@ func (e *engine) layoutGrid(b *box, innerW float64, innerH *float64, fr edges) f
 // 그림(min-height: 0, height: 100%)이 폭 1280에서 그림 비율대로 잰 높이로 행을 굳혀, 아래
 // `auto` 행(caption)이 스테이지 밖으로 밀려난다. 브라우저는 min-height: 0을 바닥으로 삼아 fr
 // 행이 남는 공간에 맞춰 줄어든다.
-func rowMinContribution(it *gridItem) (float64, bool) {
+//
+// aw는 항목의 grid 영역 폭이다. 퍼센트 padding은 포함 블록의 inline 크기에 대해 풀리므로 frame도
+// 이 폭으로 푼다 — 0으로 풀면 퍼센트 padding이 빠져 행이 항목의 padding box보다 작아진다.
+func rowMinContribution(it *gridItem, aw float64) (float64, bool) {
 	k := it.b
 	if _, ok := k.specified("height", 0, false); ok {
 		return 0, false
@@ -694,7 +845,7 @@ func rowMinContribution(it *gridItem) (float64, bool) {
 	if !ok {
 		return 0, false
 	}
-	return math.Max(mh, k.frame(0).v()) + it.m.v(), true
+	return math.Max(mh, k.frame(aw).v()) + it.m.v(), true
 }
 
 func justifySelf(k *box, justifyItems string) string {

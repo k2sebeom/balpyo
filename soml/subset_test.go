@@ -145,6 +145,20 @@ func TestParseTextSubsetErrors(t *testing.T) {
 			want: []string{"1:12 void tag <br> cannot have content (write <br/>)"},
 		},
 		{
+			name: "자기 닫힘이 빠진 br",
+			src:  `<slide><p>a<br>b</p></slide>`,
+			want: []string{"1:13 void tag <br> must be self-closed (write <br/>)"},
+		},
+		{
+			// 안쪽의 닫지 않은 br이 바깥 br의 짝 찾기를 흐리지 않는다.
+			name: "자기 닫힘이 빠진 br 둘",
+			src:  `<slide><p>a<br>b<br>c</p></slide>`,
+			want: []string{
+				"1:13 void tag <br> must be self-closed (write <br/>)",
+				"1:18 void tag <br> must be self-closed (write <br/>)",
+			},
+		},
+		{
 			name: "span의 속성 목록",
 			src:  `<slide><p><span align="center">x</span></p></slide>`,
 			want: []string{"1:17 unknown attribute align on <span> (available attributes: color, weight, size)"},

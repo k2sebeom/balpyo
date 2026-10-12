@@ -1,0 +1,11 @@
+<!-- 글자 없는 슬롯 채움: 차트는 배경 모드 도형으로 펼쳐지므로 뿌리 도형의 본문이 빈 문단이다.
+     빈 본문의 플레이스홀더는 PowerPoint 편집 보기에서 입력 안내문을 띄우므로 차트 뿌리는
+     슬롯 자리(잰 rect)에 놓인 평범한 도형이 된다. 글자를 흡수한 도형은 그대로 플레이스홀더다. -->
+<slide id="textless-slots" layout="two-column">
+  <h1 slot="title">글자 없는 슬롯</h1>
+  <chart slot="left" type="bar" alt="분기 매출" h="300">
+    <point label="1분기" value="3"/>
+    <point label="2분기" value="5"/>
+  </chart>
+  <shape slot="right" type="rounded-rect"><p>도형 안의 본문</p></shape>
+</slide>

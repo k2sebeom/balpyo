@@ -2,6 +2,7 @@ package quick_test
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -82,5 +83,69 @@ func TestSnapshotDeterministic(t *testing.T) {
 	}
 	if a.Slides[0] != nil {
 		t.Error("a slide outside Only was drawn")
+	}
+}
+
+// Emit이 있으면 그림은 그리는 대로 넘어가고 Result에 남지 않는다 — 덱 전체의 그림을 메모리에
+// 쥐지 않는다. 순서는 슬라이드마다 스텝 0 … n-1, 그다음 모든 스텝이 펼쳐진 장면이다.
+func TestSnapshotEmitStreamsFrames(t *testing.T) {
+	deck, _, err := pipeline.LoadDeck(pipeline.Options{ProjectDir: "../../testdata/fixtures/02_text_subset"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	collected, err := quick.Snapshot(deck, quick.Options{DPR: 1, Steps: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []quick.Frame
+	res, err := quick.Snapshot(deck, quick.Options{DPR: 1, Steps: true, Emit: func(f quick.Frame) error {
+		got = append(got, f)
+		return nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Slides != nil || res.Steps != nil {
+		t.Errorf("Result holds %d images and %d step lists, want none when Emit is set", len(res.Slides), len(res.Steps))
+	}
+	if res.Geometry == nil {
+		t.Error("Result lost the geometry")
+	}
+	i := 0
+	for slide, steps := range collected.Steps {
+		for step, want := range steps {
+			if i >= len(got) {
+				t.Fatalf("only %d frames emitted", len(got))
+			}
+			f := got[i]
+			wantStep := step
+			if step == len(steps)-1 {
+				wantStep = -1
+			}
+			if f.Slide != slide || f.Step != wantStep {
+				t.Errorf("frame %d is slide %d step %d, want slide %d step %d", i, f.Slide, f.Step, slide, wantStep)
+			}
+			if !bytes.Equal(f.Image.Pix, want.Pix) {
+				t.Errorf("frame %d (slide %d step %d) differs from the collected one", i, slide, step)
+			}
+			i++
+		}
+	}
+	if i != len(got) {
+		t.Errorf("%d frames emitted, want %d", len(got), i)
+	}
+	if i <= len(deck.Slides) {
+		t.Errorf("%d frames for %d slides — the fixture has reveal steps, so want more", i, len(deck.Slides))
+	}
+
+	// Emit의 에러는 그리기를 멈추고 그대로 나온다.
+	stop := errors.New("stop")
+	calls := 0
+	_, err = quick.Snapshot(deck, quick.Options{DPR: 1, Emit: func(quick.Frame) error {
+		calls++
+		return stop
+	}})
+	if !errors.Is(err, stop) || calls != 1 {
+		t.Errorf("err = %v after %d calls, want the Emit error after one call", err, calls)
 	}
 }

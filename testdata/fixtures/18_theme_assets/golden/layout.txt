@@ -20,3 +20,14 @@ textbox "chrome footer"
 textbox "chrome pageNumber"
   ¶ end | "3"{field body 13.5pt muted}
 pic "chrome logo" alt="Brand 로고"
+# slide 4 assets-quote
+bg image
+textbox "blockquote s3.0" ph=body/1
+  ¶ start | "배경 사진도 세워서 보인다."{body 30pt fg}
+textbox "p s3.1" ph=body/2
+  ¶ end | "— 테마 자산"{body 18pt fg}
+textbox "chrome footer"
+  ¶ start | "© 2026 Brand Inc."{body 13.5pt muted}
+textbox "chrome pageNumber"
+  ¶ end | "4"{field body 13.5pt muted}
+pic "chrome logo" alt="Brand 로고"

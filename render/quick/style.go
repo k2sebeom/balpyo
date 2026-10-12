@@ -21,7 +21,7 @@ var inherited = map[string]bool{
 	"line-height": true, "text-align": true, "letter-spacing": true, "text-transform": true,
 	"word-break": true, "overflow-wrap": true, "white-space": true, "visibility": true,
 	"text-indent": true, "fill": true, "stroke": true, "stroke-width": true, "stroke-dasharray": true,
-	"fill-opacity": true, "stroke-opacity": true, "text-decoration": true, "list-style": true,
+	"fill-opacity": true, "fill-rule": true, "stroke-opacity": true, "text-decoration": true, "list-style": true,
 	"stroke-linecap": true, "stroke-linejoin": true, "stroke-miterlimit": true,
 	"marker-start": true, "marker-end": true, "marker-mid": true,
 }
@@ -214,7 +214,7 @@ func (c *cascader) compute(n *node, parent *style, pseudo string) *style {
 // presentationDecls는 SVG 요소의 표현 속성을 선언으로 바꾼다.
 func presentationDecls(n *node) []decl {
 	var out []decl
-	for _, name := range []string{"fill", "stroke", "stroke-width", "stroke-dasharray", "opacity", "fill-opacity", "stroke-opacity", "stop-color", "stop-opacity"} {
+	for _, name := range []string{"fill", "stroke", "stroke-width", "stroke-dasharray", "opacity", "fill-opacity", "fill-rule", "stroke-opacity", "stop-color", "stop-opacity"} {
 		if v, ok := n.attrs[name]; ok {
 			out = append(out, decl{name: name, value: v})
 		}

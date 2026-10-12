@@ -95,6 +95,9 @@ type para struct {
 	styles  []*style // 문자별 계산값
 	atomics map[int]*box
 	forced  map[int]bool // 이 문자 앞에서 반드시 끊는다
+	// justify면 셰이핑 조각을 확장 기회 문자의 앞뒤에서 자른다 — 늘어날 자리가 조각 경계에
+	// 오므로 정렬이 조각을 옮기고 넓히는 것만으로 끝난다.
+	justify bool
 }
 
 const objectChar = '￼'
@@ -178,6 +181,30 @@ func isWordChar(r rune) bool {
 	return unicode.IsLetter(r) || unicode.IsNumber(r) || unicode.Is(unicode.Mn, r)
 }
 
+// 양쪽 정렬이 늘리는 자리의 종류: 낱말 사이 공백은 뒤가, 한자 · 가나 같은 표의 문자는 앞뒤가
+// 늘어난다.
+type expansion int
+
+const (
+	expandNone expansion = iota
+	expandSpace
+	expandIdeograph
+)
+
+func expansionKind(r rune) expansion {
+	switch {
+	case r == ' ' || r == '\t' || r == '\u00a0':
+		return expandSpace
+	case unicode.Is(unicode.Han, r) || unicode.Is(unicode.Hiragana, r) || unicode.Is(unicode.Katakana, r) ||
+		(r >= 0x3000 && r <= 0x303F) || (r >= 0xFF00 && r <= 0xFFEF):
+		return expandIdeograph
+	}
+	return expandNone
+}
+
+// isTableASCII는 브라우저의 ASCII 줄바꿈 표가 다루는 범위('!'부터 DEL까지)다.
+func isTableASCII(r rune) bool { return r >= '!' && r <= 0x7F }
+
 // words는 단락을 줄바꿈 기회로 자른다.
 func (p *para) words() []word {
 	if len(p.runes) == 0 {
@@ -198,6 +225,12 @@ func (p *para) words() []word {
 		prev, next := p.runes[pos-1], p.runes[pos]
 		st := p.styles[pos]
 		if !wraps(whiteSpace(st)) || !wraps(whiteSpace(p.styles[pos-1])) {
+			delete(breaks, pos)
+			continue
+		}
+		// 앞뒤가 모두 출력 가능한 ASCII인 쌍은 브라우저가 UAX #14 대신 자기 표로 판정하고, 그 표는
+		// '/' 뒤를 끊지 않는다 (URL · 경로가 한 단어로 남는다). ASCII가 아닌 글자 앞은 UAX #14대로다.
+		if prev == '/' && isTableASCII(next) {
 			delete(breaks, pos)
 			continue
 		}
@@ -240,7 +273,11 @@ type piece struct {
 	atomic     *box
 }
 
-func (e *engine) shapeRange(p *para, start, end int) []piece {
+// shapeRange는 [start, end)를 계산값이 같은 구간마다 셰이핑한다. 구간은 같은 계산값의 텍스트가
+// 이어지는 데까지(원자 인라인 · 강제 줄바꿈에서 끊긴다) 한 덩어리로 셰이핑해 잘라 내므로 줄바꿈
+// 기회 너머 이웃과의 커닝이 폭에 든다. 오른쪽 문맥은 limit에서 멈춘다 — 줄이 거기서 끝나면
+// 브라우저는 줄 끝을 다시 셰이핑하므로 다음 줄로 넘어간 글자와의 커닝은 남지 않는다.
+func (e *engine) shapeRange(p *para, start, end, limit int) []piece {
 	var out []piece
 	for i := start; i < end; {
 		if a, ok := p.atomics[i]; ok {
@@ -253,14 +290,40 @@ func (e *engine) shapeRange(p *para, start, end int) []piece {
 			if _, ok := p.atomics[j]; ok {
 				break
 			}
+			if p.justify && (expansionKind(p.runes[j]) != expandNone || expansionKind(p.runes[j-1]) != expandNone) {
+				break
+			}
 			j++
 		}
 		st := p.styles[i]
-		text := applyTransform(string(p.runes[i:j]), st.get("text-transform"))
-		out = append(out, piece{start: i, end: j, st: st, shaped: e.fonts.shape(fontStyleOf(st), text)})
+		out = append(out, piece{start: i, end: j, st: st, shaped: e.shapeInContext(p, i, j, limit)})
 		i = j
 	}
 	return out
+}
+
+// shapeInContext는 같은 계산값의 텍스트 [i, j)를 앞뒤 문맥(오른쪽은 limit까지)과 함께 셰이핑해
+// 그 구간만 떼어 낸다.
+func (e *engine) shapeInContext(p *para, i, j, limit int) shapedText {
+	st := p.styles[i]
+	same := func(k int) bool {
+		_, atomic := p.atomics[k]
+		return p.styles[k] == st && !atomic
+	}
+	cs, ce := i, j
+	for cs > 0 && same(cs-1) && !p.forced[cs] {
+		cs--
+	}
+	for ce < limit && same(ce) && !p.forced[ce] {
+		ce++
+	}
+	fs, transform := fontStyleOf(st), st.get("text-transform")
+	text := applyTransform(string(p.runes[cs:ce]), transform)
+	if len([]rune(text)) != ce-cs {
+		// 대소문자 변환이 글자 수를 바꾸면 문자 위치가 어긋난다: 구간만 따로 셰이핑한다.
+		return e.fonts.shape(fs, applyTransform(string(p.runes[i:j]), transform))
+	}
+	return e.fonts.shape(fs, text).slice(i-cs, j-cs)
 }
 
 func (e *engine) atomicWidth(a *box, cbw float64) float64 {
@@ -322,7 +385,7 @@ func (e *engine) inlineIntrinsic(b *box, min bool) float64 {
 			best = math.Max(best, line)
 			line = 0
 		}
-		core := e.piecesWidth(e.shapeRange(p, w.start, w.spaceStart), 0)
+		core := e.piecesWidth(e.shapeRange(p, w.start, w.spaceStart, w.end), 0)
 		if min {
 			wordW := core
 			if anywhere(p.styles[w.start]) {
@@ -334,9 +397,10 @@ func (e *engine) inlineIntrinsic(b *box, min bool) float64 {
 			best = math.Max(best, wordW)
 			continue
 		}
-		space := e.piecesWidth(e.shapeRange(p, w.spaceStart, w.end), 0)
+		// 줄이 이 단어에서 끝나면 오른쪽 문맥이 없고, 이어지면 다음 단어와의 커닝까지 든다.
+		full := e.piecesWidth(e.shapeRange(p, w.start, w.end, len(p.runes)), 0)
 		best = math.Max(best, line+core)
-		line += core + space
+		line += full
 	}
 	if !min {
 		best = math.Max(best, line-0)
@@ -347,7 +411,7 @@ func (e *engine) inlineIntrinsic(b *box, min bool) float64 {
 func (e *engine) widestCluster(p *para, start, end int) float64 {
 	best := 0.0
 	for i := start; i < end; i++ {
-		best = math.Max(best, e.piecesWidth(e.shapeRange(p, i, i+1), 0))
+		best = math.Max(best, e.piecesWidth(e.shapeRange(p, i, i+1, i+1), 0))
 	}
 	return best
 }
@@ -357,6 +421,14 @@ type placed struct {
 	piece
 	x, w  float64
 	trail bool // 줄 끝 공백
+}
+
+// fitsLine은 폭 width인 내용이 줄 폭 avail에 들어가는지다. 브라우저는 둘을 1/64px 고정 소수로
+// 견준다: 내용 폭은 올림, 줄 폭은 내림한 뒤 반올림 오차를 덮으려고 1/64px을 더 허용한다. 그래서
+// 꼭 맞는 줄은 들어가고, 1/64px 넘게 넘치는 줄은 들어가지 않는다. 부동소수 덧셈의 찌꺼기가 올림을
+// 한 칸 밀지 않도록 1/1000칸은 무시한다.
+func fitsLine(width, avail float64) bool {
+	return math.Ceil(width*64-1e-3) <= math.Floor(avail*64+1e-3)+1
 }
 
 // layoutInline은 줄을 채우고 내용 높이를 낸다.
@@ -369,12 +441,24 @@ func (e *engine) layoutInline(b *box, innerW float64, fr edges) float64 {
 	}
 	indent := textIndent(b.st, innerW)
 
+	align := b.st.get("text-align")
+	p.justify = align == "justify"
+
 	var lines [][]placed
+	var forcedEnd []bool // 줄이 강제 줄바꿈(<br>)으로 끝났다
 	var cur []placed
 	x := indent
 	first := true
-	flush := func() {
+	end := len(p.runes)
+	flush := func(forced bool) {
+		// 줄 끝 조각은 다음 줄로 넘어간 글자와의 커닝 없이 다시 셰이핑한다.
+		if n := len(cur); n > 0 && cur[n-1].atomic == nil {
+			last := &cur[n-1]
+			last.shaped = e.shapeInContext(p, last.start, last.end, last.end)
+			last.w = last.shaped.width
+		}
 		lines = append(lines, cur)
+		forcedEnd = append(forcedEnd, forced)
 		cur = nil
 		x = 0
 		first = false
@@ -395,23 +479,22 @@ func (e *engine) layoutInline(b *box, innerW float64, fr edges) float64 {
 			x += w
 		}
 	}
-	const eps = 0.01
 	for i, w := range ws {
 		if w.mandatory && i > 0 {
-			flush()
+			flush(true)
 		}
-		corePieces := e.shapeRange(p, w.start, w.spaceStart)
+		corePieces := e.shapeRange(p, w.start, w.spaceStart, end)
 		core := e.piecesWidth(corePieces, innerW)
-		if len(cur) > 0 && x+core > innerW+eps && wraps(whiteSpace(p.styles[w.start])) {
-			flush()
+		if len(cur) > 0 && !fitsLine(x+core, innerW) && wraps(whiteSpace(p.styles[w.start])) {
+			flush(false)
 		}
-		if x+core > innerW+eps && breakWord(p.styles[w.start]) && wraps(whiteSpace(p.styles[w.start])) {
+		if !fitsLine(x+core, innerW) && breakWord(p.styles[w.start]) && wraps(whiteSpace(p.styles[w.start])) {
 			// 한 단어가 줄보다 넓다: 글자 단위로 끊는다.
 			for j := w.start; j < w.spaceStart; j++ {
-				ps := e.shapeRange(p, j, j+1)
+				ps := e.shapeRange(p, j, j+1, end)
 				cw := e.piecesWidth(ps, innerW)
-				if len(cur) > 0 && x+cw > innerW+eps {
-					flush()
+				if len(cur) > 0 && !fitsLine(x+cw, innerW) {
+					flush(false)
 				}
 				place(ps, false)
 			}
@@ -419,14 +502,13 @@ func (e *engine) layoutInline(b *box, innerW float64, fr edges) float64 {
 			place(corePieces, false)
 		}
 		if w.spaceStart < w.end {
-			place(e.shapeRange(p, w.spaceStart, w.end), true)
+			place(e.shapeRange(p, w.spaceStart, w.end, end), true)
 		}
 	}
-	flush()
+	flush(false)
 
 	// 줄 높이와 기준선
 	y := fr.t
-	align := b.st.get("text-align")
 	for li, items := range lines {
 		strut := e.inlineMetrics(b.st)
 		above, below := strut.above, strut.below
@@ -471,6 +553,9 @@ func (e *engine) layoutInline(b *box, innerW float64, fr edges) float64 {
 				offset = 0
 			}
 		}
+		if p.justify && li < len(lines)-1 && !forcedEnd[li] && used < innerW {
+			e.justifyLine(p, items, innerW-used)
+		}
 		lb := lineBox{x: fr.l, y: y, w: innerW, h: lh, baseline: y + above}
 		for _, it := range items {
 			f := frag{x: fr.l + offset + it.x, w: it.w, baseline: lb.baseline, st: it.st, atomic: it.atomic}
@@ -497,6 +582,61 @@ func (e *engine) layoutInline(b *box, innerW float64, fr edges) float64 {
 		y += lh
 	}
 	return y - fr.t
+}
+
+// justifyLine은 줄에 남는 폭 extra를 확장 기회에 고루 나눈다 (text-align: justify). 공백은
+// 그 뒤가 늘어나고, 표의 문자는 앞(직전이 이미 늘어나는 자리가 아니면)과 뒤가 늘어난다. 줄의
+// 처음과 끝은 늘리지 않으므로 마지막 기회는 지우고, 줄 끝에 걸린 공백은 기회가 아니다. 기회가
+// 없는 줄은 시작 쪽에 붙은 채로 둔다.
+func (e *engine) justifyLine(p *para, items []placed, extra float64) {
+	last := -1
+	for i, it := range items {
+		if it.atomic != nil || !isBlank(p.runes[it.start:it.end]) {
+			last = i
+		}
+	}
+	before := make([]int, len(items))
+	after := make([]int, len(items))
+	count, lastAfter := 0, -1
+	afterExpansion := true
+	for i := 0; i <= last; i++ {
+		it := items[i]
+		kind := expandNone
+		if it.atomic == nil && it.end-it.start == 1 {
+			kind = expansionKind(p.runes[it.start])
+		}
+		switch kind {
+		case expandSpace:
+			after[i] = 1
+			count++
+			lastAfter = i
+		case expandIdeograph:
+			if !afterExpansion {
+				before[i] = 1
+				count++
+			}
+			after[i] = 1
+			count++
+			lastAfter = i
+		}
+		afterExpansion = kind != expandNone
+	}
+	if afterExpansion && lastAfter >= 0 {
+		after[lastAfter] = 0
+		count--
+	}
+	if count <= 0 {
+		return
+	}
+	per := extra / float64(count)
+	shift := 0.0
+	for i := range items {
+		shift += float64(before[i]) * per
+		items[i].x += shift
+		grow := float64(after[i]) * per
+		items[i].w += grow
+		shift += grow
+	}
 }
 
 func isBlank(rs []rune) bool {
