@@ -464,6 +464,9 @@ func (e *engine) sizeTracks(tracks []track, items []*gridItem, columns bool, ava
 		}
 		group := spanning[g:h]
 		g = h
+		// "무한히 자랄 수 있다" 표시는 그 무리의 다음 걸음에만 뜻이 있다 — 앞 무리가 남긴 표시가
+		// 다음 무리의 성장 한계 걸음에서 트랙을 한계 없이 키우면 안 된다.
+		clear(growable)
 		grow(group, intrinsicMin, true, false, intrinsicMax, false)
 		grow(group, func(t track) bool { return t.minKind == "min" || t.minKind == "max" }, true, false, intrinsicMax, false)
 		grow(group, func(t track) bool { return t.minKind == "max" }, false, false, maxContentMax, false)
