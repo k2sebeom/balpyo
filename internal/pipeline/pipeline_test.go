@@ -287,6 +287,24 @@ func TestLoadDeckThemeOptionSkipsTheConfigName(t *testing.T) {
 	}
 }
 
+// 빌드도 같다: 출력 디렉토리를 정하려고 설정을 읽는 자리가 버려질 테마 이름을 다시 검사하면
+// LoadDeck만 고친 것이 되고 `balpyo build --theme`는 여전히 멈춘다.
+func TestBuildThemeOptionSkipsTheConfigName(t *testing.T) {
+	dir := newProject(t, map[string]string{
+		"balpyo.json":            `{"theme": "inkk"}`,
+		"slides/001_title.slide": "<slide><h1>제목</h1></slide>",
+	})
+	if _, err := OutDirPath(Options{ProjectDir: dir, Theme: "ink"}); err != nil {
+		t.Fatalf("OutDirPath가 설정의 테마 이름 때문에 멈췄다: %v", err)
+	}
+	if _, err := Build(Options{ProjectDir: dir, Theme: "ink"}); err != nil {
+		t.Fatalf("--theme ink인데 빌드가 설정의 이름 때문에 멈췄다: %v", err)
+	}
+	if _, err := Build(Options{ProjectDir: dir}); err == nil || !strings.Contains(err.Error(), `unknown theme "inkk"`) {
+		t.Errorf("플래그가 없으면 설정의 이름을 검사해야 한다: err = %v", err)
+	}
+}
+
 // TestLoadDeckUsesAProjectLocalTheme는 프로젝트의 `themes/<이름>/`이 설정과 플래그 **양쪽**에서
 // 이름으로 불림을 못 박는다. 파이프라인이 프로젝트 파일시스템을 값 층에
 // 넘기지 않으면 로컬 테마는 core에서 보이지 않는다.

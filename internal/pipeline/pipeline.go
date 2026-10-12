@@ -498,7 +498,9 @@ func OutDirPath(opts Options) (string, error) {
 	}
 	outDir := opts.OutDir
 	if outDir == "" {
-		cfg, err := core.LoadConfigWithThemes(projectDir, themeHomeFS(opts.ThemeHome))
+		// 여기서 필요한 것은 outDir 하나다. 테마 이름까지 검사하면 `--theme`가 버릴 설정의 이름이
+		// 빌드·watch·preview를 멈춘다 — 실제로 쓸 이름의 검사는 LoadDeck이 한다.
+		cfg, err := core.ReadConfig(projectDir)
 		if err != nil {
 			return "", err
 		}
