@@ -271,6 +271,8 @@ func TestNoBreakAfterSlashBeforeASCII(t *testing.T) {
 		if !near(b[id].h, want) {
 			t.Errorf("%s: height %.1f, want %.1f", id, b[id].h, want)
 		}
+	}
+}
 
 // flex 항목의 자동 최소 크기는 min(지정 크기, 내용 기반 최소)다 — 지정 크기가 있어도 내용이 비면
 // 컨테이너에 맞게 줄어든다. 지정 크기를 바닥으로 삼으면 항목이 컨테이너 밖으로 넘친다.
