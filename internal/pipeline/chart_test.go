@@ -2,6 +2,7 @@ package pipeline_test
 
 import (
 	"math"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -92,5 +93,107 @@ func TestChartLayoutDiagnosticsNameTheAuthoredTag(t *testing.T) {
 		if line := d.Span.Start.Line; !strings.HasPrefix(d.Message, "<point>") || line < 3 || line > 5 {
 			t.Errorf("진단 = %s, want <point> 줄의 <point>", d)
 		}
+	}
+}
+
+// chartBoxes는 한 차트 슬라이드에서 잰 막대와 범주 라벨이다 — 막대는 차트 뿌리(가장 큰 도형)와 1px
+// 기준선을 뺀 도형이고, 범주 라벨은 막대 밴드 바닥보다 아래에 선 글자 상자다.
+func chartBoxes(g *geom.Geometry, chartW float64) (bars, labels []geom.Rect) {
+	bottom := 0.0
+	for _, box := range g.Boxes {
+		if box.El == "shape" && box.Rect.H > 1 && box.Rect.W < chartW {
+			bars = append(bars, box.Rect)
+			bottom = math.Max(bottom, box.Rect.Bottom())
+		}
+	}
+	for _, box := range g.Boxes {
+		if box.El == "text" && box.Rect.Y >= bottom {
+			labels = append(labels, box.Rect)
+		}
+	}
+	return bars, labels
+}
+
+// 범주 라벨은 자기 막대와 같은 열에 선다 — 칸보다 넓은 라벨 하나가 자기 칸을 넓혀 이웃 라벨을
+// 밀어내지 않는다. 넓은 라벨은 자기 칸 안에서 넘치고, 그 넘침이 그 `<point>`의 경고가 된다.
+func TestChartCategoryLabelsStayInTheirColumns(t *testing.T) {
+	testkit.RequireChromium(t)
+	dir := project(t, map[string]string{
+		"balpyo.json": `{"title": "chart"}`,
+		"slides/001_chart.slide": `<slide id="c">
+  <chart type="bar" alt="x" w="600" h="300">
+    <point label="Internationalization" value="10"/>
+    <point label="b" value="20"/>
+    <point label="c" value="30"/>
+    <point label="d" value="40"/>
+    <point label="e" value="50"/>
+  </chart>
+</slide>`,
+	})
+	result, err := pipeline.Build(pipeline.Options{
+		ProjectDir:  dir,
+		Targets:     []render.Target{render.TargetHTML, render.TargetPPTX},
+		CheckLayout: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bars, labels := chartBoxes(result.Geometry, 600)
+	if len(bars) != 5 || len(labels) != 5 {
+		t.Fatalf("막대 %d개 · 라벨 %d개, want 5 · 5: %v %v", len(bars), len(labels), bars, labels)
+	}
+	for i := range bars {
+		barMid, labelMid := bars[i].X+bars[i].W/2, labels[i].X+labels[i].W/2
+		if math.Abs(barMid-labelMid) > 0.5 {
+			t.Errorf("라벨[%d] 가운데 %.1f, 막대 가운데 %.1f — 라벨이 자기 열을 벗어났다", i, labelMid, barMid)
+		}
+		if math.Abs(labels[i].W-labels[0].W) > 0.5 {
+			t.Errorf("라벨[%d] 칸 폭 %.1f, 첫 칸 %.1f — 칸이 균등하지 않다", i, labels[i].W, labels[0].W)
+		}
+	}
+	diags := result.Diagnostics
+	if len(diags) != 1 || !strings.HasPrefix(diags[0].Message, "<point> text overflows its box") || diags[0].Span.Start.Line != 3 {
+		t.Errorf("진단 = %v, want 3행 <point>의 글자 넘침 하나", diags)
+	}
+}
+
+// 점이 많아 라벨이 칸보다 넓어도 라벨 줄은 막대 밴드보다 넓어지지 않는다 — 라벨 i의 가운데는
+// 차트 폭을 n칸으로 나눈 i번째 칸의 가운데다. 선 차트의 점도 같은 칸 나눔에 선다.
+func TestManyChartLabelsKeepTheirColumns(t *testing.T) {
+	testkit.RequireChromium(t)
+	const n = 40
+	for _, kind := range []string{"bar", "line"} {
+		t.Run(kind, func(t *testing.T) {
+			var points strings.Builder
+			for i := 0; i < n; i++ {
+				points.WriteString(`    <point label="May" value="` + strconv.Itoa(i+1) + `"/>` + "\n")
+			}
+			dir := project(t, map[string]string{
+				"balpyo.json":            `{"title": "chart"}`,
+				"slides/001_chart.slide": "<slide id=\"c\">\n  <chart type=\"" + kind + "\" alt=\"x\" w=\"600\" h=\"300\">\n" + points.String() + "  </chart>\n</slide>\n",
+			})
+			result, err := pipeline.Build(pipeline.Options{
+				ProjectDir:  dir,
+				Targets:     []render.Target{render.TargetHTML},
+				CheckLayout: true,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			chart := result.Geometry.Boxes[0].Rect
+			if chart.W != 600 {
+				t.Fatalf("첫 박스 %v, want 폭 600의 차트 뿌리", chart)
+			}
+			_, labels := chartBoxes(result.Geometry, 600)
+			if len(labels) != n {
+				t.Fatalf("라벨 %d개, want %d", len(labels), n)
+			}
+			for i, label := range labels {
+				want := chart.X + (float64(i)+0.5)*chart.W/n
+				if mid := label.X + label.W/2; math.Abs(mid-want) > 0.5 {
+					t.Errorf("라벨[%d] 가운데 %.1f, want %.1f (차트 %v)", i, mid, want, chart)
+				}
+			}
+		})
 	}
 }

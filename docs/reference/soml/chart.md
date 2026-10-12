@@ -171,16 +171,16 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 <shape type="rect" fill="none" border="none" alt="월별 평균 탐지 시간" w="fill" h="420">
   <col gap="0" w="fill" h="fill">
     <row gap="0" align="stretch" grow="1" basis="0" w="fill">
-      <col grow="1" basis="0" gap="0" align="center">
-        <col grow="1" basis="0" w="fill" align="center" gap="xs">
+      <col grow="1" basis="0" min-w="0" gap="0" align="center">
+        <col grow="1" basis="0" min-w="0" w="fill" align="center" gap="xs">
           <spacer grow="0" basis="10%"/>
           <text role="caption" align="center" w="fill" shrink="0">22분</text>
           <shape type="rect" fill="accent1" border="none" w="70%" basis="90%"/>
         </col>
         <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
       </col>
-      <col grow="1" basis="0" gap="0" align="center">
-        <col grow="1" basis="0" w="fill" align="center" gap="xs">
+      <col grow="1" basis="0" min-w="0" gap="0" align="center">
+        <col grow="1" basis="0" min-w="0" w="fill" align="center" gap="xs">
           <spacer grow="0" basis="50.91%"/>
           <text role="caption" align="center" w="fill" color="accent4" shrink="0">12분</text>
           <shape type="rect" fill="accent4" border="none" w="70%" basis="49.09%"/>
@@ -189,8 +189,8 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
       </col>
     </row>
     <row gap="0" w="fill">
-      <text role="caption" align="center" w="fill" grow="1" basis="0">5월</text>
-      <text role="caption" align="center" w="fill" color="accent4" grow="1" basis="0">9월</text>
+      <text role="caption" align="center" w="fill" grow="1" basis="0" min-w="0">5월</text>
+      <text role="caption" align="center" w="fill" color="accent4" grow="1" basis="0" min-w="0">9월</text>
     </row>
   </col>
 </shape>
@@ -200,9 +200,12 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 
 - **범주 한 칸이 `<col grow="1" basis="0">`이다** — 막대 폭과 간격을 픽셀로 세지 않는다. 칸 안에서
   플롯 밴드가 `grow="1"`로 남은 높이를 전부 먹고, 기준선 높이는 거기서 빠진다.
+- **칸의 최소 폭은 0이다** (`min-w="0"`). 칸은 언제나 줄을 점 수로 똑같이 나눈 폭이다 — 칸보다 넓은
+  낱말(`Internationalization`) 하나가 자기 칸을 넓혀 이웃 라벨을 막대와 다른 열로 밀어내지 않는다.
+  넓은 라벨은 자기 칸 안에서 넘치고, `--check-layout`이 그 `<point>`에 글자 넘침 경고를 낸다.
 - **범주 라벨은 칸 안이 아니라 아래의 한 줄이다.** 칸 안에 두면 두 줄로 접힌 라벨 하나가 그 칸의
   밴드만 줄여 그 막대가 이웃보다 짧게 그려진다. 한 줄로 모으면 모든 칸의 밴드가 같은 높이다 — 줄의
-  높이는 가장 높은 라벨이 정한다. 라벨 줄의 칸도 `grow="1" basis="0"`이라 막대와 같은 열에 선다.
+  높이는 가장 높은 라벨이 정한다. 라벨 줄의 칸도 `grow="1" basis="0" min-w="0"`이라 막대와 같은 열에 선다.
 - **막대 높이가 `basis` 백분율이다** (`90%`·`49.09%`) — `22 ÷ (22÷0.9)`와 `12 ÷ (22÷0.9)`다. 위의
   `<spacer>`가 나머지(`10%`·`50.91%`)를 잡는다. 둘을 합치면 밴드를 라벨 한 줄 + 간격만큼 넘치고,
   flex 축소가 그만큼을 **basis에 비례해** 둘에게서 거둔다. 그래서 막대는 언제나 "밴드 − 라벨 −
