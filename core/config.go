@@ -4,6 +4,7 @@
 package core
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,7 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
+	"reflect"
 
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -122,11 +123,29 @@ func ReadConfig(projectDir string) (Config, error) {
 		return Config{}, fmt.Errorf("cannot read %s: %w", ConfigFile, err)
 	}
 
+	// BOM은 키 검사보다 먼저 뗀다 — 진단의 줄:칸이 BOM을 보여 주지 않는 에디터와 맞아야 한다.
+	data = trimBOM(data)
+	// 키 검사를 DisallowUnknownFields에 맡기지 않는 이유: 그 에러는 타입이 없고 자리도 말하지 않는다.
+	// 스키마를 따라 걷는 검사는 틀린 키의 줄:칸과 경로(`targets.pptx.mdoe`)를 낸다.
+	if err := checkJSONKeys(data, 0, reflect.TypeOf(cfg), "", data, false); err != nil {
+		var fe *themeFileError
+		if errors.As(err, &fe) {
+			fe.file = ConfigFile
+			return Config{}, fe
+		}
+		return Config{}, &themeFileError{file: ConfigFile, msg: err.Error()}
+	}
 	// 파일에 있는 필드만 덮어쓰도록 기본값이 담긴 cfg에 그대로 언마샬한다.
-	dec := json.NewDecoder(strings.NewReader(string(trimBOM(data))))
-	dec.DisallowUnknownFields()
+	dec := json.NewDecoder(bytes.NewReader(data))
 	if err := dec.Decode(&cfg); err != nil {
-		return Config{}, fmt.Errorf("cannot parse %s: %w", ConfigFile, err)
+		return Config{}, jsonDecodeError(data, ConfigFile, err)
+	}
+	// Decoder는 값 하나만 읽고 멈춘다 — 뒤에 남은 것을 보지 않으면 붙여 넣다 남은 조각
+	// (`{…} {…}`)이 조용히 버려지고, 저자는 두 번째 객체의 값이 먹었다고 믿는다.
+	end := int(dec.InputOffset())
+	if rest := bytes.TrimLeft(data[end:], " \t\r\n"); len(rest) > 0 {
+		return Config{}, &themeFileError{file: ConfigFile, pos: offsetPos(data, len(data)-len(rest)),
+			msg: "unexpected content after the top-level object"}
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, fmt.Errorf("%s: %w", ConfigFile, err)

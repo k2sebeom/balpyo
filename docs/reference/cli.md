@@ -41,7 +41,7 @@ Sans · Noto Sans Mono · Noto Sans CJK KR · Noto Sans Mono CJK KR)이 빌드�
 
 디렉토리는 위치 인자로도 `--project`로도 준다 (`balpyo init my-talk` = `balpyo init
 --project my-talk`). 둘을 함께 주면 멈춘다 — 어느 쪽이 이겼는지 추측하게 두지 않는다.
-위치 인자는 플래그 앞에도 뒤에도 올 수 있다.
+위치 인자는 플래그 앞에도, 사이에도, 뒤에도 올 수 있다 (`balpyo init --author 나 my-talk --theme ink`).
 
 | 옵션 | 기본값 | 뜻 |
 |---|---|---|

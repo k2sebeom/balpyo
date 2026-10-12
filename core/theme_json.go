@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"strings"
 	"unicode/utf8"
@@ -51,7 +52,7 @@ func (e *themeFileError) diagnostic() soml.Diagnostic {
 // 지워 가며 찾아야 한다. 그리고 접두사 규칙(`$comment*`)을 표현할 수 없다.
 func decodeThemeJSON(data []byte, file string, v any) error {
 	data = trimBOM(data)
-	if err := checkThemeKeys(data, 0, reflect.TypeOf(v).Elem(), "", data); err != nil {
+	if err := checkJSONKeys(data, 0, reflect.TypeOf(v).Elem(), "", data, true); err != nil {
 		var fe *themeFileError
 		if errors.As(err, &fe) {
 			fe.file = file
@@ -60,27 +61,38 @@ func decodeThemeJSON(data []byte, file string, v any) error {
 		return &themeFileError{file: file, msg: err.Error()}
 	}
 	if err := json.Unmarshal(data, v); err != nil {
-		fe := &themeFileError{file: file, msg: err.Error()}
-		var syntax *json.SyntaxError
-		var typ *json.UnmarshalTypeError
-		switch {
-		case errors.As(err, &syntax):
-			// Offset은 틀린 바이트를 읽은 **뒤**다.
-			fe.pos = offsetPos(data, int(syntax.Offset)-1)
-			fe.msg = "invalid JSON: " + syntax.Error()
-		case errors.As(err, &typ):
-			label, offset := locateValue(data, int(typ.Offset), typ.Field)
-			fe.pos = offsetPos(data, offset)
-			fe.msg = fmt.Sprintf("%s must be %s, not %s", label, typeWord(typ.Type), typ.Value)
-		}
-		return fe
+		return jsonDecodeError(data, file, err)
 	}
 	return nil
 }
 
-// checkThemeKeys는 raw(파일 전체 data의 base 오프셋에서 시작하는 값)를 t의 스키마와 대조한다.
-// 문법 오류는 여기서 말하지 않는다 — 뒤의 json.Unmarshal이 위치와 함께 말한다.
-func checkThemeKeys(raw []byte, base int, t reflect.Type, at string, data []byte) error {
+// jsonDecodeError는 encoding/json의 디코드 에러를 file 안의 줄:칸과 JSON 저자의 말로 옮긴다 —
+// 원래 문구(`cannot unmarshal number into Go struct field Config.title of type string`)는 Go의
+// 구조체·타입 이름을 말하고 자리를 말하지 않아, 파일을 고치는 사람에게 쓸모가 없다.
+func jsonDecodeError(data []byte, file string, err error) *themeFileError {
+	fe := &themeFileError{file: file, msg: err.Error()}
+	var syntax *json.SyntaxError
+	var typ *json.UnmarshalTypeError
+	switch {
+	case errors.As(err, &syntax):
+		// Offset은 틀린 바이트를 읽은 **뒤**다.
+		fe.pos = offsetPos(data, int(syntax.Offset)-1)
+		fe.msg = "invalid JSON: " + syntax.Error()
+	case errors.As(err, &typ):
+		label, offset := locateValue(data, int(typ.Offset), typ.Field)
+		fe.pos = offsetPos(data, offset)
+		fe.msg = fmt.Sprintf("%s must be %s, not %s", label, typeWord(typ.Type), typ.Value)
+	case errors.Is(err, io.ErrUnexpectedEOF):
+		// json.Decoder는 끝나지 않은 값을 SyntaxError가 아니라 이 에러로 낸다.
+		fe.msg = "invalid JSON: unexpected end of file"
+	}
+	return fe
+}
+
+// checkJSONKeys는 raw(파일 전체 data의 base 오프셋에서 시작하는 값)를 t의 스키마와 대조한다.
+// comments면 `$comment`로 시작하는 키를 문서 주석으로 건너뛴다 — 테마 파일의 규칙이고, `balpyo.json`은
+// 그 규칙 없이 닫혀 있다. 문법 오류는 여기서 말하지 않는다 — 뒤의 디코딩이 위치와 함께 말한다.
+func checkJSONKeys(raw []byte, base int, t reflect.Type, at string, data []byte, comments bool) error {
 	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
@@ -102,7 +114,7 @@ func checkThemeKeys(raw []byte, base int, t reflect.Type, at string, data []byte
 			if err := dec.Decode(&value); err != nil {
 				return nil
 			}
-			if strings.HasPrefix(key, "$comment") {
+			if comments && strings.HasPrefix(key, "$comment") {
 				continue
 			}
 			field, ok := jsonField(t, key)
@@ -111,7 +123,7 @@ func checkThemeKeys(raw []byte, base int, t reflect.Type, at string, data []byte
 					msg: fmt.Sprintf("unknown key %q at %s", key, joinPath(at, key))}
 			}
 			valueStart := base + int(dec.InputOffset()) - len(value)
-			if err := checkThemeKeys(value, valueStart, field.Type, joinPath(at, key), data); err != nil {
+			if err := checkJSONKeys(value, valueStart, field.Type, joinPath(at, key), data, comments); err != nil {
 				return err
 			}
 		}
@@ -126,7 +138,7 @@ func checkThemeKeys(raw []byte, base int, t reflect.Type, at string, data []byte
 				return nil
 			}
 			valueStart := base + int(dec.InputOffset()) - len(value)
-			if err := checkThemeKeys(value, valueStart, t.Elem(), at+elementLabel(value, i), data); err != nil {
+			if err := checkJSONKeys(value, valueStart, t.Elem(), at+elementLabel(value, i), data, comments); err != nil {
 				return err
 			}
 		}
