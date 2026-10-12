@@ -167,6 +167,13 @@
     if (step > 0) { step--; applyReveal(); return; }
     show(current - 1, true, true, -1);
   };
+  // Home/End는 "그 장을 처음 들어간 상태로"다 — 이미 그 장에 있어도 스텝을 0으로 되돌린다.
+  // show는 같은 장이면 아무것도 하지 않으므로, 결과가 지금 어느 장에 있는지에 따라 달라지지 않게
+  // 여기서 스텝을 직접 되감는다.
+  const jump = (index) => {
+    if (index === current) { step = 0; applyReveal(); return; }
+    show(index, true);
+  };
 
   // ── 오버뷰 ──
   //
@@ -244,8 +251,8 @@
       e.preventDefault(); forward(); break;
     case "ArrowLeft": case "ArrowUp": case "PageUp":
       e.preventDefault(); backward(); break;
-    case "Home": e.preventDefault(); show(0, true); break;
-    case "End": e.preventDefault(); show(slides.length - 1, true); break;
+    case "Home": e.preventDefault(); jump(0); break;
+    case "End": e.preventDefault(); jump(slides.length - 1); break;
     case "n": case "N": notesToggle.click(); break;
     case "o": case "O": e.preventDefault(); setOverview(!overviewOn()); break;
     case "Escape": if (overviewOn()) { e.preventDefault(); setOverview(false); } break;
