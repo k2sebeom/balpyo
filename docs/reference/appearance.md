@@ -456,7 +456,7 @@ PowerPoint에서 확인한다**.
 | `strong` | 굵기 max(부모, 700) | `font-weight: 700` | `a:rPr@b="1"` |
 | `em` | 이탤릭 | `font-style: italic` | `a:rPr@i="1"` |
 | `code` | mono 폰트 (크기는 부모) | `font-family: var(--balpyo-font-mono)` | `a:latin`/`a:ea` 리터럴 typeface (mono는 fontScheme 슬롯이 없다) |
-| `a` | 밑줄 + `accent1` 색 + 링크 | `text-decoration: underline; color: var(--balpyo-color-accent1)` + `<a href>` | `a:rPr@u="sng"` + `schemeClr accent1` + `a:hlinkClick r:id` + 슬라이드 rels의 External 관계 |
+| `a` | 밑줄 + `accent1` 색 + 링크 | `text-decoration: underline; color: var(--balpyo-color-accent1)` + `<a href>` | `a:rPr@u="sng"` + `schemeClr accent1` + `a:hlinkClick r:id` + 슬라이드 rels의 External 관계 (`#…` 덱 안 링크는 `action="ppaction://hlinksldjump"` + 대상 슬라이드로 가는 내부 관계) |
 | `span` | 자기 `color`/`weight`/`size`만 (`size`는 감싼 텍스트 이하) | 해당 선언 | 해당 rPr 속성/채움 |
 | `mark` | 형광펜 = 테마의 `text.mark.highlight` (안의 런도 물려받는다) | `<mark>` 자신의 `background-color` (안의 런은 다시 칠하지 않는다 — 알파 있는 색이 겹친다) | 런마다 `a:rPr/a:highlight` + `schemeClr` (+ 변형) |
 | `br` | 없음 (void) | `<br>` | `a:br` — 문단을 쪼개지 않는다 |
