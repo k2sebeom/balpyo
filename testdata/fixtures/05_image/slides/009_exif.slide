@@ -1,0 +1,16 @@
+<!-- EXIF 방향이 있는 사진이다 — 휴대폰 사진은 전부 이렇다. `rotated.jpg`는 240×120으로 저장되고
+     방향 6(시계 방향 90°)이 적혀 있다: 브라우저는 120×240 세로 그림을 그리고 그 박스를 잰다.
+     PowerPoint는 EXIF를 보지 않으므로 p:pic이 저장된 픽셀의 틀(가로·세로를 바꾼 것)에 90° 회전을
+     얹어야 같은 그림이 잰 박스를 덮는다. 저장된 그림의 좌상단에 빨간 표식, 오른쪽에 파란 띠가
+     있으므로 두 타깃 모두 표식이 오른쪽 위, 띠가 아래에 보여야 한다.
+
+     cover 칸은 박스(2:3)가 보이는 그림(1:2)과 비율이 달라 보이는 그림의 위아래가 잘린다 — 저장된
+     픽셀에서는 좌우다. 저자의 `rotate`는 돌린 그림 위에 더해진다. -->
+<slide id="image-exif">
+  <h2>EXIF 방향</h2>
+  <row gap="lg" align="center">
+    <image src="assets/rotated.jpg" h="320" alt="EXIF 방향대로 세운 사진"/>
+    <image src="assets/rotated.jpg" fit="cover" w="200" h="300" alt="EXIF 방향대로 세운 사진을 채운 것"/>
+    <image src="assets/rotated.jpg" h="240" rotate="15" alt="EXIF 방향 위에 저자가 돌린 사진"/>
+  </row>
+</slide>

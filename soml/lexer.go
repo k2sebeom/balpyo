@@ -16,6 +16,14 @@ func Tokenize(src string) Tokens {
 	// 토큰 수는 대략 소스 길이의 1/4 수준이다. 재할당을 줄이는 초기 용량.
 	toks := make(Tokens, 0, len(src)/4+2)
 
+	// 메모장 같은 에디터는 UTF-8 파일 앞에 BOM을 붙인다. 문자 데이터로 읽으면 보이지 않는
+	// 글자 때문에 "요소 밖 문자"가 되고, 칸을 세면 첫 줄의 진단이 에디터와 한 칸씩 어긋난다.
+	if strings.HasPrefix(src, bom) {
+		end := Pos{Offset: len(bom), Line: 1, Col: 1}
+		toks = append(toks, Token{Kind: TokenBOM, Text: bom, Span: SpanOf(lx.pos, end)})
+		lx.pos = end
+	}
+
 	inTag := false
 	for !lx.atEnd() {
 		var tok Token
@@ -34,6 +42,9 @@ func Tokenize(src string) Tokens {
 	}
 	return append(toks, Token{Kind: TokenEOF, Span: SpanOf(lx.pos, lx.pos)})
 }
+
+// bom은 UTF-8로 인코딩한 바이트 순서 표지(U+FEFF)다.
+const bom = "\uFEFF"
 
 // lexer는 소스를 훑는 커서다.
 type lexer struct {

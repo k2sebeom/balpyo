@@ -181,11 +181,7 @@ func loadThemeNamed(fsys fs.FS, name string) (themePackage, error) {
 	if err != nil {
 		return themePackage{}, err
 	}
-	merged := chain[0]
-	for _, child := range chain[1:] {
-		merged = mergeRawTheme(merged, child)
-	}
-	pkg, err := buildThemePackage(merged)
+	pkg, err := buildThemeChain(chain)
 	if err != nil {
 		return pkg, err
 	}

@@ -100,6 +100,37 @@ func TestWatchCommandRejectsBadInput(t *testing.T) {
 	}
 }
 
+// 주소는 루프백만 받는다 — 아직 공개하지 않은 발표 자료가 같은 네트워크의 누구에게나 열리면
+// 안 된다. 거절은 주소를 잡기 전, 주소 줄을 찍기 전에 일어나야 한다: 한 번이라도 잡으면 이미
+// 열린 것이다.
+func TestWatchCommandRejectsNonLoopbackAddr(t *testing.T) {
+	noBrowser(t)
+	dir := newProject(t)
+	for _, addr := range []string{"0.0.0.0:0", ":0", "[::]:0", "192.0.2.1:0", "example.com:0", "127.0.0.1"} {
+		t.Run(addr, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			var stdout, stderr syncBuffer
+			err := runWatch(ctx, []string{"--project", dir, "--addr", addr}, &stdout, &stderr)
+			if err == nil {
+				t.Fatal("에러여야 한다")
+			}
+			if strings.Contains(stdout.String(), "watching") {
+				t.Errorf("거절한 주소로 서버가 떴다:\n%s", stdout.String())
+			}
+		})
+	}
+}
+
+// 루프백의 세 가지 표기는 모두 받는다 — 거절은 바깥으로 열리는 주소에만 해당한다.
+func TestLoopbackAddrAcceptsLoopbackHosts(t *testing.T) {
+	for _, addr := range []string{"127.0.0.1:4600", "127.0.0.2:0", "[::1]:0", "localhost:4600", "LOCALHOST:0"} {
+		if err := checkLoopbackAddr(addr); err != nil {
+			t.Errorf("%s: %v", addr, err)
+		}
+	}
+}
+
 // help는 watch를 설명해야 한다 — 서브커맨드가 있는데 사용법에 없으면 아무도 찾지 못한다.
 func TestUsageMentionsWatch(t *testing.T) {
 	var stdout, stderr bytes.Buffer

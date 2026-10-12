@@ -628,10 +628,12 @@ func parentDesc(parent *soml.Element) string {
 
 // stackAnchor는 `at`의 9지점 앵커를 해석한다.
 //
-// **`<stack>`의 자식에서만 뜻이 있다**. span과 같은 자리의 부모를 아는 검증이다 —
-// 파서는 부모를 모르는 자리에서 속성 표를 만들기 때문에 이름 층에서 막을 수 없었다. flex/grid
-// 컨테이너나 슬라이드 직속에서 `place-self`의 9지점은 뜻이 없어(단일 셀 grid가 아니다) 조용히
-// 버려지고, 그 침묵이 닫힌 어휘가 막으려던 실패다.
+// **`<stack>`의 자식이거나 canvas 슬라이드의 직속 자식에서만 뜻이 있다** — 캔버스 스테이지는
+// stack과 같은 단일 셀 grid라 `place-self`의 9지점이 같은 뜻을 가진다 (x/y와 같은 경계).
+// span과 같은 자리의 부모를 아는 검증이다 — 파서는 부모를 모르는 자리에서 속성 표를 만들기
+// 때문에 이름 층에서 막을 수 없었다. flex/grid 컨테이너나 canvas가 아닌 슬라이드 직속에서
+// `place-self`의 9지점은 뜻이 없어(단일 셀 grid가 아니다) 조용히 버려지고, 그 침묵이 닫힌
+// 어휘가 막으려던 실패다.
 //
 // 검사 순서는 span과 같다: 값(어휘) 먼저, 부모 나중. `<row at="center">`은 어휘를 통과하고
 // 부모에서 걸리고, `at="top"`(stack 안)은 어휘에서 걸린다 — 두 진단이 겹치지 않는다.
@@ -645,9 +647,8 @@ func (r *resolver) stackAnchor(attr soml.Attr, parent *soml.Element, conflict bo
 	raw := attr.Value
 	for _, anchor := range soml.StackAnchors() {
 		if string(anchor) == raw {
-			if parent == nil || parent.Name != soml.StackElement {
-				r.errorf(attr.NameSpan, "at is only for children of <%s> (%s) — wrap it in <%s> if you need overlap",
-					soml.StackElement, parentDesc(parent), soml.StackElement)
+			if !r.positionParentOK(parent) {
+				r.positionParentError(attr, parent)
 				return "", false
 			}
 			return anchor, true
@@ -687,21 +688,27 @@ func (r *resolver) coord(attr soml.Attr, parent *soml.Element, conflict bool) (s
 	if !ok {
 		return soml.Length{}, false
 	}
-	if !r.coordParentOK(parent) {
-		r.errorf(attr.NameSpan, "%s is only for children of <%s> or direct children of a layout=\"canvas\" slide (%s) — wrap it in <%s> or give the slide layout=\"canvas\"",
-			attr.Name, soml.StackElement, parentDesc(parent), soml.StackElement)
+	if !r.positionParentOK(parent) {
+		r.positionParentError(attr, parent)
 		return soml.Length{}, false
 	}
 	return length, true
 }
 
-// coordParentOK는 `x`/`y`가 유효한 부모에 있는지다 — <stack>의 자식이거나 canvas 슬라이드의
-// 직속 자식(parent == nil이고 슬라이드 layout이 canvas)이다.
-func (r *resolver) coordParentOK(parent *soml.Element) bool {
+// positionParentOK는 자리 속성(`at`·`x`·`y`)이 유효한 부모에 있는지다 — <stack>의 자식이거나
+// canvas 슬라이드의 직속 자식(parent == nil이고 슬라이드 layout이 canvas)이다.
+func (r *resolver) positionParentOK(parent *soml.Element) bool {
 	if parent != nil {
 		return parent.Name == soml.StackElement
 	}
 	return r.layout == soml.LayoutCanvas
+}
+
+// positionParentError는 자리 속성이 유효하지 않은 부모에 있다는 진단이다. 세 속성이 같은 경계를
+// 쓰므로 고치는 방법(<stack>으로 감싸기·layout="canvas")도 한 문장으로 같이 싣는다.
+func (r *resolver) positionParentError(attr soml.Attr, parent *soml.Element) {
+	r.errorf(attr.NameSpan, "%s is only for children of <%s> or direct children of a layout=\"canvas\" slide (%s) — wrap it in <%s> or give the slide layout=\"canvas\"",
+		attr.Name, soml.StackElement, parentDesc(parent), soml.StackElement)
 }
 
 // anchorTypo는 흔한 오타·짧은 이름·축이 뒤바뀐 이름을 올바른 9지점으로 잇는다.
