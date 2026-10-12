@@ -196,6 +196,32 @@ func TestKeepAllBreaksAtSpaces(t *testing.T) {
 	}
 }
 
+// flex 항목의 자동 최소 크기는 min(지정 크기, 내용 기반 최소)다 — 지정 크기가 있어도 내용이 비면
+// 컨테이너에 맞게 줄어든다. 지정 크기를 바닥으로 삼으면 항목이 컨테이너 밖으로 넘친다.
+// 기댓값은 Chromium이 같은 마크업에 낸 값이다.
+func TestFlexAutoMinimumIsSmallerOfSpecifiedAndContent(t *testing.T) {
+	_, b := layoutBody(t, baseCSS, `<div style="display: flex; flex-direction: column; width: 500px; height: 400px">`+
+		`<div id="a" style="height: 390px"></div><div id="b" style="height: 36px"></div></div>`+
+		`<div style="display: flex; width: 400px; height: 100px">`+
+		`<div id="c" style="width: 400px"></div><div id="d" style="width: 36px"></div></div>`)
+	if !near(b["a"].h, 366.1972) || !near(b["b"].y, 366.1972) || !near(b["b"].h, 33.8028) {
+		t.Errorf("column: a h=%.4f, b y=%.4f h=%.4f; want 366.1972, 366.1972 + 33.8028", b["a"].h, b["b"].y, b["b"].h)
+	}
+	if !near(b["c"].w, 366.9725) || !near(b["d"].x, 366.9725) || !near(b["d"].w, 33.0275) {
+		t.Errorf("row: c w=%.4f, d x=%.4f w=%.4f; want 366.9725, 366.9725 + 33.0275", b["c"].w, b["d"].x, b["d"].w)
+	}
+}
+
+// 내용의 min-content가 지정 크기보다 작으면 항목은 거기까지 줄고, 줄일 수 없는 낱말은 지켜진다
+// (Chromium: 98.6 + 10.6 — 컨테이너 100px을 넘친다).
+func TestFlexAutoMinimumKeepsContentMinimum(t *testing.T) {
+	_, b := layoutBody(t, baseCSS, `<div style="display: flex; width: 100px; font-size: 20px; font-family: 'Noto Sans'; line-height: 30px">`+
+		`<div id="a" style="width: 300px">abcdefghij</div><div id="b" style="width: 300px">x</div></div>`)
+	if math.Abs(b["a"].w-98.6) > 0.5 || math.Abs(b["b"].w-10.6) > 0.5 {
+		t.Errorf("a w=%.2f, b w=%.2f; want about 98.6 and 10.6", b["a"].w, b["b"].w)
+	}
+}
+
 // fill-rule="evenodd"인 경로는 하위 경로가 겹친 곳을 비운다 — 같은 방향으로 감은 안쪽 사각형이
 // 액자의 구멍이 된다. 규칙이 없으면(nonzero) 같은 경로가 꽉 찬다.
 func TestSVGFillRuleEvenOdd(t *testing.T) {
