@@ -410,10 +410,18 @@ func (p *parser) parseDocument() *Element {
 			case root == nil:
 				root = elem
 			}
+			if stillOpen && isVoid(elem.Name) && !p.voidHasEndTag(elem.Name) {
+				// HTML처럼 닫지 않은 void 태그(`<br>`, `<image src="…">`)다. 내용은 없고 빠진
+				// 것은 `/` 하나다 — 그 자리에서 닫는다. 스택에 올리면 뒤따르는 형제가 이 요소의
+				// 내용이 되어 "내용을 가질 수 없다"는 틀린 진단과, 바깥 닫는 태그에서 "먼저
+				// 닫혀야 한다"는 두 번째 진단이 하나의 실수에서 나온다.
+				p.errorf(elem.NameSpan, "void tag <%s> must be self-closed (write <%s/>)", elem.Name, elem.Name)
+				stillOpen = false
+			}
 			if stillOpen {
-				if _, known := elementSpecs[elem.Name]; known && specOf(elem).model == modelVoid {
-					// void 요소는 자기 닫힘이 표준이다. 진단하되 스택에는 올린다 — 짝이 되는
-					// </br>가 "여는 태그가 없다"는 두 번째 진단을 만들지 않게.
+				if isVoid(elem.Name) {
+					// 짝 닫는 태그가 있는 void 요소(`<br>…</br>`)다. 진단하되 스택에는 올린다 —
+					// 짝이 되는 </br>가 "여는 태그가 없다"는 두 번째 진단을 만들지 않게.
 					p.errorf(elem.NameSpan, "void tag <%s> cannot have content (write <%s/>)", elem.Name, elem.Name)
 				}
 				stack = append(stack, elem)
@@ -452,6 +460,59 @@ func (p *parser) parseDocument() *Element {
 			p.i++
 		}
 	}
+}
+
+// isVoid는 name이 아무것도 담지 않는 알려진 태그인지 답한다.
+func isVoid(name string) bool {
+	spec, known := elementSpecs[name]
+	return known && spec.model == modelVoid
+}
+
+// voidHasEndTag는 방금 읽은 void 여는 태그 `<name>`에 짝이 되는 `</name>`이 같은 깊이에
+// 뒤따르는지 미리 본다. 짝이 있으면 저자는 내용을 담으려 한 것이고(`<br>…</br>`), 없으면
+// HTML처럼 닫지 않은 것이다(`<br>`). 그 사이에 열리고 닫히는 요소는 깊이로 건너뛴다.
+// 안쪽의 닫지 않은 void 태그는 깊이를 바꾸지 않는다 — 그 짝 닫는 태그도 같은 이유로
+// 깊이를 바꾸지 않는다.
+func (p *parser) voidHasEndTag(name string) bool {
+	depth := 0
+	nextName := func(j int) string {
+		for j++; j < len(p.toks); j++ {
+			if tok := p.toks[j]; !tok.Kind.IsTrivia() {
+				if tok.Kind == TokenName {
+					return tok.Text
+				}
+				return ""
+			}
+		}
+		return ""
+	}
+	innerVoid := false
+	for j := p.i; j < len(p.toks); j++ {
+		switch p.toks[j].Kind {
+		case TokenTagStart:
+			innerVoid = isVoid(nextName(j))
+			if !innerVoid {
+				depth++
+			}
+		case TokenTagEndSelfClose:
+			if !innerVoid {
+				depth--
+			}
+			innerVoid = false
+		case TokenTagEnd:
+			innerVoid = false
+		case TokenTagStartClose:
+			innerVoid = false
+			closing := nextName(j)
+			if depth == 0 {
+				return closing == name
+			}
+			if !isVoid(closing) {
+				depth--
+			}
+		}
+	}
+	return false
 }
 
 // charData는 문자 데이터 토큰을 부모의 콘텐츠 모델에 맞게 처리한다.
@@ -573,8 +634,9 @@ func (p *parser) parseStartTag() (elem *Element, stillOpen bool) {
 		default:
 			// `<`나 `</`가 태그 안에 나왔다 — 이 태그의 `>`가 없다는 뜻이다. 여기서 태그를
 			// 끝내고 그 토큰은 문서 흐름으로 넘긴다 (렉서가 `<`를 넘겨 준 이유와 같다).
+			// void 태그는 여기서 닫는다 — `>`가 빠진 실수 하나가 자기 닫힘 진단을 하나 더 만들지 않게.
 			p.errorf(elem.NameSpan, "tag <%s> is not closed with `>`", elem.Name)
-			return elem, true
+			return elem, !isVoid(elem.Name)
 		}
 	}
 }

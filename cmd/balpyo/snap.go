@@ -26,7 +26,7 @@ func runSnap(args []string, stdout, stderr io.Writer) error {
 	makeGIF := fs.Bool("gif", false, "also write deck.gif with one frame per reveal step")
 	outline := fs.Bool("outline", false, "draw the measured box and id of every element")
 	strict := fs.Bool("strict", false, "promote warnings to errors")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {

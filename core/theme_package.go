@@ -501,6 +501,10 @@ type rawTheme struct {
 	assets map[string]rawAsset
 	// origin은 이 선언을 읽은 자리다 (내장 · 로컬 · 설치) — 병합에는 쓰이지 않는다.
 	origin themeOrigin
+	// dir · sources는 읽은 디렉토리와 JSON 파일 원문(파일 이름 → 바이트)이다 — 병합에는 쓰이지
+	// 않는다. 병합 결과를 검사하다 난 에러를 그 선언을 적은 파일의 줄:칸으로 되돌리는 데 쓴다.
+	dir     string
+	sources map[string][]byte
 }
 
 // loadTheme는 fsys의 dir/ 아래 테마 패키지를 **상속 없이** 읽는다. dir은 fs 경로다 (내장은
@@ -533,7 +537,7 @@ func readRawTheme(fsys fs.FS, dir string) (rawTheme, error) {
 	if err != nil {
 		return raw, fmt.Errorf("cannot read theme.json: %w", err)
 	}
-	if err := decodeThemeJSON(manifestBytes, path.Join(dir, "theme.json"), &raw.manifest, false); err != nil {
+	if err := decodeThemeJSON(manifestBytes, path.Join(dir, "theme.json"), &raw.manifest); err != nil {
 		return raw, err
 	}
 	if raw.manifest.Name == "" {
@@ -553,6 +557,13 @@ func readRawTheme(fsys fs.FS, dir string) (rawTheme, error) {
 	if raw.assets, err = readThemeAssets(fsys, dir, raw.manifest.Name); err != nil {
 		return raw, err
 	}
+	raw.dir = dir
+	raw.sources = map[string][]byte{"theme.json": manifestBytes}
+	for _, name := range []string{"tokens.json", "components.json"} {
+		if data, err := fs.ReadFile(fsys, path.Join(dir, name)); err == nil {
+			raw.sources[name] = data
+		}
+	}
 	return raw, nil
 }
 
@@ -567,7 +578,7 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 	assets := &assetResolver{files: raw.assets}
 	chrome, err := loadChrome(pkg.manifest, assets)
 	if err != nil {
-		return pkg, err
+		return pkg, declIn("theme.json", err)
 	}
 	pkg.chrome = chrome
 
@@ -576,30 +587,33 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 	// 산출물에서 영 값으로 나타난다 — 근거는 theme_require.go의 패키지 주석에 있다. 컴포넌트
 	// 표보다 먼저 보는 이유는 역할 검사가 이 표를 참조로 쓴다는 것이다.
 	if err := requireTokens(tokens); err != nil {
-		return pkg, err
+		return pkg, declIn("tokens.json", err)
 	}
 	// 색 토큰의 clrScheme 자리도 여기서 본다 — 필수 이름이 다 있는지 다음에 보는
 	// 이유는 순서가 진단의 품질이라는 것이다: 슬롯 상한("남은 자리가 없다")보다 빠진 이름이
 	// 먼저 읽혀야 테마 제작자가 표를 두 번 고치지 않는다.
 	if err := requireColorSlots(tokens); err != nil {
-		return pkg, err
+		return pkg, declIn("tokens.json", err)
+	}
+	if err := requireTokenWiring(tokens); err != nil {
+		return pkg, declIn("tokens.json", err)
 	}
 	pkg.tokens = tokens
 
 	comps, err := componentsFromFile(raw.components, tokens)
 	if err != nil {
-		return pkg, err
+		return pkg, declIn("components.json", err)
 	}
 	if err := requireComponents(tokens, comps); err != nil {
-		return pkg, err
+		return pkg, declIn("components.json", err)
 	}
 	if err := requireComponentColors(tokens, comps); err != nil {
-		return pkg, err
+		return pkg, declIn("components.json", err)
 	}
 	pkg.components = comps
 
 	if err := checkLayoutFiles(pkg.manifest, raw.layouts, raw.slotLayouts); err != nil {
-		return pkg, err
+		return pkg, declIn("theme.json", declAt(err, atKey("layouts")))
 	}
 	pkg.layouts = raw.layouts
 	pkg.slotLayouts = raw.slotLayouts
@@ -607,7 +621,7 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 	// 배경은 토큰 표 **뒤**다 — 채움이 색 토큰을 가리킨다.
 	backgrounds, err := loadBackgrounds(pkg.manifest, tokens, assets)
 	if err != nil {
-		return pkg, err
+		return pkg, declIn("theme.json", declAt(err, atKey("backgrounds")))
 	}
 	pkg.backgrounds = backgrounds
 	// 선언이 가리킨 그림만 싣는다 (가리킨 순서) — `assets/` 안의 쓰지 않는 파일은 산출물에 나가지 않는다.
@@ -636,10 +650,11 @@ func loadChrome(manifest themeManifest, assets *assetResolver) ([]chromeDecl, er
 	for i, raw := range manifest.Chrome {
 		decl, err := chromeDeclOf(raw, layouts, assets)
 		if err != nil {
-			return nil, fmt.Errorf("theme.json chrome[%d]: %w", i, err)
+			return nil, declAt(fmt.Errorf("theme.json chrome[%d]: %w", i, err), atKey("chrome"), atEntry("kind", raw.Kind))
 		}
 		if seen[decl.kind] {
-			return nil, fmt.Errorf("theme.json chrome[%d]: kind %s is declared twice", i, decl.kind)
+			return nil, declAt(fmt.Errorf("theme.json chrome[%d]: kind %s is declared twice", i, decl.kind),
+				atKey("chrome"), atEntry("kind", raw.Kind))
 		}
 		seen[decl.kind] = true
 		decls = append(decls, decl)
@@ -660,7 +675,7 @@ func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool, assets *assetReso
 		}
 	}
 	if decl.kind == "" {
-		return decl, fmt.Errorf("unknown kind %q (available kinds: %s)", raw.Kind, strings.Join(kinds, ", "))
+		return decl, declAt(fmt.Errorf("unknown kind %q (available kinds: %s)", raw.Kind, strings.Join(kinds, ", ")), atKey("kind"))
 	}
 
 	aligns := make([]string, 0, len(soml.ChromeAligns()))
@@ -672,39 +687,39 @@ func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool, assets *assetReso
 	}
 	if decl.align == "" {
 		if raw.Align == "" {
-			return decl, fmt.Errorf("missing align (available aligns: %s)", strings.Join(aligns, ", "))
+			return decl, declAt(fmt.Errorf("missing align (available aligns: %s)", strings.Join(aligns, ", ")), atKey("align"))
 		}
-		return decl, fmt.Errorf("unknown align %q (available aligns: %s)", raw.Align, strings.Join(aligns, ", "))
+		return decl, declAt(fmt.Errorf("unknown align %q (available aligns: %s)", raw.Align, strings.Join(aligns, ", ")), atKey("align"))
 	}
 
 	if decl.kind == soml.ChromeLogo {
 		// 그림 크롬은 역할이 아니라 그림과 높이를 갖는다 — 글자 외관이 없으므로 role은 뜻이 없다.
 		if raw.Role != "" {
-			return decl, fmt.Errorf("logo cannot have a role (%q) — picture chrome has no text appearance; height sets its size", raw.Role)
+			return decl, declAt(fmt.Errorf("logo cannot have a role (%q) — picture chrome has no text appearance; height sets its size", raw.Role), atKey("role"))
 		}
 		if raw.Image == "" {
-			return decl, fmt.Errorf("logo has no image — point it at a picture in the theme package (e.g. %s/logo.png)", themeAssetDir)
+			return decl, declAt(fmt.Errorf("logo has no image — point it at a picture in the theme package (e.g. %s/logo.png)", themeAssetDir), atKey("image"))
 		}
 		if raw.Height <= 0 {
-			return decl, fmt.Errorf("logo height is missing or not positive (%g) — give a height in logical px; the picture's aspect ratio sets the width", raw.Height)
+			return decl, declAt(fmt.Errorf("logo height is missing or not positive (%g) — give a height in logical px; the picture's aspect ratio sets the width", raw.Height), atKey("height"))
 		}
 		key, err := assets.resolve("logo image", raw.Image)
 		if err != nil {
-			return decl, err
+			return decl, declAt(err, atKey("image"))
 		}
 		decl.image, decl.height, decl.alt = key, raw.Height, raw.Alt
-		return decl, chromeSkips(&decl, raw, layouts)
+		return decl, declAt(chromeSkips(&decl, raw, layouts), atKey("skipLayouts"))
 	}
 	if raw.Image != "" || raw.Height != 0 || raw.Alt != "" {
 		return decl, fmt.Errorf("%s cannot have image · height · alt — those belong to picture chrome (logo)", decl.kind)
 	}
 	if raw.Format != "" {
 		if decl.kind != soml.ChromePageNumber {
-			return decl, fmt.Errorf("%s cannot have a format — only pageNumber has one", decl.kind)
+			return decl, declAt(fmt.Errorf("%s cannot have a format — only pageNumber has one", decl.kind), atKey("format"))
 		}
 		rest := strings.ReplaceAll(strings.Replace(raw.Format, "{n}", "", 1), "{total}", "")
 		if strings.Count(raw.Format, "{n}") != 1 || strings.ContainsAny(rest, "{}") {
-			return decl, fmt.Errorf("pageNumber format %q needs {n} exactly once and may use {total} — e.g. \"{n} / {total}\"", raw.Format)
+			return decl, declAt(fmt.Errorf("pageNumber format %q needs {n} exactly once and may use {total} — e.g. \"{n} / {total}\"", raw.Format), atKey("format"))
 		}
 		decl.format = raw.Format
 	}
@@ -718,11 +733,11 @@ func chromeDeclOf(raw chromeDeclFile, layouts map[string]bool, assets *assetReso
 	}
 	if decl.role == "" {
 		if raw.Role == "" {
-			return decl, fmt.Errorf("missing role (available roles: %s)", strings.Join(roles, ", "))
+			return decl, declAt(fmt.Errorf("missing role (available roles: %s)", strings.Join(roles, ", ")), atKey("role"))
 		}
-		return decl, fmt.Errorf("unknown role %q (available roles: %s)", raw.Role, strings.Join(roles, ", "))
+		return decl, declAt(fmt.Errorf("unknown role %q (available roles: %s)", raw.Role, strings.Join(roles, ", ")), atKey("role"))
 	}
-	return decl, chromeSkips(&decl, raw, layouts)
+	return decl, declAt(chromeSkips(&decl, raw, layouts), atKey("skipLayouts"))
 }
 
 // chromeSkips는 제외 레이아웃 목록을 검사해 선언에 싣는다 — 이 테마의 레이아웃 이름만 받는다.
@@ -763,7 +778,7 @@ func readTokensFile(fsys fs.FS, dir string, optional bool) (tokensFile, error) {
 		}
 		return file, fmt.Errorf("cannot read tokens.json: %w", err)
 	}
-	if err := decodeThemeJSON(raw, path.Join(dir, "tokens.json"), &file, true); err != nil {
+	if err := decodeThemeJSON(raw, path.Join(dir, "tokens.json"), &file); err != nil {
 		return file, err
 	}
 	return file, nil
@@ -820,7 +835,7 @@ func readComponentsFile(fsys fs.FS, dir string, optional bool) (componentsFile, 
 		}
 		return file, fmt.Errorf("cannot read components.json: %w", err)
 	}
-	if err := decodeThemeJSON(raw, path.Join(dir, "components.json"), &file, true); err != nil {
+	if err := decodeThemeJSON(raw, path.Join(dir, "components.json"), &file); err != nil {
 		return file, err
 	}
 	return file, nil
@@ -837,9 +852,12 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 			Weight: r.Weight, LineHeight: r.LineHeight,
 			Color: soml.TokenColor(r.Color), Align: soml.TextAlign(r.Align),
 		}
+		if err := checkWeight(fmt.Sprintf("text role %q", r.Name), r.Weight); err != nil {
+			return comps, declAt(err, atKey("text"), atKey("roles"), atEntry("name", r.Name), atKey("weight"))
+		}
 		var typo textPatch
 		if err := typographyPatch(&typo, fmt.Sprintf("text role %q", r.Name), r.Tracking, r.Case); err != nil {
-			return comps, err
+			return comps, declAt(err, atKey("text"), atKey("roles"), atEntry("name", r.Name))
 		}
 		mergeText(&style, typo)
 		comps.textRoles[soml.TextRole(r.Name)] = style
@@ -848,36 +866,41 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 	comps.textComponentDefaults = map[string]textPatch{}
 	comps.textSlotDefaults = map[string]textPatch{}
 	for _, d := range file.Text.ComponentDefaults {
+		// 항목은 주인(tag 또는 layout + slot)으로 고른다 — 비어 있는 필드는 "없음"과 같다.
+		entry := []declStep{atKey("text"), atKey("componentDefaults"), atEntry("tag", d.Tag, "layout", d.Layout, "slot", d.Slot)}
 		var patch textPatch
 		if d.Size != nil {
 			patch.size = d.Size
 		}
 		if d.Weight != nil {
+			if err := checkWeight(fmt.Sprintf("text.componentDefaults %q", d.key()), *d.Weight); err != nil {
+				return comps, declAt(err, append(entry, atKey("weight"))...)
+			}
 			patch.weight = d.Weight
 		}
 		if err := typographyPatch(&patch, fmt.Sprintf("text.componentDefaults %q", d.key()), d.Tracking, d.Case); err != nil {
-			return comps, err
+			return comps, declAt(err, entry...)
 		}
 		if d.Color != nil {
 			c, err := themeColor(theme, fmt.Sprintf("text.componentDefaults %q color", d.key()), *d.Color)
 			if err != nil {
-				return comps, err
+				return comps, declAt(err, append(entry, atKey("color"))...)
 			}
 			patch.color = &c
 		}
 		switch {
 		case d.Slot == "" && d.Layout == "":
 			if d.Tag == "" {
-				return comps, fmt.Errorf("a text.componentDefaults entry has no owner — use tag, or layout + slot")
+				return comps, declAt(fmt.Errorf("a text.componentDefaults entry has no owner — use tag, or layout + slot"), entry...)
 			}
 			comps.textComponentDefaults[d.Tag] = patch
 		case d.Tag != "":
-			return comps, fmt.Errorf("text.componentDefaults: tag %q cannot be combined with slot — an entry has one owner", d.Tag)
+			return comps, declAt(fmt.Errorf("text.componentDefaults: tag %q cannot be combined with slot — an entry has one owner", d.Tag), entry...)
 		default:
 			layout := soml.SlideLayout(d.Layout)
 			if _, ok := soml.LayoutSlot(layout, d.Slot); !ok {
-				return comps, fmt.Errorf("text.componentDefaults: slot %q/%q is not in the layout vocabulary (slots of layout %q: %s)",
-					d.Layout, d.Slot, d.Layout, strings.Join(soml.SlotNames(layout), ", "))
+				return comps, declAt(fmt.Errorf("text.componentDefaults: slot %q/%q is not in the layout vocabulary (slots of layout %q: %s)",
+					d.Layout, d.Slot, d.Layout, strings.Join(soml.SlotNames(layout), ", ")), append(entry, atKey("slot"))...)
 			}
 			comps.textSlotDefaults[d.key()] = patch
 		}
@@ -885,11 +908,11 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 
 	if m := file.Text.Mark; m != nil && m.Highlight != "" {
 		c, err := themeColor(theme, "text.mark highlight", m.Highlight)
-		if err != nil {
-			return comps, err
-		}
 		if c.IsGradient() {
-			return comps, fmt.Errorf("text.mark highlight %q cannot be a gradient — a highlight is one color (PPTX a:highlight holds a single color)", m.Highlight)
+			err = fmt.Errorf("text.mark highlight %q cannot be a gradient — a highlight is one color (PPTX a:highlight holds a single color)", m.Highlight)
+		}
+		if err != nil {
+			return comps, declAt(err, atKey("text"), atKey("mark"), atKey("highlight"))
 		}
 		comps.markHighlight = &c
 	}
@@ -899,16 +922,20 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 		if v.Size != nil {
 			patch.size = v.Size
 		}
+		entry := []declStep{atKey("text"), atKey("variants"), atEntry("name", v.Name)}
 		if v.Weight != nil {
+			if err := checkWeight(fmt.Sprintf("text variant %q", v.Name), *v.Weight); err != nil {
+				return comps, declAt(err, append(entry, atKey("weight"))...)
+			}
 			patch.weight = v.Weight
 		}
 		if err := typographyPatch(&patch, fmt.Sprintf("text variant %q", v.Name), v.Tracking, v.Case); err != nil {
-			return comps, err
+			return comps, declAt(err, entry...)
 		}
 		if v.Color != nil {
 			c, err := themeColor(theme, fmt.Sprintf("text variant %q color", v.Name), *v.Color)
 			if err != nil {
-				return comps, err
+				return comps, declAt(err, append(entry, atKey("color"))...)
 			}
 			patch.color = &c
 		}
@@ -918,13 +945,13 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 	shapeDefault, err := shapePatchFromFile(theme, file.Shape.Default.Fill,
 		file.Shape.Default.Border, file.Shape.Default.Radius, "")
 	if err != nil {
-		return comps, fmt.Errorf("shape.default: %w", err)
+		return comps, declAt(fmt.Errorf("shape.default: %w", err), atKey("shape"), atKey("default"))
 	}
 	comps.shapeDefault = shapeDefault
 	for _, v := range file.Shape.Variants {
 		patch, err := shapeVariantPatchFromFile(theme, v)
 		if err != nil {
-			return comps, fmt.Errorf("shape variant %q: %w", v.Name, err)
+			return comps, declAt(fmt.Errorf("shape variant %q: %w", v.Name, err), atKey("shape"), atKey("variants"), atEntry("name", v.Name))
 		}
 		comps.shapeVariants = append(comps.shapeVariants, shapeVariant{name: v.Name, patch: patch})
 	}
@@ -932,32 +959,32 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 	for _, v := range file.Image.Variants {
 		patch, err := imageVariantPatchFromFile(theme, v)
 		if err != nil {
-			return comps, fmt.Errorf("image variant %q: %w", v.Name, err)
+			return comps, declAt(fmt.Errorf("image variant %q: %w", v.Name, err), atKey("image"), atKey("variants"), atEntry("name", v.Name))
 		}
 		comps.imageVariants = append(comps.imageVariants, imageVariant{name: v.Name, patch: patch})
 	}
 
 	cd := file.Connector.Default
 	if comps.connectorDefault, err = connectorPatchFromFile(theme, "connector.default", cd.Line, cd.Start, cd.End); err != nil {
-		return comps, err
+		return comps, declAt(err, atKey("connector"), atKey("default"))
 	}
 	for _, v := range file.Connector.Variants {
 		patch, err := connectorPatchFromFile(theme, fmt.Sprintf("connector variant %q", v.Name), v.Line, v.Start, v.End)
 		if err != nil {
-			return comps, err
+			return comps, declAt(err, atKey("connector"), atKey("variants"), atEntry("name", v.Name))
 		}
 		comps.connectorVariants = append(comps.connectorVariants, connectorVariant{name: v.Name, patch: patch})
 	}
 
 	table, err := tableComponentsFromFile(file.Table)
 	if err != nil {
-		return comps, fmt.Errorf("table: %w", err)
+		return comps, declAt(fmt.Errorf("table: %w", err), atKey("table"))
 	}
 	comps.table = table
 
 	code, err := codeComponentsFromFile(file.Code, theme)
 	if err != nil {
-		return comps, fmt.Errorf("code: %w", err)
+		return comps, declAt(fmt.Errorf("code: %w", err), atKey("code"))
 	}
 	comps.code = code
 
@@ -972,18 +999,18 @@ func tableComponentsFromFile(file tableComponentsFile) (tableComponents, error) 
 	var table tableComponents
 	cell, err := cellPatchFromFile(file.Cell)
 	if err != nil {
-		return table, fmt.Errorf("cell: %w", err)
+		return table, declAt(fmt.Errorf("cell: %w", err), atKey("cell"))
 	}
 	table.cell = cell
 	header, err := cellPatchFromFile(file.Header)
 	if err != nil {
-		return table, fmt.Errorf("header: %w", err)
+		return table, declAt(fmt.Errorf("header: %w", err), atKey("header"))
 	}
 	table.header = header
 	if file.Stripe != "" {
 		fill, err := fillFromString(file.Stripe)
 		if err != nil {
-			return table, fmt.Errorf("stripe: %w", err)
+			return table, declAt(fmt.Errorf("stripe: %w", err), atKey("stripe"))
 		}
 		table.stripe = fill
 	}
@@ -998,14 +1025,14 @@ func cellPatchFromFile(file cellStyleFile) (cellPatch, error) {
 	if file.Fill != "" {
 		fill, err := fillFromString(file.Fill)
 		if err != nil {
-			return patch, err
+			return patch, declAt(err, atKey("fill"))
 		}
 		patch.fill = fill
 	}
 	if file.Border != "" {
 		border, err := borderFromString(file.Border)
 		if err != nil {
-			return patch, err
+			return patch, declAt(err, atKey("border"))
 		}
 		patch.border = border
 	}
@@ -1014,6 +1041,9 @@ func cellPatchFromFile(file cellStyleFile) (cellPatch, error) {
 		patch.color = &c
 	}
 	if file.Weight != nil {
+		if err := checkWeight("cell", *file.Weight); err != nil {
+			return patch, declAt(err, atKey("weight"))
+		}
 		patch.weight = file.Weight
 	}
 	return patch, nil
@@ -1031,24 +1061,34 @@ func solidBorder(width float64, token string) *soml.Border {
 	return &soml.Border{Width: width, Style: soml.BorderSolid, Color: soml.TokenColor(token)}
 }
 
-// radiusToken·shadowToken은 표에 없는 이름이면 nil을 준다 — 그 단이 그 필드를 정하지 않은
-// 것이 된다. 필수 토큰(sm·md·lg · soft)은 로더가 요구하므로(theme_require.go) 내장 테마에서는
-// nil이 나오지 않지만, 테마가 **자기 이름**을 쓴 variant는 그 이름이 자기 tokens.json에 있어야
-// 한다 — 없으면 빌드를 멈추는 대신 그 필드가 빈다 (모르는 variant를 경고로 두는 것과 같은 태도).
-func radiusToken(theme soml.Theme, name string) *soml.Radius {
+// radiusToken·shadowToken은 컴포넌트가 가리킨 반경·그림자 이름을 이 테마의 토큰 표에서 찾는다.
+// 표에 없는 이름은 에러다 — 같은 이름을 슬라이드에 인라인으로 쓰면 에러인데, 테마에서는 그 필드를
+// 비우고 지나가면 반경은 아래 단의 값으로 떨어지고 그림자는 사라져 두 자리의 판정이 갈린다.
+func radiusToken(theme soml.Theme, name string) (*soml.Radius, error) {
 	token, ok := theme.Radius(name)
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("unknown radius token %q (available tokens: %s)",
+			name, strings.Join(theme.RadiusNames(), ", "))
 	}
-	return ptr(soml.TokenRadius(name, token.Px))
+	return ptr(soml.TokenRadius(name, token.Px)), nil
 }
 
-func shadowToken(theme soml.Theme, name string) *soml.ShadowToken {
+func shadowToken(theme soml.Theme, name string) (*soml.ShadowToken, error) {
 	token, ok := theme.Shadow(name)
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("unknown shadow token %q (available tokens: %s)",
+			name, strings.Join(theme.ShadowNames(), ", "))
 	}
-	return &token
+	return &token, nil
+}
+
+// checkWeight는 테마가 적은 굵기가 CSS font-weight의 범위(1~1000)인지 본다. 범위 밖 수치는 웹이
+// 선언을 버려 보통 굵기로 그리는데 PPTX는 임계값으로 굵게 켜므로, 두 타깃이 다른 글자를 낸다.
+func checkWeight(where string, weight int) error {
+	if weight < 1 || weight > 1000 {
+		return fmt.Errorf("%s weight %d is out of range — weight is a CSS font-weight from 1 to 1000", where, weight)
+	}
+	return nil
 }
 
 // shapePatchFromFile은 shape default의 문자열 필드를 shapePatch로 눕힌다. 빈 문자열은 "정하지
@@ -1059,22 +1099,27 @@ func shapePatchFromFile(theme soml.Theme, fill, border, radius, shadow string) (
 	if fill != "" {
 		f, err := themeShapeFill(theme, fill)
 		if err != nil {
-			return patch, err
+			return patch, declAt(err, atKey("fill"))
 		}
 		patch.fill = f
 	}
 	if border != "" {
 		b, err := themeBorder(theme, border)
 		if err != nil {
-			return patch, err
+			return patch, declAt(err, atKey("border"))
 		}
 		patch.border = b
 	}
+	var err error
 	if radius != "" {
-		patch.radius = radiusToken(theme, radius)
+		if patch.radius, err = radiusToken(theme, radius); err != nil {
+			return patch, declAt(err, atKey("radius"))
+		}
 	}
 	if shadow != "" {
-		patch.shadow = shadowToken(theme, shadow)
+		if patch.shadow, err = shadowToken(theme, shadow); err != nil {
+			return patch, declAt(err, atKey("shadow"))
+		}
 	}
 	return patch, nil
 }
@@ -1101,15 +1146,20 @@ func imageVariantPatchFromFile(theme soml.Theme, v imageVariantFile) (imagePatch
 	if v.Border != nil {
 		b, err := themeBorder(theme, *v.Border)
 		if err != nil {
-			return patch, err
+			return patch, declAt(err, atKey("border"))
 		}
 		patch.border = b
 	}
+	var err error
 	if v.Radius != nil {
-		patch.radius = radiusToken(theme, *v.Radius)
+		if patch.radius, err = radiusToken(theme, *v.Radius); err != nil {
+			return patch, declAt(err, atKey("radius"))
+		}
 	}
 	if v.Shadow != nil {
-		patch.shadow = shadowToken(theme, *v.Shadow)
+		if patch.shadow, err = shadowToken(theme, *v.Shadow); err != nil {
+			return patch, declAt(err, atKey("shadow"))
+		}
 	}
 	return patch, nil
 }
@@ -1123,7 +1173,7 @@ func imageVariantPatchFromFile(theme soml.Theme, v imageVariantFile) (imagePatch
 // 위치가 없으므로 메시지만 에러로 올린다 — 위치는 호출자가 감싸는 자리 이름이 말한다. 토큰 참조만
 // 쓰는지(리터럴 금지)는 이 문법의 몫이 아니라 requireComponentColors의 몫이다.
 func themeFill(theme soml.Theme, raw string) (*soml.Fill, error) {
-	r := &resolver{theme: theme}
+	r := &resolver{theme: theme, tokensOnly: true}
 	f, ok := r.fill(soml.Attr{Name: "fill", Value: raw, HasValue: true})
 	if err := themeValueErr(r, ok); err != nil {
 		return nil, err
@@ -1133,7 +1183,7 @@ func themeFill(theme soml.Theme, raw string) (*soml.Fill, error) {
 
 // themeShapeFill은 테마의 도형 채움이다 — 도형 자리라 무늬를 받는다 (shapeFill).
 func themeShapeFill(theme soml.Theme, raw string) (*soml.Fill, error) {
-	r := &resolver{theme: theme}
+	r := &resolver{theme: theme, tokensOnly: true}
 	f, ok := r.shapeFill(soml.Attr{Name: "fill", Value: raw, HasValue: true})
 	if err := themeValueErr(r, ok); err != nil {
 		return nil, err
@@ -1142,7 +1192,7 @@ func themeShapeFill(theme soml.Theme, raw string) (*soml.Fill, error) {
 }
 
 func themeBorder(theme soml.Theme, raw string) (*soml.Border, error) {
-	r := &resolver{theme: theme}
+	r := &resolver{theme: theme, tokensOnly: true}
 	b, ok := r.border(soml.Attr{Name: "border", Value: raw, HasValue: true})
 	if err := themeValueErr(r, ok); err != nil {
 		return nil, err
@@ -1151,7 +1201,7 @@ func themeBorder(theme soml.Theme, raw string) (*soml.Border, error) {
 }
 
 func themeColor(theme soml.Theme, where, raw string) (soml.Color, error) {
-	r := &resolver{theme: theme}
+	r := &resolver{theme: theme, tokensOnly: true}
 	c, ok := r.colorValue(where, raw, soml.Span{})
 	if err := themeValueErr(r, ok); err != nil {
 		return soml.Color{}, err
@@ -1236,6 +1286,8 @@ func readLayoutCSS(fsys fs.FS, dir string, optional bool) (layouts, slots map[st
 		}
 		// 슬롯 영역 파일을 먼저 가른다 — 흐름 맵에 실으면 `title.slots`라는 존재하지 않는
 		// 레이아웃으로 오인해 "선언에 없다" 에러가 난다.
+		// BOM은 `<style>`에 인라인되면 첫 선택자의 일부가 되어 첫 규칙을 깨뜨린다.
+		raw = trimBOM(raw)
 		if name, ok := strings.CutSuffix(e.Name(), ".slots.css"); ok {
 			slots[name] = string(raw)
 			continue

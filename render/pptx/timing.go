@@ -45,6 +45,10 @@ type entranceObject struct {
 	kind     soml.ElementKind
 	// from은 그려지는 연결선의 닦아내기가 시작하는 쪽이다 (draw만).
 	from route.Side
+	// para는 대상이 도형 안 문단 하나일 때의 문단 번호다 (-1이면 도형 전체). background는 대상이 도형의
+	// 배경뿐이라는 뜻이다 — 문단 단위로 짓는 도형에서 도형 자신의 등장이 그 자리에 걸린다.
+	para       int
+	background bool
 }
 
 // entranceObjects는 슬라이드의 객체를 등장 순서 · 문서 순서로 모은다 — 객체(도형 번호를 받은 요소)마다
@@ -61,14 +65,34 @@ func entranceObjects(slide *soml.Slide, rels *slideRels) []entranceObject {
 		if e := elem.EnterOf(); e != nil {
 			current = e
 		}
-		if id, ok := shapeIDs[elem]; ok && current != nil {
+		id, ok := shapeIDs[elem]
+		if ok && paragraphEntrances(elem) {
+			// 도형에 흡수된 글 중 자기 등장을 가진 것이 있다 — 그 글은 도형의 문단 하나라 자기 도형 번호가
+			// 없으므로, 도형을 문단 단위로 짓는다: 도형 자신의 등장은 배경에, 자기 등장이 없는 문단은 도형과
+			// 같은 시각에, 자기 등장을 가진 문단은 그 등장에 나타난다 (웹에서 그 글이 따로 나타나는 것과 같다).
 			kind := soml.KindOf(elem.Name)
-			out = append(out, entranceObject{entrance: current, shapeID: id, kind: kind, from: rels.drawFrom[elem]})
+			if current != nil {
+				out = append(out, entranceObject{entrance: current, shapeID: id, kind: kind, para: -1, background: true})
+			}
+			for i, child := range elem.Children {
+				e := current
+				if c, ok := child.(*soml.Element); ok && c.EnterOf() != nil {
+					e = c.EnterOf()
+				}
+				if e != nil {
+					out = append(out, entranceObject{entrance: e, shapeID: id, kind: kind, para: i})
+				}
+			}
+			return
+		}
+		if ok && current != nil {
+			kind := soml.KindOf(elem.Name)
+			out = append(out, entranceObject{entrance: current, shapeID: id, kind: kind, from: rels.drawFrom[elem], para: -1})
 			if id, ok := rels.labelIDs[elem]; ok {
 				// 연결선의 라벨은 그 선과 같은 시각에 페이드로 나타난다 (웹의 라벨과 같다).
 				fade := *current
 				fade.Effect = soml.EnterFade
-				out = append(out, entranceObject{entrance: &fade, shapeID: id, kind: soml.KindBlock})
+				out = append(out, entranceObject{entrance: &fade, shapeID: id, kind: soml.KindBlock, para: -1})
 			}
 		}
 		for _, child := range elem.Children {
@@ -94,6 +118,20 @@ func entranceObjects(slide *soml.Slide, rels *slideRels) []entranceObject {
 		}
 	}
 	return sorted
+}
+
+// paragraphEntrances는 도형이 흡수한 글(도형의 문단) 중 자기 등장을 가진 것이 있는가다. 흡수된 자식은
+// 문단 하나씩이므로(shapeBodyXML) 자식 번호가 곧 `a:p` 번호다.
+func paragraphEntrances(elem *soml.Element) bool {
+	if soml.KindOf(elem.Name) != soml.KindShape || soml.ShapeHoldsLayout(elem) {
+		return false
+	}
+	for _, child := range elem.Children {
+		if c, ok := child.(*soml.Element); ok && c.EnterOf() != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // timingXML은 슬라이드의 `p:timing`이다 — 등장이 없으면 빈 문자열이다 (슬라이드 바이트가 그대로다).
@@ -152,14 +190,34 @@ func timingXML(slide *soml.Slide, rels *slideRels) (string, error) {
 	w(3, "</p:cTn>")
 	w(2, "</p:par>")
 	w(1, "</p:tnLst>")
-	// 짓기 목록 — 글을 담는 도형은 "개체 하나로" 짓고(문단 단위가 아니다), 표는 통째로 짓는다. 그림은
-	// 목록에 오지 않는다 (PowerPoint도 쓰지 않는다).
+	// 짓기 목록 — 글을 담는 도형은 "개체 하나로" 짓고, 표는 통째로 짓는다. 문단에 효과가 걸린 도형만
+	// 문단 단위(`build="p"`)로 짓고, 배경에 효과가 있을 때만 배경을 따로 움직인다(`animBg`). 그림은
+	// 목록에 오지 않는다 (PowerPoint도 쓰지 않는다). 도형 하나는 목록에 한 번만 온다.
 	var builds []string
+	byPara := map[int]bool{}
+	animBg := map[int]bool{}
 	for _, o := range objects {
-		switch o.kind {
-		case soml.KindImage, soml.KindConnector:
-		case soml.KindTable:
+		if o.para >= 0 {
+			byPara[o.shapeID] = true
+		}
+		if o.background {
+			animBg[o.shapeID] = true
+		}
+	}
+	seen := map[int]bool{}
+	for _, o := range objects {
+		if seen[o.shapeID] {
+			continue
+		}
+		seen[o.shapeID] = true
+		switch {
+		case o.kind == soml.KindImage || o.kind == soml.KindConnector:
+		case o.kind == soml.KindTable:
 			builds = append(builds, fmt.Sprintf(`<p:bldGraphic spid="%d" grpId="0"><p:bldAsOne/></p:bldGraphic>`, o.shapeID))
+		case byPara[o.shapeID] && animBg[o.shapeID]:
+			builds = append(builds, fmt.Sprintf(`<p:bldP spid="%d" grpId="0" build="p" animBg="1"/>`, o.shapeID))
+		case byPara[o.shapeID]:
+			builds = append(builds, fmt.Sprintf(`<p:bldP spid="%d" grpId="0" build="p"/>`, o.shapeID))
 		default:
 			builds = append(builds, fmt.Sprintf(`<p:bldP spid="%d" grpId="0" animBg="1"/>`, o.shapeID))
 		}
@@ -191,6 +249,12 @@ func writeEntranceEffect(w func(int, string), depth int, o entranceObject, node 
 	}
 	dur := o.entrance.Duration
 	tgt := fmt.Sprintf(`<p:tgtEl><p:spTgt spid="%d"/></p:tgtEl>`, o.shapeID)
+	switch {
+	case o.background:
+		tgt = fmt.Sprintf(`<p:tgtEl><p:spTgt spid="%d"><p:bg/></p:spTgt></p:tgtEl>`, o.shapeID)
+	case o.para >= 0:
+		tgt = fmt.Sprintf(`<p:tgtEl><p:spTgt spid="%d"><p:txEl><p:pRg st="%d" end="%d"/></p:txEl></p:spTgt></p:tgtEl>`, o.shapeID, o.para, o.para)
+	}
 	w(depth, "<p:par>")
 	subtype := preset[1]
 	if o.entrance.Effect == soml.EnterDraw {
