@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -109,6 +110,28 @@ func TestRenderTableSpans(t *testing.T) {
 	}
 	if strings.Contains(out, `colspan="1"`) || strings.Contains(out, `rowspan="1"`) {
 		t.Errorf("병합하지 않은 셀에 span 속성이 나갔다:\n%s", out)
+	}
+}
+
+// TestRenderTableEmptyCellHook은 글자 없는 셀만 빈 줄 훅(EmptyCellClass)을 받는지 못 박는다 —
+// PPTX 셀은 비어 있어도 빈 문단 한 줄을 가지므로, 웹 셀도 한 줄을 예약해야 행 높이가 같다.
+// 공백만 · 빈 인라인만 있는 셀도 웹에서 줄을 만들지 않으므로 빈 셀이고, `<br>`은 줄을 만든다.
+func TestRenderTableEmptyCellHook(t *testing.T) {
+	out := renderTable(t, subsetDeck(t, `  <table>
+    <tr><td></td><td> </td><td><strong></strong></td><td>x</td><td><em>y</em></td><td><br/></td></tr>
+  </table>`))
+	hook := `class="` + EmptyCellClass + `"`
+	for i := 0; i < 3; i++ {
+		want := fmt.Sprintf(`<td %s data-balpyo-id="s0.0.0.%d"`, hook, i)
+		if !strings.Contains(out, want) {
+			t.Errorf("빈 셀 %d에 훅이 없다 (want %q):\n%s", i, want, out)
+		}
+	}
+	if n := strings.Count(out, hook); n != 3 {
+		t.Errorf("빈 셀 훅 %d개, want 3 (글자 있는 셀·`<br>` 셀에는 달지 않는다):\n%s", n, out)
+	}
+	if css := tableCSS(); !strings.Contains(css, "."+EmptyCellClass+"::before") {
+		t.Errorf("표 CSS에 빈 셀 규칙이 없다:\n%s", css)
 	}
 }
 

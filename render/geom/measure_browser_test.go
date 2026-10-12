@@ -660,3 +660,23 @@ func TestLaunchRetriesAFailedStart(t *testing.T) {
 		t.Fatalf("가짜 브라우저가 실행되지 않았다: %v", err)
 	}
 }
+
+// 빈 셀도 한 줄을 차지한다. PPTX 셀은 비어 있어도 셀 글자 크기의 빈 문단 하나를 갖고
+// PowerPoint는 행을 그 글자보다 낮게 줄이지 않는다 — 웹이 빈 행을 여백 + 테두리만큼으로 재면
+// `a:tr@h`가 그 값을 싣고, PPTX 표만 행마다 한 줄씩 자라 뒤의 행들이 잰 rect 아래로 밀린다.
+// 그래서 빈 행(태그만 · 공백만)은 글자 한 줄짜리 행과 같은 높이로 재여야 한다.
+func TestMeasureEmptyTableRowHoldsOneLine(t *testing.T) {
+	deck := layoutDeck(t, `<table>
+    <tr><th>Topic</th><th>Description</th></tr>
+    <tr><td></td><td></td></tr>
+    <tr><td> </td><td></td></tr>
+    <tr><td>x</td><td>y</td></tr>
+  </table>`)
+	g := measureLayout(t, deck)
+	filled := boxOf(t, g, "s0.0.3")
+	for _, id := range []string{"s0.0.1", "s0.0.2"} {
+		if row := boxOf(t, g, id); !near(row.Rect.H, filled.Rect.H) {
+			t.Errorf("빈 행 %s의 높이 = %v, 한 줄 행 = %v — 빈 셀이 줄 하나를 차지하지 않는다", id, row.Rect.H, filled.Rect.H)
+		}
+	}
+}
