@@ -202,6 +202,10 @@ type glyph struct {
 	size float64
 	// slant는 합성 기울임이다 — italic을 청했는데 글꼴에 italic 면이 없으면 브라우저처럼 기울여 그린다.
 	slant bool
+	// pen은 글리프의 펜 위치(오프셋을 뺀 x), adv는 진행 폭(자간 포함)이다. cluster는 글리프가 나온
+	// 첫 문자의 셰이핑한 문자열 안 위치다 — 긴 문자열을 한 번 셰이핑하고 문자 구간으로 자를 때 쓴다.
+	pen, adv float64
+	cluster  int
 }
 
 // shapedText는 셰이핑한 조각이다.
@@ -209,6 +213,12 @@ type shapedText struct {
 	width  float64
 	glyphs []glyph
 }
+
+// shapeScale은 셰이핑할 때 글꼴 크기에 곱하는 배율이다. 셰이퍼는 크기와 위치를 1/64px 고정
+// 소수로 다뤄 글리프마다 진행 폭이 1/64px 단위로 반올림되는데, 브라우저는 1/65536px 단위로 재고
+// 나서 더한다 — 글자가 쌓일수록 내장 엔진의 줄이 짧아져 브라우저가 넘기는 줄을 한 줄에 담는다.
+// 1024배로 셰이핑하고 결과를 나누면 같은 정밀도가 된다.
+const shapeScale = 1024
 
 // shape는 줄바꿈 기회 사이의 조각 하나를 셰이핑한다. 글꼴 폴백은 문자 단위로 나눈 run이다.
 func (k *fontKit) shape(fs fontStyle, text string) shapedText {
@@ -244,7 +254,7 @@ func (k *fontKit) shape(fs fontStyle, text string) shapedText {
 			RunEnd:    end,
 			Direction: di.DirectionLTR,
 			Face:      f,
-			Size:      fixed.Int26_6(fs.size * 64),
+			Size:      fixed.Int26_6(fs.size * 64 * shapeScale),
 			Script:    language.LookupScript(runes[start]),
 			Language:  language.DefaultLanguage(),
 		}
@@ -255,19 +265,42 @@ func (k *fontKit) shape(fs fontStyle, text string) shapedText {
 			slant = aspect.Style != font.StyleItalic
 		}
 		for _, g := range res.Glyphs {
+			adv := fixedToF(g.XAdvance) / shapeScale
+			if fs.spacing != 0 {
+				adv += fs.spacing * float64(max(g.RuneCount, 1))
+			}
 			out.glyphs = append(out.glyphs, glyph{
 				face: f, gid: g.GlyphID, size: fs.size, slant: slant,
-				x: x + fixedToF(g.XOffset), y: -fixedToF(g.YOffset),
+				x: x + fixedToF(g.XOffset)/shapeScale, y: -fixedToF(g.YOffset) / shapeScale,
+				pen: x, adv: adv, cluster: g.ClusterIndex,
 			})
-			x += fixedToF(g.XAdvance)
-			if fs.spacing != 0 {
-				x += fs.spacing * float64(max(g.RuneCount, 1))
-			}
+			x += adv
 		}
 		start = end
 	}
 	out.width = x
 	k.shaped[key] = out
+	return out
+}
+
+// slice는 셰이핑 결과에서 문자 구간 [from, to)에서 나온 글리프만 떼어 그 구간 원점 기준으로 옮긴다.
+// 구간 경계 너머의 이웃과 맺은 커닝 · 문맥은 그대로 남는다 — 브라우저가 텍스트를 줄바꿈 기회마다
+// 따로 셰이핑하지 않고 한 덩어리로 셰이핑한 뒤 자르기 때문이다.
+func (s shapedText) slice(from, to int) shapedText {
+	var out shapedText
+	origin := 0.0
+	for _, g := range s.glyphs {
+		if g.cluster < from || g.cluster >= to {
+			continue
+		}
+		if len(out.glyphs) == 0 {
+			origin = g.pen
+		}
+		g.x -= origin
+		g.pen -= origin
+		out.glyphs = append(out.glyphs, g)
+		out.width += g.adv
+	}
 	return out
 }
 

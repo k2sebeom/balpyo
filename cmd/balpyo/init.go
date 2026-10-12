@@ -17,14 +17,6 @@ import (
 // 인자인 것이 자연스럽고, 같은 뜻의 `--project`도 받아 다른 서브커맨드와 표기를 맞춘다.
 // 둘을 함께 주면 멈춘다: 어느 쪽이 이겼는지 사람이 추측하게 두지 않는다.
 func runInit(args []string, stdout, stderr io.Writer) error {
-	// 위치 인자를 **파싱 앞에서** 떼어낸다. Go의 flag는 첫 비플래그 인자에서 파싱을 멈추므로,
-	// 이 한 줄이 없으면 사람이 가장 먼저 쳐 볼 표기(`balpyo init my-talk --author 나`)가
-	// "--author를 인자로 받았다"는 엉뚱한 에러가 된다.
-	var lead string
-	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
-		lead, args = args[0], args[1:]
-	}
-
 	fs := flag.NewFlagSet("init", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	projectDir := fs.String("project", "", "root of the project to create (same as the positional argument)")
@@ -34,13 +26,12 @@ func runInit(args []string, stdout, stderr io.Writer) error {
 		", available themes: "+strings.Join(core.BuiltinThemes(), ", ")+")")
 	aspect := fs.String("aspect", "", "aspect ratio (default "+string(soml.DefaultAspect)+")")
 	lang := fs.String("lang", "", "deck language (default "+scaffold.DefaultLang+")")
-	if err := fs.Parse(args); err != nil {
+	// 위치 인자는 플래그 앞·사이·뒤 어디에 와도 같은 자리로 모은다. Go의 flag는 첫 비플래그 인자에서
+	// 파싱을 멈추므로, 그대로 두면 사람이 가장 먼저 쳐 볼 표기(`balpyo init my-talk --author 나`)가
+	// "--author를 인자로 받았다"는 엉뚱한 에러가 된다.
+	positional, err := parseInterleaved(fs, args)
+	if err != nil {
 		return err
-	}
-	// 뒤에 붙은 위치 인자(`balpyo init --author 나 my-talk`)도 같은 자리로 모은다.
-	positional := fs.Args()
-	if lead != "" {
-		positional = append([]string{lead}, positional...)
 	}
 	dir := *projectDir
 	switch {

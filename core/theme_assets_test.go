@@ -1,6 +1,8 @@
 package core
 
 import (
+	"bytes"
+	"image/jpeg"
 	"io/fs"
 	"os"
 	"strings"
@@ -162,5 +164,57 @@ func TestThemeBackgroundsRejectBadDecls(t *testing.T) {
 				t.Errorf("에러 = %v, want %q", err, tc.want)
 			}
 		})
+	}
+}
+
+// EXIF 방향이 적힌 JPEG 배경은 **세운 픽셀**로 다시 인코딩한 그림을 쓴다 — PPTX의 슬라이드 배경
+// (`p:bg`의 `blipFill`)에는 회전을 적을 자리가 없어 PowerPoint가 저장된 픽셀을 그대로 펴기 때문이다. 같은
+// 파일을 가리키는 로고는 원래 바이트와 방향을 그대로 쓰고, 다시 인코딩한 바이트는 로드마다 같다.
+func TestThemeBackgroundUprightsEXIFOrientation(t *testing.T) {
+	// 240×120으로 저장되고 방향 6(90°)이 적힌 사진이다.
+	rotated, err := os.ReadFile("../testdata/fixtures/05_image/assets/rotated.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project := localTheme("brand", `{"name":"brand","extends":"minimal",
+  "backgrounds":[{"layouts":["title"],"image":"assets/rotated.jpg"}],
+  "chrome":[{"kind":"logo","align":"center","image":"assets/rotated.jpg","height":24,"alt":"브랜드"}]}`, "", "", nil)
+	project["themes/brand/assets/rotated.jpg"] = &fstest.MapFile{Data: rotated}
+	build := func() *soml.Deck {
+		deck, diags := themeDeckIn(t, project, "brand", `<slide layout="title"></slide>`)
+		if len(diags) != 0 {
+			t.Fatalf("진단이 없어야 한다: %v", diags)
+		}
+		if d := ResolveAssets(deck, project); len(d) != 0 {
+			t.Fatalf("에셋 진단: %v", d)
+		}
+		return deck
+	}
+	deck := build()
+	const uprightKey = "themes/brand/upright/assets/rotated.jpg"
+	if bg := deck.Slides[0].Background; bg == nil || bg.Image != uprightKey {
+		t.Fatalf("배경 = %+v, want 그림 %q", bg, uprightKey)
+	}
+	upright, ok := deck.Assets.Get(uprightKey)
+	if !ok {
+		t.Fatalf("세운 배경 그림이 에셋 표에 없다: %v", showAssets(deck.Assets))
+	}
+	if upright.Format != soml.FormatJPEG || upright.Width != 120 || upright.Height != 240 || upright.Orientation != 0 {
+		t.Errorf("세운 배경 그림 = %s, want jpeg 120x240 o0", showAssets(soml.Assets{upright}))
+	}
+	if o := soml.JPEGOrientation(upright.Bytes); o != 0 {
+		t.Errorf("세운 배경 그림의 바이트에 방향 %d가 남아 있다", o)
+	}
+	config, err := jpeg.DecodeConfig(bytes.NewReader(upright.Bytes))
+	if err != nil || config.Width != 120 || config.Height != 240 {
+		t.Errorf("세운 배경 그림의 저장된 크기 = %d×%d (%v), want 120×240", config.Width, config.Height, err)
+	}
+	logo, ok := deck.Assets.Get("themes/brand/assets/rotated.jpg")
+	if !ok || logo.Orientation != 6 || !bytes.Equal(logo.Bytes, rotated) {
+		t.Errorf("로고 그림은 원래 바이트와 방향 6이어야 한다: %v", showAssets(deck.Assets))
+	}
+	again, _ := build().Assets.Get(uprightKey)
+	if !bytes.Equal(again.Bytes, upright.Bytes) {
+		t.Error("같은 입력의 세운 배경 그림이 로드마다 다른 바이트다")
 	}
 }

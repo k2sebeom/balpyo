@@ -504,7 +504,11 @@ func (s *svgContext) draw(n *node) {
 			fill = "black"
 		}
 		if pt, ok := s.paintOf(fill, bbox, numberOr(st.get("fill-opacity"), 1)); ok {
-			s.cv.fill(p, pt)
+			if st.get("fill-rule") == "evenodd" {
+				s.cv.fillEvenOdd(p, pt)
+			} else {
+				s.cv.fill(p, pt)
+			}
 		}
 	}
 	if stroke := st.get("stroke"); stroke != "" && stroke != "none" {

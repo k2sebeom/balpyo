@@ -158,7 +158,7 @@ func TestRenderRejectsUnknownElement(t *testing.T) {
 // 줄바꿈을 막는다).
 func TestRenderStageBreaksKoreanAtWords(t *testing.T) {
 	css := between(t, renderString(t, contentDeck()), "<style>", "</style>")
-	want := ".balpyo-stage:lang(ko) {\n    word-break: keep-all;\n    overflow-wrap: anywhere;\n  }"
+	want := ".balpyo-stage:lang(ko) {\n    word-break: keep-all;\n    overflow-wrap: break-word;\n  }"
 	if !strings.Contains(css, want) {
 		t.Errorf("스테이지 CSS에 한국어 줄바꿈 규칙이 없다:\n%s", css)
 	}
