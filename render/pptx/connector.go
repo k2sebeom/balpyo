@@ -159,10 +159,11 @@ func writeCxnSp(b *strings.Builder, deck *soml.Deck, id string, shapeID int, con
 	w(3, fmt.Sprintf(`<a:ext cx="%d" cy="%d"/>`, EMU(p.W), EMU(p.H)))
 	w(2, "</a:xfrm>")
 	w(2, fmt.Sprintf(`<a:prstGeom prst="%s">`, p.Preset))
-	if adj := int64(math.Round(p.Adj * 100000)); adj != 50000 && strings.HasSuffix(p.Preset, "3") {
-		// 꺾는 자리가 가운데가 아닌 꺾임 둘 경로(U자)만 조정값을 싣는다 — 기본값을 적으면 바이트만 늘어난다.
+	if adj := connectorAdjusts(p.Adj); adj != nil {
 		w(3, "<a:avLst>")
-		w(4, fmt.Sprintf(`<a:gd name="adj1" fmla="val %d"/>`, adj))
+		for i, v := range adj {
+			w(4, fmt.Sprintf(`<a:gd name="adj%d" fmla="val %d"/>`, i+1, v))
+		}
 		w(3, "</a:avLst>")
 	} else {
 		w(3, "<a:avLst/>")
@@ -211,4 +212,20 @@ func lineEndXML(tag string, end soml.ConnectorEnd) string {
 		return fmt.Sprintf(`<a:%s type="oval" w="lg" len="lg"/>`, tag)
 	}
 	return fmt.Sprintf(`<a:%s type="none"/>`, tag)
+}
+
+// connectorAdjusts는 연결선 프리셋의 `avLst` 값(비율 × 100000)이다. 모든 값이 프리셋 기본(가운데,
+// 50000)이면 nil이다 — 기본값을 적으면 바이트만 늘어난다.
+func connectorAdjusts(adj []float64) []int64 {
+	var out []int64
+	custom := false
+	for _, a := range adj {
+		v := int64(math.Round(a * 100000))
+		custom = custom || v != 50000
+		out = append(out, v)
+	}
+	if !custom {
+		return nil
+	}
+	return out
 }

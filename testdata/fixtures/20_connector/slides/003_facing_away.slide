@@ -1,0 +1,14 @@
+<!-- Sides that face away from the other box: the line still leaves the requested side outward and
+     enters the target side from outside, detouring around the boxes. Opposite sides with the target
+     behind make an S (bentConnector5 / curvedConnector5); crossed sides whose plain L would cut
+     through a box take one more bend (bentConnector4 / curvedConnector4). -->
+<slide id="facing-away" layout="canvas">
+  <shape id="a" type="rect" x="700" y="100" w="160" h="80"/>
+  <shape id="b" type="rect" x="200" y="400" w="160" h="80"/>
+  <shape id="c" type="rect" x="700" y="400" w="160" h="80"/>
+  <connector from="a" to="b" route="elbow" from-side="right" to-side="left"/>
+  <connector from="a" to="c" route="elbow" from-side="top" to-side="bottom"/>
+  <connector from="a" to="b" route="elbow" from-side="right" to-side="top"/>
+  <connector from="b" to="c" route="curved" from-side="left" to-side="right"/>
+  <connector from="c" to="b" route="curved" from-side="bottom" to-side="right"/>
+</slide>
