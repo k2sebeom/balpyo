@@ -50,6 +50,7 @@ func TestParseTableAndChartErrors(t *testing.T) {
 		{name: "chart의 자식은 point뿐", src: `<slide><chart type="bar"><p>본문</p></chart></slide>`, want: []string{"1:27 <chart> cannot contain <p> (available tags: <point>, <series>)"}},
 		{name: "chart 안의 문자 데이터", src: `<slide><chart type="bar">22</chart></slide>`, want: []string{"1:26 character data cannot appear directly inside <chart> (wrap it in <point>)"}},
 		{name: "point는 void", src: `<slide><chart><point label="a">22</point></chart></slide>`, want: []string{"1:16 void tag <point> cannot have content (write <point/>)"}},
+		{name: "자기 닫힘이 빠진 point", src: `<slide><chart><point label="a"><point label="b"/></chart></slide>`, want: []string{"1:16 void tag <point> must be self-closed (write <point/>)"}},
 		{name: "chart는 도형의 직속 자식이 아니다", src: `<slide><shape type="rect"><chart/></shape></slide>`, want: []string{"1:28 <shape> cannot contain <chart>"}},
 	})
 }

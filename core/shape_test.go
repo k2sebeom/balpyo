@@ -213,6 +213,11 @@ func TestResolveShapeDiagnostics(t *testing.T) {
 		{name: "type 빈 값", attrs: `type=""`, col: shapeCol(`type=""`, `""`) + 1,
 			contains: []string{"the type attribute is empty"}, dropped: noType},
 
+		// 값 없는·빈 fill은 진단 하나다 — 무늬 판별과 색 해석이 같은 검사를 두 번 하지 않는다.
+		{name: "fill 값 없음", attrs: `type="rect" fill`, needle: "fill", contains: []string{"the fill attribute needs a value"}},
+		{name: "fill 빈 값", attrs: `type="rect" fill=""`, col: shapeCol(`type="rect" fill=""`, `""`) + 1,
+			contains: []string{"the fill attribute is empty"}},
+
 		// 색 문법은 텍스트 color와 같은 코드(colorValue)를 지난다.
 		{name: "fill 모르는 토큰", attrs: `type="rect" fill="brand"`, needle: "brand",
 			contains: []string{"fill: color token", "is not in the theme", "surface", "#RRGGBB"}},

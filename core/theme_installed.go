@@ -43,6 +43,25 @@ func (p *projectFS) Open(name string) (fs.File, error) {
 	return p.root.Open(name)
 }
 
+// ReadLink와 Lstat은 프로젝트 루트의 링크를 그대로 보인다 — 감싼 FS가 링크를 숨기면 에셋 패스가
+// 프로젝트 밖을 가리키는 링크를 빌드에서만 놓친다. 루트가 링크를 모르는 FS이면 링크가 없는 것과 같다.
+func (p *projectFS) ReadLink(name string) (string, error) {
+	if sym, ok := p.root.(fs.ReadLinkFS); ok {
+		return sym.ReadLink(name)
+	}
+	return "", &fs.PathError{Op: "readlink", Path: name, Err: fs.ErrInvalid}
+}
+
+func (p *projectFS) Lstat(name string) (fs.FileInfo, error) {
+	if sym, ok := p.root.(fs.ReadLinkFS); ok {
+		return sym.Lstat(name)
+	}
+	if p.root == nil {
+		return nil, &fs.PathError{Op: "lstat", Path: name, Err: fs.ErrNotExist}
+	}
+	return fs.Stat(p.root, name)
+}
+
 // installedFS는 fsys에 붙은 설치한 테마의 홈이다 (없으면 nil).
 func installedFS(fsys fs.FS) fs.FS {
 	if p, ok := fsys.(*projectFS); ok {
@@ -70,7 +89,7 @@ func ReadThemeHeader(fsys fs.FS, dir string) (ThemeHeader, error) {
 		return ThemeHeader{}, fmt.Errorf("cannot read theme.json: %w", err)
 	}
 	var m themeManifest
-	if err := json.Unmarshal(data, &m); err != nil {
+	if err := json.Unmarshal(trimBOM(data), &m); err != nil {
 		return ThemeHeader{}, fmt.Errorf("cannot parse %s/theme.json: %w", dir, err)
 	}
 	if m.Name == "" {
@@ -95,12 +114,13 @@ func CheckInstalledTheme(home fs.FS, name string) (soml.Diagnostics, error) {
 	if err != nil {
 		return nil, err
 	}
-	merged := chain[0]
-	for _, child := range chain[1:] {
-		merged = mergeRawTheme(merged, child)
-	}
-	if _, err := buildThemePackage(merged); err != nil {
-		return nil, fmt.Errorf("theme %q: %w", name, err)
+	if _, err := buildThemeChain(chain); err != nil {
+		// 선언의 자리를 찾은 에러는 이미 테마 이름과 파일을 말한다.
+		var de *themeDeclError
+		if errors.As(err, &de) {
+			return nil, fmt.Errorf("theme %q: %w", name, err)
+		}
+		return nil, err
 	}
 	return lintThemeChain(chain, originInstalled), nil
 }

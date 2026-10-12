@@ -64,6 +64,9 @@
   두 렌더러가 **같은 문자열**을 받으므로 타깃 간 줄바꿈이 원문 서식에 의존하지 않는다.
 - `balpyo.json`의 `lang`이 `ko`(또는 `ko-KR`처럼 `ko`로 시작하는 태그)이면 웹은 **어절에서** 줄을 접는다 (`word-break: keep-all`) —
   칸보다 긴 어절만 글자 사이에서 자른다 (`overflow-wrap: anywhere`). 다른 언어는 브라우저
+
+- `balpyo.json`의 `lang`이 `ko`이면 웹은 **어절에서** 줄을 접는다 (`word-break: keep-all`) —
+  칸보다 긴 어절만 글자 사이에서 자른다 (`overflow-wrap: break-word`). 다른 언어는 브라우저
   기본이다 (중국어·일본어는 띄어쓰기가 없어 어절 규칙이 줄바꿈을 막는다). 줄이 어디서 접히는지는
   두 타깃이 맞추는 대상이 아니다 — PowerPoint는 자기 규칙으로 접는다.
 - `<`와 `&`는 [문자 참조](text-subset.md)(`&lt;`·`&amp;` + 수치 참조)나 CDATA로 쓴다 —

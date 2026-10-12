@@ -5,12 +5,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/k2sebeom/balpyo/soml"
 )
+
+// utf8BOM은 UTF-8로 인코딩한 바이트 순서 표지(U+FEFF)다.
+var utf8BOM = []byte("\uFEFF")
+
+// trimBOM은 파일 맨 앞의 UTF-8 BOM을 떼어 낸다. 메모장 같은 에디터가 저장할 때 붙이는데,
+// 에디터는 그것을 보여 주지 않는다 — 그대로 두면 JSON 디코더가 "invalid character"로 거부해
+// 저자에게 멀쩡해 보이는 파일이 깨지고, 진단의 칸도 에디터와 한 칸씩 어긋난다.
+func trimBOM(data []byte) []byte { return bytes.TrimPrefix(data, utf8BOM) }
 
 // themeFileError는 테마 파일 하나의 읽기 에러다 — 진단이 `balpyo.json`이 아니라 고칠 파일
 // (`themes/<이름>/components.json`)과 그 안의 줄:칸을 가리키게 한다. 테마 이름을 요청한 자리는
@@ -33,46 +42,57 @@ func (e *themeFileError) diagnostic() soml.Diagnostic {
 	return soml.Errorf(e.file, soml.Span{Start: e.pos, End: e.pos}, "%s", e.msg)
 }
 
-// decodeThemeJSON은 테마 JSON 파일 하나를 v에 읽는다. closed면 v의 스키마에 없는 키를 에러로 낸다
-// — 조용히 무시하면 저자가 오버라이드가 먹었다고 착각한다. `$comment`로 시작하는 키는 어느 객체에서나
-// 문서 주석이다 (`$comment-accent`처럼 주석을 값 옆에 여럿 둘 수 있게).
+// decodeThemeJSON은 테마 JSON 파일 하나를 v에 읽고, v의 스키마에 없는 키를 에러로 낸다 — 조용히
+// 무시하면 저자가 오버라이드가 먹었다고 착각한다 (theme.json도 같다: 크롬 선언의 `skipLayout` 오타를
+// 버리면 푸터가 빼려던 레이아웃에 실린다). `$comment`로 시작하는 키는 어느 객체에서나 문서 주석이다
+// (`$comment-accent`처럼 주석을 값 옆에 여럿 둘 수 있게).
 //
 // 키 검사를 encoding/json의 DisallowUnknownFields에 맡기지 않는 이유: 그 에러는 키 이름만 말하고
 // JSON 안의 경로도 줄 번호도 없어서, 같은 이름(`lineHeight`)이 여러 절에 있으면 저자가 항목을 하나씩
 // 지워 가며 찾아야 한다. 그리고 접두사 규칙(`$comment*`)을 표현할 수 없다.
-func decodeThemeJSON(data []byte, file string, v any, closed bool) error {
-	if closed {
-		if err := checkThemeKeys(data, 0, reflect.TypeOf(v).Elem(), "", data); err != nil {
-			var fe *themeFileError
-			if errors.As(err, &fe) {
-				fe.file = file
-				return fe
-			}
-			return &themeFileError{file: file, msg: err.Error()}
+func decodeThemeJSON(data []byte, file string, v any) error {
+	data = trimBOM(data)
+	if err := checkJSONKeys(data, 0, reflect.TypeOf(v).Elem(), "", data, true); err != nil {
+		var fe *themeFileError
+		if errors.As(err, &fe) {
+			fe.file = file
+			return fe
 		}
+		return &themeFileError{file: file, msg: err.Error()}
 	}
 	if err := json.Unmarshal(data, v); err != nil {
-		fe := &themeFileError{file: file, msg: err.Error()}
-		var syntax *json.SyntaxError
-		var typ *json.UnmarshalTypeError
-		switch {
-		case errors.As(err, &syntax):
-			// Offset은 틀린 바이트를 읽은 **뒤**다.
-			fe.pos = offsetPos(data, int(syntax.Offset)-1)
-			fe.msg = "invalid JSON: " + syntax.Error()
-		case errors.As(err, &typ):
-			label, offset := locateValue(data, int(typ.Offset), typ.Field)
-			fe.pos = offsetPos(data, offset)
-			fe.msg = fmt.Sprintf("%s must be %s, not %s", label, typeWord(typ.Type), typ.Value)
-		}
-		return fe
+		return jsonDecodeError(data, file, err)
 	}
 	return nil
 }
 
-// checkThemeKeys는 raw(파일 전체 data의 base 오프셋에서 시작하는 값)를 t의 스키마와 대조한다.
-// 문법 오류는 여기서 말하지 않는다 — 뒤의 json.Unmarshal이 위치와 함께 말한다.
-func checkThemeKeys(raw []byte, base int, t reflect.Type, at string, data []byte) error {
+// jsonDecodeError는 encoding/json의 디코드 에러를 file 안의 줄:칸과 JSON 저자의 말로 옮긴다 —
+// 원래 문구(`cannot unmarshal number into Go struct field Config.title of type string`)는 Go의
+// 구조체·타입 이름을 말하고 자리를 말하지 않아, 파일을 고치는 사람에게 쓸모가 없다.
+func jsonDecodeError(data []byte, file string, err error) *themeFileError {
+	fe := &themeFileError{file: file, msg: err.Error()}
+	var syntax *json.SyntaxError
+	var typ *json.UnmarshalTypeError
+	switch {
+	case errors.As(err, &syntax):
+		// Offset은 틀린 바이트를 읽은 **뒤**다.
+		fe.pos = offsetPos(data, int(syntax.Offset)-1)
+		fe.msg = "invalid JSON: " + syntax.Error()
+	case errors.As(err, &typ):
+		label, offset := locateValue(data, int(typ.Offset), typ.Field)
+		fe.pos = offsetPos(data, offset)
+		fe.msg = fmt.Sprintf("%s must be %s, not %s", label, typeWord(typ.Type), typ.Value)
+	case errors.Is(err, io.ErrUnexpectedEOF):
+		// json.Decoder는 끝나지 않은 값을 SyntaxError가 아니라 이 에러로 낸다.
+		fe.msg = "invalid JSON: unexpected end of file"
+	}
+	return fe
+}
+
+// checkJSONKeys는 raw(파일 전체 data의 base 오프셋에서 시작하는 값)를 t의 스키마와 대조한다.
+// comments면 `$comment`로 시작하는 키를 문서 주석으로 건너뛴다 — 테마 파일의 규칙이고, `balpyo.json`은
+// 그 규칙 없이 닫혀 있다. 문법 오류는 여기서 말하지 않는다 — 뒤의 디코딩이 위치와 함께 말한다.
+func checkJSONKeys(raw []byte, base int, t reflect.Type, at string, data []byte, comments bool) error {
 	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
@@ -94,7 +114,7 @@ func checkThemeKeys(raw []byte, base int, t reflect.Type, at string, data []byte
 			if err := dec.Decode(&value); err != nil {
 				return nil
 			}
-			if strings.HasPrefix(key, "$comment") {
+			if comments && strings.HasPrefix(key, "$comment") {
 				continue
 			}
 			field, ok := jsonField(t, key)
@@ -103,7 +123,7 @@ func checkThemeKeys(raw []byte, base int, t reflect.Type, at string, data []byte
 					msg: fmt.Sprintf("unknown key %q at %s", key, joinPath(at, key))}
 			}
 			valueStart := base + int(dec.InputOffset()) - len(value)
-			if err := checkThemeKeys(value, valueStart, field.Type, joinPath(at, key), data); err != nil {
+			if err := checkJSONKeys(value, valueStart, field.Type, joinPath(at, key), data, comments); err != nil {
 				return err
 			}
 		}
@@ -118,7 +138,7 @@ func checkThemeKeys(raw []byte, base int, t reflect.Type, at string, data []byte
 				return nil
 			}
 			valueStart := base + int(dec.InputOffset()) - len(value)
-			if err := checkThemeKeys(value, valueStart, t.Elem(), at+elementLabel(value, i), data); err != nil {
+			if err := checkJSONKeys(value, valueStart, t.Elem(), at+elementLabel(value, i), data, comments); err != nil {
 				return err
 			}
 		}
