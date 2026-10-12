@@ -31,3 +31,21 @@ textbox "blockquote s4.0" ph=body/1
   ¶ start | "측정할 수 없는 것은 관리할 수 없다는 말은 절반만 맞다 — 측정한 것만 관리하면 측정하지 않은 것이 무너진다."{body 30pt fg}
 textbox "p s4.1" ph=body/2
   ¶ end | "— 운영 회고, 2026 H1"{body 18pt fg}
+# slide 6 textless-slots
+textbox "h1 s5.0" ph=title/0
+  ¶ start | "글자 없는 슬롯"{heading 42pt b fg}
+shape:rect "shape s5.1" alt="분기 매출" fill=none line=none
+textbox "text s5.1.0.0.0.0.1"
+  ¶ center | "3"{body 13.5pt muted}
+shape:rect "shape s5.1.0.0.0.0.2" fill=accent1 line=none
+shape:rect "shape s5.1.0.0.0.1" fill=muted line=none
+textbox "text s5.1.0.0.1.0.1"
+  ¶ center | "5"{body 13.5pt muted}
+shape:rect "shape s5.1.0.0.1.0.2" fill=accent1 line=none
+shape:rect "shape s5.1.0.0.1.1" fill=muted line=none
+textbox "text s5.1.0.1.0"
+  ¶ center | "1분기"{body 13.5pt muted}
+textbox "text s5.1.0.1.1"
+  ¶ center | "2분기"{body 13.5pt muted}
+shape:roundRect "shape s5.2" ph=body/2 fill=surface line=muted
+  ¶ start | "도형 안의 본문"{body 18pt fg}

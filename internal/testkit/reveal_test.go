@@ -106,6 +106,50 @@ func TestRevealSteps(t *testing.T) {
 	waitView(t, browser, web.PresenterView)
 }
 
+// 전환 동안 나가는 장은 떠날 때 모습 그대로 밀려나거나 사라진다 — 전개한 항목이 첫 프레임에
+// 숨으면 장의 나머지만 움직이고 방금 말한 목록이 먼저 비어 버린다. 전환 길이를 늘려 잡아
+// 나가는 장이 아직 움직이는 동안을 확실히 본다 (push와 fade 둘 다).
+func TestRevealedItemsStayOnTheLeavingSlide(t *testing.T) {
+	for _, kind := range []string{"push", "fade"} {
+		t.Run(kind, func(t *testing.T) {
+			outDir := buildHTML(t, map[string]string{
+				"balpyo.json": `{"title": "leaving"}`,
+				"slides/001_list.slide": `<slide id="list">
+  <ul><li reveal>one</li><li reveal>two</li></ul>
+</slide>`,
+				"slides/002_next.slide": fmt.Sprintf(`<slide id="next" transition=%q><h1>Next</h1></slide>`, kind),
+			})
+			browser := NewBrowser(t)
+			browser.Load(t, filepath.Join(outDir, web.IndexFile))
+			browser.Eval(t, web.PresenterViewExpr(), nil)
+			browser.Eval(t, `location.hash = "#/list"`, nil)
+			waitCounter(t, browser, "1 / 2")
+			// 공유 세션은 움직임 줄이기를 강제한다(측정이 움직이는 장을 재지 않도록) — 그대로면
+			// 런타임이 전환을 건너뛰므로 이 페이지에서만 그 질의를 끈다.
+			browser.Eval(t, `window.matchMedia = () => ({matches: false})`, nil)
+			browser.Eval(t, fmt.Sprintf(`document.querySelectorAll(%q)[1].setAttribute(%q, "10000")`,
+				web.SlideSelector(), web.TransitionDurationAttr), nil)
+
+			pressKey(t, browser, "ArrowRight")
+			pressKey(t, browser, "ArrowRight")
+			if got := hiddenReveals(t, browser, 0); len(got) != 0 {
+				t.Fatalf("전부 전개한 뒤 숨은 항목 = %v, want 없음", got)
+			}
+			pressKey(t, browser, "ArrowRight")
+			waitCounter(t, browser, "2 / 2")
+			var visible bool
+			browser.Eval(t, fmt.Sprintf(`getComputedStyle(document.querySelectorAll(%q)[0]).visibility === "visible"`,
+				web.SlideSelector()), &visible)
+			if !visible {
+				t.Fatal("전환 중에 나가는 장이 보이지 않는다")
+			}
+			if got := hiddenReveals(t, browser, 0); len(got) != 0 {
+				t.Errorf("전환 중 나가는 장에서 숨은 항목 = %v, want 없음", got)
+			}
+		})
+	}
+}
+
 // revealSlideIndex는 reveal 항목이 있는 첫 슬라이드의 인덱스다 (없으면 -1).
 func revealSlideIndex(t testing.TB, b *Browser) int {
 	t.Helper()
@@ -157,6 +201,52 @@ func equalInts(a, b []int) bool {
 		}
 	}
 	return true
+}
+
+// Home은 언제나 "첫 장, 스텝 0"이고 End는 "마지막 장, 들어간 상태(스텝 0)"다 — 결과가
+// 지금 어느 장에 있는지에 따라 달라지면 안 된다. 이미 첫 장(마지막 장)에서 스텝을 전개한
+// 뒤에 누르는 경우가 그 갈림길이다: 장이 그대로라도 스텝은 되감겨야 한다.
+func TestHomeAndEndRestartTheSlideTheyLandOn(t *testing.T) {
+	slide := func(id string) string {
+		return `<slide id="` + id + `"><ul><li reveal>One</li><li reveal>Two</li></ul></slide>`
+	}
+	outDir := buildHTML(t, map[string]string{
+		"balpyo.json":            `{"title": "reveal"}`,
+		"slides/001_first.slide": slide("first"),
+		"slides/002_last.slide":  slide("last"),
+	})
+	browser := NewBrowser(t)
+	browser.Load(t, filepath.Join(outDir, web.IndexFile))
+	browser.Eval(t, web.PresenterViewExpr(), nil)
+	waitCounter(t, browser, "1 / 2")
+
+	for _, c := range []struct {
+		key     string
+		slide   int
+		counter string
+	}{
+		{"Home", 0, "1 / 2"},
+		{"End", 1, "2 / 2"},
+	} {
+		pressKey(t, browser, c.key)
+		waitCounter(t, browser, c.counter)
+		pressKey(t, browser, "ArrowRight")
+		pressKey(t, browser, "ArrowRight")
+		waitCounter(t, browser, c.counter)
+		if got := hiddenReveals(t, browser, c.slide); len(got) != 0 {
+			t.Fatalf("%s 장을 전개한 뒤 숨은 항목 = %v, want 없음", c.key, got)
+		}
+		pressKey(t, browser, c.key)
+		waitCounter(t, browser, c.counter)
+		if got := hiddenReveals(t, browser, c.slide); !equalInts(got, []int{1, 2}) {
+			t.Errorf("같은 장에서 %s 뒤 숨은 항목 = %v, want [1 2] (스텝 0)", c.key, got)
+		}
+		var prevDisabled bool
+		browser.Eval(t, fmt.Sprintf("document.querySelector(%q).disabled", "."+web.ViewerPrevClass), &prevDisabled)
+		if want := c.slide == 0; prevDisabled != want {
+			t.Errorf("같은 장에서 %s 뒤 이전 버튼 disabled = %v, want %v", c.key, prevDisabled, want)
+		}
+	}
 }
 
 func equalFloats(a, b []float64) bool {

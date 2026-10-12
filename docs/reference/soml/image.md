@@ -49,8 +49,9 @@
 | `data:image/png;base64,…` | 원문에 바이트를 실으면 슬라이드를 사람이 읽을 수도, 진단이 자리를 가리킬 수도 없다 |
 | `assets\wide.png` (역슬래시) | 조용히 `/`로 바꾸면 역슬래시를 파일 이름에 쓸 수 있는 파일 시스템에서 **다른 파일**을 가리킨다 |
 | `assets/` (디렉토리) | 그림 파일 하나를 가리켜야 한다 |
+| `assets/link.png` → `../../shared/a.png` (밖을 가리키는 심볼릭 링크) | 프로젝트 밖과 같은 이유 — 커밋된 것은 링크뿐이라 다른 기계에서는 그림이 사라진다. 경로의 모든 성분을 본다 (`assets/` 디렉토리가 링크여도 같다). 프로젝트 안을 가리키는 링크는 그대로 읽는다 |
 
-넷을 한 문장으로 묶으면 이렇다: **빌드는 프로젝트 디렉토리와 커밋된 바이트만 보고 결정된다.**
+이 표를 한 문장으로 묶으면 이렇다: **빌드는 프로젝트 디렉토리와 커밋된 바이트만 보고 결정된다.**
 그것이 같은 덱이 어느 기계에서나 같은 산출물을 내는 근거이고, 발표장에서 네트워크가 없어도
 덱이 온전한 근거다.
 
@@ -447,6 +448,7 @@
 | 조건 | 진단 메시지 |
 |---|---|
 | 내용을 담았다 | `void tag <image> cannot have content (write <image/>)` |
+| HTML처럼 `/` 없이 닫았다 (`<image src="…">`) | `void tag <image> must be self-closed (write <image/>)` |
 | 문단·리스트 항목 안에 썼다 | `only character data and inline tags are allowed inside <p> (<image> is not allowed)` |
 | 도형의 **직속** 자식으로 썼다 | `<shape> cannot contain <image> (available tags: <text>, <h1>, …, <row>, <col>, <grid>, <stack>)` — 도형 안 그림은 컨테이너를 거쳐 들어온다 (`<shape><col><image/></col></shape>`) |
 | 어휘 밖의 속성 (`fill`·`frame`·`type`·`anchor` …) | `unknown attribute fill on <image> (available attributes: src, id, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
@@ -491,6 +493,7 @@
 | 조건 | 진단 메시지 |
 |---|---|
 | 파일이 없다 | `the file src points to does not exist (assets/missing.png) — paths are relative to the project root (not to the slide file)` |
+| 프로젝트 밖을 가리키는 심볼릭 링크 | `src goes through a symbolic link that points outside the project (assets/link.png → ../../shared/a.png) — keep assets inside the project (pointing outside makes the build depend on this machine)` |
 | 디렉토리다 | `src points to a directory (assets/dir.png) — point it at a single image file` |
 | 0바이트 | `assets/empty.png is empty (0 bytes) — not an image file (a download or LFS checkout may not have finished)` |
 | 헤더가 잘렸다 | `cannot read the image header of assets/cut.png (the file is truncated) — check the committed bytes` |
