@@ -104,6 +104,10 @@ HTML의 익숙한 텍스트 태그를 그대로 쓰는 서브셋이다. 블록 �
 
 `<pre>`는 서브셋에서 `lang`을 받는 유일한 태그다.
 
+이 `lang`은 **코드의 언어**(하이라이팅 문법)다. `balpyo.json`의 `lang`(`"ko"`·`"en"` — 덱의
+**자연어**, `index.html`의 `lang`과 한국어 어절 줄바꿈을 정한다)과 이름만 같고 서로 무관하다:
+`<pre lang="ko">`는 에러이고, 덱의 `lang`이 코드 블록의 하이라이팅을 바꾸지도 않는다.
+
 ```html
 <pre lang="go">// 배포 때 캐시를 한 번에 채운다 — TTL이 전부 같은 시각이 된다.
 func warm(ctx context.Context, ids []string) error {
@@ -133,6 +137,9 @@ func warm(ctx context.Context, ids []string) error {
   사유물이라 다른 테마로 만든 덱도 열려야 하지만 `lang`은 **엔진 어휘**이므로, 목록 밖 이름은
   오타이거나 아직 없는 언어다. 조용히 하이라이팅을 끄면 저자는 자기 색이 왜 안 나오는지 알
   길이 없다.
+- 목록에 없는 언어(`yaml`·`typescript`·`python` …)를 강조 없이 보이려면 `lang`을 **뺀다** —
+  `<pre>`는 그대로 코드 블록이고 색만 없다. 비슷한 언어의 이름을 빌려 쓰지 않는다: 토크나이저가
+  문법을 잘못 읽어 엉뚱한 조각에 색이 붙는다.
 - **`lang`은 생략할 수 있다.** 없으면 하이라이팅만 없고 나머지는 같다 (코드 역할의 mono 폰트,
   공백 보존, 탭 펴기).
 - `soml`을 언어로 세지 않는 것이 값이다 — SOML 전용 토크나이저를 들이면 어휘가 자랄 때마다
@@ -293,7 +300,9 @@ func warm(ctx context.Context, ids []string) error {
 조작은 [발표 조작](../cli.md#웹-산출물에서의-발표-조작)과 같다: **다음**(→·Space·›)은 스텝을
 먼저 먹고 남은 스텝이 없을 때 다음 슬라이드로 가고, **이전**(←·‹)은 스텝을 하나 되감는다.
 뒤로 들어온 슬라이드는 전부 전개된 상태이고, 딥링크·오버뷰 타일·Home/End로 곧장 들어간
-슬라이드는 스텝 0에서 시작한다.
+슬라이드는 스텝 0에서 시작한다. Home/End는 이미 첫(마지막) 슬라이드에 있을 때 눌러도 그 장의
+스텝을 0으로 되돌린다. 오버뷰에서는 항목이 전부 보이므로 같은 키가 스텝을 먹지 않고 타일 사이를
+옮기며, 그렇게 옮겨 간 슬라이드도 스텝 0에서 시작한다.
 
 ## 예제
 
@@ -353,7 +362,7 @@ func main() {
 </slide>
 ```
 
-`lang` 어휘는 `go`·`soml`·`json`·`bash`이고, 어느 언어든 웹의 `<span>`과 PPTX의 `a:r`는 같은
+`lang` 어휘는 `go`·`xml`·`soml`·`json`·`bash`이고, 어느 언어든 웹의 `<span>`과 PPTX의 `a:r`는 같은
 경계에서 끊긴다.
 
 ## 렌더 결과
@@ -415,6 +424,7 @@ CSS가 0으로 명시하므로 **브라우저 기본 스타일에 기대는 값�
 | 블록 안의 블록·리스트 | `block tag <h2> is not allowed inside <p> (blocks do not nest)` |
 | `<a>` 안의 `<a>` (중첩 포함) | `<a> cannot be nested inside <a>` |
 | `<br>`을 여닫아 썼다 | `void tag <br> cannot have content (write <br/>)` |
+| HTML처럼 `<br>`만 쓰고 닫지 않았다 | `void tag <br> must be self-closed (write <br/>)` |
 | `<pre>` 안에 요소를 썼다 | `only character data is allowed inside <pre> (<strong> is not allowed)` |
 | `<pre>` 아닌 블록에 `lang`을 썼다 | `unknown attribute lang on <p> (available attributes: variant, size, …)` — `lang`은 `<pre>` 고유 속성이다 |
 | 어휘 밖의 문자 참조 (`&nbsp;`) | `` unsupported character reference &nbsp; (available: &amp;, &apos;, &gt;, &lt;, &quot;, `&#decimal;`, `&#xhex;`) `` |

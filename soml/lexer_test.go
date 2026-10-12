@@ -24,6 +24,9 @@ func TestTokenizeIsLossless(t *testing.T) {
 		"<p>a < b && c &lt; d</p>",
 		"<pre><![CDATA[<slide id=\"x\">]]></pre>",
 		"<pre><![CDATA[닫히지 않은",
+		"\uFEFF<slide></slide>",
+		"\uFEFF",
+		"<slide>\uFEFF</slide>",
 		strings.Repeat("<@ '\" ->/", 200),
 	}
 	for _, src := range inputs {

@@ -728,3 +728,14 @@ func TestChevronNotch(t *testing.T) {
 		})
 	}
 }
+
+// 하위 경로가 여럿인 경로 도형은 짝홀 규칙으로 채운다 — PPTX가 하위 경로를 한 `a:path`에 담아 PowerPoint가
+// 짝홀로 채우므로, 같은 방향으로 감은 안쪽 사각형이 두 타깃 모두에서 구멍(액자 · 고리)이 된다.
+func TestPathShapeFillsEvenOdd(t *testing.T) {
+	out := renderString(t, subsetDeck(t,
+		`<shape type="path" fill="accent1" w="300" h="300" d="M0,0 L100,0 L100,100 L0,100 Z M25,25 L75,25 L75,75 L25,75 Z"/>`))
+	ink := inkOf(t, out, "s0.0")
+	if !strings.Contains(ink, `fill-rule="evenodd"`) {
+		t.Errorf("경로 도형의 채움 규칙이 evenodd가 아니다:\n%s", ink)
+	}
+}

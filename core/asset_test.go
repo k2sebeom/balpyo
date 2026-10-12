@@ -7,6 +7,9 @@ import (
 	"image/color"
 	"image/jpeg"
 	"image/png"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -108,6 +111,36 @@ func TestResolveAssetsTable(t *testing.T) {
 	}
 }
 
+// EXIF 방향이 가로·세로를 바꾸는 JPEG는 **보이는** 크기로 실린다 — 브라우저가 돌린 그림을
+// 그리고 재므로, 고유 크기가 저장된 픽셀의 것이면 cover 크롭과 PPTX의 틀이 다른 그림을 가리킨다.
+// 바이트는 그대로다.
+func TestResolveAssetsEXIFOrientation(t *testing.T) {
+	// 240×120으로 저장되고 방향 6(90°)이 적힌 사진이다.
+	rotated, err := os.ReadFile("../testdata/fixtures/05_image/assets/rotated.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain := jpegBytes(t, 240, 120)
+	fsys := fstest.MapFS{
+		"assets/rotated.jpg": {Data: rotated},
+		"assets/plain.jpg":   {Data: plain},
+	}
+	deck, diags := resolveImageDeck(t, "<slide>\n  <image src=\"assets/rotated.jpg\"/>\n  <image src=\"assets/plain.jpg\"/>\n</slide>\n")
+	if len(diags) != 0 {
+		t.Fatalf("외관 해석 진단이 없어야 한다: %v", diags)
+	}
+	if diags := ResolveAssets(deck, fsys); len(diags) != 0 {
+		t.Fatalf("에셋 진단이 없어야 한다: %v", diags)
+	}
+	want := soml.Assets{
+		{Key: "assets/rotated.jpg", Format: soml.FormatJPEG, Width: 120, Height: 240, Orientation: 6, Bytes: rotated},
+		{Key: "assets/plain.jpg", Format: soml.FormatJPEG, Width: 240, Height: 120, Bytes: plain},
+	}
+	if !reflect.DeepEqual(deck.Assets, want) {
+		t.Errorf("에셋 표 = %v, want %v", showAssets(deck.Assets), showAssets(want))
+	}
+}
+
 // 그림이 없는 덱은 파일 시스템을 보지 않는다 — 표가 빈 채로 남고 진단도 없다.
 func TestResolveAssetsWithoutImages(t *testing.T) {
 	deck, _ := resolveImageDeck(t, "<slide id=\"a\">\n  <p>글자만</p>\n</slide>\n")
@@ -205,6 +238,77 @@ func TestResolveAssetsWithoutFS(t *testing.T) {
 	}
 }
 
+// 프로젝트 밖을 가리키는 심볼릭 링크는 `..`로 나간 src와 같은 에러다 — 링크를 따라가 읽으면 빌드가
+// 이 기계의 디렉토리에 묶이고, 커밋된 것은 링크뿐이라 다른 기계에서는 그림이 사라진다. 프로젝트 안을
+// 가리키는 링크는 그대로 읽는다 (같은 파일을 두 이름으로 부를 뿐이다).
+//
+// 디스크에 진짜 링크를 만든다: 밖을 가리키는 링크의 대상은 fstest.MapFS로는 만들 수 없다 (맵 밖은 없다).
+func TestResolveAssetsSymlinks(t *testing.T) {
+	base := t.TempDir()
+	project := filepath.Join(base, "project")
+	outside := filepath.Join(base, "outside")
+	for _, dir := range []string{filepath.Join(project, "assets"), outside} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	data := pngBytes(t, 4, 4)
+	for _, file := range []string{filepath.Join(project, "assets", "ok.png"), filepath.Join(outside, "a.png")} {
+		if err := os.WriteFile(file, data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	links := map[string]string{
+		"assets/out.png":   "../../outside/a.png",
+		"assets/abs.png":   filepath.Join(outside, "a.png"),
+		"shared":           "../outside",
+		"assets/alias.png": "ok.png",
+		"assets/hop.png":   "alias.png",
+		"assets/up.png":    "../assets/ok.png",
+	}
+	for name, target := range links {
+		if err := os.Symlink(target, filepath.Join(project, filepath.FromSlash(name))); err != nil {
+			t.Skipf("이 파일 시스템은 심볼릭 링크를 만들 수 없다: %v", err)
+		}
+	}
+	// 파이프라인처럼 설치한 테마의 홈을 붙인 FS로도 같은 판정이어야 한다 — 감싼 FS가 링크를 숨기면
+	// 빌드만 검사를 건너뛴다.
+	systems := map[string]fs.FS{
+		"DirFS":               os.DirFS(project),
+		"WithInstalledThemes": WithInstalledThemes(os.DirFS(project), fstest.MapFS{}),
+	}
+	for fsName, fsys := range systems {
+		for _, src := range []string{"assets/out.png", "assets/abs.png", "shared/a.png"} {
+			t.Run(fsName+"/밖/"+src, func(t *testing.T) {
+				attrs := `src="` + src + `"`
+				deck, resolveDiags := resolveImageDeck(t, imageSlide(attrs))
+				if len(resolveDiags) != 0 {
+					t.Fatalf("외관 해석은 통과해야 한다: %v", resolveDiags)
+				}
+				diags := ResolveAssets(deck, fsys)
+				if len(diags) != 1 {
+					t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+				}
+				assertDiag(t, diags[0], 2, imageCol(attrs, src), "symbolic link", "outside the project")
+				if len(deck.Assets) != 0 {
+					t.Errorf("밖을 가리키는 에셋이 표에 실렸다: %v", deck.Assets.Keys())
+				}
+			})
+		}
+		for _, src := range []string{"assets/alias.png", "assets/hop.png", "assets/up.png"} {
+			t.Run(fsName+"/안/"+src, func(t *testing.T) {
+				deck, _ := resolveImageDeck(t, imageSlide(`src="`+src+`"`))
+				if diags := ResolveAssets(deck, fsys); len(diags) != 0 {
+					t.Fatalf("프로젝트 안의 링크는 통과해야 한다: %v", diags)
+				}
+				if _, ok := deck.Assets.Get(src); !ok || len(deck.Assets) != 1 {
+					t.Errorf("에셋 표 = %v, want [%s]", deck.Assets.Keys(), src)
+				}
+			})
+		}
+	}
+}
+
 // imageStyles는 덱의 모든 확정 이미지 외관을 문서 순서로 모은다.
 func imageStyles(t *testing.T, deck *soml.Deck) []*soml.ImageStyle {
 	t.Helper()
@@ -234,8 +338,8 @@ func imageStyles(t *testing.T, deck *soml.Deck) []*soml.ImageStyle {
 func showAssets(assets soml.Assets) string {
 	var parts []string
 	for _, asset := range assets {
-		parts = append(parts, fmt.Sprintf("%s(%s %dx%d %dB)",
-			asset.Key, asset.Format, asset.Width, asset.Height, len(asset.Bytes)))
+		parts = append(parts, fmt.Sprintf("%s(%s %dx%d o%d %dB)",
+			asset.Key, asset.Format, asset.Width, asset.Height, asset.Orientation, len(asset.Bytes)))
 	}
 	return "[" + strings.Join(parts, " ") + "]"
 }

@@ -520,3 +520,25 @@ func TestParseDiagnosticCarriesFile(t *testing.T) {
 		t.Errorf("진단 = %q, want %q로 시작", got, want)
 	}
 }
+
+// 파일 맨 앞의 UTF-8 BOM(메모장의 기본 저장 형식)은 문자 데이터가 아니다 — 에디터는 그것을
+// 보여 주지 않으므로, 내용으로 읽으면 저자에게는 멀쩡해 보이는 파일이 "요소 밖 문자"로 깨진다.
+// 칸도 에디터가 보여 주는 대로 BOM 다음 글자가 1칸이다.
+func TestParseIgnoresLeadingBOM(t *testing.T) {
+	const bom = "\uFEFF"
+	doc := parseOK(t, bom+"<slide id=\"a\">\n<p>x</p>\n</slide>\n")
+	if doc.ID != "a" {
+		t.Errorf("ID = %q, want a", doc.ID)
+	}
+	if got := doc.Tokens.Source(); !strings.HasPrefix(got, bom) {
+		t.Errorf("토큰 열이 BOM을 잃었다 (무손실 계약): %q", got)
+	}
+
+	_, diags := Parse("a.slide", bom+"<slide><txt/></slide>")
+	if len(diags) != 1 {
+		t.Fatalf("진단 %d개, want 1개:\n%s", len(diags), diags.Err())
+	}
+	if got := diags[0].Span.Start.String(); got != "1:9" {
+		t.Errorf("위치 = %s, want 1:9 (BOM은 칸을 차지하지 않는다)", got)
+	}
+}

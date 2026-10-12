@@ -37,6 +37,10 @@ import (
 // `object-fit: cover`(짧은 축 기준 확대 + 중앙 정렬)와 같아야 두 타깃이 같은 영역을 보여준다
 // (coverCrop).
 //
+// 예외는 EXIF 방향이 가로·세로를 바꾸는 JPEG 하나다: 잰 rect는 브라우저가 돌린 그림이고
+// PowerPoint는 저장된 픽셀을 그대로 펴므로, `xfrm`은 같은 중심에서 가로·세로를 바꾼 틀에 회전을
+// 얹는다 (orientedFrame · orientedTransform).
+//
 // # 도형의 함수를 그대로 쓴다
 //
 // 좌표(Offset·Extent)·회전과 대칭(transformOf)·프리셋 지오메트리(writeGeom)·선(writeLine)·
@@ -234,12 +238,15 @@ func picSpec(id int, name string, rect geom.Rect, style soml.ImageStyle, asset s
 	if embed == "" {
 		return picInfo{}, fmt.Errorf("empty media relationship id")
 	}
-	spec := picInfo{id: id, name: name, descr: style.Alt, rect: rect, embed: embed}
+	// 틀과 크롭은 **저장된 픽셀**의 축으로 센다 — PowerPoint는 EXIF 방향을 보지 않고 저장된 픽셀을
+	// 틀에 펴므로, 방향은 아래의 회전·대칭이 옮긴다 (orientedFrame).
+	frame, stored := orientedFrame(rect, asset)
+	spec := picInfo{id: id, name: name, descr: style.Alt, rect: frame, embed: embed}
 	switch style.Fit {
 	case soml.FitContain:
 		// **계산 없음.** 잰 rect가 이미 맞춰진 그림이다 (파일 머리 주석의 표).
 	case soml.FitCover:
-		crop, err := coverCrop(asset, rect)
+		crop, err := coverCrop(stored, frame)
 		if err != nil {
 			return picInfo{}, err
 		}
@@ -264,7 +271,7 @@ func picSpec(id int, name string, rect geom.Rect, style soml.ImageStyle, asset s
 	if style.Radius != nil {
 		spec.preset = roundRectPreset
 		adjust := web.RoundRectAdjust()
-		val, err := AdjustValue(adjust, rect, style.Radius.Px)
+		val, err := AdjustValue(adjust, frame, style.Radius.Px)
 		if err != nil {
 			return picInfo{}, err
 		}
@@ -278,12 +285,60 @@ func picSpec(id int, name string, rect geom.Rect, style soml.ImageStyle, asset s
 		}
 		spec.alpha = style.Opacity
 	}
-	transform, err := transformOf(style.Rotate, style.Flip)
+	transform, err := orientedTransform(style.Rotate, style.Flip, asset.Orientation)
 	if err != nil {
 		return picInfo{}, err
 	}
 	spec.xfrm = transform
 	return spec, nil
+}
+
+// orientedFrame은 EXIF 방향을 PPTX로 옮길 때의 틀이다 — 잰 rect(보이는 그림)와 저장된 픽셀
+// 크기의 에셋을 돌려준다.
+//
+// 가로·세로를 바꾸는 방향(90°·270°)이면 틀은 잰 rect와 **중심이 같고** 가로·세로가 바뀐 사각형이다:
+// `xfrm@rot`은 틀의 중심을 돌리므로, 저장된 픽셀을 그 틀에 편 뒤 90° 돌리면 잰 rect를 정확히 덮는다.
+// 바꾸지 않는 방향이면 틀이 곧 잰 rect다.
+func orientedFrame(rect geom.Rect, asset soml.Asset) (geom.Rect, soml.Asset) {
+	if !asset.Orientation.SwapsAxes() {
+		return rect, asset
+	}
+	stored := asset
+	stored.Width, stored.Height = asset.Height, asset.Width
+	cx, cy := rect.X+rect.W/2, rect.Y+rect.H/2
+	return geom.Rect{X: cx - rect.H/2, Y: cy - rect.W/2, W: rect.H, H: rect.W}, stored
+}
+
+// orientedTransform은 저자의 회전·대칭에 EXIF 방향을 합성한다.
+//
+// 보이는 그림은 "저장된 픽셀 → EXIF 방향(대칭 → 회전 φ) → 저자의 대칭 → 저자의 회전 θ"다 (웹에서
+// 저자의 변형은 브라우저가 이미 돌린 그림에 걸린다). `xfrm`이 적을 수 있는 것은 "대칭 → 회전" 한
+// 쌍뿐이므로, 저자의 대칭을 EXIF 회전 앞으로 옮긴다: 축 하나의 대칭은 회전의 방향을 뒤집고
+// (F·R(φ) = R(−φ)·F), 두 축 대칭은 180° 회전이라 그대로 지나간다. 대칭끼리는 순서와 무관하게
+// 축마다 겹친다 (같은 축의 두 번은 대칭 없음).
+func orientedTransform(rotate *float64, flip soml.Flip, o soml.Orientation) (xfrm, error) {
+	t, err := transformOf(rotate, flip)
+	if err != nil {
+		return xfrm{}, err
+	}
+	phi := o.Rotation()
+	if phi == 0 && !o.FlipH() {
+		return t, nil
+	}
+	if t.flipH != t.flipV {
+		phi = -phi
+	}
+	deg := float64(phi)
+	if rotate != nil {
+		deg += *rotate
+	}
+	if rot := Rotation(deg); rot != 0 || rotate != nil {
+		t.rot = &rot
+	} else {
+		t.rot = nil
+	}
+	t.flipH = t.flipH != o.FlipH()
+	return t, nil
 }
 
 // coverCrop은 `fit="cover"`의 `a:srcRect` 크롭이다 — CSS `object-fit: cover`와 같은 영역을

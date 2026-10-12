@@ -49,14 +49,26 @@ func TestParseImageErrors(t *testing.T) {
 			want: []string{`1:9 void tag <image> cannot have content (write <image/>)`},
 		},
 		{
-			// 세 진단이 모두 저자의 `<image>` 이름을 가리킨다 (들여쓰기가 아니라 태그).
+			// 진단은 저자의 `<image>` 이름을 가리킨다 (들여쓰기가 아니라 태그). `>` 하나가 빠진
+			// 실수는 진단 하나다.
 			name: "닫히지 않은 이미지 태그",
 			src:  "<slide>\n  <image src=\"assets/wide.png\"\n</slide>",
 			want: []string{
 				"2:4 tag <image> is not closed with `>`",
-				"2:4 void tag <image> cannot have content",
-				"2:4 tag <image> must be closed before </slide>",
 			},
+		},
+		{
+			// HTML처럼 `/` 없이 닫았다 — 내용은 없으니 "내용을 가질 수 없다"가 아니고, 바깥
+			// 닫는 태그가 두 번째 진단을 만들지 않는다.
+			name: "자기 닫힘이 빠진 이미지",
+			src:  "<slide>\n  <image src=\"assets/wide.png\">\n</slide>",
+			want: []string{"2:4 void tag <image> must be self-closed (write <image/>)"},
+		},
+		{
+			// 뒤따르는 형제는 이미지의 내용이 아니라 형제로 남는다.
+			name: "자기 닫힘이 빠진 이미지 뒤의 형제",
+			src:  `<slide><image src="assets/wide.png"><text>캡션</text></slide>`,
+			want: []string{"1:9 void tag <image> must be self-closed (write <image/>)"},
 		},
 		{
 			// 도형 안 그림은 컨테이너를 거친다 — 진단 목록이 그 길을 보여 준다.

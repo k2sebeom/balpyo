@@ -12,6 +12,7 @@ import (
 	_ "image/png"
 	"io/fs"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/k2sebeom/balpyo/soml"
@@ -157,10 +158,15 @@ func (p *assetPass) image(elem *soml.Element) {
 // 헤더만 읽는다 (image.DecodeConfig): 픽셀은 우리가 쓰지 않고, 전체 디코드는 큰 사진에서 빌드
 // 시간을 통째로 잡아먹는다. 바이트는 **그대로** 담는다 — 리사이즈·재압축·EXIF 회전은 하지
 // 않는다 (엔진이 바이트를 고치면 저자가 커밋한 파일과 산출물의 그림이 다른 것이 되고, 저자는
-// 그 차이를 확인할 방법이 없다).
+// 그 차이를 확인할 방법이 없다). EXIF 방향은 읽어서 에셋에 싣기만 한다 (decodeImageAsset).
 func (p *assetPass) load(key string, span soml.Span) (soml.Asset, bool) {
 	if p.fsys == nil {
 		p.errorf(span, "no file system to read assets from (%s) — this is an engine bug (the caller did not pass an fs.FS to ResolveAssets)", key)
+		return soml.Asset{}, false
+	}
+	if link, target, out := escapingLink(p.fsys, key); out {
+		p.errorf(span, "src goes through a symbolic link that points outside the project (%s → %s) — keep assets inside the project (pointing outside makes the build depend on this machine)",
+			link, target)
 		return soml.Asset{}, false
 	}
 	info, err := fs.Stat(p.fsys, key)
@@ -187,6 +193,59 @@ func (p *assetPass) load(key string, span soml.Span) (soml.Asset, bool) {
 		return soml.Asset{}, false
 	}
 	return asset, true
+}
+
+// maxLinkHops는 escapingLink가 따라가는 링크 수의 상한이다 — 고리를 이룬 링크에서 멈추려는 값이고, 그
+// 경로는 이어지는 Stat이 운영체제의 에러로 보고한다.
+const maxLinkHops = 40
+
+// escapingLink는 key를 성분마다 따라가며 **프로젝트 밖을 가리키는 심볼릭 링크**를 찾는다 — 찾으면 그
+// 링크의 프로젝트 경로와 링크에 적힌 대상을 돌려준다.
+//
+// 경로 문법(`..`·절대 경로)은 해석 단계가 이미 막았지만 os.DirFS는 링크를 따라가므로 `assets/a.png`가
+// 링크이면 프로젝트 밖의 파일이 읽힌다. 그러면 빌드가 이 기계의 디렉토리에 묶이고, 커밋된 것은 링크뿐이라
+// 다른 기계에서는 같은 덱이 다르게 빌드된다 — `..`를 막은 이유와 같다. 프로젝트 안을 가리키는 링크는
+// 통과한다 (같은 파일의 다른 이름일 뿐이다).
+//
+// 링크를 볼 수 없는 파일 시스템(fs.ReadLinkFS가 아니다)과 읽다 실패한 성분은 판정하지 않는다 — 없는
+// 파일 같은 실패는 이어지는 Stat이 제 진단으로 말한다.
+func escapingLink(fsys fs.FS, key string) (link, target string, out bool) {
+	if _, ok := fsys.(fs.ReadLinkFS); !ok {
+		return "", "", false
+	}
+	resolved := "."
+	rest := strings.Split(key, "/")
+	for hops := 0; len(rest) > 0; {
+		next := path.Join(resolved, rest[0])
+		rest = rest[1:]
+		info, err := fs.Lstat(fsys, next)
+		if err != nil {
+			return "", "", false
+		}
+		if info.Mode()&fs.ModeSymlink == 0 {
+			resolved = next
+			continue
+		}
+		if hops++; hops > maxLinkHops {
+			return "", "", false
+		}
+		raw, err := fs.ReadLink(fsys, next)
+		if err != nil {
+			return "", "", false
+		}
+		dest := filepath.ToSlash(raw)
+		if path.IsAbs(dest) || filepath.IsAbs(raw) || filepath.VolumeName(raw) != "" {
+			return next, raw, true
+		}
+		// 상대 대상은 링크가 놓인 디렉토리 기준이다 — 거기서 다시 성분마다 따라간다 (대상 안의 링크도 본다).
+		joined := path.Join(resolved, dest)
+		if joined == ".." || strings.HasPrefix(joined, "../") {
+			return next, raw, true
+		}
+		resolved = "."
+		rest = append(strings.Split(joined, "/"), rest...)
+	}
+	return "", "", false
 }
 
 // decodeImageAsset은 그림 파일 하나의 바이트를 에셋으로 판정한다 — 실패하면 진단 문구를 돌려준다.
@@ -224,13 +283,24 @@ func decodeImageAsset(key string, data []byte) (soml.Asset, string) {
 	if config.Width <= 0 || config.Height <= 0 {
 		return soml.Asset{}, fmt.Sprintf("%s has an intrinsic size of %d×%d — nothing to draw", key, config.Width, config.Height)
 	}
+	width, height := config.Width, config.Height
+	var orientation soml.Orientation
+	if declared == soml.FormatJPEG {
+		// 브라우저는 EXIF 방향을 따라 돌린 그림을 그린다 — 고유 크기도 돌린 그림의 것이어야
+		// cover 크롭과 PPTX의 틀이 웹이 잰 박스와 같은 그림을 가리킨다.
+		orientation = soml.JPEGOrientation(data)
+		if orientation.SwapsAxes() {
+			width, height = height, width
+		}
+	}
 	return soml.Asset{
 		Key:    key,
 		Format: declared,
 		// 픽셀이 그대로 논리 스테이지 px다 (수치의 단위는 그것 하나다) — 배율을 정하는 표기는
 		// `w`/`h`/`ratio`이고, 엔진이 DPR을 추측하지 않는다 (soml.Asset의 근거).
-		Width:  config.Width,
-		Height: config.Height,
-		Bytes:  data,
+		Width:       width,
+		Height:      height,
+		Orientation: orientation,
+		Bytes:       data,
 	}, ""
 }

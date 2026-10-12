@@ -79,3 +79,9 @@ textbox "text s6.1.2.1"
 pic "image s7.0.0" alt="Processor chip" svg
 pic "image s7.0.1" alt="Processor chip, large" svg
 pic "image s7.0.2" alt="Processor chip, faded" svg
+# slide 9 image-exif
+textbox "h2 s8.0"
+  ¶ start | "EXIF 방향"{heading 27pt b fg}
+pic "image s8.1.0" alt="EXIF 방향대로 세운 사진"
+pic "image s8.1.1" alt="EXIF 방향대로 세운 사진을 채운 것"
+pic "image s8.1.2" alt="EXIF 방향 위에 저자가 돌린 사진"

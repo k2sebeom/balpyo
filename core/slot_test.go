@@ -114,6 +114,47 @@ func TestResolveSlotNested(t *testing.T) {
 	}
 }
 
+// 값 없는 slot·빈 slot은 다른 외관 속성과 같은 "값이 필요하다"/"비어 있다" 진단이다 — 슬롯
+// 이름 ""으로 읽으면 저자가 쓰지도 않은 이름을 고치라는 말이 된다. 값 없는 속성에는 값
+// 구간이 없으므로 진단이 이름 구간을 가리켜야 line:col이 남는다. 중첩 요소의 값 없는 slot도
+// 같다.
+func TestResolveSlotWithoutValue(t *testing.T) {
+	tests := []struct {
+		name      string
+		src       string
+		line, col int
+		want      string
+	}{
+		// `<slide>\n  <p slot>`: 이름 `slot`은 2행 6칸에서 시작한다.
+		{"값 없는 slot", "<slide>\n  <p slot>x</p>\n</slide>", 2, 6, "the slot attribute needs a value"},
+		// `<slide>\n  <p slot="`: 빈 값은 2행 12칸(닫는 따옴표 자리)이다.
+		{"빈 slot", "<slide>\n  <p slot=\"\">x</p>\n</slide>", 2, 12, "the slot attribute is empty"},
+		// `<slide>\n  <row><p slot>`: 중첩 요소의 이름 `slot`은 2행 11칸이다.
+		{"중첩 요소의 값 없는 slot", "<slide>\n  <row><p slot>x</p></row>\n</slide>", 2, 11, "direct children"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			deck, diags := resolveSlide(t, tc.src)
+			if len(diags) != 1 {
+				t.Fatalf("진단 %d개, want 1개: %v", len(diags), diags)
+			}
+			diag := diags[0]
+			if !diag.Span.Start.IsValid() || diag.Span.Start.Line != tc.line || diag.Span.Start.Col != tc.col {
+				t.Errorf("위치 = %s, want %d:%d (%s)", diag.Span.Start, tc.line, tc.col, diag.Message)
+			}
+			if diag.Severity != soml.SeverityError || !strings.Contains(diag.Message, tc.want) {
+				t.Errorf("진단 = %q, want %q 포함", diag.String(), tc.want)
+			}
+			if strings.Contains(diag.Message, "has no slot") {
+				t.Errorf("값 없는 slot을 없는 슬롯 이름으로 읽었다: %q", diag.Message)
+			}
+			if got := slotOf(t, deck, "p"); got != "" {
+				t.Errorf("슬롯 = %q, want \"\"", got)
+			}
+		})
+	}
+}
+
 // 테마가 그 레이아웃의 슬롯 영역을 갖지 않으면 슬롯은 **경고 + 미탑재**다.
 //
 // 이 판정이 core에 있는 이유가 결정의 전부다: 렌더러 두 곳이 각자 조건을 적었을 때 그 둘이
