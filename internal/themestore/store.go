@@ -361,6 +361,9 @@ func (s *Store) install(ctx context.Context, src Source, force bool,
 		}
 		moved = append(moved, name)
 	}
+	// 테마마다 상속 사슬 전체를 검사하므로, 부모와 자식을 같이 설치하면 부모의 파일은 두 번 읽힌다 —
+	// 같은 파일·같은 자리·같은 문장의 경고는 이번 설치에서 한 번만 낸다.
+	seen := map[soml.Diagnostic]bool{}
 	for _, c := range picked {
 		lint, err := core.CheckInstalledTheme(s.ThemesFS(), c.header.Name)
 		if err != nil {
@@ -368,7 +371,12 @@ func (s *Store) install(ctx context.Context, src Source, force bool,
 			return res, fmt.Errorf("%s: theme %q cannot be loaded, so nothing was installed: %w",
 				src.at(c.dir), c.header.Name, err)
 		}
-		res.Lint = append(res.Lint, s.sourceLint(lint, src, picked)...)
+		for _, d := range s.sourceLint(lint, src, picked) {
+			if !seen[d] {
+				seen[d] = true
+				res.Lint = append(res.Lint, d)
+			}
+		}
 	}
 	for _, c := range picked {
 		r := Record{Name: c.header.Name, Path: c.dir, Ref: src.Ref, Commit: snap.commit}
