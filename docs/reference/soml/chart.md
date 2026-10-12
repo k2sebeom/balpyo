@@ -39,7 +39,7 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 | `series` | 색 토큰 · `#rrggbb` | **모든 막대**의 색. 생략하면 `accent1` — 라벨은 칠하지 않는다 |
 | `alt` | 문자열 (빈 값은 **에러**) | 그림의 **접근성 이름** — 펼침의 뿌리 도형에 실린다 |
 | 박스 | `pad`·`w`·`h`·`min-w`·`min-h`·`max-w`·`max-h`·`ratio` | 도형과 같은 한 벌 — **`h`나 `ratio`는 필수다** (아래) |
-| `slot` | 레이아웃의 슬롯 이름 | 슬롯을 채운다 (웹 `grid-area` · PPTX `p:ph`) |
+| `slot` | 레이아웃의 슬롯 이름 | 슬롯을 채운다 (웹 `grid-area` · PPTX는 슬롯 자리의 도형 — 글자가 없으므로 `p:ph`가 아니다) |
 | 자식 배치 | `grow`·`shrink`·`basis`·`span`·`self`·`order`·`at`·`x`·`y`·`style` | 레이아웃 컨테이너·[`<stack>`](stack.md)의 자식으로서의 자리 |
 
 - **높이는 필수다** (`h`나 `ratio` 중 하나). 막대 높이가 플롯 밴드에 대한 백분율이므로 밴드가

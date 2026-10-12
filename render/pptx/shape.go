@@ -396,11 +396,23 @@ func writeShapeSp(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, elem *
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
 	spec.body = body
-	spec.ph = slotPlaceholder(slide, elem)
+	if shapeCarriesText(elem) {
+		// 글자 없는 도형(자식 없는 도형, 배경 모드 도형 — 슬롯을 채운 차트의 뿌리가 이것이다)은
+		// 슬롯을 채워도 플레이스홀더로 표시하지 않는다: 빈 본문을 가진 `<p:ph>`는 PowerPoint
+		// 편집 보기에서 "클릭해 텍스트 입력" 안내문을 도형 위에 띄운다. 자리는 잰 rect가
+		// 소유하므로 표식을 빼도 좌표·외관은 그대로다.
+		spec.ph = slotPlaceholder(slide, elem)
+	}
 	if err := writeSp(b, spec, deck.Theme); err != nil {
 		return fmt.Errorf("%s:%s <%s>: %w", slide.Source, elem.Span, elem.Name, err)
 	}
 	return nil
+}
+
+// shapeCarriesText는 도형이 자기 본문에 글자를 흡수하는가다 — 자식이 있고 그 자식이
+// 형제 도형으로 펼쳐지지 않을 때다 (shapeBodyXML의 빈 문단 분기의 반대).
+func shapeCarriesText(elem *soml.Element) bool {
+	return len(elem.Children) > 0 && !soml.ShapeHoldsLayout(elem)
 }
 
 // spSpec은 p:sp 하나의 조립 명세다 — **텍스트 박스와 프리셋 도형이 같은 함수를 지난다**
