@@ -197,6 +197,7 @@
 ```css
 .balpyo-table { width: 100%; flex: 0 0 auto; border-collapse: collapse; table-layout: auto; }
 .balpyo-table th, .balpyo-table td { padding: 8px 12px; }
+.balpyo-table .balpyo-cell-empty::before { content: "\200b"; }
 ```
 
 - **CSS 그리드로 흉내지 않은 이유**는 둘이다: 스크린 리더가 행·열 관계를 읽고(시맨틱 태그를
@@ -206,6 +207,10 @@
   격자선 하나를 공유하므로, 합치지 않으면 웹에서만 선이 2px로 보인다.
 - **`table-layout: auto`**가 열 너비를 정한다 — 글자가 긴 열이 넓어진다 (`001_basic`의
   `전분기 대비` 열이 다른 열보다 넓은 것이 그 증거다).
+- **빈 셀도 한 줄 높이를 갖는다.** 글자가 없는 셀(비었거나 공백·빈 인라인뿐인 셀)은
+  `balpyo-cell-empty` 클래스를 받고, 폭 없는 글자 하나가 셀 글자 크기의 줄 하나를 예약한다.
+  PPTX 셀은 비어 있어도 그 크기의 빈 문단을 갖고 PowerPoint는 행을 그보다 낮게 줄이지 않으므로,
+  웹이 빈 행을 여백만큼으로 재면 PPTX 표만 자라 아래 행들이 밀린다 (`006_empty_cells`).
 - 셀 외관은 UA 기본값(`th { font-weight: bold; text-align: center }`)에 기대는 값이 하나도
   없다 — 굵기·정렬·색·세로 정렬까지 인라인 style이 전부 명시한다. `<th>`/`<td>`를 가르는
   이유는 **접근성**뿐이다 (머리 셀 인식).
