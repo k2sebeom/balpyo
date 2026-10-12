@@ -2,7 +2,7 @@
 
 Commands: `init` `build` `check` `watch` `preview` `snap` `theme` `version` `help`. Exit codes
 are 0 (success) and 1 (anything else; the reason is on stderr). `balpyo` with no arguments or
-`balpyo help` prints usage; `balpyo <command> --help` prints that command's flags (and exits 1).
+`balpyo help` prints usage; `balpyo <command> --help` prints that command's flags (and exits 0).
 **Precedence: CLI flag > `balpyo.json` > default.**
 
 ## `balpyo init [dir]`
@@ -12,12 +12,12 @@ given the theme fonts are installed).
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--project` | `.` | the directory (same as the positional argument; giving both is an error) |
+| `--project` | `.` | the directory (same as the positional argument, which may sit before, between or after the flags: `balpyo init --author A my-talk --theme ink`; giving both is an error) |
 | `--title` | directory name | deck title — also the PPTX file name |
 | `--author` | `Presenter` | presenter |
 | `--theme` | `minimal` | **built-in themes only** (`minimal` `editorial` `ink`) |
 | `--aspect` | `16:9` | `16:9` or `4:3` |
-| `--lang` | `en` | deck language |
+| `--lang` | `en` | deck language, a BCP 47 tag (`ko`, `en`, `ja`, `ko-KR` …) — use `ko` for a Korean deck |
 
 Writes `balpyo.json`, `.gitignore` (`dist/`, `preview/`; an existing one is left alone) and
 `slides/001_title.slide`, `002_content.slide`, `003_end.slide` (ids `cover`, `what`, `end`).
@@ -43,14 +43,16 @@ succeeds — a failed build never half-updates the output directory.
 **Diagnostics** go to stderr as `file:line:col: severity: message` (1-based, columns in runes,
 severity `error` or `warning`), sorted by slide order, line, column; file-level ones first in
 their file. Messages without a position print as `warning: …` (missing fonts) or with a config
-prefix (`balpyo.json: error: theme.json chrome[1]: …`, `balpyo.json: theme: unknown theme "…" — …`,
-`--theme: unknown theme "…" — …`). A failed build ends with `build failed: N errors`.
+prefix (`balpyo.json: theme: unknown theme "…" — …`, `--theme: unknown theme "…" — …`). An error
+in a project theme points at the theme file that declares the value
+(`themes/corp/theme.json:1:80: error: theme.json chrome[0]: unknown align "middle" (…)`). A failed build ends with `build failed: N errors`.
 
 A wrong name lists the legal set for its position; a near miss (one or two letters off, one for
 names of four letters or fewer) adds `— did you mean "x"?`.
 
-**Warnings** (exit 0 unless `--strict`): unknown `variant`; the four layout warnings (with
-`--check-layout` or a `pptx` target); a theme font missing from the measuring browser; a
+**Warnings** (exit 0 unless `--strict`): unknown `variant`; a `#…` link to no slide in the deck;
+the layout warnings — overflow, content box, off-stage, overlap, text overflow, and the chart
+frame (with `--check-layout` or a `pptx` target); a theme font missing from the measuring browser; a
 non-layout `style` declaration; a slot-mode slide whose layout has no slot CSS in the theme;
 footer/page number turned on in `balpyo.json` but not declared by the theme; chrome leaving
 the slide or overlapping other chrome.
@@ -80,7 +82,8 @@ there are no errors.
 
 ## `balpyo watch`
 
-All `build` flags plus `--addr` (default `127.0.0.1:4600`). `--target` must include `html`
+All `build` flags plus `--addr` (default `127.0.0.1:4600`; loopback only — `127.0.0.0/8`,
+`[::1]`, `localhost`. `0.0.0.0`, `:4600` or another host stops with `--addr "0.0.0.0:4600" is not a loopback address: …`). `--target` must include `html`
 (`watch requires the html target: add html to --target`); with `html,pptx` it rebuilds the PPTX
 on every save, which is slower.
 
@@ -182,7 +185,8 @@ all three into bug reports.
   first / last slide. "Next" uses up a slide's `reveal` steps before moving on; "back" rewinds
   one step.
 - **Notes**: `n` (or the Notes button) shows the current slide's `<note>`.
-- **Overview**: `o` (or Grid) shows every slide on one screen; click a tile to go there; `Esc`
+- **Overview**: `o` (or Grid) shows every slide on one screen; click a tile to go there (a link on
+  the tile is not followed); arrows move between tiles without using up `reveal` steps; `Esc`
   returns.
 - **Deep links**: `index.html#/<slide id>` or `#/<number>` (1-based); the URL follows
   navigation.
