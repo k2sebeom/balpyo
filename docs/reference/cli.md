@@ -50,7 +50,7 @@ Sans · Noto Sans Mono · Noto Sans CJK KR · Noto Sans Mono CJK KR)이 빌드�
 | `--author <이름>` | `Presenter` (자리표시자) | 발표자 |
 | `--theme <이름>` | `minimal` | 테마. **내장 테마만** 받는다 (`minimal`·`editorial`·`ink`) |
 | `--aspect <비율>` | `16:9` | 종횡비 (`16:9`·`4:3`) |
-| `--lang <코드>` | `en` | 덱 언어 (`index.html`의 `lang`) |
+| `--lang <코드>` | `en` | 덱 언어 — BCP 47 언어 태그 (`ko`·`en`·`ja`…). `index.html`의 `lang`이 된다 |
 
 `init`의 `--theme`만 내장 테마로 **제한**된다 (`build`·`check`·`watch`·`preview`는 로컬 테마
 이름도 받는다): 이 명령은 프로젝트를 **만드는** 명령이라 `themes/`가 아직 없고, 읽히지 않는 이름을
