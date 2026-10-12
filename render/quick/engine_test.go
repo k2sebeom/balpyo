@@ -196,6 +196,84 @@ func TestKeepAllBreaksAtSpaces(t *testing.T) {
 	}
 }
 
+// spanXs는 블록의 줄에서 인라인 요소(span)가 시작하는 x를 문서 순서대로 모은다 — 한 span이
+// 여러 조각(CJK는 글자마다 끊을 수 있다)이면 첫 조각의 x다.
+func spanXs(b *box) []float64 {
+	var xs []float64
+	prev := b.st
+	for _, l := range b.lines {
+		for _, f := range l.frags {
+			if f.atomic == nil && f.st != b.st && f.st != prev && !f.space {
+				xs = append(xs, f.x)
+			}
+			prev = f.st
+		}
+	}
+	return xs
+}
+
+// text-align: justify는 마지막 줄과 강제 줄바꿈 앞 줄을 빼고 남는 폭을 확장 기회(공백, 한자 ·
+// 가나 사이)에 고루 나눈다. 기댓값은 Chromium이 잰 span의 x다.
+func TestJustifyDistributesSpace(t *testing.T) {
+	const font = `width: 300px; font-size: 20px; line-height: 30px; text-align: justify; font-family: 'Noto Sans'`
+	_, b := layoutBody(t, baseCSS,
+		`<div id="j" style="`+font+`">one <span>two</span> three four <span>five</span> six seven <span>eight</span> nine</div>`+
+			`<div id="k" style="`+font+`">one <span>two</span> three<br>four <span>five</span> six seven eight nine ten <span>eleven</span></div>`+
+			`<div id="m" style="`+font+`, 'Noto Sans CJK KR'">슬라이드를 한 번 쓰면 <span>웹과</span> 편집 가능한 파워포인트가 <span>나온다</span></div>`+
+			`<div id="n" style="`+font+`, 'Noto Sans CJK JP'; width: 290px">日本語の文章を<span>両端</span>揃えにすると文字の間が広がります</div>`+
+			`<div id="r" style="`+font+`">one&nbsp;<span>two</span> three four five six seven eight nine</div>`+
+			`<div style="`+font+`">one two<span id="ib" style="display: inline-block; width: 20px; height: 10px"></span>three four five six seven eight</div>`)
+	for _, tc := range []struct {
+		id   string
+		want []float64
+	}{
+		// 첫 줄은 양 끝에 붙고, 마지막 줄은 시작 쪽에 붙는다.
+		{"j", []float64{51.9, 225.0, 59.5}},
+		// <br> 앞 줄과 마지막 줄은 늘리지 않는다.
+		{"k", []float64{41.0, 51.2, 36.1}},
+		// 한글은 어절 사이 공백만 늘어난다.
+		{"m", []float64{193.9, 157.6}},
+		// 한자 · 가나는 글자 사이가 늘어난다 (290px에 14자, 남는 10px을 13곳에).
+		{"n", []float64{145.3}},
+		// 줄바꿈 없는 공백도 늘어나는 자리다.
+		{"r", []float64{51.9}},
+	} {
+		got := spanXs(b[tc.id])
+		if len(got) != len(tc.want) {
+			t.Errorf("%s: %d span fragments, want %d", tc.id, len(got), len(tc.want))
+			continue
+		}
+		for i := range got {
+			if math.Abs(got[i]-tc.want[i]) > 0.5 {
+				t.Errorf("%s: span %d at x=%.1f, want %.1f", tc.id, i, got[i], tc.want[i])
+			}
+		}
+	}
+	// 인라인 블록은 늘어나는 자리가 아니고, 앞의 공백이 늘어난 만큼 밀린다.
+	if math.Abs(b["ib"].x-86.0) > 0.5 {
+		t.Errorf("inline-block at x=%.1f, want 86.0", b["ib"].x)
+	}
+	if r := b["j"].lines[0].textRect; math.Abs(r.right()-300) > 0.5 {
+		t.Errorf("justified line ends at %.1f, want 300", r.right())
+	}
+}
+
+// 두 문자가 모두 ASCII일 때 Chromium은 '/' 뒤에서 줄을 바꾸지 않는다 — 200px 칸의 긴 URL은
+// 넘쳐도 한 줄이다. ASCII가 아닌 글자 앞에서는 UAX #14대로 끊는다.
+func TestNoBreakAfterSlashBeforeASCII(t *testing.T) {
+	const font = `font-size: 20px; line-height: 30px; font-family: 'Noto Sans'`
+	_, b := layoutBody(t, baseCSS,
+		`<div id="u" style="width: 200px; `+font+`">aaaaaaaaaa/bbbbbbbbbb</div>`+
+			`<div id="v" style="width: 200px; `+font+`">https://example.com/path/to/some/long/resource</div>`+
+			`<div id="w" style="width: 30px; `+font+`">1/a</div>`+
+			`<div id="x" style="width: 40px; `+font+`">aaaaa/éaaaaa</div>`)
+	for id, want := range map[string]float64{"u": 30, "v": 30, "w": 30, "x": 60} {
+		if !near(b[id].h, want) {
+			t.Errorf("%s: height %.1f, want %.1f", id, b[id].h, want)
+		}
+	}
+}
+
 // flex 항목의 자동 최소 크기는 min(지정 크기, 내용 기반 최소)다 — 지정 크기가 있어도 내용이 비면
 // 컨테이너에 맞게 줄어든다. 지정 크기를 바닥으로 삼으면 항목이 컨테이너 밖으로 넘친다.
 // 기댓값은 Chromium이 같은 마크업에 낸 값이다.
