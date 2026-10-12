@@ -266,6 +266,13 @@
     padding: 8px 12px;
   }
 
+  /* An empty cell still holds one line at the cell font size. The PPTX cell keeps an empty
+     paragraph and PowerPoint never shrinks a row below it, so a web row measured at padding +
+     border only would make the PPTX table grow. A zero-width space gives the cell that line. */
+  .balpyo-table .balpyo-cell-empty::before {
+    content: "\200b";
+  }
+
   /* Deck chrome is a sibling of the stage — it sits outside the flow and does not take up body
      height. */
   .balpyo-chrome {

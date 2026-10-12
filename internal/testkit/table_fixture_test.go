@@ -46,6 +46,7 @@ var tableFixtureTables = map[string][]tableFixtureGrid{
 	"table-striped":      {{cols: 3, rows: 4, firstRow: true}},
 	"table-slots":        {{cols: 3, rows: 3, firstRow: true, placeholder: "body"}},
 	"table-in-container": {{cols: 2, rows: 3, firstRow: true}, {cols: 3, rows: 3, firstRow: true}},
+	"table-empty-cells":  {{cols: 2, rows: 4, firstRow: true}},
 }
 
 // tableFixtureGrid는 표 하나의 기대 격자다.
@@ -339,8 +340,8 @@ func TestTableFixtureGridComesFromMeasuredBoxes(t *testing.T) {
 			}
 		}
 	}
-	if tables != 6 {
-		t.Errorf("표 %d개를 보았다, want 6개 (001~005의 표 합)", tables)
+	if tables != 7 {
+		t.Errorf("표 %d개를 보았다, want 7개 (001~006의 표 합)", tables)
 	}
 }
 

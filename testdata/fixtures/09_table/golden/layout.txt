@@ -101,3 +101,11 @@ table "table s4.1.1.1"
   ¶ r2 start | "P2"{body 18pt fg}
   ¶ r2 start | "74"{body 18pt fg}
   ¶ r2 start | "120"{body 18pt fg}
+# slide 6 table-empty-cells
+textbox "h2 s5.0"
+  ¶ start | "빈 셀"{heading 27pt b fg}
+table "table s5.1"
+  ¶ r0 start | "Topic"{body 18pt b bg}
+  ¶ r0 start | "Description"{body 18pt b bg}
+  ¶ r3 start | "x"{body 18pt fg}
+  ¶ r3 start | "y"{body 18pt fg}

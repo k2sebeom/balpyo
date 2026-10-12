@@ -123,8 +123,13 @@ func writeTableCell(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, cell
 	if cs.RowSpan > 1 {
 		spans += fmt.Sprintf(" rowspan=\"%d\"", cs.RowSpan)
 	}
-	fmt.Fprintf(b, "<%s %s=%q %s=%q%s%s>",
-		cell.Name, IDAttr, ElementID(slide.Index, path), ElAttr, cell.Name, spans, styleAttr(decls))
+	// 글자 없는 셀은 빈 줄 하나를 예약하는 훅을 단다 (tableCSS의 EmptyCellClass 규칙).
+	var class string
+	if !hasCellText(cell.Children) {
+		class = fmt.Sprintf(" class=%q", EmptyCellClass)
+	}
+	fmt.Fprintf(b, "<%s%s %s=%q %s=%q%s%s>",
+		cell.Name, class, IDAttr, ElementID(slide.Index, path), ElAttr, cell.Name, spans, styleAttr(decls))
 	for i, child := range cell.Children {
 		// 셀의 콘텐츠 모델은 문자 데이터와 인라인뿐이다 — writeNode가 그 둘을 이미
 		// 다루므로 같은 코드를 지난다 (인라인 서식이 셀에서만 다르게 나갈 길을 막는다).
@@ -134,6 +139,33 @@ func writeTableCell(b *strings.Builder, deck *soml.Deck, slide *soml.Slide, cell
 	}
 	fmt.Fprintf(b, "</%s>\n", cell.Name)
 	return nil
+}
+
+// EmptyCellClass는 글자가 하나도 없는 셀의 클래스다 — tableCSS가 이 셀에 폭 없는 글자 하나를
+// 얹어 줄 하나를 예약한다.
+//
+// 그 줄이 필요한 이유는 PPTX다: `a:tc`는 비어 있어도 셀 글자 크기의 빈 문단 하나를 갖고,
+// PowerPoint는 행을 그 문단보다 낮게 줄이지 않는다. 웹이 빈 셀을 여백 + 테두리만큼으로 재면
+// 그 높이가 `a:tr@h`로 실리고, PPTX 표만 빈 행마다 한 줄씩 자라 뒤의 행들이 잰 rect 아래로
+// 밀린다. 두 타깃이 같은 한 줄을 예약해야 같은 격자다.
+const EmptyCellClass = "balpyo-cell-empty"
+
+// hasCellText는 셀 내용에 보이는 글자가 있는지다 — 빈 인라인(`<span></span>`)은 웹에서 줄을
+// 만들지 않으므로 글자로 치지 않는다. `<br>`은 그 자체로 줄을 만들므로 글자로 친다.
+func hasCellText(children []soml.Node) bool {
+	for _, child := range children {
+		switch n := child.(type) {
+		case *soml.Text:
+			if strings.TrimSpace(n.Value) != "" {
+				return true
+			}
+		case *soml.Element:
+			if n.Name == soml.BreakElement || hasCellText(n.Children) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // cellStyleCSS는 확정 셀 외관을 CSS 선언 목록으로 컴파일한다 — 글자(textStyleCSS) + 채움 +
@@ -236,5 +268,12 @@ func tableCSS() string {
   .balpyo-table td {
     padding: %dpx %dpx;
   }
-`, TableCellPadY, TableCellPadX)
+
+  /* An empty cell still holds one line at the cell font size. The PPTX cell keeps an empty
+     paragraph and PowerPoint never shrinks a row below it, so a web row measured at padding +
+     border only would make the PPTX table grow. A zero-width space gives the cell that line. */
+  .balpyo-table .%s::before {
+    content: "\200b";
+  }
+`, TableCellPadY, TableCellPadX, EmptyCellClass)
 }
