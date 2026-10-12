@@ -1,7 +1,6 @@
 package core
 
 import (
-	"strconv"
 	"strings"
 
 	"github.com/k2sebeom/balpyo/soml"
@@ -328,7 +327,8 @@ const patternFunc = "pattern"
 // shapeFill은 도형의 채움이다 — fill의 모든 값에 더해 무늬(`pattern(<무늬> <앞색> <뒷색>)`)를 받는다.
 // 무늬를 도형에만 여는 이유: 글자 · 선 · 표 칸 · 배경에는 두 타깃에 같은 원어가 없거나 길이 하나 더 생긴다.
 func (r *resolver) shapeFill(attr soml.Attr) (soml.Fill, bool) {
-	if r.hasValue(attr) && strings.HasPrefix(attr.Value, patternFunc+"(") {
+	// 값 없음·빈 값은 접두사가 붙을 수 없어 fill로 넘어가고, 진단은 그쪽 hasValue가 한 번만 낸다.
+	if strings.HasPrefix(attr.Value, patternFunc+"(") {
 		return r.patternFill(attr.Value, attr.ValueSpan)
 	}
 	return r.fill(attr)
@@ -452,8 +452,8 @@ func (r *resolver) borderWidth(part valuePart, attr soml.Attr) (float64, bool) {
 			part.text, unit)
 		return 0, false
 	}
-	width, err := strconv.ParseFloat(part.text, 64)
-	if err != nil {
+	width, ok := parseNumber(part.text)
+	if !ok {
 		r.errorf(span, "the border width is not a number (%q) — the part order is `<width> <style> <color>`", part.text)
 		return 0, false
 	}
@@ -529,8 +529,8 @@ func (r *resolver) radiusValue(attr soml.Attr) (soml.Radius, bool) {
 			attr.Value, unit)
 		return soml.Radius{}, false
 	}
-	px, err := strconv.ParseFloat(attr.Value, 64)
-	if err != nil {
+	px, ok := parseNumber(attr.Value)
+	if !ok {
 		r.errorf(attr.ValueSpan, "radius value is not a number (%q) — use a token (%s) or a number",
 			attr.Value, strings.Join(r.theme.RadiusNames(), ", "))
 		return soml.Radius{}, false
@@ -583,8 +583,8 @@ func (r *resolver) opacity(attr soml.Attr) (float64, bool) {
 		r.errorf(attr.ValueSpan, "opacity is a unitless real number from 0 to 1 (drop the %[2]q from %[1]q)", raw, unit)
 		return 0, false
 	}
-	value, err := strconv.ParseFloat(raw, 64)
-	if err != nil {
+	value, ok := parseNumber(raw)
+	if !ok {
 		r.errorf(attr.ValueSpan, "opacity value is not a number (%q) — write a real number from 0 to 1", raw)
 		return 0, false
 	}
@@ -612,8 +612,8 @@ func (r *resolver) rotate(attr soml.Attr) (float64, bool) {
 			raw, unit)
 		return 0, false
 	}
-	deg, err := strconv.ParseFloat(raw, 64)
-	if err != nil {
+	deg, ok := parseNumber(raw)
+	if !ok {
 		r.errorf(attr.ValueSpan, "rotate value is not a number (%q) — write the clockwise angle as a number (negative allowed)", raw)
 		return 0, false
 	}
@@ -701,8 +701,8 @@ func (r *resolver) notch(attr soml.Attr) (float64, bool) {
 		return 0, false
 	}
 	raw, ok := strings.CutSuffix(attr.Value, "%")
-	value, err := strconv.ParseFloat(raw, 64)
-	if !ok || err != nil {
+	value, nok := parseNumber(raw)
+	if !ok || !nok {
 		r.errorf(attr.ValueSpan, "notch must be a percentage of the shape width (%q) — e.g. notch=%q", attr.Value, "20%")
 		return 0, false
 	}

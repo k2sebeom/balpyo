@@ -278,5 +278,64 @@ func TestLoadThemeRequiresCompleteness(t *testing.T) {
 	}
 }
 
+// 필수 이름이 다 있어도 **값**이 산출물에 실릴 수 없는 모양이면 로드가 실패한다 — 그대로 두면
+// 스키마에 맞지 않는 `srgbClr`·`schemeClr`, 깨진 CSS 변수, 두 타깃이 다르게 읽는 굵기가 된다.
+// 표에 없는 반경·그림자를 가리킨 컴포넌트도 같다: 조용히 기본값으로 떨어지거나 사라지면
+// 같은 이름을 인라인으로 쓴 슬라이드(에러)와 판정이 갈린다.
+func TestLoadThemeRejectsBadTokenValues(t *testing.T) {
+	cases := []struct {
+		name     string
+		tokens   bool // true면 fullTokens, 아니면 fullComponents를 고친다
+		from, to string
+		want     string
+	}{
+		{"rgb가 16진수가 아니다", true, `"rgb":"0F65F9"`, `"rgb":"ZZ0001"`, `"ZZ0001"`},
+		{"rgb에 #과 세 자리", true, `"rgb":"0F65F9"`, `"rgb":"#A10"`, `"#A10"`},
+		{"rgb가 비었다", true, `"rgb":"0F65F9"`, `"rgb":""`, `"accent1"`},
+		{"ref가 어휘 밖", true, `"slot":"accent1","ref":"accent1"`, `"slot":"accent1","ref":"bogus"`, `"bogus"`},
+		{"ref가 비었다", true, `"slot":"dk1","ref":"tx1"`, `"slot":"dk1","ref":""`, `"tx1"`},
+		{"ref가 다른 자리를 가리킨다", true, `"slot":"accent1","ref":"accent1"`, `"slot":"accent1","ref":"accent2"`, `"accent2"`},
+		{"그림자 alpha가 1을 넘는다", true, `"alpha":0.15`, `"alpha":3.3`, "alpha"},
+		{"그림자 alpha가 음수", true, `"alpha":0.15`, `"alpha":-0.5`, "alpha"},
+		{"전환 길이가 음수", true, `"radius": [`,
+			`"motion": {"duration":600,"stagger":90,"delay":150,"transitionDuration":-5},
+  "radius": [`, "transitionDuration"},
+		{"역할 굵기가 범위 밖", false, `"size":56,"weight":700`, `"size":56,"weight":6000`, "6000"},
+		{"역할 굵기가 0", false, `"size":56,"weight":700`, `"size":56,"weight":0`, "weight"},
+		{"태그 기본값 굵기가 범위 밖", false, "  ]},\n  \"shape\"",
+			"  ], \"componentDefaults\": [{\"tag\":\"h3\",\"weight\":6000}]},\n  \"shape\"", "6000"},
+		{"표 머리 굵기가 범위 밖", false, `"radius":"md"} }`,
+			`"radius":"md"} }, "table": {"header": {"weight":6000}}`, "6000"},
+		{"shape.default의 반경이 표에 없다", false, `"radius":"md"}`, `"radius":"huge"}`, `"huge"`},
+		{"shape variant의 반경이 표에 없다", false, `"radius":"md"} }`,
+			`"radius":"md"}, "variants": [{"name":"card","radius":"huge"}] }`, `"huge"`},
+		{"shape variant의 그림자가 표에 없다", false, `"radius":"md"} }`,
+			`"radius":"md"}, "variants": [{"name":"card","shadow":"nope"}] }`, `"nope"`},
+		{"image variant의 그림자가 표에 없다", false, `"radius":"md"} }`,
+			`"radius":"md"} }, "image": {"variants": [{"name":"framed","shadow":"nope"}]}`, `"nope"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tokens, comps := fullTokens, fullComponents
+			target := &comps
+			if tc.tokens {
+				target = &tokens
+			}
+			before := *target
+			*target = strings.Replace(before, tc.from, tc.to, 1)
+			if *target == before {
+				t.Fatalf("테스트 준비 오류 — %q를 찾지 못했다", tc.from)
+			}
+			err := second(loadTheme(memTheme(tokens, comps), "t"))
+			if err == nil {
+				t.Fatalf("%s인데 로드가 통과했다", tc.name)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("에러가 %q를 말하지 않는다: %v", tc.want, err)
+			}
+		})
+	}
+}
+
 // second는 (값, 에러) 쌍에서 에러만 집는다.
 func second(_ themePackage, err error) error { return err }

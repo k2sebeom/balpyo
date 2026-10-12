@@ -17,6 +17,9 @@ func TestDecodeSVGAsset(t *testing.T) {
 		{"width · height", `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="32"/>`, 48, 32},
 		{"px 접미", `<svg xmlns="http://www.w3.org/2000/svg" width="48px" height="32px"/>`, 48, 32},
 		{"width와 viewBox 비율", `<svg xmlns="http://www.w3.org/2000/svg" width="32" viewBox="0 0 64 16"/>`, 32, 8},
+		// 내보내는 도구가 쓰는 SVG의 수 문법 — 부호와 지수도 수다.
+		{"지수와 부호", `<svg xmlns="http://www.w3.org/2000/svg" width="+4.8e1" height="32." viewBox="0 0 6.4E1 1.6e+1"/>`, 48, 32},
+		{"지수의 viewBox 비율", `<svg xmlns="http://www.w3.org/2000/svg" width="32" viewBox="0 0 6.4e1 1.6e1"/>`, 32, 8},
 		{"안의 참조와 data URI", `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="8" height="8"><defs><linearGradient id="g"/></defs><rect fill="url(#g)" style="fill: url(#g)"/><use xlink:href="#g"/><image href="data:image/png;base64,AAAA"/></svg>`, 8, 8},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -34,6 +37,9 @@ func TestDecodeSVGAsset(t *testing.T) {
 		{"뿌리가 svg가 아니다", `<html/>`, "the root element is <html>, not <svg>"},
 		{"크기가 없다", `<svg xmlns="http://www.w3.org/2000/svg"/>`, "has no intrinsic size"},
 		{"viewBox만", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 16"/>`, `has only a viewBox — give the <svg> width and height in px (e.g. width="64" height="16")`},
+		{"NaN", `<svg xmlns="http://www.w3.org/2000/svg" width="NaN" height="4"/>`, `width="NaN" — an SVG image gives its size in px`},
+		{"무한", `<svg xmlns="http://www.w3.org/2000/svg" width="1e400" height="4"/>`, `width="1e400" — an SVG image gives its size in px`},
+		{"16진", `<svg xmlns="http://www.w3.org/2000/svg" width="0x10" height="4"/>`, `width="0x10" — an SVG image gives its size in px`},
 		{"em 단위", `<svg xmlns="http://www.w3.org/2000/svg" width="2em" height="2em"/>`, `width="2em" — an SVG image gives its size in px`},
 		{"스크립트", `<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><script>x()</script></svg>`, "contains <script>"},
 		{"이벤트 속성", `<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4" onload="x()"/>`, "event attribute onload"},

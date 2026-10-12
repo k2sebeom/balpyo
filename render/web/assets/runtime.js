@@ -67,7 +67,8 @@
   const lastStep = (slide) => revealItems(slide).reduce((max, el) => Math.max(max, stepOf(el)), 0);
 
   // 표식은 지금 슬라이드에만 다시 칠한다 — 떠난 슬라이드의 표식은 그대로 남지만 CSS가
-  // 활성 슬라이드 안에서만 그것을 보므로(viewer.css) 겹쳐 둔 다른 장의 항목이 새지 않는다.
+  // 활성 슬라이드와 전환 중에 나가는 장 안에서만 그것을 보므로(viewer.css) 겹쳐 둔 다른 장의
+  // 항목이 새지 않고, 나가는 장은 떠날 때 모습 그대로 밀려난다.
   // 컨트롤 바의 활성 상태도 여기서 정한다: 스텝이 남아 있으면 마지막 장에서도 다음이 살아
   // 있어야 하고, 스텝을 먹은 첫 장에서는 이전이 되감을 자리가 된다.
   const applyReveal = () => {
@@ -152,13 +153,26 @@
   // 다음은 스텝을 **먼저** 먹고 그 다음에 슬라이드를 넘긴다. 뒤로는 스텝을 하나 되감고,
   // 스텝이 없으면 앞 슬라이드로 가되 그 장은 **전부 전개된** 상태로 들어간다:
   // 이미 말한 장을 다시 한 단계씩 누르게 만들지 않는다.
+  //
+  // 오버뷰에서는 스텝을 건드리지 않고 타일만 옮긴다 — 거기서는 항목이 전부 보이므로 스텝을
+  // 먹으면 강조가 제자리에 머문 채 키만 사라진다. 옮겨 간 장은 타일 클릭처럼 곧장 들어간
+  // 장이라 스텝 0이다 (보지 않은 스텝을 전개된 것으로 남기지 않는다).
   const forward = () => {
+    if (overviewOn()) { show(current + 1, true); return; }
     if (step < lastStep(slides[current])) { step++; applyReveal(); return; }
     show(current + 1, true, false, 1);
   };
   const backward = () => {
+    if (overviewOn()) { show(current - 1, true); return; }
     if (step > 0) { step--; applyReveal(); return; }
     show(current - 1, true, true, -1);
+  };
+  // Home/End는 "그 장을 처음 들어간 상태로"다 — 이미 그 장에 있어도 스텝을 0으로 되돌린다.
+  // show는 같은 장이면 아무것도 하지 않으므로, 결과가 지금 어느 장에 있는지에 따라 달라지지 않게
+  // 여기서 스텝을 직접 되감는다.
+  const jump = (index) => {
+    if (index === current) { step = 0; applyReveal(); return; }
+    show(index, true);
   };
 
   // ── 오버뷰 ──
@@ -215,10 +229,12 @@
   });
   overviewToggle.addEventListener("click", () => setOverview(!overviewOn()));
   // 타일 클릭은 오버뷰에서만 슬라이드를 고른다 — 발표 중의 클릭은 넘기기가 아니다
-  // (링크·코드 선택을 삼키지 않는다).
+  // (링크·코드 선택을 삼키지 않는다). 오버뷰에서는 타일 안의 링크도 따라가지 않는다:
+  // 줄어든 타일에서는 링크가 타일의 큰 몫을 덮고, 따라가면 고르려던 덱을 떠난다.
   slides.forEach((slide, index) => {
-    slide.addEventListener("click", () => {
+    slide.addEventListener("click", (e) => {
       if (!overviewOn()) return;
+      e.preventDefault();
       show(index, true);
       setOverview(false);
     });
@@ -235,8 +251,8 @@
       e.preventDefault(); forward(); break;
     case "ArrowLeft": case "ArrowUp": case "PageUp":
       e.preventDefault(); backward(); break;
-    case "Home": e.preventDefault(); show(0, true); break;
-    case "End": e.preventDefault(); show(slides.length - 1, true); break;
+    case "Home": e.preventDefault(); jump(0); break;
+    case "End": e.preventDefault(); jump(slides.length - 1); break;
     case "n": case "N": notesToggle.click(); break;
     case "o": case "O": e.preventDefault(); setOverview(!overviewOn()); break;
     case "Escape": if (overviewOn()) { e.preventDefault(); setOverview(false); } break;

@@ -328,10 +328,15 @@ PowerPoint에서 확인한다**.
 
 - **각도**: CSS(0deg = 아래→위, 시계방향)를 각 타깃으로 옮긴다. PPTX는
   `a:lin@ang = (css − 90) mod 360 × 60000` (0=왼→오)이라 기본 180deg는 `5400000`(위→아래)이
-  된다. 웹 SVG는 `objectBoundingBox`의 시작·끝 점 벡터로 옮긴다 (`scaled="1"`과 같은 상대
-  좌표). **세로·가로(0/90/180/270deg)는 종횡비와 무관해 두 타깃이 일치하지만, 대각 각도는
-  정사각형이 아닌 박스에서 `objectBoundingBox`가 각을 기울여 미세하게 갈라진다** — 대각
-  그라디언트는 정사각형 도형에 두는 것을 권한다 (v1 한계).
+  된다. 대각 각도는 정사각형이 아닌 박스에서 두 가지 뜻을 가질 수 있어, PPTX의 `a:lin@scaled`가
+  웹이 그 그라디언트를 그리는 방식을 따른다:
+  - **배경·덮개·텍스트 색**은 웹 CSS `linear-gradient`라 각도가 박스 위의 참 각도이고, PPTX도
+    `scaled="0"`(참 각도)이다. 16:9 슬라이드의 `210deg` 띠는 두 타깃에서 같은 방향으로 기운다.
+  - **도형 채움·테두리**는 웹 SVG `objectBoundingBox`의 시작·끝 점 벡터라 정사각형에서 잡은 각이
+    박스 비율로 늘어나고, PPTX도 `scaled="1"`(같은 상대 좌표)이다. 두 타깃은 서로 일치하지만,
+    정사각형이 아닌 도형에서는 같은 각도의 CSS `linear-gradient`보다 기울기가 얕다.
+
+  세로·가로(0/90/180/270deg)는 종횡비와 무관해 두 뜻이 같다.
 - **스톱**: 균등 배치다 (n개 → 0, 1/(n−1), …, 1). 토큰 스톱은 PPTX `a:gs/a:schemeClr`,
   웹 `stop-color: var(…)`로 참조를 유지한다.
 - **텍스트 색 그라디언트**는 웹에서 `background-clip: text`(배경 그라디언트를 글자 실루엣으로
@@ -451,7 +456,7 @@ PowerPoint에서 확인한다**.
 | `strong` | 굵기 max(부모, 700) | `font-weight: 700` | `a:rPr@b="1"` |
 | `em` | 이탤릭 | `font-style: italic` | `a:rPr@i="1"` |
 | `code` | mono 폰트 (크기는 부모) | `font-family: var(--balpyo-font-mono)` | `a:latin`/`a:ea` 리터럴 typeface (mono는 fontScheme 슬롯이 없다) |
-| `a` | 밑줄 + `accent1` 색 + 링크 | `text-decoration: underline; color: var(--balpyo-color-accent1)` + `<a href>` | `a:rPr@u="sng"` + `schemeClr accent1` + `a:hlinkClick r:id` + 슬라이드 rels의 External 관계 |
+| `a` | 밑줄 + `accent1` 색 + 링크 | `text-decoration: underline; color: var(--balpyo-color-accent1)` + `<a href>` | `a:rPr@u="sng"` + `schemeClr accent1` + `a:hlinkClick r:id` + 슬라이드 rels의 External 관계 (`#…` 덱 안 링크는 `action="ppaction://hlinksldjump"` + 대상 슬라이드로 가는 내부 관계) |
 | `span` | 자기 `color`/`weight`/`size`만 (`size`는 감싼 텍스트 이하) | 해당 선언 | 해당 rPr 속성/채움 |
 | `mark` | 형광펜 = 테마의 `text.mark.highlight` (안의 런도 물려받는다) | `<mark>` 자신의 `background-color` (안의 런은 다시 칠하지 않는다 — 알파 있는 색이 겹친다) | 런마다 `a:rPr/a:highlight` + `schemeClr` (+ 변형) |
 | `br` | 없음 (void) | `<br>` | `a:br` — 문단을 쪼개지 않는다 |

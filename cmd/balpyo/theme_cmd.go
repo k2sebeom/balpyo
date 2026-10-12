@@ -58,23 +58,6 @@ func runTheme(args []string, stdout, stderr io.Writer) error {
 	return fmt.Errorf("unknown theme command %q (available commands: install, list, info, remove, update)", args[0])
 }
 
-// parseInterleaved는 플래그와 위치 인자가 섞인 인자를 읽는다 (`install <URL> --force`). flag 패키지는
-// 첫 위치 인자에서 멈추므로 남은 것을 다시 읽는다.
-func parseInterleaved(fs *flag.FlagSet, args []string) ([]string, error) {
-	var positional []string
-	for {
-		if err := fs.Parse(args); err != nil {
-			return nil, err
-		}
-		args = fs.Args()
-		if len(args) == 0 {
-			return positional, nil
-		}
-		positional = append(positional, args[0])
-		args = args[1:]
-	}
-}
-
 func themeContext() (context.Context, context.CancelFunc) {
 	return signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 }
@@ -197,7 +180,7 @@ func runThemeList(args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("theme list", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	projectDir := fs.String("project", ".", "project root (also lists the themes in the project's themes/)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
@@ -266,7 +249,7 @@ func runThemeList(args []string, stdout, stderr io.Writer) error {
 func runThemeRemove(args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("theme remove", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() == 0 {
@@ -286,7 +269,7 @@ func runThemeRemove(args []string, stdout, stderr io.Writer) error {
 func runThemeUpdate(args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("theme update", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	store, err := openStore()
