@@ -23,6 +23,48 @@
 - **바이너리 하나.** 웹 산출물은 외부 참조 없는 `index.html` 한 장 — 발표자 뷰 · 개요 · 노트 ·
   딥링크 · 인쇄(PDF)까지 들어 있다.
 
+## 빠른 시작
+
+최신 릴리스를 설치한다 (Linux · macOS, amd64 · arm64). 스크립트는 릴리스의 `SHA256SUMS`로 아카이브를
+맞춘 뒤에만 `~/.local/bin`에 설치한다.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/k2sebeom/balpyo/main/install.sh | sh
+```
+
+PPTX 타깃과 `--check-layout`은 Chrome/Chromium으로 배치를 재므로 하나가 깔려 있어야 한다 (웹만
+만들 때는 필요 없다). 버전은 `BALPYO_VERSION=v0.1.0`, 설치 디렉토리는 `BALPYO_INSTALL_DIR`로
+고른다 — 릴리스 아카이브와 소스 빌드(`go build ./cmd/balpyo`)는
+[시작하기](https://k2sebeom.github.io/balpyo/guides/getting-started/)에 있다.
+
+```bash
+balpyo init my-talk --author "내 이름" --lang ko
+balpyo watch --project my-talk                     # http://127.0.0.1:4600 — 저장하면 다시 그린다
+balpyo build --project my-talk --target html,pptx  # → my-talk/dist/index.html + <제목>.pptx
+balpyo check --project my-talk --check-layout --strict   # 넘침 · 이탈 · 겹침까지 검사 (CI용)
+```
+
+프로젝트는 설정 파일 하나와 슬라이드 디렉토리다. 파일 순서가 곧 슬라이드 순서다.
+
+```text
+my-talk/
+├── balpyo.json          # 제목 · 저자 · 종횡비 · 테마 · 푸터 · 페이지 번호
+├── slides/
+│   ├── 001_title.slide
+│   └── 002_content.slide
+├── assets/              # <image src>가 가리키는 그림
+└── themes/              # 자기 테마 (선택)
+```
+
+```xml
+<slide id="cover" layout="title">
+  <text slot="kicker" variant="kicker">SLIDE ORIENTED MARKUP LANGUAGE</text>
+  <h1 slot="title">balpyo</h1>
+  <text slot="subtitle" role="heading" color="muted">한 번 쓰면 웹과 편집 가능한 PPTX가 같이 나온다</text>
+  <note>발표자 노트는 여기에.</note>
+</slide>
+```
+
 ## 쇼케이스
 
 아래는 저장소의 [예제 덱](examples/decks/)을 balpyo로 렌더한 그대로다. 산출물(`index.html` ·
@@ -89,42 +131,9 @@ editorial에서는 아래, ink에서는 왼쪽 가운데, harbor에서는 위 �
 | **`aurora`** — 표지 | **`aurora`** — 마무리 장 |
 | ![aurora 표지](examples/showcase/images/themes/balpyo-intro-01-aurora.png) | ![aurora 마무리](examples/showcase/images/themes/balpyo-intro-12-aurora.png) |
 
-## 빠른 시작
-
-Go 1.26과, PPTX 배치를 잴 Chrome/Chromium이 필요하다.
-
-```bash
-git clone https://github.com/k2sebeom/balpyo && cd balpyo
-go build -o balpyo ./cmd/balpyo
-
-./balpyo init my-talk --author "내 이름"
-./balpyo watch --project my-talk                     # http://127.0.0.1:4600 — 저장하면 다시 그린다
-./balpyo build --project my-talk --target html,pptx  # → my-talk/dist/index.html + <제목>.pptx
-./balpyo check --project my-talk --check-layout --strict   # 넘침 · 이탈 · 겹침까지 검사 (CI용)
-```
-
-프로젝트는 설정 파일 하나와 슬라이드 디렉토리다. 파일 순서가 곧 슬라이드 순서다.
-
-```text
-my-talk/
-├── balpyo.json          # 제목 · 저자 · 종횡비 · 테마 · 푸터 · 페이지 번호
-├── slides/
-│   ├── 001_title.slide
-│   └── 002_content.slide
-├── assets/              # <image src>가 가리키는 그림
-└── themes/              # 자기 테마 (선택)
-```
-
-```xml
-<slide id="cover" layout="title">
-  <text slot="kicker" variant="kicker">SLIDE ORIENTED MARKUP LANGUAGE</text>
-  <h1 slot="title">balpyo</h1>
-  <text slot="subtitle" role="heading" color="muted">한 번 쓰면 웹과 편집 가능한 PPTX가 같이 나온다</text>
-  <note>발표자 노트는 여기에.</note>
-</slide>
-```
-
 ## 더 읽을 것
+
+문서 사이트는 **https://k2sebeom.github.io/balpyo/** 다.
 
 - [개요](docs/index.md) — balpyo가 무엇이고 어떻게 동작하는가
 - [시작하기](docs/guides/getting-started.md) — 설치부터 발표까지
