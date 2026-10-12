@@ -415,6 +415,35 @@ func TestFlexAlignBaseline(t *testing.T) {
 	}
 }
 
+// 여러 줄 flex 컨테이너: 줄의 교차 크기는 항목의 가상 교차 크기(열 방향이면 fit-content 폭)로
+// 정하고, align-content: normal이 남는 교차 공간을 줄마다 똑같이 더한 뒤 stretch 항목을 그 줄
+// 크기로 늘린다. 줄이 하나여도 여러 줄 컨테이너면 align-content가 그 줄을 옮긴다.
+// 기댓값은 Chromium의 값이다.
+func TestFlexWrapLineSizes(t *testing.T) {
+	_, b := layoutBody(t, baseCSS, `<div style="display: flex; flex-wrap: wrap; width: 500px; height: 300px; gap: 10px">`+
+		`<div id="a1" style="width: 200px"></div><div id="a2" style="width: 200px; height: 50px"></div>`+
+		`<div id="a3" style="width: 200px; height: 80px"></div></div>`+
+		`<div style="display: flex; flex-direction: column; flex-wrap: wrap; width: 832px; height: 160px; gap: 12px; font-size: 16px; font-family: 'Noto Sans'">`+
+		`<div id="b1" style="height: 36px">w1</div><div id="b2" style="height: 36px">w2</div><div id="b3" style="height: 36px">w3</div>`+
+		`<div id="b4" style="height: 36px; width: 100px">w4</div><div id="b5" style="height: 36px; align-self: flex-start">w5</div></div>`+
+		`<div style="display: flex; flex-wrap: wrap; align-content: center; width: 500px; height: 100px">`+
+		`<div id="c1" style="width: 200px; height: 20px"></div></div>`)
+	type r struct{ x, y, w, h float64 }
+	for id, want := range map[string]r{
+		"a1": {0, 0, 200, 130}, "a2": {210, 0, 200, 50}, "a3": {0, 140, 200, 80},
+		"b1": {0, 0, 370.9, 36}, "b3": {0, 96, 370.9, 36}, "b4": {382.9, 0, 100, 36},
+		"c1": {0, 40, 200, 20},
+	} {
+		k := b[id]
+		if math.Abs(k.x-want.x) > 0.5 || math.Abs(k.y-want.y) > 0.5 || math.Abs(k.w-want.w) > 0.5 || math.Abs(k.h-want.h) > 0.5 {
+			t.Errorf("%s = (%.1f, %.1f %.1f×%.1f); want (%.1f, %.1f %.1f×%.1f)", id, k.x, k.y, k.w, k.h, want.x, want.y, want.w, want.h)
+		}
+	}
+	if math.Abs(b["b5"].x-382.9) > 0.5 || b["b5"].w > 30 {
+		t.Errorf("b5 = (%.1f, %.1f×%.1f); want a fit-content item at x 382.9", b["b5"].x, b["b5"].w, b["b5"].h)
+	}
+}
+
 // fill-rule="evenodd"인 경로는 하위 경로가 겹친 곳을 비운다 — 같은 방향으로 감은 안쪽 사각형이
 // 액자의 구멍이 된다. 규칙이 없으면(nonzero) 같은 경로가 꽉 찬다.
 func TestSVGFillRuleEvenOdd(t *testing.T) {
