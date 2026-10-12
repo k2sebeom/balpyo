@@ -16,7 +16,7 @@ balpyo의 두 산출물이 지키는 약속은 **컴포넌트와 배치**다: �
 
 ## 줄바꿈 — 엔진마다 박스 폭 안에서 정한다
 
-웹은 한국어 덱(`lang: ko`)을 **어절 단위로** 접는다 (`word-break: keep-all` + `overflow-wrap: anywhere`).
+웹은 한국어 덱(`lang: ko`)을 **어절 단위로** 접는다 (`word-break: keep-all` + `overflow-wrap: break-word`).
 PPTX의 텍스트 박스는 `wrap="square"`로 박스 폭 안에서 줄을 바꾸고, 뷰어의 줄바꿈 규칙을 따른다.
 그래서 같은 문단이 웹에서 두 줄, PowerPoint에서 세 줄일 수 있다.
 

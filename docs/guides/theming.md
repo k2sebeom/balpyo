@@ -154,8 +154,11 @@ balpyo check --project my-deck --theme harbor --check-layout --strict
   하고 `align`이 있어야 한다.
 - 역할이 가리키는 `font`·`color`는 **그 테마에 있는** 토큰 이름이어야 한다 (리터럴 색은 거부다 —
   PPTX의 테마 색 편집을 끊는다).
+- 토큰과 컴포넌트의 **값**도 산출물에 실릴 수 있는 모양이어야 한다: 색 `rgb`는 `#` 없는 16진수 6자리,
+  `ref`는 그 슬롯의 참조 이름, 굵기는 1 ~ 1000, 그림자 `alpha`는 0 ~ 1이고, 컴포넌트가 가리키는
+  `radius`·`shadow`는 그 테마의 토큰 이름이어야 한다.
 - `theme.json`의 `layouts` 선언과 `layouts/*.css` 파일 집합이 **양방향으로** 같아야 한다.
-- `tokens.json`·`components.json`의 모르는 키는 에러다 (닫힌 어휘 — `$comment`로 시작하는 키만 예외).
+- `theme.json`·`tokens.json`·`components.json`의 모르는 키는 에러다 (닫힌 어휘 — `$comment`로 시작하는 키만 예외).
   진단은 그 파일의 줄:칸과 JSON 안의 경로(`text.variants["stat"].lineHeight`)를 가리킨다.
 
 문구와 전체 목록은 [테마 패키지](../reference/theme.md)의 "빌드가 멈추거나 경고하는 조건"에 있다.

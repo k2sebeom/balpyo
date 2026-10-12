@@ -171,6 +171,8 @@ type shapePath struct {
 	// Shade는 그 면에 얹는 음영이다 — `darken`(검정 20%, 프리셋의 darkenLess) · `lighten`(흰색 20%,
 	// lightenLess). 같은 경로를 채움 위에 한 번 더 칠한다.
 	Shade string
+	// EvenOdd면 짝홀 규칙으로 채운다 (`fill-rule="evenodd"`) — 하위 경로가 겹친 곳은 구멍이 된다.
+	EvenOdd bool
 }
 
 // measuredInk는 잰 박스에서 평가한 프리셋 그림이다 — 경로는 px이고 텍스트 영역은 네 변의 px 인셋이다
@@ -875,7 +877,10 @@ func writeShapeInk(b *strings.Builder, geom shapeGeometry, ink *measuredInk, pat
 		if len(style.Path) == 0 {
 			return fmt.Errorf("type=%q has no path — the deck did not go through core.Resolve", geom.Type)
 		}
-		paths = []shapePath{{D: PathData(style.Path)}}
+		// 하위 경로가 여럿이면 겹친 곳을 칠할지는 채움 규칙이 정한다. PPTX는 하위 경로를 모두 한 `a:path`에
+		// 담고 PowerPoint는 그것을 짝홀(even-odd) 규칙으로 채운다 — 안쪽 사각형이 구멍이 된다. SVG의 기본값
+		// nonzero로 두면 같은 방향으로 감은 안쪽 사각형이 웹에서만 채워지므로, 웹도 짝홀 규칙을 쓴다.
+		paths = []shapePath{{D: PathData(style.Path), EvenOdd: true}}
 	}
 	if ink != nil {
 		viewBox, paths = "0 0 "+formatNumber(round4(ink.boxW))+" "+formatNumber(round4(ink.boxH)), ink.Paths
@@ -890,6 +895,9 @@ func writeShapeInk(b *strings.Builder, geom shapeGeometry, ink *measuredInk, pat
 		}
 		if p.FillOnly {
 			b.WriteString(` stroke="none"`)
+		}
+		if p.EvenOdd {
+			b.WriteString(` fill-rule="evenodd"`)
 		}
 		// 늘린 공간에서 선 굵기를 균일하게 유지한다 (spaceNormalized의 주석). 상속되지 않는
 		// 프로퍼티라 경로마다 붙는다.

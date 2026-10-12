@@ -222,7 +222,7 @@ func (e *engine) layoutFlex(b *box, innerW float64, innerH *float64, fr edges) f
 				continue
 			}
 			if row {
-				if _, ok := k.specified("height", cbh, cbhKnown); ok || k.ratio() > 0 {
+				if _, ok := k.specified("height", cbh, cbhKnown); ok {
 					continue
 				}
 				h := k.clampH(lineCross[li]-it.m.v(), cbh, cbhKnown, innerW)
@@ -425,6 +425,19 @@ func (e *engine) contentHeight(k *box, w, cbw, cbh float64, cbhKnown bool) float
 	return k.h
 }
 
+// sizelessHeight는 지정 높이를 auto로 보고 폭 w로 배치했을 때의 내용 높이다. 잰 뒤에는 배치
+// 캐시를 비워 다음 배치가 지정 높이로 다시 하게 한다.
+func (e *engine) sizelessHeight(k *box, w, cbw, cbh float64, cbhKnown bool) float64 {
+	if _, ok := k.specified("height", cbh, cbhKnown); !ok {
+		return e.contentHeight(k, w, cbw, cbh, cbhKnown)
+	}
+	k.sizeless = true
+	e.layout(k, w, nil, cbw, cbh, cbhKnown)
+	k.sizeless = false
+	k.last = nil
+	return k.h
+}
+
 // flexMinMax는 주축 min/max다. min이 auto면 내용 기반 최소(min-content)다.
 func (e *engine) flexMinMax(k *box, row bool, mainSize float64, mainKnown bool, innerW, cbh float64, cbhKnown bool, crossW float64) (float64, float64) {
 	minName, maxName := "min-width", "max-width"
@@ -444,10 +457,15 @@ func (e *engine) flexMinMax(k *box, row bool, mainSize float64, mainKnown bool, 
 			minV = minL.resolve(base)
 		}
 	} else if ov := k.st.get("overflow"); ov == "" || ov == "visible" {
-		// 자동 최소 크기: 내용 기반 (지정 크기가 있으면 그쪽이 더 작으면 그것).
+		// 자동 최소 크기: 내용 기반 최소(min-content)이고, 지정 크기가 있으면 둘 중 작은 쪽이다.
+		// 지정 크기가 내용보다 크면 항목은 내용 크기까지 줄어든다.
 		var content float64
 		if row {
-			content = e.minContent(k)
+			if k.replaced != "" {
+				content = e.minContent(k)
+			} else {
+				content = e.contentMinContent(k)
+			}
 			if w, ok := k.specified("width", innerW, true); ok {
 				content = math.Min(content, w)
 			}
@@ -455,12 +473,14 @@ func (e *engine) flexMinMax(k *box, row bool, mainSize float64, mainKnown bool, 
 				content = 0
 			}
 		} else {
-			if h, ok := k.specified("height", cbh, cbhKnown); ok {
-				content = h
-			} else if r := k.ratio(); r > 0 {
+			h, hok := k.specified("height", cbh, cbhKnown)
+			if r := k.ratio(); r > 0 && k.replaced == "" {
 				content = crossW / r
 			} else {
-				content = e.contentHeight(k, crossW, innerW, cbh, cbhKnown)
+				content = e.sizelessHeight(k, crossW, innerW, cbh, cbhKnown)
+			}
+			if hok {
+				content = math.Min(content, h)
 			}
 			if k.replaced != "" {
 				content = 0

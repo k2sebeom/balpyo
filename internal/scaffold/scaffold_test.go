@@ -203,6 +203,21 @@ func TestScaffoldRejectsBadAspect(t *testing.T) {
 	}
 }
 
+// 언어 태그가 아닌 값은 init이 쓰기 전에 멈춘다 — 빌드가 거부할 설정을 만들지 않는다.
+func TestScaffoldRejectsBadLang(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := Write(Options{Dir: dir, Lang: "korean"}); err == nil {
+		t.Fatal(`"korean"을 언어 태그로 받아들였다`)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("거부했는데 %d개를 썼다", len(entries))
+	}
+}
+
 // 스캐폴딩 덱은 두 타깃의 어휘 안에 있다 — 웹은 브라우저 없이 렌더되므로 여기서 판정한다.
 // (PPTX는 좌표가 필요해 측정을 요구하므로 cmd/balpyo/init_test.go가 컨테이너에서 본다.)
 func TestScaffoldDeckRendersWeb(t *testing.T) {
