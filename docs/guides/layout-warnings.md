@@ -32,8 +32,12 @@ inside escape too)` 한 줄이다. 고칠 곳은 바깥 박스 하나이고, 그
 the bottom by 11px`.
 
 [차트](../reference/soml/chart.md)는 도형과 글자로 펼쳐지지만 경고는 **저자가 쓴 태그**로 말한다.
-막대와 값·범주 라벨은 `<point>`(자리도 그 `<point>`), 범례 항목은 `<series>`, 나머지 틀은
-`<chart>`다 — `<point> overflows its parent <chart> on the right by 23px`.
+막대와 값·범주 라벨은 `<point>`(자리도 그 `<point>`), 범례 항목은 `<series>`다 — `<point> overflows
+its parent <chart> on the right by 23px`. 나머지 틀(플롯 · 범주 라벨 줄 · 범례)은 어느 한 점의 것이 아니므로
+그 넘침은 **차트 하나에 경고 하나**로 모여 저자가 쓴 `<chart>`를 가리키고, 넘친 부분의 이름으로 말한다 —
+`<chart> is too small for its content — the legend overflows the chart at the bottom by 48px`. 라벨과 범례가
+높이를 다 먹어 막대가 설 자리가 없으면 `nothing is left for the bars`가 붙는다. 고칠 길은 차트를 키우거나
+(`h`) 라벨 · 계열 이름을 줄이는 것이다.
 
 경고는 **넘친 양을 논리 px로** 말한다. 스테이지는 1280×720이고 콘텐츠 박스는 거기서 여백
 64px을 뺀 1152×592이므로, "by 34px"는 줄 하나쯤(본문 24px에서 36px)이라는 뜻이다.
