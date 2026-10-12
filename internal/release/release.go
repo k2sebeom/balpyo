@@ -9,6 +9,7 @@ package release
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
@@ -26,6 +27,19 @@ import (
 // 서브커맨드를 담는다.
 const binaryName = "balpyo"
 
+// BinaryName은 타깃 하나의 아카이브 안에 든 파일 이름이다. 윈도우는 확장자로 실행 파일을
+// 알아보므로 거기서만 `.exe`가 붙는다.
+func BinaryName(t Target) string {
+	if t.OS == "windows" {
+		return binaryName + ".exe"
+	}
+	return binaryName
+}
+
+// zipEpoch는 zip 헤더에 적는 시각이다. zip은 MS-DOS 형식이라 1980-01-01보다 이른 날을 담지
+// 못한다 — 빌드한 시각 대신 언제나 이 날을 적어야 같은 태그의 두 빌드가 같은 바이트가 된다.
+var zipEpoch = time.Date(1980, 1, 1, 0, 0, 0, 0, time.UTC)
+
 // ChecksumsName은 체크섬 파일 하나의 이름이다. 형식은 `sha256sum -c`가 읽는 그것이다.
 const ChecksumsName = "SHA256SUMS"
 
@@ -41,23 +55,41 @@ type Target struct {
 
 func (t Target) String() string { return t.OS + "/" + t.Arch }
 
-// Targets는 아카이브를 놓는 플랫폼 표다 — **재본 넷**이다.
+// Targets는 아카이브를 놓는 플랫폼 표다 — **재본 다섯**이다.
 //
-// 윈도우가 없는 근거는 없음이 아니라 **재보지 않았음**이다: 경로 구분자·CRLF·폰트 대체·
-// `soffice` 위치를 한 번도 측정하지 않았고, 측정하지 않은 플랫폼의 아카이브를 놓는 것은
-// "빌드된다"를 "된다"로 발표하는 일이다. 재고 나서 이 표에 한 줄 더한다.
+// 표에 오르는 조건은 "빌드된다"가 아니라 **재봤다**다: CI가 그 플랫폼에서 같은 게이트(지오메트리
+// 패스 · PPTX 동일성 · 결정성 · 예제의 경고 0)를 돈다. windows/amd64는 윈도우 러너가 그것을
+// 돈다. windows/arm64는 크로스 컴파일은 되지만 그것을 도는 러너가 없으므로 표에 없다 — 재보지
+// 않은 아카이브를 놓는 것은 "빌드된다"를 "된다"로 발표하는 일이다.
 func Targets() []Target {
 	return []Target{
 		{"darwin", "arm64"},
 		{"darwin", "amd64"},
 		{"linux", "amd64"},
 		{"linux", "arm64"},
+		{"windows", "amd64"},
 	}
 }
 
-// ArchiveName은 사람이 URL에서 읽는 이름이다 — 버전과 플랫폼이 이름 안에 있다.
+// formulaTargets는 Homebrew 포뮬러가 덮는 타깃이다 — Homebrew가 설치하는 macOS와 리눅스뿐이다.
+func formulaTargets() []Target {
+	var targets []Target
+	for _, t := range Targets() {
+		if t.OS == "darwin" || t.OS == "linux" {
+			targets = append(targets, t)
+		}
+	}
+	return targets
+}
+
+// ArchiveName은 사람이 URL에서 읽는 이름이다 — 버전과 플랫폼이 이름 안에 있다. 윈도우는 zip이다:
+// 탐색기가 따로 도구 없이 여는 형식이 그것이다.
 func ArchiveName(version string, t Target) string {
-	return fmt.Sprintf("%s_%s_%s_%s.tar.gz", binaryName, version, t.OS, t.Arch)
+	ext := ".tar.gz"
+	if t.OS == "windows" {
+		ext = ".zip"
+	}
+	return fmt.Sprintf("%s_%s_%s_%s%s", binaryName, version, t.OS, t.Arch, ext)
 }
 
 // LDFlags는 릴리스 빌드에 주입하는 **하나**다: 태그. 커밋·시각·더러움은 툴체인이 `vcs.*`에
@@ -88,7 +120,8 @@ type FormulaSpec struct {
 	Version string
 	// Repo는 `소유자/이름`이다 — 다운로드 URL이 여기서 나온다.
 	Repo string
-	// Artifacts는 놓인 아카이브들이다 — 플랫폼 표(Targets)를 전부 덮어야 한다.
+	// Artifacts는 놓인 아카이브들이다 — 플랫폼 표 가운데 macOS · 리눅스를 전부 덮어야 한다
+	// (윈도우 아카이브는 있어도 쓰지 않는다).
 	Artifacts []Artifact
 }
 
@@ -100,7 +133,7 @@ func Formula(spec FormulaSpec) (string, error) {
 		byTarget[a.Target] = a
 	}
 	var missing []string
-	for _, t := range Targets() {
+	for _, t := range formulaTargets() {
 		if _, ok := byTarget[t]; !ok {
 			missing = append(missing, t.String())
 		}
@@ -183,7 +216,7 @@ func Build(ctx context.Context, opts Options) (Result, error) {
 
 	var result Result
 	for _, target := range targets {
-		binary := filepath.Join(work, target.OS+"_"+target.Arch, binaryName)
+		binary := filepath.Join(work, target.OS+"_"+target.Arch, BinaryName(target))
 		if err := os.MkdirAll(filepath.Dir(binary), 0o755); err != nil {
 			return Result{}, err
 		}
@@ -192,7 +225,7 @@ func Build(ctx context.Context, opts Options) (Result, error) {
 		}
 		name := ArchiveName(opts.Version, target)
 		path := filepath.Join(opts.OutDir, name)
-		if err := writeArchive(path, binary); err != nil {
+		if err := writeArchive(path, binary, target); err != nil {
 			return Result{}, fmt.Errorf("archiving %s failed: %w", target, err)
 		}
 		sum, err := sha256File(path)
@@ -242,10 +275,8 @@ func buildBinary(ctx context.Context, opts Options, target Target, out string) e
 	return nil
 }
 
-// writeArchive는 바이너리 하나를 담은 tar.gz를 쓴다. 헤더는 **결정적**이다: 시각은 epoch 0,
-// 소유자는 0, 이름은 없다 (빌드한 사람과 시각이 아카이브에 남으면 같은 태그의 두 빌드가 다른
-// 바이트가 된다).
-func writeArchive(path, binary string) error {
+// writeArchive는 바이너리 하나를 담은 아카이브를 쓴다 — 윈도우는 zip, 나머지는 tar.gz다.
+func writeArchive(path, binary string, target Target) error {
 	data, err := os.ReadFile(binary)
 	if err != nil {
 		return err
@@ -255,13 +286,26 @@ func writeArchive(path, binary string) error {
 		return err
 	}
 	defer file.Close()
+	if target.OS == "windows" {
+		err = writeZip(file, BinaryName(target), data)
+	} else {
+		err = writeTarGz(file, BinaryName(target), data)
+	}
+	if err != nil {
+		return err
+	}
+	return file.Close()
+}
 
+// writeTarGz는 tar.gz를 쓴다. 헤더는 **결정적**이다: 시각은 epoch 0, 소유자는 0, 이름은 없다
+// (빌드한 사람과 시각이 아카이브에 남으면 같은 태그의 두 빌드가 다른 바이트가 된다).
+func writeTarGz(w io.Writer, name string, data []byte) error {
 	// gzip 헤더도 시각을 담는다 — 기본(zero ModTime)이 0을 쓴다.
-	gz := gzip.NewWriter(file)
+	gz := gzip.NewWriter(w)
 	tw := tar.NewWriter(gz)
 	header := &tar.Header{
 		Typeflag: tar.TypeReg,
-		Name:     binaryName,
+		Name:     name,
 		Mode:     0o755,
 		Size:     int64(len(data)),
 		ModTime:  time.Unix(0, 0).UTC(),
@@ -276,10 +320,28 @@ func writeArchive(path, binary string) error {
 	if err := tw.Close(); err != nil {
 		return err
 	}
-	if err := gz.Close(); err != nil {
+	return gz.Close()
+}
+
+// writeZip은 zip을 쓴다. tar.gz와 같은 이유로 헤더가 결정적이다: 시각은 zipEpoch이고, 모드는
+// 언제나 0755다 (윈도우는 모드를 보지 않지만, 같은 zip을 다른 운영체제에서 풀었을 때 바로
+// 실행되게 하고, 빌드한 기계의 파일 모드가 바이트에 새지 않게 한다).
+func writeZip(w io.Writer, name string, data []byte) error {
+	zw := zip.NewWriter(w)
+	header := &zip.FileHeader{
+		Name:     name,
+		Method:   zip.Deflate,
+		Modified: zipEpoch,
+	}
+	header.SetMode(0o755)
+	entry, err := zw.CreateHeader(header)
+	if err != nil {
 		return err
 	}
-	return file.Close()
+	if _, err := entry.Write(data); err != nil {
+		return err
+	}
+	return zw.Close()
 }
 
 func sha256File(path string) (string, error) {

@@ -2,6 +2,7 @@ package release
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
@@ -13,26 +14,28 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 // 이 파일은 **릴리스 절차 자체**를 판정한다: 플랫폼 표·아카이브 이름·
 // 체크섬 파일·Homebrew 포뮬러·주입 플래그가 쉘 스크립트가 아니라 이 패키지에 있으므로,
 // 타깃 하나를 지우거나 이름 규칙을 바꾸는 커밋을 테스트가 본다.
 
-// 플랫폼 표는 **재본 넷**이다. 윈도우가 없는 것은 결정이므로 판정 대상이다 — 누군가 표에
-// 한 줄 더하려면 이 테스트를 먼저 고쳐야 하고, 그 자리에서 "재봤는가"를 묻게 된다.
-func TestTargetsAreTheFourMeasuredPlatforms(t *testing.T) {
+// 플랫폼 표는 **재본 다섯**이다. 표에 한 줄 더하려면 이 테스트를 먼저 고쳐야 하고, 그 자리에서
+// "재봤는가"를 묻게 된다. windows/amd64는 CI의 윈도우 러너가 같은 게이트를 돌므로 재본 것이고,
+// windows/arm64는 그것을 도는 러너가 없으므로 재보지 않은 것이다.
+func TestTargetsAreTheFiveMeasuredPlatforms(t *testing.T) {
 	var got []string
 	for _, target := range Targets() {
 		got = append(got, target.String())
 	}
-	want := []string{"darwin/arm64", "darwin/amd64", "linux/amd64", "linux/arm64"}
+	want := []string{"darwin/arm64", "darwin/amd64", "linux/amd64", "linux/arm64", "windows/amd64"}
 	if strings.Join(got, " ") != strings.Join(want, " ") {
 		t.Errorf("Targets() = %v, want %v", got, want)
 	}
 	for _, target := range Targets() {
-		if target.OS == "windows" {
-			t.Errorf("표에 windows가 있다 — 측정하지 않은 플랫폼의 아카이브는 놓지 않는다")
+		if target == (Target{"windows", "arm64"}) {
+			t.Errorf("표에 windows/arm64가 있다 — 측정하지 않은 플랫폼의 아카이브는 놓지 않는다")
 		}
 	}
 }
@@ -47,6 +50,8 @@ func TestArchiveNameCarriesVersionAndPlatform(t *testing.T) {
 		{"v0.3.0", Target{"darwin", "arm64"}, "balpyo_v0.3.0_darwin_arm64.tar.gz"},
 		{"v0.3.0", Target{"linux", "amd64"}, "balpyo_v0.3.0_linux_amd64.tar.gz"},
 		{"v1.0.0-rc.1", Target{"linux", "arm64"}, "balpyo_v1.0.0-rc.1_linux_arm64.tar.gz"},
+		// 윈도우 사람은 zip을 탐색기에서 연다 — tar.gz는 따로 도구가 있어야 열린다.
+		{"v0.3.0", Target{"windows", "amd64"}, "balpyo_v0.3.0_windows_amd64.zip"},
 	}
 	for _, tc := range cases {
 		if got := ArchiveName(tc.version, tc.target); got != tc.want {
@@ -84,7 +89,8 @@ func TestChecksumsAreShaSumFormat(t *testing.T) {
 	}
 }
 
-// 포뮬러는 **체크섬에서 나온다** — 네 타깃이 OS × 아키텍처 네 칸에 각자의 해시와 함께 들어간다.
+// 포뮬러는 **체크섬에서 나온다** — macOS · 리눅스 네 타깃이 OS × 아키텍처 네 칸에 각자의 해시와
+// 함께 들어간다. 윈도우는 Homebrew가 설치하지 않으므로 포뮬러에 없다.
 func TestFormulaCoversEveryTargetWithItsChecksum(t *testing.T) {
 	var artifacts []Artifact
 	hashes := map[string]string{
@@ -93,10 +99,15 @@ func TestFormulaCoversEveryTargetWithItsChecksum(t *testing.T) {
 		"linux/amd64":  "3333333333333333333333333333333333333333333333333333333333333333",
 		"linux/arm64":  "4444444444444444444444444444444444444444444444444444444444444444",
 	}
+	windowsHash := "5555555555555555555555555555555555555555555555555555555555555555"
 	for _, target := range Targets() {
+		hash := hashes[target.String()]
+		if target.OS == "windows" {
+			hash = windowsHash
+		}
 		artifacts = append(artifacts, Artifact{
 			Name:   ArchiveName("v0.3.0", target),
-			SHA256: hashes[target.String()],
+			SHA256: hash,
 			Target: target,
 		})
 	}
@@ -121,9 +132,26 @@ func TestFormulaCoversEveryTargetWithItsChecksum(t *testing.T) {
 			t.Errorf("포뮬러에 %s의 체크섬이 없다:\n%s", platform, formula)
 		}
 	}
+	if strings.Contains(formula, windowsHash) || strings.Contains(formula, "windows") {
+		t.Errorf("포뮬러에 윈도우 아카이브가 들어갔다:\n%s", formula)
+	}
 	// 버전은 `v` 없이 Homebrew의 것이다 (`version "0.3.0"`) — tap의 관례다.
 	if !strings.Contains(formula, `version "0.3.0"`) {
 		t.Errorf("포뮬러의 version 스탠자가 없다(또는 v가 붙었다):\n%s", formula)
+	}
+}
+
+// 포뮬러가 덮는 것은 Homebrew가 설치하는 타깃이다 — 윈도우 아카이브가 없어도 포뮬러는 나온다.
+func TestFormulaDoesNotNeedTheWindowsArchive(t *testing.T) {
+	var artifacts []Artifact
+	for _, target := range Targets() {
+		if target.OS == "windows" {
+			continue
+		}
+		artifacts = append(artifacts, Artifact{Name: ArchiveName("v0.3.0", target), SHA256: "aa", Target: target})
+	}
+	if _, err := Formula(FormulaSpec{Version: "v0.3.0", Repo: "k2sebeom/balpyo", Artifacts: artifacts}); err != nil {
+		t.Errorf("macOS · 리눅스 아카이브만으로 포뮬러를 만들지 못했다: %v", err)
 	}
 }
 
@@ -196,13 +224,13 @@ func TestBuildProducesARunnableArchive(t *testing.T) {
 	}
 
 	// 아카이브에는 바이너리 **하나**만 있다.
-	names, binary := extractTarGz(t, filepath.Join(dir, artifact.Name))
-	if len(names) != 1 || names[0] != "balpyo" {
-		t.Fatalf("아카이브 내용 = %v, want [balpyo]", names)
+	names, binary := extractArchive(t, filepath.Join(dir, artifact.Name))
+	if want := BinaryName(host); len(names) != 1 || names[0] != want {
+		t.Fatalf("아카이브 내용 = %v, want [%s]", names, want)
 	}
 
 	// 그리고 그 바이너리가 주입한 태그를 말한다.
-	exe := filepath.Join(t.TempDir(), "balpyo")
+	exe := filepath.Join(t.TempDir(), BinaryName(host))
 	if err := os.WriteFile(exe, binary, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +238,7 @@ func TestBuildProducesARunnableArchive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("balpyo version: %v\n%s", err, out)
 	}
-	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
+	lines := strings.Split(strings.TrimRight(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n"), "\n")
 	if want := "balpyo v9.9.9-test"; lines[0] != want {
 		t.Errorf("첫 줄 = %q, want %q", lines[0], want)
 	}
@@ -250,6 +278,46 @@ func TestBuildIsReproducible(t *testing.T) {
 	}
 }
 
+// 윈도우 아카이브는 `balpyo.exe` 하나를 담은 zip이고, tar.gz와 같은 계약을 진다: 두 번 만들면
+// 바이트까지 같다. zip은 시각을 MS-DOS 형식으로 적어 1980-01-01보다 이른 날을 담지 못하므로
+// "빌드한 시각을 담지 않았다"는 그 날이다 (PPTX 패키지와 같은 자리).
+func TestWindowsArchiveIsAReproducibleZip(t *testing.T) {
+	if testing.Short() {
+		t.Skip("실제 크로스 컴파일은 -short에서 건너뛴다")
+	}
+	target := Target{"windows", "amd64"}
+	var hashes []string
+	for range 2 {
+		dir := t.TempDir()
+		result, err := Build(context.Background(), Options{
+			ModuleDir: filepath.Join("..", ".."),
+			OutDir:    dir,
+			Version:   "v9.9.9-test",
+			Repo:      "k2sebeom/balpyo",
+			Targets:   []Target{target},
+		})
+		if err != nil {
+			t.Fatalf("Build: %v", err)
+		}
+		path := filepath.Join(dir, result.Artifacts[0].Name)
+		if !strings.HasSuffix(path, ".zip") {
+			t.Fatalf("윈도우 아카이브 = %s, want .zip", path)
+		}
+		names, binary := extractArchive(t, path)
+		if len(names) != 1 || names[0] != "balpyo.exe" {
+			t.Fatalf("아카이브 내용 = %v, want [balpyo.exe]", names)
+		}
+		// PE 실행 파일은 "MZ"로 시작한다 — 받은 것이 윈도우 바이너리다.
+		if len(binary) < 2 || string(binary[:2]) != "MZ" {
+			t.Errorf("zip 안의 balpyo.exe가 윈도우 실행 파일이 아니다")
+		}
+		hashes = append(hashes, fileSHA256(t, path))
+	}
+	if hashes[0] != hashes[1] {
+		t.Errorf("두 번 빌드한 윈도우 아카이브가 다르다:\n%s\n%s", hashes[0], hashes[1])
+	}
+}
+
 func fileSHA256(t *testing.T, path string) string {
 	t.Helper()
 	data, err := os.ReadFile(path)
@@ -258,6 +326,50 @@ func fileSHA256(t *testing.T, path string) string {
 	}
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])
+}
+
+// extractArchive는 아카이브 형식(이름의 확장자)에 따라 꺼낸다.
+func extractArchive(t *testing.T, path string) ([]string, []byte) {
+	t.Helper()
+	if strings.HasSuffix(path, ".zip") {
+		return extractZip(t, path)
+	}
+	return extractTarGz(t, path)
+}
+
+// extractZip은 extractTarGz의 zip판이다 — 헤더가 결정적인지(시각·모드)도 함께 본다.
+func extractZip(t *testing.T, path string) ([]string, []byte) {
+	t.Helper()
+	reader, err := zip.OpenReader(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	var names []string
+	var first []byte
+	epoch := time.Date(1980, 1, 1, 0, 0, 0, 0, time.UTC)
+	for _, file := range reader.File {
+		names = append(names, file.Name)
+		if !file.Modified.Equal(epoch) {
+			t.Errorf("zip 헤더의 시각이 %v다 — 재현 가능한 아카이브는 1980-01-01을 쓴다", file.Modified)
+		}
+		if mode := file.Mode(); mode != 0o755 {
+			t.Errorf("zip 헤더의 모드 = %v, want -rwxr-xr-x", mode)
+		}
+		if first == nil {
+			rc, err := file.Open()
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+			first = data
+		}
+	}
+	return names, first
 }
 
 // extractTarGz는 이름 목록과 첫 파일의 내용을 돌려준다 — tar 헤더가 결정적인지(시각·소유자)도
