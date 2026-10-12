@@ -9,11 +9,9 @@ import (
 	"bytes"
 	"fmt"
 	"image"
-	"image/color"
 	"image/gif"
 	"os"
 	"path/filepath"
-	"sort"
 	"time"
 
 	"github.com/k2sebeom/balpyo/internal/pipeline"
@@ -131,90 +129,22 @@ func Run(opts Options) (*Result, error) {
 	return res, layout.Err()
 }
 
-// encodeGIF는 프레임을 한 팔레트의 GIF로 쓴다.
+// encodeGIF는 프레임마다 그 프레임의 팔레트로 GIF를 쓴다.
 func encodeGIF(frames []*image.RGBA, delay time.Duration) ([]byte, error) {
-	var nonNil []*image.RGBA
-	for _, f := range frames {
-		if f != nil {
-			nonNil = append(nonNil, f)
-		}
-	}
-	if len(nonNil) == 0 {
-		return nil, fmt.Errorf("no slide to put in the GIF")
-	}
-	pal := buildPalette(nonNil)
-	// 채널당 5비트 색마다 가장 가까운 팔레트 색을 한 번만 찾는다 — 픽셀마다 팔레트를 훑으면
-	// 1280×720 프레임 하나에 수억 번의 비교가 든다.
-	lut := make([]uint8, 1<<15)
-	for key := range lut {
-		r, g, b := uint8(key>>10<<3|4), uint8(key>>5&31<<3|4), uint8(key&31<<3|4)
-		lut[key] = uint8(pal.Index(color.RGBA{r, g, b, 255}))
-	}
 	anim := &gif.GIF{LoopCount: 0}
-	for _, f := range nonNil {
-		p := image.NewPaletted(f.Bounds(), pal)
-		w, h := f.Bounds().Dx(), f.Bounds().Dy()
-		for y := 0; y < h; y++ {
-			src := f.Pix[y*f.Stride:]
-			dst := p.Pix[y*p.Stride:]
-			for x := 0; x < w; x++ {
-				r, g, b := src[x*4], src[x*4+1], src[x*4+2]
-				dst[x] = lut[uint16(r>>3)<<10|uint16(g>>3)<<5|uint16(b>>3)]
-			}
+	for _, f := range frames {
+		if f == nil {
+			continue
 		}
-		anim.Image = append(anim.Image, p)
+		anim.Image = append(anim.Image, quantize(f))
 		anim.Delay = append(anim.Delay, int(delay/(10*time.Millisecond)))
+	}
+	if len(anim.Image) == 0 {
+		return nil, fmt.Errorf("no slide to put in the GIF")
 	}
 	var buf bytes.Buffer
 	if err := gif.EncodeAll(&buf, anim); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-}
-
-// buildPalette는 프레임에서 가장 자주 쓰인 색 256개를 고른다 (채널당 5비트로 묶어 센다).
-// 슬라이드는 대부분 평면색이라 빈도 순이 중앙값 분할보다 글자 · 면을 더 정확히 남긴다.
-func buildPalette(frames []*image.RGBA) color.Palette {
-	type bucket struct {
-		n       int
-		r, g, b int
-	}
-	counts := map[uint16]*bucket{}
-	for _, f := range frames {
-		for i := 0; i+3 < len(f.Pix); i += 4 * 3 { // 세 픽셀에 하나씩 본다
-			r, g, b := int(f.Pix[i]), int(f.Pix[i+1]), int(f.Pix[i+2])
-			key := uint16(r>>3)<<10 | uint16(g>>3)<<5 | uint16(b>>3)
-			bk := counts[key]
-			if bk == nil {
-				bk = &bucket{}
-				counts[key] = bk
-			}
-			bk.n++
-			bk.r += r
-			bk.g += g
-			bk.b += b
-		}
-	}
-	keys := make([]uint16, 0, len(counts))
-	for k := range counts {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		if counts[keys[i]].n != counts[keys[j]].n {
-			return counts[keys[i]].n > counts[keys[j]].n
-		}
-		return keys[i] < keys[j]
-	})
-	pal := color.Palette{}
-	for _, k := range keys {
-		if len(pal) >= 256 {
-			break
-		}
-		bk := counts[k]
-		pal = append(pal, color.RGBA{uint8(bk.r / bk.n), uint8(bk.g / bk.n), uint8(bk.b / bk.n), 255})
-	}
-	if len(pal) == 0 {
-		pal = append(pal, color.RGBA{255, 255, 255, 255})
-	}
-	return pal
 }
