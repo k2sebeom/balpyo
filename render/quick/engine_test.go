@@ -390,6 +390,31 @@ func TestFlexStretchBeatsAspectRatio(t *testing.T) {
 	}
 }
 
+// align-items: baseline은 항목의 첫 줄 기준선을 맞춘다. 기준선이 없는 항목은 border box 아래 변이
+// 기준선이고, 다른 정렬의 항목은 묶음 밖에서 제 자리에 선다. 중첩 flex 컨테이너의 기준선은 첫
+// 항목의 것이다. 열 방향에서는 flex-start다. 기댓값은 Chromium의 값이다 — 글꼴 메트릭의 반올림
+// 차이만큼 1px 안을 허용한다.
+func TestFlexAlignBaseline(t *testing.T) {
+	_, b := layoutBody(t, baseCSS, `<div style="display: flex; align-items: baseline; width: 600px; font-family: 'Noto Sans'">`+
+		`<div id="a" style="font-size: 48px; line-height: 1.5">Big</div>`+
+		`<div id="b" style="font-size: 16px; line-height: 1.5; padding-top: 10px">small</div>`+
+		`<div id="c" style="width: 30px; height: 20px"></div>`+
+		`<div id="d" style="align-self: flex-start; font-size: 16px">top</div></div>`+
+		`<div id="r2" style="display: flex; align-items: baseline; width: 600px; font-family: 'Noto Sans'">`+
+		`<div style="font-size: 32px; display: flex"><div style="font-size: 16px; margin-top: 40px">nested</div></div>`+
+		`<div id="h" style="font-size: 24px; margin-top: 5px">mid</div></div>`+
+		`<div style="display: flex; flex-direction: column; align-items: baseline; width: 600px; font-family: 'Noto Sans'">`+
+		`<div id="i" style="font-size: 16px">col</div></div>`)
+	for id, want := range map[string]float64{"b": 26, "c": 34, "d": 0, "h": 31, "i": 0} {
+		if math.Abs(b[id].y-want) > 1 {
+			t.Errorf("%s y = %.2f; want about %.0f", id, b[id].y, want)
+		}
+	}
+	if math.Abs(b["r2"].h-64) > 1 {
+		t.Errorf("row height = %.2f; want about 64 (the baseline group's extent)", b["r2"].h)
+	}
+}
+
 // fill-rule="evenodd"인 경로는 하위 경로가 겹친 곳을 비운다 — 같은 방향으로 감은 안쪽 사각형이
 // 액자의 구멍이 된다. 규칙이 없으면(nonzero) 같은 경로가 꽉 찬다.
 func TestSVGFillRuleEvenOdd(t *testing.T) {

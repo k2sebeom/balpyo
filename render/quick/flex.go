@@ -87,6 +87,7 @@ type flexItem struct {
 	cross            float64 // border-box 교차축 크기
 	m                edges
 	crossSet         bool
+	baseline         float64 // 바깥 교차 시작(margin 끝)에서 기준선까지 — baseline 정렬 항목만
 }
 
 func styleNumber(b *box, name string, def float64) float64 {
@@ -164,6 +165,11 @@ func (e *engine) layoutFlex(b *box, innerW float64, innerH *float64, fr edges) f
 		lines = [][]*flexItem{items}
 	}
 
+	b.firstLine = 0
+	if len(lines) > 0 {
+		b.firstLine = len(lines[0])
+	}
+
 	// 주축 크기 확정 (줄마다)
 	contentMain := 0.0
 	for _, line := range lines {
@@ -181,9 +187,12 @@ func (e *engine) layoutFlex(b *box, innerW float64, innerH *float64, fr edges) f
 		mainSize = contentMain
 	}
 
-	// 교차축: 항목을 확정한 주축 크기로 배치해 교차 크기를 잰다.
+	// 교차축: 항목을 확정한 주축 크기로 배치해 교차 크기를 잰다. 행 방향의 baseline 항목은
+	// 기준선을 맞춘 묶음으로 줄 교차 크기에 든다 (기준선 위 최대 + 기준선 아래 최대).
 	lineCross := make([]float64, len(lines))
+	lineBaseline := make([]float64, len(lines))
 	for li, line := range lines {
+		above, below := 0.0, 0.0
 		for _, it := range line {
 			k := it.b
 			if row {
@@ -194,6 +203,12 @@ func (e *engine) layoutFlex(b *box, innerW float64, innerH *float64, fr edges) f
 				}
 				e.layout(k, it.main, hp, innerW, cbh, cbhKnown)
 				it.cross = k.h
+				if alignSelf(k, alignItems) == "baseline" {
+					it.baseline = it.m.t + itemBaseline(k)
+					above = math.Max(above, it.baseline)
+					below = math.Max(below, k.h+it.m.v()-it.baseline)
+					continue
+				}
 				lineCross[li] = math.Max(lineCross[li], k.h+it.m.v())
 			} else {
 				h := it.main
@@ -201,6 +216,8 @@ func (e *engine) layoutFlex(b *box, innerW float64, innerH *float64, fr edges) f
 				lineCross[li] = math.Max(lineCross[li], it.cross+it.m.h())
 			}
 		}
+		lineCross[li] = math.Max(lineCross[li], above+below)
+		lineBaseline[li] = above
 	}
 	crossSize := 0.0
 	crossKnown := false
@@ -294,6 +311,11 @@ func (e *engine) layoutFlex(b *box, innerW float64, innerH *float64, fr edges) f
 				off = (lineCross[li] - crossOuter) / 2
 			case "end", "flex-end", "self-end":
 				off = lineCross[li] - crossOuter
+			case "baseline":
+				// 열 방향에서는 교차축이 글줄 방향이라 맞출 기준선이 없다 — flex-start로 물러선다.
+				if row {
+					off = lineBaseline[li] - it.baseline
+				}
 			}
 			if row {
 				k.x = fr.l + pos + it.m.l
@@ -313,7 +335,7 @@ func (e *engine) layoutFlex(b *box, innerW float64, innerH *float64, fr edges) f
 	return contentMain
 }
 
-// alignSelf는 항목의 교차축 정렬이다 (normal은 stretch).
+// alignSelf는 항목의 교차축 정렬이다 (normal은 stretch, first baseline은 baseline).
 func alignSelf(k *box, alignItems string) string {
 	v := k.st.get("align-self")
 	if v == "" || v == "auto" {
@@ -322,12 +344,62 @@ func alignSelf(k *box, alignItems string) string {
 	switch v {
 	case "", "normal", "stretch":
 		return "stretch"
-	case "flex-start", "start", "self-start", "baseline", "first", "last":
+	case "baseline", "first baseline":
+		return "baseline"
+	case "flex-start", "start", "self-start", "first", "last":
 		return "start"
 	case "flex-end", "end", "self-end":
 		return "end"
 	}
 	return v
+}
+
+// itemBaseline은 flex 항목의 첫 기준선이다 (border box 위에서부터). 기준선이 없으면 border box의
+// 아래 변으로 합성한다.
+func itemBaseline(k *box) float64 {
+	if v, ok := firstBaseline(k); ok {
+		return v
+	}
+	return k.h
+}
+
+// firstBaseline은 box의 첫 기준선(border box 위에서부터)이다. 인라인 서식 맥락이면 첫 줄의
+// 기준선, block이면 기준선을 가진 첫 자식의 것이다. flex · grid 컨테이너는 첫 항목의 기준선이고,
+// 그 항목에 기준선이 없으면 border box로 합성한다. 대체 요소는 기준선이 없다.
+func firstBaseline(b *box) (float64, bool) {
+	if b.replaced != "" {
+		return 0, false
+	}
+	if b.hasInline {
+		if len(b.lines) == 0 {
+			return 0, false
+		}
+		return b.lines[0].baseline, true
+	}
+	switch b.display {
+	case "flex", "grid":
+		kids := ordered(b.kids)
+		if len(kids) == 0 {
+			return 0, false
+		}
+		k := kids[0]
+		if b.display == "flex" && flexRow(b) {
+			// 첫 줄의 baseline 정렬 항목이 있으면 그 묶음의 기준선이 컨테이너의 것이다.
+			for _, c := range kids[:min(b.firstLine, len(kids))] {
+				if alignSelf(c, b.st.get("align-items")) == "baseline" {
+					k = c
+					break
+				}
+			}
+		}
+		return k.y + itemBaseline(k), true
+	}
+	for _, k := range b.kids {
+		if v, ok := firstBaseline(k); ok {
+			return k.y + v, true
+		}
+	}
+	return 0, false
 }
 
 // distribute는 남는 공간을 justify/align-content 값으로 나눠 앞 여백과 항목 사이 추가 간격을 낸다.
