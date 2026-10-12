@@ -7,8 +7,6 @@ import (
 	"image/color"
 	"image/jpeg"
 	"image/png"
-	"os"
-
 	"io/fs"
 	"os"
 	"path/filepath"
