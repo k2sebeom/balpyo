@@ -40,3 +40,8 @@ connector:bentConnector5 "connector s2.4" line=muted rot=90 adj=-8421/11250000/1
 connector:bentConnector4 "connector s2.5" line=muted rot=0 flipH adj=-5517/57692 from="shape s2.0":3 to="shape s2.1":0 dash=solid ends=none/triangle
 connector:curvedConnector5 "connector s2.6" line=muted rot=0 adj=-4848/-7200000/104848 from="shape s2.1":1 to="shape s2.2":3 dash=solid ends=none/triangle
 connector:curvedConnector4 "connector s2.7" line=muted rot=90 flipH adj=-80000/59524 from="shape s2.2":2 to="shape s2.1":3 dash=solid ends=none/triangle
+# slide 4 same-side-blocked
+shape:rect "shape s3.0" fill=surface line=muted
+shape:rect "shape s3.1" fill=surface line=muted
+connector:bentConnector5 "connector s3.2" line=muted rot=90 flipH flipV adj=33333/-186667/113333 from="shape s3.0":0 to="shape s3.1":0 dash=solid ends=none/triangle
+connector:curvedConnector5 "connector s3.3" line=muted rot=90 adj=33333/286667/113333 from="shape s3.1":2 to="shape s3.0":2 dash=solid ends=none/triangle

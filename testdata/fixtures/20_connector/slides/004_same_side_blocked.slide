@@ -1,0 +1,9 @@
+<!-- Same sides where one box hides the other on that side: the U-turn would run through the outer
+     box, so the line bends in the gap between the boxes, passes beside both and comes back over the
+     outer box (bentConnector5 / curvedConnector5). -->
+<slide id="same-side-blocked" layout="canvas">
+  <shape id="low" type="rect" x="560" y="440" w="160" h="80"/>
+  <shape id="high" type="rect" x="620" y="200" w="160" h="80"/>
+  <connector from="low" to="high" route="elbow" from-side="top" to-side="top"/>
+  <connector from="high" to="low" route="curved" from-side="bottom" to-side="bottom"/>
+</slide>
