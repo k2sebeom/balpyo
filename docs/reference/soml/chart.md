@@ -39,7 +39,7 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 | `series` | 색 토큰 · `#rrggbb` | **모든 막대**의 색. 생략하면 `accent1` — 라벨은 칠하지 않는다 |
 | `alt` | 문자열 (빈 값은 **에러**) | 그림의 **접근성 이름** — 펼침의 뿌리 도형에 실린다 |
 | 박스 | `pad`·`w`·`h`·`min-w`·`min-h`·`max-w`·`max-h`·`ratio` | 도형과 같은 한 벌 — **`h`나 `ratio`는 필수다** (아래) |
-| `slot` | 레이아웃의 슬롯 이름 | 슬롯을 채운다 (웹 `grid-area` · PPTX `p:ph`) |
+| `slot` | 레이아웃의 슬롯 이름 | 슬롯을 채운다 (웹 `grid-area` · PPTX는 슬롯 자리의 도형 — 글자가 없으므로 `p:ph`가 아니다) |
 | 자식 배치 | `grow`·`shrink`·`basis`·`span`·`self`·`order`·`at`·`x`·`y`·`style` | 레이아웃 컨테이너·[`<stack>`](stack.md)의 자식으로서의 자리 |
 
 - **높이는 필수다** (`h`나 `ratio` 중 하나). 막대 높이가 플롯 밴드에 대한 백분율이므로 밴드가
@@ -345,6 +345,7 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 | `<chart>`에 점이 아닌 자식을 썼다 | `<chart> cannot contain <p> (available tags: <point>, <series>)` |
 | `<chart>` 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <chart> (wrap it in <point>)` |
 | `<point>`에 내용을 담았다 | `void tag <point> cannot have content (write <point/>)` |
+| `<point>`를 `/` 없이 닫았다 | `void tag <point> must be self-closed (write <point/>)` |
 | `<chart>`를 도형의 직속 자식으로 썼다 | `<shape> cannot contain <chart> (available tags: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)` |
 | `<chart>`에 `fill`을 썼다 | `unknown attribute fill on <chart> (available attributes: type, unit, max, series, alt, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
 | `<point>`에 `w`를 썼다 | `unknown attribute w on <point> (available attributes: label, value, fill)` |

@@ -77,6 +77,14 @@ go build -trimpath -ldflags "-X main.version=v0.3.0" ./cmd/balpyo
 - 포뮬러에 `license` 스탠자가 없다 — 이 저장소에 `LICENSE` 파일이 아직 없기 때문이다
   (Homebrew의 audit은 그것을 기대한다). 라이선스를 정하면 포뮬러 생성기에 한 줄이 늘어난다.
 
+## 브랜치는 git flow를 따른다
+
+- `develop`이 통합 브랜치다. `feature/*` · `fix/*` · `doc/*`는 `develop`에서 갈라지고, PR도
+  `develop`을 향한다.
+- 릴리스는 `develop`을 `main`에 머지하는 PR 하나다. 머지 커밋에 다음 버전 태그(`vX.Y.Z`)를
+  붙이는 것이 버전을 올리는 일이다 — 버전은 태그에만 있으므로 올릴 파일이 따로 없다.
+- CI는 두 브랜치의 push와 모든 PR에서 돈다.
+
 ## 태그가 릴리스를 만든다
 
 `.github/workflows/release.yml`이 `v*` 태그에서 돈다:
