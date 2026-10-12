@@ -152,11 +152,17 @@
   // 다음은 스텝을 **먼저** 먹고 그 다음에 슬라이드를 넘긴다. 뒤로는 스텝을 하나 되감고,
   // 스텝이 없으면 앞 슬라이드로 가되 그 장은 **전부 전개된** 상태로 들어간다:
   // 이미 말한 장을 다시 한 단계씩 누르게 만들지 않는다.
+  //
+  // 오버뷰에서는 스텝을 건드리지 않고 타일만 옮긴다 — 거기서는 항목이 전부 보이므로 스텝을
+  // 먹으면 강조가 제자리에 머문 채 키만 사라진다. 옮겨 간 장은 타일 클릭처럼 곧장 들어간
+  // 장이라 스텝 0이다 (보지 않은 스텝을 전개된 것으로 남기지 않는다).
   const forward = () => {
+    if (overviewOn()) { show(current + 1, true); return; }
     if (step < lastStep(slides[current])) { step++; applyReveal(); return; }
     show(current + 1, true, false, 1);
   };
   const backward = () => {
+    if (overviewOn()) { show(current - 1, true); return; }
     if (step > 0) { step--; applyReveal(); return; }
     show(current - 1, true, true, -1);
   };
