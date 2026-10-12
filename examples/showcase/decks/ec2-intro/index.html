@@ -578,6 +578,19 @@
          printed blank but for the footer). */
       contain: size;
     }
+    /* A slide transition caught mid-way is at rest on paper — someone pressing Cmd+P right after
+       stepping must not get the leaving slide pushed off its page or faded out (measured: blank
+       pages). The move classes are one class more specific than the slide restore above, so the
+       undo names each of them with the same specificity and comes later. */
+    html[data-balpyo-view] .balpyo-slide.balpyo-viewer-moving,
+    html[data-balpyo-view] .balpyo-slide.balpyo-viewer-leaving,
+    html[data-balpyo-view] .balpyo-slide.balpyo-viewer-from-fade,
+    html[data-balpyo-view] .balpyo-slide.balpyo-viewer-from-left,
+    html[data-balpyo-view] .balpyo-slide.balpyo-viewer-from-right {
+      translate: none;
+      opacity: 1;
+      transition: none;
+    }
     /* Stepwise reveal is fully expanded on paper — someone pressing Cmd+P mid-talk must not get
        paper missing the items not yet presented. The selector has the same specificity as the
        presenter-view gate and comes later, so it wins as is (the same technique as the slide
