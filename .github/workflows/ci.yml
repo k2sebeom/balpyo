@@ -54,41 +54,9 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # 리눅스 잡이 까는 패키지(fonts-noto-core · -mono · -cjk)와 같은 가족 · 같은 굵기를 깐다.
-      # 윈도우에는 패키지가 없으므로 Noto 저장소에서 받는다. 커밋을 고정하므로 받는 바이트가
-      # 바뀌지 않고, 그래서 캐시해도 된다.
-      - name: theme fonts cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/noto
-          key: noto-ffebf8c1ee449e544955a7e813c54f9b73848eac-f8d157532fbfaeda587e826d4cd5b21a49186f7c
-
+      # 리눅스 잡이 까는 패키지와 같은 가족 · 같은 굵기의 Noto다 (릴리스의 게이트도 같은 것을 깐다).
       - name: theme fonts
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $ProgressPreference = 'SilentlyContinue'
-          $latin = 'https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf'
-          $cjk = 'https://raw.githubusercontent.com/notofonts/noto-cjk/f8d157532fbfaeda587e826d4cd5b21a49186f7c'
-          $files = @()
-          foreach ($family in 'NotoSans', 'NotoSerif', 'NotoSansDisplay') {
-            foreach ($style in 'Regular', 'Bold', 'Italic', 'BoldItalic') { $files += "$latin/$family/$family-$style.ttf" }
-          }
-          foreach ($style in 'Regular', 'Bold') { $files += "$latin/NotoSansMono/NotoSansMono-$style.ttf" }
-          foreach ($style in 'Regular', 'Bold') {
-            $files += "$cjk/Sans/OTC/NotoSansCJK-$style.ttc"
-            $files += "$cjk/Serif/OTC/NotoSerifCJK-$style.ttc"
-          }
-          $dir = Join-Path $env:RUNNER_TEMP 'noto'
-          New-Item -ItemType Directory -Force $dir | Out-Null
-          $registry = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
-          foreach ($url in $files) {
-            $name = Split-Path $url -Leaf
-            $file = Join-Path $dir $name
-            if (-not (Test-Path $file)) { Invoke-WebRequest -Uri $url -OutFile $file }
-            Copy-Item $file (Join-Path $env:WINDIR 'Fonts') -Force
-            New-ItemProperty -Path $registry -Name "$([IO.Path]::GetFileNameWithoutExtension($name)) (TrueType)" -Value $name -PropertyType String -Force | Out-Null
-          }
+        uses: ./.github/actions/windows-fonts
 
       - name: test
         run: go test ./...
