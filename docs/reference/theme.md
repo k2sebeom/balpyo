@@ -634,7 +634,6 @@ theme "acme" exists both in the project's themes/acme/ and among installed theme
 | 그림자 토큰의 `alpha`가 0 ~ 1 밖이다 | **에러** | `tokens.json shadow token "soft" has alpha 3.3 — alpha is an opacity from 0 to 1` |
 | `motion`의 `duration`이 0 이하이거나 `stagger`·`delay`·`transitionDuration`이 음수다 | **에러** | `tokens.json motion transitionDuration must be ≥ 0 (ms; 0 follows duration) — got -5` |
 | 두 색 토큰이 같은 슬롯을 쓴다 | **에러** | `tokens.json clrScheme slot "accent1" is shared by color tokens "accent1" and "brand" — cannot tell which color owns the slot` |
-| 색 토큰의 `ref`가 비었다 | **에러** | `tokens.json color token "accent1" has no schemeClr reference (ref) — …` |
 | 폰트 토큰의 `scheme`이 `major`·`minor`·생략 밖이다 · 두 폰트가 같은 자리를 쓴다 · `major`나 `minor` 자리가 비었다 | **에러** | `… has an unknown fontScheme slot "middle" …` · `tokens.json font tokens "heading" and "body" both take the fontScheme slot "major" — each slot holds exactly one font` · `tokens.json has no font token in the fontScheme slot "minor" — …` |
 | 그림자 토큰의 `color`가 이 테마의 색 토큰이 아니다 | **에러** | `tokens.json shadow token "soft" color "nope" is not a color token of this theme (this theme: …)` |
 | `components.json`의 `text.roles`에 역할 5종 중 하나가 없다 | **에러** | `components.json text.roles has no role "code" (required: title, heading, body, caption, code)` |

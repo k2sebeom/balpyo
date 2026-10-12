@@ -144,7 +144,7 @@ func TestThemeDefectsStopCheckAndBuildAlike(t *testing.T) {
 	}{
 		{"색 토큰의 ref가 비었다", "tokens.json",
 			`{"color":[{"name":"accent1","rgb":"112233","slot":"accent1","ref":""}]}`,
-			[]string{"tokens.json", `"accent1"`, "schemeClr reference"}},
+			[]string{"tokens.json", `"accent1"`, `has ref ""`}},
 		{"폰트 scheme이 어휘 밖이다", "tokens.json",
 			`{"font":[{"name":"body","latin":"Noto Sans","ea":"Noto Sans CJK KR","generic":"sans-serif","scheme":"middle"}]}`,
 			[]string{"tokens.json", `"body"`, `"middle"`}},
