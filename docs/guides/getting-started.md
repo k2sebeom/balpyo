@@ -38,16 +38,43 @@ curl -fsSL https://raw.githubusercontent.com/k2sebeom/balpyo/main/install.sh \
 
 ### 태그된 릴리스에서 받기
 
-`v*` 태그마다 네 플랫폼(`darwin/arm64`·`darwin/amd64`·`linux/amd64`·`linux/arm64`)의 아카이브와
-체크섬 한 파일이 GitHub Releases에 올라간다. 받은 뒤 체크섬을 맞추고 압축을 풀면 그 안에는
-바이너리 하나뿐이다:
+`v*` 태그마다 다섯 플랫폼(`darwin/arm64`·`darwin/amd64`·`linux/amd64`·`linux/arm64`·`windows/amd64`)의
+아카이브와 체크섬 한 파일(`SHA256SUMS`)이 GitHub Releases에 올라간다. 받은 뒤 체크섬을 맞추고 압축을
+풀면 그 안에는 바이너리 하나뿐이다:
 
 ```bash
 tar xzf balpyo_v0.3.0_darwin_arm64.tar.gz     # → balpyo
 sha256sum -c SHA256SUMS                        # 같은 디렉토리에 두고 돌린다
 ```
 
-윈도우 아카이브는 없다 — 그 플랫폼에서 검증한 적이 없기 때문이다.
+#### 윈도우
+
+윈도우 아카이브는 `balpyo_<버전>_windows_amd64.zip`이고 안에는 `balpyo.exe` 하나가 있다. 설치
+스크립트는 윈도우를 다루지 않으므로 손으로 받는다. PowerShell에서 아카이브와 `SHA256SUMS`를 같은
+디렉토리에 받은 뒤, 해시가 `SHA256SUMS`의 그 아카이브 줄과 같은지 맞추고 나서 푼다:
+
+```powershell
+$zip  = "balpyo_v0.3.0_windows_amd64.zip"
+$want = (Select-String -Path SHA256SUMS -Pattern $zip -SimpleMatch).Line.Split(" ")[0]
+(Get-FileHash $zip -Algorithm SHA256).Hash.ToLower() -eq $want   # True여야 한다
+Expand-Archive $zip -DestinationPath "$env:LOCALAPPDATA\Programs\balpyo"
+```
+
+`False`가 나오면 그 파일을 쓰지 않고 다시 받는다. 푼 디렉토리를 사용자 `PATH`에 한 번 더하고 새
+터미널을 연다:
+
+```powershell
+$dir = "$env:LOCALAPPDATA\Programs\balpyo"
+[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$dir", "User")
+balpyo version
+```
+
+PPTX 타깃과 `--check-layout`에 필요한 브라우저(아래)는 윈도우에서는 Chrome 또는 Edge다. 둘 다
+PATH에 실행 파일을 두지 않으므로 balpyo가 설치 폴더(`%ProgramFiles%` · `%ProgramFiles(x86)%` ·
+`%LocalAppData%` 아래)에서 찾는다 — Chrome을 먼저, 없으면 윈도우에 기본으로 깔린 Edge를 쓴다. 다른
+자리에 있으면 `BALPYO_CHROMIUM`에 `chrome.exe`의 경로를 준다. 내장 테마의 글꼴(Noto Sans · Noto Sans
+CJK KR 등)은 윈도우에 기본으로 없다 — 없으면 빌드가 그 글꼴의 경고를 낸다. 같은 이름의 글꼴을 설치하거나
+테마의 글꼴을 설치된 것으로 바꾼다.
 
 ### 소스에서 빌드
 
@@ -63,7 +90,7 @@ go build -o balpyo ./cmd/balpyo
 찍는다). 버그 리포트에는 그 세 줄을 그대로 붙인다:
 [`balpyo version`](../reference/cli.md#balpyo-version).
 
-PPTX 타깃과 `--check-layout`은 시스템 브라우저(Chromium/Chrome)를 하나 띄운다 —
+PPTX 타깃과 `--check-layout`은 시스템 브라우저(Chromium/Chrome — 윈도우에서는 Edge도)를 하나 띄운다 —
 배치를 그 브라우저로 재서 PPTX 좌표로 옮기기 때문이다. 웹 타깃만 쓰면
 브라우저는 필요 없다.
 
