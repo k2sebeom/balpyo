@@ -18,7 +18,7 @@ A theme is data only — JSON, CSS, pictures. It cannot run code and cannot bund
 inside `chrome` and `backgrounds` declarations too (the error names the file, `line:col`, and the
 JSON path, e.g. `unknown key "lineHeight" at text.variants["stat"].lineHeight` or
 `unknown key "skipLayout" at chrome[0].skipLayout`); any key starting with `$comment` is a
-comment, anywhere. Key names match case-insensitively. Wrong value types are
+comment, anywhere. Key names match case-insensitively. A leading UTF-8 BOM is ignored. Wrong value types are
 errors (`shape.variants["card"].fill must be a string, not number`); `weight`, `tabSize` and the
 motion numbers must be integers.
 

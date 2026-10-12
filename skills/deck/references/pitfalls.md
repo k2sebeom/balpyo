@@ -235,7 +235,8 @@ the theme does not place a footer; drop it from `balpyo.json` or use a theme tha
 A dozen slides pass `--check-layout --strict` in about a second. `dist/index.html` has zero
 external references. Structural validation is tight: `<p>` inside `<ul>`, `<li>` outside a list,
 a mistyped slot name, and two elements in one slot are all caught. `watch` rebuilds in
-milliseconds and never blanks the tab on a broken save. `reveal` steps survive into the markup,
+milliseconds and never blanks the tab on a broken save. A leading UTF-8 BOM in a slide,
+`balpyo.json` or theme file is ignored. `reveal` steps survive into the markup,
 and the overview and print views show everything expanded. The built-in themes give the
 `quote`, `stat`, and `code` layouts finished typography (a 40px quote, a value larger than the
 title, a label at least body size, a caption right under its code), and the `end` layout drops
