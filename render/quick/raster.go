@@ -238,11 +238,8 @@ func premul(c rgba, alpha float64) color.RGBA {
 	}
 }
 
-// fillDevice는 장치 좌표의 꺾은선 묶음을 채운다 (nonzero에 가까운 누적 규칙).
-func (cv *canvas) fillPolys(polys [][][2]float64, p paint) {
-	if !p.visible() || len(polys) == 0 {
-		return
-	}
+// polyBounds는 꺾은선 묶음을 덮는 장치 픽셀 사각형이다 (캔버스 밖은 잘라 낸다).
+func (cv *canvas) polyBounds(polys [][][2]float64) (image.Rectangle, bool) {
 	minX, minY := math.Inf(1), math.Inf(1)
 	maxX, maxY := math.Inf(-1), math.Inf(-1)
 	for _, poly := range polys {
@@ -257,9 +254,22 @@ func (cv *canvas) fillPolys(polys [][][2]float64, p paint) {
 	x1 := min(int(math.Ceil(maxX))+1, bounds.Max.X)
 	y1 := min(int(math.Ceil(maxY))+1, bounds.Max.Y)
 	if x1 <= x0 || y1 <= y0 {
+		return image.Rectangle{}, false
+	}
+	return image.Rect(x0, y0, x1, y1), true
+}
+
+// fillDevice는 장치 좌표의 꺾은선 묶음을 채운다 (nonzero에 가까운 누적 규칙).
+func (cv *canvas) fillPolys(polys [][][2]float64, p paint) {
+	if !p.visible() || len(polys) == 0 {
 		return
 	}
-	cv.z.Reset(x1-x0, y1-y0)
+	r, ok := cv.polyBounds(polys)
+	if !ok {
+		return
+	}
+	x0, y0 := r.Min.X, r.Min.Y
+	cv.z.Reset(r.Dx(), r.Dy())
 	cv.z.DrawOp = draw.Over
 	ox, oy := float32(x0), float32(y0)
 	for _, poly := range polys {
@@ -269,7 +279,6 @@ func (cv *canvas) fillPolys(polys [][][2]float64, p paint) {
 		}
 		cv.z.ClosePath()
 	}
-	r := image.Rect(x0, y0, x1, y1)
 	cv.dirty = cv.dirty.Union(r)
 	if p.src != nil {
 		src := p.src
@@ -286,6 +295,57 @@ func (cv *canvas) fillPolys(polys [][][2]float64, p paint) {
 func (cv *canvas) fill(p path, pt paint) {
 	polys, _ := p.transform(cv.ctm).flatten()
 	cv.fillPolys(polys, pt)
+}
+
+// fillEvenOdd는 fill과 같되 짝홀 규칙(SVG `fill-rule: evenodd`)으로 채운다 — 하위 경로가 짝수 번
+// 겹친 곳은 감은 방향과 상관없이 구멍이 된다.
+func (cv *canvas) fillEvenOdd(p path, pt paint) {
+	polys, _ := p.transform(cv.ctm).flatten()
+	if len(polys) < 2 {
+		cv.fillPolys(polys, pt)
+		return
+	}
+	cv.fillPolysEvenOdd(polys, pt)
+}
+
+// fillPolysEvenOdd는 짝홀 규칙으로 채운다. 래스터라이저는 감긴 수를 누적해 1에서 자르므로
+// (nonzero에 가깝다) 하위 경로마다 따로 덮임을 구하고, 덮임을 배타적 논리합(a + b − 2ab)으로
+// 합친 마스크로 칠한다 — 완전히 덮인 픽셀은 덮인 횟수의 홀짝과 같고, 가장자리만 근사다.
+func (cv *canvas) fillPolysEvenOdd(polys [][][2]float64, p paint) {
+	if !p.visible() {
+		return
+	}
+	r, ok := cv.polyBounds(polys)
+	if !ok {
+		return
+	}
+	ox, oy := float32(r.Min.X), float32(r.Min.Y)
+	mask := image.NewAlpha(image.Rect(0, 0, r.Dx(), r.Dy()))
+	one := image.NewAlpha(mask.Rect)
+	for _, poly := range polys {
+		clear(one.Pix)
+		cv.z.Reset(r.Dx(), r.Dy())
+		cv.z.DrawOp = draw.Src
+		cv.z.MoveTo(float32(poly[0][0])-ox, float32(poly[0][1])-oy)
+		for _, pt := range poly[1:] {
+			cv.z.LineTo(float32(pt[0])-ox, float32(pt[1])-oy)
+		}
+		cv.z.ClosePath()
+		cv.z.Draw(one, one.Rect, image.Opaque, image.Point{})
+		for i, b := range one.Pix {
+			a := int(mask.Pix[i])
+			mask.Pix[i] = uint8(a + int(b) - (2*a*int(b)+127)/255)
+		}
+	}
+	cv.dirty = cv.dirty.Union(r)
+	src := image.Image(image.NewUniform(premul(p.solid, p.opacity)))
+	if p.src != nil {
+		src = p.src
+		if p.opacity < 1 {
+			src = &fadeSrc{src: src, a: clamp01(p.opacity)}
+		}
+	}
+	draw.DrawMask(cv.img, r, src, r.Min, mask, image.Point{}, draw.Over)
 }
 
 // strokeStyle은 선 모양이다. 굵기는 사용자 단위이고 nonScaling이면 논리 px다.
