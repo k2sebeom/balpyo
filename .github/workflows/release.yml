@@ -62,6 +62,10 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      # CI의 리눅스 잡과 같은 글꼴이다 — 없으면 예제 게이트(경고 0)가 글꼴 경고로 실패한다.
+      - name: theme fonts
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-noto-core fonts-noto-mono fonts-noto-cjk
+
       - name: gate (a release passes the same tests)
         run: make test
 
