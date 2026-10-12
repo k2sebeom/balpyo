@@ -40,12 +40,11 @@ git clone https://github.com/k2sebeom/balpyo && cd balpyo
 go build -o balpyo ./cmd/balpyo && sudo mv balpyo /usr/local/bin/
 ```
 
-From the first `v*` tag onward there are also release archives for `darwin/{arm64,amd64}` and
-`linux/{amd64,arm64}` (each archive holds just the binary; verify with `sha256sum -c SHA256SUMS`;
-there is no Windows build) and an install script that fetches and verifies one
-(`curl -fsSL https://raw.githubusercontent.com/k2sebeom/balpyo/main/install.sh | sh`) — check
-GitHub Releases before recommending either. Ask the user to run the install themselves if it
-needs `sudo`.
+Every `v*` release also has archives for `darwin/{arm64,amd64}` and `linux/{amd64,arm64}` (each
+archive holds just the binary; verify with `sha256sum -c SHA256SUMS`; there is no Windows build) and
+an install script that fetches and verifies one
+(`curl -fsSL https://raw.githubusercontent.com/k2sebeom/balpyo/main/install.sh | sh`) — prefer the
+script. Ask the user to run the install themselves if it needs `sudo`.
 
 **A `pptx` target and `--check-layout` need Chromium or Chrome installed** — a headless browser
 measures every box, and the PPTX uses those exact rects. The binary looks at `BALPYO_CHROMIUM`,

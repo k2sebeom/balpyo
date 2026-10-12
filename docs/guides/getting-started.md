@@ -5,18 +5,8 @@
 
 ## 1. 바이너리
 
-런타임 의존은 없다 — 바이너리 하나가 모든 서브커맨드를 담는다. Go 툴체인이 있으면 저장소에서
-직접 만든다.
-
-```bash
-git clone https://github.com/k2sebeom/balpyo && cd balpyo
-go build -o balpyo ./cmd/balpyo
-./balpyo version
-```
-
-`go build`만으로도 그 바이너리는 자기 커밋을 안다 (툴체인이 박는다 — 위 `version`이 세 줄을
-찍는다). 버그 리포트에는 그 세 줄을 그대로 붙인다:
-[`balpyo version`](../reference/cli.md#balpyo-version).
+런타임 의존은 없다 — 바이너리 하나가 모든 서브커맨드를 담는다. 받는 길은 셋이다: 설치 스크립트,
+릴리스 아카이브, 소스 빌드.
 
 ### 설치 스크립트
 
@@ -57,11 +47,21 @@ tar xzf balpyo_v0.3.0_darwin_arm64.tar.gz     # → balpyo
 sha256sum -c SHA256SUMS                        # 같은 디렉토리에 두고 돌린다
 ```
 
-!!! note "아직 첫 태그가 없다"
+윈도우 아카이브는 없다 — 그 플랫폼에서 검증한 적이 없기 때문이다.
 
-    이 저장소에는 아직 `v*` 태그가 없으므로 위 두 경로(설치 스크립트·아카이브)는 **첫 릴리스부터**
-    열린다. 그때까지는 위의 `go build`가 유일한 길이다. 윈도우 아카이브는 없다 — 그 플랫폼에서
-    검증한 적이 없기 때문이다.
+### 소스에서 빌드
+
+Go 툴체인이 있으면 저장소에서 직접 만든다:
+
+```bash
+git clone https://github.com/k2sebeom/balpyo && cd balpyo
+go build -o balpyo ./cmd/balpyo
+./balpyo version
+```
+
+`go build`만으로도 그 바이너리는 자기 커밋을 안다 (툴체인이 박는다 — 위 `version`이 세 줄을
+찍는다). 버그 리포트에는 그 세 줄을 그대로 붙인다:
+[`balpyo version`](../reference/cli.md#balpyo-version).
 
 PPTX 타깃과 `--check-layout`은 시스템 브라우저(Chromium/Chrome)를 하나 띄운다 —
 배치를 그 브라우저로 재서 PPTX 좌표로 옮기기 때문이다. 웹 타깃만 쓰면
@@ -70,7 +70,7 @@ PPTX 타깃과 `--check-layout`은 시스템 브라우저(Chromium/Chrome)를 �
 ## 2. 프로젝트 하나
 
 ```bash
-./balpyo init my-talk --author "이세범" --lang ko
+balpyo init my-talk --author "이세범" --lang ko
 ```
 
 ```text
@@ -103,7 +103,7 @@ my-talk/
 ## 3. 감시하며 쓴다
 
 ```bash
-./balpyo watch --project my-talk
+balpyo watch --project my-talk
 ```
 
 ```
@@ -125,7 +125,7 @@ watching my-talk → http://127.0.0.1:4600  (Ctrl+C to stop)
 내내 재사용된다).
 
 ```bash
-./balpyo watch --project my-talk --check-layout
+balpyo watch --project my-talk --check-layout
 ```
 
 경고를 읽고 고치는 순서는 [배치 경고 읽기](layout-warnings.md)에 있다.
@@ -160,7 +160,7 @@ watching my-talk → http://127.0.0.1:4600  (Ctrl+C to stop)
 ## 5. 내보낸다
 
 ```bash
-./balpyo build --project my-talk --target html,pptx
+balpyo build --project my-talk --target html,pptx
 ```
 
 ```
@@ -177,8 +177,8 @@ CI에서는 경고를 통과시키지 않는다. 산출물이 필요 없는 검�
 산출물 없이 한다 ([`balpyo check`](../reference/cli.md#balpyo-check)).
 
 ```bash
-./balpyo build --project my-talk --target html,pptx --strict
-./balpyo check --project my-talk --check-layout --strict   # 산출물 없이 판정만
+balpyo build --project my-talk --target html,pptx --strict
+balpyo check --project my-talk --check-layout --strict   # 산출물 없이 판정만
 ```
 
 두 산출물이 같은지 **눈으로** 보려면 검수 갤러리를 만든다 — 슬라이드마다 웹 스크린샷과 PPTX
@@ -187,7 +187,7 @@ CI에서는 경고를 통과시키지 않는다. 산출물이 필요 없는 검�
 ([`balpyo preview`](../reference/cli.md#balpyo-preview)).
 
 ```bash
-./balpyo preview --project my-talk   # → my-talk/preview/index.html
+balpyo preview --project my-talk   # → my-talk/preview/index.html
 ```
 
 ## 6. 발표
