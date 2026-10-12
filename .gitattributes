@@ -1,0 +1,19 @@
+# 작업 트리의 텍스트는 어느 운영체제에서나 LF다.
+#
+# 윈도우의 git은 기본값(core.autocrlf=true)으로 체크아웃할 때 LF를 CRLF로 바꾼다. 그러면 같은
+# 커밋이 운영체제마다 다른 입력이 된다: 골든 파일이 CRLF가 되어 테스트가 갈리고, 바이너리에
+# 묻히는(go:embed) 내장 테마 · 스킬 파일이 윈도우에서 빌드하면 다른 바이트가 된다. 저장소의
+# 바이트를 운영체제에서 떼어 놓는다. 저자가 CRLF로 쓴 .slide는 파서가 따로 받는다.
+* text=auto eol=lf
+
+# 내려받은 그대로 둔다 — ECMA-376 배포본의 줄 끝이 CRLF다.
+internal/testkit/ooxml/*.xsd -text
+
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.pptx binary
+*.zip  binary
+*.ttf  binary
+*.ttc  binary
+*.otf  binary
