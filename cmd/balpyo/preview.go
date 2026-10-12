@@ -29,7 +29,7 @@ func runPreview(args []string, stdout, stderr io.Writer) error {
 	theme := fs.String("theme", "", "theme (default: theme in balpyo.json — built-in, project themes/, or installed)")
 	strict := fs.Bool("strict", false, "promote warnings to errors")
 	galleryDir := fs.String("gallery", "", "review gallery directory (default: <project>/"+preview.DefaultDirName+")")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {

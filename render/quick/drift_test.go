@@ -127,15 +127,73 @@ func TestDriftImageFullCaption(t *testing.T) {
 	if err := png.Encode(&buf, img); err != nil {
 		t.Fatal(err)
 	}
-	dir := t.TempDir()
-	for name, body := range map[string][]byte{
+	want, got := measureBoth(t, map[string][]byte{
 		"balpyo.json": []byte(`{"title": "image-full", "theme": "minimal"}`),
 		"slides/01.slide": []byte(`<slide id="full" layout="image-full">
   <image slot="media" src="assets/photo.png" fit="cover" alt="photo"/>
   <text slot="caption" role="caption">CAPTION TEXT</text>
 </slide>`),
 		"assets/photo.png": buf.Bytes(),
+	})
+	for _, id := range []string{"s0.0", "s0.1"} {
+		wb, ok := want.Box(id)
+		if !ok {
+			t.Fatalf("browser did not measure %s", id)
+		}
+		gb, ok := got.Box(id)
+		if !ok {
+			t.Errorf("%s: builtin engine has no box (web %s)", id, wb.Rect)
+			continue
+		}
+		e := math.Max(math.Max(math.Abs(wb.Rect.X-gb.Rect.X), math.Abs(wb.Rect.Y-gb.Rect.Y)),
+			math.Max(math.Abs(wb.Rect.W-gb.Rect.W), math.Abs(wb.Rect.H-gb.Rect.H)))
+		if e > 1 {
+			t.Errorf("%s: web %s, quick %s", id, wb.Rect, gb.Rect)
+		}
+	}
+}
+
+// 한국어 덱의 어절은 칸에 자리가 있으면 통째로 남는다 — 표의 짧은 열과 row의 짧은 항목은 긴
+// 이웃 때문에 어절 폭 아래로 줄지 않는다. 어절을 글자 사이에서 자르는 것은 어절 하나가 박스보다
+// 넓을 때뿐이라, 최소 내용 폭은 음절이 아니라 어절이다. 비교 기준은 같은 어절이 홀로 놓인 row
+// 항목의 폭(어절 폭)이고, 두 엔진이 다 지켜야 한다.
+func TestKoreanWordKeepsItsWidthBesideLongNeighbor(t *testing.T) {
+	testkit.RequireChromium(t)
+	const long = "파드 요구사항에 맞춰 노드를 즉시 프로비저닝하고 가장 저렴한 인스턴스 타입을 자동으로 고르며 빈 노드를 정리합니다"
+	want, got := measureBoth(t, map[string][]byte{
+		"balpyo.json": []byte(`{"title": "ko", "lang": "ko", "aspect": "4:3", "theme": "minimal"}`),
+		"slides/01.slide": []byte(`<slide id="squeezed">
+  <table><tr><th>구분</th><th>설명</th></tr><tr><td>오토스케일러</td><td>` + long + `</td></tr></table>
+  <row gap="md"><text>컨테이너오케스트레이션</text><text>` + long + `</text></row>
+</slide>`),
+		"slides/02.slide": []byte(`<slide id="alone">
+  <row><text>오토스케일러</text></row>
+  <row><text>컨테이너오케스트레이션</text></row>
+</slide>`),
+	})
+	for _, c := range []struct{ name, squeezed, alone string }{
+		{"table cell", "s0.0.1.0", "s1.0.0"},
+		{"row item", "s0.1.0", "s1.1.0"},
 	} {
+		for engine, g := range map[string]*geom.Geometry{"web": want, "quick": got} {
+			sq, ok1 := g.Box(c.squeezed)
+			al, ok2 := g.Box(c.alone)
+			if !ok1 || !ok2 {
+				t.Fatalf("%s: %s did not measure %s / %s", c.name, engine, c.squeezed, c.alone)
+			}
+			if sq.Rect.W < al.Rect.W-0.5 {
+				t.Errorf("%s (%s): squeezed to %.1fpx below its word width %.1fpx", c.name, engine, sq.Rect.W, al.Rect.W)
+			}
+		}
+	}
+}
+
+// measureBoth는 프로젝트 파일로 덱을 빌드해 같은 측정용 HTML을 브라우저와 내장 엔진이 각각 잰
+// 결과를 돌려준다.
+func measureBoth(t *testing.T, project map[string][]byte) (want, got *geom.Geometry) {
+	t.Helper()
+	dir := t.TempDir()
+	for name, body := range project {
 		p := filepath.Join(dir, filepath.FromSlash(name))
 		os.MkdirAll(filepath.Dir(p), 0o755)
 		if err := os.WriteFile(p, body, 0o644); err != nil {
@@ -162,30 +220,13 @@ func TestDriftImageFullCaption(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer session.Close()
-	want, err := session.Measure(deck, html)
-	if err != nil {
+	if want, err = session.Measure(deck, html); err != nil {
 		t.Fatal(err)
 	}
-	got, err := quick.Measurer{}.Measure(deck, html)
-	if err != nil {
+	if got, err = (quick.Measurer{}).Measure(deck, html); err != nil {
 		t.Fatal(err)
 	}
-	for _, id := range []string{"s0.0", "s0.1"} {
-		wb, ok := want.Box(id)
-		if !ok {
-			t.Fatalf("browser did not measure %s", id)
-		}
-		gb, ok := got.Box(id)
-		if !ok {
-			t.Errorf("%s: builtin engine has no box (web %s)", id, wb.Rect)
-			continue
-		}
-		e := math.Max(math.Max(math.Abs(wb.Rect.X-gb.Rect.X), math.Abs(wb.Rect.Y-gb.Rect.Y)),
-			math.Max(math.Abs(wb.Rect.W-gb.Rect.W), math.Abs(wb.Rect.H-gb.Rect.H)))
-		if e > 1 {
-			t.Errorf("%s: web %s, quick %s", id, wb.Rect, gb.Rect)
-		}
-	}
+	return want, got
 }
 
 func within(errs []float64, d float64) float64 {

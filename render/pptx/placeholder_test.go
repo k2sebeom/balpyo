@@ -116,3 +116,28 @@ func stageClassOf(t *testing.T, out string) string {
 	}
 	return rest[:end]
 }
+
+// **글자를 싣지 않는 도형은 슬롯을 채워도 플레이스홀더가 되지 않는다**.
+//
+// 빈 본문(`<a:p/>`)을 가진 `<p:ph>`는 PowerPoint 편집 보기에서 "텍스트를 입력하려면 클릭"
+// 안내문을 띄운다 — 차트(배경 모드 도형으로 펼쳐진다)나 자식 없는 도형 위에 안내문이 겹친다.
+// 글자를 흡수한 도형은 여전히 플레이스홀더다.
+func TestTextlessSlotShapeIsNotPlaceholder(t *testing.T) {
+	for _, tc := range []struct {
+		name, body string
+		wantPh     bool
+	}{
+		{"차트", `<chart slot="left" type="bar" alt="c" h="300"><point label="a" value="3"/><point label="b" value="5"/></chart>`, false},
+		{"빈 도형", `<shape slot="left" type="rect"/>`, false},
+		{"배경 도형", `<shape slot="left" type="rect"><col><p>안</p></col></shape>`, false},
+		{"글자 도형", `<shape slot="left" type="rect"><p>본문</p></shape>`, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			deck := layoutSlotDeck(t, soml.LayoutTwoColumn, tc.body)
+			got := slideXML(t, deck, geom.Synthetic(deck, geom.Rect{X: 64, Y: 64, W: 560, H: 300}))
+			if has := strings.Contains(got, `<p:ph type="body" idx="1"/>`); has != tc.wantPh {
+				t.Errorf("<p:ph> 있음=%v, want %v\n%s", has, tc.wantPh, got)
+			}
+		})
+	}
+}
