@@ -111,6 +111,36 @@ func TestResolveAssetsTable(t *testing.T) {
 	}
 }
 
+// EXIF 방향이 가로·세로를 바꾸는 JPEG는 **보이는** 크기로 실린다 — 브라우저가 돌린 그림을
+// 그리고 재므로, 고유 크기가 저장된 픽셀의 것이면 cover 크롭과 PPTX의 틀이 다른 그림을 가리킨다.
+// 바이트는 그대로다.
+func TestResolveAssetsEXIFOrientation(t *testing.T) {
+	// 240×120으로 저장되고 방향 6(90°)이 적힌 사진이다.
+	rotated, err := os.ReadFile("../testdata/fixtures/05_image/assets/rotated.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain := jpegBytes(t, 240, 120)
+	fsys := fstest.MapFS{
+		"assets/rotated.jpg": {Data: rotated},
+		"assets/plain.jpg":   {Data: plain},
+	}
+	deck, diags := resolveImageDeck(t, "<slide>\n  <image src=\"assets/rotated.jpg\"/>\n  <image src=\"assets/plain.jpg\"/>\n</slide>\n")
+	if len(diags) != 0 {
+		t.Fatalf("외관 해석 진단이 없어야 한다: %v", diags)
+	}
+	if diags := ResolveAssets(deck, fsys); len(diags) != 0 {
+		t.Fatalf("에셋 진단이 없어야 한다: %v", diags)
+	}
+	want := soml.Assets{
+		{Key: "assets/rotated.jpg", Format: soml.FormatJPEG, Width: 120, Height: 240, Orientation: 6, Bytes: rotated},
+		{Key: "assets/plain.jpg", Format: soml.FormatJPEG, Width: 240, Height: 120, Bytes: plain},
+	}
+	if !reflect.DeepEqual(deck.Assets, want) {
+		t.Errorf("에셋 표 = %v, want %v", showAssets(deck.Assets), showAssets(want))
+	}
+}
+
 // 그림이 없는 덱은 파일 시스템을 보지 않는다 — 표가 빈 채로 남고 진단도 없다.
 func TestResolveAssetsWithoutImages(t *testing.T) {
 	deck, _ := resolveImageDeck(t, "<slide id=\"a\">\n  <p>글자만</p>\n</slide>\n")
@@ -308,8 +338,8 @@ func imageStyles(t *testing.T, deck *soml.Deck) []*soml.ImageStyle {
 func showAssets(assets soml.Assets) string {
 	var parts []string
 	for _, asset := range assets {
-		parts = append(parts, fmt.Sprintf("%s(%s %dx%d %dB)",
-			asset.Key, asset.Format, asset.Width, asset.Height, len(asset.Bytes)))
+		parts = append(parts, fmt.Sprintf("%s(%s %dx%d o%d %dB)",
+			asset.Key, asset.Format, asset.Width, asset.Height, asset.Orientation, len(asset.Bytes)))
 	}
 	return "[" + strings.Join(parts, " ") + "]"
 }

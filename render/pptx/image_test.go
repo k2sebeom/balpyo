@@ -490,3 +490,49 @@ func imageStyleOf(t *testing.T, deck *soml.Deck) *soml.ImageStyle {
 	}
 	return style
 }
+
+// EXIF 방향이 있는 JPEG — 브라우저는 방향을 따라 돌린 그림을 그리고 그 박스를 재지만, PowerPoint는
+// 그림의 EXIF를 보지 않는다. 그래서 p:pic은 **저장된 픽셀의 틀**(잰 rect를 중심에서 가로·세로를
+// 바꾼 것)에 회전을 얹어야 같은 그림이 같은 자리에 나온다. 크롭도 저장된 픽셀의 축으로 센다.
+func TestRenderPicEXIFOrientation(t *testing.T) {
+	tests := []struct {
+		name  string
+		attrs string
+		rect  geom.Rect
+		want  []string
+	}{
+		// 6 = 90° — 보이는 120×240 그림이 200×400 박스에 맞춰졌다: 틀은 같은 중심의 400×200이다.
+		{"contain/90도", `fit="contain"`, geom.Rect{X: 100, Y: 100, W: 200, H: 400}, []string{
+			`<a:xfrm rot="5400000">`,
+			`<a:off x="0" y="1905000"/>`,
+			`<a:ext cx="3810000" cy="1905000"/>`,
+		}},
+		// 보이는 1:2 그림이 3:2 박스를 덮으면 보이는 그림의 위아래가 잘린다 — 저장된 픽셀에서는 좌우다
+		// ((1 − (1/2)/(3/2)) / 2 = 1/3).
+		{"cover/크롭은 저장된 축", `fit="cover"`, geom.Rect{X: 100, Y: 100, W: 300, H: 200}, []string{
+			`<a:srcRect l="33333" r="33333"/>`,
+			`<a:xfrm rot="5400000">`,
+			`<a:off x="1428750" y="476250"/>`,
+			`<a:ext cx="1905000" cy="2857500"/>`,
+		}},
+		// 저자의 회전은 보이는 그림에 걸린다 — EXIF 회전 뒤에 더한다.
+		{"저자 회전과 합성", `rotate="10"`, geom.Rect{X: 100, Y: 100, W: 200, H: 400}, []string{
+			`<a:xfrm rot="6000000">`,
+		}},
+		// 저자의 대칭은 EXIF 회전의 방향을 뒤집는다 (대칭 → 회전 순서로 적으면 10 − 90 = −80 = 280°).
+		{"저자 대칭과 합성", `rotate="10" flip="h"`, geom.Rect{X: 100, Y: 100, W: 200, H: 400}, []string{
+			`<a:xfrm rot="16800000" flipH="1">`,
+		}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			deck := imageDeck(t, fmt.Sprintf("<slide>\n  <image src=\"assets/rotated.jpg\" %s w=\"200\" h=\"200\" alt=\"x\"/>\n</slide>", tc.attrs))
+			pic := picOf(t, slideXML(t, deck, measuredGeometry(t, deck, tc.rect)))
+			for _, want := range tc.want {
+				if !strings.Contains(pic, want) {
+					t.Errorf("p:pic에 %q가 없다\n%s", want, pic)
+				}
+			}
+		})
+	}
+}

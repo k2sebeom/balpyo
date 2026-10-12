@@ -866,6 +866,7 @@ type xObject struct {
 	// BlipFill은 그림의 채움이다 — SVG 그림이면 blip의 확장에 svgBlip이 있다.
 	BlipFill struct {
 		Blip struct {
+			Embed   string    `xml:"http://schemas.openxmlformats.org/officeDocument/2006/relationships embed,attr"`
 			SvgBlip *struct{} `xml:"extLst>ext>svgBlip"`
 		} `xml:"blip"`
 	} `xml:"blipFill"`
@@ -975,6 +976,9 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 		}
 		for _, obj := range x.CSld.SpTree.Items {
 			n, ok := pptxNode(obj, theme, links, names)
+			if ok && obj.XMLName.Local == "pic" {
+				n = pptxOrientedPic(n, parts, links[obj.BlipFill.Blip.Embed])
+			}
 			if ok {
 				for _, nv := range []*xNv{obj.NvSpPr, obj.NvPicPr, obj.NvGraphicFramePr, obj.NvCxnSpPr} {
 					if nv == nil {
@@ -1114,6 +1118,25 @@ func pptxNode(obj xObject, theme soml.Theme, links map[string]string, names map[
 	n.X, n.Y = xfrm.Off.X, xfrm.Off.Y
 	n.W, n.H = xfrm.Ext.Cx, xfrm.Ext.Cy
 	return n, true
+}
+
+// pptxOrientedPic은 EXIF 방향이 가로·세로를 바꾸는 JPEG 그림의 rect를 **보이는** 박스로 되돌린다.
+//
+// PowerPoint는 그림의 EXIF를 보지 않으므로 렌더러는 저장된 픽셀의 틀(같은 중심, 가로·세로가 바뀐
+// 사각형)에 회전을 얹는다. 읽는 쪽도 미디어 파트의 바이트에서 방향을 읽어 그 틀을 되돌려야 잰 rect와
+// 대조된다 — 회전은 패리티가 보는 값이 아니다.
+func pptxOrientedPic(n LayoutNode, parts map[string][]byte, target string) LayoutNode {
+	if target == "" {
+		return n
+	}
+	data, ok := parts[path.Join("ppt/slides", target)]
+	if !ok || !soml.JPEGOrientation(data).SwapsAxes() {
+		return n
+	}
+	cx, cy := 2*n.X+n.W, 2*n.Y+n.H
+	n.W, n.H = n.H, n.W
+	n.X, n.Y = (cx-n.W)/2, (cy-n.H)/2
+	return n
 }
 
 var pptxAligns = map[string]string{

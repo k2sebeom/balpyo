@@ -158,7 +158,7 @@ func (p *assetPass) image(elem *soml.Element) {
 // 헤더만 읽는다 (image.DecodeConfig): 픽셀은 우리가 쓰지 않고, 전체 디코드는 큰 사진에서 빌드
 // 시간을 통째로 잡아먹는다. 바이트는 **그대로** 담는다 — 리사이즈·재압축·EXIF 회전은 하지
 // 않는다 (엔진이 바이트를 고치면 저자가 커밋한 파일과 산출물의 그림이 다른 것이 되고, 저자는
-// 그 차이를 확인할 방법이 없다).
+// 그 차이를 확인할 방법이 없다). EXIF 방향은 읽어서 에셋에 싣기만 한다 (decodeImageAsset).
 func (p *assetPass) load(key string, span soml.Span) (soml.Asset, bool) {
 	if p.fsys == nil {
 		p.errorf(span, "no file system to read assets from (%s) — this is an engine bug (the caller did not pass an fs.FS to ResolveAssets)", key)
@@ -283,13 +283,24 @@ func decodeImageAsset(key string, data []byte) (soml.Asset, string) {
 	if config.Width <= 0 || config.Height <= 0 {
 		return soml.Asset{}, fmt.Sprintf("%s has an intrinsic size of %d×%d — nothing to draw", key, config.Width, config.Height)
 	}
+	width, height := config.Width, config.Height
+	var orientation soml.Orientation
+	if declared == soml.FormatJPEG {
+		// 브라우저는 EXIF 방향을 따라 돌린 그림을 그린다 — 고유 크기도 돌린 그림의 것이어야
+		// cover 크롭과 PPTX의 틀이 웹이 잰 박스와 같은 그림을 가리킨다.
+		orientation = soml.JPEGOrientation(data)
+		if orientation.SwapsAxes() {
+			width, height = height, width
+		}
+	}
 	return soml.Asset{
 		Key:    key,
 		Format: declared,
 		// 픽셀이 그대로 논리 스테이지 px다 (수치의 단위는 그것 하나다) — 배율을 정하는 표기는
 		// `w`/`h`/`ratio`이고, 엔진이 DPR을 추측하지 않는다 (soml.Asset의 근거).
-		Width:  config.Width,
-		Height: config.Height,
-		Bytes:  data,
+		Width:       width,
+		Height:      height,
+		Orientation: orientation,
+		Bytes:       data,
 	}, ""
 }
