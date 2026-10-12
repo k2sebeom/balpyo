@@ -1,0 +1,9 @@
+<!-- layout="canvas" + `at` — 캔버스 스테이지는 stack과 같은 단일 셀 grid라 직속 자식이
+     9지점 앵커로도 자리를 정한다. 웹은 `place-self`로, PPTX는 잰 좌표로 그 자리를 옮긴다.
+     한 슬라이드 안에서 앵커 자식과 좌표 자식을 섞어도 각자의 채널이 자리를 정한다. -->
+<slide id="canvas-anchors" layout="canvas">
+  <shape type="ellipse" fill="accent1" w="200" h="200" at="center"/>
+  <text size="18" color="muted" at="top-left">왼쪽 위</text>
+  <text size="18" color="muted" at="bottom-right">오른쪽 아래</text>
+  <shape type="rect" fill="surface" w="96" h="48" x="80" y="320"/>
+</slide>

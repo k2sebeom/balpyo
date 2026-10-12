@@ -136,24 +136,24 @@ func TestChartExpandsToHandWrittenDeck(t *testing.T) {
   <shape type="rect" fill="none" border="none" alt="월별 평균 탐지 시간" w="fill" h="420">
     <col gap="0" w="fill" h="fill">
       <row gap="0" align="stretch" grow="1" basis="0" w="fill">
-        <col grow="1" basis="0" gap="0" align="center">
-          <col grow="1" basis="0" w="fill" align="center" gap="xs">
+        <col grow="1" basis="0" min-w="0" gap="0" align="center">
+          <col grow="1" basis="0" min-w="0" w="fill" align="center" gap="xs">
             <spacer grow="0" basis="10%"/>
             <text role="caption" align="center" w="fill" shrink="0">22분</text>
             <shape type="rect" fill="accent1" border="none" w="70%" basis="90%"/>
           </col>
           <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
         </col>
-        <col grow="1" basis="0" gap="0" align="center">
-          <col grow="1" basis="0" w="fill" align="center" gap="xs">
+        <col grow="1" basis="0" min-w="0" gap="0" align="center">
+          <col grow="1" basis="0" min-w="0" w="fill" align="center" gap="xs">
             <spacer grow="0" basis="22.27%"/>
             <text role="caption" align="center" w="fill" shrink="0">19분</text>
             <shape type="rect" fill="accent1" border="none" w="70%" basis="77.73%"/>
           </col>
           <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
         </col>
-        <col grow="1" basis="0" gap="0" align="center">
-          <col grow="1" basis="0" w="fill" align="center" gap="xs">
+        <col grow="1" basis="0" min-w="0" gap="0" align="center">
+          <col grow="1" basis="0" min-w="0" w="fill" align="center" gap="xs">
             <spacer grow="0" basis="50.91%"/>
             <text role="caption" align="center" w="fill" color="accent4" shrink="0">12분</text>
             <shape type="rect" fill="accent4" border="none" w="70%" basis="49.09%"/>
@@ -162,9 +162,9 @@ func TestChartExpandsToHandWrittenDeck(t *testing.T) {
         </col>
       </row>
       <row gap="0" w="fill">
-        <text role="caption" align="center" w="fill" grow="1" basis="0">5월</text>
-        <text role="caption" align="center" w="fill" grow="1" basis="0">6월</text>
-        <text role="caption" align="center" w="fill" color="accent4" grow="1" basis="0">9월</text>
+        <text role="caption" align="center" w="fill" grow="1" basis="0" min-w="0">5월</text>
+        <text role="caption" align="center" w="fill" grow="1" basis="0" min-w="0">6월</text>
+        <text role="caption" align="center" w="fill" color="accent4" grow="1" basis="0" min-w="0">9월</text>
       </row>
     </col>
   </shape>
@@ -256,7 +256,7 @@ func TestChartDiagnostics(t *testing.T) {
 	}{
 		{"type이 없다", `h="420"`, p, []string{"<chart> needs a type", "available types: bar", "no way to guess"}},
 		{"어휘 밖의 type", `type="pie" h="420"`, p, []string{`unknown chart type "pie"`, "available types: bar, line, area, step"}},
-		{"선 차트의 점 강조", `type="line" h="420"`, chartPoint(`label="May" value="22" fill="accent4"`), []string{"<point fill> highlights one bar — a line chart"}},
+		{"선 차트의 점 강조", `type="line" h="420"`, p + chartPoint(`label="May" value="22" fill="accent4"`), []string{"<point fill> highlights one bar — a line chart"}},
 		// 막대 높이가 축에 대한 백분율이라 차트 높이를 내용이 정하면 순환한다.
 		{"h도 ratio도 없다", `type="bar"`, p, []string{"<chart> needs h or ratio", "would be circular"}},
 		{"점이 없다", `type="bar" h="420"`, "", []string{"<chart> has no <point>", "no data to draw"}},
@@ -281,6 +281,14 @@ func TestChartDiagnostics(t *testing.T) {
 		{"series가 none이다", `type="bar" series="none" h="420"`, p, []string{`series cannot be none`, `value="0"`}},
 		{"점의 fill이 none이다", `type="bar" h="420"`, chartPoint(`label="5월" value="22" fill="none"`), []string{`fill cannot be none`}},
 		{"series에 값이 없다", `type="bar" series h="420"`, p, []string{"the series attribute needs a value"}},
+		// 선은 점을 잇는 것이라 점 하나는 아무것도 그리지 않는다 (경로가 `M` 하나다).
+		{"점 하나인 선 차트", `type="line" h="420"`, p, []string{"a line chart needs at least 2 points", "draws nothing", `type="step"`}},
+		{"점 하나인 영역 차트", `type="area" h="420"`, p, []string{"an area chart needs at least 2 points"}},
+		{"점 하나인 계열 선", `type="step" h="420"`,
+			"    <series name=\"a\" type=\"line\">\n" + p + "    </series>\n    <series name=\"b\">\n" + p + "    </series>\n",
+			[]string{"a line chart needs at least 2 points"}},
+		// 점을 둘 적었고 하나가 틀렸다면 진단은 그 점의 것 하나다.
+		{"둘 중 하나가 틀린 선 차트", `type="line" h="420"`, p + chartPoint(`label="6월" value="-3"`), []string{"value cannot be negative"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

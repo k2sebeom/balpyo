@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/k2sebeom/balpyo/soml"
@@ -340,8 +339,8 @@ func (r *resolver) lengthValue(name, raw string, span soml.Span, syntax lengthSy
 			name, raw, unit)
 		return soml.Length{}, false
 	}
-	n, err := strconv.ParseFloat(value, 64)
-	if err != nil {
+	n, ok := parseNumber(value)
+	if !ok {
 		r.errorf(span, "%s value is not a number (%q) — use %s", name, raw, lengthForms(syntax))
 		return soml.Length{}, false
 	}
@@ -423,8 +422,8 @@ func (r *resolver) tracks(attr soml.Attr) (soml.Tracks, bool) {
 		// 200px 트랙 하나로 읽는 길과 저울질했고 개수를 골랐다: 격자를 균등 분할하는 것이
 		// 이 속성의 압도적인 용례다. 트랙 하나를 크기로 적으려는 저자는 `1fr`·`100%`·`auto`처럼
 		// 형태를 붙인다 — 그 애매함은 문서가 말한다.
-		n, err := strconv.Atoi(parts[0].text)
-		if err != nil || n < 1 {
+		n, ok := parseInteger(parts[0].text)
+		if !ok || n < 1 {
 			r.errorf(parts[0].span(attr), "the track count of %s is an integer of at least 1 (%q)", attr.Name, attr.Value)
 			return soml.Tracks{}, false
 		}
@@ -456,8 +455,8 @@ func (r *resolver) track(name, raw string, span soml.Span) (soml.Track, bool) {
 	case strings.HasSuffix(raw, "%"):
 		value, kind = strings.TrimSuffix(raw, "%"), soml.TrackPercent
 	}
-	n, err := strconv.ParseFloat(value, 64)
-	if err != nil {
+	n, ok := parseNumber(value)
+	if !ok {
 		r.errorf(span, "unknown track value %[2]q in %[1]s (available forms: a number, Nfr, N%%, auto, or a single integer track count)",
 			name, raw)
 		return soml.Track{}, false
@@ -481,9 +480,9 @@ func (r *resolver) ratio(attr soml.Attr) (soml.Ratio, bool) {
 		r.errorf(attr.ValueSpan, "ratio is a W:H pair of integers (%q) — e.g. 16:9", raw)
 		return soml.Ratio{}, false
 	}
-	width, errW := strconv.Atoi(w)
-	height, errH := strconv.Atoi(h)
-	if errW != nil || errH != nil {
+	width, okW := parseInteger(w)
+	height, okH := parseInteger(h)
+	if !okW || !okH {
 		r.errorf(attr.ValueSpan, "ratio is a W:H pair of integers (%q) — e.g. 16:9", raw)
 		return soml.Ratio{}, false
 	}
@@ -572,8 +571,8 @@ func (r *resolver) integer(attr soml.Attr) (int, bool) {
 	if !r.hasValue(attr) {
 		return 0, false
 	}
-	n, err := strconv.Atoi(attr.Value)
-	if err != nil {
+	n, ok := parseInteger(attr.Value)
+	if !ok {
 		r.errorf(attr.ValueSpan, "%s is an integer (%q)", attr.Name, attr.Value)
 		return 0, false
 	}
@@ -628,10 +627,12 @@ func parentDesc(parent *soml.Element) string {
 
 // stackAnchor는 `at`의 9지점 앵커를 해석한다.
 //
-// **`<stack>`의 자식에서만 뜻이 있다**. span과 같은 자리의 부모를 아는 검증이다 —
-// 파서는 부모를 모르는 자리에서 속성 표를 만들기 때문에 이름 층에서 막을 수 없었다. flex/grid
-// 컨테이너나 슬라이드 직속에서 `place-self`의 9지점은 뜻이 없어(단일 셀 grid가 아니다) 조용히
-// 버려지고, 그 침묵이 닫힌 어휘가 막으려던 실패다.
+// **`<stack>`의 자식이거나 canvas 슬라이드의 직속 자식에서만 뜻이 있다** — 캔버스 스테이지는
+// stack과 같은 단일 셀 grid라 `place-self`의 9지점이 같은 뜻을 가진다 (x/y와 같은 경계).
+// span과 같은 자리의 부모를 아는 검증이다 — 파서는 부모를 모르는 자리에서 속성 표를 만들기
+// 때문에 이름 층에서 막을 수 없었다. flex/grid 컨테이너나 canvas가 아닌 슬라이드 직속에서
+// `place-self`의 9지점은 뜻이 없어(단일 셀 grid가 아니다) 조용히 버려지고, 그 침묵이 닫힌
+// 어휘가 막으려던 실패다.
 //
 // 검사 순서는 span과 같다: 값(어휘) 먼저, 부모 나중. `<row at="center">`은 어휘를 통과하고
 // 부모에서 걸리고, `at="top"`(stack 안)은 어휘에서 걸린다 — 두 진단이 겹치지 않는다.
@@ -645,9 +646,8 @@ func (r *resolver) stackAnchor(attr soml.Attr, parent *soml.Element, conflict bo
 	raw := attr.Value
 	for _, anchor := range soml.StackAnchors() {
 		if string(anchor) == raw {
-			if parent == nil || parent.Name != soml.StackElement {
-				r.errorf(attr.NameSpan, "at is only for children of <%s> (%s) — wrap it in <%s> if you need overlap",
-					soml.StackElement, parentDesc(parent), soml.StackElement)
+			if !r.positionParentOK(parent) {
+				r.positionParentError(attr, parent)
 				return "", false
 			}
 			return anchor, true
@@ -687,21 +687,27 @@ func (r *resolver) coord(attr soml.Attr, parent *soml.Element, conflict bool) (s
 	if !ok {
 		return soml.Length{}, false
 	}
-	if !r.coordParentOK(parent) {
-		r.errorf(attr.NameSpan, "%s is only for children of <%s> or direct children of a layout=\"canvas\" slide (%s) — wrap it in <%s> or give the slide layout=\"canvas\"",
-			attr.Name, soml.StackElement, parentDesc(parent), soml.StackElement)
+	if !r.positionParentOK(parent) {
+		r.positionParentError(attr, parent)
 		return soml.Length{}, false
 	}
 	return length, true
 }
 
-// coordParentOK는 `x`/`y`가 유효한 부모에 있는지다 — <stack>의 자식이거나 canvas 슬라이드의
-// 직속 자식(parent == nil이고 슬라이드 layout이 canvas)이다.
-func (r *resolver) coordParentOK(parent *soml.Element) bool {
+// positionParentOK는 자리 속성(`at`·`x`·`y`)이 유효한 부모에 있는지다 — <stack>의 자식이거나
+// canvas 슬라이드의 직속 자식(parent == nil이고 슬라이드 layout이 canvas)이다.
+func (r *resolver) positionParentOK(parent *soml.Element) bool {
 	if parent != nil {
 		return parent.Name == soml.StackElement
 	}
 	return r.layout == soml.LayoutCanvas
+}
+
+// positionParentError는 자리 속성이 유효하지 않은 부모에 있다는 진단이다. 세 속성이 같은 경계를
+// 쓰므로 고치는 방법(<stack>으로 감싸기·layout="canvas")도 한 문장으로 같이 싣는다.
+func (r *resolver) positionParentError(attr soml.Attr, parent *soml.Element) {
+	r.errorf(attr.NameSpan, "%s is only for children of <%s> or direct children of a layout=\"canvas\" slide (%s) — wrap it in <%s> or give the slide layout=\"canvas\"",
+		attr.Name, soml.StackElement, parentDesc(parent), soml.StackElement)
 }
 
 // anchorTypo는 흔한 오타·짧은 이름·축이 뒤바뀐 이름을 올바른 9지점으로 잇는다.

@@ -39,7 +39,7 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 | `series` | 색 토큰 · `#rrggbb` | **모든 막대**의 색. 생략하면 `accent1` — 라벨은 칠하지 않는다 |
 | `alt` | 문자열 (빈 값은 **에러**) | 그림의 **접근성 이름** — 펼침의 뿌리 도형에 실린다 |
 | 박스 | `pad`·`w`·`h`·`min-w`·`min-h`·`max-w`·`max-h`·`ratio` | 도형과 같은 한 벌 — **`h`나 `ratio`는 필수다** (아래) |
-| `slot` | 레이아웃의 슬롯 이름 | 슬롯을 채운다 (웹 `grid-area` · PPTX `p:ph`) |
+| `slot` | 레이아웃의 슬롯 이름 | 슬롯을 채운다 (웹 `grid-area` · PPTX는 슬롯 자리의 도형 — 글자가 없으므로 `p:ph`가 아니다) |
 | 자식 배치 | `grow`·`shrink`·`basis`·`span`·`self`·`order`·`at`·`x`·`y`·`style` | 레이아웃 컨테이너·[`<stack>`](stack.md)의 자식으로서의 자리 |
 
 - **높이는 필수다** (`h`나 `ratio` 중 하나). 막대 높이가 플롯 밴드에 대한 백분율이므로 밴드가
@@ -95,6 +95,9 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 - 선의 굵기는 3px이고 색은 `series`다. 선 차트는 **값 라벨을 그리지 않는다** — 점 위의 수치가 필요하면 막대
   차트다.
 - 점의 강조색(`<point fill>`)은 막대 하나를 칠하는 채널이라 선 · 영역 · 계단에서는 에러다.
+- **`line` · `area`는 점이 둘 이상이어야 한다.** 선은 점과 점을 잇는 것이라 점 하나로는 아무것도 그려지지
+  않는다 — 에러다 (`a line chart needs at least 2 points`). 값 하나를 보이려면 `bar`나 `step`이다 (계단은 칸
+  폭 전체를 그으므로 점 하나로도 그려진다).
 - PPTX에서는 사용자 지오메트리 도형(`a:custGeom`)이다 — PowerPoint의 점 편집으로 고칠 수 있다.
 
 ## 여러 계열 — `<series>`
@@ -171,16 +174,16 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 <shape type="rect" fill="none" border="none" alt="월별 평균 탐지 시간" w="fill" h="420">
   <col gap="0" w="fill" h="fill">
     <row gap="0" align="stretch" grow="1" basis="0" w="fill">
-      <col grow="1" basis="0" gap="0" align="center">
-        <col grow="1" basis="0" w="fill" align="center" gap="xs">
+      <col grow="1" basis="0" min-w="0" gap="0" align="center">
+        <col grow="1" basis="0" min-w="0" w="fill" align="center" gap="xs">
           <spacer grow="0" basis="10%"/>
           <text role="caption" align="center" w="fill" shrink="0">22분</text>
           <shape type="rect" fill="accent1" border="none" w="70%" basis="90%"/>
         </col>
         <shape type="rect" fill="muted" border="none" w="fill" h="1"/>
       </col>
-      <col grow="1" basis="0" gap="0" align="center">
-        <col grow="1" basis="0" w="fill" align="center" gap="xs">
+      <col grow="1" basis="0" min-w="0" gap="0" align="center">
+        <col grow="1" basis="0" min-w="0" w="fill" align="center" gap="xs">
           <spacer grow="0" basis="50.91%"/>
           <text role="caption" align="center" w="fill" color="accent4" shrink="0">12분</text>
           <shape type="rect" fill="accent4" border="none" w="70%" basis="49.09%"/>
@@ -189,8 +192,8 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
       </col>
     </row>
     <row gap="0" w="fill">
-      <text role="caption" align="center" w="fill" grow="1" basis="0">5월</text>
-      <text role="caption" align="center" w="fill" color="accent4" grow="1" basis="0">9월</text>
+      <text role="caption" align="center" w="fill" grow="1" basis="0" min-w="0">5월</text>
+      <text role="caption" align="center" w="fill" color="accent4" grow="1" basis="0" min-w="0">9월</text>
     </row>
   </col>
 </shape>
@@ -200,9 +203,12 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 
 - **범주 한 칸이 `<col grow="1" basis="0">`이다** — 막대 폭과 간격을 픽셀로 세지 않는다. 칸 안에서
   플롯 밴드가 `grow="1"`로 남은 높이를 전부 먹고, 기준선 높이는 거기서 빠진다.
+- **칸의 최소 폭은 0이다** (`min-w="0"`). 칸은 언제나 줄을 점 수로 똑같이 나눈 폭이다 — 칸보다 넓은
+  낱말(`Internationalization`) 하나가 자기 칸을 넓혀 이웃 라벨을 막대와 다른 열로 밀어내지 않는다.
+  넓은 라벨은 자기 칸 안에서 넘치고, `--check-layout`이 그 `<point>`에 글자 넘침 경고를 낸다.
 - **범주 라벨은 칸 안이 아니라 아래의 한 줄이다.** 칸 안에 두면 두 줄로 접힌 라벨 하나가 그 칸의
   밴드만 줄여 그 막대가 이웃보다 짧게 그려진다. 한 줄로 모으면 모든 칸의 밴드가 같은 높이다 — 줄의
-  높이는 가장 높은 라벨이 정한다. 라벨 줄의 칸도 `grow="1" basis="0"`이라 막대와 같은 열에 선다.
+  높이는 가장 높은 라벨이 정한다. 라벨 줄의 칸도 `grow="1" basis="0" min-w="0"`이라 막대와 같은 열에 선다.
 - **막대 높이가 `basis` 백분율이다** (`90%`·`49.09%`) — `22 ÷ (22÷0.9)`와 `12 ÷ (22÷0.9)`다. 위의
   `<spacer>`가 나머지(`10%`·`50.91%`)를 잡는다. 둘을 합치면 밴드를 라벨 한 줄 + 간격만큼 넘치고,
   flex 축소가 그만큼을 **basis에 비례해** 둘에게서 거둔다. 그래서 막대는 언제나 "밴드 − 라벨 −
@@ -345,6 +351,7 @@ PPTX)은 차트라는 것을 모른다 — PPTX에 `c:chart` 파트도, 임베�
 | `<chart>`에 점이 아닌 자식을 썼다 | `<chart> cannot contain <p> (available tags: <point>, <series>)` |
 | `<chart>` 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <chart> (wrap it in <point>)` |
 | `<point>`에 내용을 담았다 | `void tag <point> cannot have content (write <point/>)` |
+| `<point>`를 `/` 없이 닫았다 | `void tag <point> must be self-closed (write <point/>)` |
 | `<chart>`를 도형의 직속 자식으로 썼다 | `<shape> cannot contain <chart> (available tags: <text>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <row>, <col>, <grid>, <stack>)` |
 | `<chart>`에 `fill`을 썼다 | `unknown attribute fill on <chart> (available attributes: type, unit, max, series, alt, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
 | `<point>`에 `w`를 썼다 | `unknown attribute w on <point> (available attributes: label, value, fill)` |

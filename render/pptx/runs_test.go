@@ -59,6 +59,44 @@ func TestRunHyperlink(t *testing.T) {
 	}
 }
 
+// 덱 안을 가리키는 href(`#<슬라이드 id>` · `#/<번호>`)는 외부 URL이 아니라 슬라이드 이동이다 —
+// `hlinkClick@action`이 hlinksldjump이고, 관계는 대상 슬라이드 파트로 가는 **내부** slide 관계다.
+// 같은 슬라이드를 가리키는 두 표기는 관계 하나를 나눠 쓰고, 덱에 없는 목적지는 웹 뷰어처럼 첫
+// 슬라이드로 간다. 외부 URL은 그대로 External 하이퍼링크다.
+func TestRunSlideLink(t *testing.T) {
+	deck := resolvedDeck(t, `<slide>
+  <p><a href="#s3">셋째로</a> <a href="#/2">둘째로</a> <a href="#/s3">다시 셋째로</a> <a href="#nowhere">없는 곳</a> <a href="https://example.com/#s2">외부</a></p>
+</slide>`, `<slide><p>둘째</p></slide>`, `<slide><p>셋째</p></slide>`)
+	parts, _ := renderPackage(t, NewWithGeometry(geom.Synthetic(deck, bodyRect)), deck)
+	xml := parts[slidePart(1)]
+	rels := parts[slideRelsPart(1)]
+
+	jump := func(id string) string {
+		return `<a:hlinkClick r:id="` + id + `" action="ppaction://hlinksldjump"/>`
+	}
+	if got := strings.Count(xml, jump("rId3")); got != 2 {
+		t.Errorf("셋째 슬라이드로 가는 hlinkClick %d개, want 2 (같은 목적지는 관계를 재사용한다)\n%s", got, xml)
+	}
+	for _, want := range []string{jump("rId4"), jump("rId5"), `<a:hlinkClick r:id="rId6"/>`} {
+		if !strings.Contains(xml, want) {
+			t.Errorf("slide1.xml에 %q가 없다\n%s", want, xml)
+		}
+	}
+	for _, want := range []string{
+		`<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slide3.xml"/>`,
+		`<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slide2.xml"/>`,
+		`<Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slide1.xml"/>`,
+		`<Relationship Id="rId6" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://example.com/#s2" TargetMode="External"/>`,
+	} {
+		if !strings.Contains(rels, want) {
+			t.Errorf("slide1.xml.rels에 %q가 없다\n%s", want, rels)
+		}
+	}
+	if strings.Contains(rels, `Target="#`) {
+		t.Errorf("덱 안 링크가 외부 하이퍼링크로 실렸다\n%s", rels)
+	}
+}
+
 // rel id는 결정적이다: rId1=레이아웃, rId2=노트(예약), rId3부터 외부 URL이 문서 순서로
 // 붙는다. 같은 URL은 관계 하나를 재사용한다 — 관계의 정체는 (Type, Target, Mode)이고
 // 중복은 rels 파트의 잡음일 뿐이다.

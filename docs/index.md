@@ -87,6 +87,18 @@ my-talk/
 ```
 
 우선순위: **CLI 플래그 > `balpyo.json` > 기본값.** `aspect`는 `16:9`(기본) 또는 `4:3`이다.
+`lang`은 덱의 **자연어**다 (`index.html`의 `lang`, `ko`이면 어절 줄바꿈) — 코드 블록의 언어는
+[`<pre lang>`](reference/soml/text-subset.md#코드-블록-lang과-탭)이 따로 정한다.
+
+`slidesDir`(기본 `slides`)은 슬라이드를 모으는 디렉토리를 바꾼다. 프로젝트 루트 기준의 상대
+경로여야 하고, 절대 경로나 `../`로 프로젝트 밖을 가리키면
+`slidesDir: "../shared/slides" must be a relative path inside the project`로 멈춘다.
+
+`lang`은 덱 언어이고 기본은 `en`이다. 값은 BCP 47 언어 태그(`ko`·`ko-KR`·`en-US`·`ja`…)여야
+한다 — 웹의 `<html lang>`이 되어 언어별 줄바꿈 규칙을 고르므로(한국어는
+[어절에서 접는다](reference/soml/text.md)), `korean` 같은 이름은 빌드가
+`lang: not a BCP 47 language tag: "korean"`으로 멈춘다. 대소문자·밑줄·세 글자 코드는 정규형으로
+읽는다 (`ko_KR` → `ko-KR`, `kor` → `ko`).
 
 `footer`·`pageNumber`는 [덱 크롬](reference/theme.md#덱-크롬-chrome)을 켠다 — 둘 다 기본은
 꺼짐이고, 그 글자가 어디에 어떤 크기로 앉는지는 테마가 정한다.

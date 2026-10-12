@@ -23,9 +23,6 @@ func TestRouteEndpointsMatchTheFrame(t *testing.T) {
 		for _, kind := range []Kind{Straight, Elbow, Curved} {
 			for _, fs := range sides {
 				for _, ts := range sides {
-					if fs == ts {
-						continue
-					}
 					p, err := Route(a, b, fs, ts, kind)
 					if err != nil {
 						t.Fatal(err)

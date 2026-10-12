@@ -104,3 +104,10 @@ textbox "text s10.6"
   ¶ center | "9월 3주"{body 10.5pt muted}
 textbox "p s10.7"
   ¶ end | "폭을 정하면 줄바꿈 자리도 저자가 정한다."{body 18pt fg}
+# slide 12 canvas-anchors
+shape:ellipse "shape s11.0" fill=accent1 line=muted
+textbox "text s11.1"
+  ¶ start | "왼쪽 위"{body 13.5pt muted}
+textbox "text s11.2"
+  ¶ start | "오른쪽 아래"{body 13.5pt muted}
+shape:rect "shape s11.3" fill=surface line=muted

@@ -68,7 +68,12 @@ type LayoutPara struct {
 	Align  string
 	// Bullet은 리스트 마커 종류다 (ul · ol) — 리스트 밖은 빈 문자열.
 	Bullet string
-	Runs   []string
+	// Enter는 문단이 자기 도형과 따로 나타나는 등장이다 (`enter=fade@150+600`) — 도형과 함께 나타나면 빈 문자열.
+	Enter string
+	Runs  []string
+	// index는 PPTX에서 되읽은 문단의 `a:p` 번호다 (txBody 안) — 문단 등장의 대상(`p:pRg`)을 찾는 열쇠이고
+	// 직렬화되지 않는다.
+	index int
 }
 
 // FormatLayout은 트리를 줄 형식으로 직렬화한다. withRect가 false면 rect를 뺀다 —
@@ -116,6 +121,9 @@ func FormatLayout(slides []LayoutSlide, withRect bool) string {
 				b.WriteString(" " + p.Align)
 				if p.Bullet != "" {
 					b.WriteString(" " + p.Bullet)
+				}
+				if p.Enter != "" {
+					b.WriteString(" " + p.Enter)
 				}
 				b.WriteString(" | " + strings.Join(p.Runs, " · ") + "\n")
 			}
@@ -235,10 +243,10 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 					return fmt.Errorf("%s: %s <%s> appearance is not resolved", slide.Source, id, elem.Name)
 				}
 				n.Kind = "textbox"
-				n.Paras = webParas(n.Paras, elem, *style, deck.Theme, "", "")
+				n.Paras = webParas(n.Paras, elem, *style, deck, "", "")
 			case soml.KindListContainer:
 				n.Kind = "textbox"
-				n.Paras = webListParas(n.Paras, elem, deck.Theme)
+				n.Paras = webListParas(n.Paras, elem, deck)
 			case soml.KindShape:
 				style := elem.ShapeStyle()
 				if style == nil {
@@ -248,6 +256,11 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 				n.Kind = "shape:" + preset
 				n.Alt = style.Alt
 				n.Fill, n.Line = webFill(style.Fill, deck.Theme), webLine(style.Border, deck.Theme)
+				if len(elem.Children) == 0 || soml.ShapeHoldsLayout(elem) {
+					// 글자 없는 도형은 슬롯을 채워도 플레이스홀더가 아니다 — 빈 본문의 `<p:ph>`는
+					// PowerPoint가 도형 위에 입력 안내문을 띄운다.
+					n.Ph = ""
+				}
 				if !soml.ShapeHoldsLayout(elem) {
 					for _, child := range elem.Children {
 						text, ok := child.(*soml.Element)
@@ -255,9 +268,14 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 							continue
 						}
 						if soml.KindOf(text.Name) == soml.KindListContainer {
-							n.Paras = webListParas(n.Paras, text, deck.Theme)
+							n.Paras = webListParas(n.Paras, text, deck)
 						} else if ts := text.TextStyle(); ts != nil {
-							n.Paras = webParas(n.Paras, text, *ts, deck.Theme, "", "")
+							before := len(n.Paras)
+							n.Paras = webParas(n.Paras, text, *ts, deck, "", "")
+							// 도형에 흡수된 글이 자기 등장을 가지면 그 문단만 따로 나타난다.
+							if e := text.EnterOf(); e != nil && len(n.Paras) > before {
+								n.Paras[before].Enter = enterString(e)
+							}
 						}
 					}
 				}
@@ -275,7 +293,7 @@ func WebLayout(deck *soml.Deck, g *geom.Geometry) ([]LayoutSlide, error) {
 				if style := elem.TableStyle(); style != nil {
 					n.Alt = style.Alt
 				}
-				n.Paras = webTableParas(elem, deck.Theme)
+				n.Paras = webTableParas(elem, deck)
 			default:
 				return fmt.Errorf("%s: %s <%s> has no mapping to an object", slide.Source, id, elem.Name)
 			}
@@ -473,26 +491,26 @@ func webPlaceholder(slide *soml.Slide, elem *soml.Element) string {
 }
 
 // webParas는 블록 하나의 문단을 더한다 — 블록은 문단 하나다 (`<br>`은 문단을 쪼개지 않는다).
-func webParas(paras []LayoutPara, elem *soml.Element, style soml.TextStyle, theme soml.Theme, prefix, bullet string) []LayoutPara {
-	runs := webRuns(nil, elem, style, theme, "")
+func webParas(paras []LayoutPara, elem *soml.Element, style soml.TextStyle, deck *soml.Deck, prefix, bullet string) []LayoutPara {
+	runs := webRuns(nil, elem, style, deck, "")
 	if len(runs) == 0 {
 		return paras
 	}
 	return append(paras, LayoutPara{Prefix: prefix, Align: string(style.Align), Bullet: bullet, Runs: runs})
 }
 
-func webListParas(paras []LayoutPara, list *soml.Element, theme soml.Theme) []LayoutPara {
+func webListParas(paras []LayoutPara, list *soml.Element, deck *soml.Deck) []LayoutPara {
 	for _, child := range list.Children {
 		li, ok := child.(*soml.Element)
 		if !ok || li.TextStyle() == nil {
 			continue
 		}
-		paras = webParas(paras, li, *li.TextStyle(), theme, "", list.Name)
+		paras = webParas(paras, li, *li.TextStyle(), deck, "", list.Name)
 	}
 	return paras
 }
 
-func webTableParas(table *soml.Element, theme soml.Theme) []LayoutPara {
+func webTableParas(table *soml.Element, deck *soml.Deck) []LayoutPara {
 	var paras []LayoutPara
 	row := 0
 	for _, child := range table.Children {
@@ -505,7 +523,7 @@ func webTableParas(table *soml.Element, theme soml.Theme) []LayoutPara {
 			if !ok || cell.CellStyle() == nil || cell.CellStyle().Text == nil {
 				continue
 			}
-			paras = webParas(paras, cell, *cell.CellStyle().Text, theme, fmt.Sprintf("r%d", row), "")
+			paras = webParas(paras, cell, *cell.CellStyle().Text, deck, fmt.Sprintf("r%d", row), "")
 		}
 		row++
 	}
@@ -514,7 +532,7 @@ func webTableParas(table *soml.Element, theme soml.Theme) []LayoutPara {
 
 // webRuns는 블록 안 문자 데이터 잎마다 런을 낸다 — 인라인은 자기 확정 외관으로 내려간다.
 // 원문 개행(`<pre>`)과 `<br>`은 ⏎다. 빈 줄은 런을 남기지 않는다 (렌더러와 같은 규칙).
-func webRuns(runs []string, parent *soml.Element, style soml.TextStyle, theme soml.Theme, link string) []string {
+func webRuns(runs []string, parent *soml.Element, style soml.TextStyle, deck *soml.Deck, link string) []string {
 	for _, child := range parent.Children {
 		switch node := child.(type) {
 		case *soml.Text:
@@ -524,7 +542,7 @@ func webRuns(runs []string, parent *soml.Element, style soml.TextStyle, theme so
 				}
 				line = strings.TrimSuffix(line, "\r")
 				if line != "" {
-					runs = append(runs, formatRun(line, webRunStyle(style, theme, link)))
+					runs = append(runs, formatRun(line, webRunStyle(style, deck.Theme, link)))
 				}
 			}
 		case *soml.Element:
@@ -538,12 +556,26 @@ func webRuns(runs []string, parent *soml.Element, style soml.TextStyle, theme so
 			}
 			childLink := link
 			if node.Appearance.Link != "" {
-				childLink = node.Appearance.Link
+				childLink = webLink(deck, node.Appearance.Link)
 			}
-			runs = webRuns(runs, node, *childStyle, theme, childLink)
+			runs = webRuns(runs, node, *childStyle, deck, childLink)
 		}
 	}
 	return runs
+}
+
+// webLink는 런의 링크 목적지다. 덱 안 링크는 웹 뷰어가 실제로 가는 슬라이드의 `#<id>`로 접는다 —
+// `#/2`와 `#second`는 같은 이동이고, 덱에 없는 목적지는 뷰어가 첫 슬라이드로 읽는다. PPTX는
+// 같은 이동을 슬라이드 파트 관계로 적으므로 두 쪽을 같은 이름으로 맞춘다 (pptxParas).
+func webLink(deck *soml.Deck, href string) string {
+	target, inDeck := deck.LinkedSlide(href)
+	if !inDeck || len(deck.Slides) == 0 {
+		return href
+	}
+	if target == nil {
+		target = deck.Slides[0]
+	}
+	return "#" + target.ID
 }
 
 func webRunStyle(style soml.TextStyle, theme soml.Theme, link string) runStyle {
@@ -668,7 +700,11 @@ type xSlide struct {
 		Bg   *struct {
 			BgPr struct {
 				xFills
-				BlipFill *struct{} `xml:"blipFill"`
+				BlipFill *struct {
+					Blip struct {
+						Embed string `xml:"http://schemas.openxmlformats.org/officeDocument/2006/relationships embed,attr"`
+					} `xml:"blip"`
+				} `xml:"blipFill"`
 			} `xml:"bgPr"`
 		} `xml:"bg"`
 		SpTree struct {
@@ -709,6 +745,11 @@ type xEffect struct {
 		Set struct {
 			SpTgt struct {
 				Spid string `xml:"spid,attr"`
+				// Para는 도형 안 문단 하나가 대상일 때의 문단 범위다 (`p:txEl/p:pRg`) — 도형 전체 · 배경이면 nil.
+				Para *struct {
+					St  int `xml:"st,attr"`
+					End int `xml:"end,attr"`
+				} `xml:"txEl>pRg"`
 			} `xml:"cBhvr>tgtEl>spTgt"`
 		} `xml:"childTnLst>set"`
 		Effect []struct {
@@ -813,7 +854,8 @@ type xRunItem struct {
 			Typeface string `xml:"typeface,attr"`
 		} `xml:"latin"`
 		HlinkClick *struct {
-			ID string `xml:"http://schemas.openxmlformats.org/officeDocument/2006/relationships id,attr"`
+			ID     string `xml:"http://schemas.openxmlformats.org/officeDocument/2006/relationships id,attr"`
+			Action string `xml:"action,attr"`
 		} `xml:"hlinkClick"`
 	} `xml:"rPr"`
 	T string `xml:"t"`
@@ -855,6 +897,7 @@ type xObject struct {
 	// BlipFill은 그림의 채움이다 — SVG 그림이면 blip의 확장에 svgBlip이 있다.
 	BlipFill struct {
 		Blip struct {
+			Embed   string    `xml:"http://schemas.openxmlformats.org/officeDocument/2006/relationships embed,attr"`
 			SvgBlip *struct{} `xml:"extLst>ext>svgBlip"`
 		} `xml:"blip"`
 	} `xml:"blipFill"`
@@ -876,14 +919,31 @@ type xObject struct {
 type xRels struct {
 	Rel []struct {
 		ID     string `xml:"Id,attr"`
+		Type   string `xml:"Type,attr"`
 		Target string `xml:"Target,attr"`
 	} `xml:"Relationship"`
 }
+
+// pptxSlideJump는 슬라이드 이동 링크의 `hlinkClick@action`이다.
+const pptxSlideJump = "ppaction://hlinksldjump"
 
 // PPTXLayout은 PPTX 패키지의 파트(PPTXParts)에서 슬라이드마다 컴포넌트 트리를 다시 읽는다.
 // 색·글꼴 참조는 테마 표로 토큰 이름에 되돌린다 — 웹 쪽 트리가 토큰 이름을 들고 있다.
 func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]LayoutSlide, error) {
 	var slides []LayoutSlide
+	// 슬라이드 이동 링크는 대상 슬라이드 파트를 가리킨다 — 트리에는 그 슬라이드의 이름(`cSld@name`, 웹의
+	// 슬라이드 id)으로 되돌려 싣는다. 대상이 뒤 슬라이드일 수 있으므로 이름을 먼저 다 모은다.
+	slideNames := map[string]string{}
+	for i := 1; i <= slideCount; i++ {
+		var head struct {
+			CSld struct {
+				Name string `xml:"name,attr"`
+			} `xml:"cSld"`
+		}
+		if err := xml.Unmarshal(parts[fmt.Sprintf("ppt/slides/slide%d.xml", i)], &head); err == nil {
+			slideNames[fmt.Sprintf("slide%d.xml", i)] = head.CSld.Name
+		}
+	}
 	for i := 1; i <= slideCount; i++ {
 		name := fmt.Sprintf("ppt/slides/slide%d.xml", i)
 		data, ok := parts[name]
@@ -902,6 +962,12 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 			}
 			for _, r := range rels.Rel {
 				links[r.ID] = r.Target
+				if strings.HasSuffix(r.Type, "/relationships/slide") {
+					// 이름을 모르는 파트는 경로 그대로 둔다 — 트리 비교가 어긋남을 보인다.
+					if slideName, ok := slideNames[r.Target]; ok {
+						links[r.ID] = pptxSlideJump + "#" + slideName
+					}
+				}
 			}
 		}
 		s := LayoutSlide{ID: x.CSld.Name}
@@ -919,8 +985,15 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 			s.Transition = kind + "/" + t.Spd
 		}
 		if bg := x.CSld.Bg; bg != nil {
-			if bg.BgPr.BlipFill != nil {
+			if fill := bg.BgPr.BlipFill; fill != nil {
 				s.Background = "image"
+				// 브라우저는 EXIF 방향대로 세운 배경을 그리지만 PowerPoint는 저장된 픽셀을 그대로 편다 — 배경의
+				// `blipFill`에는 회전을 적을 자리가 없으므로, 방향이 남은 그림은 웹과 다른 그림이다.
+				if target := links[fill.Blip.Embed]; target != "" {
+					if o := soml.JPEGOrientation(parts[path.Join("ppt/slides", target)]); o.Rotation() != 0 || o.FlipH() {
+						s.Background = fmt.Sprintf("image exif=%d", o)
+					}
+				}
 			} else {
 				s.Background = "fill=" + pptxFill(bg.BgPr.xFills, theme)
 			}
@@ -936,6 +1009,8 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 		}
 		// 등장은 대상 도형 번호로 객체에 붙는다.
 		enters := map[string]string{}
+		// paraEnters는 도형 안 문단 하나를 대상으로 한 등장이다 (도형 번호 → 문단 번호 → 등장).
+		paraEnters := map[string]map[int]string{}
 		if x.Timing != nil {
 			for _, e := range x.Timing.Effects {
 				name, ok := pptxEnterNames[e.CTn.PresetID]
@@ -946,11 +1021,25 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 				if len(e.CTn.Effect) > 0 {
 					dur = e.CTn.Effect[0].CTn.Dur
 				}
-				enters[e.CTn.Set.SpTgt.Spid] = fmt.Sprintf("enter=%s@%d+%d", name, e.CTn.Cond.Delay, dur)
+				enter := fmt.Sprintf("enter=%s@%d+%d", name, e.CTn.Cond.Delay, dur)
+				tgt := e.CTn.Set.SpTgt
+				if tgt.Para == nil {
+					enters[tgt.Spid] = enter
+					continue
+				}
+				if paraEnters[tgt.Spid] == nil {
+					paraEnters[tgt.Spid] = map[int]string{}
+				}
+				for i := tgt.Para.St; i <= tgt.Para.End; i++ {
+					paraEnters[tgt.Spid][i] = enter
+				}
 			}
 		}
 		for _, obj := range x.CSld.SpTree.Items {
 			n, ok := pptxNode(obj, theme, links, names)
+			if ok && obj.XMLName.Local == "pic" {
+				n = pptxOrientedPic(n, parts, links[obj.BlipFill.Blip.Embed])
+			}
 			if ok {
 				for _, nv := range []*xNv{obj.NvSpPr, obj.NvPicPr, obj.NvGraphicFramePr, obj.NvCxnSpPr} {
 					if nv == nil {
@@ -962,6 +1051,9 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 						}
 						n.Extra += e
 					}
+					if byPara := paraEnters[nv.CNvPr.ID]; byPara != nil {
+						markParaEnters(n.Paras, byPara, enters[nv.CNvPr.ID])
+					}
 				}
 				s.Nodes = append(s.Nodes, n)
 			}
@@ -969,6 +1061,26 @@ func PPTXLayout(parts map[string][]byte, slideCount int, theme soml.Theme) ([]La
 		slides = append(slides, s)
 	}
 	return slides, nil
+}
+
+// markParaEnters는 문단 단위로 지어진 도형의 문단에 등장을 붙인다. 도형(배경)과 같은 등장은 "도형과 함께
+// 나타난다"이므로 적지 않는다 — 웹 쪽은 자기 `enter`를 가진 문단만 적는다. 도형이 나타나는데 효과가 없는
+// 문단은 처음부터 보이므로 `enter=static`으로 적어 웹과 갈라지게 한다.
+func markParaEnters(paras []LayoutPara, byPara map[int]string, shape string) {
+	for i := range paras {
+		e, ok := byPara[paras[i].index]
+		switch {
+		case !ok && shape != "":
+			paras[i].Enter = "enter=static"
+		case ok && e != shape:
+			paras[i].Enter = e
+		}
+	}
+}
+
+// enterString은 등장 하나의 트리 표기다 (`enter=fade@150+600`).
+func enterString(e *soml.Entrance) string {
+	return fmt.Sprintf("enter=%s@%d+%d", e.Effect, e.Delay, e.Duration)
 }
 
 func pptxNode(obj xObject, theme soml.Theme, links map[string]string, names map[string]string) (LayoutNode, bool) {
@@ -1080,6 +1192,25 @@ func pptxNode(obj xObject, theme soml.Theme, links map[string]string, names map[
 	return n, true
 }
 
+// pptxOrientedPic은 EXIF 방향이 가로·세로를 바꾸는 JPEG 그림의 rect를 **보이는** 박스로 되돌린다.
+//
+// PowerPoint는 그림의 EXIF를 보지 않으므로 렌더러는 저장된 픽셀의 틀(같은 중심, 가로·세로가 바뀐
+// 사각형)에 회전을 얹는다. 읽는 쪽도 미디어 파트의 바이트에서 방향을 읽어 그 틀을 되돌려야 잰 rect와
+// 대조된다 — 회전은 패리티가 보는 값이 아니다.
+func pptxOrientedPic(n LayoutNode, parts map[string][]byte, target string) LayoutNode {
+	if target == "" {
+		return n
+	}
+	data, ok := parts[path.Join("ppt/slides", target)]
+	if !ok || !soml.JPEGOrientation(data).SwapsAxes() {
+		return n
+	}
+	cx, cy := 2*n.X+n.W, 2*n.Y+n.H
+	n.W, n.H = n.H, n.W
+	n.X, n.Y = (cx-n.W)/2, (cy-n.H)/2
+	return n
+}
+
 var pptxAligns = map[string]string{
 	"l":    string(soml.AlignStart),
 	"ctr":  string(soml.AlignCenter),
@@ -1089,7 +1220,7 @@ var pptxAligns = map[string]string{
 }
 
 func pptxParas(paras []LayoutPara, body xTxBody, prefix string, theme soml.Theme, links map[string]string) []LayoutPara {
-	for _, p := range body.P {
+	for i, p := range body.P {
 		var runs []string
 		for _, item := range p.Items {
 			switch item.XMLName.Local {
@@ -1099,6 +1230,13 @@ func pptxParas(paras []LayoutPara, body xTxBody, prefix string, theme soml.Theme
 				link := ""
 				if h := item.RPr.HlinkClick; h != nil {
 					link = links[h.ID]
+					// 슬라이드 이동은 action과 slide 관계가 짝일 때만 `#<id>`다 — 한쪽만 있으면
+					// 접두가 남거나 빠져 웹 트리와 갈라진다.
+					if h.Action == pptxSlideJump {
+						link = strings.TrimPrefix(link, pptxSlideJump)
+					} else if strings.HasPrefix(link, pptxSlideJump) {
+						link = "(no action)" + strings.TrimPrefix(link, pptxSlideJump)
+					}
 				}
 				runs = append(runs, formatRun(item.T, runStyle{
 					field:     item.XMLName.Local == "fld",
@@ -1129,7 +1267,7 @@ func pptxParas(paras []LayoutPara, body xTxBody, prefix string, theme soml.Theme
 		if !ok {
 			align = "algn=" + p.PPr.Algn
 		}
-		paras = append(paras, LayoutPara{Prefix: prefix, Align: align, Bullet: bullet, Runs: runs})
+		paras = append(paras, LayoutPara{Prefix: prefix, Align: align, Bullet: bullet, Runs: runs, index: i})
 	}
 	return paras
 }

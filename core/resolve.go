@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/k2sebeom/balpyo/soml"
 )
@@ -82,7 +83,7 @@ func Resolve(deck *soml.Deck, fsys fs.FS) soml.Diagnostics {
 		// 판정되므로 Validate(파일을 넘어야 아는 것 — 슬라이드 ID 충돌)가 아니라 여기다.
 		r.slideLayout(slide)
 		// 확정된 layout을 resolver에 싣는다 — canvas 슬라이드의 직속 자식에서 `x`/`y`가
-		// 유효한지 판정하려면 배치 해석이 슬라이드의 layout을 알아야 한다 (coordParentOK).
+		// 유효한지 판정하려면 배치 해석이 슬라이드의 layout을 알아야 한다 (positionParentOK).
 		r.layout = slide.Layout
 		// 크롬 확정도 layout이 정해진 **뒤**다 — 제외 규칙의 입력이 확정된 레이아웃이라서,
 		// 어휘 밖 이름이 content로 폴백한 슬라이드도 폴백된 레이아웃으로 판정된다.
@@ -134,7 +135,7 @@ type resolver struct {
 	// layout은 이 슬라이드의 확정 레이아웃이다 (slideLayout이 채운다). 배치 검증이 슬라이드를
 	// 알아야 하는 유일한 자리가 canvas다: `x`/`y`는 <stack>의 자식이거나 canvas 슬라이드의
 	// 직속 자식에서만 쓸 수 있는데, 후자는 부모가 요소가 아니므로(parent == nil) 부모만으로는
-	// 판정할 수 없다 (coordParentOK).
+	// 판정할 수 없다 (positionParentOK).
 	layout soml.SlideLayout
 	diags  soml.Diagnostics
 	// ids는 이 슬라이드에서 이미 쓴 도형 `id`와 그 자리다 (중복 진단이 처음 자리를 가리켜야
@@ -150,6 +151,10 @@ type resolver struct {
 	// `reveal`이 받을 차례다 (resolveReveal). 상태가 resolver에 있는 것이 곧 스텝 번호의
 	// 범위가 슬라이드라는 뜻이다 (ids와 같은 태도).
 	revealTurn int
+	// tokensOnly는 테마 파일의 값을 읽는 resolver다 — 테마 데이터는 색을 토큰 참조로만 적으므로
+	// (리터럴은 PPTX의 테마 색 편집을 끊는다) 모르는 토큰 진단이 `#RRGGBB`를 권하지 않는다. 권하면
+	// 그 권고를 따른 값이 다음 검사(requireComponentColors)에서 막힌다.
+	tokensOnly bool
 }
 
 func (r *resolver) errorf(span soml.Span, format string, args ...any) {
@@ -343,7 +348,17 @@ func (r *resolver) resolveSlot(elem *soml.Element, parent *soml.Element) {
 		return
 	}
 	if parent != nil {
-		r.errorf(attr.ValueSpan, "slot is only allowed on direct children of the slide (<%s> is nested)", elem.Name)
+		// 값 없는 slot에는 값 구간이 없다 — 이름 구간으로 물러나야 진단이 line:col을 잃지 않는다.
+		span := attr.ValueSpan
+		if !attr.HasValue {
+			span = attr.NameSpan
+		}
+		r.errorf(span, "slot is only allowed on direct children of the slide (<%s> is nested)", elem.Name)
+		return
+	}
+	// 값 없음·빈 값은 다른 외관 속성과 같은 진단이다 — 슬롯 이름 ""으로 어휘를 찾으면 저자가
+	// 쓰지도 않은 이름을 "없는 슬롯"이라 부르게 된다.
+	if !r.hasValue(attr) {
 		return
 	}
 	if _, ok := soml.LayoutSlot(r.layout, attr.Value); !ok {
@@ -613,8 +628,8 @@ func (r *resolver) size(attr soml.Attr) (float64, bool) {
 		r.errorf(attr.ValueSpan, "size is a unitless number in logical px (drop the %[2]q from %[1]q) — px, pt and em suffixes are not allowed", raw, unit)
 		return 0, false
 	}
-	px, err := strconv.ParseFloat(raw, 64)
-	if err != nil {
+	px, ok := parseNumber(raw)
+	if !ok {
 		r.errorf(attr.ValueSpan, "size value is not a number (%q)", raw)
 		return 0, false
 	}
@@ -667,8 +682,12 @@ func (r *resolver) simpleColor(name, raw string, span soml.Span) (soml.Color, bo
 	}
 	if _, known := r.theme.Color(raw); !known {
 		names := strings.Join(r.theme.ColorNames(), ", ")
-		r.errorf(span, "%s: color token %q is not in the theme%s (available tokens: %s, or #RRGGBB)",
-			name, raw, didYouMean(raw, names), names)
+		literal := ", or #RRGGBB"
+		if r.tokensOnly {
+			literal = ""
+		}
+		r.errorf(span, "%s: color token %q is not in the theme%s (available tokens: %s%s)",
+			name, raw, didYouMean(raw, names), names, literal)
 		return soml.Color{}, false
 	}
 	return soml.TokenColor(raw), true
@@ -756,8 +775,8 @@ func (r *resolver) gradientStops(name string, fields []string, span soml.Span) (
 			continue
 		}
 		if hasPct {
-			n, err := strconv.ParseFloat(pct, 64)
-			if err != nil || n < 0 || n > 100 || strings.HasSuffix(pct, "%") {
+			n, nok := parseNumber(pct)
+			if !nok || n < 0 || n > 100 || strings.HasSuffix(pct, "%") {
 				r.errorf(span, "a gradient stop opacity is a percentage from 0 to 100 without %% (%q) — e.g. bg/0 or fg/40", f)
 				ok = false
 				continue
@@ -784,10 +803,10 @@ func (r *resolver) radialFunc(name, inner string, span soml.Span, raw string) (s
 		valid := len(parts) == 3 && parts[0] == "at"
 		var x, y float64
 		if valid {
-			var errX, errY error
-			x, errX = strconv.ParseFloat(strings.TrimSuffix(parts[1], "%"), 64)
-			y, errY = strconv.ParseFloat(strings.TrimSuffix(parts[2], "%"), 64)
-			valid = errX == nil && errY == nil && strings.HasSuffix(parts[1], "%") && strings.HasSuffix(parts[2], "%") &&
+			var okX, okY bool
+			x, okX = parseNumber(strings.TrimSuffix(parts[1], "%"))
+			y, okY = parseNumber(strings.TrimSuffix(parts[2], "%"))
+			valid = okX && okY && strings.HasSuffix(parts[1], "%") && strings.HasSuffix(parts[2], "%") &&
 				x >= 0 && x <= 100 && y >= 0 && y <= 100
 		}
 		if !valid {
@@ -812,8 +831,8 @@ func (r *resolver) gradientAngle(part string, span soml.Span, raw string) (float
 		r.errorf(span, "a gradient angle has the form `<number>deg` (%[2]q in %[1]q) — e.g. 45deg", raw, part)
 		return 0, false
 	}
-	deg, err := strconv.ParseFloat(strings.TrimSpace(strings.TrimSuffix(part, "deg")), 64)
-	if err != nil {
+	deg, ok := parseNumber(strings.TrimSpace(strings.TrimSuffix(part, "deg")))
+	if !ok {
 		r.errorf(span, "gradient angle is not a number (%[2]q in %[1]q)", raw, part)
 		return 0, false
 	}
@@ -842,8 +861,8 @@ func (r *resolver) variantPercent(kind soml.ColorModKind, part string, span soml
 		r.errorf(span, "the second argument of %s is a percentage (`%%`) (%[3]q in %[2]q) — e.g. %[4]s(accent1, 40%%)", kind, raw, part, kind)
 		return 0, false
 	}
-	pct, err := strconv.ParseFloat(strings.TrimSpace(strings.TrimSuffix(part, "%")), 64)
-	if err != nil {
+	pct, ok := parseNumber(strings.TrimSpace(strings.TrimSuffix(part, "%")))
+	if !ok {
 		r.errorf(span, "the percentage of %s is not a number (%[3]q in %[2]q)", kind, raw, part)
 		return 0, false
 	}
@@ -863,8 +882,8 @@ func (r *resolver) alphaFunc(name, inner string, span soml.Span, raw string) (so
 	}
 	base, bok := r.simpleColor(name, strings.TrimSpace(inner[:comma]), span)
 	aStr := strings.TrimSpace(inner[comma+1:])
-	a, err := strconv.ParseFloat(aStr, 64)
-	if err != nil {
+	a, aok := parseNumber(aStr)
+	if !aok {
 		r.errorf(span, "the alpha opacity is not a number (%[2]q in %[1]q) — it is a real number from 0 to 1", raw, aStr)
 		return soml.Color{}, false
 	}
@@ -926,6 +945,8 @@ func attrExample(name string) string {
 		return "accent1"
 	case "align":
 		return "center"
+	case soml.SlotAttr:
+		return "body"
 	case soml.AnchorAttr:
 		return "center"
 	// `<pre>` 고유 속성. 예시가 어휘의 첫 이름인 이유: 값 없음 진단은 "쓸 수 있는
@@ -1009,6 +1030,24 @@ func attrExample(name string) string {
 		return "May"
 	case "value":
 		return "22"
+	// 표 셀 병합 속성.
+	case "colspan", "rowspan":
+		return "2"
+	// 등장 속성. `fade`인 이유: 콘텐츠와 연결선의 어휘가 갈라지는데, 둘 다 받는 이름이어야
+	// 어느 태그에서 난 진단이든 예시를 그대로 적으면 끝난다.
+	case soml.EnterAttr:
+		return "fade"
+	// 연결선 속성.
+	case "from", "to":
+		return "db"
+	case "route":
+		return "elbow"
+	case "from-side", "to-side":
+		return "right"
+	case "line":
+		return "2 solid muted"
+	case "start", "end":
+		return "arrow"
 	}
 	return ""
 }
@@ -1029,6 +1068,13 @@ func numberSuffix(raw string) string {
 	}
 	if end == 0 {
 		return ""
+	}
+	// 꼬리가 글자로만 되어 있어야 단위다 (`px`·`pt`·`em`·`분`). `1e3`·`1_000`·`0x1p4`의 꼬리는
+	// 단위가 아니라 받지 않는 수 표기라서, "단위를 떼라"가 아니라 "수치가 아니다"로 진단한다.
+	for _, c := range raw[end:] {
+		if !unicode.IsLetter(c) {
+			return ""
+		}
 	}
 	return raw[end:]
 }

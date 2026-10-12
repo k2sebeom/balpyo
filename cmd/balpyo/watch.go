@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
+	"strings"
 
 	"github.com/k2sebeom/balpyo/internal/pipeline"
 	"github.com/k2sebeom/balpyo/internal/watch"
@@ -17,6 +19,25 @@ import (
 // 않은 발표 자료다. 0.0.0.0에 붙으면 같은 카페 와이파이의 누구나 볼 수 있다 — 공유는 빌드한
 // 산출물을 올리는 일이고, 그 길은 이미 있다.
 const defaultWatchAddr = "127.0.0.1:4600"
+
+// checkLoopbackAddr는 감시 서버 주소가 루프백인지 본다.
+//
+// 기본값만 루프백이면 고정이라고 할 수 없다: `--addr 0.0.0.0:…`이나 `:…`(호스트 생략은 모든
+// 인터페이스다)가 그대로 통하면 같은 네트워크의 누구나 덱을 연다. 그래서 호스트는 루프백 IP
+// 리터럴이나 localhost만 받는다 — 다른 이름은 무엇으로 풀릴지 여기서 알 수 없으므로 받지 않는다.
+func checkLoopbackAddr(addr string) error {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return fmt.Errorf("invalid --addr %q: %w", addr, err)
+	}
+	if strings.EqualFold(host, "localhost") {
+		return nil
+	}
+	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+		return nil
+	}
+	return fmt.Errorf("--addr %q is not a loopback address: the watch server only listens on 127.0.0.1, ::1 or localhost (share a deck by publishing the built output)", addr)
+}
 
 // runWatch는 `balpyo watch`다: 빌드하고 서브하고, 고치면 다시 빌드한다.
 //
@@ -33,12 +54,17 @@ func runWatch(ctx context.Context, args []string, stdout, stderr io.Writer) erro
 	theme := fs.String("theme", "", "theme (default: theme in balpyo.json — built-in, project themes/, or installed)")
 	strict := fs.Bool("strict", false, "promote warnings to errors")
 	checkLayout := fs.Bool("check-layout", false, "check layout (overflow, off-stage, overlap)")
-	addr := fs.String("addr", defaultWatchAddr, "watch server address")
-	if err := fs.Parse(args); err != nil {
+	addr := fs.String("addr", defaultWatchAddr, "watch server address (loopback only)")
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
 		return fmt.Errorf("watch takes no arguments: %v", fs.Args())
+	}
+	// 주소는 첫 빌드 준비보다 먼저 본다 — 바깥으로 열리는 주소는 한 번이라도 잡으면 이미 열린
+	// 것이므로, 잡기 전에 멈춰야 한다.
+	if err := checkLoopbackAddr(*addr); err != nil {
+		return err
 	}
 
 	opts := pipeline.Options{

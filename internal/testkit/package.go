@@ -81,7 +81,7 @@ func (f Fixture) AssertPackage(t testing.TB, result *pipeline.Result) {
 		}
 	}
 	for i, asset := range result.Deck.Assets {
-		want, err := os.ReadFile(filepath.Join(f.Dir, filepath.FromSlash(asset.Key)))
+		want, err := fixtureAssetBytes(f.Dir, asset)
 		if err != nil {
 			t.Fatalf("cannot read fixture asset: %v", err)
 		}
@@ -250,4 +250,27 @@ func sortedParts(parts map[string][]byte) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// fixtureAssetBytes는 에셋이 산출물에 실어야 할 바이트다 — 입력 파일 그대로다.
+//
+// 예외는 EXIF 방향이 적힌 JPEG 배경 하나다: PPTX의 슬라이드 배경에는 회전을 적을 자리가 없어 엔진이 세운
+// 픽셀로 다시 인코딩한 그림을 `themes/<주인>/upright/assets/…` 키로 싣는다. 그 키의 원본은 같은 테마의
+// `assets/…`이고, 원본에는 세울 방향이 있어야 하며, 실린 바이트에는 방향이 남지 않아야 한다.
+func fixtureAssetBytes(dir string, asset soml.Asset) ([]byte, error) {
+	parts := strings.SplitN(asset.Key, "/", 4)
+	if len(parts) == 4 && parts[0] == "themes" && parts[2] == "upright" {
+		src, err := os.ReadFile(filepath.Join(dir, "themes", parts[1], filepath.FromSlash(parts[3])))
+		if err != nil {
+			return nil, err
+		}
+		if o := soml.JPEGOrientation(src); o.Rotation() == 0 && !o.FlipH() {
+			return nil, fmt.Errorf("%s was re-encoded upright, but its source has no orientation to apply", asset.Key)
+		}
+		if o := soml.JPEGOrientation(asset.Bytes); o != 0 {
+			return nil, fmt.Errorf("%s still carries EXIF orientation %d", asset.Key, o)
+		}
+		return asset.Bytes, nil
+	}
+	return os.ReadFile(filepath.Join(dir, filepath.FromSlash(asset.Key)))
 }
