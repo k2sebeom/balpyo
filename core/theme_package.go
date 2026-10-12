@@ -584,6 +584,9 @@ func buildThemePackage(raw rawTheme) (themePackage, error) {
 	if err := requireColorSlots(tokens); err != nil {
 		return pkg, err
 	}
+	if err := requireTokenWiring(tokens); err != nil {
+		return pkg, err
+	}
 	pkg.tokens = tokens
 
 	comps, err := componentsFromFile(raw.components, tokens)
