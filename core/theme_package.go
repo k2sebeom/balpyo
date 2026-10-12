@@ -1286,6 +1286,8 @@ func readLayoutCSS(fsys fs.FS, dir string, optional bool) (layouts, slots map[st
 		}
 		// 슬롯 영역 파일을 먼저 가른다 — 흐름 맵에 실으면 `title.slots`라는 존재하지 않는
 		// 레이아웃으로 오인해 "선언에 없다" 에러가 난다.
+		// BOM은 `<style>`에 인라인되면 첫 선택자의 일부가 되어 첫 규칙을 깨뜨린다.
+		raw = trimBOM(raw)
 		if name, ok := strings.CutSuffix(e.Name(), ".slots.css"); ok {
 			slots[name] = string(raw)
 			continue

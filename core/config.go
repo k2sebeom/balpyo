@@ -123,7 +123,7 @@ func ReadConfig(projectDir string) (Config, error) {
 	}
 
 	// 파일에 있는 필드만 덮어쓰도록 기본값이 담긴 cfg에 그대로 언마샬한다.
-	dec := json.NewDecoder(strings.NewReader(string(data)))
+	dec := json.NewDecoder(strings.NewReader(string(trimBOM(data))))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&cfg); err != nil {
 		return Config{}, fmt.Errorf("cannot parse %s: %w", ConfigFile, err)
