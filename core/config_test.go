@@ -150,6 +150,8 @@ func TestLoadConfigCanonicalizesLang(t *testing.T) {
 		if cfg.Lang != want {
 			t.Errorf("%s: Lang = %q, want %q", body, cfg.Lang, want)
 		}
+	}
+}
 
 // 설정 파일의 에러는 고칠 자리(줄:칸)와 JSON의 말로 나온다 — Go 구조체·타입 이름이 아니다.
 func TestLoadConfigErrorsPointIntoTheFile(t *testing.T) {
