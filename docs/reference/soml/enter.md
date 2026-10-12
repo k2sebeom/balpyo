@@ -35,6 +35,9 @@ PPTX에서는 PowerPoint의 기본 등장 효과다 — 애니메이션 창에 �
   `<grid enter="rise">`는 격자 전체가 한 번에 떠오른다.
 - **안쪽의 `enter`는 따로 등장한다.** 위 예제의 가운데 카드는 격자와 별개로 확대된다. 객체는 **가장 가까운**
   `enter` 조상의 등장에 속한다.
+- **도형 안의 글도 따로 등장한다.** `<shape><p enter="fade">…</p></shape>`의 문단은 도형과 별개로 나타난다.
+  PPTX에서는 그 도형이 문단 단위로 지어진다 — 도형 자신의 등장은 배경과 자기 `enter`가 없는 문단에 걸리고,
+  자기 `enter`를 가진 문단은 그 등장에 나타난다. 도형에 `enter`가 없으면 나머지 문단은 처음부터 보인다.
 - **`<slide enter>`는 직속 자식마다** 같은 값을 준 것과 같다 — 제목, 격자, 문단이 하나씩 엇갈린다. 자식이
   자기 `enter`를 쓰면 그것이 이기고, `enter="none"`으로 끈다.
 - 등장의 순서는 그 요소들의 **문서 순서**다.
@@ -87,6 +90,8 @@ PPTX에서는 PowerPoint의 기본 등장 효과다 — 애니메이션 창에 �
 |---|---|
 | 어휘 밖의 효과 | `unknown enter "spin" (available values: fade, rise, zoom, wipe, none)` |
 | `enter`에 값이 없다 (`<slide enter>`) | `the enter attribute needs a value (enter="rise")` |
+| `enter`에 값이 없다 (`<p enter>` · `<connector enter>`) | `the enter attribute needs a value (enter="fade")` |
 | 테마에 박자가 없다 | `<p> has enter="rise", but theme "corp" defines no motion — add "motion": { "duration": 600, "stagger": 90, "delay": 150 } to its tokens.json` |
 | `motion`의 수가 틀렸다 | `tokens.json motion needs duration > 0 and stagger, delay ≥ 0 (ms) — …` |
+| `motion.transitionDuration`이 음수다 | `tokens.json motion transitionDuration must be ≥ 0 (ms; 0 follows duration) — got -5` |
 | 어휘 밖의 전환 | `unknown transition "cube" (available values: fade, push, none)` |

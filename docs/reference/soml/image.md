@@ -49,8 +49,9 @@
 | `data:image/png;base64,…` | 원문에 바이트를 실으면 슬라이드를 사람이 읽을 수도, 진단이 자리를 가리킬 수도 없다 |
 | `assets\wide.png` (역슬래시) | 조용히 `/`로 바꾸면 역슬래시를 파일 이름에 쓸 수 있는 파일 시스템에서 **다른 파일**을 가리킨다 |
 | `assets/` (디렉토리) | 그림 파일 하나를 가리켜야 한다 |
+| `assets/link.png` → `../../shared/a.png` (밖을 가리키는 심볼릭 링크) | 프로젝트 밖과 같은 이유 — 커밋된 것은 링크뿐이라 다른 기계에서는 그림이 사라진다. 경로의 모든 성분을 본다 (`assets/` 디렉토리가 링크여도 같다). 프로젝트 안을 가리키는 링크는 그대로 읽는다 |
 
-넷을 한 문장으로 묶으면 이렇다: **빌드는 프로젝트 디렉토리와 커밋된 바이트만 보고 결정된다.**
+이 표를 한 문장으로 묶으면 이렇다: **빌드는 프로젝트 디렉토리와 커밋된 바이트만 보고 결정된다.**
 그것이 같은 덱이 어느 기계에서나 같은 산출물을 내는 근거이고, 발표장에서 네트워크가 없어도
 덱이 온전한 근거다.
 
@@ -250,9 +251,16 @@
 그러므로 **배율을 정하는 표기는 `w`/`h`/`ratio`다.** 1200×600 사진을 절반 크기로 놓으려면
 `w="600"`을 쓰고, 슬라이드 폭을 채우려면 `w="fill"`을 쓴다.
 
-엔진은 **바이트를 고치지 않는다** — 리사이즈·재압축·EXIF 회전이 없다. 커밋한 파일과 산출물의
+엔진은 **바이트를 고치지 않는다** — 리사이즈·재압축·픽셀 회전이 없다. 커밋한 파일과 산출물의
 그림이 다르면 저자가 그 차이를 확인할 방법이 없기 때문이다. 그래서 큰 사진은 저자가 미리
 줄여 커밋하는 것이 산출물 크기를 줄이는 유일한 길이다.
+
+**JPEG의 EXIF 방향은 따른다.** 휴대폰 사진은 픽셀을 센서 방향 그대로 저장하고 방향을 EXIF
+태그로 적는다. 두 타깃 모두 그 방향대로 세운 그림을 보여준다: 웹은 브라우저가 방향을 따르고,
+PPTX는 저장된 픽셀을 그대로 싣되 그림에 회전·대칭을 얹는다 (PowerPoint는 그림의 EXIF를 보지
+않는다). 고유 크기도 세운 그림의 것이다 — 240×120으로 저장되고 90° 회전이 적힌 사진의 고유
+크기는 120×240이다. `rotate`·`flip`은 세운 그림에 걸린다. 그래서 PowerPoint에서 그 그림을 선택하면
+회전 각도에 EXIF 회전이 더해져 보인다.
 
 ## 예제
 
@@ -447,6 +455,7 @@
 | 조건 | 진단 메시지 |
 |---|---|
 | 내용을 담았다 | `void tag <image> cannot have content (write <image/>)` |
+| HTML처럼 `/` 없이 닫았다 (`<image src="…">`) | `void tag <image> must be self-closed (write <image/>)` |
 | 문단·리스트 항목 안에 썼다 | `only character data and inline tags are allowed inside <p> (<image> is not allowed)` |
 | 도형의 **직속** 자식으로 썼다 | `<shape> cannot contain <image> (available tags: <text>, <h1>, …, <row>, <col>, <grid>, <stack>)` — 도형 안 그림은 컨테이너를 거쳐 들어온다 (`<shape><col><image/></col></shape>`) |
 | 어휘 밖의 속성 (`fill`·`frame`·`type`·`anchor` …) | `unknown attribute fill on <image> (available attributes: src, id, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
@@ -491,6 +500,7 @@
 | 조건 | 진단 메시지 |
 |---|---|
 | 파일이 없다 | `the file src points to does not exist (assets/missing.png) — paths are relative to the project root (not to the slide file)` |
+| 프로젝트 밖을 가리키는 심볼릭 링크 | `src goes through a symbolic link that points outside the project (assets/link.png → ../../shared/a.png) — keep assets inside the project (pointing outside makes the build depend on this machine)` |
 | 디렉토리다 | `src points to a directory (assets/dir.png) — point it at a single image file` |
 | 0바이트 | `assets/empty.png is empty (0 bytes) — not an image file (a download or LFS checkout may not have finished)` |
 | 헤더가 잘렸다 | `cannot read the image header of assets/cut.png (the file is truncated) — check the committed bytes` |

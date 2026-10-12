@@ -123,8 +123,7 @@
   | 속성 | 뜻이 있는 부모 | 밖에서 쓰면 |
   |---|---|---|
   | `span` | `<grid>`의 자식 | `span is only for children of <grid> (the parent is <row>) — grid-column has no effect in a flex container` |
-  | `at` | [`<stack>`](stack.md)의 자식 | `at is only for children of <stack> (…) — wrap it in <stack> if you need overlap` |
-  | `x` / `y` | `<stack>`의 자식 · `layout="canvas"` 슬라이드의 직속 자식 | `x is only for children of <stack> or direct children of a layout="canvas" slide (…) — wrap it in <stack> or give the slide layout="canvas"` |
+  | `at` · `x` / `y` | [`<stack>`](stack.md)의 자식 · `layout="canvas"` 슬라이드의 직속 자식 | `x is only for children of <stack> or direct children of a layout="canvas" slide (…) — wrap it in <stack> or give the slide layout="canvas"` |
 
   `at`과 `x`/`y`는 같은 자식에 **함께 쓸 수 없다** — 둘 다 자리를 정하는 채널이라 하나만
   쓴다 ([`<stack>`](stack.md)). 9지점 앵커 어휘·좌표 문법(음수·`%`·기준 박스)의 전모는
@@ -380,6 +379,7 @@ slides/007_style_appearance.slide:8:24: warning: the "background" declaration in
 | 조건 | 진단 메시지 |
 |---|---|
 | `<spacer>`에 자식·문자 데이터를 썼다 | `void tag <spacer> cannot have content (write <spacer/>)` |
+| `<spacer>`를 `/` 없이 닫았다 | `void tag <spacer> must be self-closed (write <spacer/>)` |
 | 컨테이너 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <row> (wrap it in <text>)` |
 | 어휘 밖의 자식 태그 | `<row> cannot contain <note> (available tags: <text>, <shape>, <image>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <spacer>)` |
 | flex 컨테이너에 트랙을 썼다 | `unknown attribute cols on <row> (available attributes: gap, align, justify, wrap, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, style)` |
@@ -411,7 +411,7 @@ slides/007_style_appearance.slide:8:24: warning: the "background" declaration in
 | `grow`/`shrink`가 정수가 아니다 | `grow is an integer ("1.5")` / `grow cannot be negative ("-1")` |
 | `span`이 1보다 작다 | `span is an integer of at least 1 ("0")` |
 | `span`을 grid 밖에서 썼다 | `span is only for children of <grid> (the parent is <row>) — grid-column has no effect in a flex container` |
-| `at`을 stack 밖에서 썼다 | `at is only for children of <stack> (the parent is <row>) — wrap it in <stack> if you need overlap` |
+| `at`을 유효하지 않은 부모에서 썼다 | `at is only for children of <stack> or direct children of a layout="canvas" slide (the parent is <row>) — wrap it in <stack> or give the slide layout="canvas"` |
 | `x`/`y`를 유효하지 않은 부모에서 썼다 | `x is only for children of <stack> or direct children of a layout="canvas" slide (…) — wrap it in <stack> or give the slide layout="canvas"` |
 | `at`과 `x`/`y`를 함께 썼다 | `at cannot be combined with x (x is at …) — both set the position, so use only one (at is a 9-point anchor, x/y are absolute offsets)` |
 | `style` 선언에 콜론이 없다 | `` style declaration "width 100px" has no colon — write it as `property: value` `` |

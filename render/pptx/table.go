@@ -597,7 +597,7 @@ func writeTcPr(w func(depth int, line string), depth int, style soml.CellStyle, 
 	if style.Fill != nil {
 		fill = *style.Fill
 	}
-	if err := writeFill(w, depth+1, fill, nil, theme); err != nil {
+	if err := writeFill(w, depth+1, fill, nil, gradTrueAngle, theme); err != nil {
 		return err
 	}
 	w(depth, "</a:tcPr>")

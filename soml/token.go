@@ -47,6 +47,10 @@ const (
 	// TokenInvalid는 어떤 규칙에도 맞지 않는 룬 하나다. 렉서는 여기서 멈추지 않는다 —
 	// 에러 복구는 파서의 몫이고, 렉서의 계약은 무손실이다.
 	TokenInvalid
+
+	// TokenBOM은 소스 맨 앞의 UTF-8 BOM(U+FEFF)이다. 문자 데이터가 아니라 인코딩 표지라
+	// 트리비아이고, 에디터가 보여 주지 않는 글자이므로 칸을 차지하지 않는다 (Span의 끝 Col이 1).
+	TokenBOM
 )
 
 // tokenKindNames는 진단·테스트 출력용 이름표다.
@@ -67,6 +71,7 @@ var tokenKindNames = map[TokenKind]string{
 	TokenStringUnterminated:  "StringUnterminated",
 	TokenWhitespace:          "Whitespace",
 	TokenInvalid:             "Invalid",
+	TokenBOM:                 "BOM",
 }
 
 // String은 종류 이름을 돌려준다.
@@ -80,7 +85,7 @@ func (k TokenKind) String() string {
 // IsTrivia는 이 종류가 트리비아인지 보고한다 — 문서의 의미에 기여하지 않지만
 // 원문 복원에 필요한 토큰이다. 파서는 트리비아를 건너뛰며 읽고, format은 보존한다.
 func (k TokenKind) IsTrivia() bool {
-	return k == TokenWhitespace || k == TokenComment || k == TokenCommentUnterminated
+	return k == TokenWhitespace || k == TokenComment || k == TokenCommentUnterminated || k == TokenBOM
 }
 
 // Token은 원문 조각 하나다.
