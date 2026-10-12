@@ -380,6 +380,7 @@ slides/007_style_appearance.slide:8:24: warning: the "background" declaration in
 | 조건 | 진단 메시지 |
 |---|---|
 | `<spacer>`에 자식·문자 데이터를 썼다 | `void tag <spacer> cannot have content (write <spacer/>)` |
+| `<spacer>`를 `/` 없이 닫았다 | `void tag <spacer> must be self-closed (write <spacer/>)` |
 | 컨테이너 안에 문자 데이터를 직접 썼다 | `character data cannot appear directly inside <row> (wrap it in <text>)` |
 | 어휘 밖의 자식 태그 | `<row> cannot contain <note> (available tags: <text>, <shape>, <image>, <h1>, <h2>, <h3>, <p>, <blockquote>, <pre>, <ul>, <ol>, <row>, <col>, <grid>, <spacer>)` |
 | flex 컨테이너에 트랙을 썼다 | `unknown attribute cols on <row> (available attributes: gap, align, justify, wrap, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, style)` |

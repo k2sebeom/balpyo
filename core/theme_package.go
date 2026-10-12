@@ -533,7 +533,7 @@ func readRawTheme(fsys fs.FS, dir string) (rawTheme, error) {
 	if err != nil {
 		return raw, fmt.Errorf("cannot read theme.json: %w", err)
 	}
-	if err := decodeThemeJSON(manifestBytes, path.Join(dir, "theme.json"), &raw.manifest, false); err != nil {
+	if err := decodeThemeJSON(manifestBytes, path.Join(dir, "theme.json"), &raw.manifest); err != nil {
 		return raw, err
 	}
 	if raw.manifest.Name == "" {
@@ -766,7 +766,7 @@ func readTokensFile(fsys fs.FS, dir string, optional bool) (tokensFile, error) {
 		}
 		return file, fmt.Errorf("cannot read tokens.json: %w", err)
 	}
-	if err := decodeThemeJSON(raw, path.Join(dir, "tokens.json"), &file, true); err != nil {
+	if err := decodeThemeJSON(raw, path.Join(dir, "tokens.json"), &file); err != nil {
 		return file, err
 	}
 	return file, nil
@@ -823,7 +823,7 @@ func readComponentsFile(fsys fs.FS, dir string, optional bool) (componentsFile, 
 		}
 		return file, fmt.Errorf("cannot read components.json: %w", err)
 	}
-	if err := decodeThemeJSON(raw, path.Join(dir, "components.json"), &file, true); err != nil {
+	if err := decodeThemeJSON(raw, path.Join(dir, "components.json"), &file); err != nil {
 		return file, err
 	}
 	return file, nil
@@ -839,6 +839,9 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 			Role: soml.TextRole(r.Name), Font: soml.FontRole(r.Font), Size: r.Size,
 			Weight: r.Weight, LineHeight: r.LineHeight,
 			Color: soml.TokenColor(r.Color), Align: soml.TextAlign(r.Align),
+		}
+		if err := checkWeight(fmt.Sprintf("text role %q", r.Name), r.Weight); err != nil {
+			return comps, err
 		}
 		var typo textPatch
 		if err := typographyPatch(&typo, fmt.Sprintf("text role %q", r.Name), r.Tracking, r.Case); err != nil {
@@ -856,6 +859,9 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 			patch.size = d.Size
 		}
 		if d.Weight != nil {
+			if err := checkWeight(fmt.Sprintf("text.componentDefaults %q", d.key()), *d.Weight); err != nil {
+				return comps, err
+			}
 			patch.weight = d.Weight
 		}
 		if err := typographyPatch(&patch, fmt.Sprintf("text.componentDefaults %q", d.key()), d.Tracking, d.Case); err != nil {
@@ -903,6 +909,9 @@ func componentsFromFile(file componentsFile, theme soml.Theme) (components, erro
 			patch.size = v.Size
 		}
 		if v.Weight != nil {
+			if err := checkWeight(fmt.Sprintf("text variant %q", v.Name), *v.Weight); err != nil {
+				return comps, err
+			}
 			patch.weight = v.Weight
 		}
 		if err := typographyPatch(&patch, fmt.Sprintf("text variant %q", v.Name), v.Tracking, v.Case); err != nil {
@@ -1017,6 +1026,9 @@ func cellPatchFromFile(file cellStyleFile) (cellPatch, error) {
 		patch.color = &c
 	}
 	if file.Weight != nil {
+		if err := checkWeight("cell", *file.Weight); err != nil {
+			return patch, err
+		}
 		patch.weight = file.Weight
 	}
 	return patch, nil
@@ -1034,24 +1046,34 @@ func solidBorder(width float64, token string) *soml.Border {
 	return &soml.Border{Width: width, Style: soml.BorderSolid, Color: soml.TokenColor(token)}
 }
 
-// radiusToken·shadowToken은 표에 없는 이름이면 nil을 준다 — 그 단이 그 필드를 정하지 않은
-// 것이 된다. 필수 토큰(sm·md·lg · soft)은 로더가 요구하므로(theme_require.go) 내장 테마에서는
-// nil이 나오지 않지만, 테마가 **자기 이름**을 쓴 variant는 그 이름이 자기 tokens.json에 있어야
-// 한다 — 없으면 빌드를 멈추는 대신 그 필드가 빈다 (모르는 variant를 경고로 두는 것과 같은 태도).
-func radiusToken(theme soml.Theme, name string) *soml.Radius {
+// radiusToken·shadowToken은 컴포넌트가 가리킨 반경·그림자 이름을 이 테마의 토큰 표에서 찾는다.
+// 표에 없는 이름은 에러다 — 같은 이름을 슬라이드에 인라인으로 쓰면 에러인데, 테마에서는 그 필드를
+// 비우고 지나가면 반경은 아래 단의 값으로 떨어지고 그림자는 사라져 두 자리의 판정이 갈린다.
+func radiusToken(theme soml.Theme, name string) (*soml.Radius, error) {
 	token, ok := theme.Radius(name)
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("unknown radius token %q (available tokens: %s)",
+			name, strings.Join(theme.RadiusNames(), ", "))
 	}
-	return ptr(soml.TokenRadius(name, token.Px))
+	return ptr(soml.TokenRadius(name, token.Px)), nil
 }
 
-func shadowToken(theme soml.Theme, name string) *soml.ShadowToken {
+func shadowToken(theme soml.Theme, name string) (*soml.ShadowToken, error) {
 	token, ok := theme.Shadow(name)
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("unknown shadow token %q (available tokens: %s)",
+			name, strings.Join(theme.ShadowNames(), ", "))
 	}
-	return &token
+	return &token, nil
+}
+
+// checkWeight는 테마가 적은 굵기가 CSS font-weight의 범위(1~1000)인지 본다. 범위 밖 수치는 웹이
+// 선언을 버려 보통 굵기로 그리는데 PPTX는 임계값으로 굵게 켜므로, 두 타깃이 다른 글자를 낸다.
+func checkWeight(where string, weight int) error {
+	if weight < 1 || weight > 1000 {
+		return fmt.Errorf("%s weight %d is out of range — weight is a CSS font-weight from 1 to 1000", where, weight)
+	}
+	return nil
 }
 
 // shapePatchFromFile은 shape default의 문자열 필드를 shapePatch로 눕힌다. 빈 문자열은 "정하지
@@ -1073,11 +1095,16 @@ func shapePatchFromFile(theme soml.Theme, fill, border, radius, shadow string) (
 		}
 		patch.border = b
 	}
+	var err error
 	if radius != "" {
-		patch.radius = radiusToken(theme, radius)
+		if patch.radius, err = radiusToken(theme, radius); err != nil {
+			return patch, err
+		}
 	}
 	if shadow != "" {
-		patch.shadow = shadowToken(theme, shadow)
+		if patch.shadow, err = shadowToken(theme, shadow); err != nil {
+			return patch, err
+		}
 	}
 	return patch, nil
 }
@@ -1108,11 +1135,16 @@ func imageVariantPatchFromFile(theme soml.Theme, v imageVariantFile) (imagePatch
 		}
 		patch.border = b
 	}
+	var err error
 	if v.Radius != nil {
-		patch.radius = radiusToken(theme, *v.Radius)
+		if patch.radius, err = radiusToken(theme, *v.Radius); err != nil {
+			return patch, err
+		}
 	}
 	if v.Shadow != nil {
-		patch.shadow = shadowToken(theme, *v.Shadow)
+		if patch.shadow, err = shadowToken(theme, *v.Shadow); err != nil {
+			return patch, err
+		}
 	}
 	return patch, nil
 }

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -56,7 +57,7 @@ type Targets struct {
 
 // PPTXTarget은 PPTX 타깃 옵션이다.
 type PPTXTarget struct {
-	// Mode는 "native"(편집 가능한 도형) 또는 "image"(충실도 100%·편집 불가 폴백)다.
+	// Mode는 PPTX 렌더 모드다. 구현된 모드는 "native"(편집 가능한 도형) 하나뿐이다.
 	Mode PPTXMode `json:"mode"`
 }
 
@@ -66,8 +67,6 @@ type PPTXMode string
 const (
 	// PPTXNative는 네이티브 도형으로 조립한다 — 제품의 기본값.
 	PPTXNative PPTXMode = "native"
-	// PPTXImage는 슬라이드를 그림 한 장으로 굽는 폴백이다. Phase 2에서 구현한다.
-	PPTXImage PPTXMode = "image"
 )
 
 // DefaultConfig는 balpyo.json이 없거나 필드가 비었을 때 쓰는 기본값이다.
@@ -93,6 +92,25 @@ func LoadConfig(projectDir string) (Config, error) {
 // LoadConfigWithThemes는 LoadConfig와 같고, 테마 이름을 검사할 때 home(설치한 테마의 홈 —
 // `themes/<이름>/`을 담은 디렉토리)도 어휘에 넣는다. home이 nil이면 LoadConfig다.
 func LoadConfigWithThemes(projectDir string, home fs.FS) (Config, error) {
+	cfg, err := ReadConfig(projectDir)
+	if err != nil {
+		return Config{}, err
+	}
+	// 테마 이름은 **프로젝트의 어휘**와 대조한다: 내장 ∪ `themes/<이름>/` ∪ 설치한 테마.
+	// Validate가 아니라 여기인 이유는 어휘가 파일시스템에 달렸다는 것이다 — 설정 구조체만으로는
+	// 로컬 테마를 알 수 없고, 프로젝트를 아는 자리는 이 함수다. 값 층이 같은 판정을 한 번 더
+	// 하는 이유는 설정 없이 Deck을 만드는 길이 있다는 것이다 (Resolve).
+	if err := CheckThemeName(WithInstalledThemes(os.DirFS(projectDir), home), cfg.Theme); err != nil {
+		return Config{}, fmt.Errorf("%s: theme: %w", ConfigFile, err)
+	}
+	return cfg, nil
+}
+
+// ReadConfig는 LoadConfigWithThemes에서 테마 이름 검사만 뺀 것이다 — 구조와 닫힌 어휘는 똑같이
+// 검사하고 기본값을 채운다. 테마를 다른 출처(CLI 플래그)가 덮는 호출자가 쓴다: 버려질 이름을
+// 검사하면 쓰지도 않을 설정의 오타나 이름 겹침이 다른 테마를 명시한 실행을 멈춘다. 이 함수를
+// 쓰는 호출자는 실제로 쓸 이름을 CheckThemeName으로 직접 검사한다.
+func ReadConfig(projectDir string) (Config, error) {
 	cfg := DefaultConfig()
 	cfg.Title = filepath.Base(projectDir)
 
@@ -113,13 +131,6 @@ func LoadConfigWithThemes(projectDir string, home fs.FS) (Config, error) {
 	if err := cfg.Validate(); err != nil {
 		return Config{}, fmt.Errorf("%s: %w", ConfigFile, err)
 	}
-	// 테마 이름은 **프로젝트의 어휘**와 대조한다: 내장 ∪ `themes/<이름>/` ∪ 설치한 테마.
-	// Validate가 아니라 여기인 이유는 어휘가 파일시스템에 달렸다는 것이다 — 설정 구조체만으로는
-	// 로컬 테마를 알 수 없고, 프로젝트를 아는 자리는 이 함수다. 값 층이 같은 판정을 한 번 더
-	// 하는 이유는 설정 없이 Deck을 만드는 길이 있다는 것이다 (Resolve).
-	if err := CheckThemeName(WithInstalledThemes(os.DirFS(projectDir), home), cfg.Theme); err != nil {
-		return Config{}, fmt.Errorf("%s: theme: %w", ConfigFile, err)
-	}
 	return cfg, nil
 }
 
@@ -138,6 +149,14 @@ func (c *Config) Validate() error {
 	if c.SlidesDir == "" {
 		c.SlidesDir = def.SlidesDir
 	}
+	// 슬라이드는 프로젝트 파일시스템(os.DirFS)으로 읽으므로 slidesDir은 그 안의 경로여야
+	// 한다. 여기서 막지 않으면 `../`나 절대 경로가 fs 층의 날것 에러("invalid argument")로
+	// 터져 저자가 원인을 알 수 없다. `./talk/` 같은 표기는 정규화해서 받는다.
+	slides := path.Clean(filepath.ToSlash(c.SlidesDir))
+	if filepath.IsAbs(c.SlidesDir) || !fs.ValidPath(slides) {
+		return fmt.Errorf("slidesDir: %q must be a relative path inside the project", c.SlidesDir)
+	}
+	c.SlidesDir = slides
 	if c.OutDir == "" {
 		c.OutDir = def.OutDir
 	}
@@ -154,11 +173,10 @@ func (c *Config) Validate() error {
 	// 이유는 모르는 variant와 갈라지는 자리다: variant 어휘는 테마의 사유물이지만 테마 이름의
 	// 어휘는 프로젝트가 소유하므로, 목록 밖 이름은 오타이거나 아직 만들지 않은 테마이고 둘 다
 	// 저자가 즉시 고칠 수 있다.
-	switch c.Targets.PPTX.Mode {
-	case PPTXNative, PPTXImage:
-	default:
-		return fmt.Errorf("targets.pptx.mode: unknown mode %q (%q or %q)",
-			string(c.Targets.PPTX.Mode), PPTXNative, PPTXImage)
+	// 구현되지 않은 모드는 받지 않는다 — 받아 주면 네이티브와 같은 산출물이 조용히 나온다.
+	if c.Targets.PPTX.Mode != PPTXNative {
+		return fmt.Errorf("targets.pptx.mode: unknown mode %q (%q is the only mode)",
+			string(c.Targets.PPTX.Mode), PPTXNative)
 	}
 	return nil
 }

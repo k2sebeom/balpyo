@@ -40,12 +40,26 @@ func requireTokens(theme soml.Theme) error {
 		return fmt.Errorf("tokens.json motion needs duration > 0 and stagger, delay ≥ 0 (ms) — got duration %d, stagger %d, delay %d",
 			m.Duration, m.Stagger, m.Delay)
 	}
+	// 전환 길이는 0이면 등장 길이를 따르므로(로더가 채운다) 여기 남은 음수만 테마의 오류다.
+	if m := theme.Motion; m != nil && m.TransitionDuration < 0 {
+		return fmt.Errorf("tokens.json motion transitionDuration must be ≥ 0 (ms; 0 follows duration) — got %d",
+			m.TransitionDuration)
+	}
 	if m := theme.Motion; m != nil {
 		switch m.Transition {
 		case "", soml.TransitionFade, soml.TransitionPush:
 		default:
 			return fmt.Errorf("tokens.json motion transition %q is unknown (available values: %s)",
 				string(m.Transition), strings.Join(soml.SlideTransitions(), ", "))
+		}
+	}
+	// 색 값은 두 타깃에 **그대로** 실린다 — 웹은 `#` + rgb로, PPTX는 `srgbClr@val`(16진 6자리)로.
+	// 고쳐 읽지 않으므로 그 모양이 아니면 여기서 멈춘다 (그대로 두면 깨진 CSS 변수와 스키마
+	// 위반 테마 파트가 된다).
+	for _, token := range theme.Colors {
+		if !isHexRGB(token.RGB) {
+			return fmt.Errorf("tokens.json color token %q has rgb %q — rgb must be 6 hex digits without # (RRGGBB)",
+				token.Name, token.RGB)
 		}
 	}
 	for _, name := range requiredColors {
@@ -78,7 +92,46 @@ func requireTokens(theme soml.Theme) error {
 				name, strings.Join(requiredShadows, ", "))
 		}
 	}
+	// 그림자의 불투명도는 0~1이다 — 렌더러가 범위 밖을 조용히 잘라 내면 테마가 적은 값과 그려진
+	// 값이 갈린다.
+	for _, s := range theme.Shadows {
+		if s.Alpha < 0 || s.Alpha > 1 {
+			return fmt.Errorf("tokens.json shadow token %q has alpha %g — alpha is an opacity from 0 to 1",
+				s.Name, s.Alpha)
+		}
+	}
 	return nil
+}
+
+// isHexRGB는 s가 16진수 6자리(`#` 없음)인지 본다.
+func isHexRGB(s string) bool {
+	if len(s) != 6 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !(c >= '0' && c <= '9' || c >= 'A' && c <= 'F' || c >= 'a' && c <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+// colorSlotRef는 clrScheme 자리를 도형·런이 가리킬 때 쓰는 `schemeClr` 이름이다. 마스터의
+// clrMap이 배경·글자 네 자리를 bg1/tx1/bg2/tx2로 잇고 나머지는 자리 이름 그대로 잇는다 — 반전된
+// 장이 참조를 짝과 바꾸는 것도 이 이름 위에서다.
+func colorSlotRef(slot string) string {
+	switch slot {
+	case "dk1":
+		return "tx1"
+	case "lt1":
+		return "bg1"
+	case "dk2":
+		return "tx2"
+	case "lt2":
+		return "bg2"
+	}
+	return slot
 }
 
 // requireColorSlots는 색 토큰 표가 clrScheme에 **실릴 수 있는 모양**인지 본다.
@@ -113,6 +166,12 @@ func requireColorSlots(theme soml.Theme) error {
 		if !knownColorSlot(token.Slot) {
 			return fmt.Errorf("tokens.json color token %q has an unknown clrScheme slot %q (available slots: %s)",
 				token.Name, token.Slot, strings.Join(soml.ColorSlots(), ", "))
+		}
+		// ref는 자리에서 정해진다 — 다른 이름이면 슬라이드의 schemeClr가 이 색이 아닌 자리를
+		// 가리키거나(다른 자리 이름) 스키마 밖 값이 된다.
+		if want := colorSlotRef(token.Slot); token.Ref != want {
+			return fmt.Errorf("tokens.json color token %q has ref %q — a color in clrScheme slot %q is referenced as %q",
+				token.Name, token.Ref, token.Slot, want)
 		}
 	}
 	return nil

@@ -55,3 +55,38 @@ func TestThemeJSONCommentKeysAreAllowedEverywhere(t *testing.T) {
 		t.Fatalf("진단이 없어야 한다: %v", diags)
 	}
 }
+
+// theme.json도 닫힌 어휘다 — 크롬 선언의 `skipLayout`(s 빠짐) 같은 오타를 조용히 버리면 푸터가
+// 빼려던 레이아웃에 그대로 실리고, 빌드는 아무 말도 하지 않는다. 자리는 다른 테마 파일과 같이
+// 그 파일의 줄:칸과 JSON 경로로 말하고, `$comment*` 키는 여기서도 문서 주석이다.
+func TestThemeManifestUnknownKeysAreErrors(t *testing.T) {
+	cases := []struct {
+		name, manifest, pos, want string
+	}{
+		{"크롬 선언의 오타",
+			"{\"name\": \"corp\", \"extends\": \"minimal\",\n  \"chrome\": [{\"kind\": \"footer\", \"align\": \"start\", \"role\": \"caption\", \"skipLayout\": [\"title\"]}]}",
+			"2:70", `unknown key "skipLayout" at chrome[0].skipLayout`},
+		{"배경 선언의 모르는 키",
+			"{\"name\": \"corp\", \"extends\": \"minimal\",\n  \"backgrounds\": [{\"fill\": \"bg\", \"bogus\": 1}]}",
+			"2:34", `unknown key "bogus" at backgrounds[0].bogus`},
+		{"최상위의 모르는 키",
+			"{\"$comment\": \"a\", \"name\": \"corp\", \"extends\": \"minimal\",\n  \"background\": [{\"fill\": \"bg\"}]}",
+			"2:3", `unknown key "background" at background`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			project := localTheme("corp", tc.manifest, "", "", nil)
+			_, diags := themeDeckIn(t, project, "corp", themeProbe)
+			if len(diags) != 1 {
+				t.Fatalf("진단 %d개, want 1: %v", len(diags), diags)
+			}
+			d := diags[0]
+			if d.File != "themes/corp/theme.json" || d.Span.Start.String() != tc.pos {
+				t.Errorf("자리 = %s:%s, want themes/corp/theme.json:%s", d.File, d.Span.Start, tc.pos)
+			}
+			if !strings.Contains(d.Message, tc.want) {
+				t.Errorf("진단이 %q를 말하지 않는다: %s", tc.want, d.Message)
+			}
+		})
+	}
+}
