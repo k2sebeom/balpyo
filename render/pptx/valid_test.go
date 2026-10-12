@@ -27,7 +27,7 @@ func TestTextShapesAreValidPPTX(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	deck := &soml.Deck{Title: "open test", Aspect: soml.Aspect16x9, Stage: stage}
+	deck := &soml.Deck{Title: "open test", Lang: "ko", Aspect: soml.Aspect16x9, Stage: stage}
 	sources := []string{
 		`<slide>
   <text role="title" align="center">2026 아키텍처 리뷰</text>

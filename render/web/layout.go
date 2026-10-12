@@ -25,7 +25,7 @@ import (
 //	  flex: 1                            — <spacer>의 정의 (밀어내기)
 //
 //	인라인 style (요소마다 다른 확정 값):
-//	  gap, align-items, justify-content, flex-wrap, padding,
+//	  gap, align-items, justify-content(stack은 justify-items), flex-wrap, padding,
 //	  grid-template-columns/rows, width/height/min-*/max-*, aspect-ratio   — 컨테이너 속성
 //	  flex-grow, flex-shrink, flex-basis, grid-column, align-self, order   — 자식 속성
 //	  저자의 `style` 탈출구 (맨 끝)
@@ -151,7 +151,13 @@ func containerCSS(container soml.ContainerLayout) ([]string, error) {
 		}
 		decls = append(decls, "align-items: "+align)
 	}
-	if container.Justify != "" {
+	if container.Justify != "" && container.Flow == soml.FlowStack {
+		justify, err := stackJustifyValue(container.Justify)
+		if err != nil {
+			return nil, err
+		}
+		decls = append(decls, "justify-items: "+justify)
+	} else if container.Justify != "" {
 		justify, err := boxJustifyValue(container.Justify)
 		if err != nil {
 			return nil, err
@@ -459,6 +465,27 @@ func boxJustifyValue(justify soml.BoxJustify) (string, error) {
 		return string(justify), nil
 	case soml.BoxJustifyBetween, soml.BoxJustifyAround, soml.BoxJustifyEvenly:
 		return "space-" + string(justify), nil
+	}
+	return "", fmt.Errorf("justify %q is not a known main-axis distribution", string(justify))
+}
+
+// stackJustifyValue는 stack의 `justify`를 `justify-items` 값으로 만든다.
+//
+// stack은 단일 셀 grid라 `justify-content`를 쓰면 **셀(암시 트랙) 자체**가 움직인다: 트랙이
+// 내용 폭으로 줄어든 채 밀려나므로 `w="fill"` 자식이 그 좁은 칸의 100%가 되고, 텍스트가
+// 없으면 폭 0으로 사라진다. `justify-items`는 셀을 stack 폭 그대로 두고 칸 **안에서** 자식을
+// 정렬한다 — `align`이 `align-items`인 것과 같은 축 짝이다. 분배 값(between·around·evenly)은
+// 칸이 하나일 때 CSS가 쓰는 대체값으로 눕힌다 (between은 start, around·evenly는 center):
+// `justify-items`는 `space-*`를 받지 않고, 받는다 해도 사이가 없는 한 칸에서는 그 자리가
+// 정렬 결과의 전부다.
+func stackJustifyValue(justify soml.BoxJustify) (string, error) {
+	switch justify {
+	case soml.BoxJustifyStart, soml.BoxJustifyCenter, soml.BoxJustifyEnd:
+		return string(justify), nil
+	case soml.BoxJustifyBetween:
+		return "start", nil
+	case soml.BoxJustifyAround, soml.BoxJustifyEvenly:
+		return "center", nil
 	}
 	return "", fmt.Errorf("justify %q is not a known main-axis distribution", string(justify))
 }

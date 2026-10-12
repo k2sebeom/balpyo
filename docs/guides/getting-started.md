@@ -45,12 +45,12 @@ PPTX 타깃과 `--check-layout`은 시스템 브라우저(Chromium/Chrome)를 �
 ## 2. 프로젝트 하나
 
 ```bash
-./balpyo init my-talk --author "이세범"
+./balpyo init my-talk --author "이세범" --lang ko
 ```
 
 ```text
 my-talk/
-├── balpyo.json              # 덱 설정: 제목·저자·종횡비·출력 디렉토리
+├── balpyo.json              # 덱 설정: 제목·저자·언어·종횡비·출력 디렉토리
 ├── .gitignore               # dist/ 와 preview/
 └── slides/
     ├── 001_title.slide      # 파일 이름의 번호가 슬라이드 순서다
@@ -67,6 +67,10 @@ my-talk/
 `slides/` 아래의 `.slide` 파일이고, **파일 이름으로 정렬한다** — 사이에 한 장을 끼우려면
 `002_5_…`처럼 이름을 붙이는 대신 번호를 다시 매기는 쪽이 낫다. 설정 키는
 [개요](../index.md)에, 슬라이드 어휘는 [레퍼런스](../reference/index.md)에 있다.
+
+`--lang`은 덱 언어(BCP 47 언어 태그 — `ko`·`en`·`ja`…)이고 생략하면 `en`이다. 한국어로 쓰는
+덱이면 `ko`로 둔다: 웹이 한국어를 **어절에서** 접는 규칙이 이 값에 걸려 있어서, `en`인 채로 두면
+"인스턴스" 같은 낱말이 음절 사이에서 끊긴다. 나중에 바꾸려면 `balpyo.json`의 `lang`을 고친다.
 
 `init`은 이미 프로젝트인 자리를 **덮어쓰지 않는다** (`--force`가 없다). 완성된 덱을 읽고
 싶으면 저장소의 `examples/decks/`를 본다.

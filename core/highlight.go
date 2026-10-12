@@ -332,25 +332,26 @@ const defaultCodeTabSize = 2
 func codeComponentsFromFile(file codeComponentsFile, theme soml.Theme) (codeComponents, error) {
 	code := codeComponents{tabSize: file.TabSize, colors: map[codeClass]soml.ColorToken{}}
 	if file.TabSize < 1 {
-		return code, fmt.Errorf("tabSize must be at least 1 (the value layer expands tabs by counting columns)")
+		return code, declAt(fmt.Errorf("tabSize must be at least 1 (the value layer expands tabs by counting columns)"), atKey("tabSize"))
 	}
 	for _, token := range file.Tokens {
+		entry := []declStep{atKey("tokens"), atEntry("class", token.Class)}
 		class := codeClass(token.Class)
 		if !knownCodeClass(class) {
-			return code, fmt.Errorf("unknown code token class %q (available types: %s)",
-				token.Class, strings.Join(codeClassNames(), ", "))
+			return code, declAt(fmt.Errorf("unknown code token class %q (available types: %s)",
+				token.Class, strings.Join(codeClassNames(), ", ")), entry...)
 		}
 		if _, dup := code.colors[class]; dup {
-			return code, fmt.Errorf("code token class %q is listed twice", token.Class)
+			return code, declAt(fmt.Errorf("code token class %q is listed twice", token.Class), entry...)
 		}
 		if !isColorTokenName(token.Color) {
-			return code, fmt.Errorf("the color of code token %q must be a color token name (got %q) — a literal color breaks the reference",
-				token.Class, token.Color)
+			return code, declAt(fmt.Errorf("the color of code token %q must be a color token name (got %q) — a literal color breaks the reference",
+				token.Class, token.Color), append(entry, atKey("color"))...)
 		}
 		tok, known := theme.Color(token.Color)
 		if !known {
-			return code, fmt.Errorf("code token %q: color token %q is not in the theme (available names: %s)",
-				token.Class, token.Color, strings.Join(theme.ColorNames(), ", "))
+			return code, declAt(fmt.Errorf("code token %q: color token %q is not in the theme (available names: %s)",
+				token.Class, token.Color, strings.Join(theme.ColorNames(), ", ")), append(entry, atKey("color"))...)
 		}
 		code.colors[class] = tok
 	}

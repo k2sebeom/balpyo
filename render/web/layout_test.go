@@ -48,6 +48,12 @@ func containerCases() []layoutCase {
 		{"justify", "between", "row", `justify="between"`, "justify-content: space-between"},
 		{"justify", "around", "row", `justify="around"`, "justify-content: space-around"},
 		{"justify", "evenly", "row", `justify="evenly"`, "justify-content: space-evenly"},
+		// stack은 단일 셀이라 justify가 셀이 아니라 칸 안의 자식을 정렬한다 (`justify-items`).
+		// 분배 값은 한 칸일 때의 대체값으로 눕는다.
+		{"justify", "stack end", "stack", `justify="end"`, "justify-items: end"},
+		{"justify", "stack center", "stack", `justify="center"`, "justify-items: center"},
+		{"justify", "stack between", "stack", `justify="between"`, "justify-items: start"},
+		{"justify", "stack evenly", "stack", `justify="evenly"`, "justify-items: center"},
 
 		{"wrap", "값 없는 표기", "row", `wrap`, "flex-wrap: wrap"},
 		{"wrap", "true", "row", `wrap="true"`, "flex-wrap: wrap"},
