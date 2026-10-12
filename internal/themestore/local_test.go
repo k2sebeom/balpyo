@@ -163,6 +163,36 @@ func TestInstallFromLocalThemeDir(t *testing.T) {
 	}
 }
 
+// 같은 테마 디렉토리는 루트를 어디로 잡아 가리켜도 같은 자리다 — 부모 디렉토리로 설치한 것을
+// 테마 디렉토리로 다시 설치해도(또 그 거꾸로도) --force가 필요 없다.
+func TestInstallLocalSameThemeDirSpelledDifferently(t *testing.T) {
+	s, _ := newStore(t)
+	root := t.TempDir()
+	files := map[string]string{}
+	child(files, "brine/", "brine", "")
+	writeTree(t, root, files)
+	parent := mustLocal(t, root)
+	themeDir := mustLocal(t, filepath.Join(root, "brine"))
+
+	if _, err := s.Install(context.Background(), parent, InstallOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Install(context.Background(), themeDir, InstallOptions{}); err != nil {
+		t.Errorf("부모로 설치한 테마를 테마 디렉토리로 다시 설치하지 못했다: %v", err)
+	}
+	if _, err := s.Install(context.Background(), parent, InstallOptions{}); err != nil {
+		t.Errorf("테마 디렉토리로 설치한 테마를 부모로 다시 설치하지 못했다: %v", err)
+	}
+
+	// 다른 디렉토리의 같은 이름은 여전히 --force가 필요하다.
+	other := t.TempDir()
+	writeTree(t, other, files)
+	if _, err := s.Install(context.Background(), mustLocal(t, other), InstallOptions{}); err == nil ||
+		!strings.Contains(err.Error(), "use --force") {
+		t.Errorf("다른 디렉토리의 같은 이름은 에러여야 한다: %v", err)
+	}
+}
+
 // 로컬과 GitHub은 다른 출처다 — 같은 이름은 --force 없이 갈아 끼우지 않는다.
 func TestInstallLocalConflictsWithGitHub(t *testing.T) {
 	s, gh := newStore(t)

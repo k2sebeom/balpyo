@@ -417,15 +417,13 @@ func (s *Store) checkInstallable(src Source, c candidate, links []string, record
 }
 
 // sameOrigin은 기록 r이 src의 테마 디렉토리 dir에서 온 것인지다 — 같은 자리에서 다시 설치하는 것은
-// 갈아 끼우기가 아니다.
+// 갈아 끼우기가 아니다. 로컬 출처는 루트와 테마 경로로 나누는 방법이 여럿이므로(`./src`의 `brine`과
+// `./src/brine`의 `.`) 합친 절대 테마 디렉토리를 비교한다.
 func sameOrigin(r Record, src Source, dir string) bool {
-	if r.Path != dir {
-		return false
-	}
 	if src.IsLocal() {
-		return r.Local == src.Dir
+		return r.Local != "" && r.Origin() == src.at(dir)
 	}
-	return r.Local == "" && r.Repo == src.RepoID()
+	return r.Path == dir && r.Local == "" && r.Repo == src.RepoID()
 }
 
 // insideTheme은 저장소 상대 경로 p가 테마 디렉토리 dir 안인지다. 루트가 테마면 `.`으로 시작하는
