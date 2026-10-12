@@ -21,7 +21,7 @@ PPTX에서 사라진다, 자식만 절대 좌표 도형이 된다)을 그대로 
 | 속성 | 허용 값 | CSS 대응 |
 |---|---|---|
 | `align` | `start` `center` `end` `stretch` `baseline` | `align-items` — **`at`이 없는** 자식의 세로 기본 정렬 |
-| `justify` | `start` `center` `end` `between` `around` `evenly` | `justify-content` — `at`이 없는 자식의 가로 기본 정렬 |
+| `justify` | `start` `center` `end` `between` `around` `evenly` | `justify-items` — `at`이 없는 자식의 가로 기본 정렬 (칸이 하나라 `between`은 `start`, `around`·`evenly`는 `center`와 같다) |
 | `pad` | 공간 토큰 · 수치 · `%` (1~4값) | `padding` — 앵커·좌표의 기준 박스를 여백 안쪽으로 좁힌다 |
 | `w` / `h` | 수치 · `%` · `fill` | `width` / `height` |
 | `min-w` / `min-h` · `max-w` / `max-h` | 수치 · `%` · `fill` | `min-*` / `max-*` |
@@ -81,9 +81,9 @@ PPTX에서 사라진다, 자식만 절대 좌표 도형이 된다)을 그대로 
 - **한 축만 지정할 수 있다.** `x`만 준 자식은 세로가 정적 위치(컨테이너 정렬)로 남는다 —
   지정하지 않은 축은 선언을 내지 않는다 (`top: auto`).
 
-`x`/`y`는 **`<stack>`의 자식**이거나 **`layout="canvas"` 슬라이드의 직속 자식**에서만 쓴다
+`at`과 `x`/`y`는 **`<stack>`의 자식**이거나 **`layout="canvas"` 슬라이드의 직속 자식**에서만 쓴다
 ([`<slide>`의 `layout`](slide.md)). `layout="content"`(기본) 슬라이드의 직속 자식에서는
-에러다 — 그 스테이지는 세로 스택이라 좌표가 배치를 소유하는 자리가 아니다.
+에러다 — 그 스테이지는 세로 스택이라 앵커·좌표가 배치를 소유하는 자리가 아니다.
 
 ## z-순서
 
@@ -261,7 +261,7 @@ PowerPoint에서 각각 선택·이동되는 낱개 도형이고, 좌표는 슬�
 
 | 조건 | 진단 메시지 |
 |---|---|
-| `at`을 stack 밖에서 썼다 | `at is only for children of <stack> (the parent is <row>) — wrap it in <stack> if you need overlap` |
+| `at`을 유효하지 않은 부모에서 썼다 | `at is only for children of <stack> or direct children of a layout="canvas" slide (the parent is <row>) — wrap it in <stack> or give the slide layout="canvas"` |
 | 어휘 밖의 `at` | `unknown at "middle" (available 9-point anchors: top-left, top-center, top-right, center-left, center, center-right, bottom-left, bottom-center, bottom-right)` |
 | 오타·짧은 이름·뒤바뀐 축 | `unknown at "top" — did you mean "top-center"? (9-point anchors: …)` |
 | `x`/`y`를 유효하지 않은 부모에서 썼다 | `x is only for children of <stack> or direct children of a layout="canvas" slide (this is a direct child of the slide) — wrap it in <stack> or give the slide layout="canvas"` |

@@ -25,6 +25,7 @@ func schemaDeckParts(t *testing.T) map[string][]byte {
   <ul><li>첫째 <strong>항목</strong></li></ul>
   <shape type="rect" fill="accent1" w="120" h="80"/>
   <table><tr><th>열</th></tr><tr><td>값</td></tr></table>
+  <p><a href="#s1">처음으로</a></p>
   <note>노트</note>
 </slide>`)
 	if err := diags.Err(); err != nil {

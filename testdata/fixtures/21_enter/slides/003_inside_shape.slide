@@ -1,0 +1,7 @@
+<!-- Text absorbed into a shape can bring its own enter. The first card does not animate, but its
+     first paragraph fades in on its own; the second card rises and takes its plain paragraph with
+     it, while the paragraph with its own zoom appears one stagger later. -->
+<slide id="inside">
+  <shape type="rect" w="400" h="160"><p enter="fade">Fades on its own</p><p>Static line</p></shape>
+  <shape type="rounded-rect" w="400" h="160" enter="rise"><p>Rises with the card</p><p enter="zoom">Zooms after the card</p></shape>
+</slide>

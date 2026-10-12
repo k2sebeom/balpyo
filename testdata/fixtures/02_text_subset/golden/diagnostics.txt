@@ -1,1 +1,2 @@
 slides/006_variant.slide:6:16: warning: variant "hero" is not in the theme — continuing with the default appearance (variants in this theme: kicker, lead)
+slides/009_slide_links.slide:7:15: warning: href "#inlin" points to no slide in this deck (did you mean "#inline"?) — link to a slide id ("#cover") or a 1-based slide number ("#/2"); skipped slides are not in the deck
