@@ -589,13 +589,15 @@ func contentCSS(feat features) string {
 
   /* Korean breaks at word boundaries — the browser default of breaking between characters is
      not Korean typesetting practice. This is not about matching PPTX (line-break positions are
-     outside the contract). overflow-wrap: anywhere breaks a word only when a single word is
-     wider than a narrow cell — with keep-all alone that word overflows the cell. Chinese and
-     Japanese have no spaces between words, so keep-all would block wrapping; hence this applies
-     only when lang is ko. */
+     outside the contract). overflow-wrap: break-word breaks a word only when a single word is
+     wider than its box — with keep-all alone that word overflows the box. anywhere would do the
+     same break but also lowers a word's min-content width to one syllable, so tables and flex
+     rows squeeze a short column below its word and split the word even when there is room.
+     Chinese and Japanese have no spaces between words, so keep-all would block wrapping; hence
+     this applies only when lang is ko. */
   .balpyo-stage:lang(ko) {
     word-break: keep-all;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
 
   /* A text block takes the full content width — the wrap width must be fixed so the box the
