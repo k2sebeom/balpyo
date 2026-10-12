@@ -214,8 +214,9 @@ CSS를 고른다)다.
 |---|---|---|---|
 | `Key` | 프로젝트 루트 기준 정규화 경로 (`assets/wide.png`) | `core.ResolveAssets` | 웹(산출 파일 이름·`<img src>`), PPTX(파트 조회) |
 | `Format` | **내용이 판정한** 포맷 (`png`·`jpeg`) | 같음 | PPTX (`[Content_Types]`의 `Default`, 미디어 파트 확장자) |
-| `Width`·`Height` | 고유 크기 (논리 스테이지 px 그대로) | 같음 | PPTX (`cover` 크롭 비율 계산) |
-| `Bytes` | 파일 내용 **그대로** (리사이즈·재압축·EXIF 회전 없음) | 같음 | 웹(산출 파일), PPTX(`ppt/media/*`) |
+| `Width`·`Height` | 고유 크기 (논리 스테이지 px 그대로, EXIF 방향을 적용한 **보이는** 크기) | 같음 | PPTX (`cover` 크롭 비율 계산) |
+| `Orientation` | JPEG의 EXIF 방향 (0 = 태그 없음) | 같음 | PPTX (`p:pic`의 틀·회전·대칭) |
+| `Bytes` | 파일 내용 **그대로** (리사이즈·재압축·픽셀 회전 없음). 예외는 EXIF 방향이 적힌 JPEG 테마 배경 하나다 — 테마 로딩이 세운 픽셀로 다시 인코딩해 `themes/<주인>/upright/assets/…` 키로 싣는다 (`p:bg`의 `blipFill`에는 회전을 적을 자리가 없다) | 같음 | 웹(산출 파일), PPTX(`ppt/media/*`) |
 
 - 표는 **참조에서 만들어진다** — 순서는 첫 사용의 문서 순서이고, 같은 키는 한 항목이다.
   그 순서가 PPTX 미디어 파트 번호의 근거이므로 맵이 아니라 순서 있는 목록이다 (`Deck.Theme`과

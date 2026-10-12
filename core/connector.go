@@ -246,17 +246,17 @@ type connectorVariantFile struct {
 func connectorPatchFromFile(theme soml.Theme, where, line, start, end string) (connectorPatch, error) {
 	var patch connectorPatch
 	if line != "" {
-		r := &resolver{theme: theme}
+		r := &resolver{theme: theme, tokensOnly: true}
 		b, ok := r.connectorLine(soml.Attr{Name: "line", Value: line, HasValue: true})
 		if err := themeValueErr(r, ok); err != nil {
-			return patch, fmt.Errorf("%s line: %w", where, err)
+			return patch, declAt(fmt.Errorf("%s line: %w", where, err), atKey("line"))
 		}
 		patch.line = &b
 	}
 	for _, e := range []struct {
-		raw string
-		dst **soml.ConnectorEnd
-	}{{start, &patch.start}, {end, &patch.end}} {
+		key, raw string
+		dst      **soml.ConnectorEnd
+	}{{"start", start, &patch.start}, {"end", end, &patch.end}} {
 		if e.raw == "" {
 			continue
 		}
@@ -265,7 +265,7 @@ func connectorPatchFromFile(theme soml.Theme, where, line, start, end string) (c
 			known = known || v == e.raw
 		}
 		if !known {
-			return patch, fmt.Errorf("%s: unknown connector end %q (available values: %s)", where, e.raw, strings.Join(soml.ConnectorEnds(), ", "))
+			return patch, declAt(fmt.Errorf("%s: unknown connector end %q (available values: %s)", where, e.raw, strings.Join(soml.ConnectorEnds(), ", ")), atKey(e.key))
 		}
 		end := soml.ConnectorEnd(e.raw)
 		*e.dst = &end

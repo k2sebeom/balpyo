@@ -23,6 +23,11 @@ type Element struct {
 	// 라벨은 "point"). 저자가 쓴 노드는 빈 값이다. 배치 진단이 저자가 쓰지 않은 태그(`<text>`)를
 	// 말하지 않게 하는 자리이고, 렌더러는 읽지 않는다 — 그려지는 것은 Name의 종류다.
 	Authored string
+	// Part는 펼친 차트의 **틀 노드**가 차트의 어느 부분인지다 (ChartPartPlot 등). 틀 노드는 어느 한
+	// 점·계열의 것이 아니라 Authored가 뿌리와 같은 "chart"이므로, 이 이름이 없으면 배치 진단이
+	// `<chart> overflows its parent <chart>`처럼 같은 태그 둘로 말하게 된다. 저자가 쓴 노드와 차트의
+	// 뿌리는 빈 값이고, 렌더러는 읽지 않는다.
+	Part string
 }
 
 // AuthoredName은 진단이 이 요소를 부를 태그 이름이다 — 합성 노드면 저자가 쓴 태그, 아니면 Name.

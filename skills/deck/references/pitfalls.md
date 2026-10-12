@@ -15,7 +15,8 @@ vertical position of a line. Don't chase those — they are each viewer's busine
 
 ### Line breaks are each engine's business
 
-The web breaks a Korean deck (`lang: ko`) at word boundaries; a PPTX text box wraps inside its
+The web breaks a Korean deck (`lang: ko`) at word boundaries — leave `lang` at `en` and Korean
+words break between syllables; a PPTX text box wraps inside its
 width by the viewer's own rules, so a paragraph that is two lines on the web can be three in
 PowerPoint.
 
@@ -52,7 +53,8 @@ PowerPoint and Keynote may not do it at all.
 
 A `<connector>` takes no space in the flow, so overflow and overlap warnings never look at it,
 and neither do its labels. A curved or elbow U-turn between two `top` sides arcs above both
-boxes, so its label can leave the stage without a warning. Leave room above (for example
+boxes, so its label can leave the stage without a warning. A line that would cut through a box
+detours 32px outside the boxes instead, which can also run off-stage. Leave room (for example
 `<slide justify="center">`, or move the boxes down) and look at the slide. An elbow line that is
 drawn in (`enter="draw"`) may be revealed in a different order on the two targets: PowerPoint
 has no draw-along-path effect, so it wipes in from the start side.
@@ -63,7 +65,9 @@ has no draw-along-path effect, so it wipes in from the start side.
   but OnlyOffice ignores the focus and spreads it from the centre, so a corner glow becomes a
   smudge in the middle. PowerPoint draws it right. A centred `radial(…)` matches everywhere.
 - **Gradients with three or more stops** are approximated by LibreOffice.
-- **Diagonal gradient angles** drift slightly between the targets on non-square boxes.
+- **Diagonal gradient angles** agree between the targets. Backgrounds, overlays and text colour
+  use the true angle; shape fills and borders stretch with the box, so on a non-square shape a
+  `135deg` fill is shallower than the same CSS `linear-gradient` would be.
 - **Pattern density differs**: the web tile scales with the stage; PowerPoint and OnlyOffice
   draw the pattern in screen pixels. Same pattern and colours, different line spacing.
 - **Image borders**: the web draws them inside the box, PowerPoint centred on the edge, so a
@@ -95,7 +99,7 @@ overflows its parent and the stage is one warning about the parent, with the sta
 sentence (`<col> overflows its parent <shape> at the bottom by 40px and leaves the stage at the bottom by 11px — …`).
 Fix the box the warning names and re-run — geometry is measured, so one fix moves every box
 below it. Charts are reported by the tag you wrote: bars and labels are `<point>`, legend
-entries `<series>`, the frame `<chart>`.
+entries `<series>`; the frame (plot, category labels, legend) is one warning on `<chart>`.
 
 ### `<p> overflows its parent <shape> at the bottom by 34px — the parent box is too small for its content`
 
@@ -135,6 +139,17 @@ cause is a duplicated `slot=`.
 An unbreakable line: a long URL or identifier, or a `<pre>` line. Break the line by hand
 (`<pre>` keeps your line breaks) or reduce `size`.
 
+### `<chart> is too small for its content — the plot and legend overflow the chart at the bottom by 41px and nothing is left for the bars (give the chart more room or shorten its labels)`
+
+The chart's labels and legend take more height than it has; `nothing is left for the …` means
+the bars (or lines) were squeezed to zero height. Give the chart a larger `h` (or `h="fill"`),
+shorten the category labels and series names, or use fewer series.
+
+### `href "#secnd" points to no slide in this deck (did you mean "#second"?) — …`
+
+An in-deck link whose target is neither a slide `id` nor a 1-based `#/N`; skipped slides don't
+count. Both targets send the link to the first slide. Fix the id.
+
 ### Chrome warnings
 
 `deck chrome (footer) leaves the slide …` — the footer text in `balpyo.json` is too long for the
@@ -168,13 +183,21 @@ the theme does not place a footer; drop it from `balpyo.json` or use a theme tha
 
 ## Things that look legal and are not
 
-- `at` directly on a canvas child (use `x`/`y`, or wrap in `<stack>`); `x`/`y` in a `<row>`.
+- `at` or `x`/`y` in a `<row>` (or on a flow slide's child) — only stack children and direct
+  children of a canvas slide take them.
 - `role` on `<p>`/`<h2>` (only `<text>` takes `role`); `w`/`pad` on `<table>`; `fill` on
   `<image>` or `<chart>`; `radius` on anything but `rounded-rect` and images; `h` on `<text>`.
 - `align="left"` (use `start`), `justify="space-between"` (use `between`), `weight="700"` (use
   `bold`), `size="24px"`, `opacity="40%"`, `rotate="45deg"`.
-- A list inside `<li>`; a `<p>` inside a `<td>` or another `<p>`; `<pre><code>`; `<br>` without
-  the slash; bare text in a container.
+- A list inside `<li>`; a `<p>` inside a `<td>` or another `<p>`; `<pre><code>`; bare text in a
+  container.
+- A void tag without the slash — `<br>`, `<image …>`, `<spacer>`, `<point …>`:
+  `void tag <br> must be self-closed (write <br/>)`.
+- A valueless attribute that needs a value: `the enter attribute needs a value (enter="fade")`.
+- `size="1e3"`, `NaN`, `Inf`, `+5` — numbers are plain decimals (`size value is not a number ("1e3")`).
+- `<pre lang="ko">` — `pre lang` is the code's language; the deck's language is `balpyo.json`'s
+  `lang`. `lang: "korean"` stops the build: `balpyo.json: lang: not a BCP 47 language tag: "korean" (for example "en", "ko", "ja")`.
+- A `slidesDir` outside the project (`"../shared/slides"`): `slidesDir: "../shared/slides" must be a relative path inside the project`.
 - `justify` on a slot-mode slide; `slot=` on a grandchild or on `canvas`.
 - `&nbsp;` (use a regular space or `&#160;`).
 
@@ -204,15 +227,16 @@ the theme does not place a footer; drop it from `balpyo.json` or use a theme tha
   download: an installed theme missing on CI is
   `balpyo.json: theme: unknown theme "acme" — not a built-in theme, a theme in the project's themes/, or an installed theme (available themes: …)`
   — add the same `balpyo theme install` step before the build.
-- **`balpyo.json` rejects unknown keys**, and its `theme` must resolve even when `--theme`
-  overrides it.
+- **`balpyo.json` rejects unknown keys.** Its `theme` is not checked when `--theme` overrides
+  it: only the name the run uses must resolve.
 
 ## What is known to work — don't go looking for trouble here
 
 A dozen slides pass `--check-layout --strict` in about a second. `dist/index.html` has zero
 external references. Structural validation is tight: `<p>` inside `<ul>`, `<li>` outside a list,
 a mistyped slot name, and two elements in one slot are all caught. `watch` rebuilds in
-milliseconds and never blanks the tab on a broken save. `reveal` steps survive into the markup,
+milliseconds and never blanks the tab on a broken save. A leading UTF-8 BOM in a slide,
+`balpyo.json` or theme file is ignored. `reveal` steps survive into the markup,
 and the overview and print views show everything expanded. The built-in themes give the
 `quote`, `stat`, and `code` layouts finished typography (a 40px quote, a value larger than the
 title, a label at least body size, a caption right under its code), and the `end` layout drops

@@ -47,6 +47,10 @@ var relRefTypes = map[string]string{
 	"hlinkClick":    "hyperlink",
 }
 
+// slideJumpAction은 슬라이드 이동 링크의 `hlinkClick@action`이다 — 이 링크만은 hyperlink가 아니라
+// 대상 슬라이드 파트로 가는 slide 관계를 가리킨다.
+const slideJumpAction = "ppaction://hlinksldjump"
+
 // partRel은 관계 하나다 — Type은 마지막 경로 조각(`slideLayout`), Target은 패키지 안 경로로 푼 것이다.
 type partRel struct {
 	Type, Target string
@@ -61,7 +65,8 @@ type partFacts struct {
 	ph       []placeholder
 }
 
-type relRef struct{ element, id string }
+// relRef는 관계 참조 하나다 — action은 그 요소의 `action` 속성이다 (hlinkClick의 종류를 가른다).
+type relRef struct{ element, id, action string }
 
 type placeholder struct{ typ, idx string }
 
@@ -107,6 +112,9 @@ func CheckCrossParts(parts map[string][]byte) []string {
 		rels := readPartRels(parts, name)
 		for _, ref := range f.refs {
 			want, known := relRefTypes[ref.element]
+			if ref.element == "hlinkClick" && ref.action == slideJumpAction {
+				want = "slide"
+			}
 			rel, ok := rels[ref.id]
 			switch {
 			case !known:
@@ -241,11 +249,16 @@ func readPartFacts(data []byte) (*partFacts, error) {
 		if !ok {
 			continue
 		}
-		var id, typ, idx string
+		var id, typ, idx, action string
+		for _, attr := range el.Attr {
+			if attr.Name.Space == "" && attr.Name.Local == "action" {
+				action = attr.Value
+			}
+		}
 		for _, attr := range el.Attr {
 			switch {
 			case attr.Name.Space == relNS:
-				f.refs = append(f.refs, relRef{element: el.Name.Local, id: attr.Value})
+				f.refs = append(f.refs, relRef{element: el.Name.Local, id: attr.Value, action: action})
 			case attr.Name.Space == "" && attr.Name.Local == "id":
 				id = attr.Value
 			case attr.Name.Space == "" && attr.Name.Local == "type":

@@ -90,16 +90,16 @@ func svgSize(key string, root xml.StartElement) (float64, float64, string) {
 	if viewBox != "" {
 		f := strings.FieldsFunc(viewBox, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' || r == '\n' })
 		if len(f) == 4 {
-			vw, _ = strconv.ParseFloat(f[2], 64)
-			vh, _ = strconv.ParseFloat(f[3], 64)
+			vw, _ = svgNumber(f[2])
+			vh, _ = svgNumber(f[3])
 		}
 	}
 	px := func(name, v string) (float64, string) {
 		if v == "" {
 			return 0, ""
 		}
-		n, err := strconv.ParseFloat(strings.TrimSuffix(strings.TrimSpace(v), "px"), 64)
-		if err != nil || n <= 0 {
+		n, ok := svgNumber(strings.TrimSuffix(strings.TrimSpace(v), "px"))
+		if !ok || n <= 0 {
 			return 0, fmt.Sprintf("%s has %s=%q — an SVG image gives its size in px (or a unitless number)", key, name, v)
 		}
 		return n, ""
@@ -184,4 +184,37 @@ func externalCSSURL(css string) string {
 // formatNum은 진단에 싣는 수치다 (불필요한 소수 없이).
 func formatNum(v float64) string {
 	return strconv.FormatFloat(v, 'f', -1, 64)
+}
+
+// svgNumber는 SVG 파일의 수치 하나를 읽는다. 저자 속성의 parseNumber와 다른 이유: 이 값은 저자가
+// 아니라 SVG를 내보낸 도구가 쓰고, SVG의 수 문법은 부호(`+`)와 지수(`1.5e2`)를 연다 — 평범한
+// 십진수로 닫으면 멀쩡한 남의 파일이 거부되거나 viewBox가 0으로 읽힌다. 닫는 것은 그 문법 밖의
+// 표기(`NaN`·`Inf`·16진)와 넘쳐서 무한이 되는 값이다.
+func svgNumber(raw string) (float64, bool) {
+	body := raw
+	if len(body) > 0 && (body[0] == '+' || body[0] == '-') {
+		body = body[1:]
+	}
+	mantissa, exp := body, ""
+	if i := strings.IndexAny(body, "eE"); i >= 0 {
+		mantissa, exp = body[:i], body[i+1:]
+		if len(exp) > 0 && (exp[0] == '+' || exp[0] == '-') {
+			exp = exp[1:]
+		}
+		if !isDigits(exp) {
+			return 0, false
+		}
+	}
+	// SVG는 `5.`처럼 소수부가 빈 수도 받는다.
+	if strings.HasSuffix(mantissa, ".") && isDigits(strings.TrimSuffix(mantissa, ".")) {
+		mantissa += "0"
+	}
+	if !isPlainDecimal(mantissa) || strings.HasPrefix(mantissa, "-") {
+		return 0, false
+	}
+	n, err := strconv.ParseFloat(raw, 64)
+	if err != nil || math.IsInf(n, 0) || math.IsNaN(n) {
+		return 0, false
+	}
+	return n, true
 }

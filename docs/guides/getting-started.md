@@ -5,18 +5,36 @@
 
 ## 1. 바이너리
 
-런타임 의존은 없다 — 바이너리 하나가 모든 서브커맨드를 담는다. Go 툴체인이 있으면 저장소에서
-직접 만든다.
+런타임 의존은 없다 — 바이너리 하나가 모든 서브커맨드를 담는다. 받는 길은 셋이다: 설치 스크립트,
+릴리스 아카이브, 소스 빌드.
+
+### 설치 스크립트
+
+Linux와 macOS에서는 한 줄로 설치한다:
 
 ```bash
-git clone https://github.com/k2sebeom/balpyo && cd balpyo
-go build -o balpyo ./cmd/balpyo
-./balpyo version
+curl -fsSL https://raw.githubusercontent.com/k2sebeom/balpyo/main/install.sh | sh
 ```
 
-`go build`만으로도 그 바이너리는 자기 커밋을 안다 (툴체인이 박는다 — 위 `version`이 세 줄을
-찍는다). 버그 리포트에는 그 세 줄을 그대로 붙인다:
-[`balpyo version`](../reference/cli.md#balpyo-version).
+스크립트가 하는 일은 아래 "릴리스에서 받기"의 손 절차와 같다: 플랫폼(`uname`)에 맞는
+아카이브와 `SHA256SUMS`를 GitHub Releases에서 임시 디렉토리로 받고, **체크섬을 맞춘 뒤에만**
+압축을 풀어 설치한다. 체크섬이 다르면 아무것도 설치하지 않고 멈춘다. 끝에서 설치한 바이너리의
+`balpyo version`을 찍는다. `curl`이 없으면 `wget`을 쓴다.
+
+| 환경 변수 | 기본값 | 뜻 |
+| --- | --- | --- |
+| `BALPYO_VERSION` | 최신 릴리스 | 설치할 태그 (예: `v0.1.0`) |
+| `BALPYO_INSTALL_DIR` | `$HOME/.local/bin` | 바이너리를 놓을 디렉토리 |
+| `BALPYO_DOWNLOAD_URL` | `https://github.com/k2sebeom/balpyo/releases` | 릴리스를 받는 기준 URL (미러용) |
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/k2sebeom/balpyo/main/install.sh \
+  | BALPYO_VERSION=v0.1.0 BALPYO_INSTALL_DIR=/usr/local/bin sh
+```
+
+설치 디렉토리가 `PATH`에 없거나 Chromium/Chrome을 찾지 못하면 **경고만** 하고 설치는
+끝낸다 (브라우저는 아래처럼 PPTX 타깃과 `--check-layout`에만 필요하다). 윈도우에서는
+스크립트가 멈춘다 — 릴리스 페이지에서 아카이브를 직접 받는다.
 
 ### 태그된 릴리스에서 받기
 
@@ -29,14 +47,21 @@ tar xzf balpyo_v0.3.0_darwin_arm64.tar.gz     # → balpyo
 sha256sum -c SHA256SUMS                        # 같은 디렉토리에 두고 돌린다
 ```
 
-Homebrew tap(`brew install k2sebeom/balpyo/balpyo`)의 포뮬러도 릴리스마다 생성된다 — 아카이브를
-받는 방법만 다르고 안의 바이너리는 같다.
+윈도우 아카이브는 없다 — 그 플랫폼에서 검증한 적이 없기 때문이다.
 
-!!! note "아직 첫 태그가 없다"
+### 소스에서 빌드
 
-    이 저장소에는 아직 `v*` 태그가 없으므로 위 두 경로(아카이브·tap)는 **첫 릴리스부터**
-    열린다. 그때까지는 위의 `go build`가 유일한 길이다. 윈도우 아카이브는 없다 — 그 플랫폼에서
-    검증한 적이 없기 때문이다.
+Go 툴체인이 있으면 저장소에서 직접 만든다:
+
+```bash
+git clone https://github.com/k2sebeom/balpyo && cd balpyo
+go build -o balpyo ./cmd/balpyo
+./balpyo version
+```
+
+`go build`만으로도 그 바이너리는 자기 커밋을 안다 (툴체인이 박는다 — 위 `version`이 세 줄을
+찍는다). 버그 리포트에는 그 세 줄을 그대로 붙인다:
+[`balpyo version`](../reference/cli.md#balpyo-version).
 
 PPTX 타깃과 `--check-layout`은 시스템 브라우저(Chromium/Chrome)를 하나 띄운다 —
 배치를 그 브라우저로 재서 PPTX 좌표로 옮기기 때문이다. 웹 타깃만 쓰면
@@ -45,12 +70,12 @@ PPTX 타깃과 `--check-layout`은 시스템 브라우저(Chromium/Chrome)를 �
 ## 2. 프로젝트 하나
 
 ```bash
-./balpyo init my-talk --author "이세범"
+balpyo init my-talk --author "이세범" --lang ko
 ```
 
 ```text
 my-talk/
-├── balpyo.json              # 덱 설정: 제목·저자·종횡비·출력 디렉토리
+├── balpyo.json              # 덱 설정: 제목·저자·언어·종횡비·출력 디렉토리
 ├── .gitignore               # dist/ 와 preview/
 └── slides/
     ├── 001_title.slide      # 파일 이름의 번호가 슬라이드 순서다
@@ -68,13 +93,17 @@ my-talk/
 `002_5_…`처럼 이름을 붙이는 대신 번호를 다시 매기는 쪽이 낫다. 설정 키는
 [개요](../index.md)에, 슬라이드 어휘는 [레퍼런스](../reference/index.md)에 있다.
 
+`--lang`은 덱 언어(BCP 47 언어 태그 — `ko`·`en`·`ja`…)이고 생략하면 `en`이다. 한국어로 쓰는
+덱이면 `ko`로 둔다: 웹이 한국어를 **어절에서** 접는 규칙이 이 값에 걸려 있어서, `en`인 채로 두면
+"인스턴스" 같은 낱말이 음절 사이에서 끊긴다. 나중에 바꾸려면 `balpyo.json`의 `lang`을 고친다.
+
 `init`은 이미 프로젝트인 자리를 **덮어쓰지 않는다** (`--force`가 없다). 완성된 덱을 읽고
 싶으면 저장소의 `examples/decks/`를 본다.
 
 ## 3. 감시하며 쓴다
 
 ```bash
-./balpyo watch --project my-talk
+balpyo watch --project my-talk
 ```
 
 ```
@@ -96,7 +125,7 @@ watching my-talk → http://127.0.0.1:4600  (Ctrl+C to stop)
 내내 재사용된다).
 
 ```bash
-./balpyo watch --project my-talk --check-layout
+balpyo watch --project my-talk --check-layout
 ```
 
 경고를 읽고 고치는 순서는 [배치 경고 읽기](layout-warnings.md)에 있다.
@@ -131,7 +160,7 @@ watching my-talk → http://127.0.0.1:4600  (Ctrl+C to stop)
 ## 5. 내보낸다
 
 ```bash
-./balpyo build --project my-talk --target html,pptx
+balpyo build --project my-talk --target html,pptx
 ```
 
 ```
@@ -148,8 +177,8 @@ CI에서는 경고를 통과시키지 않는다. 산출물이 필요 없는 검�
 산출물 없이 한다 ([`balpyo check`](../reference/cli.md#balpyo-check)).
 
 ```bash
-./balpyo build --project my-talk --target html,pptx --strict
-./balpyo check --project my-talk --check-layout --strict   # 산출물 없이 판정만
+balpyo build --project my-talk --target html,pptx --strict
+balpyo check --project my-talk --check-layout --strict   # 산출물 없이 판정만
 ```
 
 두 산출물이 같은지 **눈으로** 보려면 검수 갤러리를 만든다 — 슬라이드마다 웹 스크린샷과 PPTX
@@ -158,7 +187,7 @@ CI에서는 경고를 통과시키지 않는다. 산출물이 필요 없는 검�
 ([`balpyo preview`](../reference/cli.md#balpyo-preview)).
 
 ```bash
-./balpyo preview --project my-talk   # → my-talk/preview/index.html
+balpyo preview --project my-talk   # → my-talk/preview/index.html
 ```
 
 ## 6. 발표

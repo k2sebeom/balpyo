@@ -131,9 +131,10 @@ Every key, value grammar, and error: `references/package.md`. Shortest useful ve
   variants may use the authoring grammar — `gradient(accent1 accent6, 135deg)`,
   `tint(accent1, 40%)` — so a deck says `variant="hero"` and the theme owns the gradient; roles,
   table cells, and code tokens take a single token name. A `#RRGGBB` is a load error even if no
-  slide uses that variant. Unknown keys are errors in both `tokens.json` and
-  `components.json`; any key starting with `$comment` (`$comment-accent`, …) is a comment,
-  anywhere. Text variants and defaults set size, weight, colour, `tracking`, and `case` — not
+  slide uses that variant, and so is any out-of-range value (`rgb` with `#`, a `weight` past
+  1000, an unknown `shadow` name). Unknown keys are errors in `theme.json`, `tokens.json` and
+  `components.json` alike; any key starting with `$comment` (`$comment-accent`, …) is a
+  comment, anywhere. Text variants and defaults set size, weight, colour, `tracking`, and `case` — not
   font or line height (those belong to roles). `tracking`/`case` are how kickers get tracked
   upper case (authors have no attribute for them); `text.mark.highlight` is the `<mark>` colour;
   `connector` holds the default line and end markers plus variants; shape fills may be
@@ -238,6 +239,8 @@ balpyo theme remove <name...>
   directories. It loads each with the build's own loader and is **all-or-nothing**: a built-in
   name, two themes of one name in the source, a symlink inside a theme, or a theme that does not
   load installs nothing. A name already installed from a different source needs `--force`.
+  Lint warnings (for example non-layout CSS) name the file in the source — a local path or
+  `github.com/acme/themes/dark/layouts/title.css` — and each is printed once per run.
 - **An installed theme can extend only built-in or installed themes** — never a project theme.
   Publish parents together with their children.
 - **Delete the project's `themes/<name>/` after installing** — the same name in both places is

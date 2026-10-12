@@ -25,6 +25,69 @@ both a **web presentation** and a **native, editable PPTX**.
 - **One binary.** The web output is a single `index.html` with no external references — presenter
   view · overview · notes · deep links · print (PDF) included.
 
+## Quick start
+
+Install the latest release (Linux and macOS, amd64 · arm64). The script verifies the archive against
+the release's `SHA256SUMS` before installing it into `~/.local/bin`.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/k2sebeom/balpyo/main/install.sh | sh
+```
+
+The PPTX target and `--check-layout` measure the layout in Chrome/Chromium, so have one installed
+(web-only builds don't need it). Pin a version with `BALPYO_VERSION=v0.1.0` or pick the directory
+with `BALPYO_INSTALL_DIR` — see [Getting started](https://k2sebeom.github.io/balpyo/guides/getting-started/)
+for the release archives and building from source (`go build ./cmd/balpyo`).
+
+```bash
+balpyo init my-talk --author "Your Name"
+balpyo watch --project my-talk                     # http://127.0.0.1:4600 — redraws on save
+balpyo build --project my-talk --target html,pptx  # → my-talk/dist/index.html + <title>.pptx
+balpyo check --project my-talk --check-layout --strict   # also checks overflow · off-stage · overlap (for CI)
+```
+
+A project is one config file and a slide directory. File order is slide order.
+
+```text
+my-talk/
+├── balpyo.json          # title · author · aspect ratio · theme · footer · page numbers
+├── slides/
+│   ├── 001_title.slide
+│   └── 002_content.slide
+├── assets/              # images referenced by <image src>
+└── themes/              # your own themes (optional)
+```
+
+```xml
+<slide id="cover" layout="title">
+  <text slot="kicker" variant="kicker">SLIDE ORIENTED MARKUP LANGUAGE</text>
+  <h1 slot="title">balpyo</h1>
+  <text slot="subtitle" role="heading" color="muted">Write once, get web + editable PPTX</text>
+  <note>Speaker notes go here.</note>
+</slide>
+```
+
+## Making AI agents use balpyo
+
+The repository is also a Claude Code plugin marketplace. Its `balpyo` plugin carries two skills that
+teach an agent the SOML vocabulary, the layouts, the diagnostics and the build loop — so you can
+ask Claude Code for a deck and get a project that builds warning-free.
+
+```bash
+claude plugin marketplace add k2sebeom/balpyo
+claude plugin install balpyo@balpyo
+```
+
+On Claude Code 2.1.275 or later, one line inside a session does both:
+`/plugin install balpyo --marketplace k2sebeom/balpyo`.
+
+- **`deck`** — writes `.slide` files, runs `balpyo check --check-layout --strict` and fixes what it
+  reports. Ask for "a 10-slide deck on our Q3 results" or "turn this doc into slides".
+- **`theme`** — designs a project-local theme (tokens, components, layout CSS) for brand colours,
+  fonts or placement, without touching the slides.
+
+The agent drives the `balpyo` binary, so install it first (above).
+
 ## Showcase
 
 Below are the repository's [example decks](examples/decks/) exactly as balpyo renders them. The
@@ -92,44 +155,9 @@ closing slides: the deck never references a picture.
 | **`aurora`** — cover | **`aurora`** — closing slide |
 | ![aurora cover](examples/showcase/images/themes/balpyo-intro-01-aurora.png) | ![aurora closing](examples/showcase/images/themes/balpyo-intro-12-aurora.png) |
 
-## Quick start
-
-You need Go 1.26 and Chrome/Chromium (to measure the PPTX layout).
-
-```bash
-git clone https://github.com/k2sebeom/balpyo && cd balpyo
-go build -o balpyo ./cmd/balpyo
-
-./balpyo init my-talk --author "Your Name"
-./balpyo watch --project my-talk                     # http://127.0.0.1:4600 — redraws on save
-./balpyo build --project my-talk --target html,pptx  # → my-talk/dist/index.html + <title>.pptx
-./balpyo check --project my-talk --check-layout --strict   # also checks overflow · off-stage · overlap (for CI)
-```
-
-A project is one config file and a slide directory. File order is slide order.
-
-```text
-my-talk/
-├── balpyo.json          # title · author · aspect ratio · theme · footer · page numbers
-├── slides/
-│   ├── 001_title.slide
-│   └── 002_content.slide
-├── assets/              # images referenced by <image src>
-└── themes/              # your own themes (optional)
-```
-
-```xml
-<slide id="cover" layout="title">
-  <text slot="kicker" variant="kicker">SLIDE ORIENTED MARKUP LANGUAGE</text>
-  <h1 slot="title">balpyo</h1>
-  <text slot="subtitle" role="heading" color="muted">Write once, get web + editable PPTX</text>
-  <note>Speaker notes go here.</note>
-</slide>
-```
-
 ## Further reading
 
-The documentation is currently written in Korean.
+The documentation site is **https://k2sebeom.github.io/balpyo/** (currently written in Korean).
 
 - [Overview](docs/index.md) — what balpyo is and how it works
 - [Getting started](docs/guides/getting-started.md) — from install to presenting

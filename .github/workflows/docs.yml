@@ -1,0 +1,52 @@
+# 문서 사이트를 GitHub Pages에 올린다.
+#
+# docs/는 **구현된 동작만** 적으므로, 사이트는 릴리스된 코드와 같은 브랜치인 main에서 나온다 —
+# develop의 문서를 올리면 아직 받을 수 없는 기능을 설명하게 된다. 빌드는 CI와 같은 `make docs`
+# (`mkdocs build --strict`)이고, 산출물(site/)은 브랜치에 커밋하지 않고 Pages 아티팩트로 올린다.
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포는 하나씩 돈다. 진행 중인 배포를 끊으면 사이트가 반쯤 바뀐 채로 남을 수 있으므로 취소하지 않는다.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 문서 빌드
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: pip
+          cache-dependency-path: docs/requirements.txt
+
+      - name: docs build
+        run: make docs
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: 배포
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

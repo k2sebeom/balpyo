@@ -27,7 +27,11 @@ type box struct {
 	ax, ay float64
 
 	minCache, maxCache *float64
-	last               *layoutKey // 직전 layout 호출의 입력 — 같으면 결과가 이미 box에 있다
+	contentMinCache    *float64
+	firstLine          int // flex 컨테이너의 첫 줄 항목 수 (order 순서) — 컨테이너 기준선을 고를 때 쓴다
+	// sizeless면 layout이 지정 높이를 auto로 본다 (내용 높이를 잴 때만 잠깐 켠다).
+	sizeless bool
+	last     *layoutKey // 직전 layout 호출의 입력 — 같으면 결과가 이미 box에 있다
 
 	// gridArea는 grid 컨테이너가 절대 배치 자식에게 주는 포함 블록이다 (grid 배치 속성이 줄을
 	// 정하면 그 영역, 아니면 false — padding box로 물러선다).
@@ -509,10 +513,29 @@ func (e *engine) contribution(b *box, min bool) float64 {
 }
 
 func (e *engine) intrinsic(b *box, min bool) float64 {
-	fr := b.frame(0).h()
 	if w, ok := b.specified("width", 0, false); ok {
 		return b.clampW(w, 0, false)
 	}
+	return e.contentIntrinsic(b, min)
+}
+
+// contentMinContent는 지정 폭을 보지 않은 내용의 min-content 폭(border-box)이다 — flex 항목의
+// 자동 최소 크기가 지정 크기와 견주는 내용 기반 값이다.
+func (e *engine) contentMinContent(b *box) float64 {
+	if _, ok := b.specified("width", 0, false); !ok {
+		return e.minContent(b)
+	}
+	if b.contentMinCache != nil {
+		return *b.contentMinCache
+	}
+	v := e.contentIntrinsic(b, true)
+	b.contentMinCache = &v
+	return v
+}
+
+// contentIntrinsic은 지정 폭 없이 내용으로 정한 내재 폭이다.
+func (e *engine) contentIntrinsic(b *box, min bool) float64 {
+	fr := b.frame(0).h()
 	if b.replaced != "" {
 		w, h := e.naturalSize(b)
 		if r := b.ratio(); r > 0 {
@@ -561,10 +584,11 @@ func (e *engine) intrinsic(b *box, min bool) float64 {
 type layoutKey struct {
 	w, h, cbw, cbh  float64
 	hKnown, cbKnown bool
+	sizeless        bool
 }
 
 func (e *engine) layout(b *box, w float64, h *float64, cbw, cbh float64, cbhKnown bool) {
-	key := layoutKey{w: w, cbw: cbw, cbh: cbh, cbKnown: cbhKnown}
+	key := layoutKey{w: w, cbw: cbw, cbh: cbh, cbKnown: cbhKnown, sizeless: b.sizeless}
 	if h != nil {
 		key.h, key.hKnown = *h, true
 	}
@@ -581,10 +605,10 @@ func (e *engine) layout(b *box, w float64, h *float64, cbw, cbh float64, cbhKnow
 	if h != nil {
 		v := *h
 		defH = &v
-	} else if sh, ok := b.specified("height", cbh, cbhKnown); ok {
+	} else if sh, ok := b.specified("height", cbh, cbhKnown); ok && !b.sizeless {
 		v := b.clampH(sh, cbh, cbhKnown, cbw)
 		defH = &v
-	} else if r := b.ratio(); r > 0 {
+	} else if r := b.ratio(); r > 0 && !b.sizeless {
 		v := b.clampH(w/r, cbh, cbhKnown, cbw)
 		defH = &v
 	}

@@ -40,11 +40,11 @@ git clone https://github.com/k2sebeom/balpyo && cd balpyo
 go build -o balpyo ./cmd/balpyo && sudo mv balpyo /usr/local/bin/
 ```
 
-From the first `v*` tag onward there are also release archives for `darwin/{arm64,amd64}` and
-`linux/{amd64,arm64}` (each archive holds just the binary; verify with `sha256sum -c SHA256SUMS`;
-there is no Windows build) and a Homebrew tap (`brew install k2sebeom/balpyo/balpyo`) — check
-GitHub Releases before recommending either. Ask the user to run the install themselves if it
-needs `sudo`.
+Every `v*` release also has archives for `darwin/{arm64,amd64}` and `linux/{amd64,arm64}` (each
+archive holds just the binary; verify with `sha256sum -c SHA256SUMS`; there is no Windows build) and
+an install script that fetches and verifies one
+(`curl -fsSL https://raw.githubusercontent.com/k2sebeom/balpyo/main/install.sh | sh`) — prefer the
+script. Ask the user to run the install themselves if it needs `sudo`.
 
 **A `pptx` target and `--check-layout` need Chromium or Chrome installed** — a headless browser
 measures every box, and the PPTX uses those exact rects. The binary looks at `BALPYO_CHROMIUM`,
@@ -95,7 +95,9 @@ balpyo init my-talk --author "Name" --theme minimal --lang en --aspect 16:9
 It writes `balpyo.json`, a `.gitignore` (`dist/`, `preview/`), and three slides, and the result
 builds warning-free. `--theme` takes a built-in only (`minimal` · `editorial` · `ink`);
 `minimal` is the right default when unsure. `init` refuses a directory that already holds
-`balpyo.json` or a `.slide` file — there is no `--force`.
+`balpyo.json` or a `.slide` file — there is no `--force`. For a Korean deck pass `--lang ko`:
+the web breaks Korean at word boundaries only then, and with `en` words break between
+syllables.
 
 ```text
 my-talk/
@@ -116,13 +118,13 @@ my-talk/
 |---|---|---|
 | `title` | directory name | deck title; also names the PPTX file (lower-cased, non-alphanumerics → `-`: `my-talk.pptx`) |
 | `author` | — | presenter |
-| `lang` | `en` | `<html lang>`; `ko` makes the web break lines at word boundaries |
+| `lang` | `en` | a BCP 47 tag (`ko`, `en`, `ja`, `ko-KR` …): `<html lang>` and the PPTX text language; `ko` makes the web break lines at word boundaries. Not the code language of `<pre lang>` |
 | `aspect` | `16:9` | `16:9` (1280×720) or `4:3` (960×720) |
 | `theme` | `minimal` | a theme **name** — built-in, project `themes/<name>/`, or installed; never a path |
 | `outDir` | `dist` | build output, relative to the project root |
 | `footer` | `""` | footer text; the theme decides where it sits and which layouts skip it |
 | `pageNumber` | `false` | turn page numbers on |
-| `slidesDir` | `slides` | where the slides live |
+| `slidesDir` | `slides` | where the slides live — a relative path inside the project |
 
 To use a shared team theme, install it once per machine
 (`balpyo theme install github.com/acme/slide-themes@v1`, or a local directory path), then put
@@ -200,6 +202,7 @@ before faking them with images or hand-placed rectangles:
 - **Lines between boxes** → give the boxes an `id` and add `<connector from to>` as a direct child
   of `<slide>`. It takes no space in the flow, so lay the boxes out first and then add the lines.
   It becomes a real PowerPoint connector glued to the boxes.
+- **Links to another slide** → `<a href="#<slide id>">` (or `#/<number>`); a PPTX slide jump too.
 - **Curves, steps, filled areas, odd silhouettes** → `<shape type="path" d="…">` in a 0–100 box;
   overlay several in a `<stack>`. Hatching is `fill="pattern(…)"`.
 - **Data** → `<chart>` (`bar` / `line` / `area` / `step`, several `<series>` with a legend).
@@ -276,8 +279,9 @@ balpyo build --project my-talk --target html,pptx --strict
 
 `dist/index.html` has **zero external references** — one file (plus `assets/` when the deck has
 images) presents offline. The `.pptx` has real text boxes, real shapes, real tables, speaker
-notes, placeholders for slotted content, and theme-colour references that survive editing in
-PowerPoint or Keynote. Nothing is written unless the whole build succeeds.
+notes, placeholders for slotted text (a slotted chart, or a shape with no text of its own —
+empty, or a backdrop around a container — stays a plain shape at the slot's position), and
+theme-colour references that survive editing in PowerPoint or Keynote. Nothing is written unless the whole build succeeds.
 
 Tell the user how to present `index.html`: ←/→ (also Space, PageUp/PageDown, ↑/↓) step through
 slides and `reveal` steps, Home/End jump, `n` opens the speaker notes, `o` opens the overview

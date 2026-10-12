@@ -100,6 +100,7 @@
 | [0091](0091-a-theme-carries-a-readme-for-the-deck-author.md) | 테마는 덱 저자에게 쓰는 README를 담고, `balpyo theme info`가 그것을 보인다 | — | 확정 |
 | [0092](0092-chevron-takes-a-notch-as-a-percentage-of-its-width.md) | chevron은 노치 깊이를 폭의 %로 받고, 기본값은 20%다 | 백로그 | 확정 (0042를 대체하고 0071을 `notch="50%"`로 좁힌다) |
 | [0093](0093-a-builtin-renderer-draws-the-web-output-without-a-browser.md) | 내장 렌더러는 웹 산출물을 브라우저 없이 배치하고 그린다 (`balpyo snap`) | — | 확정 (실험) |
+| [0094](0094-an-install-script-reads-the-release-assets-and-refuses-an-unverified-binary.md) | 설치 스크립트는 릴리스 자산을 읽고, 체크섬이 맞지 않는 바이너리는 설치하지 않는다 | — | 확정 |
 
 0066까지의 ADR에 나오는 `PRD §…` 인용은 커밋 `2121a0b`의 `PRD.md`를 뜻한다. 그 절이 지금 어디에
 있는지는 [0067](0067-prd-is-retired-and-its-standing-decisions-move-here.md)의 대응표가 적는다.

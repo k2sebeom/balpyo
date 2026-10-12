@@ -48,6 +48,16 @@
   (`bentConnector3` · `curvedConnector3`), 축이 다르면(오른쪽 → 위) 한 번 꺾는 L자(`bentConnector2` ·
   `curvedConnector2`)다. **같은 면끼리**(위 → 위) 이으면 두 상자 바깥으로 나갔다 돌아오는 U자다 —
   꺾임은 32px 바깥, 곡선은 두 끝 거리의 1/4까지 더 부푼다.
+- **면이 상대를 등지면 상자를 돌아간다.** 오른쪽 → 왼쪽인데 상대가 왼쪽에 있거나, 위 → 아래인데
+  상대가 아래에 있으면 계단은 두 상자를 꿰뚫는다. 그때 선은 면에서 32px 바깥으로 나간 뒤 두 상자
+  사이의 틈(틈이 없으면 두 상자 바깥)을 지나 끝 면에 바깥에서 들어오는 S자(`bentConnector5` ·
+  `curvedConnector5`)다. 축이 다른 두 면에서 L자가 상자를 지나게 되면(오른쪽 → 위인데 상대가 왼쪽
+  아래에 있으면) 한 번 더 꺾는다(`bentConnector4` · `curvedConnector4`).
+- **U자도 상자에 가리면 돌아간다.** 같은 면끼리인데 한 상자가 다른 상자를 그 면 쪽에서
+  가리면(위 → 위인데 상대가 바로 위에 있으면) 안쪽 상자에서 나간 선은 두 상자 사이의 틈에서 꺾어
+  두 상자 옆을 32px 비켜 지난 뒤 바깥 상자 너머에서 끝 면으로 들어온다(`bentConnector5` ·
+  `curvedConnector5`). 곡선은 끝점이 상대 상자 옆으로 32px 안쪽이기만 해도 돌아간다 — 비스듬히 휘는
+  선이 모서리를 스치지 않게 한다.
 - 웹의 SVG 경로는 같은 PPTX 프리셋을 같은 박스에서 평가한 것이다. 두 타깃의 선이 같은 출처에서 나온다.
 - 표식은 선 굵기의 5배 크기다 (PPTX `w="lg" len="lg"`). 화살표 끝의 선은 화살촉 아래로 삐져나오지 않게
   줄여 그린다.
@@ -126,6 +136,7 @@ PPTX에서 양 끝이 상자의 **연결점**에 붙는 것은 연결점 순서�
 | 어휘 밖의 경로 | `unknown route "zigzag" (available values: straight, elbow, curved)` |
 | 어휘 밖의 면 | `unknown to-side "north" (available values: auto, top, right, bottom, left)` |
 | 어휘 밖의 표식 | `unknown end "diamond" (available values: none, arrow, dot)` |
+| 속성에 값이 없다 (`<connector … line/>`) | `the line attribute needs a value (line="2 solid muted")` — `route` · `from-side` · `to-side` · `start` · `end`도 쓸 수 있는 값 하나를 예시로 싣는다 |
 | `line="none"` | `a connector line cannot be none — remove the connector instead` |
 | 그라디언트 선 | `a connector line is one color — gradients are not supported on connectors` |
 | 선이 정해지지 않았다 | `<connector> has no line — theme "corp" defines no connector.default line, so write line="2 solid muted"` |

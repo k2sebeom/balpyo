@@ -59,9 +59,11 @@ type Path struct {
 	// Rot은 시계 방향 회전(도)이다 — 0 또는 90.
 	Rot          int
 	FlipH, FlipV bool
-	// Adj는 꺾임 둘 프리셋의 꺾는 자리다 — 국소 가로 길이의 비율(PPTX `adj1` = Adj × 100000). 기본은
-	// 가운데(0.5)이고, 같은 면끼리 잇는 U자 경로에서는 0 ~ 1 밖으로 나가 두 상자 바깥에서 꺾는다.
-	Adj float64
+	// Adj는 프리셋의 조정값(PPTX `adj1`, `adj2` … = Adj[i] × 100000)이다 — 꺾는 자리를 국소 축 길이의
+	// 비율로 적는다. 꺾임 하나 프리셋과 직선은 비어 있고, 꺾임 둘(`…3`)은 하나, 셋(`…4`)은 둘
+	// (꺾는 가로 · 세로), 넷(`…5`)은 셋(첫 꺾는 가로 · 가운데 세로 · 둘째 꺾는 가로)이다. 꺾임 둘의
+	// 기본은 가운데(0.5)이고, U자나 상자를 돌아가는 경로에서는 0 ~ 1 밖으로 나가 상자 바깥에서 꺾는다.
+	Adj []float64
 	// Points는 경로를 그리는 점들이다 — 첫 점은 MoveTo, 그다음은 Segments가 소비한다.
 	Points []Point
 	// Segments는 경로 조각이다: 'L'은 점 하나, 'C'는 점 셋(제어점 둘 + 끝점)을 먹는다.
@@ -148,26 +150,57 @@ func Route(from, to Rect, fromSide, toSide Side, kind Kind) (Path, error) {
 	if toSide == Auto {
 		toSide = facing(to, from)
 	}
-	p := Path{StartSide: fromSide, EndSide: toSide, Adj: 0.5}
+	p := Path{StartSide: fromSide, EndSide: toSide}
 	p.Start, p.End = Anchor(from, fromSide), Anchor(to, toSide)
 	dx, dy := p.End.X-p.Start.X, p.End.Y-p.Start.Y
 
 	// 세로로 시작하는 꺾인 경로는 같은 프리셋을 90° 돌린 것이다. 직선은 돌리지 않는다.
 	rotated := kind != Straight && !fromSide.horizontal()
 	sameAxis := fromSide.horizontal() == toSide.horizontal()
+	// 꺾임 수: 같은 축이면 둘, 다른 축이면 하나다. 다만 면이 상대를 등지면 그 경로는 상자를 가로지른다
+	// — 오른쪽 면에서 나가 왼쪽에 있는 상자의 왼쪽 면으로 들어가는 계단은 두 상자를 꿰뚫는다. 그때는
+	// 면에서 바깥으로 한 토막 나간 뒤 상자를 돌아 들어간다: 같은 축은 넷(S자), 다른 축은 셋이다.
+	bends := 1
+	if sameAxis {
+		bends = 2
+	}
+	// 같은 면끼리의 U자에서 한 상자가 다른 상자를 그 면 쪽에서 가리면(위 → 위인데 상대가 바로 위에
+	// 있으면) 안쪽 상자의 첫 토막이 바깥 상자를 꿰뚫는다. 그때는 안쪽 끝이 두 상자 사이 틈에서 꺾어
+	// 두 상자를 옆으로 비켜 간 뒤 바깥 상자 너머로 넘어간다 — 꺾임 넷이다.
+	// 곡선은 꺾는 자리 사이를 비스듬히 휘므로, 끝점이 상대 상자의 구간에서 detourGap 안쪽이기만 해도
+	// 그 모서리를 스친다 — 곡선은 그만큼 넓게 가로막힌 것으로 본다.
+	blocked, margin := Auto, 0.0
+	if kind == Curved {
+		margin = detourGap
+	}
+	if kind != Straight && fromSide == toSide {
+		switch {
+		case hides(to, p.Start, fromSide, margin):
+			blocked = fromSide
+			bends = 4
+		case hides(from, p.End, toSide, margin):
+			blocked = toSide
+			bends = 4
+		}
+	}
+	if kind != Straight && fromSide != toSide {
+		s, o := fromSide.sign(), toSide.sign()
+		h, eh := fromSide.horizontal(), toSide.horizontal()
+		if sameAxis {
+			if (along(p.End, h)-along(p.Start, h))*s <= 0 {
+				bends = 4
+			}
+		} else if (along(p.End, h)-along(p.Start, h))*s <= 0 || (along(p.Start, eh)-along(p.End, eh))*o <= 0 {
+			bends = 3
+		}
+	}
 	switch kind {
 	case Straight:
 		p.Preset = "straightConnector1"
 	case Elbow:
-		p.Preset = "bentConnector2"
-		if sameAxis {
-			p.Preset = "bentConnector3"
-		}
+		p.Preset = fmt.Sprintf("bentConnector%d", bends+1)
 	case Curved:
-		p.Preset = "curvedConnector2"
-		if sameAxis {
-			p.Preset = "curvedConnector3"
-		}
+		p.Preset = fmt.Sprintf("curvedConnector%d", bends+1)
 	default:
 		return Path{}, fmt.Errorf("unknown connector route %q", string(kind))
 	}
@@ -184,6 +217,7 @@ func Route(from, to Rect, fromSide, toSide Side, kind Kind) (Path, error) {
 		if uTurn && p.W < minUDepth {
 			p.W = minUDepth
 		}
+		p.minDetourFrame(bends)
 		// dy가 0인 U자는 위 면이면 위로(뒤집지 않음), 아래 면이면 아래로 나간다 — 아래 adj가 바깥을 고른다.
 		p.FlipH, p.FlipV = dy < 0, dx > 0
 		c := Point{(p.Start.X + p.End.X) / 2, (p.Start.Y + p.End.Y) / 2}
@@ -193,11 +227,32 @@ func Route(from, to Rect, fromSide, toSide Side, kind Kind) (Path, error) {
 		if uTurn && p.W < minUDepth {
 			p.W = minUDepth
 		}
+		p.minDetourFrame(bends)
 		p.FlipH, p.FlipV = dx < 0, dy < 0
 		p.Off = Point{math.Min(p.Start.X, p.End.X), math.Min(p.Start.Y, p.End.Y)}
 	}
-	if uTurn {
-		p.Adj = p.uTurnAdj(from, to, kind)
+	switch {
+	case uTurn && bends == 4:
+		// 첫 · 셋째 조정값은 국소 가로 축(면에서 나가는 축)의 자리이고, 둘째는 두 상자 옆을 지나는 자리다.
+		outer := p.uTurnAdj(from, to, kind)
+		side := p.ratio(middleLane(from, to, p.Start, p.End, !blocked.horizontal()), false)
+		if hides(to, p.Start, fromSide, margin) {
+			p.Adj = []float64{p.ratio(lane(to, p.Start, fromSide), true), side, outer}
+		} else {
+			p.Adj = []float64{outer, side, p.ratio(lane(from, p.End, toSide), true)}
+		}
+	case uTurn:
+		p.Adj = []float64{p.uTurnAdj(from, to, kind)}
+	case bends == 2:
+		p.Adj = []float64{0.5}
+	case bends == 3:
+		p.Adj = []float64{p.ratio(lane(to, p.Start, fromSide), true), p.ratio(lane(from, p.End, toSide), false)}
+	case bends == 4:
+		p.Adj = []float64{
+			p.ratio(lane(to, p.Start, fromSide), true),
+			p.ratio(middleLane(from, to, p.Start, p.End, !fromSide.horizontal()), false),
+			p.ratio(lane(from, p.End, toSide), true),
+		}
 	}
 
 	local, segs := presetPath(p.Preset, p.W, p.H, p.Adj)
@@ -242,6 +297,111 @@ func (p Path) uTurnAdj(from, to Rect, kind Kind) float64 {
 	}
 }
 
+// sign은 이 면의 바깥 방향이 그 축의 좌표가 커지는 쪽(+1, 오른쪽 · 아래)인지 작아지는 쪽(−1)인지다.
+func (s Side) sign() float64 {
+	if s == Left || s == Top {
+		return -1
+	}
+	return 1
+}
+
+// along은 점의 가로(horizontal이 참) 또는 세로 좌표다.
+func along(p Point, horizontal bool) float64 {
+	if horizontal {
+		return p.X
+	}
+	return p.Y
+}
+
+// span은 박스가 가로(horizontal이 참) 또는 세로 축에서 차지하는 구간이다.
+func span(r Rect, horizontal bool) (lo, hi float64) {
+	if horizontal {
+		return r.X, r.X + r.W
+	}
+	return r.Y, r.Y + r.H
+}
+
+// detourGap은 상자를 돌아가는 경로가 면에서 바깥으로 나가는 거리(px)다 — U자 꺾임과 같은 거리다.
+const detourGap = 32
+
+// lane은 박스 own의 면 side에 붙은 끝점 end에서 바깥으로 나가는 토막이 꺾는 자리(그 면 축의 좌표)다.
+// 상대 박스 other가 통째로 그 면 바깥에 있으면 둘 사이 틈의 가운데, 아니면 두 박스 중 그 면 쪽으로 더
+// 나간 변에서 detourGap만큼 바깥이다 — 그래야 꺾은 뒤의 토막이 어느 상자도 가로지르지 않는다.
+func lane(other Rect, end Point, side Side) float64 {
+	h, s := side.horizontal(), side.sign()
+	e := along(end, h)
+	lo, hi := span(other, h)
+	near, far := lo, hi
+	if s < 0 {
+		near, far = hi, lo
+	}
+	if (near-e)*s > 0 {
+		return (e + near) / 2
+	}
+	if s > 0 {
+		return math.Max(e, far) + detourGap
+	}
+	return math.Min(e, far) - detourGap
+}
+
+// hides는 박스 other가 끝점 end에서 면 side 바깥으로 곧게 나가는 토막을 가로막는지다 — other가 통째로
+// 그 면 바깥에 있고, 끝점이 other의 다른 축 구간을 양쪽으로 margin만큼 넓힌 구간 안쪽에 있으면 그렇다.
+func hides(other Rect, end Point, side Side, margin float64) bool {
+	h, s := side.horizontal(), side.sign()
+	lo, hi := span(other, h)
+	near := lo
+	if s < 0 {
+		near = hi
+	}
+	if (near-along(end, h))*s <= 0 {
+		return false
+	}
+	plo, phi := span(other, !h)
+	e := along(end, !h)
+	return e > plo-margin && e < phi+margin
+}
+
+// middleLane은 S자 경로의 가운데 토막이 지나는 자리(horizontal 축의 좌표)다 — 두 박스가 그 축에서
+// 떨어져 있으면 틈의 가운데, 겹치면 두 박스를 함께 비켜 가는 양쪽 바깥 중 두 끝에서 가까운 쪽이다.
+func middleLane(from, to Rect, start, end Point, horizontal bool) float64 {
+	fLo, fHi := span(from, horizontal)
+	tLo, tHi := span(to, horizontal)
+	switch {
+	case fHi <= tLo:
+		return (fHi + tLo) / 2
+	case tHi <= fLo:
+		return (tHi + fLo) / 2
+	}
+	lo, hi := math.Min(fLo, tLo)-detourGap, math.Max(fHi, tHi)+detourGap
+	sv, ev := along(start, horizontal), along(end, horizontal)
+	if math.Abs(sv-hi)+math.Abs(ev-hi) < math.Abs(sv-lo)+math.Abs(ev-lo) {
+		return hi
+	}
+	return lo
+}
+
+// minDetourFrame은 꺾임 셋 · 넷 프리셋 프레임의 두 변에 최소 깊이를 준다 — 두 축 모두 조정값을 비율로
+// 적으므로 길이 0인 변이 있으면 꺾는 자리를 적을 수 없다 (U자의 1px 깊이와 같은 처지다).
+func (p *Path) minDetourFrame(bends int) {
+	if bends < 3 {
+		return
+	}
+	p.W, p.H = math.Max(p.W, minUDepth), math.Max(p.H, minUDepth)
+}
+
+// ratio는 화면 좌표 target을 국소 가로(alongU가 참) 또는 세로 축의 비율로 푼다 — 국소 → 화면 사상이
+// 선형이므로 그 축의 두 끝점이면 된다. 축이 화면의 어느 축으로 가는지는 두 끝점이 갈라지는 쪽이다.
+func (p Path) ratio(target float64, alongU bool) float64 {
+	a, b := p.toWorld(Point{0, 0}), p.toWorld(Point{0, p.H})
+	if alongU {
+		b = p.toWorld(Point{p.W, 0})
+	}
+	if math.Abs(b.X-a.X) > math.Abs(b.Y-a.Y) {
+		return (target - a.X) / (b.X - a.X)
+	}
+	return (target - a.Y) / (b.Y - a.Y)
+}
+
 // toWorld는 프리셋 국소 좌표(박스 안 (u, v))를 화면 좌표로 옮긴다 — 뒤집기 다음 회전이다
 // (DrawingML의 xfrm이 그 순서다: 뒤집기는 도형 좌표계 안에서, 회전은 박스 중심을 축으로).
 func (p Path) toWorld(l Point) Point {
@@ -261,21 +421,49 @@ func (p Path) toWorld(l Point) Point {
 	return Point{x, y}
 }
 
-// presetPath는 연결선 프리셋의 국소 경로다 (ECMA-376 presetShapeDefinitions). adj는 꺾임 둘 프리셋의
-// `adj1`(비율)이다 — 꺾는 자리 x1 = w × adj.
-func presetPath(preset string, w, h, adj float64) ([]Point, []byte) {
+// presetPath는 연결선 프리셋의 국소 경로다 (ECMA-376 presetShapeDefinitions). adj는 프리셋의 조정값
+// (비율)이다 — `adj1` · `adj3`은 국소 가로 길이의, `adj2`는 국소 세로 길이의 비율이다.
+func presetPath(preset string, w, h float64, adj []float64) ([]Point, []byte) {
 	switch preset {
 	case "bentConnector2":
 		return []Point{{0, 0}, {w, 0}, {w, h}}, []byte("LL")
 	case "bentConnector3":
-		x1 := w * adj
+		x1 := w * adj[0]
 		return []Point{{0, 0}, {x1, 0}, {x1, h}, {w, h}}, []byte("LLL")
+	case "bentConnector4":
+		x1, y2 := w*adj[0], h*adj[1]
+		return []Point{{0, 0}, {x1, 0}, {x1, y2}, {w, y2}, {w, h}}, []byte("LLLL")
+	case "bentConnector5":
+		x1, y2, x3 := w*adj[0], h*adj[1], w*adj[2]
+		return []Point{{0, 0}, {x1, 0}, {x1, y2}, {x3, y2}, {x3, h}, {w, h}}, []byte("LLLLL")
 	case "curvedConnector2":
 		return []Point{{0, 0}, {w / 2, 0}, {w, h / 2}, {w, h}}, []byte("C")
 	case "curvedConnector3":
-		x1 := w * adj
+		x1 := w * adj[0]
 		x2, x3 := x1/2, (w+x1)/2
 		return []Point{{0, 0}, {x2, 0}, {x1, h / 4}, {x1, h / 2}, {x1, h * 3 / 4}, {x3, h}, {w, h}}, []byte("CC")
+	case "curvedConnector4":
+		x2, y4 := w*adj[0], h*adj[1]
+		x1, x3 := x2/2, (w+x2)/2
+		x4, x5 := (x2+x3)/2, (x3+w)/2
+		y1 := y4 / 2
+		y2, y3, y5 := y1/2, (y1+y4)/2, (h+y4)/2
+		return []Point{{0, 0},
+			{x1, 0}, {x2, y2}, {x2, y1},
+			{x2, y3}, {x4, y4}, {x3, y4},
+			{x5, y4}, {w, y5}, {w, h}}, []byte("CCC")
+	case "curvedConnector5":
+		x3, y4, x6 := w*adj[0], h*adj[1], w*adj[2]
+		x1, x2 := (x3+x6)/2, x3/2
+		x4, x5, x7 := (x3+x1)/2, (x6+x1)/2, (x6+w)/2
+		y1 := y4 / 2
+		y2, y3, y5 := y1/2, (y1+y4)/2, (h+y4)/2
+		y6, y7 := (y5+y4)/2, (y5+h)/2
+		return []Point{{0, 0},
+			{x2, 0}, {x3, y2}, {x3, y1},
+			{x3, y3}, {x4, y4}, {x1, y4},
+			{x5, y4}, {x6, y6}, {x6, y5},
+			{x6, y7}, {x7, h}, {w, h}}, []byte("CCCC")
 	default: // straightConnector1
 		return []Point{{0, 0}, {w, h}}, []byte("L")
 	}
