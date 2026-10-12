@@ -119,12 +119,16 @@ Shared groups, referenced below:
 Where the child attributes work:
 
 - `x`/`y` — only on children of `<stack>` and direct children of a `layout="canvas"` slide.
-- `at` — only on children of `<stack>`; cannot be combined with `x`/`y`.
+- `at` — the same places as `x`/`y`; cannot be combined with them. Elsewhere:
+  `at is only for children of <stack> or direct children of a layout="canvas" slide (the parent is <row>) — wrap it in <stack> or give the slide layout="canvas"`.
 - `span` — only on children of `<grid>`.
 - `grow` `shrink` `basis` `self` `order` — on children of `row`/`col`/`grid` and direct
   children of a flow slide (the flow stage is a vertical flex column).
 
 ## Value vocabularies
+
+Numbers are a plain decimal — `12`, `-3`, `0.5`, `.5` — in every numeric attribute (`size`,
+`rotate`, `opacity`, chart `value`/`max` …); `1e3`, `NaN`, `Inf`, `+5`, `1_000` are not numbers.
 
 | Attribute | Legal values |
 |---|---|

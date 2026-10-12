@@ -174,7 +174,8 @@ sizes to its **largest child**, so give it `w`/`h` or `ratio` when anchors need 
   is not a value, write `center`.
 - `x`/`y` offset a child from the stack's top-left (negative allowed, `%` of the stack axis);
   you may set only one axis.
-- Children with neither follow the stack's `align` (vertical) and `justify` (horizontal).
+- Children with neither follow the stack's `align` (vertical) and `justify` (horizontal). A
+  stack has one cell, so `justify="between"` is `start` and `around`/`evenly` are `center`.
 - In the PPTX a stack is nothing — no group; each child is its own shape.
 - Overlap inside a stack is never warned about.
 
