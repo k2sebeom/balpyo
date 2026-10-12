@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,9 +19,14 @@ import (
 const EnvOnlyOffice = "BALPYO_ONLYOFFICE"
 
 // OnlyOfficeCandidates는 Document Builder 설치 디렉토리 후보다 — 배포 패키지(.deb/.rpm)와
-// 압축본을 /opt에 푼 설치가 같은 자리를 쓴다.
-var OnlyOfficeCandidates = []string{
-	"/opt/onlyoffice/documentbuilder",
+// 압축본을 /opt에 푼 설치가 같은 자리를 쓴다. 윈도우 설치 프로그램은 Program Files 아래에 둔다.
+var OnlyOfficeCandidates = onlyOfficeCandidates(runtime.GOOS, os.Getenv)
+
+func onlyOfficeCandidates(goos string, getenv func(string) string) []string {
+	if goos == "windows" {
+		return windowsInstalls(getenv, "ProgramFiles", `ONLYOFFICE\DocumentBuilder`)
+	}
+	return []string{"/opt/onlyoffice/documentbuilder"}
 }
 
 // LookOnlyOffice는 Document Builder 설치 디렉토리를 찾는다 (환경 변수 → 후보 디렉토리).
@@ -31,7 +37,7 @@ var OnlyOfficeCandidates = []string{
 func LookOnlyOffice() (string, error) {
 	if custom := os.Getenv(EnvOnlyOffice); custom != "" {
 		dir := custom
-		if filepath.Base(custom) == "x2t" {
+		if base := filepath.Base(custom); base == "x2t" || strings.EqualFold(base, "x2t.exe") {
 			dir = filepath.Dir(custom)
 		}
 		if err := onlyOfficeDir(dir); err != nil {
@@ -50,7 +56,7 @@ func LookOnlyOffice() (string, error) {
 // onlyOfficeDir는 dir이 변환기와 색인 생성기를 함께 가진 설치인지 본다.
 func onlyOfficeDir(dir string) error {
 	for _, name := range []string{"x2t", "docbuilder"} {
-		if err := executable(filepath.Join(dir, name)); err != nil {
+		if err := executable(filepath.Join(dir, exeName(name))); err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
 	}
@@ -126,7 +132,7 @@ func (o *OnlyOffice) Slides(pptxPath string, size image.Point, workDir string) (
 // run은 설치 디렉토리의 도구를 그 디렉토리에서 돌린다 — 도구가 공유 라이브러리와 `sdkjs`를
 // 상대 경로로 찾기 때문이다.
 func (o *OnlyOffice) run(tool string, args ...string) (stdout, stderr string, err error) {
-	return runToolIn(o.Dir, []string{"LD_LIBRARY_PATH=" + o.Dir}, filepath.Join(o.Dir, tool), args...)
+	return runToolIn(o.Dir, []string{"LD_LIBRARY_PATH=" + o.Dir}, filepath.Join(o.Dir, exeName(tool)), args...)
 }
 
 // x2tParams는 변환 하나의 설정 문서다 — PPTX → 슬라이드별 PNG 묶음(zip).

@@ -73,7 +73,8 @@ func TestX2TParamsEscapesPaths(t *testing.T) {
 	for _, want := range []string{
 		"<m_sFileFrom>/덱 &amp; 발표/in.pptx</m_sFileFrom>",
 		"<m_nFormatTo>1029</m_nFormatTo>",
-		"<m_sFontDir>/opt/oo/sdkjs/common</m_sFontDir>",
+		// 설치 안의 경로는 이 운영체제의 구분자로 이어 붙인다 — 변환기가 그 운영체제의 것이다.
+		"<m_sFontDir>" + filepath.Join("/opt/oo", "sdkjs", "common") + "</m_sFontDir>",
 		"<width>960</width>",
 		"<height>720</height>",
 		"<first>false</first>",
@@ -89,22 +90,49 @@ func TestX2TParamsEscapesPaths(t *testing.T) {
 func TestLookOnlyOfficeEnv(t *testing.T) {
 	dir := t.TempDir()
 	for _, name := range []string{"x2t", "docbuilder"} {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, exeName(name)), []byte("#!/bin/sh\n"), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
-	for _, value := range []string{dir, filepath.Join(dir, "x2t")} {
+	for _, value := range []string{dir, filepath.Join(dir, exeName("x2t"))} {
 		t.Setenv(EnvOnlyOffice, value)
 		got, err := LookOnlyOffice()
 		if err != nil || got != dir {
 			t.Errorf("%s=%s → %q, %v; want %q", EnvOnlyOffice, value, got, err, dir)
 		}
 	}
-	if err := os.Remove(filepath.Join(dir, "docbuilder")); err != nil {
+	if err := os.Remove(filepath.Join(dir, exeName("docbuilder"))); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv(EnvOnlyOffice, dir)
 	if _, err := LookOnlyOffice(); err == nil || !strings.Contains(err.Error(), "docbuilder") {
 		t.Errorf("docbuilder 없는 설치를 받았다: %v", err)
+	}
+}
+
+// 윈도우 설치 프로그램은 OnlyOffice · LibreOffice를 PATH가 아니라 Program Files 아래에 둔다.
+// 후보는 그 환경 변수에서 만들고, 값이 비면 후보가 아니다.
+func TestWindowsToolCandidatesComeFromProgramFiles(t *testing.T) {
+	env := func(key string) string {
+		if key == "ProgramFiles" {
+			return `C:\Program Files\`
+		}
+		return ""
+	}
+	if got := onlyOfficeCandidates("windows", env); len(got) != 1 || got[0] != `C:\Program Files\ONLYOFFICE\DocumentBuilder` {
+		t.Errorf("windows OnlyOffice candidates = %q", got)
+	}
+	if got := sofficeWindowsCandidates("windows", env); len(got) != 1 || got[0] != `C:\Program Files\LibreOffice\program\soffice.exe` {
+		t.Errorf("windows soffice candidates = %q", got)
+	}
+	none := func(string) string { return "" }
+	if got := onlyOfficeCandidates("windows", none); len(got) != 0 {
+		t.Errorf("ProgramFiles 없이 만든 후보 = %q", got)
+	}
+	if got := onlyOfficeCandidates("linux", env); len(got) != 1 || got[0] != "/opt/onlyoffice/documentbuilder" {
+		t.Errorf("linux OnlyOffice candidates = %q", got)
+	}
+	if got := sofficeWindowsCandidates("darwin", env); got != nil {
+		t.Errorf("darwin에 윈도우 soffice 후보가 붙었다: %q", got)
 	}
 }

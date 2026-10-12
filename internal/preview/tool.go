@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/k2sebeom/balpyo/render/geom"
@@ -35,11 +36,11 @@ const (
 // 설치한 LibreOffice가 PATH에 없기 때문이다.
 var (
 	// SofficeCandidates는 LibreOffice 실행 파일 후보다.
-	SofficeCandidates = []string{
+	SofficeCandidates = append([]string{
 		"soffice",
 		"libreoffice",
 		"/Applications/LibreOffice.app/Contents/MacOS/soffice",
-	}
+	}, sofficeWindowsCandidates(runtime.GOOS, os.Getenv)...)
 	// PdftoppmCandidates는 pdftoppm 실행 파일 후보다.
 	PdftoppmCandidates = []string{
 		"pdftoppm",
@@ -47,6 +48,34 @@ var (
 		"/usr/local/bin/pdftoppm",
 	}
 )
+
+// sofficeWindowsCandidates는 윈도우 설치 프로그램이 LibreOffice를 두는 자리다 — PATH에 넣지
+// 않으므로 PATH만 보면 못 찾는다.
+func sofficeWindowsCandidates(goos string, getenv func(string) string) []string {
+	if goos != "windows" {
+		return nil
+	}
+	return windowsInstalls(getenv, "ProgramFiles", `LibreOffice\program\soffice.exe`)
+}
+
+// windowsInstalls는 설치 폴더 환경 변수(ProgramFiles 등) 아래의 경로들이다. 값이 빈 변수는
+// 건너뛴다 — 빈 값으로 만든 `\…`는 현재 드라이브의 엉뚱한 경로가 된다.
+func windowsInstalls(getenv func(string) string, env, rel string) []string {
+	base := getenv(env)
+	if base == "" {
+		return nil
+	}
+	return []string{strings.TrimRight(base, `\`) + `\` + rel}
+}
+
+// exeName은 도구 이름을 이 운영체제의 실행 파일 이름으로 만든다 — 윈도우는 `.exe`를 붙인다.
+// 설치 디렉토리 안의 파일을 경로로 부를 때는 PATH 탐색처럼 확장자를 대신 붙여 주는 쪽이 없다.
+func exeName(name string) string {
+	if runtime.GOOS == "windows" {
+		return name + ".exe"
+	}
+	return name
+}
 
 // LookSoffice는 LibreOffice 실행 파일을 찾는다.
 func LookSoffice() (string, error) { return LookTool(EnvSoffice, SofficeCandidates) }
