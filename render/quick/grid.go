@@ -2,6 +2,7 @@ package quick
 
 import (
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -303,7 +304,9 @@ func (e *engine) sizeTracks(tracks []track, items []*gridItem, columns bool, ava
 		case "fr":
 			limit[i] = math.Inf(1)
 		default:
-			limit[i] = -1 // 내용에서 정한다
+			// 내재 최대(auto · min/max-content)는 내용이 정한다. 항목이 하나도 없는 트랙은 여러 트랙에
+			// 걸친 항목을 나누는 동안 한계가 없는 채로 남는다.
+			limit[i] = math.Inf(1)
 		}
 	}
 	span := func(it *gridItem) (int, int) {
@@ -320,6 +323,8 @@ func (e *engine) sizeTracks(tracks []track, items []*gridItem, columns bool, ava
 		}
 		return false
 	}
+	intrinsicMin := func(t track) bool { return t.minKind == "auto" || t.minKind == "min" || t.minKind == "max" }
+	intrinsicMax := func(t track) bool { return t.maxKind == "auto" || t.maxKind == "min" || t.maxKind == "max" }
 	// 1. 한 트랙 항목의 기여
 	for _, it := range items {
 		a, b := span(it)
@@ -338,9 +343,9 @@ func (e *engine) sizeTracks(tracks []track, items []*gridItem, columns bool, ava
 		} else if t.minKind == "max" {
 			base[a] = math.Max(base[a], contrib(it, false))
 		}
-		if limit[a] < 0 || (t.maxKind == "auto" || t.maxKind == "max" || t.maxKind == "min") {
+		if intrinsicMax(t) {
 			c := contrib(it, t.maxKind == "min")
-			if limit[a] < 0 {
+			if math.IsInf(limit[a], 1) {
 				limit[a] = c
 			} else {
 				limit[a] = math.Max(limit[a], c)
@@ -348,45 +353,135 @@ func (e *engine) sizeTracks(tracks []track, items []*gridItem, columns bool, ava
 		}
 	}
 	for i := range limit {
-		if limit[i] < 0 {
-			limit[i] = base[i]
-		}
 		if limit[i] < base[i] {
 			limit[i] = base[i]
 		}
 	}
-	// 2. 여러 트랙에 걸친 항목 — fr이 없는 구간에서 모자라는 만큼 auto 트랙에 고르게 더한다.
+	// 2. 여러 트랙에 걸친 항목 (fr 트랙을 지나지 않는 것) — 걸친 트랙 수가 작은 무리부터 차례로.
+	// 모자라는 공간은 고르게 나누되 트랙마다 한계에서 멈춘다: base는 성장 한계까지, 성장 한계는
+	// 제자리까지(무한히 자랄 수 있다고 표시된 트랙만 계속). 모두 멈추고도 남으면 그때 넘쳐서 나눈다.
+	// 한계가 무한한 트랙(항목이 없는 auto 트랙)은 그래서 다른 트랙이 내용 크기에 머무는 동안 나머지를
+	// 다 받는다. 한 무리 안에서는 항목마다 낸 증가분 가운데 큰 쪽을 트랙에 더한다.
+	var spanning []*gridItem
 	for _, it := range items {
-		a, b := span(it)
-		if b-a <= 1 || hasFr(a, b) {
-			continue
+		if a, b := span(it); b-a > 1 && !hasFr(a, b) {
+			spanning = append(spanning, it)
 		}
-		need := contrib(it, true) - gap*float64(b-a-1)
-		have := 0.0
-		var autos []int
-		for i := a; i < b; i++ {
-			have += base[i]
-			if tracks[i].minKind == "auto" {
-				autos = append(autos, i)
+	}
+	spanLen := func(it *gridItem) int { a, b := span(it); return b - a }
+	sort.SliceStable(spanning, func(i, j int) bool { return spanLen(spanning[i]) < spanLen(spanning[j]) })
+	growable := make([]bool, n)
+	// fill은 space를 idx 트랙에 고르게 나눈다 — room(i)에 닿은 트랙은 멈춘다. 다 나누지 못한 몫을 낸다.
+	fill := func(space float64, idx []int, inc []float64, room func(i int) float64) float64 {
+		active := idx
+		for space > 1e-9 && len(active) > 0 {
+			share := space / float64(len(active))
+			var next []int
+			for _, i := range active {
+				if r := math.Max(0, room(i)-inc[i]); r <= share {
+					inc[i] += r
+					space -= r
+				} else {
+					next = append(next, i)
+				}
+			}
+			if len(next) == len(active) {
+				for _, i := range next {
+					inc[i] += share
+				}
+				return 0
+			}
+			active = next
+		}
+		return space
+	}
+	// grow는 한 무리의 항목을 받아 affected 트랙의 base(growth=false) 또는 성장 한계(growth=true)를
+	// 키운다. minC는 최소 기여를 쓸지, beyond는 한계를 넘쳐 받을 트랙이다 (없으면 affected 전부).
+	grow := func(group []*gridItem, affected func(t track) bool, minC, growth bool, beyond func(t track) bool, markGrowable bool) {
+		planned := make([]float64, n)
+		for _, it := range group {
+			a, b := span(it)
+			space := contrib(it, minC) - gap*float64(b-a-1)
+			var idx []int
+			for i := a; i < b; i++ {
+				if growth && !math.IsInf(limit[i], 1) {
+					space -= limit[i]
+				} else {
+					space -= base[i]
+				}
+				if affected(tracks[i]) {
+					idx = append(idx, i)
+				}
+			}
+			if space <= 1e-9 || len(idx) == 0 {
+				continue
+			}
+			inc := make([]float64, n)
+			space = fill(space, idx, inc, func(i int) float64 {
+				if !growth {
+					return limit[i] - base[i]
+				}
+				if growable[i] || math.IsInf(limit[i], 1) {
+					return math.Inf(1)
+				}
+				return 0
+			})
+			if space > 1e-9 {
+				var over []int
+				for _, i := range idx {
+					if beyond(tracks[i]) {
+						over = append(over, i)
+					}
+				}
+				if len(over) == 0 {
+					over = idx
+				}
+				fill(space, over, inc, func(int) float64 { return math.Inf(1) })
+			}
+			for i := range planned {
+				planned[i] = math.Max(planned[i], inc[i])
 			}
 		}
-		if need > have && len(autos) > 0 {
-			add := (need - have) / float64(len(autos))
-			for _, i := range autos {
-				base[i] += add
-				limit[i] = math.Max(limit[i], base[i])
+		for i, p := range planned {
+			switch {
+			case p <= 0:
+			case !growth:
+				base[i] += p
+			case math.IsInf(limit[i], 1):
+				limit[i] = base[i] + p
+				growable[i] = markGrowable
+			default:
+				limit[i] += p
 			}
 		}
-		needMax := contrib(it, false) - gap*float64(b-a-1)
-		haveMax := 0.0
-		for i := a; i < b; i++ {
-			haveMax += limit[i]
+	}
+	all := func(track) bool { return true }
+	maxContentMax := func(t track) bool { return t.maxKind == "auto" || t.maxKind == "max" }
+	for g := 0; g < len(spanning); {
+		h := g
+		for h < len(spanning) && spanLen(spanning[h]) == spanLen(spanning[g]) {
+			h++
 		}
-		if needMax > haveMax && len(autos) > 0 {
-			add := (needMax - haveMax) / float64(len(autos))
-			for _, i := range autos {
-				limit[i] += add
+		group := spanning[g:h]
+		g = h
+		// "무한히 자랄 수 있다" 표시는 그 무리의 다음 걸음에만 뜻이 있다 — 앞 무리가 남긴 표시가
+		// 다음 무리의 성장 한계 걸음에서 트랙을 한계 없이 키우면 안 된다.
+		clear(growable)
+		grow(group, intrinsicMin, true, false, intrinsicMax, false)
+		grow(group, func(t track) bool { return t.minKind == "min" || t.minKind == "max" }, true, false, intrinsicMax, false)
+		grow(group, func(t track) bool { return t.minKind == "max" }, false, false, maxContentMax, false)
+		for i := range limit {
+			if limit[i] < base[i] {
+				limit[i] = base[i]
 			}
+		}
+		grow(group, intrinsicMax, true, true, all, true)
+		grow(group, maxContentMax, false, true, all, false)
+	}
+	// 끝까지 한계가 무한한 내재 트랙(항목이 없는 트랙)은 base에서 멈춘다.
+	for i, t := range tracks {
+		if intrinsicMax(t) && math.IsInf(limit[i], 1) {
+			limit[i] = base[i]
 		}
 	}
 	gaps := gap * float64(max(n-1, 0))
