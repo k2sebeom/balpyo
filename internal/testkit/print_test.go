@@ -136,6 +136,49 @@ func TestEntrancesAreAtTheirEndStateOutsideThePresenterView(t *testing.T) {
 	}
 }
 
+// 전환 도중에 인쇄해도 모든 장이 종이에 찍힌다. 발표자가 다음 장으로 넘긴 직후(전환 길이 안)에
+// Cmd+P를 누르면, 이동 표식이 남긴 translate·opacity가 인쇄까지 따라와 나가는 장이 종이 밖으로
+// 밀리거나 투명해진 빈 페이지로 나왔다.
+//
+// 판정은 링크 주석이다 (좌표로 놓은 글의 인쇄와 같은 방법): 장마다 링크를 하나씩 두고, 인쇄한 PDF에
+// 둘 다 있으면 두 장 모두 그려진 것이다. push와 fade 둘 다 본다 — 둘은 다른 속성으로 숨긴다.
+func TestPrintDuringASlideTransitionKeepsEverySlide(t *testing.T) {
+	for _, kind := range []string{"push", "fade"} {
+		t.Run(kind, func(t *testing.T) {
+			outDir := buildHTML(t, map[string]string{
+				"balpyo.json":        `{"title": "print"}`,
+				"slides/001_a.slide": `<slide id="a"><h1><a href="https://example.com/leaving">leaving</a></h1></slide>`,
+				"slides/002_b.slide": `<slide id="b" transition="` + kind + `"><h1><a href="https://example.com/arriving">arriving</a></h1></slide>`,
+			})
+			browser := NewBrowser(t)
+			browser.Load(t, filepath.Join(outDir, web.IndexFile))
+			browser.Eval(t, web.PresenterViewExpr(), nil)
+			// 다음 장으로 넘기고 전환이 끝나기 전에 인쇄한다. 표식이 아직 남아 있음을 먼저 확인한다 —
+			// 그렇지 않으면 이 테스트는 전환과 무관하게 통과한다. 측정 브라우저는 동작 줄이기를 켜고
+			// 뜨므로(런타임은 그때 전환을 건너뛴다) 이 페이지에서만 그 질의를 거짓으로 답한다.
+			var moving bool
+			browser.Eval(t, `(() => {
+  const media = window.matchMedia.bind(window);
+  window.matchMedia = (q) => q.includes("prefers-reduced-motion") ? {matches: false, media: q} : media(q);
+  window.dispatchEvent(new KeyboardEvent("keydown", {key: "ArrowRight"}));
+  return document.querySelectorAll(".balpyo-viewer-moving").length > 0;
+})()`, &moving)
+			if !moving {
+				t.Fatal("다음 장으로 넘긴 직후에 전환 표식이 없다 — 전환 도중의 인쇄를 재현하지 못한다")
+			}
+			pdf, err := os.ReadFile(browser.PrintPDF(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, uri := range []string{"https://example.com/leaving", "https://example.com/arriving"} {
+				if !bytes.Contains(pdf, []byte(uri)) {
+					t.Errorf("전환 도중에 인쇄한 PDF에 %s가 없다 — 그 장이 종이에서 빠졌다", uri)
+				}
+			}
+		})
+	}
+}
+
 // buildHTML은 files(프로젝트 상대 경로 → 내용)로 프로젝트를 만들어 HTML만 빌드하고 출력 디렉토리를 돌려준다.
 func buildHTML(t *testing.T, files map[string]string) string {
 	t.Helper()

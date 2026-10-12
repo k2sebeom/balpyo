@@ -13,6 +13,14 @@ import (
 	"github.com/k2sebeom/balpyo/soml"
 )
 
+// utf8BOM은 UTF-8로 인코딩한 바이트 순서 표지(U+FEFF)다.
+var utf8BOM = []byte("\uFEFF")
+
+// trimBOM은 파일 맨 앞의 UTF-8 BOM을 떼어 낸다. 메모장 같은 에디터가 저장할 때 붙이는데,
+// 에디터는 그것을 보여 주지 않는다 — 그대로 두면 JSON 디코더가 "invalid character"로 거부해
+// 저자에게 멀쩡해 보이는 파일이 깨지고, 진단의 칸도 에디터와 한 칸씩 어긋난다.
+func trimBOM(data []byte) []byte { return bytes.TrimPrefix(data, utf8BOM) }
+
 // themeFileError는 테마 파일 하나의 읽기 에러다 — 진단이 `balpyo.json`이 아니라 고칠 파일
 // (`themes/<이름>/components.json`)과 그 안의 줄:칸을 가리키게 한다. 테마 이름을 요청한 자리는
 // `balpyo.json`이지만, 저자가 열어야 하는 것은 틀린 키가 있는 파일이다.
@@ -34,23 +42,23 @@ func (e *themeFileError) diagnostic() soml.Diagnostic {
 	return soml.Errorf(e.file, soml.Span{Start: e.pos, End: e.pos}, "%s", e.msg)
 }
 
-// decodeThemeJSON은 테마 JSON 파일 하나를 v에 읽는다. closed면 v의 스키마에 없는 키를 에러로 낸다
-// — 조용히 무시하면 저자가 오버라이드가 먹었다고 착각한다. `$comment`로 시작하는 키는 어느 객체에서나
-// 문서 주석이다 (`$comment-accent`처럼 주석을 값 옆에 여럿 둘 수 있게).
+// decodeThemeJSON은 테마 JSON 파일 하나를 v에 읽고, v의 스키마에 없는 키를 에러로 낸다 — 조용히
+// 무시하면 저자가 오버라이드가 먹었다고 착각한다 (theme.json도 같다: 크롬 선언의 `skipLayout` 오타를
+// 버리면 푸터가 빼려던 레이아웃에 실린다). `$comment`로 시작하는 키는 어느 객체에서나 문서 주석이다
+// (`$comment-accent`처럼 주석을 값 옆에 여럿 둘 수 있게).
 //
 // 키 검사를 encoding/json의 DisallowUnknownFields에 맡기지 않는 이유: 그 에러는 키 이름만 말하고
 // JSON 안의 경로도 줄 번호도 없어서, 같은 이름(`lineHeight`)이 여러 절에 있으면 저자가 항목을 하나씩
 // 지워 가며 찾아야 한다. 그리고 접두사 규칙(`$comment*`)을 표현할 수 없다.
-func decodeThemeJSON(data []byte, file string, v any, closed bool) error {
-	if closed {
-		if err := checkJSONKeys(data, 0, reflect.TypeOf(v).Elem(), "", data, true); err != nil {
-			var fe *themeFileError
-			if errors.As(err, &fe) {
-				fe.file = file
-				return fe
-			}
-			return &themeFileError{file: file, msg: err.Error()}
+func decodeThemeJSON(data []byte, file string, v any) error {
+	data = trimBOM(data)
+	if err := checkJSONKeys(data, 0, reflect.TypeOf(v).Elem(), "", data, true); err != nil {
+		var fe *themeFileError
+		if errors.As(err, &fe) {
+			fe.file = file
+			return fe
 		}
+		return &themeFileError{file: file, msg: err.Error()}
 	}
 	if err := json.Unmarshal(data, v); err != nil {
 		return jsonDecodeError(data, file, err)

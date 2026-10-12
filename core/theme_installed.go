@@ -70,7 +70,7 @@ func ReadThemeHeader(fsys fs.FS, dir string) (ThemeHeader, error) {
 		return ThemeHeader{}, fmt.Errorf("cannot read theme.json: %w", err)
 	}
 	var m themeManifest
-	if err := json.Unmarshal(data, &m); err != nil {
+	if err := json.Unmarshal(trimBOM(data), &m); err != nil {
 		return ThemeHeader{}, fmt.Errorf("cannot parse %s/theme.json: %w", dir, err)
 	}
 	if m.Name == "" {
@@ -95,12 +95,13 @@ func CheckInstalledTheme(home fs.FS, name string) (soml.Diagnostics, error) {
 	if err != nil {
 		return nil, err
 	}
-	merged := chain[0]
-	for _, child := range chain[1:] {
-		merged = mergeRawTheme(merged, child)
-	}
-	if _, err := buildThemePackage(merged); err != nil {
-		return nil, fmt.Errorf("theme %q: %w", name, err)
+	if _, err := buildThemeChain(chain); err != nil {
+		// 선언의 자리를 찾은 에러는 이미 테마 이름과 파일을 말한다.
+		var de *themeDeclError
+		if errors.As(err, &de) {
+			return nil, fmt.Errorf("theme %q: %w", name, err)
+		}
+		return nil, err
 	}
 	return lintThemeChain(chain, originInstalled), nil
 }

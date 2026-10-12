@@ -447,6 +447,7 @@
 | 조건 | 진단 메시지 |
 |---|---|
 | 내용을 담았다 | `void tag <image> cannot have content (write <image/>)` |
+| HTML처럼 `/` 없이 닫았다 (`<image src="…">`) | `void tag <image> must be self-closed (write <image/>)` |
 | 문단·리스트 항목 안에 썼다 | `only character data and inline tags are allowed inside <p> (<image> is not allowed)` |
 | 도형의 **직속** 자식으로 썼다 | `<shape> cannot contain <image> (available tags: <text>, <h1>, …, <row>, <col>, <grid>, <stack>)` — 도형 안 그림은 컨테이너를 거쳐 들어온다 (`<shape><col><image/></col></shape>`) |
 | 어휘 밖의 속성 (`fill`·`frame`·`type`·`anchor` …) | `unknown attribute fill on <image> (available attributes: src, id, fit, alt, variant, border, radius, shadow, opacity, rotate, flip, pad, w, h, min-w, min-h, max-w, max-h, ratio, grow, shrink, basis, span, self, order, at, x, y, style, slot, enter)` |
