@@ -1,6 +1,7 @@
 site_name: balpyo
 site_description: SOML로 슬라이드를 쓰면 balpyo가 웹 프레젠테이션과 편집 가능한 네이티브 PPTX로 렌더링한다.
 site_author: k2sebeom
+site_url: https://k2sebeom.github.io/balpyo/
 repo_url: https://github.com/k2sebeom/balpyo
 repo_name: k2sebeom/balpyo
 
