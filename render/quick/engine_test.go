@@ -129,6 +129,20 @@ func TestGridRowMinContributionUsesMinHeight(t *testing.T) {
 	}
 }
 
+// 행의 최소 기여에 들어가는 퍼센트 padding은 항목의 grid 영역 폭에 대해 푼다 (CSS에서 퍼센트
+// padding은 포함 블록의 inline 크기를 기준으로 한다). 0에 대해 풀면 padding이 빠져 `1fr` 행이
+// 항목의 padding box보다 작아지고, 항목이 아래 auto 행과 겹친다.
+func TestGridRowMinContributionResolvesPercentPadding(t *testing.T) {
+	_, b := layoutBody(t, baseCSS, `<div id="g" style="display: grid; width: 1280px; height: 150px; row-gap: 24px; `+
+		`grid-template-rows: 1fr auto; grid-template-areas: 'media' 'caption'">`+
+		`<div id="m" style="grid-area: media; height: 100%; min-height: 0; padding-top: 10%"><div style="height: 900px"></div></div>`+
+		`<div id="c" style="grid-area: caption; height: 25px"></div></div>`)
+	if !near(b["m"].y, 0) || !near(b["m"].h, 128) || !near(b["c"].y, 152) || !near(b["c"].h, 25) {
+		t.Errorf("media y=%.1f h=%.1f, caption y=%.1f h=%.1f; want media 0+128, caption 152+25",
+			b["m"].y, b["m"].h, b["c"].y, b["c"].h)
+	}
+}
+
 // grid 컨테이너의 절대 배치 자식은 grid-area가 정한 영역을 포함 블록으로 쓴다 — 끝 줄이 auto인
 // 변은 padding box 끝까지 간다.
 func TestAbsoluteInGridArea(t *testing.T) {
