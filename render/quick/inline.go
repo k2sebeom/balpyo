@@ -273,7 +273,11 @@ type piece struct {
 	atomic     *box
 }
 
-func (e *engine) shapeRange(p *para, start, end int) []piece {
+// shapeRange는 [start, end)를 계산값이 같은 구간마다 셰이핑한다. 구간은 같은 계산값의 텍스트가
+// 이어지는 데까지(원자 인라인 · 강제 줄바꿈에서 끊긴다) 한 덩어리로 셰이핑해 잘라 내므로 줄바꿈
+// 기회 너머 이웃과의 커닝이 폭에 든다. 오른쪽 문맥은 limit에서 멈춘다 — 줄이 거기서 끝나면
+// 브라우저는 줄 끝을 다시 셰이핑하므로 다음 줄로 넘어간 글자와의 커닝은 남지 않는다.
+func (e *engine) shapeRange(p *para, start, end, limit int) []piece {
 	var out []piece
 	for i := start; i < end; {
 		if a, ok := p.atomics[i]; ok {
@@ -292,11 +296,34 @@ func (e *engine) shapeRange(p *para, start, end int) []piece {
 			j++
 		}
 		st := p.styles[i]
-		text := applyTransform(string(p.runes[i:j]), st.get("text-transform"))
-		out = append(out, piece{start: i, end: j, st: st, shaped: e.fonts.shape(fontStyleOf(st), text)})
+		out = append(out, piece{start: i, end: j, st: st, shaped: e.shapeInContext(p, i, j, limit)})
 		i = j
 	}
 	return out
+}
+
+// shapeInContext는 같은 계산값의 텍스트 [i, j)를 앞뒤 문맥(오른쪽은 limit까지)과 함께 셰이핑해
+// 그 구간만 떼어 낸다.
+func (e *engine) shapeInContext(p *para, i, j, limit int) shapedText {
+	st := p.styles[i]
+	same := func(k int) bool {
+		_, atomic := p.atomics[k]
+		return p.styles[k] == st && !atomic
+	}
+	cs, ce := i, j
+	for cs > 0 && same(cs-1) && !p.forced[cs] {
+		cs--
+	}
+	for ce < limit && same(ce) && !p.forced[ce] {
+		ce++
+	}
+	fs, transform := fontStyleOf(st), st.get("text-transform")
+	text := applyTransform(string(p.runes[cs:ce]), transform)
+	if len([]rune(text)) != ce-cs {
+		// 대소문자 변환이 글자 수를 바꾸면 문자 위치가 어긋난다: 구간만 따로 셰이핑한다.
+		return e.fonts.shape(fs, applyTransform(string(p.runes[i:j]), transform))
+	}
+	return e.fonts.shape(fs, text).slice(i-cs, j-cs)
 }
 
 func (e *engine) atomicWidth(a *box, cbw float64) float64 {
@@ -358,7 +385,7 @@ func (e *engine) inlineIntrinsic(b *box, min bool) float64 {
 			best = math.Max(best, line)
 			line = 0
 		}
-		core := e.piecesWidth(e.shapeRange(p, w.start, w.spaceStart), 0)
+		core := e.piecesWidth(e.shapeRange(p, w.start, w.spaceStart, w.end), 0)
 		if min {
 			wordW := core
 			if anywhere(p.styles[w.start]) {
@@ -370,9 +397,10 @@ func (e *engine) inlineIntrinsic(b *box, min bool) float64 {
 			best = math.Max(best, wordW)
 			continue
 		}
-		space := e.piecesWidth(e.shapeRange(p, w.spaceStart, w.end), 0)
+		// 줄이 이 단어에서 끝나면 오른쪽 문맥이 없고, 이어지면 다음 단어와의 커닝까지 든다.
+		full := e.piecesWidth(e.shapeRange(p, w.start, w.end, len(p.runes)), 0)
 		best = math.Max(best, line+core)
-		line += core + space
+		line += full
 	}
 	if !min {
 		best = math.Max(best, line-0)
@@ -383,7 +411,7 @@ func (e *engine) inlineIntrinsic(b *box, min bool) float64 {
 func (e *engine) widestCluster(p *para, start, end int) float64 {
 	best := 0.0
 	for i := start; i < end; i++ {
-		best = math.Max(best, e.piecesWidth(e.shapeRange(p, i, i+1), 0))
+		best = math.Max(best, e.piecesWidth(e.shapeRange(p, i, i+1, i+1), 0))
 	}
 	return best
 }
@@ -393,6 +421,14 @@ type placed struct {
 	piece
 	x, w  float64
 	trail bool // 줄 끝 공백
+}
+
+// fitsLine은 폭 width인 내용이 줄 폭 avail에 들어가는지다. 브라우저는 둘을 1/64px 고정 소수로
+// 견준다: 내용 폭은 올림, 줄 폭은 내림한 뒤 반올림 오차를 덮으려고 1/64px을 더 허용한다. 그래서
+// 꼭 맞는 줄은 들어가고, 1/64px 넘게 넘치는 줄은 들어가지 않는다. 부동소수 덧셈의 찌꺼기가 올림을
+// 한 칸 밀지 않도록 1/1000칸은 무시한다.
+func fitsLine(width, avail float64) bool {
+	return math.Ceil(width*64-1e-3) <= math.Floor(avail*64+1e-3)+1
 }
 
 // layoutInline은 줄을 채우고 내용 높이를 낸다.
@@ -413,7 +449,14 @@ func (e *engine) layoutInline(b *box, innerW float64, fr edges) float64 {
 	var cur []placed
 	x := indent
 	first := true
+	end := len(p.runes)
 	flush := func(forced bool) {
+		// 줄 끝 조각은 다음 줄로 넘어간 글자와의 커닝 없이 다시 셰이핑한다.
+		if n := len(cur); n > 0 && cur[n-1].atomic == nil {
+			last := &cur[n-1]
+			last.shaped = e.shapeInContext(p, last.start, last.end, last.end)
+			last.w = last.shaped.width
+		}
 		lines = append(lines, cur)
 		forcedEnd = append(forcedEnd, forced)
 		cur = nil
@@ -436,22 +479,21 @@ func (e *engine) layoutInline(b *box, innerW float64, fr edges) float64 {
 			x += w
 		}
 	}
-	const eps = 0.01
 	for i, w := range ws {
 		if w.mandatory && i > 0 {
 			flush(true)
 		}
-		corePieces := e.shapeRange(p, w.start, w.spaceStart)
+		corePieces := e.shapeRange(p, w.start, w.spaceStart, end)
 		core := e.piecesWidth(corePieces, innerW)
-		if len(cur) > 0 && x+core > innerW+eps && wraps(whiteSpace(p.styles[w.start])) {
+		if len(cur) > 0 && !fitsLine(x+core, innerW) && wraps(whiteSpace(p.styles[w.start])) {
 			flush(false)
 		}
-		if x+core > innerW+eps && breakWord(p.styles[w.start]) && wraps(whiteSpace(p.styles[w.start])) {
+		if !fitsLine(x+core, innerW) && breakWord(p.styles[w.start]) && wraps(whiteSpace(p.styles[w.start])) {
 			// 한 단어가 줄보다 넓다: 글자 단위로 끊는다.
 			for j := w.start; j < w.spaceStart; j++ {
-				ps := e.shapeRange(p, j, j+1)
+				ps := e.shapeRange(p, j, j+1, end)
 				cw := e.piecesWidth(ps, innerW)
-				if len(cur) > 0 && x+cw > innerW+eps {
+				if len(cur) > 0 && !fitsLine(x+cw, innerW) {
 					flush(false)
 				}
 				place(ps, false)
@@ -460,7 +502,7 @@ func (e *engine) layoutInline(b *box, innerW float64, fr edges) float64 {
 			place(corePieces, false)
 		}
 		if w.spaceStart < w.end {
-			place(e.shapeRange(p, w.spaceStart, w.end), true)
+			place(e.shapeRange(p, w.spaceStart, w.end, end), true)
 		}
 	}
 	flush(false)
