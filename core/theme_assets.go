@@ -1,8 +1,10 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"image/jpeg"
 	"io/fs"
 	"path"
 	"strings"
@@ -141,6 +143,53 @@ func (a *assetResolver) use(rel string) (key string, found bool, msg string) {
 	return key, true, ""
 }
 
+// uprightDir는 EXIF 방향대로 세워 다시 인코딩한 그림의 자리다 — 키가 `themes/<주인>/upright/assets/…`라
+// 테마 자산의 키(`themes/<주인>/assets/…`)와 겹칠 수 없다.
+const uprightDir = "upright"
+
+// uprightQuality는 다시 인코딩하는 JPEG의 품질이다 — 사진 배경에서 재압축 손실이 눈에 띄지 않을 만큼 높다.
+const uprightQuality = 95
+
+// upright는 배경 그림의 키를 **세운 픽셀의 그림**으로 바꾼다 — EXIF 방향이 그대로인 그림은 키를 그대로
+// 돌려준다.
+//
+// 배경만 픽셀을 세우는 이유: `<image>`와 로고는 PPTX에서 그림 도형(`p:pic`)이라 회전 · 대칭을 `xfrm`에 적어
+// 원래 바이트를 그대로 싣는다. 슬라이드 배경(`p:bg`의 `blipFill`)에는 회전을 적을 자리가 없고 PowerPoint는
+// EXIF를 보지 않으므로, 브라우저가 세워 그리는 사진이 PPTX에서만 누워 보인다. 그래서 배경으로 쓸 때만 세운
+// 픽셀을 방향 태그 없이 다시 인코딩하고, 두 타깃이 그 한 그림을 쓴다. 같은 파일을 다른 자리에서 쓰면 그쪽은
+// 원래 바이트다 (키가 다르다). Go의 JPEG 인코더는 같은 픽셀에 같은 바이트를 내므로 산출물이 결정적이다.
+func (a *assetResolver) upright(key, rel string) (string, error) {
+	asset, ok := a.used.Get(key)
+	if !ok {
+		return "", fmt.Errorf("%q is not in the theme asset table — this is an engine bug", key)
+	}
+	o := asset.Orientation
+	if o.Rotation() == 0 && !o.FlipH() {
+		return key, nil
+	}
+	uprightKey := themeAssetKey(a.files[rel].owner, path.Join(uprightDir, rel))
+	if _, ok := a.used.Get(uprightKey); ok {
+		return uprightKey, nil
+	}
+	img, err := jpeg.Decode(bytes.NewReader(asset.Bytes))
+	if err != nil {
+		return "", fmt.Errorf("cannot decode %s to apply its EXIF orientation: %v", key, err)
+	}
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, o.Upright(img), &jpeg.Options{Quality: uprightQuality}); err != nil {
+		return "", fmt.Errorf("cannot re-encode %s upright: %v", key, err)
+	}
+	a.used = append(a.used, soml.Asset{
+		Key:    uprightKey,
+		Format: soml.FormatJPEG,
+		// 고유 크기는 이미 보이는 그림의 것이다 (decodeImageAsset) — 세운 픽셀의 크기와 같다.
+		Width:  asset.Width,
+		Height: asset.Height,
+		Bytes:  buf.Bytes(),
+	})
+	return uprightKey, nil
+}
+
 // backgroundFile은 theme.json의 배경 선언 하나다 (원문).
 //
 // `layouts`를 생략한 선언은 **기본 배경**이다 (나머지 모든 레이아웃). 배경은 채움 **또는** 그림이다 —
@@ -207,6 +256,9 @@ func loadBackgrounds(manifest themeManifest, theme soml.Theme, assets *assetReso
 			key, err := assets.resolve(where+" image", raw.Image)
 			if err != nil {
 				return decls, err
+			}
+			if key, err = assets.upright(key, raw.Image); err != nil {
+				return decls, fmt.Errorf("%s image: %w", where, err)
 			}
 			bg.Image = key
 		}

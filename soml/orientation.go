@@ -1,6 +1,9 @@
 package soml
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"image"
+)
 
 // 이 파일은 **JPEG의 EXIF 방향**이다 — 휴대폰 사진은 픽셀을 센서 방향 그대로 저장하고 "이렇게
 // 돌려서 보라"를 EXIF 태그(0x0112) 하나로 적는다.
@@ -8,7 +11,8 @@ import "encoding/binary"
 // 브라우저는 그 태그를 따른다 (`image-orientation: from-image`가 기본값이다): 웹은 돌린 그림을
 // 보여주고, 지오메트리 패스도 돌린 박스를 잰다. PowerPoint는 그림의 EXIF를 보지 않으므로 PPTX가
 // 같은 그림을 보여주려면 돌림을 `xfrm`의 회전·대칭으로 옮겨야 한다. 바이트는 고치지 않는다 —
-// 다시 인코딩하면 저자가 커밋한 파일과 산출물의 그림이 다른 것이 된다.
+// 다시 인코딩하면 저자가 커밋한 파일과 산출물의 그림이 다른 것이 된다. 회전을 적을 자리가 없는
+// 슬라이드 배경만은 세운 픽셀을 다시 인코딩한다 (Upright).
 
 // Orientation은 EXIF 방향 태그 값이다 (1–8). 0은 태그가 없다는 뜻이고 1과 같이 그린다.
 //
@@ -59,6 +63,44 @@ func (o Orientation) FlipH() bool {
 // SwapsAxes는 보이는 그림의 가로·세로가 저장된 픽셀과 뒤바뀌는가다 (5–8 — 90°·270° 회전).
 func (o Orientation) SwapsAxes() bool {
 	return o.Rotation()%180 != 0
+}
+
+// Upright는 저장된 픽셀을 이 방향대로 세운 그림이다 — 대칭을 먼저 하고 시계 방향으로 돌린다. 방향이
+// 그대로(0 · 1)면 받은 그림을 그대로 돌려준다.
+//
+// 픽셀을 직접 세워야 하는 소비자가 둘이다: 브라우저 없이 그리는 렌더러와, 회전을 적을 자리가 없는
+// PPTX 슬라이드 배경(`p:bg`의 `blipFill`)이다.
+func (o Orientation) Upright(img image.Image) image.Image {
+	rotate, flip := o.Rotation(), o.FlipH()
+	if rotate == 0 && !flip {
+		return img
+	}
+	b := img.Bounds()
+	w, h := b.Dx(), b.Dy()
+	dw, dh := w, h
+	if o.SwapsAxes() {
+		dw, dh = h, w
+	}
+	out := image.NewRGBA(image.Rect(0, 0, dw, dh))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			sx := x
+			if flip {
+				sx = w - 1 - x
+			}
+			dx, dy := sx, y
+			switch rotate {
+			case 90:
+				dx, dy = h-1-y, sx
+			case 180:
+				dx, dy = w-1-sx, h-1-y
+			case 270:
+				dx, dy = y, w-1-sx
+			}
+			out.Set(dx, dy, img.At(b.Min.X+x, b.Min.Y+y))
+		}
+	}
+	return out
 }
 
 // exifOrientationTag는 IFD0의 방향 태그 번호다.
