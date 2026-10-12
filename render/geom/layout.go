@@ -101,12 +101,16 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 	// 경고에 세어 붙인다 (foldInto) — 스테이지를 넘친 목록 하나가 항목마다 경고를 내지 않게.
 	escaped := map[int]int{}
 	folds := map[int]*escapeFold{}
+	charts := newChartDiagnosis()
 	for i, ref := range refs {
 		index[ref.ID] = i
 		box := g.Boxes[i]
 		parent, hasParent := index[ref.Parent]
+		charts.visit(refs, index, i, box)
 
 		var warning *soml.Diagnostic
+		// 이탈의 방향과 양이다 — 차트 틀의 넘침은 문장을 따로 쓰므로(render/geom/chart.go) 숫자만 넘긴다.
+		warnDir, warnOver := "", 0.0
 		// 부모 판정을 묻는 자리다 — 좌표를 직접 쓴 요소와 표의 셀은 부모 변을 넘는 것이 정상이다.
 		//
 		// 좌표를 직접 쓴 요소(와 그 자손)는 부모 변과 여백을 넘어서는 것이 저작 수단이다. 표의 셀은
@@ -135,11 +139,13 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 				"<%s> overflows its parent <%s> %s by %s%s — the parent box is too small for its content",
 				ref.Tag, refs[parent].Tag, parentDir, px(parentOver), also)
 			warning = &d
+			warnDir, warnOver = parentDir, parentOver
 		case stageOver > overflowTolerance:
 			d := soml.Warningf(ref.Source, ref.Span,
 				"<%s> leaves the stage %s by %s — off-stage content is clipped on screen and placed off the slide in PPTX",
 				ref.Tag, stageDir, px(stageOver))
 			warning = &d
+			warnDir, warnOver = stageDir, stageOver
 		case hasParent || ref.Free:
 			// 부모 안에 있거나 좌표로 놓였다 — 콘텐츠 박스는 슬라이드 직계의 흐름 요소에게만 묻는다.
 		default:
@@ -154,7 +160,20 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 				warning = &d
 			}
 		}
-		if warning != nil {
+		if warning != nil && ref.Part != "" {
+			// 차트의 틀 노드다. 차트 뿌리나 그 바깥이 이미 벗어났다면 틀은 그 결과이고 저자가 쓴 요소가
+			// 아니므로 세지도 않는다. 아니면 차트 하나의 경고에 모은다 — 틀의 자손(범례 항목 · 라벨)은
+			// 그 경고에 접힌다.
+			ancestor, folded := escapedAncestor(refs, index, escaped, ref)
+			if !folded || charts.isEscape(ancestor) {
+				if at, ok := charts.frame(refs, i, warnDir, warnOver, &diags); ok {
+					if _, ok := folds[at]; !ok {
+						folds[at] = &escapeFold{}
+					}
+					escaped[i] = at
+				}
+			}
+		} else if warning != nil {
 			if ancestor, ok := escapedAncestor(refs, index, escaped, ref); ok {
 				folds[ancestor].add(ref.Tag)
 			} else {
@@ -186,6 +205,7 @@ func Diagnose(deck *soml.Deck, g *Geometry) soml.Diagnostics {
 		}
 		siblings[group] = append(siblings[group], i)
 	}
+	diags = charts.finish(refs, diags)
 	for at, fold := range folds {
 		diags[at].Message += fold.suffix()
 	}

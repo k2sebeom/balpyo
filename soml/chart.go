@@ -26,6 +26,17 @@ const (
 	ChartSeriesElement = "series"
 )
 
+// 펼친 차트의 틀 노드가 속한 부분 (Element.Part). 배치 진단이 넘친 부분을 이 이름으로 말하므로
+// 값은 진단 문장에 그대로 들어가는 영어 구절이다.
+const (
+	// ChartPartPlot은 막대·선이 서는 밴드와 그 칸·기준선이다.
+	ChartPartPlot = "plot"
+	// ChartPartCategoryLabels는 플롯 아래의 범주 라벨 줄이다.
+	ChartPartCategoryLabels = "category labels"
+	// ChartPartLegend는 계열 형식의 범례 줄이다.
+	ChartPartLegend = "legend"
+)
+
 // 차트 종류 — 모두 단일 계열이다. bar는 세로 막대, line은 점을 잇는 꺾은선, area는 꺾은선 아래를 칠한 영역,
 // step은 범주 칸마다 수평인 계단이다. 선 · 영역 · 계단은 경로 도형(`type="path"`) 하나로 펼쳐진다.
 const (

@@ -127,7 +127,8 @@ func (r *resolver) resolveChart(elem *soml.Element) {
 // markChartAuthored는 펼친 하위 트리에서 아직 출처가 없는 노드를 `<chart>`로 적는다
 // (soml.Element.Authored). 한 점·한 계열에서 나온 노드 — 막대, 값·범주 라벨, 범례 항목 — 는 만드는
 // 자리에서 `<point>`·`<series>`를 이미 받았다. 나머지(플롯·칸·기준선·라벨 줄)는 어느 한 점의 것이
-// 아니라 차트의 틀이다.
+// 아니라 차트의 틀이다. 틀 노드는 부분 이름(soml.Element.Part)도 갖는다 — 라벨 줄과 범례는 만드는
+// 자리에서 받았고, 나머지는 플롯이다. 배치 진단이 넘친 틀을 그 이름으로 말한다.
 func markChartAuthored(root *soml.Element) {
 	for _, node := range root.Children {
 		elem, ok := node.(*soml.Element)
@@ -136,6 +137,9 @@ func markChartAuthored(root *soml.Element) {
 		}
 		if elem.Authored == "" {
 			elem.Authored = soml.ChartElement
+			if elem.Part == "" {
+				elem.Part = soml.ChartPartPlot
+			}
 		}
 		markChartAuthored(elem)
 	}
@@ -646,6 +650,7 @@ func chartColumn(span soml.Span, band *soml.Element) *soml.Element {
 // chartBody는 막대 밴드 줄 아래에 범주 라벨 줄을 단다. 라벨은 점의 강조색을 따른다.
 func chartBody(bands *soml.Element, categories []chartDatum) *soml.Element {
 	labels := chartNode(soml.RowElement, categories[0].span, "gap", "0", "w", chartFillAxis)
+	labels.Part = soml.ChartPartCategoryLabels
 	for _, datum := range categories {
 		labels.Children = append(labels.Children, chartCategoryLabel(datum, datum.fill))
 	}
@@ -830,6 +835,7 @@ func chartLinePlot(series []chartSeries, spec chartSpec) *soml.Element {
 	}
 
 	labels := chartNode(soml.RowElement, span, "gap", "0", "w", chartFillAxis)
+	labels.Part = soml.ChartPartCategoryLabels
 	for _, datum := range data {
 		labels.Children = append(labels.Children, chartCategoryLabel(datum, ""))
 	}
@@ -868,14 +874,21 @@ func chartGroupedPlot(series []chartSeries, spec chartSpec) *soml.Element {
 	return chartBody(row, categories)
 }
 
-// chartLegend는 계열 형식의 범례다 — 계열마다 색 견본과 이름이 가운데 정렬된 한 줄이다. 견본은 막대 · 영역이면 사각형,
+// chartLegend는 계열 형식의 범례다 — 계열마다 색 견본과 이름이 가운데 정렬된 줄이다. 견본은 막대 · 영역이면 사각형,
 // 선 · 계단이면 굵은 선이다 (그림에서 그 계열이 보이는 모양).
+//
+// 범례는 **접힌다** (`wrap`): 한 줄에 다 서지 않는 계열들을 한 줄에 두면 flex 축소가 항목을 짜부라뜨리고,
+// 가운데 정렬이 넘친 줄을 차트 양쪽 밖으로 밀어낸다 — 견본이 몇 px 폭이 되고 범례가 스테이지 밖으로 나가는데,
+// 넘침은 양쪽으로 나뉘어 경고의 숫자가 작다. 접으면 범례는 높아지고, 차트가 그 높이를 담지 못하면 그것이
+// 범례 넘침 경고가 된다. 견본은 축소되지 않는다 (`shrink="0"`): 견본의 크기는 계열을 알아보는 표지다.
 func chartLegend(series []chartSeries) *soml.Element {
 	legend := chartNode(soml.RowElement, series[0].span,
 		"gap", chartLegendItemGap,
 		"justify", string(soml.BoxJustifyCenter),
 		"align", string(soml.BoxAlignCenter),
+		"wrap", "true",
 		"w", chartFillAxis)
+	legend.Part = soml.ChartPartLegend
 	for _, s := range series {
 		w, h := "12", "12"
 		if s.kind == soml.ChartTypeLine || s.kind == soml.ChartTypeStep {
@@ -884,7 +897,7 @@ func chartLegend(series []chartSeries) *soml.Element {
 		item := chartNode(soml.RowElement, s.span, "gap", chartLabelGap, "align", string(soml.BoxAlignCenter))
 		name := chartNode(soml.TextElement, s.span, "role", string(soml.RoleCaption))
 		name.Children = []soml.Node{&soml.Text{Value: s.name, Span: s.span}}
-		swatch := chartNode(soml.ShapeElement, s.span, "type", chartFrameType, "fill", s.fill, "border", noneValue, "w", w, "h", h)
+		swatch := chartNode(soml.ShapeElement, s.span, "type", chartFrameType, "fill", s.fill, "border", noneValue, "w", w, "h", h, "shrink", "0")
 		item.Children = []soml.Node{swatch, name}
 		for _, e := range item.Children {
 			e.(*soml.Element).Authored = soml.ChartSeriesElement

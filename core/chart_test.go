@@ -385,6 +385,43 @@ func TestChartSeriesShareTheAxisAndGetALegend(t *testing.T) {
 	}
 }
 
+// 범례는 접히는 줄이고 견본은 축소되지 않는다 — 한 줄에 다 서지 않는 계열들이 견본을 짜부라뜨리거나 범례를
+// 차트 밖으로 밀어내지 않는다. 펼친 틀 노드는 모두 부분 이름을 갖는다 (배치 진단이 넘친 부분을 그 이름으로
+// 말한다): 범주 라벨 줄 · 범례 · 나머지는 플롯이고, 뿌리와 저자의 점 · 계열에서 나온 노드는 이름이 없다.
+func TestChartLegendWrapsAndFrameNodesNameTheirPart(t *testing.T) {
+	deck := resolvedChart(t, `type="bar" h="420"`,
+		chartSeriesXML(`name="A"`, `label="Q1" value="9"`)+chartSeriesXML(`name="B"`, `label="Q1" value="4"`))
+	parts := map[string]int{}
+	for i, elem := range chartElements(deck) {
+		switch {
+		case i == 0:
+			if elem.Part != "" {
+				t.Errorf("뿌리의 부분 이름 = %q, want 없음", elem.Part)
+			}
+		case elem.Authored == soml.ChartElement:
+			if elem.Part == "" {
+				t.Errorf("틀 노드 <%s>에 부분 이름이 없다", elem.Name)
+			}
+			parts[elem.Part]++
+		case elem.Part != "":
+			t.Errorf("<%s> 출처의 노드 <%s>가 부분 이름 %q를 갖는다", elem.Authored, elem.Name, elem.Part)
+		}
+		if elem.Part == soml.ChartPartLegend {
+			if c := elem.Container(); c == nil || !c.Wrap {
+				t.Errorf("범례가 접히지 않는다: %+v", c)
+			}
+		}
+		if elem.Authored == soml.ChartSeriesElement && elem.Name == soml.ShapeElement {
+			if p := elem.Placement(); p == nil || p.Shrink == nil || *p.Shrink != 0 {
+				t.Errorf("범례 견본이 축소될 수 있다: %+v", p)
+			}
+		}
+	}
+	if parts[soml.ChartPartLegend] != 1 || parts[soml.ChartPartCategoryLabels] != 1 || parts[soml.ChartPartPlot] == 0 {
+		t.Errorf("틀 노드의 부분 = %v, want 범례 1 · 범주 라벨 1 · 플롯 여럿", parts)
+	}
+}
+
 func TestChartSeriesDiagnostics(t *testing.T) {
 	a := chartSeriesXML(`name="A"`, `label="Q1" value="1"`, `label="Q2" value="2"`)
 	for _, tc := range []struct {

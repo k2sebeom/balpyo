@@ -85,6 +85,9 @@ type Ref struct {
 	// Tag는 진단이 이 요소를 부를 이름이다 — 저자가 쓴 태그다 (soml.Element.AuthoredName). 차트가
 	// 펼친 값 라벨은 El이 "text"이지만 저자가 쓴 것은 `<point>`다.
 	Tag string
+	// Part는 펼친 차트의 틀 노드가 차트의 어느 부분인지다 (soml.Element.Part — 그 밖의 요소는 빈 값).
+	// 틀 노드의 Tag는 뿌리와 같은 "chart"이므로, 배치 진단은 틀의 넘침을 이 이름으로 말한다.
+	Part string
 	// Slide는 0-based 슬라이드 인덱스다.
 	Slide int
 	// Source는 슬라이드 파일 경로다 — 대조가 실패했을 때 진단이 가리킬 곳.
@@ -192,6 +195,7 @@ func collect(refs []Ref, slide *soml.Slide, node soml.Node, path []int, ctx plac
 		ID:      id,
 		El:      elem.Name,
 		Tag:     elem.AuthoredName(),
+		Part:    elem.Part,
 		Slide:   slide.Index,
 		Source:  slide.Source,
 		Parent:  ctx.parent,
