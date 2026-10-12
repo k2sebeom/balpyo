@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"fmt"
 	"image"
-	"image/gif"
 	"os"
 	"path/filepath"
 	"time"
@@ -70,17 +69,6 @@ func Run(opts Options) (*Result, error) {
 		}
 		only[deck.Slides[n-1].Index] = true
 	}
-	drawn, err := quick.Snapshot(deck, quick.Options{DPR: opts.Scale, Only: only, Steps: opts.GIF, Outline: opts.Outline})
-	if err != nil {
-		return res, err
-	}
-	// 내장 엔진이 잰 박스로도 배치 진단을 낸다 — 빌드의 --check-layout과 같은 판정이다.
-	layout := geom.Diagnose(deck, drawn.Geometry)
-	if opts.Build.Strict {
-		layout = layout.Strict()
-	}
-	res.Diagnostics = append(res.Diagnostics, layout...)
-
 	dir := opts.Dir
 	if dir == "" {
 		out, err := pipeline.OutDirPath(opts.Build)
@@ -93,57 +81,93 @@ func Run(opts Options) (*Result, error) {
 		return res, err
 	}
 	res.Dir = dir
-	for i, img := range drawn.Slides {
-		if img == nil {
-			continue
-		}
-		data, err := quick.EncodePNG(img)
+
+	// 그림은 그리는 대로 파일로 쓰고 놓는다 — 덱 전체를 쥐면 메모리가 슬라이드 수와 배율의
+	// 제곱에 비례해 자란다. GIF는 임시 파일에 프레임을 이어 쓰고 끝까지 성공했을 때만 이름을 바꾼다.
+	var anim *gifWriter
+	var animFile *os.File
+	gifPath := filepath.Join(dir, GIFName)
+	if opts.GIF {
+		f, err := os.CreateTemp(dir, GIFName+".*.tmp")
 		if err != nil {
 			return res, err
 		}
-		name := fmt.Sprintf("%03d.png", i+1)
+		animFile = f
+		defer func() {
+			if animFile != nil {
+				animFile.Close()
+				os.Remove(animFile.Name())
+			}
+		}()
+		anim = newGIFWriter(f)
+	}
+	delay := opts.FrameDelay
+	if delay <= 0 {
+		delay = 1500 * time.Millisecond
+	}
+	emit := func(f quick.Frame) error {
+		if anim != nil {
+			if err := anim.Add(quantize(f.Image), delay); err != nil {
+				return err
+			}
+		}
+		if f.Step >= 0 {
+			return nil
+		}
+		data, err := quick.EncodePNG(f.Image)
+		if err != nil {
+			return err
+		}
+		name := fmt.Sprintf("%03d.png", f.Slide+1)
 		if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
-			return res, err
+			return err
 		}
 		res.Written = append(res.Written, name)
+		return nil
 	}
-	if opts.GIF {
-		delay := opts.FrameDelay
-		if delay <= 0 {
-			delay = 1500 * time.Millisecond
-		}
-		var frames []*image.RGBA
-		for _, steps := range drawn.Steps {
-			frames = append(frames, steps...)
-		}
-		data, err := encodeGIF(frames, delay)
-		if err != nil {
+	drawn, err := quick.Snapshot(deck, quick.Options{DPR: opts.Scale, Only: only, Steps: opts.GIF, Outline: opts.Outline, Emit: emit})
+	if err != nil {
+		return res, err
+	}
+	if anim != nil {
+		if err := anim.Close(); err != nil {
 			return res, err
 		}
-		if err := os.WriteFile(filepath.Join(dir, GIFName), data, 0o644); err != nil {
+		if err := animFile.Close(); err != nil {
 			return res, err
 		}
+		if err := os.Chmod(animFile.Name(), 0o644); err != nil {
+			return res, err
+		}
+		if err := os.Rename(animFile.Name(), gifPath); err != nil {
+			return res, err
+		}
+		animFile = nil
 		res.Written = append(res.Written, GIFName)
 	}
+	// 내장 엔진이 잰 박스로도 배치 진단을 낸다 — 빌드의 --check-layout과 같은 판정이다.
+	layout := geom.Diagnose(deck, drawn.Geometry)
+	if opts.Build.Strict {
+		layout = layout.Strict()
+	}
+	res.Diagnostics = append(res.Diagnostics, layout...)
 	res.Elapsed = time.Since(start)
 	return res, layout.Err()
 }
 
-// encodeGIF는 프레임마다 그 프레임의 팔레트로 GIF를 쓴다.
+// encodeGIF는 프레임마다 그 프레임의 팔레트로 GIF를 메모리에 쓴다.
 func encodeGIF(frames []*image.RGBA, delay time.Duration) ([]byte, error) {
-	anim := &gif.GIF{LoopCount: 0}
+	var buf bytes.Buffer
+	w := newGIFWriter(&buf)
 	for _, f := range frames {
 		if f == nil {
 			continue
 		}
-		anim.Image = append(anim.Image, quantize(f))
-		anim.Delay = append(anim.Delay, int(delay/(10*time.Millisecond)))
+		if err := w.Add(quantize(f), delay); err != nil {
+			return nil, err
+		}
 	}
-	if len(anim.Image) == 0 {
-		return nil, fmt.Errorf("no slide to put in the GIF")
-	}
-	var buf bytes.Buffer
-	if err := gif.EncodeAll(&buf, anim); err != nil {
+	if err := w.Close(); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
