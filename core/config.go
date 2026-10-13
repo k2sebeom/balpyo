@@ -127,6 +127,9 @@ func ReadConfig(projectDir string) (Config, error) {
 
 	// BOM은 키 검사보다 먼저 뗀다 — 진단의 줄:칸이 BOM을 보여 주지 않는 에디터와 맞아야 한다.
 	data = trimBOM(data)
+	if err := checkConfigRoot(data); err != nil {
+		return Config{}, err
+	}
 	// 키 검사를 DisallowUnknownFields에 맡기지 않는 이유: 그 에러는 타입이 없고 자리도 말하지 않는다.
 	// 스키마를 따라 걷는 검사는 틀린 키의 줄:칸과 경로(`targets.pptx.mdoe`)를 낸다.
 	if err := checkJSONKeys(data, 0, reflect.TypeOf(cfg), "", data, false); err != nil {
@@ -153,6 +156,37 @@ func ReadConfig(projectDir string) (Config, error) {
 		return Config{}, fmt.Errorf("%s: %w", ConfigFile, err)
 	}
 	return cfg, nil
+}
+
+// checkConfigRoot는 최상위 값이 객체인지 먼저 본다. 여는 `{`가 빠진 파일(`"title": "x", …}`)은
+// 첫 키 문자열이 그대로 완결된 값으로 읽혀서, 이대로 디코딩하면 문법 오류 대신 "최상위가 객체가
+// 아니다"만 남는다 — 저자가 고칠 자리는 그 뒤의 `:`다. 그래서 최상위가 객체가 아니면 파일 전체를
+// 한 값으로 읽어 문법 오류를 먼저 말하고, 문법이 멀쩡할 때만(`"x"`, `[]`) 타입을 말한다.
+func checkConfigRoot(data []byte) error {
+	start := len(data) - len(bytes.TrimLeft(data, " \t\r\n"))
+	if start == len(data) || data[start] == '{' {
+		return nil
+	}
+	if err := json.Unmarshal(data, new(json.RawMessage)); err != nil {
+		return jsonDecodeError(data, ConfigFile, err)
+	}
+	return &themeFileError{file: ConfigFile, pos: offsetPos(data, start),
+		msg: "the top-level value must be an object, not " + jsonValueWord(data[start])}
+}
+
+// jsonValueWord는 JSON 값의 첫 바이트로 그 종류를 저자의 말로 이름 짓는다.
+func jsonValueWord(b byte) string {
+	switch b {
+	case '"':
+		return "string"
+	case '[':
+		return "array"
+	case 't', 'f':
+		return "true or false"
+	case 'n':
+		return "null"
+	}
+	return "number"
 }
 
 // CanonicalLang은 덱 언어를 BCP 47 언어 태그로 읽고 정규형을 돌려준다 ("EN-us" → "en-US",
