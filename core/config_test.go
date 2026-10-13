@@ -172,6 +172,10 @@ func TestLoadConfigErrorsPointIntoTheFile(t *testing.T) {
 		{`{`, "balpyo.json: invalid JSON: unexpected end of file"},
 		{`{"title":"x"} {"a":1}`, "balpyo.json:1:15: unexpected content after the top-level object"},
 		{"{\"title\":\"x\"}\n]", "balpyo.json:2:1: unexpected content after the top-level object"},
+		// 여는 `{`가 빠지면 첫 키가 완결된 문자열 값으로 읽힌다 — 진단은 그 뒤의 `:`를 가리키는 문법 오류다.
+		{"\"title\": \"x\",\n\"author\": \"y\"\n}", "balpyo.json:1:8: invalid JSON: invalid character ':' after top-level value"},
+		{`"x"`, "balpyo.json:1:1: the top-level value must be an object, not string"},
+		{" [1]", "balpyo.json:1:2: the top-level value must be an object, not array"},
 	}
 	for _, tc := range tests {
 		dir := writeConfig(t, tc.body)
