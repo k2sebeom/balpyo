@@ -59,3 +59,58 @@ func TestParityHoldsUnderDifferentFonts(t *testing.T) {
 		t.Errorf("글꼴만 바꿨는데 구조 스냅샷이 움직였다 — 골든이 환경에 묶여 있다\n%s", diffReport(want, got))
 	}
 }
+
+// 윈도우 편집기는 줄 끝을 CRLF로 저장한다. 같은 덱을 CRLF로 쓴 저자도 LF로 쓴 저자와 같은 덱을
+// 받아야 한다: 구조 스냅샷(코드 블록의 줄 · 텍스트 런)과 진단(`line:col` 포함)이 한 바이트도 다르지
+// 않고, 두 타깃의 동일성도 그대로다. 저장소는 체크아웃을 LF로 고정하므로(.gitattributes) CRLF
+// 입력은 이 테스트가 만들어서 판정한다.
+func TestCRLFSlidesBuildTheSameDeck(t *testing.T) {
+	for _, name := range []string{"02_text_subset", "03_layout", "13_code"} {
+		t.Run(name, func(t *testing.T) {
+			original := fixtureByName(t, name)
+			dir := filepath.Join(t.TempDir(), original.Name)
+			if err := os.CopyFS(dir, os.DirFS(original.Dir)); err != nil {
+				t.Fatal(err)
+			}
+			converted := 0
+			err := filepath.WalkDir(filepath.Join(dir, "slides"), func(path string, d os.DirEntry, err error) error {
+				if err != nil || d.IsDir() || filepath.Ext(path) != ".slide" {
+					return err
+				}
+				src, err := os.ReadFile(path)
+				if err != nil {
+					return err
+				}
+				lf := bytes.ReplaceAll(src, []byte("\r\n"), []byte("\n"))
+				converted++
+				return os.WriteFile(path, bytes.ReplaceAll(lf, []byte("\n"), []byte("\r\n")), 0o644)
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if converted == 0 {
+				t.Fatal("CRLF로 바꾼 .slide가 없다 — 이 테스트는 아무것도 증명하지 않는다")
+			}
+
+			other := Fixture{Name: original.Name + "(crlf)", Dir: dir}
+			result := other.Build(t)
+			other.AssertParity(t, result)
+			got := other.goldenFiles(t, result)
+			for _, golden := range []string{layoutGolden, diagnosticsGolden} {
+				want, err := os.ReadFile(filepath.Join(original.GoldenDir(), golden))
+				if os.IsNotExist(err) {
+					if _, ok := got[golden]; ok {
+						t.Errorf("CRLF 입력에서만 %s가 생겼다:\n%s", golden, got[golden])
+					}
+					continue
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !bytes.Equal(got[golden], want) {
+					t.Errorf("줄 끝만 CRLF로 바꿨는데 %s가 움직였다\n%s", golden, diffReport(want, got[golden]))
+				}
+			}
+		})
+	}
+}

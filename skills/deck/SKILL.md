@@ -40,16 +40,19 @@ git clone https://github.com/k2sebeom/balpyo && cd balpyo
 go build -o balpyo ./cmd/balpyo && sudo mv balpyo /usr/local/bin/
 ```
 
-Every `v*` release also has archives for `darwin/{arm64,amd64}` and `linux/{amd64,arm64}` (each
-archive holds just the binary; verify with `sha256sum -c SHA256SUMS`; there is no Windows build) and
-an install script that fetches and verifies one
+Every `v*` release also has archives (`.tar.gz` for `darwin/{arm64,amd64}` and
+`linux/{amd64,arm64}`, a `.zip` holding `balpyo.exe` for `windows/amd64`; each holds just the binary;
+verify with `sha256sum -c SHA256SUMS`, or on Windows compare `Get-FileHash` with the archive's line in
+`SHA256SUMS`) and, for Linux and macOS, an install script that fetches and verifies one
 (`curl -fsSL https://raw.githubusercontent.com/k2sebeom/balpyo/main/install.sh | sh`) — prefer the
 script. Ask the user to run the install themselves if it needs `sudo`.
 
 **A `pptx` target and `--check-layout` need Chromium or Chrome installed** — a headless browser
 measures every box, and the PPTX uses those exact rects. The binary looks at `BALPYO_CHROMIUM`,
-then `chromium`, `chromium-browser`, `google-chrome` on `PATH`, then the macOS app bundles.
-Without one you get
+then `chromium`, `chromium-browser`, `google-chrome` on `PATH`, then the macOS app bundles. On
+Windows it looks for `chrome`, `chromium`, `msedge` on `PATH`, then Chrome's and Edge's install
+folders (under `%ProgramFiles%`, `%ProgramFiles(x86)%`, `%LocalAppData%`) — Edge ships with
+Windows, so a Windows machine normally has one. Without one you get
 `geometry pass failed: no browser found (tried: chromium, …) — set its path with BALPYO_CHROMIUM`.
 Running as root or in a container, the browser's sandbox may refuse to start: set
 `BALPYO_CHROMIUM_NO_SANDBOX=1`.

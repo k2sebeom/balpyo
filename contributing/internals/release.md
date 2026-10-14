@@ -18,25 +18,31 @@ dist/balpyo_v0.3.0_darwin_arm64.tar.gz
 dist/balpyo_v0.3.0_darwin_amd64.tar.gz
 dist/balpyo_v0.3.0_linux_amd64.tar.gz
 dist/balpyo_v0.3.0_linux_arm64.tar.gz
+dist/balpyo_v0.3.0_windows_amd64.zip
 dist/SHA256SUMS
 dist/balpyo.rb
 ```
 
-## 플랫폼 표는 넷이다
+## 플랫폼 표는 다섯이다
 
-| `GOOS/GOARCH` | 아카이브 |
-| --- | --- |
-| `darwin/arm64` | `balpyo_<버전>_darwin_arm64.tar.gz` |
-| `darwin/amd64` | `balpyo_<버전>_darwin_amd64.tar.gz` |
-| `linux/amd64` | `balpyo_<버전>_linux_amd64.tar.gz` |
-| `linux/arm64` | `balpyo_<버전>_linux_arm64.tar.gz` |
+| `GOOS/GOARCH` | 아카이브 | 안의 파일 |
+| --- | --- | --- |
+| `darwin/arm64` | `balpyo_<버전>_darwin_arm64.tar.gz` | `balpyo` |
+| `darwin/amd64` | `balpyo_<버전>_darwin_amd64.tar.gz` | `balpyo` |
+| `linux/amd64` | `balpyo_<버전>_linux_amd64.tar.gz` | `balpyo` |
+| `linux/arm64` | `balpyo_<버전>_linux_arm64.tar.gz` | `balpyo` |
+| `windows/amd64` | `balpyo_<버전>_windows_amd64.zip` | `balpyo.exe` |
 
-- **윈도우는 없다.** 근거는 없음이 아니라 **재보지 않았음**이다: 경로 구분자·CRLF·폰트 대체·
-  `soffice` 위치를 한 번도 측정하지 않았고, 측정하지 않은 플랫폼의 아카이브를 놓는 것은
-  "빌드된다"를 "된다"로 발표하는 일이다.
+- 표에 오르는 조건은 "빌드된다"가 아니라 **재봤다**다 — CI가 그 플랫폼에서 같은 게이트를 돈다.
+  윈도우는 `windows-latest` 러너가 리눅스와 같은 `go test ./...`(엄격 모드, 같은 Noto 글꼴)를 돌므로
+  표에 있다. `windows/arm64`는 크로스 컴파일은 되지만 그것을 도는 러너가 없으므로 없다. 근거는
+  [ADR 0095](../decisions/0095-windows-is-measured-in-ci-and-released-as-a-zip.md)에 있다 (0061의
+  "넷"을 대체한다).
 - 표는 `release.Targets()`에 있고 **테스트가 그 목록을 판정한다** — 타깃을 지우거나 더하는
   커밋은 테스트를 먼저 고쳐야 하고, 그 자리에서 "재봤는가"를 묻게 된다.
-- 아카이브 안에는 **바이너리 하나**만 있다. 저자가 `tar xzf` 후 찾을 것이 하나다.
+- 아카이브 안에는 **바이너리 하나**만 있다. 저자가 풀고 나서 찾을 것이 하나다. 윈도우가 zip인
+  이유는 탐색기와 `Expand-Archive`가 따로 도구 없이 여는 형식이기 때문이고, `.exe`가 붙는 이유는
+  윈도우가 확장자로 실행 파일을 알아보기 때문이다.
 
 ## 버전은 태그가 소유한다
 
@@ -59,16 +65,19 @@ go build -trimpath -ldflags "-X main.version=v0.3.0" ./cmd/balpyo
 - 주입 값은 태그 하나 (시각·호스트 이름 같은 "빌드할 때마다 다른 것"을 넣지 않는다)
 - **tar 헤더를 고정한다**: 시각은 epoch 0, uid/gid는 0, 사용자 이름은 없다. gzip 헤더의 시각도
   0이다.
+- **zip 헤더를 고정한다**: 시각은 1980-01-01(MS-DOS 시각이 담을 수 있는 가장 이른 날 — PPTX
+  패키지와 같은 값), 모드는 0755, 압축은 Deflate.
 
-테스트가 한 타깃에서 이것을 판정한다 (두 번 빌드해 아카이브의 해시를 맞댄다). 그래서 "결정적
+테스트가 호스트 타깃과 `windows/amd64`에서 이것을 판정한다 (두 번 빌드해 아카이브의 해시를 맞댄다). 그래서 "결정적
 아카이브"는 주장이 아니라 게이트다.
 
 ## Homebrew 포뮬러는 생성물이다
 
-`dist/balpyo.rb`는 체크섬에서 나온다 — OS × 아키텍처 네 칸이 각자의 URL과 `sha256`을 갖고,
+`dist/balpyo.rb`는 체크섬에서 나온다 — macOS · 리눅스의 OS × 아키텍처 네 칸이 각자의 URL과
+`sha256`을 갖고 (Homebrew가 설치하지 않는 윈도우 아카이브는 들어가지 않는다),
 `test` 스탠자가 설치된 바이너리를 **실제로 돌려** 버전을 맞춘다.
 
-- **네 타깃을 모두 만들 때만 나온다.** 한 타깃만 만든 빌드에서 포뮬러를 내면 나머지 세 칸이
+- **표의 타깃을 모두 만들 때만 나온다.** 한 타깃만 만든 빌드에서 포뮬러를 내면 나머지 세 칸이
   빈 `url`·빈 `sha256`인 `.rb`가 놓이고, 그 파일은 tap에 올라간 뒤 **받는 사람의 기계에서만**
   실패한다. `make dist TARGETS=…`는 포뮬러 대신 "나오지 않았다"를 출력한다.
 - **tap 저장소에 올리는 것은 사람의 일이다.** 우리 저장소가 아닌 곳에 쓰는 토큰을 CI에 두지
@@ -136,10 +145,12 @@ feature/* · fix/* · doc/*  ──PR──▶  develop  ──릴리스 PR (mer
 `install.sh`의 `main` URL이 새 스크립트를 내준다. 그 뒤 `.github/workflows/release.yml`이 `v*`
 태그에서 돈다:
 
-1. **게이트를 다시 돈다** (`make test` — CI와 같은 테마 글꼴을 깐다). 태그가 main의 초록 커밋을
-   가리킨다고 믿지 않는다 — 발표한 아티팩트는 되돌릴 수 없으므로 3분을 다시 쓴다.
+1. **게이트를 다시 돈다** — 리눅스(`make test`)와 윈도우(`go test ./...`) 둘 다, 각각 CI와 같은
+   테마 글꼴을 깐다. 태그가 main의 초록 커밋을 가리킨다고 믿지 않는다 — 발표한 아티팩트는 되돌릴
+   수 없으므로 몇 분을 다시 쓴다. 아카이브 잡은 윈도우 게이트를 기다리고, 다섯 아카이브는 리눅스
+   잡이 크로스 컴파일한다.
 2. `make dist VERSION=<태그>`로 아카이브를 만들고 `sha256sum -c SHA256SUMS`로 확인한다.
-3. **초안**(draft) 릴리스를 만들어 아카이브·`SHA256SUMS`·`balpyo.rb`를 첨부한다. 릴리스 노트는
+3. **초안**(draft) 릴리스를 만들어 아카이브(`.tar.gz` · `.zip`)·`SHA256SUMS`·`balpyo.rb`를 첨부한다. 릴리스 노트는
    사람이 쓴다 (커밋 메시지는 릴리스 노트가 아니다).
 
 릴리스를 내는 사람의 절차:
@@ -162,3 +173,23 @@ Homebrew tap은 아직 없다: `balpyo.rb`는 생성되어 첨부되지만 올�
 `CGO_ENABLED=0` · `-trimpath`로 빌드하고 주입하는 값은 태그 하나다. 한때 이 빌드는 테스트
 컨테이너 안에서 돌았지만, 컨테이너가 고정하던 것은 렌더 도구(LibreOffice · 폰트)였지 Go가
 아니었다 ([ADR 0065](../decisions/0065-pptx-validity-is-judged-by-the-ecma-376-schema-not-by-libreoffice.md)).
+
+## 윈도우 게이트
+
+CI의 `test-windows` 잡과 릴리스의 `gate-windows` 잡이 같은 준비를 한다:
+
+- **글꼴**: 공용 액션 `.github/actions/windows-fonts`가 리눅스 패키지(`fonts-noto-core` ·
+  `-mono` · `-cjk`)와 같은 가족 · 같은 굵기를 고정 커밋에서 받아(캐시한다) 시스템 글꼴 폴더와
+  레지스트리에 넣는다. 라틴은 noto-fonts `v20201206-phase3` — 데비안 패키지와 같은 세대다. 그 뒤의
+  커밋은 Display를 "Noto Sans"의 하위 가족으로 옮겨서, DirectWrite에서는 `Noto Sans Display`
+  가족이 사라지고 예제 게이트가 글꼴 경고와 넘침으로 깨진다.
+- **브라우저**: 러너의 Chrome은 PATH에 없다. `render/geom`이 `ProgramFiles` · `ProgramFiles(x86)` ·
+  `LocalAppData` 아래의 Chrome, 그다음 Edge를 찾는다. 윈도우에서는 샌드박스가 뜨므로
+  `BALPYO_CHROMIUM_NO_SANDBOX`를 두지 않는다.
+- **줄 끝**: `.gitattributes`가 체크아웃을 LF로 고정한다 (윈도우 git의 `core.autocrlf=true`가 골든과
+  `go:embed` 파일을 CRLF로 바꾸기 때문이다). 저자가 쓴 CRLF `.slide`는
+  `TestCRLFSlidesBuildTheSameDeck`이 따로 판정한다.
+- 윈도우에서 실행 파일은 실행 비트가 아니라 확장자(`.exe` · `.com` · `.bat` · `.cmd`)로 판정한다
+  (`geom.Executable`). 가짜 도구를 쓰는 테스트는 윈도우에서 배치 파일을 쓴다.
+- 래스터 도구(OnlyOffice · LibreOffice)는 러너에 없으므로 그 테스트는 리눅스와 같은 정책으로
+  건너뛴다. 후보 경로(Program Files 아래)는 있지만 윈도우에서 잰 적은 없다.

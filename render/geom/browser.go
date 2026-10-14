@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"time"
 
@@ -45,14 +46,41 @@ const (
 //
 // 브라우저를 내려받지 않고 시스템에 있는 것을 쓴다 — macOS 경로를 함께 두는 이유는
 // 로컬에서도 컨테이너 없이 빌드가 돌아야 하기 때문이다.
-func Candidates() []string {
-	return []string{
-		"chromium",
-		"chromium-browser",
-		"google-chrome",
-		"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-		"/Applications/Chromium.app/Contents/MacOS/Chromium",
+func Candidates() []string { return candidatesFor(goruntime.GOOS, os.Getenv) }
+
+// candidatesFor는 운영체제 하나의 후보 목록이다. 운영체제와 환경 변수를 인자로 받는 이유는
+// 윈도우 목록을 다른 호스트의 테스트에서도 판정하기 위해서다.
+//
+// 윈도우의 Chrome · Edge 설치 프로그램은 PATH에 실행 파일을 두지 않으므로 PATH만 보면 거의
+// 언제나 못 찾는다. 설치 위치는 사용자마다 다른 드라이브·폴더일 수 있어 경로를 그대로 적지 않고
+// 설치 프로그램이 쓰는 환경 변수(ProgramFiles 등)에서 만든다. 값이 빈 변수는 건너뛴다 — 빈 값으로
+// 만든 `\Google\…`는 현재 드라이브의 엉뚱한 경로가 된다. Edge는 Chrome 뒤에 둔다: 같은 Blink
+// 엔진이고 CDP를 말하며, 윈도우 10 · 11에는 언제나 깔려 있다.
+func candidatesFor(goos string, getenv func(string) string) []string {
+	if goos != "windows" {
+		return []string{
+			"chromium",
+			"chromium-browser",
+			"google-chrome",
+			"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+			"/Applications/Chromium.app/Contents/MacOS/Chromium",
+		}
 	}
+	candidates := []string{"chrome", "chromium", "msedge"}
+	installs := []struct{ env, rel string }{
+		{"ProgramFiles", `Google\Chrome\Application\chrome.exe`},
+		{"ProgramFiles(x86)", `Google\Chrome\Application\chrome.exe`},
+		{"LocalAppData", `Google\Chrome\Application\chrome.exe`},
+		{"LocalAppData", `Chromium\Application\chrome.exe`},
+		{"ProgramFiles(x86)", `Microsoft\Edge\Application\msedge.exe`},
+		{"ProgramFiles", `Microsoft\Edge\Application\msedge.exe`},
+	}
+	for _, install := range installs {
+		if base := getenv(install.env); base != "" {
+			candidates = append(candidates, strings.TrimRight(base, `\`)+`\`+install.rel)
+		}
+	}
+	return candidates
 }
 
 // LookChromium은 브라우저 실행 파일을 찾는다: 환경 변수 → PATH → 알려진 설치 경로.
@@ -83,15 +111,33 @@ func LookChromium() (string, error) {
 func NoSandbox() bool { return os.Getenv(EnvNoSandbox) == "1" }
 
 // executable은 경로가 실행 가능한 파일인지 본다.
-func executable(path string) error {
+func executable(path string) error { return Executable(path) }
+
+// Executable은 경로가 이 운영체제에서 실행할 수 있는 파일인지 본다. 도구 탐색
+// (internal/preview)도 이것을 쓴다 — 판정이 두 벌이면 한쪽만 윈도우를 안다.
+func Executable(path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
 		return err
 	}
-	if info.IsDir() {
+	return executableInfo(path, info.Mode(), goruntime.GOOS)
+}
+
+// executableInfo는 Executable의 판정이다. 윈도우에는 실행 권한 비트가 없다 — Go는 파일에
+// 0666(읽기 전용이면 0444)만 돌려주므로 비트로 보면 `chrome.exe`도 실행 파일이 아니게 된다.
+// 윈도우가 실행하는 것은 확장자로 정해지므로 거기서는 확장자를 본다.
+func executableInfo(path string, mode os.FileMode, goos string) error {
+	if mode.IsDir() {
 		return fmt.Errorf("is a directory")
 	}
-	if info.Mode()&0o111 == 0 {
+	if goos == "windows" {
+		switch strings.ToLower(filepath.Ext(path)) {
+		case ".exe", ".com", ".bat", ".cmd":
+			return nil
+		}
+		return fmt.Errorf("not executable (expected .exe, .com, .bat or .cmd)")
+	}
+	if mode&0o111 == 0 {
 		return fmt.Errorf("not executable")
 	}
 	return nil

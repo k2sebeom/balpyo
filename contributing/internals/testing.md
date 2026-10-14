@@ -23,7 +23,8 @@ LibreOffice가 아니라 저장소에 둔 ECMA-376 스키마가 판정하므로(
 도구는 아니지만 **글꼴**도 필요하다. 잰 빌드는 테마 글꼴이 측정 브라우저에 없으면 경고를 내고
 ([글꼴 경고](../../docs/reference/cli.md#글꼴-경고)), 픽스처 골든과 예제 게이트(경고 0)는 내장 ·
 예제 테마의 Noto 글꼴이 깔려 있다고 본다. Debian/Ubuntu에서는 `fonts-noto-core` ·
-`fonts-noto-mono` · `fonts-noto-cjk`다 (CI가 설치한다).
+`fonts-noto-mono` · `fonts-noto-cjk`다 (CI가 설치한다). 윈도우에는 패키지가 없으므로 CI는 같은
+가족 · 같은 세대의 파일을 받아 깐다 (`.github/actions/windows-fonts` — [릴리스](release.md#윈도우-게이트)).
 
 Chromium이 없으면 빌드가 필요한 테스트는 메시지와 함께 **건너뛴다** — 픽스처 · 예제 스위트
 전체가 여기에 든다 (`Fixture.Build`가 정책을 적용하는 자리다). 도구가 없는 호스트에서 초록이
@@ -48,6 +49,29 @@ Chromium이 없으면 빌드가 필요한 테스트는 메시지와 함께 **건
 | `BALPYO_ONLYOFFICE` | `balpyo preview`의 PPTX 래스터 엔진(OnlyOffice Document Builder) 설치 디렉토리 — 게이트와 무관하다 |
 | `BALPYO_SOFFICE` / `BALPYO_PDFTOPPM` | OnlyOffice가 없을 때의 PPTX 래스터 도구 경로 — 게이트와 무관하다 |
 | `BALPYO_DRIFT` | 1이면 `TestDrift`가 덱마다 브라우저와 가장 많이 어긋난 박스를 보고한다 |
+
+### 윈도우에서
+
+Go와 Chrome(또는 기본으로 깔린 Edge)이 있으면 게이트는 `go test ./...` 그대로다 — `make`는 없어도
+된다. 준비는 두 가지다.
+
+- **글꼴**: CI가 쓰는 스크립트를 그대로 돌린다. 기본값은 사용자 범위(`%LocalAppData%\Microsoft\Windows\Fonts`
+  · HKCU)라 관리자 권한이 필요 없고, 다시 돌려도 된다.
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .github\actions\windows-fonts\install.ps1
+  ```
+
+  글꼴이 없으면 글꼴 경고만이 아니라 대체 글꼴의 줄 폭 때문에 차트 · 레이아웃 진단, 픽스처,
+  예제 게이트, 내장 렌더러의 엔진 테스트와 드리프트가 함께 실패한다.
+- **줄 끝**: `.gitattributes`가 작업 트리를 LF로 고정하지만, 그 파일이 생기기 전에 `core.autocrlf=true`로
+  받은 클론은 브랜치를 바꿔도 바뀌지 않은 파일이 CRLF로 남는다 — 스킬 골든, `theme info` 출력처럼
+  묻힌 파일을 읽는 테스트가 갈린다. 커밋하지 않은 변경이 없는 상태에서 한 번 다시 체크아웃한다:
+
+  ```bash
+  git rm -r --cached -q . && git reset --hard
+  git ls-files --eol | grep w/crlf   # ooxml/*.xsd만 남아야 한다 (배포본 그대로 CRLF)
+  ```
 
 ## 픽스처
 
@@ -268,6 +292,13 @@ sudo mkdir -p /opt/onlyoffice && sudo tar -xJf onlyoffice-documentbuilder-linux-
 # 다른 자리에 풀었으면 BALPYO_ONLYOFFICE=<설치 디렉토리>
 ```
 
+```powershell
+# Windows x64 — 배포본이 설치기 없는 zip이다. 사용자 폴더에 풀어 글꼴 색인을 쓸 수 있게 둔다
+Invoke-WebRequest https://github.com/ONLYOFFICE/DocumentBuilder/releases/latest/download/onlyoffice-documentbuilder-windows-x64.zip -OutFile oo.zip
+Expand-Archive oo.zip "$env:LOCALAPPDATA\balpyo-tools\onlyoffice"
+[Environment]::SetEnvironmentVariable("BALPYO_ONLYOFFICE", "$env:LOCALAPPDATA\balpyo-tools\onlyoffice", "User")
+```
+
 글꼴 색인(`sdkjs/common/AllFonts.js`)은 변환 전마다 `docbuilder`가 설치된 글꼴과 대조해 갱신한다 —
 색인이 낡으면 `x2t`는 한글만 빠진 그림을 성공으로 낸다. 그래서 설치 디렉토리는 쓸 수 있는 자리가
 좋다 (쓸 수 없으면 있는 색인으로 간다).
@@ -313,11 +344,12 @@ COMPARE_PROJECTS='../../examples/decks/*' COMPARE_OUT=/tmp/cmp go test ./render/
 
 ## CI
 
-`.github/workflows/ci.yml`의 잡은 둘이다.
+`.github/workflows/ci.yml`의 잡은 셋이다.
 
 | 잡 | 하는 일 |
 |---|---|
 | `test` | `setup-go` + 러너의 Chrome + Noto 글꼴 → `make test` (`BALPYO_TEST_STRICT=1` · `BALPYO_CHROMIUM_NO_SANDBOX=1`) |
+| `test-windows` | 같은 게이트를 `windows-latest`에서: `setup-go` + 러너의 Chrome(설치 폴더에서 찾는다) + 같은 Noto 글꼴 → `go test ./...` (`BALPYO_TEST_STRICT=1`) |
 | `docs` | `make docs` (`mkdocs build --strict`) |
 
 로컬과 CI는 **같은 명령**을 돈다. 둘의 차이는 설치된 폰트와 브라우저 버전뿐이고, 판정이 그 둘에

@@ -21,8 +21,31 @@ permissions:
   contents: write
 
 jobs:
+  # 윈도우 아카이브도 발표하므로 윈도우에서도 게이트를 다시 돈다 — CI의 윈도우 잡과 같은 준비다.
+  # 아카이브는 리눅스 잡이 크로스 컴파일한다 (CGO 없이 -trimpath로 만드는 바이트는 빌드 호스트에
+  # 매이지 않는다). 이 잡은 그 아카이브가 발표되기 전에 초록이어야 한다.
+  gate-windows:
+    name: 게이트 (Windows)
+    runs-on: windows-latest
+    env:
+      BALPYO_TEST_STRICT: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: theme fonts
+        uses: ./.github/actions/windows-fonts
+
+      - name: gate (a release passes the same tests)
+        run: go test ./...
+
   release:
     name: 아카이브
+    needs: gate-windows
     runs-on: ubuntu-latest
     env:
       BALPYO_TEST_STRICT: '1'
@@ -63,5 +86,6 @@ jobs:
           draft: true
           files: |
             dist/balpyo_*.tar.gz
+            dist/balpyo_*.zip
             dist/SHA256SUMS
             dist/balpyo.rb

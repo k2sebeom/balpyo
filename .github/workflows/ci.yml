@@ -39,6 +39,28 @@ jobs:
       - name: test
         run: make test
 
+  # 윈도우도 같은 게이트다 — 엄격 모드도, 예제의 경고 0도 그대로다. 다른 것은 준비뿐이다:
+  # 러너의 Chrome은 PATH에 없지만 빌드가 설치 폴더에서 찾고, 윈도우에서는 샌드박스가 뜬다.
+  test-windows:
+    name: 테스트 (Windows)
+    runs-on: windows-latest
+    env:
+      BALPYO_TEST_STRICT: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # 리눅스 잡이 까는 패키지와 같은 가족 · 같은 굵기의 Noto다 (릴리스의 게이트도 같은 것을 깐다).
+      - name: theme fonts
+        uses: ./.github/actions/windows-fonts
+
+      - name: test
+        run: go test ./...
+
   docs:
     name: 문서 빌드
     runs-on: ubuntu-latest

@@ -1,0 +1,16 @@
+# 윈도우 러너에 내장 · 예제 테마의 글꼴을 깐다. 받는 파일과 그 이유는 install.ps1에 있다 —
+# 로컬 개발자도 같은 스크립트를 돌린다(그쪽은 관리자 권한이 필요 없는 User 범위).
+name: theme fonts (Windows)
+description: Install the Noto families the built-in and example themes use
+runs:
+  using: composite
+  steps:
+    - name: theme fonts cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/noto
+        key: noto-20bc5918912503bc1537a407a694738c33c048aa-f8d157532fbfaeda587e826d4cd5b21a49186f7c
+
+    - name: theme fonts install
+      shell: pwsh
+      run: '& "${{ github.action_path }}/install.ps1" -Scope Machine -CacheDir "${{ runner.temp }}/noto"'

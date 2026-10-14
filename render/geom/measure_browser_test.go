@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -648,6 +649,11 @@ func TestLaunchRetriesAFailedStart(t *testing.T) {
 	mark := filepath.Join(dir, "started-once")
 	fake := filepath.Join(dir, "flaky-chrome")
 	script := fmt.Sprintf("#!/bin/sh\nif [ ! -e %q ]; then : > %q; exit 1; fi\nexec %q \"$@\"\n", mark, mark, real)
+	// 윈도우에는 sh가 없을 수 있고 실행 파일은 확장자가 정한다 — 같은 가짜를 배치 파일로 쓴다.
+	if runtime.GOOS == "windows" {
+		fake += ".cmd"
+		script = fmt.Sprintf("@echo off\r\nif not exist \"%s\" (\r\n  type nul > \"%s\"\r\n  exit /b 1\r\n)\r\n\"%s\" %%*\r\n", mark, mark, real)
+	}
 	if err := os.WriteFile(fake, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
