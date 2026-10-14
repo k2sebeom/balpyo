@@ -50,6 +50,29 @@ Chromium이 없으면 빌드가 필요한 테스트는 메시지와 함께 **건
 | `BALPYO_SOFFICE` / `BALPYO_PDFTOPPM` | OnlyOffice가 없을 때의 PPTX 래스터 도구 경로 — 게이트와 무관하다 |
 | `BALPYO_DRIFT` | 1이면 `TestDrift`가 덱마다 브라우저와 가장 많이 어긋난 박스를 보고한다 |
 
+### 윈도우에서
+
+Go와 Chrome(또는 기본으로 깔린 Edge)이 있으면 게이트는 `go test ./...` 그대로다 — `make`는 없어도
+된다. 준비는 두 가지다.
+
+- **글꼴**: CI가 쓰는 스크립트를 그대로 돌린다. 기본값은 사용자 범위(`%LocalAppData%\Microsoft\Windows\Fonts`
+  · HKCU)라 관리자 권한이 필요 없고, 다시 돌려도 된다.
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .github\actions\windows-fonts\install.ps1
+  ```
+
+  글꼴이 없으면 글꼴 경고만이 아니라 대체 글꼴의 줄 폭 때문에 차트 · 레이아웃 진단, 픽스처,
+  예제 게이트, 내장 렌더러의 엔진 테스트와 드리프트가 함께 실패한다.
+- **줄 끝**: `.gitattributes`가 작업 트리를 LF로 고정하지만, 그 파일이 생기기 전에 `core.autocrlf=true`로
+  받은 클론은 브랜치를 바꿔도 바뀌지 않은 파일이 CRLF로 남는다 — 스킬 골든, `theme info` 출력처럼
+  묻힌 파일을 읽는 테스트가 갈린다. 커밋하지 않은 변경이 없는 상태에서 한 번 다시 체크아웃한다:
+
+  ```bash
+  git rm -r --cached -q . && git reset --hard
+  git ls-files --eol | grep w/crlf   # ooxml/*.xsd만 남아야 한다 (배포본 그대로 CRLF)
+  ```
+
 ## 픽스처
 
 픽스처 하나(`testdata/fixtures/<NN>_<이름>/`)는 **완전한 balpyo 프로젝트**다. 그래서 사람이
