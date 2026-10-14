@@ -27,8 +27,10 @@
 이것들을 고친 뒤 윈도우 잡은 **건너뛰기 없이** 초록이다 — 동일성 · 골든 · 결정성 · PPTX 유효성 ·
 예제의 경고 0 · 내장 렌더러의 드리프트까지 리눅스와 같은 판정이다. OnlyOffice · LibreOffice를
 부르는 래스터 테스트는 리눅스에서와 같은 정책(도구가 없으면 엄격 모드에서도 건너뛴다 — 게이트가
-아닌 도구다)으로 건너뛴다. 러너에 그 도구가 없으므로 `balpyo preview`의 PPTX 래스터는 윈도우에서
-재지 않았다.
+아닌 도구다)으로 건너뛴다. 러너에 그 도구가 없으므로 CI는 `balpyo preview`의 PPTX 래스터를 윈도우에서
+재지 않는다. 개발 머신(Windows 11)에서는 Document Builder 9.4.0의 zip을 사용자 폴더에 풀고
+`BALPYO_ONLYOFFICE`로 가리켜 `internal/preview`의 OnlyOffice 테스트와 예제 덱의 `preview`를 돌렸고,
+사용자 범위로 깐 Noto 글꼴(한글 포함)로 그렸다.
 
 질문은 셋이다: **무엇을 표에 올리는가**, **어떤 형식으로 놓는가**, **CRLF를 어디서 받는가**.
 
@@ -101,5 +103,5 @@
 
 - **`windows/arm64`** — 그 러너에서 같은 게이트를 돌 수 있게 되면 표에 한 줄 더한다.
 - **PowerShell 설치기 · winget · scoop** — 설치 경로는 손 절차 하나다.
-- **윈도우에서의 `balpyo preview` PPTX 래스터** — 후보 경로는 두었지만 러너에 OnlyOffice ·
-  LibreOffice가 없어 재지 않았다.
+- **CI에서의 윈도우 `balpyo preview` PPTX 래스터** — 개발 머신에서 OnlyOffice로 확인했지만 러너에
+  OnlyOffice · LibreOffice가 없어 CI는 재지 않는다. LibreOffice 경로는 윈도우에서 재지 않았다.

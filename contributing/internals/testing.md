@@ -292,6 +292,13 @@ sudo mkdir -p /opt/onlyoffice && sudo tar -xJf onlyoffice-documentbuilder-linux-
 # 다른 자리에 풀었으면 BALPYO_ONLYOFFICE=<설치 디렉토리>
 ```
 
+```powershell
+# Windows x64 — 배포본이 설치기 없는 zip이다. 사용자 폴더에 풀어 글꼴 색인을 쓸 수 있게 둔다
+Invoke-WebRequest https://github.com/ONLYOFFICE/DocumentBuilder/releases/latest/download/onlyoffice-documentbuilder-windows-x64.zip -OutFile oo.zip
+Expand-Archive oo.zip "$env:LOCALAPPDATA\balpyo-tools\onlyoffice"
+[Environment]::SetEnvironmentVariable("BALPYO_ONLYOFFICE", "$env:LOCALAPPDATA\balpyo-tools\onlyoffice", "User")
+```
+
 글꼴 색인(`sdkjs/common/AllFonts.js`)은 변환 전마다 `docbuilder`가 설치된 글꼴과 대조해 갱신한다 —
 색인이 낡으면 `x2t`는 한글만 빠진 그림을 성공으로 낸다. 그래서 설치 디렉토리는 쓸 수 있는 자리가
 좋다 (쓸 수 없으면 있는 색인으로 간다).
