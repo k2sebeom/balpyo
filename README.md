@@ -67,6 +67,27 @@ my-talk/
 </slide>
 ```
 
+## Making AI agents use balpyo
+
+The repository is also a Claude Code plugin marketplace. Its `balpyo` plugin carries two skills that
+teach an agent the SOML vocabulary, the layouts, the diagnostics and the build loop — so you can
+ask Claude Code for a deck and get a project that builds warning-free.
+
+```bash
+claude plugin marketplace add k2sebeom/balpyo
+claude plugin install balpyo@balpyo
+```
+
+On Claude Code 2.1.275 or later, one line inside a session does both:
+`/plugin install balpyo --marketplace k2sebeom/balpyo`.
+
+- **`deck`** — writes `.slide` files, runs `balpyo check --check-layout --strict` and fixes what it
+  reports. Ask for "a 10-slide deck on our Q3 results" or "turn this doc into slides".
+- **`theme`** — designs a project-local theme (tokens, components, layout CSS) for brand colours,
+  fonts or placement, without touching the slides.
+
+The agent drives the `balpyo` binary, so install it first (above).
+
 ## Showcase
 
 Below are the repository's [example decks](examples/decks/) exactly as balpyo renders them. The

@@ -65,6 +65,27 @@ my-talk/
 </slide>
 ```
 
+## AI 에이전트가 balpyo를 쓰게 하기
+
+이 저장소는 Claude Code 플러그인 마켓플레이스이기도 하다. `balpyo` 플러그인에 든 스킬 둘이
+에이전트에게 SOML 어휘 · 레이아웃 · 진단 · 빌드 루프를 가르친다 — Claude Code에 덱을 부탁하면
+경고 없이 빌드되는 프로젝트가 나온다.
+
+```bash
+claude plugin marketplace add k2sebeom/balpyo
+claude plugin install balpyo@balpyo
+```
+
+Claude Code 2.1.275 이상에서는 세션 안의 한 줄이 둘을 함께 한다:
+`/plugin install balpyo --marketplace k2sebeom/balpyo`.
+
+- **`deck`** — `.slide` 파일을 쓰고, `balpyo check --check-layout --strict`를 돌려 나온 진단을
+  고친다. "3분기 실적 덱 10장" · "이 문서를 슬라이드로" 같은 부탁에 쓴다.
+- **`theme`** — 브랜드 색 · 글꼴 · 배치를 담은 프로젝트 테마(토큰 · 컴포넌트 · 레이아웃 CSS)를
+  슬라이드를 고치지 않고 만든다.
+
+에이전트는 `balpyo` 바이너리를 부르므로 위에서 먼저 설치해 둔다.
+
 ## 쇼케이스
 
 아래는 저장소의 [예제 덱](examples/decks/)을 balpyo로 렌더한 그대로다. 산출물(`index.html` ·

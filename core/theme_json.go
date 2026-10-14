@@ -80,6 +80,11 @@ func jsonDecodeError(data []byte, file string, err error) *themeFileError {
 		fe.msg = "invalid JSON: " + syntax.Error()
 	case errors.As(err, &typ):
 		label, offset := locateValue(data, int(typ.Offset), typ.Field)
+		if label == "" {
+			// 빈 경로는 최상위 값이다 — 이름 없이 두면 진단이 "  must be …"로 앞이 빈다.
+			label = "the top-level value"
+			offset = len(data) - len(bytes.TrimLeft(data, " \t\r\n"))
+		}
 		fe.pos = offsetPos(data, offset)
 		fe.msg = fmt.Sprintf("%s must be %s, not %s", label, typeWord(typ.Type), typ.Value)
 	case errors.Is(err, io.ErrUnexpectedEOF):

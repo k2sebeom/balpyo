@@ -25,6 +25,8 @@ func TestThemeJSONErrorsNameTheFileAndPath(t *testing.T) {
 			"themes/corp/components.json", "2:51", `shape.variants["card"].fill must be a string, not number`},
 		{"문법 오류", "", "{\n  \"text\": {,}\n}",
 			"themes/corp/components.json", "2:12", "invalid JSON"},
+		{"최상위가 객체가 아니다", "", "\n  [1]",
+			"themes/corp/components.json", "2:3", "the top-level value must be an object, not array"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -179,8 +179,10 @@ make docs        # mkdocs build --strict (new pages must be in mkdocs.yml nav)
 ## Workflow conventions
 
 - Branches follow git flow: `develop` is the integration branch. `feature/*`, `fix/*` and `doc/*`
-  branch from `develop` and their PRs target `develop`. A release merges `develop` into `main` and
-  tags the merge commit `vX.Y.Z` — the version lives only in the tag.
+  branch from `develop` and their PRs target `develop`. A release merges `develop` into `main` with a
+  **merge commit** (never squash/rebase), fast-forwards `develop` to `main`, and tags the merge commit
+  `vX.Y.Z` — the version lives only in the tag. `main` takes PRs only (green CI required); `develop`
+  can't be deleted or force-pushed. Full procedure: `contributing/internals/release.md`.
 - Open work lives in `contributing/backlog.md` (unordered). Each item is tests → implementation
   (`soml` → `core` → renderers) → docs; delete the entry when it lands.
 - Decisions that change a contract get an ADR in `contributing/decisions/` (Korean; context →
