@@ -1,16 +1,5 @@
-# 윈도우 러너에 내장 · 예제 테마의 글꼴을 깐다.
-#
-# 리눅스 잡이 까는 패키지(fonts-noto-core · fonts-noto-mono · fonts-noto-cjk)와 같은 가족 ·
-# 같은 굵기다. 측정 브라우저에 테마 글꼴이 없으면 잰 빌드가 글꼴 경고를 내고, 예제 게이트는
-# 경고 0이어야 하므로 두 러너가 같은 글꼴을 가져야 같은 게이트다. 윈도우에는 패키지가 없으므로
-# Noto 저장소에서 받는다. 커밋을 고정하므로 받는 바이트가 바뀌지 않고, 그래서 캐시해도 된다.
-#
-# 라틴 가족은 noto-fonts의 v20201206-phase3 태그에서 받는다 — 데비안 · 우분투 패키지와 같은
-# 세대다. 그 뒤의 커밋은 Display를 "Noto Sans"의 하위 가족(이름 표의 typographic family)으로
-# 옮겨서, 가족을 그 이름으로 묶는 DirectWrite에는 "Noto Sans Display"라는 가족이 없어진다.
-#
-# 설치는 시스템 글꼴 폴더에 복사하고 레지스트리에 적는 것이다 — 그 뒤에 뜨는 브라우저
-# (DirectWrite)가 그 글꼴을 본다.
+# 윈도우 러너에 내장 · 예제 테마의 글꼴을 깐다. 받는 파일과 그 이유는 install.ps1에 있다 —
+# 로컬 개발자도 같은 스크립트를 돌린다(그쪽은 관리자 권한이 필요 없는 User 범위).
 name: theme fonts (Windows)
 description: Install the Noto families the built-in and example themes use
 runs:
@@ -24,27 +13,4 @@ runs:
 
     - name: theme fonts install
       shell: pwsh
-      run: |
-        $ErrorActionPreference = 'Stop'
-        $ProgressPreference = 'SilentlyContinue'
-        $latin = 'https://raw.githubusercontent.com/notofonts/noto-fonts/20bc5918912503bc1537a407a694738c33c048aa/hinted/ttf'
-        $cjk = 'https://raw.githubusercontent.com/notofonts/noto-cjk/f8d157532fbfaeda587e826d4cd5b21a49186f7c'
-        $files = @()
-        foreach ($family in 'NotoSans', 'NotoSerif', 'NotoSansDisplay') {
-          foreach ($style in 'Regular', 'Bold', 'Italic', 'BoldItalic') { $files += "$latin/$family/$family-$style.ttf" }
-        }
-        foreach ($style in 'Regular', 'Bold') { $files += "$latin/NotoSansMono/NotoSansMono-$style.ttf" }
-        foreach ($style in 'Regular', 'Bold') {
-          $files += "$cjk/Sans/OTC/NotoSansCJK-$style.ttc"
-          $files += "$cjk/Serif/OTC/NotoSerifCJK-$style.ttc"
-        }
-        $dir = Join-Path $env:RUNNER_TEMP 'noto'
-        New-Item -ItemType Directory -Force $dir | Out-Null
-        $registry = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
-        foreach ($url in $files) {
-          $name = Split-Path $url -Leaf
-          $file = Join-Path $dir $name
-          if (-not (Test-Path $file)) { Invoke-WebRequest -Uri $url -OutFile $file }
-          Copy-Item $file (Join-Path $env:WINDIR 'Fonts') -Force
-          New-ItemProperty -Path $registry -Name "$([IO.Path]::GetFileNameWithoutExtension($name)) (TrueType)" -Value $name -PropertyType String -Force | Out-Null
-        }
+      run: '& "${{ github.action_path }}/install.ps1" -Scope Machine -CacheDir "${{ runner.temp }}/noto"'
