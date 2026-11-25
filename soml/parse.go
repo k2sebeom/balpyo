@@ -6,7 +6,7 @@ import (
 )
 
 // RootElement는 `slides/` 아래 파일의 루트 요소 이름이다. 파일의 역할은 확장자가 아니라
-// 루트 요소가 정한다 — `components/`의 `<define>`은 아직 열리지 않았다.
+// 루트 요소가 정한다 — `components/`의 파일은 `<define>`이다 (component.go).
 const RootElement = "slide"
 
 // noteElement는 발표자 노트 태그다. 콘텐츠가 아니라 슬라이드 메타데이터이므로 콘텐츠
@@ -321,7 +321,17 @@ type SlideDoc struct {
 // 타깃마다 다른 문자열이 된다. U+00A0 같은 비ASCII 공백은 저자가 의도해 넣은 문자이므로
 // 건드리지 않는다.
 func Parse(file, src string) (*SlideDoc, Diagnostics) {
-	p := &parser{file: file, toks: Tokenize(src)}
+	return ParseWith(file, src, nil)
+}
+
+// ParseWith는 Parse에 **컴포넌트 어휘**를 더해 파싱한다 — comps에 정의된 이름(`<step>`)이 그
+// 덱의 태그가 된다. comps가 nil이면 Parse와 같다.
+//
+// 어휘를 파서가 받는 이유: 닫힌 어휘의 진단(모르는 태그 · 속성, 놓일 수 없는 자리)은 파스
+// 시점에 `line:col`과 함께 나와야 하고, 컴포넌트 이름이 어휘인지는 덱이 쓰는 테마만 안다.
+// 테마를 읽는 것은 호출자이고 이 패키지는 이름 · 인자 · 자리 규칙만 본다.
+func ParseWith(file, src string, comps *Components) (*SlideDoc, Diagnostics) {
+	p := &parser{file: file, toks: Tokenize(src), root: RootElement, comps: comps}
 	doc := &SlideDoc{File: file, Tokens: p.toks}
 	doc.Root = p.parseDocument()
 	if doc.Root == nil {
@@ -329,12 +339,16 @@ func Parse(file, src string) (*SlideDoc, Diagnostics) {
 	} else {
 		p.fillSlide(doc)
 	}
-	// 진단은 소스 순서로 낸다 — 저자가 위에서 아래로 고칠 수 있게. 닫히지 않은 태그처럼
-	// 나중에 발견되는 진단이 앞을 가리키기 때문에 정렬이 필요하다.
+	return doc, p.sortedDiags()
+}
+
+// sortedDiags는 진단을 소스 순서로 낸다 — 저자가 위에서 아래로 고칠 수 있게. 닫히지 않은 태그처럼
+// 나중에 발견되는 진단이 앞을 가리키기 때문에 정렬이 필요하다.
+func (p *parser) sortedDiags() Diagnostics {
 	sort.SliceStable(p.diags, func(i, j int) bool {
 		return p.diags[i].Span.Start.Offset < p.diags[j].Span.Start.Offset
 	})
-	return doc, p.diags
+	return p.diags
 }
 
 // parser는 토큰 열을 훑는 커서다. 트리비아는 건너뛰며 읽는다 (토큰 열은 무손실이라 원문을
@@ -344,6 +358,10 @@ type parser struct {
 	toks  Tokens
 	i     int
 	diags Diagnostics
+	// root는 이 파일이 가져야 하는 루트 요소다 — 슬라이드 파일은 `<slide>`, 컴포넌트 파일은 `<define>`.
+	root string
+	// comps는 이 덱이 쓰는 테마가 선언한 컴포넌트 어휘다 (nil이면 내장 어휘뿐이다).
+	comps *Components
 }
 
 func (p *parser) errorf(span Span, format string, args ...any) {
@@ -404,13 +422,14 @@ func (p *parser) parseDocument() *Element {
 			p.checkKnown(elem, parent)
 			p.checkPlacement(elem, stack, root)
 			p.checkRendered(elem, stack)
+			p.checkParams(elem)
 			switch {
 			case parent != nil:
 				parent.Children = append(parent.Children, elem)
 			case root == nil:
 				root = elem
 			}
-			if stillOpen && isVoid(elem.Name) && !p.voidHasEndTag(elem.Name) {
+			if stillOpen && p.isVoid(elem.Name) && !p.voidHasEndTag(elem.Name) {
 				// HTML처럼 닫지 않은 void 태그(`<br>`, `<image src="…">`)다. 내용은 없고 빠진
 				// 것은 `/` 하나다 — 그 자리에서 닫는다. 스택에 올리면 뒤따르는 형제가 이 요소의
 				// 내용이 되어 "내용을 가질 수 없다"는 틀린 진단과, 바깥 닫는 태그에서 "먼저
@@ -419,7 +438,7 @@ func (p *parser) parseDocument() *Element {
 				stillOpen = false
 			}
 			if stillOpen {
-				if isVoid(elem.Name) {
+				if p.isVoid(elem.Name) {
 					// 짝 닫는 태그가 있는 void 요소(`<br>…</br>`)다. 진단하되 스택에는 올린다 —
 					// 짝이 되는 </br>가 "여는 태그가 없다"는 두 번째 진단을 만들지 않게.
 					p.errorf(elem.NameSpan, "void tag <%s> cannot have content (write <%s/>)", elem.Name, elem.Name)
@@ -462,9 +481,9 @@ func (p *parser) parseDocument() *Element {
 	}
 }
 
-// isVoid는 name이 아무것도 담지 않는 알려진 태그인지 답한다.
-func isVoid(name string) bool {
-	spec, known := elementSpecs[name]
+// isVoid는 name이 아무것도 담지 않는 알려진 태그인지 답한다. `<slot/>`이 없는 컴포넌트도 void다.
+func (p *parser) isVoid(name string) bool {
+	spec, known := p.spec(name)
 	return known && spec.model == modelVoid
 }
 
@@ -490,7 +509,7 @@ func (p *parser) voidHasEndTag(name string) bool {
 	for j := p.i; j < len(p.toks); j++ {
 		switch p.toks[j].Kind {
 		case TokenTagStart:
-			innerVoid = isVoid(nextName(j))
+			innerVoid = p.isVoid(nextName(j))
 			if !innerVoid {
 				depth++
 			}
@@ -507,7 +526,7 @@ func (p *parser) voidHasEndTag(name string) bool {
 			if depth == 0 {
 				return closing == name
 			}
-			if !isVoid(closing) {
+			if !p.isVoid(closing) {
 				depth--
 			}
 		}
@@ -518,7 +537,7 @@ func (p *parser) voidHasEndTag(name string) bool {
 // charData는 문자 데이터 토큰을 부모의 콘텐츠 모델에 맞게 처리한다.
 func (p *parser) charData(tok Token, parent *Element) {
 	if parent != nil {
-		spec, known := elementSpecs[parent.Name]
+		spec, known := p.spec(parent.Name)
 		if !known {
 			// 미지의 태그는 이미 진단됐다. 그 안의 내용까지 진단해 하나의 오타를 여러 줄로
 			// 부풀리지 않는다.
@@ -544,13 +563,13 @@ func (p *parser) charData(tok Token, parent *Element) {
 		return
 	}
 	if parent == nil {
-		p.errorf(dataSpan(tok), "character data outside any element (write content inside <%s>)", RootElement)
+		p.errorf(dataSpan(tok), "character data outside any element (write content inside <%s>)", p.root)
 		return
 	}
 	// 고칠 방법은 **부모가** 정한다: 글자를 담을 수 있는 자식이 부모마다 다르기 때문이다.
 	// `<text>로 감싼다`를 모든 부모에게 말하면 표 안에서는 따를 수 없는 조언이 된다
 	// (`<table>`의 자식은 행뿐이고 `<tr>`의 자식은 셀뿐이다 — tableChildren·tableRowChildren).
-	switch KindOf(parent.Name) {
+	switch KindOf(p.containerName(parent.Name)) {
 	case KindListContainer:
 		p.errorf(dataSpan(tok), "character data cannot appear directly inside <%s> (wrap it in <%s>)", parent.Name, ListItemElement)
 	case KindTable:
@@ -636,7 +655,7 @@ func (p *parser) parseStartTag() (elem *Element, stillOpen bool) {
 			// 끝내고 그 토큰은 문서 흐름으로 넘긴다 (렉서가 `<`를 넘겨 준 이유와 같다).
 			// void 태그는 여기서 닫는다 — `>`가 빠진 실수 하나가 자기 닫힘 진단을 하나 더 만들지 않게.
 			p.errorf(elem.NameSpan, "tag <%s> is not closed with `>`", elem.Name)
-			return elem, !isVoid(elem.Name)
+			return elem, !p.isVoid(elem.Name)
 		}
 	}
 }
@@ -730,21 +749,29 @@ func (p *parser) skipToTagEnd() {
 // checkPlacement는 요소가 놓인 자리를 검증한다. stack은 아직 열려 있는 조상들이다 —
 // <a> 안의 <a>처럼 부모만 봐서는 잡을 수 없는 규칙이 있어 부모가 아니라 스택을 받는다.
 func (p *parser) checkPlacement(elem *Element, stack []*Element, root *Element) {
-	if _, known := elementSpecs[elem.Name]; !known {
+	if _, known := p.spec(elem.Name); !known {
 		return // 미지의 태그는 이미 진단됐다 — 같은 오타로 진단을 두 번 내지 않는다.
 	}
 	parent := parentOf(stack)
 	if parent == nil {
 		switch {
-		case elem.Name != RootElement:
-			p.errorf(elem.NameSpan, "the root element must be <%s> (write <%s> inside it)", RootElement, elem.Name)
+		case elem.Name != p.root:
+			p.errorf(elem.NameSpan, "the root element must be <%s> (write <%s> inside it)", p.root, elem.Name)
 		case root != nil:
-			p.errorf(elem.NameSpan, "a file must have exactly one root element <%s> (one slide per file)", RootElement)
+			p.errorf(elem.NameSpan, "a file must have exactly one root element <%s> (%s)", p.root, p.oneRootReason())
 		}
 		return
 	}
-	spec, known := elementSpecs[parent.Name]
+	spec, known := p.spec(parent.Name)
 	if !known {
+		return
+	}
+	// 컴포넌트는 **펼친 모양으로** 자리를 판정한다: 사용처의 `<step>`은 정의의 뿌리(`<col>`)가 놓일 수
+	// 있는 곳에 놓이고, `<step>`의 자식은 정의 안 `<slot/>`의 부모가 담을 수 있는 것이어야 한다.
+	// 그래야 펼친 트리가 이 검사를 다시 통과하고, 진단은 저자가 쓴 이름으로 말한다.
+	name, parentName := p.placedName(elem.Name), p.containerName(parent.Name)
+	if elem.Name == SlotElement && p.root == DefineElement {
+		p.checkSlotPlacement(elem, parent, spec)
 		return
 	}
 	switch spec.model {
@@ -756,50 +783,50 @@ func (p *parser) checkPlacement(elem *Element, stack []*Element, root *Element) 
 	}
 	// <li>는 어디에 있든 리스트 컨테이너의 자식이어야 한다 — 자리별 일반 메시지보다
 	// "리스트 안에 쓴다"가 고칠 방법을 곧장 말한다.
-	if KindOf(elem.Name) == KindListItem && KindOf(parent.Name) != KindListContainer {
+	if KindOf(name) == KindListItem && KindOf(parentName) != KindListContainer {
 		p.errorf(elem.NameSpan, "<%s> can only be a child of <%s>/<%s>",
 			ListItemElement, listContainerElements[0], listContainerElements[1])
 		return
 	}
 	// <tr>/<th>/<td>도 <li>와 같다 — 어디에 있든 각자의 부모(표·행)의 자식이어야 하고,
 	// 자리별 일반 메시지보다 "표/행 안에 쓴다"가 고칠 방법을 곧장 말한다.
-	if KindOf(elem.Name) == KindTableRow && KindOf(parent.Name) != KindTable {
+	if KindOf(name) == KindTableRow && KindOf(parentName) != KindTable {
 		p.errorf(elem.NameSpan, "<%s> can only be a child of <%s>", TableRowElement, TableElement)
 		return
 	}
 	// <point>도 같은 규칙이다 — 어디에 있든 차트의 자식이어야 한다. 자리별 일반 메시지
 	// ("<slide>의 자식으로 <point>는 올 수 없다")는 저자가 붙여 놓을 곳을 말하지 않는다.
-	if KindOf(elem.Name) == KindChartPoint && KindOf(parent.Name) != KindChart && KindOf(parent.Name) != KindChartSeries {
+	if KindOf(name) == KindChartPoint && KindOf(parentName) != KindChart && KindOf(parentName) != KindChartSeries {
 		p.errorf(elem.NameSpan, "<%s> can only be a child of <%s> or <%s>", ChartPointElement, ChartElement, ChartSeriesElement)
 		return
 	}
-	if KindOf(elem.Name) == KindChartSeries && KindOf(parent.Name) != KindChart {
+	if KindOf(name) == KindChartSeries && KindOf(parentName) != KindChart {
 		p.errorf(elem.NameSpan, "<%s> can only be a child of <%s>", ChartSeriesElement, ChartElement)
 		return
 	}
-	if KindOf(elem.Name) == KindTableCell && KindOf(parent.Name) != KindTableRow {
+	if KindOf(name) == KindTableCell && KindOf(parentName) != KindTableRow {
 		p.errorf(elem.NameSpan, "<%s>/<%s> can only be children of <%s>",
 			TableHeaderCellElement, TableDataCellElement, TableRowElement)
 		return
 	}
 	if spec.model == modelInline {
-		switch KindOf(elem.Name) {
+		switch KindOf(name) {
 		case KindInline:
-			if elem.Name != "a" {
+			if name != "a" {
 				return
 			}
 			// <a> 안의 <a>는 에러다 — 겹친 링크는 "무엇을 클릭했는가"가 정의되지 않고,
 			// PPTX hlinkClick은 런 하나에 링크 하나다. 사이에 다른 인라인이 끼어도 잡히게
 			// 부모가 아니라 열린 조상 전체를 본다.
 			for _, open := range stack {
-				if open.Name == "a" {
+				if p.containerName(open.Name) == "a" {
 					p.errorf(elem.NameSpan, "<a> cannot be nested inside <a>")
 					return
 				}
 			}
 			return
 		case KindListContainer:
-			if KindOf(parent.Name) == KindListItem {
+			if KindOf(parentName) == KindListItem {
 				// PPTX의 들여쓰기 단계(lvl) 매핑 없이 열면 웹에서만 동작한다 — 한 타깃만
 				// 그리는 어휘는 열지 않는다.
 				p.errorf(elem.NameSpan, "<%s> cannot be nested inside <%s> — nested lists are not supported yet",
@@ -821,12 +848,12 @@ func (p *parser) checkPlacement(elem *Element, stack []*Element, root *Element) 
 		}
 	}
 	for _, allowed := range spec.children {
-		if allowed == elem.Name {
+		if allowed == name {
 			return
 		}
 	}
 	p.errorf(elem.NameSpan, "<%s> cannot contain <%s> (available tags: %s)",
-		parent.Name, elem.Name, tagList(spec.children))
+		parent.Name, elem.Name, tagList(p.childrenOf(spec)))
 }
 
 // UnrenderedVocabMessage는 "렌더러가 아직 그리지 못하는 어휘" 진단의 핵 문구다. 상수로
@@ -858,7 +885,7 @@ func (p *parser) checkRendered(elem *Element, stack []*Element) {
 
 // checkAttrName은 속성 이름이 태그의 닫힌 어휘 안에 있는지 본다. 값은 보지 않는다.
 func (p *parser) checkAttrName(elem *Element, attr Attr) {
-	spec, known := elementSpecs[elem.Name]
+	spec, known := p.spec(elem.Name)
 	if !known {
 		return
 	}
@@ -890,7 +917,8 @@ func (p *parser) checkAttrName(elem *Element, attr Attr) {
 
 // closeElement는 요소를 닫으며 콘텐츠 모델에 따른 정규화를 마친다.
 func (p *parser) closeElement(elem *Element) {
-	switch specOf(elem).model {
+	spec, _ := p.spec(elem.Name)
+	switch spec.model {
 	case modelText, modelInline:
 		// 인라인 요소는 자기 양 끝을 자르지 않는다 — 양 끝 공백이 내용인지는 바깥 흐름을
 		// 봐야 안다 (`13.8<span> kg/m</span>`의 한 칸은 유일한 구분자다). 흐름 전체를
@@ -1002,7 +1030,7 @@ func (p *parser) fillSlide(doc *SlideDoc) {
 		if !ok {
 			continue
 		}
-		if _, known := elementSpecs[elem.Name]; !known {
+		if _, known := p.spec(elem.Name); !known {
 			continue // 이미 진단됐다. 진단이 있는 문서는 렌더에 쓰이지 않는다.
 		}
 		if elem.Name != noteElement {
@@ -1017,12 +1045,6 @@ func (p *parser) fillSlide(doc *SlideDoc) {
 		note = elem
 		doc.Notes = elem.TextContent()
 	}
-}
-
-// specOf는 요소의 문법 규칙이다. 미지의 태그는 요소만 담는 모델로 취급한다 — 그 태그의
-// 진단은 이미 나갔고, 안쪽 내용으로 진단을 부풀리지 않는 쪽을 고른다.
-func specOf(elem *Element) elementSpec {
-	return elementSpecs[elem.Name]
 }
 
 // ElementAttrs는 태그가 여는 속성 이름 전체다 (진단·문서 순서). 미지의 태그는 nil이다.
@@ -1066,17 +1088,17 @@ func knownElementNames() []string {
 // 다시 골라야 한다 — `<ul>` 안의 오타에 답은 `<li>` 하나다. 슬롯 · 속성 진단이 이미 부모의 목록을
 // 말하는 것과 같은 태도다. 후보는 HTML 습관 · 그 자리의 목록 · 어휘 전체 순서로 찾는다 (SuggestTag).
 func (p *parser) checkKnown(elem *Element, parent *Element) {
-	if _, known := elementSpecs[elem.Name]; known {
+	if _, known := p.spec(elem.Name); known {
 		return
 	}
-	where, allowed := allowedHere(parent)
+	where, allowed := p.allowedHere(parent)
 	if len(allowed) == 0 {
 		// 태그가 올 수 없는 자리다 — 어떤 태그 이름을 권해도 다음 진단이 될 뿐이다.
 		p.errorf(elem.NameSpan, "unknown tag <%s> (only character data is allowed %s)", elem.Name, where)
 		return
 	}
 	hint := ""
-	if guess, ok := SuggestTag(elem.Name, allowed, knownElementNames()); ok {
+	if guess, ok := SuggestTag(elem.Name, allowed, p.knownNames()); ok {
 		hint = " — did you mean <" + guess + ">?"
 	}
 	p.errorf(elem.NameSpan, "unknown tag <%s>%s (tags available %s: %s)", elem.Name, hint, where, tagList(allowed))
@@ -1084,19 +1106,19 @@ func (p *parser) checkKnown(elem *Element, parent *Element) {
 
 // allowedHere는 부모 아래에 쓸 수 있는 태그와 그 자리를 말하는 구절이다. 문자 데이터만 담는 부모는
 // 빈 목록이다.
-func allowedHere(parent *Element) (where string, allowed []string) {
+func (p *parser) allowedHere(parent *Element) (where string, allowed []string) {
 	if parent == nil {
-		return "at the root", []string{RootElement}
+		return "at the root", []string{p.root}
 	}
-	spec, known := elementSpecs[parent.Name]
+	spec, known := p.spec(parent.Name)
 	if !known {
 		// 부모도 어휘 밖이다 (이미 진단됐다) — 자리를 모르므로 어휘 전체를 말한다.
-		return "anywhere", knownElementNames()
+		return "anywhere", p.knownNames()
 	}
 	where = "inside <" + parent.Name + ">"
 	switch spec.model {
 	case modelElements:
-		return where, spec.children
+		return where, p.childrenOf(spec)
 	case modelInline:
 		return where, inlineElements
 	}
